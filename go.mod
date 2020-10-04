@@ -28,7 +28,7 @@ require (
 	github.com/hashicorp/hcl v0.0.0-20170914154624-68e816d1c783 // indirect
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20190821133035-82a99dc22ef4
 	github.com/huandu/xstrings v1.0.0 // indirect
-	github.com/lyft/datum v1.17.2-0.20201002232731-a40725ba4455
+	github.com/lyft/datum v1.17.3
 	github.com/magiconair/properties v1.7.3 // indirect
 	github.com/mcdafydd/go-azuredevops v0.11.1
 	github.com/microcosm-cc/bluemonday v1.0.1
@@ -36,7 +36,6 @@ require (
 	github.com/mitchellh/go-homedir v1.0.0
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/nlopes/slack v0.1.0
-	github.com/onsi/ginkgo v1.9.0 // indirect
 	github.com/pelletier/go-buffruneio v0.2.0 // indirect
 	github.com/pelletier/go-toml v1.0.0 // indirect
 	github.com/petergtz/pegomock v2.7.0+incompatible
@@ -47,7 +46,7 @@ require (
 	github.com/spf13/cast v1.1.0 // indirect
 	github.com/spf13/cobra v0.0.0-20180319062004-c439c4fa0937
 	github.com/spf13/jwalterweatherman v0.0.0-20170901151539-12bd96e66386 // indirect
-	github.com/spf13/pflag v1.0.3
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.0.0
 	github.com/ulikunitz/xz v0.5.6 // indirect
 	github.com/urfave/cli v1.20.0
@@ -55,8 +54,6 @@ require (
 	github.com/xanzy/go-gitlab v0.34.1
 	go.etcd.io/bbolt v1.3.4
 	golang.org/x/crypto v0.0.0-20200403201458-baeed622b8d8
-	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933 // indirect
-	golang.org/x/oauth2 v0.0.0-20191122200657-5d9234df094c // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.20.2
