@@ -372,7 +372,16 @@ func (p *DefaultProjectCommandBuilder) getCfg(ctx *CommandContext, projectName s
 		err = errors.Wrapf(err, "looking for %s file in %q", yaml.AtlantisYAMLFilename, repoDir)
 		return
 	}
-	if !hasConfigFile {
+
+	manifests, err := p.ManifestFinderConverter.FindManifestRoots(repoDir)
+	if err != nil {
+		err = errors.Wrapf(err, "looking for %s files in %q", yaml.ManifestYAMLFilename, repoDir)
+		return
+	}
+
+	hasManifestCfgs := len(manifests) > 0
+
+	if !hasConfigFile && !hasManifestCfgs {
 		if projectName != "" {
 			err = fmt.Errorf("cannot specify a project name unless an %s file exists to configure projects", yaml.AtlantisYAMLFilename)
 			return
@@ -381,9 +390,17 @@ func (p *DefaultProjectCommandBuilder) getCfg(ctx *CommandContext, projectName s
 	}
 
 	var repoConfig valid.RepoCfg
-	repoConfig, err = p.ParserValidator.ParseRepoCfg(repoDir, p.GlobalCfg, ctx.BaseRepo.ID())
-	if err != nil {
-		return
+
+	if hasConfigFile {
+		repoConfig, err = p.ParserValidator.ParseRepoCfg(repoDir, p.GlobalCfg, ctx.BaseRepo.ID())
+		if err != nil {
+			return
+		}
+	} else {
+		repoConfig, err = p.ManifestFinderConverter.ToRepoCfg(manifests)
+		if err != nil {
+			return
+		}
 	}
 	repoCfg = &repoConfig
 
