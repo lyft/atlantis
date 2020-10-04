@@ -51,17 +51,19 @@ type ProjectCommandBuilder interface {
 
 // DefaultProjectCommandBuilder implements ProjectCommandBuilder.
 // This class combines the data from the comment and any atlantis.yaml file or
-// Atlantis server config and then generates a set of contexts.
+// manifest.yaml files in the project or Atlantis server config and then
+// generates a set of contexts.
 type DefaultProjectCommandBuilder struct {
-	ParserValidator    *yaml.ParserValidator
-	ProjectFinder      ProjectFinder
-	VCSClient          vcs.Client
-	WorkingDir         WorkingDir
-	WorkingDirLocker   WorkingDirLocker
-	GlobalCfg          valid.GlobalCfg
-	PendingPlanFinder  *DefaultPendingPlanFinder
-	CommentBuilder     CommentBuilder
-	SkipCloneNoChanges bool
+	ParserValidator         *yaml.ParserValidator
+	ManifestFinderConverter *yaml.ManifestFinderConverter
+	ProjectFinder           ProjectFinder
+	VCSClient               vcs.Client
+	WorkingDir              WorkingDir
+	WorkingDirLocker        WorkingDirLocker
+	GlobalCfg               valid.GlobalCfg
+	PendingPlanFinder       *DefaultPendingPlanFinder
+	CommentBuilder          CommentBuilder
+	SkipCloneNoChanges      bool
 }
 
 // See ProjectCommandBuilder.BuildAutoplanCommands.
@@ -151,13 +153,27 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 	if err != nil {
 		return nil, err
 	}
+
 	// Parse config file if it exists.
 	hasRepoCfg, err := p.ParserValidator.HasRepoCfg(repoDir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "looking for %s file in %q", yaml.AtlantisYAMLFilename, repoDir)
 	}
 
+	manifests, err := p.ManifestFinderConverter.FindManifestRoots(repoDir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "looking for %s files in %q", yaml.ManifestYAMLFilename, repoDir)
+	}
+
+	hasManifestCfgs := len(manifests) > 0
+
 	var projCtxs []models.ProjectCommandContext
+
+	// As an initial step support for manifest files are only considered if
+	// there is no atlantis.yaml file in the root folder. Adding support for
+	// both of them at the same time is a little bit tricky, due to different
+	// edge cases where it will be possible to accidentaly create 2 different
+	// tf states for the same root.
 	if hasRepoCfg {
 		// If there's a repo cfg then we'll use it to figure out which projects
 		// should be planed.
@@ -170,6 +186,26 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 		if err != nil {
 			return nil, err
 		}
+		ctx.Log.Info("%d projects are to be planned based on their when_modified config", len(matchingProjects))
+		for _, mp := range matchingProjects {
+			ctx.Log.Debug("determining config for project at dir: %q workspace: %q", mp.Dir, mp.Workspace)
+			mergedCfg := p.GlobalCfg.MergeProjectCfg(ctx.Log, ctx.BaseRepo.ID(), mp, repoCfg)
+			projCtxs = append(projCtxs, p.buildCtx(ctx, models.PlanCommand, mergedCfg, commentFlags, repoCfg.Automerge, repoCfg.ParallelApply, repoCfg.ParallelPlan, verbose, repoDir))
+		}
+	} else if hasManifestCfgs {
+		ctx.Log.Info("found %d manifest files with orchestration steps", len(manifests))
+
+		repoCfg, err := p.ManifestFinderConverter.ToRepoCfg(manifests)
+		if err != nil {
+			return nil, errors.Wrap(err, "converting manifest to repoCfg")
+		}
+
+		ctx.Log.Info("successfully parsed manifest files")
+		matchingProjects, err := p.ProjectFinder.DetermineProjectsViaConfig(ctx.Log, modifiedFiles, repoCfg, repoDir)
+		if err != nil {
+			return nil, err
+		}
+
 		ctx.Log.Info("%d projects are to be planned based on their when_modified config", len(matchingProjects))
 		for _, mp := range matchingProjects {
 			ctx.Log.Debug("determining config for project at dir: %q workspace: %q", mp.Dir, mp.Workspace)
