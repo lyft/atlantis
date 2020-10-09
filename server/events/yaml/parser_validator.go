@@ -75,7 +75,7 @@ func (p *ParserValidator) ParseRepoCfgData(repoCfgData []byte, globalCfg valid.G
 
 	// We do the project name validation after we get the valid config because
 	// we need the defaults of dir and workspace to be populated.
-	if err := p.validateProjectNames(validConfig); err != nil {
+	if err := validateProjectNames(validConfig); err != nil {
 		return valid.RepoCfg{}, err
 	}
 	if validConfig.Version == 2 {
@@ -134,43 +134,6 @@ func (p *ParserValidator) validateRawGlobalCfg(rawCfg raw.GlobalCfg, defaultCfg 
 
 func (p *ParserValidator) repoCfgPath(repoDir, cfgFilename string) string {
 	return filepath.Join(repoDir, cfgFilename)
-}
-
-func (p *ParserValidator) validateProjectNames(config valid.RepoCfg) error {
-	// First, validate that all names are unique.
-	seen := make(map[string]bool)
-	for _, project := range config.Projects {
-		if project.Name != nil {
-			name := *project.Name
-			exists := seen[name]
-			if exists {
-				return fmt.Errorf("found two or more projects with name %q; project names must be unique", name)
-			}
-			seen[name] = true
-		}
-	}
-
-	// Next, validate that all dir/workspace combos are named.
-	// This map's keys will be 'dir/workspace' and the values are the names for
-	// that project.
-	dirWorkspaceToNames := make(map[string][]string)
-	for _, project := range config.Projects {
-		key := fmt.Sprintf("%s/%s", project.Dir, project.Workspace)
-		names := dirWorkspaceToNames[key]
-
-		// If there is already a project with this dir/workspace then this
-		// project must have a name.
-		if len(names) > 0 && project.Name == nil {
-			return fmt.Errorf("there are two or more projects with dir: %q workspace: %q that are not all named; they must have a 'name' key so they can be targeted for apply's separately", project.Dir, project.Workspace)
-		}
-		var name string
-		if project.Name != nil {
-			name = *project.Name
-		}
-		dirWorkspaceToNames[key] = append(dirWorkspaceToNames[key], name)
-	}
-
-	return nil
 }
 
 // applyLegacyShellParsing changes any custom run commands in cfg to use the old
