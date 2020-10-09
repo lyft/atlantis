@@ -54,16 +54,16 @@ type ProjectCommandBuilder interface {
 // manifest.yaml files in the project or Atlantis server config and then
 // generates a set of contexts.
 type DefaultProjectCommandBuilder struct {
-	ParserValidator         *yaml.ParserValidator
-	ManifestFinderConverter *yaml.ManifestFinderConverter
-	ProjectFinder           ProjectFinder
-	VCSClient               vcs.Client
-	WorkingDir              WorkingDir
-	WorkingDirLocker        WorkingDirLocker
-	GlobalCfg               valid.GlobalCfg
-	PendingPlanFinder       *DefaultPendingPlanFinder
-	CommentBuilder          CommentBuilder
-	SkipCloneNoChanges      bool
+	ParserValidator    *yaml.ParserValidator
+	ManifestParser     *yaml.ManifestParser
+	ProjectFinder      ProjectFinder
+	VCSClient          vcs.Client
+	WorkingDir         WorkingDir
+	WorkingDirLocker   WorkingDirLocker
+	GlobalCfg          valid.GlobalCfg
+	PendingPlanFinder  *DefaultPendingPlanFinder
+	CommentBuilder     CommentBuilder
+	SkipCloneNoChanges bool
 }
 
 // See ProjectCommandBuilder.BuildAutoplanCommands.
@@ -160,7 +160,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 		return nil, errors.Wrapf(err, "looking for %s file in %q", yaml.AtlantisYAMLFilename, repoDir)
 	}
 
-	manifests, err := p.ManifestFinderConverter.FindManifestRoots(repoDir)
+	manifests, err := p.ManifestParser.FindManifestRoots(repoDir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "looking for %s files in %q", yaml.ManifestYAMLFilename, repoDir)
 	}
@@ -195,7 +195,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 	} else if hasManifestCfgs {
 		ctx.Log.Info("found %d manifest files with orchestration steps", len(manifests))
 
-		repoCfg, err := p.ManifestFinderConverter.ToRepoCfg(manifests)
+		repoCfg, err := p.ManifestParser.ToRepoCfg(manifests)
 		if err != nil {
 			return nil, errors.Wrap(err, "converting manifest to repoCfg")
 		}
@@ -373,7 +373,7 @@ func (p *DefaultProjectCommandBuilder) getCfg(ctx *CommandContext, projectName s
 		return
 	}
 
-	manifests, err := p.ManifestFinderConverter.FindManifestRoots(repoDir)
+	manifests, err := p.ManifestParser.FindManifestRoots(repoDir)
 	if err != nil {
 		err = errors.Wrapf(err, "looking for %s files in %q", yaml.ManifestYAMLFilename, repoDir)
 		return
@@ -397,7 +397,7 @@ func (p *DefaultProjectCommandBuilder) getCfg(ctx *CommandContext, projectName s
 			return
 		}
 	} else {
-		repoConfig, err = p.ManifestFinderConverter.ToRepoCfg(manifests)
+		repoConfig, err = p.ManifestParser.ToRepoCfg(manifests)
 		if err != nil {
 			return
 		}

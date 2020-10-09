@@ -15,9 +15,9 @@ import (
 // ManifestYAMLFilename is the name of the config file for each repo.
 const ManifestYAMLFilename = "manifest.yaml"
 
-// ManifestFinderConverter find and converts all manifest files that contains
+// ManifestParser find and converts all manifest files that contains
 // orchestration.roots
-type ManifestFinderConverter struct{}
+type ManifestParser struct{}
 
 type manifestRoot struct {
 	dirPath  string
@@ -25,7 +25,7 @@ type manifestRoot struct {
 }
 
 // ToRepoCfg converts manifestRoots to valid.repoCfg configuration object.
-func (m *ManifestFinderConverter) ToRepoCfg(manifests []*manifestRoot) (valid.RepoCfg, error) {
+func (m *ManifestParser) ToRepoCfg(manifests []*manifestRoot) (valid.RepoCfg, error) {
 	var repoCfg valid.RepoCfg
 	repoCfg.Version = 3
 
@@ -71,7 +71,7 @@ func (m *ManifestFinderConverter) ToRepoCfg(manifests []*manifestRoot) (valid.Re
 // repository. And only selects the ones with Orchestration.Roots present. All
 // eligible roots are wrapped into a struct that contains relPath for the root
 // folder and datum.manifest object.
-func (m *ManifestFinderConverter) FindManifestRoots(repositoryRoot string) ([]*manifestRoot, error) {
+func (m *ManifestParser) FindManifestRoots(repositoryRoot string) ([]*manifestRoot, error) {
 	manifestFiles := m.discoverManifests(repositoryRoot)
 	manifestRoots := []*manifestRoot{}
 
@@ -99,7 +99,7 @@ func (m *ManifestFinderConverter) FindManifestRoots(repositoryRoot string) ([]*m
 }
 
 // Returns a list of relative paths to manifest files in the given directory
-func (m *ManifestFinderConverter) discoverManifests(repositoryRoot string) []string {
+func (m *ManifestParser) discoverManifests(repositoryRoot string) []string {
 	var manifests []string
 
 	filepath.Walk(repositoryRoot, func(path string, info os.FileInfo, err error) error {
