@@ -12,6 +12,7 @@ import (
 const MergeableApplyReq = "mergeable"
 const ApprovedApplyReq = "approved"
 const ApplyRequirementsKey = "apply_requirements"
+const PreWorkflowHooksKey = "pre_workflow_hooks"
 const WorkflowKey = "workflow"
 const AllowedOverridesKey = "allowed_overrides"
 const AllowCustomWorkflowsKey = "allow_custom_workflows"
@@ -23,6 +24,12 @@ type GlobalCfg struct {
 	Workflows map[string]Workflow
 }
 
+// PreWorkflowHook is a map of custom run commands to run before workflows.
+type PreWorkflowHook struct {
+	StepName   string
+	RunCommand string
+}
+
 // Repo is the final parsed version of server-side repo config.
 type Repo struct {
 	// ID is the exact match id of this config.
@@ -32,6 +39,7 @@ type Repo struct {
 	// If ID is set then this will be nil.
 	IDRegex              *regexp.Regexp
 	ApplyRequirements    []string
+	PreWorkflowHooks     []PreWorkflowHook
 	Workflow             *Workflow
 	AllowedOverrides     []string
 	AllowCustomWorkflows *bool
@@ -287,7 +295,7 @@ func (g GlobalCfg) getMatchingCfg(log logging.SimpleLogging, repoID string) (app
 		return fmt.Sprintf("setting %s: %s from %s", key, valStr, from)
 	}
 
-	for _, key := range []string{ApplyRequirementsKey, WorkflowKey, AllowedOverridesKey, AllowCustomWorkflowsKey} {
+	for _, key := range []string{ApplyRequirementsKey, WorkflowKey, AllowedOverridesKey, AllowCustomWorkflowsKey, PreWorkflowHooksKey} {
 		for i, repo := range g.Repos {
 			if repo.IDMatches(repoID) {
 				switch key {
