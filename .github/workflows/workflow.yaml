@@ -3,6 +3,9 @@ name: Tests
 jobs:
   unit:
     runs-on: ubuntu-latest
+    container: runatlantis/testing-env:latest
+    env:
+      GOFLAGS: "-mod=vendor"
     steps:
     - uses: actions/checkout@master
     - uses: cedrickring/golang-action/go1.14@1.6.0
@@ -10,4 +13,4 @@ jobs:
         GO111MODULE: "on"
         IMPORT: "lyft/atlantis"
       with:
-        args: make test
+        args: make test-coverage
