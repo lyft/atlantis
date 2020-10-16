@@ -42,6 +42,8 @@ func (g *GithubAppWorkingDir) Clone(log *logging.SimpleLogger, headRepo models.R
 
 	baseRepo := &p.BaseRepo
 
+	fmt.Print("this is a test")
+
 	// Realistically, this is a super brittle way of supporting clones using gh app installation tokens
 	// This URL should be built during Repo creation and the struct should be immutable going forward.
 	// Doing this requires a larger refactor however, and can probably be coupled with supporting > 1 installation
