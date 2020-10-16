@@ -1,12 +1,13 @@
 on: push
 name: Tests
 jobs:
-  unit:
+  test:
     runs-on: ubuntu-latest
     container: runatlantis/testing-env:latest
     env:
       GOFLAGS: "-mod=vendor"
     steps:
+      # user in image needs write access to do anything
     - name: Setup file system permissions
       run: sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
     - uses: actions/checkout@master
