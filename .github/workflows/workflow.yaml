@@ -10,7 +10,7 @@ jobs:
     - name: Setup file system permissions
       run: sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
     - uses: actions/checkout@master
-      run: make test-coverage
+    - run: make test-coverage
     # - uses: cedrickring/golang-action/go1.14@1.6.0
     #   env:
     #     GO111MODULE: "on"
