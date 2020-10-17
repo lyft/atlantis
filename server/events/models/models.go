@@ -521,8 +521,6 @@ const (
 	// UnlockCommand is a command to discard previous plans as well as the atlantis locks.
 	UnlockCommand
 	// Adding more? Don't forget to update String() below
-	// WorkflowHooksCommand is a command to run pre workflow steps
-	WorkflowHooksCommand
 )
 
 // String returns the string representation of c.
@@ -534,8 +532,6 @@ func (c CommandName) String() string {
 		return "plan"
 	case UnlockCommand:
 		return "unlock"
-	case WorkflowHooksCommand:
-		return "pre_workflow_hooks"
 	}
 	return ""
 }
@@ -561,7 +557,6 @@ type WorkflowHookCommandContext struct {
 
 // WorkflowHookResult is the result of executing a pre workflow hook for a repository.
 type WorkflowHookResult struct {
-	Command CommandName
 	Output  string
 	Error   error
 	Success bool

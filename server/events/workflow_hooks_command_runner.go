@@ -14,7 +14,12 @@ import (
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_workflows_hooks_command_runner.go WorkflowHooksCommandRunner
 
 type WorkflowHooksCommandRunner interface {
-	RunPreHooks(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) (*WorkflowHooksCommandResult, error)
+	RunPreHooks(
+		baseRepo models.Repo,
+		headRepo models.Repo,
+		pull models.PullRequest,
+		user models.User,
+	) (*WorkflowHooksCommandResult, error)
 }
 
 // DefaultWorkflowHooksCommandRunner is the first step when processing a workflow hook commands.
@@ -35,7 +40,7 @@ func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
 	user models.User,
 ) (*WorkflowHooksCommandResult, error) {
 	if opStarted := w.Drainer.StartOp(); !opStarted {
-		if commentErr := w.VCSClient.CreateComment(baseRepo, pull.Num, ShutdownComment, models.WorkflowHooksCommand.String()); commentErr != nil {
+		if commentErr := w.VCSClient.CreateComment(baseRepo, pull.Num, ShutdownComment, "pre_workflow_hooks"); commentErr != nil {
 			w.Logger.Log(logging.Error, "unable to comment that Atlantis is shutting down: %s", commentErr)
 		}
 		return nil, nil
@@ -91,8 +96,7 @@ func (w *DefaultWorkflowHooksCommandRunner) runHooks(
 		out, err := w.WorkflowHookRunner.Run(ctx, hook.RunCommand, repoDir)
 
 		res := models.WorkflowHookResult{
-			Command: models.WorkflowHooksCommand,
-			Output:  out,
+			Output: out,
 		}
 
 		if err != nil {
