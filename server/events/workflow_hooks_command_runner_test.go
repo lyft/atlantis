@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
+	"github.com/runatlantis/atlantis/server/events/runtime"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	logmocks "github.com/runatlantis/atlantis/server/logging/mocks"
@@ -30,11 +31,12 @@ func workflow_hooks_setup(t *testing.T) *vcsmocks.MockClient {
 	whDrainer = &events.Drainer{}
 
 	wh = events.DefaultWorkflowHooksCommandRunner{
-		VCSClient:        vcsClient,
-		Logger:           logger,
-		WorkingDirLocker: whWorkingDirLocker,
-		WorkingDir:       whWorkingDir,
-		Drainer:          whDrainer,
+		VCSClient:          vcsClient,
+		Logger:             logger,
+		WorkingDirLocker:   whWorkingDirLocker,
+		WorkingDir:         whWorkingDir,
+		Drainer:            whDrainer,
+		WorkflowHookRunner: &runtime.WorkflowHookRunner{},
 	}
 	return vcsClient
 }

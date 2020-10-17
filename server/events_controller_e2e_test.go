@@ -443,12 +443,13 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 	}
 	drainer := &events.Drainer{}
 	workflowHooksCommandRunner := &events.DefaultWorkflowHooksCommandRunner{
-		VCSClient:        e2eVCSClient,
-		GlobalCfg:        globalCfg,
-		Logger:           logger,
-		WorkingDirLocker: locker,
-		WorkingDir:       workingDir,
-		Drainer:          drainer,
+		VCSClient:          e2eVCSClient,
+		GlobalCfg:          globalCfg,
+		Logger:             logger,
+		WorkingDirLocker:   locker,
+		WorkingDir:         workingDir,
+		Drainer:            drainer,
+		WorkflowHookRunner: &runtime.WorkflowHookRunner{},
 	}
 	commandRunner := &events.DefaultCommandRunner{
 		ProjectCommandRunner: &events.DefaultProjectCommandRunner{

@@ -25,7 +25,7 @@ type DefaultWorkflowHooksCommandRunner struct {
 	WorkingDir         WorkingDir
 	GlobalCfg          valid.GlobalCfg
 	Drainer            *Drainer
-	WorkflowHookRunner runtime.WorkflowHookRunner
+	WorkflowHookRunner *runtime.WorkflowHookRunner
 }
 
 func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
