@@ -88,8 +88,6 @@ func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
 	if result.HasErrors() {
 		log.Err("pre workflow hook run error results: %s", result.Errors())
 	}
-	return
-
 }
 
 func (w *DefaultWorkflowHooksCommandRunner) runHooks(
