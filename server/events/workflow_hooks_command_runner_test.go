@@ -49,7 +49,6 @@ func TestWorkflowHooksCommand_LogPanics(t *testing.T) {
 	When(whWorkingDir.Clone(
 		logger,
 		fixtures.GithubRepo,
-		fixtures.GithubRepo,
 		fixtures.Pull,
 		events.DefaultWorkspace,
 	)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
@@ -65,7 +64,7 @@ func TestRunPreHooks_Clone(t *testing.T) {
 	workflow_hooks_setup(t)
 	logger := wh.Logger.NewLogger("log", false, logging.LogLevel(1))
 
-	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)).
+	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)).
 		ThenReturn("path/to/repo", false, nil)
 	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 }
@@ -81,8 +80,8 @@ func TestRunPreHooks_DrainOngoing(t *testing.T) {
 func TestRunPreHooks_DrainNotOngoing(t *testing.T) {
 	t.Log("if drain is not ongoing then remove ongoing operation must be called even if panic occured")
 	workflow_hooks_setup(t)
-	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
+	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
 	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
-	whWorkingDir.VerifyWasCalledOnce().Clone(logger, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)
+	whWorkingDir.VerifyWasCalledOnce().Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)
 	Equals(t, 0, whDrainer.GetStatus().InProgressOps)
 }
