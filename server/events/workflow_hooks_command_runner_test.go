@@ -22,7 +22,7 @@ var whWorkingDir *mocks.MockWorkingDir
 var whWorkingDirLocker *mocks.MockWorkingDirLocker
 var whDrainer *events.Drainer
 
-func workflow_hooks_setup(t *testing.T) *vcsmocks.MockClient {
+func workflowHooksSetup(t *testing.T) *vcsmocks.MockClient {
 	RegisterMockTestingT(t)
 	vcsClient := vcsmocks.NewMockClient()
 	logger := logmocks.NewMockSimpleLogging()
@@ -43,7 +43,7 @@ func workflow_hooks_setup(t *testing.T) *vcsmocks.MockClient {
 
 func TestWorkflowHooksCommand_LogPanics(t *testing.T) {
 	t.Log("if there is a panic it is commented back on the pull request")
-	vcsClient := workflow_hooks_setup(t)
+	vcsClient := workflowHooksSetup(t)
 	logger := wh.Logger.NewLogger("log", false, logging.LogLevel(1))
 
 	When(whWorkingDir.Clone(
@@ -53,7 +53,7 @@ func TestWorkflowHooksCommand_LogPanics(t *testing.T) {
 		events.DefaultWorkspace,
 	)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
 
-	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	_, _ = wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	_, _, comment, _ := vcsClient.VerifyWasCalledOnce().CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString()).GetCapturedArguments()
 	Assert(t, strings.Contains(comment, "Error: goroutine panic"), fmt.Sprintf("comment should be about a goroutine panic but was %q", comment))
 }
@@ -61,25 +61,25 @@ func TestWorkflowHooksCommand_LogPanics(t *testing.T) {
 // Test that if one plan fails and we are using automerge, that
 // we delete the plans.
 func TestRunPreHooks_Clone(t *testing.T) {
-	workflow_hooks_setup(t)
+	workflowHooksSetup(t)
 	logger := wh.Logger.NewLogger("log", false, logging.LogLevel(1))
 
 	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)).
 		ThenReturn("path/to/repo", false, nil)
-	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	_, _ = wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 }
 
 func TestRunPreHooks_DrainOngoing(t *testing.T) {
 	t.Log("if drain is ongoing then a message should be displayed")
-	vcsClient := workflow_hooks_setup(t)
+	vcsClient := workflowHooksSetup(t)
 	whDrainer.ShutdownBlocking()
-	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	_, _ = wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "Atlantis server is shutting down, please try again later.", "pre_workflow_hooks")
 }
 
 func TestRunPreHooks_DrainNotOngoing(t *testing.T) {
 	t.Log("if drain is not ongoing then remove ongoing operation must be called even if panic occured")
-	workflow_hooks_setup(t)
+	workflowHooksSetup(t)
 	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
 	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	whWorkingDir.VerifyWasCalledOnce().Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)
