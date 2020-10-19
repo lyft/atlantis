@@ -45,12 +45,12 @@ const bitbucketServerSignatureHeader = "X-Hub-Signature"
 // EventsController handles all webhook requests which signify 'events' in the
 // VCS host, ex. GitHub.
 type EventsController struct {
-	WorkflowHooksCommandRunner events.WorkflowHooksCommandRunner
-	CommandRunner              events.CommandRunner
-	PullCleaner                events.PullCleaner
-	Logger                     *logging.SimpleLogger
-	Parser                     events.EventParsing
-	CommentParser              events.CommentParsing
+	PreWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
+	CommandRunner                 events.CommandRunner
+	PullCleaner                   events.PullCleaner
+	Logger                        *logging.SimpleLogger
+	Parser                        events.EventParsing
+	CommentParser                 events.CommentParsing
 	// GithubWebhookSecret is the secret added to this webhook via the GitHub
 	// UI that identifies this call as coming from GitHub. If empty, no
 	// request validation is done.
@@ -344,7 +344,7 @@ func (e *EventsController) handlePullRequestEvent(w http.ResponseWriter, baseRep
 		fmt.Fprintln(w, "Processing...")
 
 		e.Logger.Info("running pre workflow hooks if present")
-		e.WorkflowHooksCommandRunner.RunPreHooks(baseRepo, headRepo, pull, user)
+		e.PreWorkflowHooksCommandRunner.RunPreHooks(baseRepo, headRepo, pull, user)
 
 		e.Logger.Info("executing autoplan")
 		if !e.TestingMode {
@@ -438,10 +438,6 @@ func (e *EventsController) handleCommentEvent(w http.ResponseWriter, baseRepo mo
 		e.respond(w, logging.Info, http.StatusOK, "Commenting back on pull request")
 		return
 	}
-
-	// TODO: run pre workflow hooks
-	// e.Logger.Info("running pre workflow hooks")
-	// e.WorkflowHooksCommandRunner.RunPreHooks(baseRepo, headRepo, pull, user)
 
 	e.Logger.Debug("executing command")
 	fmt.Fprintln(w, "Processing...")

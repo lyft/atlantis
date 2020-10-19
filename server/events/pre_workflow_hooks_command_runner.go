@@ -11,9 +11,9 @@ import (
 	"github.com/runatlantis/atlantis/server/recovery"
 )
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_workflows_hooks_command_runner.go WorkflowHooksCommandRunner
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_pre_workflows_hooks_command_runner.go PreWorkflowHooksCommandRunner
 
-type WorkflowHooksCommandRunner interface {
+type PreWorkflowHooksCommandRunner interface {
 	RunPreHooks(
 		baseRepo models.Repo,
 		headRepo models.Repo,
@@ -22,19 +22,19 @@ type WorkflowHooksCommandRunner interface {
 	)
 }
 
-// DefaultWorkflowHooksCommandRunner is the first step when processing a workflow hook commands.
-type DefaultWorkflowHooksCommandRunner struct {
-	VCSClient          vcs.Client
-	Logger             logging.SimpleLogging
-	WorkingDirLocker   WorkingDirLocker
-	WorkingDir         WorkingDir
-	GlobalCfg          valid.GlobalCfg
-	Drainer            *Drainer
-	WorkflowHookRunner *runtime.WorkflowHookRunner
+// DefaultPreWorkflowHooksCommandRunner is the first step when processing a workflow hook commands.
+type DefaultPreWorkflowHooksCommandRunner struct {
+	VCSClient             vcs.Client
+	Logger                logging.SimpleLogging
+	WorkingDirLocker      WorkingDirLocker
+	WorkingDir            WorkingDir
+	GlobalCfg             valid.GlobalCfg
+	Drainer               *Drainer
+	PreWorkflowHookRunner *runtime.PreWorkflowHookRunner
 }
 
 // RunPreHooks runs pre_workflow_hooks when PR is opened or updated.
-func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
+func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks(
 	baseRepo models.Repo,
 	headRepo models.Repo,
 	pull models.PullRequest,
@@ -51,7 +51,7 @@ func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
 	log := w.buildLogger(baseRepo.FullName, pull.Num)
 	defer w.logPanics(baseRepo, pull.Num, log)
 
-	log.Info("Running Pre Hooks for repo: ")
+	log.Info("running pre hooks")
 
 	unlockFn, err := w.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
 	if err != nil {
@@ -67,14 +67,14 @@ func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
 		return
 	}
 
-	workflowHooks := make([]*valid.WorkflowHook, 0)
+	preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
 	for _, repo := range w.GlobalCfg.Repos {
-		if repo.IDMatches(baseRepo.ID()) && len(repo.WorkflowHooks) > 0 {
-			workflowHooks = append(workflowHooks, repo.WorkflowHooks...)
+		if repo.IDMatches(baseRepo.ID()) && len(repo.PreWorkflowHooks) > 0 {
+			preWorkflowHooks = append(preWorkflowHooks, repo.PreWorkflowHooks...)
 		}
 	}
 
-	ctx := models.WorkflowHookCommandContext{
+	ctx := models.PreWorkflowHookCommandContext{
 		BaseRepo: baseRepo,
 		HeadRepo: headRepo,
 		Log:      log,
@@ -83,52 +83,37 @@ func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
 		Verbose:  false,
 	}
 
-	result := w.runHooks(ctx, workflowHooks, repoDir)
+	err = w.runHooks(ctx, preWorkflowHooks, repoDir)
 
-	if result.HasErrors() {
-		log.Err("pre workflow hook run error results: %s", result.Errors())
+	if err != nil {
+		log.Err("pre workflow hook run error results: %s", err)
 	}
 }
 
-func (w *DefaultWorkflowHooksCommandRunner) runHooks(
-	ctx models.WorkflowHookCommandContext,
-	workflowHooks []*valid.WorkflowHook,
+func (w *DefaultPreWorkflowHooksCommandRunner) runHooks(
+	ctx models.PreWorkflowHookCommandContext,
+	preWorkflowHooks []*valid.PreWorkflowHook,
 	repoDir string,
-) *WorkflowHooksCommandResult {
-	result := &WorkflowHooksCommandResult{
-		WorkflowHookResults: make([]models.WorkflowHookResult, 0),
-	}
-	for _, hook := range workflowHooks {
-		out, err := w.WorkflowHookRunner.Run(ctx, hook.RunCommand, repoDir)
+) error {
 
-		res := models.WorkflowHookResult{
-			Output: out,
-		}
+	for _, hook := range preWorkflowHooks {
+		_, err := w.PreWorkflowHookRunner.Run(ctx, hook.RunCommand, repoDir)
 
 		if err != nil {
-			res.Error = err
-			res.Success = false
-		} else {
-			res.Success = true
-		}
-
-		result.WorkflowHookResults = append(result.WorkflowHookResults, res)
-
-		if !res.IsSuccessful() {
-			return result
+			return nil
 		}
 	}
 
-	return result
+	return nil
 }
 
-func (w *DefaultWorkflowHooksCommandRunner) buildLogger(repoFullName string, pullNum int) *logging.SimpleLogger {
+func (w *DefaultPreWorkflowHooksCommandRunner) buildLogger(repoFullName string, pullNum int) *logging.SimpleLogger {
 	src := fmt.Sprintf("%s#%d", repoFullName, pullNum)
 	return w.Logger.NewLogger(src, true, w.Logger.GetLevel())
 }
 
 // logPanics logs and creates a comment on the pull request for panics.
-func (w *DefaultWorkflowHooksCommandRunner) logPanics(baseRepo models.Repo, pullNum int, logger logging.SimpleLogging) {
+func (w *DefaultPreWorkflowHooksCommandRunner) logPanics(baseRepo models.Repo, pullNum int, logger logging.SimpleLogging) {
 	if err := recover(); err != nil {
 		stack := recovery.Stack(3)
 		logger.Err("PANIC: %s\n%s", err, stack)

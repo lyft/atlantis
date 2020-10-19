@@ -20,7 +20,7 @@ type GlobalCfg struct {
 type Repo struct {
 	ID                   string         `yaml:"id" json:"id"`
 	ApplyRequirements    []string       `yaml:"apply_requirements" json:"apply_requirements"`
-	WorkflowHooks        []WorkflowHook `yaml:"pre_workflow_hooks" json:"pre_workflow_hooks"`
+	PreWorkflowHooks        []PreWorkflowHook `yaml:"pre_workflow_hooks" json:"pre_workflow_hooks"`
 	Workflow             *string        `yaml:"workflow,omitempty" json:"workflow,omitempty"`
 	AllowedOverrides     []string       `yaml:"allowed_overrides" json:"allowed_overrides"`
 	AllowCustomWorkflows *bool          `yaml:"allow_custom_workflows,omitempty" json:"allow_custom_workflows,omitempty"`
@@ -147,10 +147,10 @@ func (r Repo) ToValid(workflows map[string]valid.Workflow) valid.Repo {
 		workflow = &ptr
 	}
 
-	workflowHooks := make([]*valid.WorkflowHook, 0)
-	if len(r.WorkflowHooks) > 0 {
-		for _, hook := range r.WorkflowHooks {
-			workflowHooks = append(workflowHooks, hook.ToValid())
+	preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
+	if len(r.PreWorkflowHooks) > 0 {
+		for _, hook := range r.PreWorkflowHooks {
+			preWorkflowHooks = append(preWorkflowHooks, hook.ToValid())
 		}
 	}
 
@@ -158,7 +158,7 @@ func (r Repo) ToValid(workflows map[string]valid.Workflow) valid.Repo {
 		ID:                   id,
 		IDRegex:              idRegex,
 		ApplyRequirements:    r.ApplyRequirements,
-		WorkflowHooks:        workflowHooks,
+		PreWorkflowHooks:        preWorkflowHooks,
 		Workflow:             workflow,
 		AllowedOverrides:     r.AllowedOverrides,
 		AllowCustomWorkflows: r.AllowCustomWorkflows,

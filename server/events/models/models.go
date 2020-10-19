@@ -536,9 +536,9 @@ func (c CommandName) String() string {
 	return ""
 }
 
-// WorkflowHookCommandContext defines the context for a plan or apply stage that will
+// PreWorkflowHookCommandContext defines the context for a plan or apply stage that will
 // be executed for a project.
-type WorkflowHookCommandContext struct {
+type PreWorkflowHookCommandContext struct {
 	// BaseRepo is the repository that the pull request will be merged into.
 	BaseRepo Repo
 	// HeadRepo is the repository that is getting merged into the BaseRepo.
@@ -553,16 +553,4 @@ type WorkflowHookCommandContext struct {
 	User User
 	// Verbose is true when the user would like verbose output.
 	Verbose bool
-}
-
-// WorkflowHookResult is the result of executing a pre workflow hook for a repository.
-type WorkflowHookResult struct {
-	Output  string
-	Error   error
-	Success bool
-}
-
-// IsSuccessful returns true if this project result had no errors.
-func (w WorkflowHookResult) IsSuccessful() bool {
-	return w.Success
 }
