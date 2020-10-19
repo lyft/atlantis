@@ -19,7 +19,7 @@ type WorkflowHooksCommandRunner interface {
 		headRepo models.Repo,
 		pull models.PullRequest,
 		user models.User,
-	) (*WorkflowHooksCommandResult, error)
+	)
 }
 
 // DefaultWorkflowHooksCommandRunner is the first step when processing a workflow hook commands.
@@ -33,17 +33,18 @@ type DefaultWorkflowHooksCommandRunner struct {
 	WorkflowHookRunner *runtime.WorkflowHookRunner
 }
 
+// RunPreHooks runs pre_workflow_hooks when PR is opened or updated.
 func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
 	baseRepo models.Repo,
 	headRepo models.Repo,
 	pull models.PullRequest,
 	user models.User,
-) (*WorkflowHooksCommandResult, error) {
+) {
 	if opStarted := w.Drainer.StartOp(); !opStarted {
 		if commentErr := w.VCSClient.CreateComment(baseRepo, pull.Num, ShutdownComment, "pre_workflow_hooks"); commentErr != nil {
 			w.Logger.Log(logging.Error, "unable to comment that Atlantis is shutting down: %s", commentErr)
 		}
-		return nil, nil
+		return
 	}
 	defer w.Drainer.OpDone()
 
@@ -54,15 +55,16 @@ func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
 
 	unlockFn, err := w.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
 	if err != nil {
-		log.Warn("workspace was locked")
-		return nil, err
+		log.Warn("workspace is locked")
+		return
 	}
 	log.Debug("got workspace lock")
 	defer unlockFn()
 
 	repoDir, _, err := w.WorkingDir.Clone(log, headRepo, pull, DefaultWorkspace)
 	if err != nil {
-		return nil, err
+		log.Err("unable to run pre workflow hooks: %s", err)
+		return
 	}
 
 	workflowHooks := make([]*valid.WorkflowHook, 0)
@@ -81,17 +83,23 @@ func (w *DefaultWorkflowHooksCommandRunner) RunPreHooks(
 		Verbose:  false,
 	}
 
-	outputs := w.runHooks(ctx, workflowHooks, repoDir)
-	return &WorkflowHooksCommandResult{
-		WorkflowHookResults: outputs,
-	}, nil
+	result := w.runHooks(ctx, workflowHooks, repoDir)
+
+	if result.HasErrors() {
+		log.Err("pre workflow hook run error results: %s", result.Errors())
+	}
+	return
+
 }
 
 func (w *DefaultWorkflowHooksCommandRunner) runHooks(
 	ctx models.WorkflowHookCommandContext,
 	workflowHooks []*valid.WorkflowHook,
 	repoDir string,
-) (outputs []models.WorkflowHookResult) {
+) *WorkflowHooksCommandResult {
+	result := &WorkflowHooksCommandResult{
+		WorkflowHookResults: make([]models.WorkflowHookResult, 0),
+	}
 	for _, hook := range workflowHooks {
 		out, err := w.WorkflowHookRunner.Run(ctx, hook.RunCommand, repoDir)
 
@@ -106,14 +114,14 @@ func (w *DefaultWorkflowHooksCommandRunner) runHooks(
 			res.Success = true
 		}
 
-		outputs = append(outputs, res)
+		result.WorkflowHookResults = append(result.WorkflowHookResults, res)
 
 		if !res.IsSuccessful() {
-			return
+			return result
 		}
 	}
 
-	return
+	return result
 }
 
 func (w *DefaultWorkflowHooksCommandRunner) buildLogger(repoFullName string, pullNum int) *logging.SimpleLogger {

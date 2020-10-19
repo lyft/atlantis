@@ -5,7 +5,6 @@ package mocks
 
 import (
 	pegomock "github.com/petergtz/pegomock"
-	events "github.com/runatlantis/atlantis/server/events"
 	models "github.com/runatlantis/atlantis/server/events/models"
 	"reflect"
 	"time"
@@ -26,23 +25,12 @@ func NewMockWorkflowHooksCommandRunner(options ...pegomock.Option) *MockWorkflow
 func (mock *MockWorkflowHooksCommandRunner) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockWorkflowHooksCommandRunner) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockWorkflowHooksCommandRunner) RunPreHooks(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) (*events.WorkflowHooksCommandResult, error) {
+func (mock *MockWorkflowHooksCommandRunner) RunPreHooks(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockWorkflowHooksCommandRunner().")
 	}
 	params := []pegomock.Param{baseRepo, headRepo, pull, user}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("RunPreHooks", params, []reflect.Type{reflect.TypeOf((**events.WorkflowHooksCommandResult)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 *events.WorkflowHooksCommandResult
-	var ret1 error
-	if len(result) != 0 {
-		if result[0] != nil {
-			ret0 = result[0].(*events.WorkflowHooksCommandResult)
-		}
-		if result[1] != nil {
-			ret1 = result[1].(error)
-		}
-	}
-	return ret0, ret1
+	pegomock.GetGenericMockFrom(mock).Invoke("RunPreHooks", params, []reflect.Type{})
 }
 
 func (mock *MockWorkflowHooksCommandRunner) VerifyWasCalledOnce() *VerifierMockWorkflowHooksCommandRunner {

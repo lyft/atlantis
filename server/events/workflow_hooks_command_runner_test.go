@@ -53,7 +53,7 @@ func TestWorkflowHooksCommand_LogPanics(t *testing.T) {
 		events.DefaultWorkspace,
 	)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
 
-	_, _ = wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	_, _, comment, _ := vcsClient.VerifyWasCalledOnce().CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString()).GetCapturedArguments()
 	Assert(t, strings.Contains(comment, "Error: goroutine panic"), fmt.Sprintf("comment should be about a goroutine panic but was %q", comment))
 }
@@ -66,14 +66,14 @@ func TestRunPreHooks_Clone(t *testing.T) {
 
 	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)).
 		ThenReturn("path/to/repo", false, nil)
-	_, _ = wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 }
 
 func TestRunPreHooks_DrainOngoing(t *testing.T) {
 	t.Log("if drain is ongoing then a message should be displayed")
 	vcsClient := workflowHooksSetup(t)
 	whDrainer.ShutdownBlocking()
-	_, _ = wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "Atlantis server is shutting down, please try again later.", "pre_workflow_hooks")
 }
 

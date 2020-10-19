@@ -731,7 +731,6 @@ func TestPost_PullOpenedOrUpdated(t *testing.T) {
 				pullRequest = models.PullRequest{State: models.ClosedPullState}
 				When(p.ParseGithubPullEvent(matchers.AnyPtrToGithubPullRequestEvent())).ThenReturn(pullRequest, models.OpenedPullEvent, repo, repo, models.User{}, nil)
 			}
-			When(wh.RunPreHooks(repo, repo, pullRequest, models.User{})).ThenReturn(&events.WorkflowHooksCommandResult{}, nil)
 
 			w := httptest.NewRecorder()
 			e.Post(w, req)
