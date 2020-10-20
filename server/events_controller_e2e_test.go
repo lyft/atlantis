@@ -443,12 +443,12 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 	}
 	drainer := &events.Drainer{}
 	preWorkflowHooksCommandRunner := &events.DefaultPreWorkflowHooksCommandRunner{
-		VCSClient:          e2eVCSClient,
-		GlobalCfg:          globalCfg,
-		Logger:             logger,
-		WorkingDirLocker:   locker,
-		WorkingDir:         workingDir,
-		Drainer:            drainer,
+		VCSClient:             e2eVCSClient,
+		GlobalCfg:             globalCfg,
+		Logger:                logger,
+		WorkingDirLocker:      locker,
+		WorkingDir:            workingDir,
+		Drainer:               drainer,
 		PreWorkflowHookRunner: &runtime.PreWorkflowHookRunner{},
 	}
 	commandRunner := &events.DefaultCommandRunner{
@@ -506,9 +506,9 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 	Ok(t, err)
 
 	ctrl := server.EventsController{
-		TestingMode:                true,
+		TestingMode:                   true,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
-		CommandRunner:              commandRunner,
+		CommandRunner:                 commandRunner,
 		PullCleaner: &events.PullClosedExecutor{
 			Locker:     lockingClient,
 			VCSClient:  e2eVCSClient,

@@ -546,7 +546,7 @@ type PreWorkflowHookCommandContext struct {
 	// be the same as BaseRepo.
 	HeadRepo Repo
 	// Log is a logger that's been set up for this context.
-	Log *logging.SimpleLogger
+	Log logging.SimpleLogging
 	// Pull is the pull request we're responding to.
 	Pull PullRequest
 	// User is the user that triggered this command.

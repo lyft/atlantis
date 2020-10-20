@@ -33,7 +33,7 @@ type Repo struct {
 	// If ID is set then this will be nil.
 	IDRegex              *regexp.Regexp
 	ApplyRequirements    []string
-	PreWorkflowHooks        []*PreWorkflowHook
+	PreWorkflowHooks     []*PreWorkflowHook
 	Workflow             *Workflow
 	AllowedOverrides     []string
 	AllowCustomWorkflows *bool
@@ -112,7 +112,7 @@ func NewGlobalCfg(allowRepoCfg bool, mergeableReq bool, approvedReq bool) Global
 			{
 				IDRegex:              regexp.MustCompile(".*"),
 				ApplyRequirements:    applyReqs,
-				PreWorkflowHooks:        preWorkflowHooks,
+				PreWorkflowHooks:     preWorkflowHooks,
 				Workflow:             &defaultWorkflow,
 				AllowedOverrides:     allowedOverrides,
 				AllowCustomWorkflows: &allowCustomWorkflows,
