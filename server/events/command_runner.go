@@ -196,11 +196,11 @@ func (c *DefaultCommandRunner) runAutoCommand(ctx *CommandContext, cmdModel mode
 
 	c.updateCommitStatus(ctx, cmdModel, pullStatus)
 
-	if result.Error {
+	if result.Error != nil {
 		return result.Error
 	}
 
-	if result.Failure {
+	if result.Failure != "" {
 		return errors.New(result.Failure)
 	}
 
