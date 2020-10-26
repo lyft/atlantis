@@ -139,7 +139,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 
 	if planErr == nil {
 		// Run policy_check command
-		c.runAutoCommand(ctx, models.PolicyCheckCommand, AutoPolicyCheckCommand{})
+		_ = c.runAutoCommand(ctx, models.PolicyCheckCommand, AutoPolicyCheckCommand{})
 	}
 }
 
