@@ -144,7 +144,15 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 }
 
 func (c *DefaultCommandRunner) runAutoCommand(ctx *CommandContext, cmdModel models.CommandName, pullCommand PullCommand) error {
-	projectCmds, err := c.ProjectCommandBuilder.BuildAutoplanCommands(ctx)
+	var projectCmds []models.ProjectCommandContext
+	var err error
+
+	switch cmdModel.String() {
+	case "plan":
+		projectCmds, err = c.ProjectCommandBuilder.BuildAutoplanCommands(ctx)
+	case "policy_check":
+		projectCmds, err = c.ProjectCommandBuilder.BuildAutoPolicyCheckCommands(ctx)
+	}
 
 	if err != nil {
 		if statusErr := c.CommitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmdModel); statusErr != nil {
