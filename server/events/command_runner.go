@@ -135,59 +135,76 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 	}
 
 	// Run plan command for all projects
-	planErr := c.runAutoCommand(ctx, models.PlanCommand, AutoplanCommand{})
+	commandResult, projectCmds := c.runAutoPlanCommand(ctx)
 
-	if planErr == nil {
+	if !commandResult.HasErrors() {
 		// Run policy_check command
-		_ = c.runAutoCommand(ctx, models.PolicyCheckCommand, AutoPolicyCheckCommand{})
+		ctx.Log.Info("Running policy_checks for all plans")
+		c.runAutoPolicyCheckCommand(ctx, commandResult.ProjectResults, projectCmds)
 	}
 }
 
-func (c *DefaultCommandRunner) runAutoCommand(ctx *CommandContext, cmdModel models.CommandName, pullCommand PullCommand) error {
-	var projectCmds []models.ProjectCommandContext
-	var err error
+func (c *DefaultCommandRunner) runAutoPolicyCheckCommand(
+	ctx *CommandContext,
+	projectResults []models.ProjectResult,
+	projectCmds []models.ProjectCommandContext,
+) {
+	var result CommandResult
+	if c.parallelPolicyCheckEnabled(ctx, projectCmds) {
+		ctx.Log.Info("Running plans in parallel")
+		result = c.runProjectCmdsParallel(projectCmds, models.PolicyCheckCommand)
+	} else {
+		result = c.runProjectCmds(projectCmds, models.PolicyCheckCommand)
+	}
 
-	projectCmds, err = c.ProjectCommandBuilder.BuildAutoplanCommands(ctx)
+	c.updatePull(ctx, AutoPolicyCheckCommand{}, result)
+
+	pullStatus, err := c.updateDB(ctx, ctx.Pull, result.ProjectResults)
+	if err != nil {
+		c.Logger.Err("writing results: %s", err)
+	}
+
+	c.updateCommitStatus(ctx, models.PolicyCheckCommand, pullStatus)
+}
+
+func (c *DefaultCommandRunner) runAutoPlanCommand(ctx *CommandContext) (CommandResult, []models.ProjectCommandContext) {
+	projectCmds, err := c.ProjectCommandBuilder.BuildAutoplanCommands(ctx)
 
 	if err != nil {
-		if statusErr := c.CommitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmdModel); statusErr != nil {
+		if statusErr := c.CommitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, models.PlanCommand); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
-
-		c.updatePull(ctx, pullCommand, CommandResult{Error: err})
-		return err
+		errResult := CommandResult{Error: err}
+		c.updatePull(ctx, AutoplanCommand{}, errResult)
+		return errResult, nil
 	}
 
 	if len(projectCmds) == 0 {
-		ctx.Log.Info("determined there was no project to run %s in", cmdModel.String())
+		ctx.Log.Info("determined there was no project to run plan in")
 		if !c.SilenceVCSStatusNoPlans {
 			// If there were no projects modified, we set a successful commit status
 			// with 0/0 projects planned successfully because some users require
 			// the Atlantis status to be passing for all pull requests.
 			ctx.Log.Debug("setting VCS status to success with no projects found")
-			if err := c.CommitStatusUpdater.UpdateCombinedCount(ctx.Pull.BaseRepo, ctx.Pull, models.SuccessCommitStatus, cmdModel, 0, 0); err != nil {
+			if err := c.CommitStatusUpdater.UpdateCombinedCount(ctx.Pull.BaseRepo, ctx.Pull, models.SuccessCommitStatus, models.PlanCommand, 0, 0); err != nil {
 				ctx.Log.Warn("unable to update commit status: %s", err)
 			}
 		}
-		return err
+		return CommandResult{Error: err}, nil
 	}
 
 	// At this point we are sure Atlantis has work to do, so set commit status to pending
-	if err := c.CommitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, cmdModel); err != nil {
+	if err := c.CommitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, models.PlanCommand); err != nil {
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
 
 	// Only run commands in parallel if enabled
 	var result CommandResult
-	switch {
-	case cmdModel == models.PlanCommand && c.parallelPlanEnabled(ctx, projectCmds):
+	if c.parallelPlanEnabled(ctx, projectCmds) {
 		ctx.Log.Info("Running plans in parallel")
-		result = c.runProjectCmdsParallel(projectCmds, cmdModel)
-	case cmdModel == models.PolicyCheckCommand && c.parallelPolicyCheckEnabled(ctx, projectCmds):
-		ctx.Log.Info("Running policy checks in parallel")
-		result = c.runProjectCmdsParallel(projectCmds, cmdModel)
-	default:
-		result = c.runProjectCmds(projectCmds, cmdModel)
+		result = c.runProjectCmdsParallel(projectCmds, models.PlanCommand)
+	} else {
+		result = c.runProjectCmds(projectCmds, models.PlanCommand)
 	}
 
 	if c.automergeEnabled(ctx, projectCmds) && result.HasErrors() {
@@ -195,23 +212,15 @@ func (c *DefaultCommandRunner) runAutoCommand(ctx *CommandContext, cmdModel mode
 		c.deletePlans(ctx)
 		result.PlansDeleted = true
 	}
-	c.updatePull(ctx, pullCommand, result)
+	c.updatePull(ctx, AutoplanCommand{}, result)
 	pullStatus, err := c.updateDB(ctx, ctx.Pull, result.ProjectResults)
 	if err != nil {
 		c.Logger.Err("writing results: %s", err)
 	}
 
-	c.updateCommitStatus(ctx, cmdModel, pullStatus)
+	c.updateCommitStatus(ctx, models.PlanCommand, pullStatus)
 
-	if result.Error != nil {
-		return result.Error
-	}
-
-	if result.Failure != "" {
-		return errors.New(result.Failure)
-	}
-
-	return nil
+	return result, projectCmds
 }
 
 // RunCommentCommand executes the command.
@@ -374,18 +383,29 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 
 func (c *DefaultCommandRunner) updateCommitStatus(ctx *CommandContext, cmd models.CommandName, pullStatus models.PullStatus) {
 	var numSuccess int
-	var status models.CommitStatus
+	status := models.SuccessCommitStatus
 
-	if cmd == models.PlanCommand {
+	switch cmd {
+	case models.PlanCommand:
 		// We consider anything that isn't a plan error as a plan success.
 		// For example, if there is an apply error, that means that at least a
 		// plan was generated successfully.
-		numSuccess = len(pullStatus.Projects) - pullStatus.StatusCount(models.ErroredPlanStatus)
-		status = models.SuccessCommitStatus
-		if numSuccess != len(pullStatus.Projects) {
+		if pullStatus.StatusCount(models.ErroredPlanStatus) > 0 {
 			status = models.FailedCommitStatus
 		}
-	} else {
+	case models.PolicyCheckCommand:
+		numSuccess = pullStatus.StatusCount(models.PassedPolicyCheckPlanStatus)
+
+		numErrored := pullStatus.StatusCount(models.ErroredPolicyCheckPlanStatus)
+		status = models.SuccessCommitStatus
+		if numErrored > 0 {
+			status = models.FailedCommitStatus
+		} else if numSuccess < len(pullStatus.Projects) {
+			// If there are plans that haven't been applied yet, we'll use a pending
+			// status.
+			status = models.PendingCommitStatus
+		}
+	case models.ApplyCommand:
 		numSuccess = pullStatus.StatusCount(models.AppliedPlanStatus)
 
 		numErrored := pullStatus.StatusCount(models.ErroredApplyStatus)
