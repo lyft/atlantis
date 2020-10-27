@@ -149,6 +149,11 @@ func (c *DefaultCommandRunner) runAutoPolicyCheckCommand(
 	projectResults []models.ProjectResult,
 	projectCmds []models.ProjectCommandContext,
 ) {
+	// So set policy_check commit status to pending
+	if err := c.CommitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, models.PolicyCheckCommand); err != nil {
+		ctx.Log.Warn("unable to update commit status: %s", err)
+	}
+
 	var result CommandResult
 	if c.parallelPolicyCheckEnabled(ctx, projectCmds) {
 		ctx.Log.Info("Running plans in parallel")
@@ -383,6 +388,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 
 func (c *DefaultCommandRunner) updateCommitStatus(ctx *CommandContext, cmd models.CommandName, pullStatus models.PullStatus) {
 	var numSuccess int
+	var numErrored int
 	status := models.SuccessCommitStatus
 
 	switch cmd {
@@ -390,33 +396,22 @@ func (c *DefaultCommandRunner) updateCommitStatus(ctx *CommandContext, cmd model
 		// We consider anything that isn't a plan error as a plan success.
 		// For example, if there is an apply error, that means that at least a
 		// plan was generated successfully.
-		if pullStatus.StatusCount(models.ErroredPlanStatus) > 0 {
-			status = models.FailedCommitStatus
-		}
+		numSuccess = pullStatus.StatusCount(models.PlannedPlanStatus)
+		numErrored = pullStatus.StatusCount(models.ErroredPlanStatus)
 	case models.PolicyCheckCommand:
 		numSuccess = pullStatus.StatusCount(models.PassedPolicyCheckPlanStatus)
-
-		numErrored := pullStatus.StatusCount(models.ErroredPolicyCheckPlanStatus)
-		status = models.SuccessCommitStatus
-		if numErrored > 0 {
-			status = models.FailedCommitStatus
-		} else if numSuccess < len(pullStatus.Projects) {
-			// If there are plans that haven't been applied yet, we'll use a pending
-			// status.
-			status = models.PendingCommitStatus
-		}
+		numErrored = pullStatus.StatusCount(models.ErroredPolicyCheckPlanStatus)
 	case models.ApplyCommand:
 		numSuccess = pullStatus.StatusCount(models.AppliedPlanStatus)
+		numErrored = pullStatus.StatusCount(models.ErroredApplyStatus)
+	}
 
-		numErrored := pullStatus.StatusCount(models.ErroredApplyStatus)
-		status = models.SuccessCommitStatus
-		if numErrored > 0 {
-			status = models.FailedCommitStatus
-		} else if numSuccess < len(pullStatus.Projects) {
-			// If there are plans that haven't been applied yet, we'll use a pending
-			// status.
-			status = models.PendingCommitStatus
-		}
+	if numErrored > 0 {
+		status = models.FailedCommitStatus
+	} else if numSuccess < len(pullStatus.Projects) && cmd == models.ApplyCommand {
+		// If there are plans that haven't been applied yet, we'll use a pending
+		// status.
+		status = models.PendingCommitStatus
 	}
 
 	if err := c.CommitStatusUpdater.UpdateCombinedCount(ctx.Pull.BaseRepo, ctx.Pull, status, cmd, numSuccess, len(pullStatus.Projects)); err != nil {
