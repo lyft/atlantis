@@ -137,7 +137,8 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 	// Run plan command for all projects
 	commandResult, projectCmds := c.runAutoPlanCommand(ctx)
 
-	if !commandResult.HasErrors() {
+	// Check if there are any planned projects and if there are any errors or if plans are being deleted
+	if len(commandResult.ProjectResults) > 0 && !(commandResult.HasErrors() || commandResult.PlansDeleted) {
 		// Run policy_check command
 		ctx.Log.Info("Running policy_checks for all plans")
 		c.runAutoPolicyCheckCommand(ctx, commandResult.ProjectResults, projectCmds)
