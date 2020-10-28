@@ -394,10 +394,10 @@ func (c *DefaultCommandRunner) updateCommitStatus(ctx *CommandContext, cmd model
 
 	switch cmd {
 	case models.PlanCommand:
+		numErrored = pullStatus.StatusCount(models.ErroredPlanStatus)
 		// We consider anything that isn't a plan error as a plan success.
 		// For example, if there is an apply error, that means that at least a
 		// plan was generated successfully.
-		numErrored = pullStatus.StatusCount(models.ErroredPlanStatus)
 		numSuccess = len(pullStatus.Projects) - numErrored
 	case models.PolicyCheckCommand:
 		numSuccess = pullStatus.StatusCount(models.PassedPolicyCheckStatus)
