@@ -16,6 +16,9 @@ const DefaultParallelApply = false
 // DefaultParallelPlan is the default setting for parallel plan
 const DefaultParallelPlan = false
 
+// DefaultParallelPolicyCheck is the default setting for parallel plan
+const DefaultParallelPolicyCheck = false
+
 // RepoCfg is the raw schema for repo-level atlantis.yaml config.
 type RepoCfg struct {
 	Version       *int                `yaml:"version,omitempty"`
@@ -71,11 +74,12 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 	}
 
 	return valid.RepoCfg{
-		Version:       *r.Version,
-		Projects:      validProjects,
-		Workflows:     validWorkflows,
-		Automerge:     automerge,
-		ParallelApply: parallelApply,
-		ParallelPlan:  parallelPlan,
+		Version:             *r.Version,
+		Projects:            validProjects,
+		Workflows:           validWorkflows,
+		Automerge:           automerge,
+		ParallelApply:       parallelApply,
+		ParallelPlan:        parallelPlan,
+		ParallelPolicyCheck: parallelPlan,
 	}
 }

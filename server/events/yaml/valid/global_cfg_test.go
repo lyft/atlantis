@@ -24,6 +24,13 @@ func TestNewGlobalCfg(t *testing.T) {
 				},
 			},
 		},
+		PolicyCheck: valid.Stage{
+			Steps: []valid.Step{
+				{
+					StepName: "policy_check",
+				},
+			},
+		},
 		Plan: valid.Stage{
 			Steps: []valid.Step{
 				{
@@ -281,8 +288,9 @@ workflows:
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{},
 				Workflow: valid.Workflow{
-					Name:  "custom",
-					Apply: valid.DefaultApplyStage,
+					Name:        "custom",
+					Apply:       valid.DefaultApplyStage,
+					PolicyCheck: valid.DefaultPolicyCheckStage,
 					Plan: valid.Stage{
 						Steps: []valid.Step{
 							{
@@ -314,9 +322,10 @@ repos:
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{"mergeable"},
 				Workflow: valid.Workflow{
-					Name:  "default",
-					Apply: valid.DefaultApplyStage,
-					Plan:  valid.DefaultPlanStage,
+					Name:        "default",
+					Apply:       valid.DefaultApplyStage,
+					PolicyCheck: valid.DefaultPolicyCheckStage,
+					Plan:        valid.DefaultPlanStage,
 				},
 				RepoRelDir:      ".",
 				Workspace:       "default",
@@ -344,9 +353,10 @@ repos:
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{"approved", "mergeable"},
 				Workflow: valid.Workflow{
-					Name:  "default",
-					Apply: valid.DefaultApplyStage,
-					Plan:  valid.DefaultPlanStage,
+					Name:        "default",
+					Apply:       valid.DefaultApplyStage,
+					PolicyCheck: valid.DefaultPolicyCheckStage,
+					Plan:        valid.DefaultPlanStage,
 				},
 				RepoRelDir:      "mydir",
 				Workspace:       "myworkspace",
@@ -370,9 +380,10 @@ repos:
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{},
 				Workflow: valid.Workflow{
-					Name:  "default",
-					Apply: valid.DefaultApplyStage,
-					Plan:  valid.DefaultPlanStage,
+					Name:        "default",
+					Apply:       valid.DefaultApplyStage,
+					PolicyCheck: valid.DefaultPolicyCheckStage,
+					Plan:        valid.DefaultPlanStage,
 				},
 				RepoRelDir:      "mydir",
 				Workspace:       "myworkspace",
