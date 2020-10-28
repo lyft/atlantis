@@ -335,7 +335,6 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 	if cmd.Name == models.PlanCommand &&
 		!(commandResult.HasErrors() || commandResult.PlansDeleted) &&
 		len(commandResult.ProjectResults) > 0 {
-
 		ctx.Log.Info("Running policy check for %s", cmd.String())
 		c.runPolicyCheckCommand(ctx, commandResult.ProjectResults, projectCmds)
 	}
