@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
+
 // SourceResolver resolves the policy set to a local fs path
 type SourceResolver interface {
 	Resolve(policySet models.PolicySet) (string, error)
@@ -15,7 +16,6 @@ type SourceResolver interface {
 
 // LocalSourceResolver resolves a local policy set to a local fs path
 type LocalSourceResolver struct {
-
 }
 
 func (p *LocalSourceResolver) Resolve(policySet models.PolicySet) (string, error) {
@@ -60,7 +60,6 @@ func (c *ConfTestExecutorWorkflow) EnsureExecutorVersion(log *logging.SimpleLogg
 	return "some/path", nil
 
 }
-
 
 func (c *ConfTestExecutorWorkflow) ResolveArgs(ctx models.ProjectCommandContext) ([]string, error) {
 	return []string{""}, nil
