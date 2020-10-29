@@ -6,8 +6,8 @@ import (
 
 type policySetSource string
 
-const(
-	LocalPolicySet policySetSource  = "Local"
+const (
+	LocalPolicySet policySetSource = "Local"
 )
 
 type PolicySets struct {
