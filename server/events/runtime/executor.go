@@ -6,7 +6,9 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_versionedexecutorworkflow.go VersionedExecutorWorkflow
 
+// VersionedExecutorWorkflow defines a versioned execution for a given project context
 type VersionedExecutorWorkflow interface {
 	ExecutorVersionEnsurer
 	ExecutorArgsResolver
