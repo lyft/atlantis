@@ -55,6 +55,7 @@ const (
 	DisableApplyAllFlag        = "disable-apply-all"
 	DisableAutoplanFlag        = "disable-autoplan"
 	DisableMarkdownFoldingFlag = "disable-markdown-folding"
+	EnablePolicyChecksFlag     = "enable-policy-checks"
 	GHHostnameFlag             = "gh-hostname"
 	GHTokenFlag                = "gh-token"
 	GHUserFlag                 = "gh-user"
@@ -278,6 +279,10 @@ var boolFlags = map[string]boolFlag{
 	},
 	DisableAutoplanFlag: {
 		description:  "Disable atlantis auto planning feature",
+		defaultValue: false,
+	},
+	EnablePolicyChecksFlag: {
+		description:  "Enable atlantis to run user defined policy checks. If TFE/TFC is used this is disabled even if set to true. This is due to the fact that TFE does not allow to get plan files.",
 		defaultValue: false,
 	},
 	AllowDraftPRs: {
