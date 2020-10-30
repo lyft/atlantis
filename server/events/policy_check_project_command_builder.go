@@ -56,7 +56,7 @@ func (p *PolicyCheckProjectCommandBuilder) BuildPlanCommands(ctx *CommandContext
 		return nil, err
 	}
 
-	policyCheckCmds, err := buildProjectCommands(ctx, models.PolicyCheckCommand, commentCmd)
+	policyCheckCmds, err := p.buildProjectCommands(ctx, models.PolicyCheckCommand, commentCmd)
 
 	if err != nil {
 		return nil, err
