@@ -21,9 +21,9 @@ func TestShowStepRunnner(t *testing.T) {
 	envs := map[string]string{"key": "val"}
 	tfVersion, _ := version.NewVersion("0.12")
 	context := models.ProjectCommandContext{
-		Workspace: "default",
+		Workspace:   "default",
 		ProjectName: "test",
-		Log: logger,
+		Log:         logger,
 	}
 
 	RegisterMockTestingT(t)
@@ -32,7 +32,7 @@ func TestShowStepRunnner(t *testing.T) {
 
 	subject := ShowStepRunner{
 		TerraformExecutor: mockExecutor,
-		DefaultTFVersion: tfVersion,
+		DefaultTFVersion:  tfVersion,
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -58,9 +58,9 @@ func TestShowStepRunnner(t *testing.T) {
 		v, _ := version.NewVersion("0.13.0")
 
 		contextWithVersionOverride := models.ProjectCommandContext{
-			Workspace: "default",
-			ProjectName: "test",
-			Log: logger,
+			Workspace:        "default",
+			ProjectName:      "test",
+			Log:              logger,
 			TerraformVersion: v,
 		}
 
@@ -90,6 +90,5 @@ func TestShowStepRunnner(t *testing.T) {
 		Assert(t, err != nil, "error is returned")
 
 	})
-
 
 }
