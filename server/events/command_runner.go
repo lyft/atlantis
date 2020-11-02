@@ -121,7 +121,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 
 	log := c.buildLogger(baseRepo.FullName, pull.Num)
 	defer c.logPanics(baseRepo, pull.Num, log)
-	ctx := &CommandContext{
+	ctx := &models.CommandContext{
 		User:     user,
 		Log:      log,
 		Pull:     pull,
@@ -198,7 +198,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 }
 
 func (c *DefaultCommandRunner) runPolicyCheckCommands(
-	ctx *CommandContext,
+	ctx *models.CommandContext,
 	projectResults []models.ProjectResult,
 	projectCmds []models.ProjectCommandContext,
 ) {
@@ -233,7 +233,7 @@ func (c *DefaultCommandRunner) runPolicyCheckCommands(
 }
 
 func (c *DefaultCommandRunner) partitionProjectCmds(
-	ctx *CommandContext,
+	ctx *models.CommandContext,
 	cmds []models.ProjectCommandContext,
 ) (
 	projectCmds []models.ProjectCommandContext,
@@ -307,7 +307,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 		}
 		return
 	}
-	ctx := &CommandContext{
+	ctx := &models.CommandContext{
 		User:     user,
 		Log:      log,
 		Pull:     pull,
@@ -416,7 +416,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 	}
 }
 
-func (c *DefaultCommandRunner) updateCommitStatus(ctx *CommandContext, cmd models.CommandName, pullStatus models.PullStatus) {
+func (c *DefaultCommandRunner) updateCommitStatus(ctx *models.CommandContext, cmd models.CommandName, pullStatus models.PullStatus) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus
@@ -452,7 +452,7 @@ func (c *DefaultCommandRunner) updateCommitStatus(ctx *CommandContext, cmd model
 	}
 }
 
-func (c *DefaultCommandRunner) automerge(ctx *CommandContext, pullStatus models.PullStatus) {
+func (c *DefaultCommandRunner) automerge(ctx *models.CommandContext, pullStatus models.PullStatus) {
 	// We only automerge if all projects have been successfully applied.
 	for _, p := range pullStatus.Projects {
 		if p.Status != models.AppliedPlanStatus {
@@ -588,7 +588,7 @@ func (c *DefaultCommandRunner) buildLogger(repoFullName string, pullNum int) *lo
 	return c.Logger.NewLogger(src, true, c.Logger.GetLevel())
 }
 
-func (c *DefaultCommandRunner) validateCtxAndComment(ctx *CommandContext) bool {
+func (c *DefaultCommandRunner) validateCtxAndComment(ctx *models.CommandContext) bool {
 	if !c.AllowForkPRs && ctx.HeadRepo.Owner != ctx.Pull.BaseRepo.Owner {
 		if c.SilenceForkPRErrors {
 			return false
@@ -610,7 +610,7 @@ func (c *DefaultCommandRunner) validateCtxAndComment(ctx *CommandContext) bool {
 	return true
 }
 
-func (c *DefaultCommandRunner) updatePull(ctx *CommandContext, command PullCommand, res CommandResult) {
+func (c *DefaultCommandRunner) updatePull(ctx *models.CommandContext, command PullCommand, res CommandResult) {
 	// Log if we got any errors or failures.
 	if res.Error != nil {
 		ctx.Log.Err(res.Error.Error())
@@ -650,7 +650,7 @@ func (c *DefaultCommandRunner) logPanics(baseRepo models.Repo, pullNum int, logg
 }
 
 // deletePlans deletes all plans generated in this ctx.
-func (c *DefaultCommandRunner) deletePlans(ctx *CommandContext) {
+func (c *DefaultCommandRunner) deletePlans(ctx *models.CommandContext) {
 	pullDir, err := c.WorkingDir.GetPullDir(ctx.Pull.BaseRepo, ctx.Pull)
 	if err != nil {
 		ctx.Log.Err("getting pull dir: %s", err)
@@ -660,7 +660,7 @@ func (c *DefaultCommandRunner) deletePlans(ctx *CommandContext) {
 	}
 }
 
-func (c *DefaultCommandRunner) updateDB(ctx *CommandContext, pull models.PullRequest, results []models.ProjectResult) (models.PullStatus, error) {
+func (c *DefaultCommandRunner) updateDB(ctx *models.CommandContext, pull models.PullRequest, results []models.ProjectResult) (models.PullStatus, error) {
 	// Filter out results that errored due to the directory not existing. We
 	// don't store these in the database because they would never be "apply-able"
 	// and so the pull request would always have errors.
@@ -677,7 +677,7 @@ func (c *DefaultCommandRunner) updateDB(ctx *CommandContext, pull models.PullReq
 }
 
 // automergeEnabled returns true if automerging is enabled in this context.
-func (c *DefaultCommandRunner) automergeEnabled(ctx *CommandContext, projectCmds []models.ProjectCommandContext) bool {
+func (c *DefaultCommandRunner) automergeEnabled(ctx *models.CommandContext, projectCmds []models.ProjectCommandContext) bool {
 	// If the global automerge is set, we always automerge.
 	return c.GlobalAutomerge ||
 		// Otherwise we check if this repo is configured for automerging.
@@ -685,17 +685,17 @@ func (c *DefaultCommandRunner) automergeEnabled(ctx *CommandContext, projectCmds
 }
 
 // parallelApplyEnabled returns true if parallel apply is enabled in this context.
-func (c *DefaultCommandRunner) parallelApplyEnabled(ctx *CommandContext, projectCmds []models.ProjectCommandContext) bool {
+func (c *DefaultCommandRunner) parallelApplyEnabled(ctx *models.CommandContext, projectCmds []models.ProjectCommandContext) bool {
 	return len(projectCmds) > 0 && projectCmds[0].ParallelApplyEnabled
 }
 
 // parallelPlanEnabled returns true if parallel plan is enabled in this context.
-func (c *DefaultCommandRunner) parallelPlanEnabled(ctx *CommandContext, projectCmds []models.ProjectCommandContext) bool {
+func (c *DefaultCommandRunner) parallelPlanEnabled(ctx *models.CommandContext, projectCmds []models.ProjectCommandContext) bool {
 	return len(projectCmds) > 0 && projectCmds[0].ParallelPlanEnabled
 }
 
 // parallelPolicyCheckEnabled returns true if parallel plan is enabled in this context.
-func (c *DefaultCommandRunner) parallelPolicyCheckEnabled(ctx *CommandContext, projectCmds []models.ProjectCommandContext) bool {
+func (c *DefaultCommandRunner) parallelPolicyCheckEnabled(ctx *models.CommandContext, projectCmds []models.ProjectCommandContext) bool {
 	return len(projectCmds) > 0 && projectCmds[0].ParallelPolicyCheckEnabled
 }
 
