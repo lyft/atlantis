@@ -66,6 +66,92 @@ func NewProjectCommandContext(ctx *CommandContext,
 	}
 }
 
+type ProjectContextBuilder interface {
+	BuildProjectContext(
+		ctx *CommandContext,
+		cmdName CommandName,
+		prjCfg valid.MergedProjectCfg,
+		commentFlags []string,
+		repoDir, applyCmd, planCmd string,
+		verbose, automerge, parallelPlan, parallelApply bool,
+	) []ProjectCommandContext
+}
+
+type DefaultProjectContextBuilder struct {
+}
+
+func (cb *DefaultProjectContextBuilder) BuildProjectContext(
+	ctx *CommandContext,
+	cmdName CommandName,
+	prjCfg valid.MergedProjectCfg,
+	commentFlags []string,
+	repoDir, applyCmd, planCmd string,
+	verbose, automerge, parallelPlan, parallelApply bool,
+) (projectCmds []ProjectCommandContext) {
+	ctx.Log.Debug("Building project command context for %s", cmdName)
+	projectCmds = append(projectCmds, NewProjectCommandContext(
+		ctx,
+		cmdName,
+		applyCmd,
+		planCmd,
+		prjCfg,
+		commentFlags,
+		automerge,
+		parallelApply,
+		parallelPlan,
+		verbose,
+		repoDir,
+	))
+	return
+}
+
+type PolicyCheckProjectContextBuilder struct {
+}
+
+func (cb *PolicyCheckProjectContextBuilder) BuildProjectContext(
+	ctx *CommandContext,
+	cmdName CommandName,
+	prjCfg valid.MergedProjectCfg,
+	commentFlags []string,
+	repoDir, applyCmd, planCmd string,
+	verbose, automerge, parallelPlan, parallelApply bool,
+) (projectCmds []ProjectCommandContext) {
+	ctx.Log.Debug("PolicyChecks are enabled")
+	ctx.Log.Debug("Building project command context for %s", cmdName)
+
+	projectCmds = append(projectCmds, NewProjectCommandContext(
+		ctx,
+		cmdName,
+		applyCmd,
+		planCmd,
+		prjCfg,
+		commentFlags,
+		automerge,
+		parallelApply,
+		parallelPlan,
+		verbose,
+		repoDir,
+	))
+
+	if cmdName == PlanCommand {
+		projectCmds = append(projectCmds, NewProjectCommandContext(
+			ctx,
+			PolicyCheckCommand,
+			applyCmd,
+			planCmd,
+			prjCfg,
+			commentFlags,
+			automerge,
+			parallelApply,
+			parallelPlan,
+			verbose,
+			repoDir,
+		))
+	}
+
+	return
+}
+
 func escapeArgs(args []string) []string {
 	var escaped []string
 	for _, arg := range args {

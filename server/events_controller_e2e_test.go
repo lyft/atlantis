@@ -66,6 +66,8 @@ func TestGitHubWorkflow(t *testing.T) {
 		// Atlantis writes to the pull request in order. A reply from a parallel operation
 		// will be matched using a substring check.
 		ExpReplies [][]string
+		// PolicyCheckEnabled runs integration tests through PolicyCheckProjectCommandBuilder.
+		PolicyCheckEnabled bool
 	}{
 		{
 			Description:   "simple",
@@ -79,7 +81,24 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
 			},
-			ExpAutoplan: true,
+			ExpAutoplan:        true,
+			PolicyCheckEnabled: false,
+		},
+		{
+			Description:   "simple with policy check enabled",
+			RepoDir:       "simple",
+			ModifiedFiles: []string{"main.tf"},
+			Comments: []string{
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-apply.txt"},
+				{"exp-output-merge.txt"},
+			},
+			ExpAutoplan:        true,
+			PolicyCheckEnabled: true,
 		},
 		{
 			Description:   "simple with plan comment",
@@ -96,6 +115,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with comment -var",
@@ -112,6 +132,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-var.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with workspaces",
@@ -132,6 +153,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-var-new-workspace.txt"},
 				{"exp-output-merge-workspaces.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with workspaces and apply all",
@@ -150,6 +172,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-var-all.txt"},
 				{"exp-output-merge-workspaces.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with atlantis.yaml",
@@ -166,6 +189,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-default.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with atlantis.yaml and apply all",
@@ -180,6 +204,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-all.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with atlantis.yaml and plan/apply all",
@@ -196,6 +221,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-all.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "modules staging only",
@@ -210,6 +236,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-staging.txt"},
 				{"exp-output-merge-only-staging.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "modules modules only",
@@ -229,6 +256,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-production.txt"},
 				{"exp-output-merge-all-dirs.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "modules-yaml",
@@ -245,6 +273,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-production.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "tfvars-yaml",
@@ -261,6 +290,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-default.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "tfvars no autoplan",
@@ -280,6 +310,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-default.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "automerge",
@@ -298,6 +329,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-automerge.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "server-side cfg",
@@ -315,6 +347,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-default-workspace.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "workspaces parallel with atlantis.yaml",
@@ -330,13 +363,14 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-all-staging.txt", "exp-output-apply-all-production.txt"},
 				{"exp-output-merge.txt"},
 			},
+			PolicyCheckEnabled: false,
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
 			RegisterMockTestingT(t)
 
-			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir)
+			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir, c.PolicyCheckEnabled)
 			// Set the repo to be cloned through the testing backdoor.
 			repoDir, headSHA, cleanup := initializeRepo(t, c.RepoDir)
 			defer cleanup()
@@ -377,6 +411,23 @@ func TestGitHubWorkflow(t *testing.T) {
 				expNumReplies++
 			}
 
+			// When enabled policy_check runs right after plan. So whenever
+			// comment matches plan we add additional call to expected
+			// number.
+			if c.PolicyCheckEnabled {
+				var planRegex = regexp.MustCompile("plan")
+				for _, comment := range c.Comments {
+					if planRegex.MatchString(comment) {
+						expNumReplies++
+					}
+				}
+
+				// Adding 1 for policy_check autorun
+				if c.ExpAutoplan {
+					expNumReplies += 1
+				}
+			}
+
 			if c.ExpAutomerge {
 				expNumReplies++
 			}
@@ -397,7 +448,7 @@ func TestGitHubWorkflow(t *testing.T) {
 	}
 }
 
-func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.MockClient, *mocks.MockGithubPullGetter, *events.FileWorkspace) {
+func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.EventsController, *vcsmocks.MockClient, *mocks.MockGithubPullGetter, *events.FileWorkspace) {
 	allowForkPRs := false
 	dataDir, cleanup := TempDir(t)
 	defer cleanup()
@@ -453,6 +504,18 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 		Drainer:               drainer,
 		PreWorkflowHookRunner: &runtime.PreWorkflowHookRunner{},
 	}
+	projectCommandBuilder := events.NewProjectCommandBuilder(
+		policyChecksEnabled,
+		parser,
+		&events.DefaultProjectFinder{},
+		e2eVCSClient,
+		workingDir,
+		locker,
+		globalCfg,
+		&events.DefaultPendingPlanFinder{},
+		commentParser,
+		false,
+	)
 	commandRunner := &events.DefaultCommandRunner{
 		ProjectCommandRunner: &events.DefaultProjectCommandRunner{
 			Locker:           projectLocker,
@@ -486,24 +549,15 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 		Logger:                   logger,
 		AllowForkPRs:             allowForkPRs,
 		AllowForkPRsFlag:         "allow-fork-prs",
-		ProjectCommandBuilder: &events.DefaultProjectCommandBuilder{
-			ParserValidator:    parser,
-			ProjectFinder:      &events.DefaultProjectFinder{},
-			VCSClient:          e2eVCSClient,
-			WorkingDir:         workingDir,
-			WorkingDirLocker:   locker,
-			PendingPlanFinder:  &events.DefaultPendingPlanFinder{},
-			CommentBuilder:     commentParser,
-			GlobalCfg:          globalCfg,
-			SkipCloneNoChanges: false,
-		},
-		DB:                boltdb,
-		PendingPlanFinder: &events.DefaultPendingPlanFinder{},
-		GlobalAutomerge:   false,
-		WorkingDir:        workingDir,
-		Drainer:           drainer,
+		ProjectCommandBuilder:    projectCommandBuilder,
+		DB:                       boltdb,
+		PendingPlanFinder:        &events.DefaultPendingPlanFinder{},
+		GlobalAutomerge:          false,
+		WorkingDir:               workingDir,
+		Drainer:                  drainer,
 	}
 
+	fmt.Printf("\n%+v\n", projectCommandBuilder)
 	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")
 	Ok(t, err)
 

@@ -209,6 +209,7 @@ func (c *DefaultCommandRunner) runPolicyCheckCommands(
 		return
 	}
 
+	fmt.Printf("\n PolicyCheck Command Context: %+v \n", projectCmds)
 	// So set policy_check commit status to pending
 	if err := c.CommitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, models.PolicyCheckCommand); err != nil {
 		ctx.Log.Warn("unable to update commit status: %s", err)

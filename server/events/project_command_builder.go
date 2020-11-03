@@ -39,15 +39,16 @@ func NewProjectCommandBuilder(
 	skipCloneNoChanges bool,
 ) ProjectCommandBuilder {
 	defaultProjectCommandBuilder := &DefaultProjectCommandBuilder{
-		ParserValidator:    parserValidator,
-		ProjectFinder:      projectFinder,
-		VCSClient:          vcsClient,
-		WorkingDir:         workingDir,
-		WorkingDirLocker:   workingDirLocker,
-		GlobalCfg:          globalCfg,
-		PendingPlanFinder:  pendingPlanFinder,
-		CommentBuilder:     commentBuilder,
-		SkipCloneNoChanges: skipCloneNoChanges,
+		ParserValidator:       parserValidator,
+		ProjectFinder:         projectFinder,
+		VCSClient:             vcsClient,
+		WorkingDir:            workingDir,
+		WorkingDirLocker:      workingDirLocker,
+		GlobalCfg:             globalCfg,
+		PendingPlanFinder:     pendingPlanFinder,
+		CommentBuilder:        commentBuilder,
+		SkipCloneNoChanges:    skipCloneNoChanges,
+		ProjectContextBuilder: &models.DefaultProjectContextBuilder{},
 	}
 
 	if policyChecksSupported {
@@ -78,15 +79,16 @@ type ProjectCommandBuilder interface {
 // This class combines the data from the comment and any atlantis.yaml file or
 // Atlantis server config and then generates a set of contexts.
 type DefaultProjectCommandBuilder struct {
-	ParserValidator    *yaml.ParserValidator
-	ProjectFinder      ProjectFinder
-	VCSClient          vcs.Client
-	WorkingDir         WorkingDir
-	WorkingDirLocker   WorkingDirLocker
-	GlobalCfg          valid.GlobalCfg
-	PendingPlanFinder  *DefaultPendingPlanFinder
-	CommentBuilder     CommentBuilder
-	SkipCloneNoChanges bool
+	ParserValidator       *yaml.ParserValidator
+	ProjectFinder         ProjectFinder
+	VCSClient             vcs.Client
+	WorkingDir            WorkingDir
+	WorkingDirLocker      WorkingDirLocker
+	GlobalCfg             valid.GlobalCfg
+	PendingPlanFinder     *DefaultPendingPlanFinder
+	CommentBuilder        CommentBuilder
+	ProjectContextBuilder models.ProjectContextBuilder
+	SkipCloneNoChanges    bool
 }
 
 // See ProjectCommandBuilder.BuildAutoplanCommands.
@@ -112,7 +114,7 @@ func (p *DefaultProjectCommandBuilder) BuildPlanCommands(ctx *models.CommandCont
 		return p.buildPlanAllCommands(ctx, cmd.Flags, cmd.Verbose)
 	}
 	pcc, err := p.buildProjectPlanCommand(ctx, cmd)
-	return []models.ProjectCommandContext{pcc}, err
+	return pcc, err
 }
 
 // See ProjectCommandBuilder.BuildApplyCommands.
@@ -121,7 +123,7 @@ func (p *DefaultProjectCommandBuilder) BuildApplyCommands(ctx *models.CommandCon
 		return p.buildApplyAllCommands(ctx, cmd)
 	}
 	pac, err := p.buildProjectApplyCommand(ctx, cmd)
-	return []models.ProjectCommandContext{pac}, err
+	return pac, err
 }
 
 // buildPlanAllCommands builds plan contexts for all projects we determine were
@@ -184,6 +186,13 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *models.CommandC
 	}
 
 	var projCtxs []models.ProjectCommandContext
+
+	// prjConfigBuilder := &yaml.ProjectConfigBuilder{
+	// 	parser:    p.ParserValidator,
+	// 	globalCfg: p.GlobalCfg,
+	// }
+	// p.ProjectConfigBuilder.GetProjectConfigs(ctx, repoDir, modifiedFiles)
+
 	if hasRepoCfg {
 		// If there's a repo cfg then we'll use it to figure out which projects
 		// should be planed.
@@ -210,20 +219,20 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *models.CommandC
 				commentFlags...,
 			)
 
-			prjCtx := models.NewProjectCommandContext(
+			prjCtxs := p.ProjectContextBuilder.BuildProjectContext(
 				ctx,
 				models.PlanCommand,
-				applyCmd,
-				planCmd,
 				mergedCfg,
 				commentFlags,
+				repoDir,
+				applyCmd,
+				planCmd,
 				repoCfg.Automerge,
 				repoCfg.ParallelApply,
 				repoCfg.ParallelPlan,
 				verbose,
-				repoDir,
 			)
-			projCtxs = append(projCtxs, prjCtx)
+			projCtxs = append(projCtxs, prjCtxs...)
 		}
 	} else {
 		// If there is no config file, then we'll plan each project that
@@ -243,20 +252,20 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *models.CommandC
 				commentFlags...,
 			)
 
-			prjCtx := models.NewProjectCommandContext(
+			prjCtx := p.ProjectContextBuilder.BuildProjectContext(
 				ctx,
 				models.PlanCommand,
-				applyCmd,
-				planCmd,
 				pCfg,
 				commentFlags,
+				repoDir,
+				applyCmd,
+				planCmd,
 				DefaultAutomergeEnabled,
 				DefaultParallelApplyEnabled,
 				DefaultParallelPlanEnabled,
 				verbose,
-				repoDir,
 			)
-			projCtxs = append(projCtxs, prjCtx)
+			projCtxs = append(projCtxs, prjCtx...)
 		}
 	}
 
@@ -265,13 +274,13 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *models.CommandC
 
 // buildProjectPlanCommand builds a plan context for a single project.
 // cmd must be for only one project.
-func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *models.CommandContext, cmd *CommentCommand) (models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *models.CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	workspace := DefaultWorkspace
 	if cmd.Workspace != "" {
 		workspace = cmd.Workspace
 	}
 
-	var pcc models.ProjectCommandContext
+	var pcc []models.ProjectCommandContext
 	ctx.Log.Debug("building plan command")
 	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, workspace)
 	if err != nil {
@@ -302,30 +311,47 @@ func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *models.Comma
 	)
 }
 
-// buildApplyAllCommands builds contexts for any command for every project that has
+// buildApplyAllCommands builds contexts for apply for every project that has
 // pending plans in this ctx.
 func (p *DefaultProjectCommandBuilder) buildApplyAllCommands(ctx *models.CommandContext, commentCmd *CommentCommand) ([]models.ProjectCommandContext, error) {
-	return buildProjectCommands(
-		ctx,
-		models.ApplyCommand,
-		commentCmd,
-		p.CommentBuilder,
-		p.ParserValidator,
-		p.GlobalCfg,
-		p.WorkingDirLocker,
-		p.WorkingDir,
-	)
+	// Lock all dirs in this pull request (instead of a single dir) because we
+	// don't know how many dirs we'll need to apply in.
+	unlockFn, err := p.WorkingDirLocker.TryLockPull(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num)
+	if err != nil {
+		return nil, err
+	}
+	defer unlockFn()
+
+	pullDir, err := p.WorkingDir.GetPullDir(ctx.Pull.BaseRepo, ctx.Pull)
+	if err != nil {
+		return nil, err
+	}
+
+	plans, err := p.PendingPlanFinder.Find(pullDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var cmds []models.ProjectCommandContext
+	for _, plan := range plans {
+		applyCmds, err := p.buildProjectCommandCtx(ctx, models.ApplyCommand, plan.ProjectName, commentCmd.Flags, plan.RepoDir, plan.RepoRelDir, plan.Workspace, commentCmd.Verbose)
+		if err != nil {
+			return nil, errors.Wrapf(err, "building command for dir %q", plan.RepoRelDir)
+		}
+		cmds = append(cmds, applyCmds...)
+	}
+	return cmds, nil
 }
 
 // buildProjectApplyCommand builds an apply command for the single project
 // identified by cmd.
-func (p *DefaultProjectCommandBuilder) buildProjectApplyCommand(ctx *models.CommandContext, cmd *CommentCommand) (models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) buildProjectApplyCommand(ctx *models.CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	workspace := DefaultWorkspace
 	if cmd.Workspace != "" {
 		workspace = cmd.Workspace
 	}
 
-	var projCtx models.ProjectCommandContext
+	var projCtx []models.ProjectCommandContext
 	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, workspace)
 	if err != nil {
 		return projCtx, err
@@ -365,17 +391,57 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *models.Comman
 	repoDir string,
 	repoRelDir string,
 	workspace string,
-	verbose bool) (models.ProjectCommandContext, error) {
-	return buildProjectCommandCtx(ctx,
-		cmd,
-		p.ParserValidator,
-		p.GlobalCfg,
+	verbose bool) ([]models.ProjectCommandContext, error) {
+
+	projCfgPtr, repoCfgPtr, err := getCfg(ctx, p.ParserValidator, p.GlobalCfg, projectName, repoRelDir, workspace, repoDir)
+	if err != nil {
+		return []models.ProjectCommandContext{}, err
+	}
+
+	var projCfg valid.MergedProjectCfg
+	if projCfgPtr != nil {
+		// Override any dir/workspace defined on the comment with what was
+		// defined in config. This shouldn't matter since we don't allow comments
+		// with both project name and dir/workspace.
+		repoRelDir = projCfg.RepoRelDir
+		workspace = projCfg.Workspace
+		projCfg = p.GlobalCfg.MergeProjectCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), *projCfgPtr, *repoCfgPtr)
+	} else {
+		projCfg = p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), repoRelDir, workspace)
+	}
+
+	if err := validateWorkspaceAllowed(repoCfgPtr, repoRelDir, workspace); err != nil {
+		return []models.ProjectCommandContext{}, err
+	}
+
+	automerge := DefaultAutomergeEnabled
+	parallelApply := DefaultParallelApplyEnabled
+	parallelPlan := DefaultParallelPlanEnabled
+	if repoCfgPtr != nil {
+		automerge = repoCfgPtr.Automerge
+		parallelApply = repoCfgPtr.ParallelApply
+		parallelPlan = repoCfgPtr.ParallelPlan
+	}
+
+	applyCmd, planCmd := buildRePlanAndApplyComments(
 		p.CommentBuilder,
-		projectName,
+		projCfg.RepoRelDir,
+		projCfg.Workspace,
+		projCfg.Name,
+		commentFlags...,
+	)
+
+	return p.ProjectContextBuilder.BuildProjectContext(
+		ctx,
+		cmd,
+		projCfg,
 		commentFlags,
 		repoDir,
-		repoRelDir,
-		workspace,
+		applyCmd,
+		planCmd,
+		automerge,
+		parallelApply,
+		parallelPlan,
 		verbose,
-	)
+	), nil
 }
