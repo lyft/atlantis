@@ -4,11 +4,12 @@
 package mocks
 
 import (
-	pegomock "github.com/petergtz/pegomock"
-	events "github.com/runatlantis/atlantis/server/events"
-	models "github.com/runatlantis/atlantis/server/events/models"
 	"reflect"
 	"time"
+
+	pegomock "github.com/petergtz/pegomock"
+	models "github.com/runatlantis/atlantis/server/events/models"
+	parsers "github.com/runatlantis/atlantis/server/events/parsers"
 )
 
 type MockCommentParsing struct {
@@ -26,16 +27,16 @@ func NewMockCommentParsing(options ...pegomock.Option) *MockCommentParsing {
 func (mock *MockCommentParsing) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockCommentParsing) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockCommentParsing) Parse(comment string, vcsHost models.VCSHostType) events.CommentParseResult {
+func (mock *MockCommentParsing) Parse(comment string, vcsHost models.VCSHostType) parsers.CommentParseResult {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockCommentParsing().")
 	}
 	params := []pegomock.Param{comment, vcsHost}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("Parse", params, []reflect.Type{reflect.TypeOf((*events.CommentParseResult)(nil)).Elem()})
-	var ret0 events.CommentParseResult
+	result := pegomock.GetGenericMockFrom(mock).Invoke("Parse", params, []reflect.Type{reflect.TypeOf((*parsers.CommentParseResult)(nil)).Elem()})
+	var ret0 parsers.CommentParseResult
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(events.CommentParseResult)
+			ret0 = result[0].(parsers.CommentParseResult)
 		}
 	}
 	return ret0

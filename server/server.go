@@ -32,6 +32,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/runatlantis/atlantis/server/events/db"
+	"github.com/runatlantis/atlantis/server/events/parsers"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
@@ -332,7 +333,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Logger:     logger,
 		DB:         boltdb,
 	}
-	eventParser := &events.EventParser{
+	eventParser := &parsers.EventParser{
 		GithubUser:         userConfig.GithubUser,
 		GithubToken:        userConfig.GithubToken,
 		GitlabUser:         userConfig.GitlabUser,
@@ -344,7 +345,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		AzureDevopsUser:    userConfig.AzureDevopsUser,
 		AzureDevopsToken:   userConfig.AzureDevopsToken,
 	}
-	commentParser := &events.CommentParser{
+	commentParser := &parsers.CommentParser{
 		GithubUser:      userConfig.GithubUser,
 		GitlabUser:      userConfig.GitlabUser,
 		BitbucketUser:   userConfig.BitbucketUser,

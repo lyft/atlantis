@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/events/db"
+	"github.com/runatlantis/atlantis/server/events/parsers"
 	"github.com/runatlantis/atlantis/server/logging"
 
 	"github.com/google/go-github/v31/github"
@@ -99,7 +100,7 @@ func TestRunCommentCommand_LogPanics(t *testing.T) {
 	t.Log("if there is a panic it is commented back on the pull request")
 	vcsClient := setup(t)
 	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
-	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, 1, &events.CommentCommand{Name: models.PlanCommand})
+	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, 1, &parsers.CommentCommand{Name: models.PlanCommand})
 	_, _, comment, _ := vcsClient.VerifyWasCalledOnce().CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString()).GetCapturedArguments()
 	Assert(t, strings.Contains(comment, "Error: goroutine panic"), fmt.Sprintf("comment should be about a goroutine panic but was %q", comment))
 }
@@ -195,7 +196,7 @@ func TestRunCommentCommand_DisableApplyAllDisabled(t *testing.T) {
 	vcsClient := setup(t)
 	ch.DisableApplyAll = true
 	modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState}
-	ch.RunCommentCommand(fixtures.GithubRepo, nil, nil, fixtures.User, modelPull.Num, &events.CommentCommand{Name: models.ApplyCommand})
+	ch.RunCommentCommand(fixtures.GithubRepo, nil, nil, fixtures.User, modelPull.Num, &parsers.CommentCommand{Name: models.ApplyCommand})
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "**Error:** Running `atlantis apply` without flags is disabled. You must specify which project to apply via the `-d <dir>`, `-w <workspace>` or `-p <project name>` flags.", "apply")
 }
 
@@ -242,7 +243,7 @@ func TestRunUnlockCommand_VCSComment(t *testing.T) {
 	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
 	When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
 
-	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, fixtures.Pull.Num, &events.CommentCommand{Name: models.UnlockCommand})
+	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, fixtures.Pull.Num, &parsers.CommentCommand{Name: models.UnlockCommand})
 
 	deleteLockCommand.VerifyWasCalledOnce().DeleteLocksByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "All Atlantis locks for this PR have been unlocked and plans discarded", "unlock")
@@ -261,7 +262,7 @@ func TestRunUnlockCommandFail_VCSComment(t *testing.T) {
 	When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
 	When(deleteLockCommand.DeleteLocksByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(errors.New("err"))
 
-	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, fixtures.Pull.Num, &events.CommentCommand{Name: models.UnlockCommand})
+	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, fixtures.Pull.Num, &parsers.CommentCommand{Name: models.UnlockCommand})
 
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "Failed to delete PR locks", "unlock")
 }
@@ -322,7 +323,7 @@ func TestApplyWithAutoMerge_VSCMerge(t *testing.T) {
 	ch.GlobalAutomerge = true
 	defer func() { ch.GlobalAutomerge = false }()
 
-	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, fixtures.Pull.Num, &events.CommentCommand{Name: models.ApplyCommand})
+	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, fixtures.Pull.Num, &parsers.CommentCommand{Name: models.ApplyCommand})
 	vcsClient.VerifyWasCalledOnce().MergePull(modelPull)
 }
 
@@ -359,7 +360,7 @@ func TestRunApply_DiscardedProjects(t *testing.T) {
 	When(eventParsing.ParseGithubPull(ghPull)).ThenReturn(pull, pull.BaseRepo, fixtures.GithubRepo, nil)
 	When(workingDir.GetPullDir(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).
 		ThenReturn(tmp, nil)
-	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, &pull, fixtures.User, fixtures.Pull.Num, &events.CommentCommand{Name: models.ApplyCommand})
+	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, &pull, fixtures.User, fixtures.Pull.Num, &parsers.CommentCommand{Name: models.ApplyCommand})
 	vcsClient.VerifyWasCalled(Never()).MergePull(matchers.AnyModelsPullRequest())
 }
 

@@ -2,19 +2,19 @@
 package matchers
 
 import (
-	"reflect"
 	"github.com/petergtz/pegomock"
-	events "github.com/runatlantis/atlantis/server/events"
+	parsers "github.com/runatlantis/atlantis/server/events/parsers"
+	"reflect"
 )
 
-func AnyEventsCommentParseResult() events.CommentParseResult {
-	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(events.CommentParseResult))(nil)).Elem()))
-	var nullValue events.CommentParseResult
+func AnyEventsCommentParseResult() parsers.CommentParseResult {
+	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(parsers.CommentParseResult))(nil)).Elem()))
+	var nullValue parsers.CommentParseResult
 	return nullValue
 }
 
-func EqEventsCommentParseResult(value events.CommentParseResult) events.CommentParseResult {
+func EqEventsCommentParseResult(value parsers.CommentParseResult) parsers.CommentParseResult {
 	pegomock.RegisterMatcher(&pegomock.EqMatcher{Value: value})
-	var nullValue events.CommentParseResult
+	var nullValue parsers.CommentParseResult
 	return nullValue
 }

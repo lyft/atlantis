@@ -23,6 +23,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/runatlantis/atlantis/server/events/db"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/parsers"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/recovery"
@@ -40,7 +41,7 @@ type CommandRunner interface {
 	// RunCommentCommand is the first step after a command request has been parsed.
 	// It handles gathering additional information needed to execute the command
 	// and then calling the appropriate services to finish executing the command.
-	RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand)
+	RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *parsers.CommentCommand)
 	RunAutoplanCommand(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User)
 }
 
@@ -77,7 +78,7 @@ type DefaultCommandRunner struct {
 	CommitStatusUpdater      CommitStatusUpdater
 	DisableApplyAll          bool
 	DisableAutoplan          bool
-	EventParser              EventParsing
+	EventParser              parsers.EventParsing
 	MarkdownRenderer         *MarkdownRenderer
 	Logger                   logging.SimpleLogging
 	// AllowForkPRs controls whether we operate on pull requests from forks.
@@ -140,7 +141,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 		if statusErr := c.CommitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, models.PlanCommand); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
-		c.updatePull(ctx, AutoplanCommand{}, CommandResult{Error: err})
+		c.updatePull(ctx, parsers.AutoplanCommand{}, CommandResult{Error: err})
 		return
 	}
 
@@ -179,7 +180,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 		c.deletePlans(ctx)
 		result.PlansDeleted = true
 	}
-	c.updatePull(ctx, AutoplanCommand{}, result)
+	c.updatePull(ctx, parsers.AutoplanCommand{}, result)
 	pullStatus, err := c.updateDB(ctx, ctx.Pull, result.ProjectResults)
 	if err != nil {
 		c.Logger.Err("writing results: %s", err)
@@ -223,7 +224,7 @@ func (c *DefaultCommandRunner) runPolicyCheckCommands(
 		result = c.runProjectCmds(projectCmds, models.PolicyCheckCommand)
 	}
 
-	c.updatePull(ctx, AutoPolicyCheckCommand{}, result)
+	c.updatePull(ctx, parsers.AutoPolicyCheckCommand{}, result)
 
 	pullStatus, err := c.updateDB(ctx, ctx.Pull, result.ProjectResults)
 	if err != nil {
@@ -258,7 +259,7 @@ func (c *DefaultCommandRunner) partitionProjectCmds(
 // enough data to construct the Repo model and callers might want to wait until
 // the event is further validated before making an additional (potentially
 // wasteful) call to get the necessary data.
-func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand) {
+func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *parsers.CommentCommand) {
 	if opStarted := c.Drainer.StartOp(); !opStarted {
 		if commentErr := c.VCSClient.CreateComment(baseRepo, pullNum, ShutdownComment, ""); commentErr != nil {
 			c.Logger.Log(logging.Error, "unable to comment that Atlantis is shutting down: %s", commentErr)
@@ -611,7 +612,7 @@ func (c *DefaultCommandRunner) validateCtxAndComment(ctx *models.CommandContext)
 	return true
 }
 
-func (c *DefaultCommandRunner) updatePull(ctx *models.CommandContext, command PullCommand, res CommandResult) {
+func (c *DefaultCommandRunner) updatePull(ctx *models.CommandContext, command parsers.PullCommand, res CommandResult) {
 	// Log if we got any errors or failures.
 	if res.Error != nil {
 		ctx.Log.Err(res.Error.Error())

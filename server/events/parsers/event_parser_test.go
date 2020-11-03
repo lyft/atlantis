@@ -11,7 +11,7 @@
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
 
-package events_test
+package parsers_test
 
 import (
 	"encoding/json"
@@ -24,14 +24,14 @@ import (
 	"github.com/google/go-github/v31/github"
 	"github.com/mcdafydd/go-azuredevops/azuredevops"
 	"github.com/mohae/deepcopy"
-	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/parsers"
 	. "github.com/runatlantis/atlantis/server/events/vcs/fixtures"
 	. "github.com/runatlantis/atlantis/testing"
 	gitlab "github.com/xanzy/go-gitlab"
 )
 
-var parser = events.EventParser{
+var parser = parsers.EventParser{
 	GithubUser:         "github-user",
 	GithubToken:        "github-token",
 	GitlabUser:         "gitlab-user",
@@ -644,15 +644,15 @@ func TestNewCommand_CleansDir(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.RepoRelDir, func(t *testing.T) {
-			cmd := events.NewCommentCommand(c.RepoRelDir, nil, models.PlanCommand, false, "workspace", "")
+			cmd := parsers.NewCommentCommand(c.RepoRelDir, nil, models.PlanCommand, false, "workspace", "")
 			Equals(t, c.ExpDir, cmd.RepoRelDir)
 		})
 	}
 }
 
 func TestNewCommand_EmptyDirWorkspaceProject(t *testing.T) {
-	cmd := events.NewCommentCommand("", nil, models.PlanCommand, false, "", "")
-	Equals(t, events.CommentCommand{
+	cmd := parsers.NewCommentCommand("", nil, models.PlanCommand, false, "", "")
+	Equals(t, parsers.CommentCommand{
 		RepoRelDir:  "",
 		Flags:       nil,
 		Name:        models.PlanCommand,
@@ -663,8 +663,8 @@ func TestNewCommand_EmptyDirWorkspaceProject(t *testing.T) {
 }
 
 func TestNewCommand_AllFieldsSet(t *testing.T) {
-	cmd := events.NewCommentCommand("dir", []string{"a", "b"}, models.PlanCommand, true, "workspace", "project")
-	Equals(t, events.CommentCommand{
+	cmd := parsers.NewCommentCommand("dir", []string{"a", "b"}, models.PlanCommand, true, "workspace", "project")
+	Equals(t, parsers.CommentCommand{
 		Workspace:   "workspace",
 		RepoRelDir:  "dir",
 		Verbose:     true,
@@ -675,42 +675,42 @@ func TestNewCommand_AllFieldsSet(t *testing.T) {
 }
 
 func TestAutoplanCommand_CommandName(t *testing.T) {
-	Equals(t, models.PlanCommand, (events.AutoplanCommand{}).CommandName())
+	Equals(t, models.PlanCommand, (parsers.AutoplanCommand{}).CommandName())
 }
 
 func TestAutoplanCommand_IsVerbose(t *testing.T) {
-	Equals(t, false, (events.AutoplanCommand{}).IsVerbose())
+	Equals(t, false, (parsers.AutoplanCommand{}).IsVerbose())
 }
 
 func TestAutoplanCommand_IsAutoplan(t *testing.T) {
-	Equals(t, true, (events.AutoplanCommand{}).IsAutoplan())
+	Equals(t, true, (parsers.AutoplanCommand{}).IsAutoplan())
 }
 
 func TestCommentCommand_CommandName(t *testing.T) {
-	Equals(t, models.PlanCommand, (events.CommentCommand{
+	Equals(t, models.PlanCommand, (parsers.CommentCommand{
 		Name: models.PlanCommand,
 	}).CommandName())
-	Equals(t, models.ApplyCommand, (events.CommentCommand{
+	Equals(t, models.ApplyCommand, (parsers.CommentCommand{
 		Name: models.ApplyCommand,
 	}).CommandName())
 }
 
 func TestCommentCommand_IsVerbose(t *testing.T) {
-	Equals(t, false, (events.CommentCommand{
+	Equals(t, false, (parsers.CommentCommand{
 		Verbose: false,
 	}).IsVerbose())
-	Equals(t, true, (events.CommentCommand{
+	Equals(t, true, (parsers.CommentCommand{
 		Verbose: true,
 	}).IsVerbose())
 }
 
 func TestCommentCommand_IsAutoplan(t *testing.T) {
-	Equals(t, false, (events.CommentCommand{}).IsAutoplan())
+	Equals(t, false, (parsers.CommentCommand{}).IsAutoplan())
 }
 
 func TestCommentCommand_String(t *testing.T) {
 	exp := `command="plan" verbose=true dir="mydir" workspace="myworkspace" project="myproject" flags="flag1,flag2"`
-	Equals(t, exp, (events.CommentCommand{
+	Equals(t, exp, (parsers.CommentCommand{
 		RepoRelDir:  "mydir",
 		Flags:       []string{"flag1", "flag2"},
 		Name:        models.PlanCommand,

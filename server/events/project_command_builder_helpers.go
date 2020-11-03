@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/events/parsers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
@@ -11,7 +12,7 @@ import (
 
 // ProjectCommandBuilder helper functions
 
-func buildRePlanAndApplyComments(commentBuilder CommentBuilder, repoRelDir string, workspace string, project string, commentArgs ...string) (applyCmd string, planCmd string) {
+func buildRePlanAndApplyComments(commentBuilder parsers.CommentBuilder, repoRelDir string, workspace string, project string, commentArgs ...string) (applyCmd string, planCmd string) {
 	applyCmd = commentBuilder.BuildApplyComment(repoRelDir, workspace, project)
 	planCmd = commentBuilder.BuildPlanComment(repoRelDir, workspace, project, commentArgs)
 	return

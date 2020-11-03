@@ -11,19 +11,19 @@
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
 
-package events_test
+package parsers_test
 
 import (
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/parsers"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
-var commentParser = events.CommentParser{
+var commentParser = parsers.CommentParser{
 	GithubUser: "github-user",
 	GitlabUser: "gitlab-user",
 }
@@ -56,7 +56,7 @@ func TestParse_HelpResponse(t *testing.T) {
 	}
 	for _, c := range helpComments {
 		r := commentParser.Parse(c, models.Github)
-		Equals(t, events.HelpComment, r.CommentResponse)
+		Equals(t, parsers.HelpComment, r.CommentResponse)
 	}
 }
 
@@ -147,8 +147,8 @@ func TestParse_DidYouMeanAtlantis(t *testing.T) {
 	}
 	for _, c := range comments {
 		r := commentParser.Parse(c, models.Github)
-		Assert(t, r.CommentResponse == events.DidYouMeanAtlantisComment,
-			"For comment %q expected CommentResponse==%q but got %q", c, events.DidYouMeanAtlantisComment, r.CommentResponse)
+		Assert(t, r.CommentResponse == parsers.DidYouMeanAtlantisComment,
+			"For comment %q expected CommentResponse==%q but got %q", c, parsers.DidYouMeanAtlantisComment, r.CommentResponse)
 	}
 }
 
@@ -254,7 +254,7 @@ func TestParse_Multiline(t *testing.T) {
 		t.Run(comment, func(t *testing.T) {
 			r := commentParser.Parse(comment, models.Github)
 			Equals(t, "", r.CommentResponse)
-			Equals(t, &events.CommentCommand{
+			Equals(t, &parsers.CommentCommand{
 				RepoRelDir:  "",
 				Flags:       nil,
 				Name:        models.PlanCommand,
@@ -641,7 +641,7 @@ func TestBuildPlanApplyComment(t *testing.T) {
 }
 
 func TestParse_VCSUsername(t *testing.T) {
-	cp := events.CommentParser{
+	cp := parsers.CommentParser{
 		GithubUser:      "gh",
 		GitlabUser:      "gl",
 		BitbucketUser:   "bb",
@@ -676,7 +676,7 @@ func TestParse_VCSUsername(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.vcs.String(), func(t *testing.T) {
 			r := cp.Parse(fmt.Sprintf("@%s %s", c.user, "help"), c.vcs)
-			Equals(t, events.HelpComment, r.CommentResponse)
+			Equals(t, parsers.HelpComment, r.CommentResponse)
 		})
 	}
 }

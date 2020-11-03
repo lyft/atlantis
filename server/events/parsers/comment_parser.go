@@ -11,7 +11,7 @@
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
 
-package events
+package parsers
 
 import (
 	"fmt"
@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/flynn-archive/go-shlex"
+	"github.com/runatlantis/atlantis/server/events/defaults"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/spf13/pflag"
@@ -282,14 +283,14 @@ func (e *CommentParser) buildFlags(repoRelDir string, workspace string, project 
 	// If project is specified we can just use its name.
 	case project != "":
 		return fmt.Sprintf(" -%s %s", projectFlagShort, project)
-	case repoRelDir == DefaultRepoRelDir && workspace == DefaultWorkspace:
+	case repoRelDir == defaults.DefaultRepoRelDir && workspace == defaults.DefaultWorkspace:
 		// If it's the root and default workspace then we just need to specify one
 		// of the flags and the other will get defaulted.
-		return fmt.Sprintf(" -%s %s", dirFlagShort, DefaultRepoRelDir)
-	case repoRelDir == DefaultRepoRelDir:
+		return fmt.Sprintf(" -%s %s", dirFlagShort, defaults.DefaultRepoRelDir)
+	case repoRelDir == defaults.DefaultRepoRelDir:
 		// If dir is the default then we just need to specify workspace.
 		return fmt.Sprintf(" -%s %s", workspaceFlagShort, workspace)
-	case workspace == DefaultWorkspace:
+	case workspace == defaults.DefaultWorkspace:
 		// If workspace is the default then we just need to specify the dir.
 
 		return fmt.Sprintf(" -%s %s", dirFlagShort, repoRelDir)

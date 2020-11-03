@@ -9,6 +9,7 @@ import (
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/parsers"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
@@ -577,17 +578,18 @@ projects:
 				Ok(t, ioutil.WriteFile(filepath.Join(tmp, "atlantis.yaml"), []byte(c.repoCfg), 0600))
 			}
 
-			builder := &DefaultProjectCommandBuilder{
-				WorkingDirLocker:   NewDefaultWorkingDirLocker(),
-				WorkingDir:         workingDir,
-				ParserValidator:    parser,
-				VCSClient:          vcsClient,
-				ProjectFinder:      &DefaultProjectFinder{},
-				PendingPlanFinder:  &DefaultPendingPlanFinder{},
-				CommentBuilder:     &CommentParser{},
-				GlobalCfg:          globalCfg,
-				SkipCloneNoChanges: false,
-			}
+			builder := NewProjectCommandBuilder(
+				false,
+				parser,
+				&DefaultProjectFinder{},
+				vcsClient,
+				workingDir,
+				NewDefaultWorkingDirLocker(),
+				globalCfg,
+				&DefaultPendingPlanFinder{},
+				&parsers.CommentParser{},
+				false,
+			)
 
 			// We run a test for each type of command.
 			for _, cmd := range []models.CommandName{models.PlanCommand, models.ApplyCommand} {

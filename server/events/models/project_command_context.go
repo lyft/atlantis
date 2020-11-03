@@ -1,11 +1,6 @@
 package models
 
 import (
-	"path/filepath"
-	"regexp"
-
-	"github.com/hashicorp/go-version"
-	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 )
 
@@ -15,35 +10,19 @@ func NewProjectCommandContext(ctx *CommandContext,
 	applyCmd string,
 	planCmd string,
 	projCfg valid.MergedProjectCfg,
-	commentArgs []string,
+	steps []valid.Step,
+	policySets PolicySets,
+	escapedCommentArgs []string,
 	automergeEnabled bool,
 	parallelApplyEnabled bool,
 	parallelPlanEnabled bool,
 	verbose bool,
-	absRepoDir string) ProjectCommandContext {
-
-	var policySets PolicySets
-	var steps []valid.Step
-	switch cmd {
-	case PlanCommand:
-		steps = projCfg.Workflow.Plan.Steps
-	case ApplyCommand:
-		steps = projCfg.Workflow.Apply.Steps
-	case PolicyCheckCommand:
-		steps = projCfg.Workflow.PolicyCheck.Steps
-	}
-
-	// If TerraformVersion not defined in config file look for a
-	// terraform.require_version block.
-	if projCfg.TerraformVersion == nil {
-		projCfg.TerraformVersion = getTfVersion(ctx, filepath.Join(absRepoDir, projCfg.RepoRelDir))
-	}
-
+) ProjectCommandContext {
 	return ProjectCommandContext{
 		CommandName:          cmd,
 		ApplyCmd:             applyCmd,
 		BaseRepo:             ctx.Pull.BaseRepo,
-		EscapedCommentArgs:   escapeArgs(commentArgs),
+		EscapedCommentArgs:   escapedCommentArgs,
 		AutomergeEnabled:     automergeEnabled,
 		ParallelApplyEnabled: parallelApplyEnabled,
 		ParallelPlanEnabled:  parallelPlanEnabled,
@@ -64,135 +43,4 @@ func NewProjectCommandContext(ctx *CommandContext,
 		Workspace:            projCfg.Workspace,
 		PolicySets:           policySets,
 	}
-}
-
-type ProjectContextBuilder interface {
-	BuildProjectContext(
-		ctx *CommandContext,
-		cmdName CommandName,
-		prjCfg valid.MergedProjectCfg,
-		commentFlags []string,
-		repoDir, applyCmd, planCmd string,
-		verbose, automerge, parallelPlan, parallelApply bool,
-	) []ProjectCommandContext
-}
-
-type DefaultProjectContextBuilder struct {
-}
-
-func (cb *DefaultProjectContextBuilder) BuildProjectContext(
-	ctx *CommandContext,
-	cmdName CommandName,
-	prjCfg valid.MergedProjectCfg,
-	commentFlags []string,
-	repoDir, applyCmd, planCmd string,
-	verbose, automerge, parallelPlan, parallelApply bool,
-) (projectCmds []ProjectCommandContext) {
-	ctx.Log.Debug("Building project command context for %s", cmdName)
-	projectCmds = append(projectCmds, NewProjectCommandContext(
-		ctx,
-		cmdName,
-		applyCmd,
-		planCmd,
-		prjCfg,
-		commentFlags,
-		automerge,
-		parallelApply,
-		parallelPlan,
-		verbose,
-		repoDir,
-	))
-	return
-}
-
-type PolicyCheckProjectContextBuilder struct {
-}
-
-func (cb *PolicyCheckProjectContextBuilder) BuildProjectContext(
-	ctx *CommandContext,
-	cmdName CommandName,
-	prjCfg valid.MergedProjectCfg,
-	commentFlags []string,
-	repoDir, applyCmd, planCmd string,
-	verbose, automerge, parallelPlan, parallelApply bool,
-) (projectCmds []ProjectCommandContext) {
-	ctx.Log.Debug("PolicyChecks are enabled")
-	ctx.Log.Debug("Building project command context for %s", cmdName)
-
-	projectCmds = append(projectCmds, NewProjectCommandContext(
-		ctx,
-		cmdName,
-		applyCmd,
-		planCmd,
-		prjCfg,
-		commentFlags,
-		automerge,
-		parallelApply,
-		parallelPlan,
-		verbose,
-		repoDir,
-	))
-
-	if cmdName == PlanCommand {
-		projectCmds = append(projectCmds, NewProjectCommandContext(
-			ctx,
-			PolicyCheckCommand,
-			applyCmd,
-			planCmd,
-			prjCfg,
-			commentFlags,
-			automerge,
-			parallelApply,
-			parallelPlan,
-			verbose,
-			repoDir,
-		))
-	}
-
-	return
-}
-
-func escapeArgs(args []string) []string {
-	var escaped []string
-	for _, arg := range args {
-		var escapedArg string
-		for i := range arg {
-			escapedArg += "\\" + string(arg[i])
-		}
-		escaped = append(escaped, escapedArg)
-	}
-	return escaped
-}
-
-// Extracts required_version from Terraform configuration.
-// Returns nil if unable to determine version from configuration.
-func getTfVersion(ctx *CommandContext, absProjDir string) *version.Version {
-	module, diags := tfconfig.LoadModule(absProjDir)
-	if diags.HasErrors() {
-		ctx.Log.Err("trying to detect required version: %s", diags.Error())
-		return nil
-	}
-
-	if len(module.RequiredCore) != 1 {
-		ctx.Log.Info("cannot determine which version to use from terraform configuration, detected %d possibilities.", len(module.RequiredCore))
-		return nil
-	}
-	requiredVersionSetting := module.RequiredCore[0]
-
-	// We allow `= x.y.z`, `=x.y.z` or `x.y.z` where `x`, `y` and `z` are integers.
-	re := regexp.MustCompile(`^=?\s*([^\s]+)\s*$`)
-	matched := re.FindStringSubmatch(requiredVersionSetting)
-	if len(matched) == 0 {
-		ctx.Log.Debug("did not specify exact version in terraform configuration, found %q", requiredVersionSetting)
-		return nil
-	}
-	ctx.Log.Debug("found required_version setting of %q", requiredVersionSetting)
-	version, err := version.NewVersion(matched[1])
-	if err != nil {
-		ctx.Log.Debug(err.Error())
-		return nil
-	}
-
-	ctx.Log.Info("detected module requires version: %q", version.String())
-	return version
 }
