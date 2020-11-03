@@ -19,6 +19,7 @@ func buildProjectCommands(
 	cmdName models.CommandName,
 	commentCmd *CommentCommand,
 	commentBuilder CommentBuilder,
+	parser *yaml.ParserValidator,
 	globalCfg valid.GlobalCfg,
 	workingDirLocker WorkingDirLocker,
 	workingDir WorkingDir,
@@ -48,6 +49,7 @@ func buildProjectCommands(
 		cmd, err := buildProjectCommandCtx(
 			ctx,
 			cmdName,
+			parser,
 			globalCfg,
 			commentBuilder,
 			plan.ProjectName,
@@ -68,6 +70,7 @@ func buildProjectCommands(
 func buildProjectCommandCtx(
 	ctx *models.CommandContext,
 	cmd models.CommandName,
+	parser *yaml.ParserValidator,
 	globalCfg valid.GlobalCfg,
 	commentBuilder CommentBuilder,
 	projectName string,
@@ -77,7 +80,7 @@ func buildProjectCommandCtx(
 	workspace string,
 	verbose bool) (models.ProjectCommandContext, error) {
 
-	projCfgPtr, repoCfgPtr, err := getCfg(ctx, globalCfg, projectName, repoRelDir, workspace, repoDir)
+	projCfgPtr, repoCfgPtr, err := getCfg(ctx, parser, globalCfg, projectName, repoRelDir, workspace, repoDir)
 	if err != nil {
 		return models.ProjectCommandContext{}, err
 	}
@@ -152,13 +155,13 @@ func validateWorkspaceAllowed(repoCfg *valid.RepoCfg, repoRelDir string, workspa
 // there is no config, then projectCfg and repoCfg will be nil.
 func getCfg(
 	ctx *models.CommandContext,
+	parserValidator *yaml.ParserValidator,
 	globalCfg valid.GlobalCfg,
 	projectName string,
 	dir string,
 	workspace string,
 	repoDir string,
 ) (projectCfg *valid.Project, repoCfg *valid.RepoCfg, err error) {
-	parserValidator := &yaml.ParserValidator{}
 
 	hasConfigFile, err := parserValidator.HasRepoCfg(repoDir)
 	if err != nil {

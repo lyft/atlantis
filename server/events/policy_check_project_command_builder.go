@@ -76,6 +76,7 @@ func (p *PolicyCheckProjectCommandBuilder) buildProjectCommands(ctx *models.Comm
 		models.PolicyCheckCommand,
 		commentCmd,
 		p.CommentBuilder,
+		p.ParserValidator,
 		p.GlobalCfg,
 		p.WorkingDirLocker,
 		p.WorkingDir,
