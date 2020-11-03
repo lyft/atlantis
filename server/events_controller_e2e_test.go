@@ -25,6 +25,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/runtime"
+	"github.com/runatlantis/atlantis/server/events/runtime/policy"
 	"github.com/runatlantis/atlantis/server/events/terraform"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
@@ -528,6 +529,13 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 				TerraformExecutor: terraformClient,
 				DefaultTFVersion:  defaultTFVersion,
 			},
+			ShowStepRunner: &runtime.ShowStepRunner{
+				TerraformExecutor: terraformClient,
+				DefaultTFVersion:  defaultTFVersion,
+			},
+			PolicyCheckStepRunner: runtime.NewPolicyCheckStepRunner(
+				policy.NewConfTestExecutorWorkflow(),
+			),
 			ApplyStepRunner: &runtime.ApplyStepRunner{
 				TerraformExecutor: terraformClient,
 			},
