@@ -50,6 +50,8 @@ type DefaultClient struct {
 	// defaultVersion is the default version of terraform to use if another
 	// version isn't specified.
 	defaultVersion          *version.Version
+	// We will run terraform with the TF_PLUGIN_CACHE_DIR env var set to this
+	// directory inside our data dir.
 	terraformPluginCacheDir string
 	binDir                  string
 	// overrideTF can be used to override the terraform binary during testing
@@ -104,7 +106,8 @@ var versionRegex = regexp.MustCompile("Terraform v(.*?)(\\s.*)?\n")
 // Will asynchronously download the required version if it doesn't exist already.
 func NewClient(
 	log *logging.SimpleLogger,
-	dataDir string,
+	binDir string,
+	cacheDir string,
 	tfeToken string,
 	tfeHostname string,
 	defaultVersionStr string,
@@ -134,11 +137,6 @@ func NewClient(
 		}
 	}
 
-	binDir := filepath.Join(dataDir, binDirName)
-	if err := os.MkdirAll(binDir, 0700); err != nil {
-		return nil, errors.Wrapf(err, "unable to create terraform bin dir %q", binDir)
-	}
-
 	if defaultVersionStr != "" {
 		defaultVersion, err := version.NewVersion(defaultVersionStr)
 		if err != nil {
@@ -166,13 +164,6 @@ func NewClient(
 		if err := generateRCFile(tfeToken, tfeHostname, home); err != nil {
 			return nil, err
 		}
-	}
-
-	// We will run terraform with the TF_PLUGIN_CACHE_DIR env var set to this
-	// directory inside our data dir.
-	cacheDir := filepath.Join(dataDir, terraformPluginCacheDirName)
-	if err := os.MkdirAll(cacheDir, 0700); err != nil {
-		return nil, errors.Wrapf(err, "unable to create terraform plugin cache directory at %q", terraformPluginCacheDirName)
 	}
 
 	return &DefaultClient{

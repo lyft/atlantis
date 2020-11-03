@@ -435,7 +435,7 @@ func TestGitHubWorkflow(t *testing.T) {
 
 func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.MockClient, *mocks.MockGithubPullGetter, *events.FileWorkspace) {
 	allowForkPRs := false
-	dataDir, cleanup := TempDir(t)
+	dataDir, binDir, cacheDir, cleanup := mkSubDirs(t)
 	defer cleanup()
 
 	// Mocks.
@@ -456,7 +456,7 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 		GithubUser: "github-user",
 		GitlabUser: "gitlab-user",
 	}
-	terraformClient, err := terraform.NewClient(logger, dataDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", &NoopTFDownloader{}, false)
+	terraformClient, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", &NoopTFDownloader{}, false)
 	Ok(t, err)
 	boltdb, err := db.New(dataDir)
 	Ok(t, err)
@@ -741,6 +741,20 @@ func assertCommentEquals(t *testing.T, expReplies []string, act string, repoDir 
 			}
 		}
 	}
+}
+
+// returns parent, bindir, cachedir, cleanup func
+func mkSubDirs(t *testing.T) (string, string, string, func()) {
+	tmp, cleanup := TempDir(t)
+	binDir := filepath.Join(tmp, "bin")
+	err := os.MkdirAll(binDir, 0700)
+	Ok(t, err)
+
+	cachedir := filepath.Join(tmp, "plugin-cache")
+	err = os.MkdirAll(cachedir, 0700)
+	Ok(t, err)
+
+	return tmp, binDir, cachedir, cleanup
 }
 
 // Will fail test if terraform isn't in path and isn't version >= 0.12
