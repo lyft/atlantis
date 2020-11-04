@@ -1,4 +1,4 @@
-package builders
+package events
 
 import (
 	"path/filepath"
@@ -7,11 +7,10 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/parsers"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 )
 
-func NewProjectContextBulder(policyCheckEnabled bool, commentBuilder parsers.CommentBuilder) ProjectCommandContextBuilder {
+func NewProjectContextBulder(policyCheckEnabled bool, commentBuilder CommentBuilder) ProjectCommandContextBuilder {
 	projectCommandContextBuilder := &DefaultProjectCommandContextBuilder{
 		CommentBuilder: commentBuilder,
 	}
@@ -29,7 +28,7 @@ func NewProjectContextBulder(policyCheckEnabled bool, commentBuilder parsers.Com
 // DefaultProjectContextBuilder builds ProjectCommandContext
 type ProjectCommandContextBuilder interface {
 	BuildProjectContext(
-		ctx *models.CommandContext,
+		ctx *CommandContext,
 		cmdName models.CommandName,
 		prjCfg valid.MergedProjectCfg,
 		commentFlags []string,
@@ -39,11 +38,11 @@ type ProjectCommandContextBuilder interface {
 }
 
 type DefaultProjectCommandContextBuilder struct {
-	CommentBuilder parsers.CommentBuilder
+	CommentBuilder CommentBuilder
 }
 
 func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
-	ctx *models.CommandContext,
+	ctx *CommandContext,
 	cmdName models.CommandName,
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
@@ -67,7 +66,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		prjCfg.TerraformVersion = getTfVersion(ctx, filepath.Join(repoDir, prjCfg.RepoRelDir))
 	}
 
-	projectCmds = append(projectCmds, models.NewProjectCommandContext(
+	projectCmds = append(projectCmds, newProjectCommandContext(
 		ctx,
 		cmdName,
 		cb.CommentBuilder.BuildApplyComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name),
@@ -87,11 +86,11 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 
 type PolicyCheckProjectCommandContextBuilder struct {
 	ProjectCommandContextBuilder *DefaultProjectCommandContextBuilder
-	CommentBuilder               parsers.CommentBuilder
+	CommentBuilder               CommentBuilder
 }
 
 func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
-	ctx *models.CommandContext,
+	ctx *CommandContext,
 	cmdName models.CommandName,
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
@@ -117,7 +116,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 		var steps []valid.Step
 		steps = prjCfg.Workflow.PolicyCheck.Steps
 
-		projectCmds = append(projectCmds, models.NewProjectCommandContext(
+		projectCmds = append(projectCmds, newProjectCommandContext(
 			ctx,
 			models.PolicyCheckCommand,
 			cb.CommentBuilder.BuildApplyComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name),
@@ -136,6 +135,48 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 	return
 }
 
+// newProjectCommandContext is a initializer method that handles constructing the
+// ProjectCommandContext.
+func newProjectCommandContext(ctx *CommandContext,
+	cmd models.CommandName,
+	applyCmd string,
+	planCmd string,
+	projCfg valid.MergedProjectCfg,
+	steps []valid.Step,
+	policySets models.PolicySets,
+	escapedCommentArgs []string,
+	automergeEnabled bool,
+	parallelApplyEnabled bool,
+	parallelPlanEnabled bool,
+	verbose bool,
+) models.ProjectCommandContext {
+	return models.ProjectCommandContext{
+		CommandName:          cmd,
+		ApplyCmd:             applyCmd,
+		BaseRepo:             ctx.Pull.BaseRepo,
+		EscapedCommentArgs:   escapedCommentArgs,
+		AutomergeEnabled:     automergeEnabled,
+		ParallelApplyEnabled: parallelApplyEnabled,
+		ParallelPlanEnabled:  parallelPlanEnabled,
+		AutoplanEnabled:      projCfg.AutoplanEnabled,
+		Steps:                steps,
+		HeadRepo:             ctx.HeadRepo,
+		Log:                  ctx.Log,
+		PullMergeable:        ctx.PullMergeable,
+		Pull:                 ctx.Pull,
+		ProjectName:          projCfg.Name,
+		ApplyRequirements:    projCfg.ApplyRequirements,
+		RePlanCmd:            planCmd,
+		RepoRelDir:           projCfg.RepoRelDir,
+		RepoConfigVersion:    projCfg.RepoCfgVersion,
+		TerraformVersion:     projCfg.TerraformVersion,
+		User:                 ctx.User,
+		Verbose:              verbose,
+		Workspace:            projCfg.Workspace,
+		PolicySets:           policySets,
+	}
+}
+
 func escapeArgs(args []string) []string {
 	var escaped []string
 	for _, arg := range args {
@@ -150,7 +191,7 @@ func escapeArgs(args []string) []string {
 
 // Extracts required_version from Terraform configuration.
 // Returns nil if unable to determine version from configuration.
-func getTfVersion(ctx *models.CommandContext, absProjDir string) *version.Version {
+func getTfVersion(ctx *CommandContext, absProjDir string) *version.Version {
 	module, diags := tfconfig.LoadModule(absProjDir)
 	if diags.HasErrors() {
 		ctx.Log.Err("trying to detect required version: %s", diags.Error())

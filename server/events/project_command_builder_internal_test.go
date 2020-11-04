@@ -9,7 +9,6 @@ import (
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/parsers"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
@@ -587,14 +586,14 @@ projects:
 				NewDefaultWorkingDirLocker(),
 				globalCfg,
 				&DefaultPendingPlanFinder{},
-				&parsers.CommentParser{},
+				&CommentParser{},
 				false,
 			)
 
 			// We run a test for each type of command.
 			for _, cmd := range []models.CommandName{models.PlanCommand, models.ApplyCommand} {
 				t.Run(cmd.String(), func(t *testing.T) {
-					ctxs, err := builder.buildProjectCommandCtx(&models.CommandContext{
+					ctxs, err := builder.buildProjectCommandCtx(&CommandContext{
 						Pull: models.PullRequest{
 							BaseRepo: baseRepo,
 						},

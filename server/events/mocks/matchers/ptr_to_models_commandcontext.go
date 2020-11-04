@@ -7,14 +7,14 @@ import (
 	models "github.com/runatlantis/atlantis/server/events/models"
 )
 
-func AnyPtrToModelsCommandContext() *models.CommandContext {
-	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(*models.CommandContext))(nil)).Elem()))
-	var nullValue *models.CommandContext
+func AnyPtrToModelsCommandContext() *CommandContext {
+	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(*CommandContext))(nil)).Elem()))
+	var nullValue *CommandContext
 	return nullValue
 }
 
-func EqPtrToModelsCommandContext(value *models.CommandContext) *models.CommandContext {
+func EqPtrToModelsCommandContext(value *CommandContext) *CommandContext {
 	pegomock.RegisterMatcher(&pegomock.EqMatcher{Value: value})
-	var nullValue *models.CommandContext
+	var nullValue *CommandContext
 	return nullValue
 }

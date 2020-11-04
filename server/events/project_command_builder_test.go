@@ -12,7 +12,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/parsers"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
@@ -144,11 +143,11 @@ projects:
 				events.NewDefaultWorkingDirLocker(),
 				valid.NewGlobalCfg(false, false, false),
 				&events.DefaultPendingPlanFinder{},
-				&parsers.CommentParser{},
+				&events.CommentParser{},
 				false,
 			)
 
-			ctxs, err := builder.BuildAutoplanCommands(&models.CommandContext{
+			ctxs, err := builder.BuildAutoplanCommands(&events.CommandContext{
 				PullMergeable: true,
 			})
 			Ok(t, err)
@@ -168,7 +167,7 @@ func TestDefaultProjectCommandBuilder_BuildSinglePlanApplyCommand(t *testing.T) 
 	cases := []struct {
 		Description    string
 		AtlantisYAML   string
-		Cmd            parsers.CommentCommand
+		Cmd            events.CommentCommand
 		ExpCommentArgs []string
 		ExpWorkspace   string
 		ExpDir         string
@@ -178,7 +177,7 @@ func TestDefaultProjectCommandBuilder_BuildSinglePlanApplyCommand(t *testing.T) 
 	}{
 		{
 			Description: "no atlantis.yaml",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				RepoRelDir: ".",
 				Flags:      []string{"commentarg"},
 				Name:       models.PlanCommand,
@@ -192,7 +191,7 @@ func TestDefaultProjectCommandBuilder_BuildSinglePlanApplyCommand(t *testing.T) 
 		},
 		{
 			Description: "no atlantis.yaml with project flag",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				RepoRelDir:  ".",
 				Name:        models.PlanCommand,
 				ProjectName: "myproject",
@@ -202,7 +201,7 @@ func TestDefaultProjectCommandBuilder_BuildSinglePlanApplyCommand(t *testing.T) 
 		},
 		{
 			Description: "simple atlantis.yaml",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				RepoRelDir: ".",
 				Name:       models.PlanCommand,
 				Workspace:  "myworkspace",
@@ -219,7 +218,7 @@ projects:
 		},
 		{
 			Description: "atlantis.yaml wrong dir",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				RepoRelDir: ".",
 				Name:       models.PlanCommand,
 				Workspace:  "myworkspace",
@@ -236,7 +235,7 @@ projects:
 		},
 		{
 			Description: "atlantis.yaml wrong workspace",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				RepoRelDir: ".",
 				Name:       models.PlanCommand,
 				Workspace:  "myworkspace",
@@ -251,7 +250,7 @@ projects:
 		},
 		{
 			Description: "atlantis.yaml with projectname",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				Name:        models.PlanCommand,
 				ProjectName: "myproject",
 			},
@@ -269,7 +268,7 @@ projects:
 		},
 		{
 			Description: "atlantis.yaml with mergeable apply requirement",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				Name:        models.PlanCommand,
 				ProjectName: "myproject",
 			},
@@ -287,7 +286,7 @@ projects:
 		},
 		{
 			Description: "atlantis.yaml with mergeable and approved apply requirements",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				Name:        models.PlanCommand,
 				ProjectName: "myproject",
 			},
@@ -305,7 +304,7 @@ projects:
 		},
 		{
 			Description: "atlantis.yaml with multiple dir/workspaces matching",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				Name:       models.PlanCommand,
 				RepoRelDir: ".",
 				Workspace:  "myworkspace",
@@ -325,7 +324,7 @@ projects:
 		},
 		{
 			Description: "atlantis.yaml with project flag not matching",
-			Cmd: parsers.CommentCommand{
+			Cmd: events.CommentCommand{
 				Name:        models.PlanCommand,
 				RepoRelDir:  ".",
 				Workspace:   "default",
@@ -369,16 +368,16 @@ projects:
 					events.NewDefaultWorkingDirLocker(),
 					valid.NewGlobalCfg(true, false, false),
 					&events.DefaultPendingPlanFinder{},
-					&parsers.CommentParser{},
+					&events.CommentParser{},
 					false,
 				)
 
 				var actCtxs []models.ProjectCommandContext
 				var err error
 				if cmdName == models.PlanCommand {
-					actCtxs, err = builder.BuildPlanCommands(&models.CommandContext{}, &c.Cmd)
+					actCtxs, err = builder.BuildPlanCommands(&events.CommandContext{}, &c.Cmd)
 				} else {
-					actCtxs, err = builder.BuildApplyCommands(&models.CommandContext{}, &c.Cmd)
+					actCtxs, err = builder.BuildApplyCommands(&events.CommandContext{}, &c.Cmd)
 				}
 
 				if c.ExpErr != "" {
@@ -505,13 +504,13 @@ projects:
 				events.NewDefaultWorkingDirLocker(),
 				valid.NewGlobalCfg(true, false, false),
 				&events.DefaultPendingPlanFinder{},
-				&parsers.CommentParser{},
+				&events.CommentParser{},
 				false,
 			)
 
 			ctxs, err := builder.BuildPlanCommands(
-				&models.CommandContext{},
-				&parsers.CommentCommand{
+				&events.CommandContext{},
+				&events.CommentCommand{
 					RepoRelDir:  "",
 					Flags:       nil,
 					Name:        models.PlanCommand,
@@ -579,13 +578,13 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 		events.NewDefaultWorkingDirLocker(),
 		valid.NewGlobalCfg(false, false, false),
 		&events.DefaultPendingPlanFinder{},
-		&parsers.CommentParser{},
+		&events.CommentParser{},
 		false,
 	)
 
 	ctxs, err := builder.BuildApplyCommands(
-		&models.CommandContext{},
-		&parsers.CommentCommand{
+		&events.CommandContext{},
+		&events.CommentCommand{
 			RepoRelDir:  "",
 			Flags:       nil,
 			Name:        models.ApplyCommand,
@@ -648,17 +647,17 @@ projects:
 		events.NewDefaultWorkingDirLocker(),
 		valid.NewGlobalCfg(true, false, false),
 		&events.DefaultPendingPlanFinder{},
-		&parsers.CommentParser{},
+		&events.CommentParser{},
 		false,
 	)
 
-	ctx := &models.CommandContext{
+	ctx := &events.CommandContext{
 		HeadRepo: models.Repo{},
 		Pull:     models.PullRequest{},
 		User:     models.User{},
 		Log:      logging.NewNoopLogger(),
 	}
-	_, err = builder.BuildPlanCommands(ctx, &parsers.CommentCommand{
+	_, err = builder.BuildPlanCommands(ctx, &events.CommentCommand{
 		RepoRelDir:  ".",
 		Flags:       nil,
 		Name:        models.PlanCommand,
@@ -712,13 +711,13 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 				events.NewDefaultWorkingDirLocker(),
 				valid.NewGlobalCfg(true, false, false),
 				&events.DefaultPendingPlanFinder{},
-				&parsers.CommentParser{},
+				&events.CommentParser{},
 				false,
 			)
 
 			var actCtxs []models.ProjectCommandContext
 			var err error
-			actCtxs, err = builder.BuildPlanCommands(&models.CommandContext{}, &parsers.CommentCommand{
+			actCtxs, err = builder.BuildPlanCommands(&events.CommandContext{}, &events.CommentCommand{
 				RepoRelDir: ".",
 				Flags:      c.ExtraArgs,
 				Name:       models.PlanCommand,
@@ -878,13 +877,13 @@ projects:
 				events.NewDefaultWorkingDirLocker(),
 				valid.NewGlobalCfg(true, false, false),
 				&events.DefaultPendingPlanFinder{},
-				&parsers.CommentParser{},
+				&events.CommentParser{},
 				false,
 			)
 
 			actCtxs, err := builder.BuildPlanCommands(
-				&models.CommandContext{},
-				&parsers.CommentCommand{
+				&events.CommandContext{},
+				&events.CommentCommand{
 					RepoRelDir: "",
 					Flags:      nil,
 					Name:       models.PlanCommand,
@@ -928,13 +927,13 @@ projects:
 		events.NewDefaultWorkingDirLocker(),
 		valid.NewGlobalCfg(true, false, false),
 		&events.DefaultPendingPlanFinder{},
-		&parsers.CommentParser{},
+		&events.CommentParser{},
 		true,
 	)
 
 	var actCtxs []models.ProjectCommandContext
 	var err error
-	actCtxs, err = builder.BuildAutoplanCommands(&models.CommandContext{
+	actCtxs, err = builder.BuildAutoplanCommands(&events.CommandContext{
 		HeadRepo:      models.Repo{},
 		Pull:          models.PullRequest{},
 		User:          models.User{},

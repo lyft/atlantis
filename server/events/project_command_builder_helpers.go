@@ -4,15 +4,13 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/events/parsers"
-	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 )
 
 // ProjectCommandBuilder helper functions
 
-func buildRePlanAndApplyComments(commentBuilder parsers.CommentBuilder, repoRelDir string, workspace string, project string, commentArgs ...string) (applyCmd string, planCmd string) {
+func buildRePlanAndApplyComments(commentBuilder CommentBuilder, repoRelDir string, workspace string, project string, commentArgs ...string) (applyCmd string, planCmd string) {
 	applyCmd = commentBuilder.BuildApplyComment(repoRelDir, workspace, project)
 	planCmd = commentBuilder.BuildPlanComment(repoRelDir, workspace, project, commentArgs)
 	return
@@ -34,7 +32,7 @@ func validateWorkspaceAllowed(repoCfg *valid.RepoCfg, repoRelDir string, workspa
 // getCfg returns the atlantis.yaml config (if it exists) for this project. If
 // there is no config, then projectCfg and repoCfg will be nil.
 func getCfg(
-	ctx *models.CommandContext,
+	ctx *CommandContext,
 	parserValidator *yaml.ParserValidator,
 	globalCfg valid.GlobalCfg,
 	projectName string,

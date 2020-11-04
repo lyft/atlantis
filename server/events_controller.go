@@ -25,7 +25,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/parsers"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
@@ -50,8 +49,8 @@ type EventsController struct {
 	CommandRunner                 events.CommandRunner
 	PullCleaner                   events.PullCleaner
 	Logger                        *logging.SimpleLogger
-	Parser                        parsers.EventParsing
-	CommentParser                 parsers.CommentParsing
+	Parser                        events.EventParsing
+	CommentParser                 events.CommentParsing
 	// GithubWebhookSecret is the secret added to this webhook via the GitHub
 	// UI that identifies this call as coming from GitHub. If empty, no
 	// request validation is done.

@@ -24,7 +24,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/parsers"
 	"github.com/runatlantis/atlantis/server/events/runtime"
 	"github.com/runatlantis/atlantis/server/events/runtime/policy"
 	"github.com/runatlantis/atlantis/server/events/terraform"
@@ -463,13 +462,13 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 
 	// Real dependencies.
 	logger := logging.NewSimpleLogger("server", true, logging.Debug)
-	eventParser := &parsers.EventParser{
+	eventParser := &events.EventParser{
 		GithubUser:  "github-user",
 		GithubToken: "github-token",
 		GitlabUser:  "gitlab-user",
 		GitlabToken: "gitlab-token",
 	}
-	commentParser := &parsers.CommentParser{
+	commentParser := &events.CommentParser{
 		GithubUser: "github-user",
 		GitlabUser: "gitlab-user",
 	}
