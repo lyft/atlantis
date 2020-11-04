@@ -86,22 +86,6 @@ func TestGitHubWorkflow(t *testing.T) {
 			PolicyCheckEnabled: false,
 		},
 		{
-			Description:   "simple with policy check enabled",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply.txt"},
-				{"exp-output-merge.txt"},
-			},
-			ExpAutoplan:        true,
-			PolicyCheckEnabled: true,
-		},
-		{
 			Description:   "simple with plan comment",
 			RepoDir:       "simple",
 			ModifiedFiles: []string{"main.tf"},
