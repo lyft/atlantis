@@ -1,10 +1,3 @@
-package events
-
-import (
-	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/logging"
-)
-
 // Copyright 2017 HootSuite Media Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the License);
@@ -17,6 +10,12 @@ import (
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
+package events
+
+import (
+	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/logging"
+)
 
 // CommandContext represents the context of a command that should be executed
 // for a pull request.

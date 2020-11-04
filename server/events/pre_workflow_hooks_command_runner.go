@@ -3,7 +3,6 @@ package events
 import (
 	"fmt"
 
-	"github.com/runatlantis/atlantis/server/events/defaults"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/runtime"
 	"github.com/runatlantis/atlantis/server/events/vcs"
@@ -54,7 +53,7 @@ func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks(
 
 	log.Info("running pre hooks")
 
-	unlockFn, err := w.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, defaults.DefaultWorkspace)
+	unlockFn, err := w.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
 	if err != nil {
 		log.Warn("workspace is locked")
 		return
@@ -62,7 +61,7 @@ func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks(
 	log.Debug("got workspace lock")
 	defer unlockFn()
 
-	repoDir, _, err := w.WorkingDir.Clone(log, headRepo, pull, defaults.DefaultWorkspace)
+	repoDir, _, err := w.WorkingDir.Clone(log, headRepo, pull, DefaultWorkspace)
 	if err != nil {
 		log.Err("unable to run pre workflow hooks: %s", err)
 		return

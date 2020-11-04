@@ -1,15 +1,30 @@
 package events
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/runatlantis/atlantis/server/events/defaults"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/yaml"
+)
+
+const (
+	// DefaultRepoRelDir is the default directory we run commands in, relative
+	// to the root of the repo.
+	DefaultRepoRelDir = "."
+	// DefaultWorkspace is the default Terraform workspace we run commands in.
+	// This is also Terraform's default workspace.
+	DefaultWorkspace = "default"
+	// DefaultAutomergeEnabled is the default for the automerge setting.
+	DefaultAutomergeEnabled = false
+	// DefaultParallelApplyEnabled is the default for the parallel apply setting.
+	DefaultParallelApplyEnabled = false
+	// DefaultParallelPlanEnabled is the default for the parallel plan setting.
+	DefaultParallelPlanEnabled = false
 )
 
 func NewProjectCommandBuilder(
@@ -33,7 +48,7 @@ func NewProjectCommandBuilder(
 		GlobalCfg:          globalCfg,
 		PendingPlanFinder:  pendingPlanFinder,
 		SkipCloneNoChanges: skipCloneNoChanges,
-		ProjectCommandContextBuilder: NewProjectContextBulder(
+		ProjectCommandContextBuilder: NewProjectCommandContextBulder(
 			policyChecksSupported,
 			commentBuilder,
 		),
@@ -147,7 +162,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 	}
 
 	// Need to lock the workspace we're about to clone to.
-	workspace := defaults.DefaultWorkspace
+	workspace := DefaultWorkspace
 
 	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, workspace)
 	if err != nil {
@@ -169,12 +184,6 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 	}
 
 	var projCtxs []models.ProjectCommandContext
-
-	// prjConfigBuilder := &yaml.ProjectConfigBuilder{
-	// 	parser:    p.ParserValidator,
-	// 	globalCfg: p.GlobalCfg,
-	// }
-	// p.ProjectConfigBuilder.GetProjectConfigs(ctx, repoDir, modifiedFiles)
 
 	if hasRepoCfg {
 		// If there's a repo cfg then we'll use it to figure out which projects
@@ -215,7 +224,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 		ctx.Log.Info("automatically determined that there were %d projects modified in this pull request: %s", len(modifiedProjects), modifiedProjects)
 		for _, mp := range modifiedProjects {
 			ctx.Log.Debug("determining config for project at dir: %q", mp.Path)
-			pCfg := p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp.Path, defaults.DefaultWorkspace)
+			pCfg := p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp.Path, DefaultWorkspace)
 
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
@@ -224,9 +233,9 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 					pCfg,
 					commentFlags,
 					repoDir,
-					defaults.DefaultAutomergeEnabled,
-					defaults.DefaultParallelApplyEnabled,
-					defaults.DefaultParallelPlanEnabled,
+					DefaultAutomergeEnabled,
+					DefaultParallelApplyEnabled,
+					DefaultParallelPlanEnabled,
 					verbose,
 				)...)
 		}
@@ -238,7 +247,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 // buildProjectPlanCommand builds a plan context for a single project.
 // cmd must be for only one project.
 func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
-	workspace := defaults.DefaultWorkspace
+	workspace := DefaultWorkspace
 	if cmd.Workspace != "" {
 		workspace = cmd.Workspace
 	}
@@ -257,7 +266,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *CommandConte
 		return pcc, err
 	}
 
-	repoRelDir := defaults.DefaultRepoRelDir
+	repoRelDir := DefaultRepoRelDir
 	if cmd.RepoRelDir != "" {
 		repoRelDir = cmd.RepoRelDir
 	}
@@ -272,6 +281,52 @@ func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *CommandConte
 		workspace,
 		cmd.Verbose,
 	)
+}
+
+// getCfg returns the atlantis.yaml config (if it exists) for this project. If
+// there is no config, then projectCfg and repoCfg will be nil.
+func (p *DefaultProjectCommandBuilder) getCfg(ctx *CommandContext, projectName string, dir string, workspace string, repoDir string) (projectCfg *valid.Project, repoCfg *valid.RepoCfg, err error) {
+	hasConfigFile, err := p.ParserValidator.HasRepoCfg(repoDir)
+	if err != nil {
+		err = errors.Wrapf(err, "looking for %s file in %q", yaml.AtlantisYAMLFilename, repoDir)
+		return
+	}
+	if !hasConfigFile {
+		if projectName != "" {
+			err = fmt.Errorf("cannot specify a project name unless an %s file exists to configure projects", yaml.AtlantisYAMLFilename)
+			return
+		}
+		return
+	}
+
+	var repoConfig valid.RepoCfg
+	repoConfig, err = p.ParserValidator.ParseRepoCfg(repoDir, p.GlobalCfg, ctx.Pull.BaseRepo.ID())
+	if err != nil {
+		return
+	}
+	repoCfg = &repoConfig
+
+	// If they've specified a project by name we look it up. Otherwise we
+	// use the dir and workspace.
+	if projectName != "" {
+		projectCfg = repoCfg.FindProjectByName(projectName)
+		if projectCfg == nil {
+			err = fmt.Errorf("no project with name %q is defined in %s", projectName, yaml.AtlantisYAMLFilename)
+			return
+		}
+		return
+	}
+
+	projCfgs := repoCfg.FindProjectsByDirWorkspace(dir, workspace)
+	if len(projCfgs) == 0 {
+		return
+	}
+	if len(projCfgs) > 1 {
+		err = fmt.Errorf("must specify project name: more than one project defined in %s matched dir: %q workspace: %q", yaml.AtlantisYAMLFilename, dir, workspace)
+		return
+	}
+	projectCfg = &projCfgs[0]
+	return
 }
 
 // buildApplyAllCommands builds contexts for apply for every project that has
@@ -309,7 +364,7 @@ func (p *DefaultProjectCommandBuilder) buildApplyAllCommands(ctx *CommandContext
 // buildProjectApplyCommand builds an apply command for the single project
 // identified by cmd.
 func (p *DefaultProjectCommandBuilder) buildProjectApplyCommand(ctx *CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
-	workspace := defaults.DefaultWorkspace
+	workspace := DefaultWorkspace
 	if cmd.Workspace != "" {
 		workspace = cmd.Workspace
 	}
@@ -328,7 +383,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectApplyCommand(ctx *CommandCont
 		return projCtx, err
 	}
 
-	repoRelDir := defaults.DefaultRepoRelDir
+	repoRelDir := DefaultRepoRelDir
 	if cmd.RepoRelDir != "" {
 		repoRelDir = cmd.RepoRelDir
 	}
@@ -356,7 +411,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 	workspace string,
 	verbose bool) ([]models.ProjectCommandContext, error) {
 
-	projCfgPtr, repoCfgPtr, err := getCfg(ctx, p.ParserValidator, p.GlobalCfg, projectName, repoRelDir, workspace, repoDir)
+	projCfgPtr, repoCfgPtr, err := p.getCfg(ctx, projectName, repoRelDir, workspace, repoDir)
 	if err != nil {
 		return []models.ProjectCommandContext{}, err
 	}
@@ -373,13 +428,13 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 		projCfg = p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), repoRelDir, workspace)
 	}
 
-	if err := validateWorkspaceAllowed(repoCfgPtr, repoRelDir, workspace); err != nil {
+	if err := p.validateWorkspaceAllowed(repoCfgPtr, repoRelDir, workspace); err != nil {
 		return []models.ProjectCommandContext{}, err
 	}
 
-	automerge := defaults.DefaultAutomergeEnabled
-	parallelApply := defaults.DefaultParallelApplyEnabled
-	parallelPlan := defaults.DefaultParallelPlanEnabled
+	automerge := DefaultAutomergeEnabled
+	parallelApply := DefaultParallelApplyEnabled
+	parallelPlan := DefaultParallelPlanEnabled
 	if repoCfgPtr != nil {
 		automerge = repoCfgPtr.Automerge
 		parallelApply = repoCfgPtr.ParallelApply
@@ -397,4 +452,17 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 		parallelPlan,
 		verbose,
 	), nil
+}
+
+// validateWorkspaceAllowed returns an error if repoCfg defines projects in
+// repoRelDir but none of them use workspace. We want this to be an error
+// because if users have gone to the trouble of defining projects in repoRelDir
+// then it's likely that if we're running a command for a workspace that isn't
+// defined then they probably just typed the workspace name wrong.
+func (p *DefaultProjectCommandBuilder) validateWorkspaceAllowed(repoCfg *valid.RepoCfg, repoRelDir string, workspace string) error {
+	if repoCfg == nil {
+		return nil
+	}
+
+	return repoCfg.ValidateWorkspaceAllowed(repoRelDir, workspace)
 }

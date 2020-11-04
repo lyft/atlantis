@@ -425,7 +425,7 @@ func TestGitHubWorkflow(t *testing.T) {
 
 				// Adding 1 for policy_check autorun
 				if c.ExpAutoplan {
-					expNumReplies += 1
+					expNumReplies++
 				}
 			}
 

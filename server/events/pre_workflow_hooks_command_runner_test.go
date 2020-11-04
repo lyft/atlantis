@@ -7,7 +7,6 @@ import (
 
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events"
-	"github.com/runatlantis/atlantis/server/events/defaults"
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
@@ -51,7 +50,7 @@ func TestPreWorkflowHooksCommand_LogPanics(t *testing.T) {
 		logger,
 		fixtures.GithubRepo,
 		fixtures.Pull,
-		defaults.DefaultWorkspace,
+		events.DefaultWorkspace,
 	)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
 
 	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
@@ -65,7 +64,7 @@ func TestRunPreHooks_Clone(t *testing.T) {
 	preWorkflowHooksSetup(t)
 	logger := wh.Logger.NewLogger("log", false, logging.LogLevel(1))
 
-	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.Pull, defaults.DefaultWorkspace)).
+	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)).
 		ThenReturn("path/to/repo", false, nil)
 	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 }
@@ -81,8 +80,8 @@ func TestRunPreHooks_DrainOngoing(t *testing.T) {
 func TestRunPreHooks_DrainNotOngoing(t *testing.T) {
 	t.Log("if drain is not ongoing then remove ongoing operation must be called even if panic occured")
 	preWorkflowHooksSetup(t)
-	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.Pull, defaults.DefaultWorkspace)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
+	When(whWorkingDir.Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)).ThenPanic("panic test - if you're seeing this in a test failure this isn't the failing test")
 	wh.RunPreHooks(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
-	whWorkingDir.VerifyWasCalledOnce().Clone(logger, fixtures.GithubRepo, fixtures.Pull, defaults.DefaultWorkspace)
+	whWorkingDir.VerifyWasCalledOnce().Clone(logger, fixtures.GithubRepo, fixtures.Pull, events.DefaultWorkspace)
 	Equals(t, 0, whDrainer.GetStatus().InProgressOps)
 }

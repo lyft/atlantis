@@ -10,7 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 )
 
-func NewProjectContextBulder(policyCheckEnabled bool, commentBuilder CommentBuilder) ProjectCommandContextBuilder {
+func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder CommentBuilder) ProjectCommandContextBuilder {
 	projectCommandContextBuilder := &DefaultProjectCommandContextBuilder{
 		CommentBuilder: commentBuilder,
 	}
@@ -25,8 +25,8 @@ func NewProjectContextBulder(policyCheckEnabled bool, commentBuilder CommentBuil
 	return projectCommandContextBuilder
 }
 
-// DefaultProjectContextBuilder builds ProjectCommandContext
 type ProjectCommandContextBuilder interface {
+	// BuildProjectContext builds project command contexts for atlantis commands
 	BuildProjectContext(
 		ctx *CommandContext,
 		cmdName models.CommandName,

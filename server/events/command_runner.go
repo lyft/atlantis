@@ -202,14 +202,10 @@ func (c *DefaultCommandRunner) runPolicyCheckCommands(
 	projectResults []models.ProjectResult,
 	projectCmds []models.ProjectCommandContext,
 ) {
-	// TODO(sarvar): Refactor policy check logic from command_runner.go to
-	// policy_command_runner.go. This will remove this if condition and overall
-	// return DefaultCommandRunner to its vanilla state
 	if len(projectCmds) == 0 {
 		return
 	}
 
-	fmt.Printf("\n PolicyCheck Command Context: %+v \n", projectCmds)
 	// So set policy_check commit status to pending
 	if err := c.CommitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, models.PolicyCheckCommand); err != nil {
 		ctx.Log.Warn("unable to update commit status: %s", err)
