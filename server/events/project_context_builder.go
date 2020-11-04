@@ -113,8 +113,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 
 	if cmdName == models.PlanCommand {
 		var policySets models.PolicySets
-		var steps []valid.Step
-		steps = prjCfg.Workflow.PolicyCheck.Steps
+		steps := prjCfg.Workflow.PolicyCheck.Steps
 
 		projectCmds = append(projectCmds, newProjectCommandContext(
 			ctx,
