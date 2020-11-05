@@ -49,7 +49,7 @@ type Client interface {
 type DefaultClient struct {
 	// defaultVersion is the default version of terraform to use if another
 	// version isn't specified.
-	defaultVersion          *version.Version
+	defaultVersion *version.Version
 	// We will run terraform with the TF_PLUGIN_CACHE_DIR env var set to this
 	// directory inside our data dir.
 	terraformPluginCacheDir string
@@ -78,15 +78,6 @@ type DefaultClient struct {
 type Downloader interface {
 	GetFile(dst, src string, opts ...getter.ClientOption) error
 }
-
-const (
-	// terraformPluginCacheDir is the name of the dir inside our data dir
-	// where we tell terraform to cache plugins and modules.
-	terraformPluginCacheDirName = "plugin-cache"
-	// binDirName is the name of the directory inside our data dir where
-	// we download terraform binaries.
-	binDirName = "bin"
-)
 
 // versionRegex extracts the version from `terraform version` output.
 //     Terraform v0.12.0-alpha4 (2c36829d3265661d8edbd5014de8090ea7e2a076)
