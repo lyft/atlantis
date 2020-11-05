@@ -87,7 +87,7 @@ func TestNewClient_LocalTFMatchesFlag(t *testing.T) {
 Your version of Terraform is out of date! The latest version
 is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 `
-   tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
+	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	defer cleanup()
 
 	// We're testing this by adding our own "fake" terraform binary to path that
