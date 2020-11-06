@@ -955,7 +955,7 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 				DefaultTFVersion:  defaultTFVersion,
 			},
 			PolicyCheckStepRunner: runtime.NewPolicyCheckStepRunner(
-				policy.NewConfTestExecutorWorkflow(),
+				policy.NewConfTestExecutorWorkflow(logger, binDir),
 			),
 			ApplyStepRunner: &runtime.ApplyStepRunner{
 				TerraformExecutor: terraformClient,
