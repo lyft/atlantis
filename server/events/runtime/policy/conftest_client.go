@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	defaultConftestVersionEnvKey = "DEFAULT_CONFTEST_VERSION"
+	DefaultConftestVersionEnvKey = "DEFAULT_CONFTEST_VERSION"
 	conftestBinaryName           = "conftest"
 	conftestDownloadURLPrefix    = "https://github.com/open-policy-agent/conftest/releases/download/v"
 	conftestArch                 = "x86_64"
@@ -80,9 +80,9 @@ type ConfTestExecutorWorkflow struct {
 	DefaultConftestVersion *version.Version
 }
 
-func NewConfTestExecutorWorkflow(log *logging.SimpleLogger, versionRootDir string) *ConfTestExecutorWorkflow {
+func NewConfTestExecutorWorkflow(log *logging.SimpleLogger, versionRootDir string, conftestDownloder terraform.Downloader) *ConfTestExecutorWorkflow {
 	downloader := ConfTestVersionDownloader{
-		downloader: &terraform.DefaultDownloader{},
+		downloader: conftestDownloder,
 	}
 	version, err := getDefaultVersion()
 
@@ -138,10 +138,10 @@ func (c *ConfTestExecutorWorkflow) EnsureExecutorVersion(log *logging.SimpleLogg
 func getDefaultVersion() (*version.Version, error) {
 	// ensure version is not default version.
 	// first check for the env var and if that doesn't exist use the local executable version
-	defaultVersion, exists := os.LookupEnv(defaultConftestVersionEnvKey)
+	defaultVersion, exists := os.LookupEnv(DefaultConftestVersionEnvKey)
 
 	if !exists {
-		return nil, errors.New(fmt.Sprintf("%s not set.", defaultConftestVersionEnvKey))
+		return nil, errors.New(fmt.Sprintf("%s not set.", DefaultConftestVersionEnvKey))
 	}
 
 	wrappedVersion, err := version.NewVersion(defaultVersion)
