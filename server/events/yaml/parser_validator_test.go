@@ -903,13 +903,13 @@ workflows:
 			Ok(t, err)
 
 			r := yaml.ParserValidator{}
-			act, err := r.ParseRepoCfg(tmpDir, globalCfg, "")
+			cfg, err := r.ParseRepoCfg(tmpDir, globalCfg, "")
 			if c.expErr != "" {
 				ErrEquals(t, c.expErr, err)
 				return
 			}
 			Ok(t, err)
-			Equals(t, c.exp, act)
+			Equals(t, c.exp, cfg)
 		})
 	}
 }
@@ -993,6 +993,8 @@ func TestParseGlobalCfg(t *testing.T) {
 			},
 		},
 	}
+
+	conftestVersion, _ := version.NewVersion("v1.0.0")
 
 	cases := map[string]struct {
 		input  string
@@ -1133,6 +1135,12 @@ workflows:
       steps:
       - run: custom command
       - apply
+policies:
+  conftest_version: v1.0.0
+  policy_sets:
+    - name: good-policy
+      path: rel/path/to/policy
+      source: local
 `,
 			exp: valid.GlobalCfg{
 				Repos: []valid.Repo{
@@ -1153,6 +1161,16 @@ workflows:
 				Workflows: map[string]valid.Workflow{
 					"default": defaultCfg.Workflows["default"],
 					"custom1": customWorkflow1,
+				},
+				PolicySets: valid.PolicySets{
+					Version: conftestVersion,
+					PolicySets: []valid.PolicySet{
+						{
+							Name:   "good-policy",
+							Path:   "rel/path/to/policy",
+							Source: valid.LocalPolicySet,
+						},
+					},
 				},
 			},
 		},
@@ -1252,6 +1270,7 @@ workflows:
 			},
 		},
 	}
+
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			r := yaml.ParserValidator{}
@@ -1260,7 +1279,7 @@ workflows:
 			path := filepath.Join(tmp, "conf.yaml")
 			Ok(t, ioutil.WriteFile(path, []byte(c.input), 0600))
 
-			act, err := r.ParseGlobalCfg(path, valid.NewGlobalCfg(false, false, false))
+			cfg, err := r.ParseGlobalCfg(path, valid.NewGlobalCfg(false, false, false))
 
 			if c.expErr != "" {
 				expErr := strings.Replace(c.expErr, "<tmp>", path, -1)
@@ -1268,9 +1287,14 @@ workflows:
 				return
 			}
 			Ok(t, err)
-			Equals(t, c.exp, act)
+
+			if !cfg.PolicySets.HasPolicies() {
+				c.exp.PolicySets = cfg.PolicySets
+			}
+
+			Equals(t, c.exp, cfg)
 			// Have to hand-compare regexes because Equals doesn't do it.
-			for i, actRepo := range act.Repos {
+			for i, actRepo := range cfg.Repos {
 				expRepo := c.exp.Repos[i]
 				if expRepo.IDRegex != nil {
 					Assert(t, expRepo.IDRegex.String() == actRepo.IDRegex.String(),
@@ -1321,6 +1345,8 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 		},
 	}
 
+	conftestVersion, _ := version.NewVersion("v1.0.0")
+
 	cases := map[string]struct {
 		json   string
 		exp    valid.GlobalCfg
@@ -1370,6 +1396,16 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
         ]
       }
     }
+  },
+  "policies": {
+    "conftest_version": "v1.0.0",
+    "policy_sets": [
+      {
+        "name": "good-policy",
+        "source": "local",
+        "path": "rel/path/to/policy"
+      }
+    ]
   }
 }
 `,
@@ -1397,6 +1433,16 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 					"default": valid.NewGlobalCfg(false, false, false).Workflows["default"],
 					"custom":  customWorkflow,
 				},
+				PolicySets: valid.PolicySets{
+					Version: conftestVersion,
+					PolicySets: []valid.PolicySet{
+						{
+							Name:   "good-policy",
+							Path:   "rel/path/to/policy",
+							Source: valid.LocalPolicySet,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -1409,6 +1455,11 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 				return
 			}
 			Ok(t, err)
+
+			if !cfg.PolicySets.HasPolicies() {
+				c.exp.PolicySets = cfg.PolicySets
+			}
+
 			Equals(t, c.exp, cfg)
 		})
 	}

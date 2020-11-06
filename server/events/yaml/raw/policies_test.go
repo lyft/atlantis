@@ -23,9 +23,8 @@ func TestPolicySetsConfig_YAMLMarshalling(t *testing.T) {
 conftest_version: v1.0.0
 policy_sets:
 - name: policy-name
-  source:
-    type: "local"
-    path: "rel/path/to/policy-set"
+  source: "local"
+  path: "rel/path/to/policy-set"
 `,
 			exp: raw.PolicySets{
 				Version: String("v1.0.0"),

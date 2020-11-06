@@ -378,6 +378,8 @@ policies:
 }
 
 func TestGlobalCfg_MergeProjectCfg(t *testing.T) {
+	var emptyPolicySets valid.PolicySets
+
 	cases := map[string]struct {
 		gCfg          string
 		repoID        string
@@ -419,6 +421,7 @@ workflows:
 				Workspace:       "default",
 				Name:            "",
 				AutoplanEnabled: false,
+				PolicySets:      emptyPolicySets,
 			},
 		},
 		"repo-side apply reqs win out if allowed": {
@@ -447,6 +450,7 @@ repos:
 				Workspace:       "default",
 				Name:            "",
 				AutoplanEnabled: false,
+				PolicySets:      emptyPolicySets,
 			},
 		},
 		"last server-side match wins": {
@@ -478,6 +482,7 @@ repos:
 				Workspace:       "myworkspace",
 				Name:            "myname",
 				AutoplanEnabled: false,
+				PolicySets:      emptyPolicySets,
 			},
 		},
 		"autoplan is set properly": {
@@ -505,6 +510,7 @@ repos:
 				Workspace:       "myworkspace",
 				Name:            "myname",
 				AutoplanEnabled: true,
+				PolicySets:      emptyPolicySets,
 			},
 		},
 	}
@@ -523,6 +529,7 @@ repos:
 				global = valid.NewGlobalCfg(false, false, false)
 			}
 
+			global.PolicySets = emptyPolicySets
 			Equals(t, c.exp, global.MergeProjectCfg(logging.NewNoopLogger(), c.repoID, c.proj, valid.RepoCfg{Workflows: c.repoWorkflows}))
 		})
 	}
