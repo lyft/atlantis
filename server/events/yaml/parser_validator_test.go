@@ -903,13 +903,13 @@ workflows:
 			Ok(t, err)
 
 			r := yaml.ParserValidator{}
-			cfg, err := r.ParseRepoCfg(tmpDir, globalCfg, "")
+			act, err := r.ParseRepoCfg(tmpDir, globalCfg, "")
 			if c.expErr != "" {
 				ErrEquals(t, c.expErr, err)
 				return
 			}
 			Ok(t, err)
-			Equals(t, c.exp, cfg)
+			Equals(t, c.exp, act)
 		})
 	}
 }
@@ -1279,7 +1279,7 @@ workflows:
 			path := filepath.Join(tmp, "conf.yaml")
 			Ok(t, ioutil.WriteFile(path, []byte(c.input), 0600))
 
-			cfg, err := r.ParseGlobalCfg(path, valid.NewGlobalCfg(false, false, false))
+			act, err := r.ParseGlobalCfg(path, valid.NewGlobalCfg(false, false, false))
 
 			if c.expErr != "" {
 				expErr := strings.Replace(c.expErr, "<tmp>", path, -1)
@@ -1288,13 +1288,13 @@ workflows:
 			}
 			Ok(t, err)
 
-			if !cfg.PolicySets.HasPolicies() {
-				c.exp.PolicySets = cfg.PolicySets
+			if !act.PolicySets.HasPolicies() {
+				c.exp.PolicySets = act.PolicySets
 			}
 
-			Equals(t, c.exp, cfg)
+			Equals(t, c.exp, act)
 			// Have to hand-compare regexes because Equals doesn't do it.
-			for i, actRepo := range cfg.Repos {
+			for i, actRepo := range act.Repos {
 				expRepo := c.exp.Repos[i]
 				if expRepo.IDRegex != nil {
 					Assert(t, expRepo.IDRegex.String() == actRepo.IDRegex.String(),
