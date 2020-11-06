@@ -650,7 +650,7 @@ func (s *ServerCmd) validate(userConfig server.UserConfig) error {
 		}
 	}
 
-	if userConfig.EnablePolicyChecksFlag && (userConfig.TFEHostname != "" || userConfig.TFEToken != "") {
+	if userConfig.EnablePolicyChecksFlag && userConfig.TFEToken != "" {
 		return fmt.Errorf("--%s flag cannot be used together with --%s or --%s", EnablePolicyChecksFlag, TFEHostnameFlag, TFETokenFlag)
 	}
 
