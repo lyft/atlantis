@@ -13,6 +13,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/runtime/cache"
 	runtime_models "github.com/runatlantis/atlantis/server/events/runtime/models"
 	"github.com/runatlantis/atlantis/server/events/terraform"
+	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
@@ -66,14 +67,14 @@ func (c ConftestTestCommandArgs) build() ([]string, error) {
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_conftest_client.go SourceResolver
 // SourceResolver resolves the policy set to a local fs path
 type SourceResolver interface {
-	Resolve(policySet models.PolicySet) (string, error)
+	Resolve(policySet valid.PolicySet) (string, error)
 }
 
 // LocalSourceResolver resolves a local policy set to a local fs path
 type LocalSourceResolver struct {
 }
 
-func (p *LocalSourceResolver) Resolve(policySet models.PolicySet) (string, error) {
+func (p *LocalSourceResolver) Resolve(policySet valid.PolicySet) (string, error) {
 	return "some/path", nil
 
 }
@@ -83,9 +84,9 @@ type SourceResolverProxy struct {
 	localSourceResolver SourceResolver
 }
 
-func (p *SourceResolverProxy) Resolve(policySet models.PolicySet) (string, error) {
+func (p *SourceResolverProxy) Resolve(policySet valid.PolicySet) (string, error) {
 	switch source := policySet.Source; source {
-	case models.LocalPolicySet:
+	case valid.LocalPolicySet:
 		return p.localSourceResolver.Resolve(policySet)
 	default:
 		return "", errors.New(fmt.Sprintf("unable to resolve policy set source %s", source))
