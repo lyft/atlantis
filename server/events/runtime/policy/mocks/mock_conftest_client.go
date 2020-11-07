@@ -5,7 +5,7 @@ package mocks
 
 import (
 	pegomock "github.com/petergtz/pegomock"
-	models "github.com/runatlantis/atlantis/server/events/models"
+	valid "github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"reflect"
 	"time"
 )
@@ -25,7 +25,7 @@ func NewMockSourceResolver(options ...pegomock.Option) *MockSourceResolver {
 func (mock *MockSourceResolver) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockSourceResolver) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockSourceResolver) Resolve(policySet models.PolicySet) (string, error) {
+func (mock *MockSourceResolver) Resolve(policySet valid.PolicySet) (string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockSourceResolver().")
 	}
@@ -81,7 +81,7 @@ type VerifierMockSourceResolver struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockSourceResolver) Resolve(policySet models.PolicySet) *MockSourceResolver_Resolve_OngoingVerification {
+func (verifier *VerifierMockSourceResolver) Resolve(policySet valid.PolicySet) *MockSourceResolver_Resolve_OngoingVerification {
 	params := []pegomock.Param{policySet}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Resolve", params, verifier.timeout)
 	return &MockSourceResolver_Resolve_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -92,17 +92,17 @@ type MockSourceResolver_Resolve_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockSourceResolver_Resolve_OngoingVerification) GetCapturedArguments() models.PolicySet {
+func (c *MockSourceResolver_Resolve_OngoingVerification) GetCapturedArguments() valid.PolicySet {
 	policySet := c.GetAllCapturedArguments()
 	return policySet[len(policySet)-1]
 }
 
-func (c *MockSourceResolver_Resolve_OngoingVerification) GetAllCapturedArguments() (_param0 []models.PolicySet) {
+func (c *MockSourceResolver_Resolve_OngoingVerification) GetAllCapturedArguments() (_param0 []valid.PolicySet) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]models.PolicySet, len(c.methodInvocations))
+		_param0 = make([]valid.PolicySet, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(models.PolicySet)
+			_param0[u] = param.(valid.PolicySet)
 		}
 	}
 	return

@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-version"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/events/runtime/cache/mocks"
 	models_mocks "github.com/runatlantis/atlantis/server/events/runtime/models/mocks"
 	conftest_mocks "github.com/runatlantis/atlantis/server/events/runtime/policy/mocks"
@@ -143,19 +144,19 @@ func TestRun(t *testing.T) {
 	}
 	workdir := "/some_workdir"
 
-	policySet1 := models.PolicySet{
-		Source: models.LocalPolicySet,
+	policySet1 := valid.PolicySet{
+		Source: valid.LocalPolicySet,
 		Path:   policySetPath1,
 	}
 
-	policySet2 := models.PolicySet{
-		Source: models.LocalPolicySet,
+	policySet2 := valid.PolicySet{
+		Source: valid.LocalPolicySet,
 		Path:   policySetPath2,
 	}
 
 	ctx := models.ProjectCommandContext{
-		PolicySets: models.PolicySets{
-			PolicySets: []models.PolicySet{
+		PolicySets: valid.PolicySets{
+			PolicySets: []valid.PolicySet{
 				policySet1,
 				policySet2,
 			},
