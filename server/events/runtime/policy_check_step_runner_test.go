@@ -9,6 +9,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/runtime"
 	"github.com/runatlantis/atlantis/server/events/runtime/mocks"
+	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -35,9 +36,9 @@ func TestRun(t *testing.T) {
 			Owner:    "owner",
 			Name:     "repo",
 		},
-		PolicySets: models.PolicySets{
+		PolicySets: valid.PolicySets{
 			Version:    v,
-			PolicySets: []models.PolicySet{},
+			PolicySets: []valid.PolicySet{},
 		},
 	}
 

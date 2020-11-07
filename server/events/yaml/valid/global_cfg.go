@@ -20,8 +20,9 @@ const DefaultWorkflowName = "default"
 
 // GlobalCfg is the final parsed version of server-side repo config.
 type GlobalCfg struct {
-	Repos     []Repo
-	Workflows map[string]Workflow
+	Repos      []Repo
+	Workflows  map[string]Workflow
+	PolicySets PolicySets
 }
 
 // Repo is the final parsed version of server-side repo config.
@@ -48,6 +49,7 @@ type MergedProjectCfg struct {
 	AutoplanEnabled   bool
 	TerraformVersion  *version.Version
 	RepoCfgVersion    int
+	PolicySets        PolicySets
 }
 
 // PreWorkflowHook is a map of custom run commands to run before workflows.
@@ -203,6 +205,7 @@ func (g GlobalCfg) MergeProjectCfg(log logging.SimpleLogging, repoID string, pro
 		AutoplanEnabled:   proj.Autoplan.Enabled,
 		TerraformVersion:  proj.TerraformVersion,
 		RepoCfgVersion:    rCfg.Version,
+		PolicySets:        g.PolicySets,
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/hashicorp/go-version"
 	"github.com/mohae/deepcopy"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
@@ -264,7 +265,121 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 	}
 }
 
+func TestGlobalCfg_WithPolicySets(t *testing.T) {
+	version, _ := version.NewVersion("v1.0.0")
+	cases := map[string]struct {
+		gCfg   string
+		proj   valid.Project
+		repoID string
+		exp    valid.MergedProjectCfg
+	}{
+		"policies are added to MergedProjectCfg when present": {
+			gCfg: `
+repos:
+- id: /.*/
+policies:
+  policy_sets:
+    - name: good-policy
+      source: local
+      path: rel/path/to/source
+`,
+			repoID: "github.com/owner/repo",
+			proj: valid.Project{
+				Dir:          ".",
+				Workspace:    "default",
+				WorkflowName: String("custom"),
+			},
+			exp: valid.MergedProjectCfg{
+				ApplyRequirements: []string{},
+				Workflow: valid.Workflow{
+					Name:        "default",
+					Apply:       valid.DefaultApplyStage,
+					Plan:        valid.DefaultPlanStage,
+					PolicyCheck: valid.DefaultPolicyCheckStage,
+				},
+				PolicySets: valid.PolicySets{
+					Version: nil,
+					PolicySets: []valid.PolicySet{
+						{
+							Name:   "good-policy",
+							Path:   "rel/path/to/source",
+							Source: "local",
+						},
+					},
+				},
+				RepoRelDir:      ".",
+				Workspace:       "default",
+				Name:            "",
+				AutoplanEnabled: false,
+			},
+		},
+		"policies set correct version if specified": {
+			gCfg: `
+repos:
+- id: /.*/
+policies:
+  conftest_version: v1.0.0
+  policy_sets:
+    - name: good-policy
+      source: local
+      path: rel/path/to/source
+`,
+			repoID: "github.com/owner/repo",
+			proj: valid.Project{
+				Dir:          ".",
+				Workspace:    "default",
+				WorkflowName: String("custom"),
+			},
+			exp: valid.MergedProjectCfg{
+				ApplyRequirements: []string{},
+				Workflow: valid.Workflow{
+					Name:        "default",
+					Apply:       valid.DefaultApplyStage,
+					Plan:        valid.DefaultPlanStage,
+					PolicyCheck: valid.DefaultPolicyCheckStage,
+				},
+				PolicySets: valid.PolicySets{
+					Version: version,
+					PolicySets: []valid.PolicySet{
+						{
+							Name:   "good-policy",
+							Path:   "rel/path/to/source",
+							Source: "local",
+						},
+					},
+				},
+				RepoRelDir:      ".",
+				Workspace:       "default",
+				Name:            "",
+				AutoplanEnabled: false,
+			},
+		},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			tmp, cleanup := TempDir(t)
+			defer cleanup()
+			var global valid.GlobalCfg
+			if c.gCfg != "" {
+				path := filepath.Join(tmp, "config.yaml")
+				Ok(t, ioutil.WriteFile(path, []byte(c.gCfg), 0600))
+				var err error
+				global, err = (&yaml.ParserValidator{}).ParseGlobalCfg(path, valid.NewGlobalCfg(false, false, false))
+				Ok(t, err)
+			} else {
+				global = valid.NewGlobalCfg(false, false, false)
+			}
+
+			Equals(t,
+				c.exp,
+				global.MergeProjectCfg(logging.NewNoopLogger(), c.repoID, c.proj, valid.RepoCfg{}))
+		})
+	}
+}
+
 func TestGlobalCfg_MergeProjectCfg(t *testing.T) {
+	var emptyPolicySets valid.PolicySets
+
 	cases := map[string]struct {
 		gCfg          string
 		repoID        string
@@ -306,6 +421,7 @@ workflows:
 				Workspace:       "default",
 				Name:            "",
 				AutoplanEnabled: false,
+				PolicySets:      emptyPolicySets,
 			},
 		},
 		"repo-side apply reqs win out if allowed": {
@@ -334,6 +450,7 @@ repos:
 				Workspace:       "default",
 				Name:            "",
 				AutoplanEnabled: false,
+				PolicySets:      emptyPolicySets,
 			},
 		},
 		"last server-side match wins": {
@@ -365,6 +482,7 @@ repos:
 				Workspace:       "myworkspace",
 				Name:            "myname",
 				AutoplanEnabled: false,
+				PolicySets:      emptyPolicySets,
 			},
 		},
 		"autoplan is set properly": {
@@ -392,6 +510,7 @@ repos:
 				Workspace:       "myworkspace",
 				Name:            "myname",
 				AutoplanEnabled: true,
+				PolicySets:      emptyPolicySets,
 			},
 		},
 	}
@@ -410,6 +529,7 @@ repos:
 				global = valid.NewGlobalCfg(false, false, false)
 			}
 
+			global.PolicySets = emptyPolicySets
 			Equals(t, c.exp, global.MergeProjectCfg(logging.NewNoopLogger(), c.repoID, c.proj, valid.RepoCfg{Workflows: c.repoWorkflows}))
 		})
 	}
