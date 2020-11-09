@@ -534,9 +534,6 @@ func (c *DefaultCommandRunner) runProjectCmds(cmds []models.ProjectCommandContex
 			res = c.ProjectCommandRunner.Apply(pCmd)
 		}
 
-		if res.Error != nil {
-			pCmd.Log.Err("Error running project command %s", res.Error.Error())
-		}
 		results = append(results, res)
 	}
 	return CommandResult{ProjectResults: results}
