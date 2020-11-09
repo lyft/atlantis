@@ -19,8 +19,8 @@ func TestRun(t *testing.T) {
 	logger := logging.NewNoopLogger()
 	workspace := "default"
 	v, _ := version.NewVersion("1.0")
+	workdir := "/path"
 	executablePath := "some/path/conftest"
-	executableArgs := []string{"arg1", "arg2"}
 
 	context := models.ProjectCommandContext{
 		Log:                logger,
@@ -47,10 +47,9 @@ func TestRun(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		When(executorWorkflow.EnsureExecutorVersion(logger, v)).ThenReturn(executablePath, nil)
-		When(executorWorkflow.ResolveArgs(context)).ThenReturn(executableArgs, nil)
-		When(executorWorkflow.Run(logger, executablePath, map[string]string(nil), executableArgs)).ThenReturn("Success!", nil)
+		When(executorWorkflow.Run(context, executablePath, map[string]string(nil), workdir)).ThenReturn("Success!", nil)
 
-		output, err := s.Run(context, []string{"extra", "args"}, "/path", map[string]string(nil))
+		output, err := s.Run(context, []string{"extra", "args"}, workdir, map[string]string(nil))
 
 		Ok(t, err)
 		Equals(t, "Success!", output)
@@ -60,24 +59,15 @@ func TestRun(t *testing.T) {
 		expectedErr := errors.New("error ensuring version")
 		When(executorWorkflow.EnsureExecutorVersion(logger, v)).ThenReturn("", expectedErr)
 
-		_, err := s.Run(context, []string{"extra", "args"}, "/path", map[string]string(nil))
-
-		Assert(t, err != nil, "error is not nil")
-	})
-	t.Run("resolve args failure", func(t *testing.T) {
-		When(executorWorkflow.EnsureExecutorVersion(logger, v)).ThenReturn(executablePath, nil)
-		When(executorWorkflow.ResolveArgs(context)).ThenReturn(executableArgs, errors.New("error resolving args"))
-
-		_, err := s.Run(context, []string{"extra", "args"}, "/path", map[string]string(nil))
+		_, err := s.Run(context, []string{"extra", "args"}, workdir, map[string]string(nil))
 
 		Assert(t, err != nil, "error is not nil")
 	})
 	t.Run("executor failure", func(t *testing.T) {
 		When(executorWorkflow.EnsureExecutorVersion(logger, v)).ThenReturn(executablePath, nil)
-		When(executorWorkflow.ResolveArgs(context)).ThenReturn(executableArgs, nil)
-		When(executorWorkflow.Run(logger, executablePath, map[string]string(nil), executableArgs)).ThenReturn("", errors.New("error running executor"))
+		When(executorWorkflow.Run(context, executablePath, map[string]string(nil), workdir)).ThenReturn("", errors.New("error running executor"))
 
-		_, err := s.Run(context, []string{"extra", "args"}, "/path", map[string]string(nil))
+		_, err := s.Run(context, []string{"extra", "args"}, workdir, map[string]string(nil))
 
 		Assert(t, err != nil, "error is not nil")
 	})
