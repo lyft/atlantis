@@ -574,6 +574,8 @@ const (
 	UnlockCommand
 	// PolicyCheckCommand is a command to run conftest test.
 	PolicyCheckCommand
+	// ApprovePolicyCommand is a command to approve policies with owner check
+	ApprovePolicyCommand
 	// Adding more? Don't forget to update String() below
 )
 
@@ -588,6 +590,8 @@ func (c CommandName) String() string {
 		return "unlock"
 	case PolicyCheckCommand:
 		return "policy_check"
+	case ApprovePolicyCommand:
+		return "approve_policy"
 	}
 	return ""
 }

@@ -193,12 +193,13 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 		!(result.HasErrors() || result.PlansDeleted) {
 		// Run policy_check command
 		ctx.Log.Info("Running policy_checks for all plans")
-		c.runPolicyCheckCommands(ctx, result.ProjectResults, policyCheckCmds)
+		c.runPolicyCheckCommands(ctx, PolicyCheckCommand{}, result.ProjectResults, policyCheckCmds)
 	}
 }
 
 func (c *DefaultCommandRunner) runPolicyCheckCommands(
 	ctx *CommandContext,
+	cmd PullCommand,
 	projectResults []models.ProjectResult,
 	projectCmds []models.ProjectCommandContext,
 ) {
@@ -219,7 +220,7 @@ func (c *DefaultCommandRunner) runPolicyCheckCommands(
 		result = c.runProjectCmds(projectCmds, models.PolicyCheckCommand)
 	}
 
-	c.updatePull(ctx, AutoPolicyCheckCommand{}, result)
+	c.updatePull(ctx, cmd, result)
 
 	pullStatus, err := c.updateDB(ctx, ctx.Pull, result.ProjectResults)
 	if err != nil {
@@ -404,12 +405,13 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 		c.automerge(ctx, pullStatus)
 	}
 
-	// Runs policy checks step after all plans are successful
+	// Runs policy checks step after all plans are successful.
+	// This step does not approve any policies that require approval.
 	if cmd.Name == models.PlanCommand &&
 		len(result.ProjectResults) > 0 &&
 		!(result.HasErrors() || result.PlansDeleted) {
 		ctx.Log.Info("Running policy check for %s", cmd.String())
-		c.runPolicyCheckCommands(ctx, result.ProjectResults, policyCheckCmds)
+		c.runPolicyCheckCommands(ctx, PolicyCheckCommand{}, result.ProjectResults, policyCheckCmds)
 	}
 }
 
