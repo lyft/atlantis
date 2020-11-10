@@ -24,8 +24,9 @@ import (
 )
 
 const (
-	planCommandTitle  = "Plan"
-	applyCommandTitle = "Apply"
+	planCommandTitle        = "Plan"
+	applyCommandTitle       = "Apply"
+	policyCheckCommandTitle = "Policy Check"
 	// maxUnwrappedLines is the maximum number of lines the Terraform output
 	// can be before we wrap it in an expandable template.
 	maxUnwrappedLines = 12
@@ -73,6 +74,11 @@ type planSuccessData struct {
 	PlanWasDeleted bool
 }
 
+type policyCheckSuccessData struct {
+	models.PolicyCheckSuccess
+	PlanWasDeleted bool
+}
+
 type projectResultTmplData struct {
 	Workspace   string
 	RepoRelDir  string
@@ -83,7 +89,7 @@ type projectResultTmplData struct {
 // Render formats the data into a markdown string.
 // nolint: interfacer
 func (m *MarkdownRenderer) Render(res CommandResult, cmdName models.CommandName, log string, verbose bool, vcsHost models.VCSHostType) string {
-	commandStr := strings.Title(cmdName.String())
+	commandStr := strings.Title(strings.Replace(cmdName.String(), "_", " ", -1))
 	common := commonData{
 		Command:         commandStr,
 		Verbose:         verbose,
@@ -103,6 +109,7 @@ func (m *MarkdownRenderer) Render(res CommandResult, cmdName models.CommandName,
 func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, common commonData, vcsHost models.VCSHostType) string {
 	var resultsTmplData []projectResultTmplData
 	numPlanSuccesses := 0
+	numPolicyCheckSuccesses := 0
 
 	for _, result := range results {
 		resultData := projectResultTmplData{
@@ -137,6 +144,13 @@ func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, 
 				resultData.Rendered = m.renderTemplate(planSuccessUnwrappedTmpl, planSuccessData{PlanSuccess: *result.PlanSuccess, PlanWasDeleted: common.PlansDeleted})
 			}
 			numPlanSuccesses++
+		} else if result.PolicyCheckSuccess != nil {
+			if m.shouldUseWrappedTmpl(vcsHost, result.PolicyCheckSuccess.PolicyCheckOutput) {
+				resultData.Rendered = m.renderTemplate(policyCheckSuccessWrappedTmpl, policyCheckSuccessData{PolicyCheckSuccess: *result.PolicyCheckSuccess, PlanWasDeleted: common.PlansDeleted})
+			} else {
+				resultData.Rendered = m.renderTemplate(policyCheckSuccessUnwrappedTmpl, policyCheckSuccessData{PolicyCheckSuccess: *result.PolicyCheckSuccess, PlanWasDeleted: common.PlansDeleted})
+			}
+			numPolicyCheckSuccesses++
 		} else if result.ApplySuccess != "" {
 			if m.shouldUseWrappedTmpl(vcsHost, result.ApplySuccess) {
 				resultData.Rendered = m.renderTemplate(applyWrappedSuccessTmpl, struct{ Output string }{result.ApplySuccess})
@@ -155,9 +169,13 @@ func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, 
 		tmpl = singleProjectPlanSuccessTmpl
 	case len(resultsTmplData) == 1 && common.Command == planCommandTitle && numPlanSuccesses == 0:
 		tmpl = singleProjectPlanUnsuccessfulTmpl
+	case len(resultsTmplData) == 1 && common.Command == policyCheckCommandTitle && numPolicyCheckSuccesses > 0:
+		tmpl = singleProjectPlanSuccessTmpl
+	case len(resultsTmplData) == 1 && common.Command == policyCheckCommandTitle && numPolicyCheckSuccesses == 0:
+		tmpl = singleProjectPlanUnsuccessfulTmpl
 	case len(resultsTmplData) == 1 && common.Command == applyCommandTitle:
 		tmpl = singleProjectApplyTmpl
-	case common.Command == planCommandTitle:
+	case common.Command == planCommandTitle || common.Command == policyCheckCommandTitle:
 		tmpl = multiProjectPlanTmpl
 	case common.Command == applyCommandTitle:
 		tmpl = multiProjectApplyTmpl
@@ -248,6 +266,29 @@ var planSuccessWrappedTmpl = template.Must(template.New("").Parse(
 		planNextSteps + "\n" +
 		"</details>" +
 		"{{ if .HasDiverged }}\n\n:warning: The branch we're merging into is ahead, it is recommended to pull new commits first.{{end}}"))
+
+var policyCheckSuccessUnwrappedTmpl = template.Must(template.New("").Parse(
+	"```diff\n" +
+		"{{.PolicyCheckOutput}}\n" +
+		"```\n\n" + policyCheckNextSteps +
+		"{{ if .HasDiverged }}\n\n:warning: The branch we're merging into is ahead, it is recommended to pull new commits first.{{end}}"))
+
+var policyCheckSuccessWrappedTmpl = template.Must(template.New("").Parse(
+	"<details><summary>Show Output</summary>\n\n" +
+		"```diff\n" +
+		"{{.PolicyCheckOutput}}\n" +
+		"```\n\n" +
+		policyCheckNextSteps + "\n" +
+		"</details>" +
+		"{{ if .HasDiverged }}\n\n:warning: The branch we're merging into is ahead, it is recommended to pull new commits first.{{end}}"))
+
+// policyCheckNextSteps are instructions appended after successful plans as to what
+// to do next.
+var policyCheckNextSteps = "* :arrow_forward: To **apply** this plan, comment:\n" +
+	"    * `{{.ApplyCmd}}`\n" +
+	"* :put_litter_in_its_place: To **delete** this plan click [here]({{.LockURL}})\n" +
+	"* :repeat: To re-run policies **plan** this project again by commenting:\n" +
+	"    * `{{.RePlanCmd}}`"
 
 // planNextSteps are instructions appended after successful plans as to what
 // to do next.
