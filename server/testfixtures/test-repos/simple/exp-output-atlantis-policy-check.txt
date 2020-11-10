@@ -8,7 +8,7 @@ Ran Policy Check for dir: `.` workspace: `default`
     * `atlantis apply -d .`
 * :put_litter_in_its_place: To **delete** this plan click [here](lock-url)
 * :repeat: To re-run policies **plan** this project again by commenting:
-    * `atlantis plan -d . -- -var var=overridden`
+    * `atlantis plan -d . -- -var var=default_workspace`
 
 ---
 * :fast_forward: To **apply** all unapplied plans from this pull request, comment:
