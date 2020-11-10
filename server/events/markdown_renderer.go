@@ -76,7 +76,6 @@ type planSuccessData struct {
 
 type policyCheckSuccessData struct {
 	models.PolicyCheckSuccess
-	PlanWasDeleted bool
 }
 
 type projectResultTmplData struct {
@@ -146,9 +145,9 @@ func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, 
 			numPlanSuccesses++
 		} else if result.PolicyCheckSuccess != nil {
 			if m.shouldUseWrappedTmpl(vcsHost, result.PolicyCheckSuccess.PolicyCheckOutput) {
-				resultData.Rendered = m.renderTemplate(policyCheckSuccessWrappedTmpl, policyCheckSuccessData{PolicyCheckSuccess: *result.PolicyCheckSuccess, PlanWasDeleted: common.PlansDeleted})
+				resultData.Rendered = m.renderTemplate(policyCheckSuccessWrappedTmpl, policyCheckSuccessData{PolicyCheckSuccess: *result.PolicyCheckSuccess})
 			} else {
-				resultData.Rendered = m.renderTemplate(policyCheckSuccessUnwrappedTmpl, policyCheckSuccessData{PolicyCheckSuccess: *result.PolicyCheckSuccess, PlanWasDeleted: common.PlansDeleted})
+				resultData.Rendered = m.renderTemplate(policyCheckSuccessUnwrappedTmpl, policyCheckSuccessData{PolicyCheckSuccess: *result.PolicyCheckSuccess})
 			}
 			numPolicyCheckSuccesses++
 		} else if result.ApplySuccess != "" {
