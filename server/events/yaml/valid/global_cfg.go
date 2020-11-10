@@ -222,6 +222,7 @@ func (g GlobalCfg) DefaultProjCfg(log logging.SimpleLogging, repoID string, repo
 		Name:              "",
 		AutoplanEnabled:   DefaultAutoPlanEnabled,
 		TerraformVersion:  nil,
+		PolicySets:        g.PolicySets,
 	}
 }
 
