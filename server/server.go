@@ -523,7 +523,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		CommandRunner:                 commandRunner,
 		Logger:                        logger,
-		StatsScope: 				   statsScope,
+		StatsScope:                    statsScope,
 		Locker:                        lockingClient,
 		EventsController:              eventsController,
 		GithubAppController:           githubAppController,
