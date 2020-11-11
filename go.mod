@@ -31,6 +31,7 @@ require (
 	github.com/huandu/xstrings v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.5 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/lyft/gostats v0.4.5
 	github.com/magiconair/properties v1.7.3 // indirect
 	github.com/mcdafydd/go-azuredevops v0.11.1
 	github.com/microcosm-cc/bluemonday v1.0.1
@@ -39,7 +40,6 @@ require (
 	github.com/mitchellh/mapstructure v0.0.0-20170523030023-d0303fe80992 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/nlopes/slack v0.1.0
-	github.com/onsi/ginkgo v1.9.0 // indirect
 	github.com/pelletier/go-buffruneio v0.2.0 // indirect
 	github.com/pelletier/go-toml v1.0.0 // indirect
 	github.com/petergtz/pegomock v2.7.0+incompatible
@@ -60,11 +60,10 @@ require (
 	github.com/xanzy/go-gitlab v0.34.1
 	go.etcd.io/bbolt v1.3.4
 	golang.org/x/crypto v0.0.0-20200403201458-baeed622b8d8
-	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933 // indirect
 	golang.org/x/oauth2 v0.0.0-20191122200657-5d9234df094c // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.20.2
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.3.0
 	gotest.tools v2.2.0+incompatible // indirect
 )
