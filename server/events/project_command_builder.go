@@ -72,6 +72,10 @@ type ProjectCommandBuilder interface {
 	// comment doesn't specify one project then there may be multiple commands
 	// to be run.
 	BuildApplyCommands(ctx *CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error)
+	// BuildApprovePolicyCommand builds project approve policy commands for ctx
+	// and comment. If comment doesn't specify one project then there may be
+	// multiple commands to be run.
+	// BuildApprovePolicyCommands(ctx *CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error)
 }
 
 // DefaultProjectCommandBuilder implements ProjectCommandBuilder.
