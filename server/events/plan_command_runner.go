@@ -15,6 +15,8 @@ func NewPlanCommandRunner(
 		silenceVCSStatusNoPlans: cmdRunner.SilenceVCSStatusNoPlans,
 		globalAutomerge:         cmdRunner.GlobalAutomerge,
 		vcsClient:               cmdRunner.VCSClient,
+		pendingPlanFinder:       cmdRunner.PendingPlanFinder,
+		workingDir:              cmdRunner.WorkingDir,
 		commitStatusUpdater:     cmdRunner.CommitStatusUpdater,
 		prjCmdBuilder:           cmdRunner.ProjectCommandBuilder,
 		prjCmdRunner:            cmdRunner.ProjectCommandRunner,
@@ -28,6 +30,8 @@ type PlanCommandRunner struct {
 	isAutoplan              bool
 	silenceVCSStatusNoPlans bool
 	commitStatusUpdater     CommitStatusUpdater
+	pendingPlanFinder       PendingPlanFinder
+	workingDir              WorkingDir
 	prjCmdBuilder           ProjectPlanCommandBuilder
 	prjCmdRunner            ProjectPlanCommandRunner
 }
@@ -195,11 +199,11 @@ func (p *PlanCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus m
 
 // deletePlans deletes all plans generated in this ctx.
 func (p *PlanCommandRunner) deletePlans(ctx *CommandContext) {
-	pullDir, err := p.cmdRunner.WorkingDir.GetPullDir(ctx.Pull.BaseRepo, ctx.Pull)
+	pullDir, err := p.workingDir.GetPullDir(ctx.Pull.BaseRepo, ctx.Pull)
 	if err != nil {
 		ctx.Log.Err("getting pull dir: %s", err)
 	}
-	if err := p.cmdRunner.PendingPlanFinder.DeletePlans(pullDir); err != nil {
+	if err := p.pendingPlanFinder.DeletePlans(pullDir); err != nil {
 		ctx.Log.Err("deleting pending plans: %s", err)
 	}
 }

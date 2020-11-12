@@ -43,7 +43,7 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	// We do this here because when we set a "Pending" status, if users have
 	// required the Atlantis status checks to pass, then we've now changed
 	// the mergeability status of the pull request.
-	ctx.PullMergeable, err = a.cmdRunner.VCSClient.PullIsMergeable(baseRepo, pull)
+	ctx.PullMergeable, err = a.vcsClient.PullIsMergeable(baseRepo, pull)
 	if err != nil {
 		// On error we continue the request with mergeable assumed false.
 		// We want to continue because not all apply's will need this status,
