@@ -113,7 +113,7 @@ func TestParse_UnusedArguments(t *testing.T) {
 			"arg arg2",
 		},
 		{
-			models.ApprovePolicyCommand,
+			models.ApprovePoliciesCommand,
 			"arg arg2 --",
 			"arg arg2",
 		},
@@ -128,7 +128,7 @@ func TestParse_UnusedArguments(t *testing.T) {
 				usage = PlanUsage
 			case models.ApplyCommand:
 				usage = ApplyUsage
-			case models.ApprovePolicyCommand:
+			case models.ApprovePoliciesCommand:
 				usage = ApprovePolicyUsage
 			}
 			Equals(t, fmt.Sprintf("```\nError: unknown argument(s) – %s.\n%s```", c.Unused, usage), r.CommentResponse)
@@ -551,7 +551,7 @@ func TestParse_Parsing(t *testing.T) {
 					Assert(t, r.Command.Name == models.ApplyCommand, "did not parse comment %q as apply command", comment)
 				}
 				if cmdName == "approve_policy" {
-					Assert(t, r.Command.Name == models.ApprovePolicyCommand, "did not parse comment %q as approve_policy command", comment)
+					Assert(t, r.Command.Name == models.ApprovePoliciesCommand, "did not parse comment %q as approve_policy command", comment)
 				}
 			})
 		}

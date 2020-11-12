@@ -428,7 +428,7 @@ func (p ProjectResult) PlanStatus() ProjectPlanStatus {
 			return ErroredPlanStatus
 		}
 		return PlannedPlanStatus
-	case PolicyCheckCommand, ApprovePolicyCommand:
+	case PolicyCheckCommand, ApprovePoliciesCommand:
 		if p.Error != nil {
 			return ErroredPolicyCheckStatus
 		} else if p.Failure != "" {
@@ -443,8 +443,6 @@ func (p ProjectResult) PlanStatus() ProjectPlanStatus {
 		}
 		return AppliedPlanStatus
 	}
-
-	fmt.Print(p.Command)
 
 	panic("PlanStatus() missing a combination")
 }
@@ -576,8 +574,8 @@ const (
 	UnlockCommand
 	// PolicyCheckCommand is a command to run conftest test.
 	PolicyCheckCommand
-	// ApprovePolicyCommand is a command to approve policies with owner check
-	ApprovePolicyCommand
+	// ApprovePoliciesCommand is a command to approve policies with owner check
+	ApprovePoliciesCommand
 	// AutoplanCommand is a command to run terrafor plan on PR open/update if autoplan is enabled
 	AutoplanCommand
 	// Adding more? Don't forget to update String() below
@@ -594,8 +592,8 @@ func (c CommandName) String() string {
 		return "unlock"
 	case PolicyCheckCommand:
 		return "policy_check"
-	case ApprovePolicyCommand:
-		return "approve_policy"
+	case ApprovePoliciesCommand:
+		return "approve_policies"
 	}
 	return ""
 }
