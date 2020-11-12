@@ -1,9 +1,6 @@
 package events
 
 import (
-	"sync"
-
-	"github.com/remeh/sizedwaitgroup"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -14,8 +11,8 @@ func NewApplyCommandRunner(cmdRunner *DefaultCommandRunner) *ApplyCommandRunner 
 		vcsClient:           cmdRunner.VCSClient,
 		disableApplyAll:     cmdRunner.DisableApplyAll,
 		commitStatusUpdater: cmdRunner.CommitStatusUpdater,
-		prjCmdBuilderFunc:   cmdRunner.ProjectCommandBuilder.BuildApplyCommands,
-		prjCmdRunnerFunc:    cmdRunner.ProjectCommandRunner.Apply,
+		prjCmdBuilder:       cmdRunner.ProjectCommandBuilder,
+		prjCmdRunner:        cmdRunner.ProjectCommandRunner,
 	}
 }
 
@@ -24,8 +21,8 @@ type ApplyCommandRunner struct {
 	disableApplyAll     bool
 	vcsClient           vcs.Client
 	commitStatusUpdater CommitStatusUpdater
-	prjCmdBuilderFunc   cmdBuilderFunc
-	prjCmdRunnerFunc    cmdRunnerFunc
+	prjCmdBuilder       ProjectApplyCommandBuilder
+	prjCmdRunner        ProjectApplyCommandRunner
 }
 
 func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
@@ -61,7 +58,7 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	}
 
 	var projectCmds []models.ProjectCommandContext
-	projectCmds, err = a.prjCmdBuilderFunc(ctx, cmd)
+	projectCmds, err = a.prjCmdBuilder.BuildApplyCommands(ctx, cmd)
 
 	if err != nil {
 		if statusErr := a.commitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName()); statusErr != nil {
@@ -75,9 +72,9 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	var result CommandResult
 	if a.isParallelEnabled(projectCmds) {
 		ctx.Log.Info("Running applies in parallel")
-		result = runProjectCmdsParallel(projectCmds, a.prjCmdRunnerFunc)
+		result = runProjectCmdsParallel(projectCmds, a.prjCmdRunner.Apply)
 	} else {
-		result = runProjectCmds(projectCmds, a.prjCmdRunnerFunc)
+		result = runProjectCmds(projectCmds, a.prjCmdRunner.Apply)
 	}
 
 	a.cmdRunner.updatePull(
@@ -128,47 +125,6 @@ func (a *ApplyCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus 
 	); err != nil {
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
-}
-
-func runProjectCmdsParallel(
-	cmds []models.ProjectCommandContext,
-	runnerFunc cmdRunnerFunc,
-) CommandResult {
-	var results []models.ProjectResult
-	mux := &sync.Mutex{}
-
-	wg := sizedwaitgroup.New(15)
-	for _, pCmd := range cmds {
-		pCmd := pCmd
-		var execute func()
-		wg.Add()
-
-		execute = func() {
-			defer wg.Done()
-			res := runnerFunc(pCmd)
-			mux.Lock()
-			results = append(results, res)
-			mux.Unlock()
-		}
-
-		go execute()
-	}
-
-	wg.Wait()
-	return CommandResult{ProjectResults: results}
-}
-
-func runProjectCmds(
-	cmds []models.ProjectCommandContext,
-	runnerFunc cmdRunnerFunc,
-) CommandResult {
-	var results []models.ProjectResult
-	for _, pCmd := range cmds {
-		res := runnerFunc(pCmd)
-
-		results = append(results, res)
-	}
-	return CommandResult{ProjectResults: results}
 }
 
 // applyAllDisabledComment is posted when apply all commands (i.e. "atlantis apply")

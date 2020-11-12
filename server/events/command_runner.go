@@ -15,10 +15,12 @@ package events
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mcdafydd/go-azuredevops/azuredevops"
 	"github.com/pkg/errors"
+	"github.com/remeh/sizedwaitgroup"
 	"github.com/runatlantis/atlantis/server/events/db"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
@@ -65,10 +67,6 @@ type GitlabMergeRequestGetter interface {
 	// GetMergeRequest gets the pull request with the id pullNum for the repo.
 	GetMergeRequest(repoFullName string, pullNum int) (*gitlab.MergeRequest, error)
 }
-
-type cmdRunnerFunc func(ctx models.ProjectCommandContext) models.ProjectResult
-type cmdBuilderFunc func(ctx *CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error)
-type cmdAutoplanBuilderFunc func(ctx *CommandContext) ([]models.ProjectCommandContext, error)
 
 // CommentCommandRunner runs individual command workflows.
 type CommentCommandRunner interface {
@@ -410,6 +408,49 @@ func (c *DefaultCommandRunner) automergeEnabled(projectCmds []models.ProjectComm
 	return c.GlobalAutomerge ||
 		// Otherwise we check if this repo is configured for automerging.
 		(len(projectCmds) > 0 && projectCmds[0].AutomergeEnabled)
+}
+
+type prjCmdRunnerFunc func(ctx models.ProjectCommandContext) models.ProjectResult
+
+func runProjectCmdsParallel(
+	cmds []models.ProjectCommandContext,
+	runnerFunc prjCmdRunnerFunc,
+) CommandResult {
+	var results []models.ProjectResult
+	mux := &sync.Mutex{}
+
+	wg := sizedwaitgroup.New(15)
+	for _, pCmd := range cmds {
+		pCmd := pCmd
+		var execute func()
+		wg.Add()
+
+		execute = func() {
+			defer wg.Done()
+			res := runnerFunc(pCmd)
+			mux.Lock()
+			results = append(results, res)
+			mux.Unlock()
+		}
+
+		go execute()
+	}
+
+	wg.Wait()
+	return CommandResult{ProjectResults: results}
+}
+
+func runProjectCmds(
+	cmds []models.ProjectCommandContext,
+	runnerFunc prjCmdRunnerFunc,
+) CommandResult {
+	var results []models.ProjectResult
+	for _, pCmd := range cmds {
+		res := runnerFunc(pCmd)
+
+		results = append(results, res)
+	}
+	return CommandResult{ProjectResults: results}
 }
 
 // automergeComment is the comment that gets posted when Atlantis automatically

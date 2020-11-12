@@ -10,7 +10,7 @@ func NewPolicyCheckCommandRunner(
 		cmdRunner:           cmdRunner,
 		cmds:                prjCmds,
 		commitStatusUpdater: cmdRunner.CommitStatusUpdater,
-		prjCmdRunnerFunc:    cmdRunner.ProjectCommandRunner.PolicyCheck,
+		prjCmdRunner:        cmdRunner.ProjectCommandRunner,
 	}
 }
 
@@ -18,7 +18,7 @@ type PolicyCheckCommandRunner struct {
 	cmdRunner           *DefaultCommandRunner
 	cmds                []models.ProjectCommandContext
 	commitStatusUpdater CommitStatusUpdater
-	prjCmdRunnerFunc    cmdRunnerFunc
+	prjCmdRunner        ProjectPolicyCheckCommandRunner
 }
 
 func (p *PolicyCheckCommandRunner) Run(ctx *CommandContext) {
@@ -34,9 +34,9 @@ func (p *PolicyCheckCommandRunner) Run(ctx *CommandContext) {
 	var result CommandResult
 	if p.isParallelEnabled() {
 		ctx.Log.Info("Running policy_checks in parallel")
-		result = runProjectCmdsParallel(p.cmds, p.prjCmdRunnerFunc)
+		result = runProjectCmdsParallel(p.cmds, p.prjCmdRunner.PolicyCheck)
 	} else {
-		result = runProjectCmds(p.cmds, p.prjCmdRunnerFunc)
+		result = runProjectCmds(p.cmds, p.prjCmdRunner.PolicyCheck)
 	}
 
 	p.cmdRunner.updatePull(ctx, PolicyCheckCommand{}, result)

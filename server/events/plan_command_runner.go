@@ -10,35 +10,33 @@ func NewPlanCommandRunner(
 	isAutoplan bool,
 ) *PlanCommandRunner {
 	return &PlanCommandRunner{
-		isAutoplan:                isAutoplan,
-		cmdRunner:                 cmdRunner,
-		silenceVCSStatusNoPlans:   cmdRunner.SilenceVCSStatusNoPlans,
-		globalAutomerge:           cmdRunner.GlobalAutomerge,
-		vcsClient:                 cmdRunner.VCSClient,
-		commitStatusUpdater:       cmdRunner.CommitStatusUpdater,
-		prjCmdBuilderFunc:         cmdRunner.ProjectCommandBuilder.BuildPlanCommands,
-		prjCmdAutoplanBuilderFunc: cmdRunner.ProjectCommandBuilder.BuildAutoplanCommands,
-		prjCmdRunnerFunc:          cmdRunner.ProjectCommandRunner.Plan,
+		isAutoplan:              isAutoplan,
+		cmdRunner:               cmdRunner,
+		silenceVCSStatusNoPlans: cmdRunner.SilenceVCSStatusNoPlans,
+		globalAutomerge:         cmdRunner.GlobalAutomerge,
+		vcsClient:               cmdRunner.VCSClient,
+		commitStatusUpdater:     cmdRunner.CommitStatusUpdater,
+		prjCmdBuilder:           cmdRunner.ProjectCommandBuilder,
+		prjCmdRunner:            cmdRunner.ProjectCommandRunner,
 	}
 }
 
 type PlanCommandRunner struct {
-	cmdRunner                 *DefaultCommandRunner
-	vcsClient                 vcs.Client
-	globalAutomerge           bool
-	isAutoplan                bool
-	silenceVCSStatusNoPlans   bool
-	commitStatusUpdater       CommitStatusUpdater
-	prjCmdBuilderFunc         cmdBuilderFunc
-	prjCmdRunnerFunc          cmdRunnerFunc
-	prjCmdAutoplanBuilderFunc cmdAutoplanBuilderFunc
+	cmdRunner               *DefaultCommandRunner
+	vcsClient               vcs.Client
+	globalAutomerge         bool
+	isAutoplan              bool
+	silenceVCSStatusNoPlans bool
+	commitStatusUpdater     CommitStatusUpdater
+	prjCmdBuilder           ProjectPlanCommandBuilder
+	prjCmdRunner            ProjectPlanCommandRunner
 }
 
 func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
-	projectCmds, err := p.prjCmdAutoplanBuilderFunc(ctx)
+	projectCmds, err := p.prjCmdBuilder.BuildAutoplanCommands(ctx)
 	if err != nil {
 		if statusErr := p.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.FailedCommitStatus, models.PlanCommand); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
@@ -72,9 +70,9 @@ func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
 	var result CommandResult
 	if p.isParallelEnabled(projectCmds) {
 		ctx.Log.Info("Running plans in parallel")
-		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunnerFunc)
+		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunner.Plan)
 	} else {
-		result = runProjectCmds(projectCmds, p.prjCmdRunnerFunc)
+		result = runProjectCmds(projectCmds, p.prjCmdRunner.Plan)
 	}
 
 	if p.cmdRunner.automergeEnabled(projectCmds) && result.HasErrors() {
@@ -111,7 +109,7 @@ func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
 
-	projectCmds, err := p.prjCmdBuilderFunc(ctx, cmd)
+	projectCmds, err := p.prjCmdBuilder.BuildPlanCommands(ctx, cmd)
 	if err != nil {
 		if statusErr := p.commitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, models.PlanCommand); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
@@ -126,9 +124,9 @@ func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 	var result CommandResult
 	if p.isParallelEnabled(projectCmds) {
 		ctx.Log.Info("Running applies in parallel")
-		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunnerFunc)
+		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunner.Plan)
 	} else {
-		result = runProjectCmds(projectCmds, p.prjCmdRunnerFunc)
+		result = runProjectCmds(projectCmds, p.prjCmdRunner.Plan)
 	}
 
 	if p.cmdRunner.automergeEnabled(projectCmds) && result.HasErrors() {
