@@ -186,8 +186,8 @@ func TestParse_SubcommandUsage(t *testing.T) {
 		"atlantis plan --help",
 		"atlantis apply -h",
 		"atlantis apply --help",
-		"atlantis approve_policy -h",
-		"atlantis approve_policy --help",
+		"atlantis approve_policies -h",
+		"atlantis approve_policies --help",
 	}
 	for _, c := range comments {
 		r := commentParser.Parse(c, models.Github)
@@ -534,7 +534,7 @@ func TestParse_Parsing(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		for _, cmdName := range []string{"plan", "apply", "approve_policy"} {
+		for _, cmdName := range []string{"plan", "apply"} {
 			comment := fmt.Sprintf("atlantis %s %s", cmdName, test.flags)
 			t.Run(comment, func(t *testing.T) {
 				r := commentParser.Parse(comment, models.Github)
@@ -550,8 +550,8 @@ func TestParse_Parsing(t *testing.T) {
 				if cmdName == "apply" {
 					Assert(t, r.Command.Name == models.ApplyCommand, "did not parse comment %q as apply command", comment)
 				}
-				if cmdName == "approve_policy" {
-					Assert(t, r.Command.Name == models.ApprovePoliciesCommand, "did not parse comment %q as approve_policy command", comment)
+				if cmdName == "approve_policies" {
+					Assert(t, r.Command.Name == models.ApprovePoliciesCommand, "did not parse comment %q as approve_policies command", comment)
 				}
 			})
 		}
@@ -717,14 +717,8 @@ var ApplyUsage = `Usage of apply:
   -w, --workspace string   Apply the plan for this Terraform workspace.
 `
 
-var ApprovePolicyUsage = `Usage of approve_policy:
-  -d, --dir string         Approve policies for this directory, relative to root of
-                           repo, ex. 'child/dir'.
-  -p, --project string     Approve policies for this project. Refers to the name of
-                           the project configured in atlantis.yaml. Cannot be used
-                           at same time as workspace or dir flags.
-      --verbose            Append Atlantis log to comment.
-  -w, --workspace string   Approve policies for this Terraform workspace.
+var ApprovePolicyUsage = `Usage of approve_policies:
+      --verbose   Append Atlantis log to comment.
 `
 var UnlockUsage = "`Usage of unlock:`\n\n ```cmake\n" +
 	`atlantis unlock	
