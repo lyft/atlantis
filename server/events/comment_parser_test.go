@@ -112,14 +112,24 @@ func TestParse_UnusedArguments(t *testing.T) {
 			"arg arg2 --",
 			"arg arg2",
 		},
+		{
+			models.ApprovePoliciesCommand,
+			"arg arg2 --",
+			"arg arg2",
+		},
 	}
 	for _, c := range cases {
 		comment := fmt.Sprintf("atlantis %s %s", c.Command.String(), c.Args)
 		t.Run(comment, func(t *testing.T) {
 			r := commentParser.Parse(comment, models.Github)
-			usage := PlanUsage
-			if c.Command == models.ApplyCommand {
+			var usage string
+			switch c.Command {
+			case models.PlanCommand:
+				usage = PlanUsage
+			case models.ApplyCommand:
 				usage = ApplyUsage
+			case models.ApprovePoliciesCommand:
+				usage = ApprovePolicyUsage
 			}
 			Equals(t, fmt.Sprintf("```\nError: unknown argument(s) – %s.\n%s```", c.Unused, usage), r.CommentResponse)
 		})
@@ -176,6 +186,8 @@ func TestParse_SubcommandUsage(t *testing.T) {
 		"atlantis plan --help",
 		"atlantis apply -h",
 		"atlantis apply --help",
+		"atlantis approve_policies -h",
+		"atlantis approve_policies --help",
 	}
 	for _, c := range comments {
 		r := commentParser.Parse(c, models.Github)
@@ -520,6 +532,7 @@ func TestParse_Parsing(t *testing.T) {
 			"",
 		},
 	}
+
 	for _, test := range cases {
 		for _, cmdName := range []string{"plan", "apply"} {
 			comment := fmt.Sprintf("atlantis %s %s", cmdName, test.flags)
@@ -536,6 +549,9 @@ func TestParse_Parsing(t *testing.T) {
 				}
 				if cmdName == "apply" {
 					Assert(t, r.Command.Name == models.ApplyCommand, "did not parse comment %q as apply command", comment)
+				}
+				if cmdName == "approve_policies" {
+					Assert(t, r.Command.Name == models.ApprovePoliciesCommand, "did not parse comment %q as approve_policies command", comment)
 				}
 			})
 		}
@@ -699,6 +715,10 @@ var ApplyUsage = `Usage of apply:
                            at same time as workspace or dir flags.
       --verbose            Append Atlantis log to comment.
   -w, --workspace string   Apply the plan for this Terraform workspace.
+`
+
+var ApprovePolicyUsage = `Usage of approve_policies:
+      --verbose   Append Atlantis log to comment.
 `
 var UnlockUsage = "`Usage of unlock:`\n\n ```cmake\n" +
 	`atlantis unlock	
