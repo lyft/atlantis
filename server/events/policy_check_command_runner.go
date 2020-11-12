@@ -4,24 +4,25 @@ import "github.com/runatlantis/atlantis/server/events/models"
 
 func NewPolicyCheckCommandRunner(
 	cmdRunner *DefaultCommandRunner,
-	commitStatusUpdater CommitStatusUpdater,
-) *policyCheckCommandRunner {
-	return &policyCheckCommandRunner{
+	prjCmds []models.ProjectCommandContext,
+) *PolicyCheckCommandRunner {
+	return &PolicyCheckCommandRunner{
 		cmdRunner:           cmdRunner,
-		commitStatusUpdater: commitStatusUpdater,
+		cmds:                prjCmds,
+		commitStatusUpdater: cmdRunner.CommitStatusUpdater,
 		prjCmdRunnerFunc:    cmdRunner.ProjectCommandRunner.PolicyCheck,
 	}
 }
 
-type policyCheckCommandRunner struct {
+type PolicyCheckCommandRunner struct {
 	cmdRunner           *DefaultCommandRunner
-	ctx                 *CommandContext
+	cmds                []models.ProjectCommandContext
 	commitStatusUpdater CommitStatusUpdater
 	prjCmdRunnerFunc    cmdRunnerFunc
 }
 
-func (p *policyCheckCommandRunner) Run(ctx *CommandContext, projectCmds []models.ProjectCommandContext) {
-	if len(projectCmds) == 0 {
+func (p *PolicyCheckCommandRunner) Run(ctx *CommandContext) {
+	if len(p.cmds) == 0 {
 		return
 	}
 
@@ -31,11 +32,11 @@ func (p *policyCheckCommandRunner) Run(ctx *CommandContext, projectCmds []models
 	}
 
 	var result CommandResult
-	if p.isParallelEnabled(projectCmds) {
+	if p.isParallelEnabled() {
 		ctx.Log.Info("Running policy_checks in parallel")
-		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunnerFunc)
+		result = runProjectCmdsParallel(p.cmds, p.prjCmdRunnerFunc)
 	} else {
-		result = runProjectCmds(projectCmds, p.prjCmdRunnerFunc)
+		result = runProjectCmds(p.cmds, p.prjCmdRunnerFunc)
 	}
 
 	p.cmdRunner.updatePull(ctx, PolicyCheckCommand{}, result)
@@ -48,7 +49,7 @@ func (p *policyCheckCommandRunner) Run(ctx *CommandContext, projectCmds []models
 	p.updateCommitStatus(ctx, pullStatus)
 }
 
-func (p *policyCheckCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus models.PullStatus) {
+func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus models.PullStatus) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus
@@ -65,6 +66,6 @@ func (p *policyCheckCommandRunner) updateCommitStatus(ctx *CommandContext, pullS
 	}
 }
 
-func (a *policyCheckCommandRunner) isParallelEnabled(projectCmds []models.ProjectCommandContext) bool {
-	return len(projectCmds) > 0 && projectCmds[0].ParallelPolicyCheckEnabled
+func (p *PolicyCheckCommandRunner) isParallelEnabled() bool {
+	return len(p.cmds) > 0 && p.cmds[0].ParallelPolicyCheckEnabled
 }

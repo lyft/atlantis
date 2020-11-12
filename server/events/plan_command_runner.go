@@ -8,8 +8,8 @@ import (
 func NewPlanCommandRunner(
 	cmdRunner *DefaultCommandRunner,
 	isAutoplan bool,
-) *planCommandRunner {
-	return &planCommandRunner{
+) *PlanCommandRunner {
+	return &PlanCommandRunner{
 		isAutoplan:                isAutoplan,
 		cmdRunner:                 cmdRunner,
 		silenceVCSStatusNoPlans:   cmdRunner.SilenceVCSStatusNoPlans,
@@ -22,7 +22,7 @@ func NewPlanCommandRunner(
 	}
 }
 
-type planCommandRunner struct {
+type PlanCommandRunner struct {
 	cmdRunner                 *DefaultCommandRunner
 	vcsClient                 vcs.Client
 	globalAutomerge           bool
@@ -34,7 +34,7 @@ type planCommandRunner struct {
 	prjCmdAutoplanBuilderFunc cmdAutoplanBuilderFunc
 }
 
-func (p *planCommandRunner) runAutoplan(ctx *CommandContext) {
+func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
@@ -70,7 +70,7 @@ func (p *planCommandRunner) runAutoplan(ctx *CommandContext) {
 
 	// Only run commands in parallel if enabled
 	var result CommandResult
-	if p.isParallelEnabled(ctx, projectCmds) {
+	if p.isParallelEnabled(projectCmds) {
 		ctx.Log.Info("Running plans in parallel")
 		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunnerFunc)
 	} else {
@@ -97,15 +97,12 @@ func (p *planCommandRunner) runAutoplan(ctx *CommandContext) {
 		!(result.HasErrors() || result.PlansDeleted) {
 		// Run policy_check command
 		ctx.Log.Info("Running policy_checks for all plans")
-		pcCmdRunner := NewPolicyCheckCommandRunner(
-			p.cmdRunner,
-			p.commitStatusUpdater,
-		)
-		pcCmdRunner.Run(ctx, policyCheckCmds)
+		pcCmdRunner := NewPolicyCheckCommandRunner(p.cmdRunner, policyCheckCmds)
+		pcCmdRunner.Run(ctx)
 	}
 }
 
-func (p *planCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
+func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
@@ -127,7 +124,7 @@ func (p *planCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 
 	// Only run commands in parallel if enabled
 	var result CommandResult
-	if p.isParallelEnabled(ctx, projectCmds) {
+	if p.isParallelEnabled(projectCmds) {
 		ctx.Log.Info("Running applies in parallel")
 		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunnerFunc)
 	} else {
@@ -158,15 +155,12 @@ func (p *planCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 	if len(result.ProjectResults) > 0 &&
 		!(result.HasErrors() || result.PlansDeleted) {
 		ctx.Log.Info("Running policy check for %s", cmd.String())
-		pcCmdRunner := NewPolicyCheckCommandRunner(
-			p.cmdRunner,
-			p.commitStatusUpdater,
-		)
-		pcCmdRunner.Run(ctx, policyCheckCmds)
+		pcCmdRunner := NewPolicyCheckCommandRunner(p.cmdRunner, policyCheckCmds)
+		pcCmdRunner.Run(ctx)
 	}
 }
 
-func (p *planCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
+func (p *PlanCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	if p.isAutoplan {
 		p.runAutoplan(ctx)
 	} else {
@@ -174,7 +168,7 @@ func (p *planCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	}
 }
 
-func (p *planCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus models.PullStatus) {
+func (p *PlanCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus models.PullStatus) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus
@@ -202,7 +196,7 @@ func (p *planCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus m
 }
 
 // deletePlans deletes all plans generated in this ctx.
-func (p *planCommandRunner) deletePlans(ctx *CommandContext) {
+func (p *PlanCommandRunner) deletePlans(ctx *CommandContext) {
 	pullDir, err := p.cmdRunner.WorkingDir.GetPullDir(ctx.Pull.BaseRepo, ctx.Pull)
 	if err != nil {
 		ctx.Log.Err("getting pull dir: %s", err)
@@ -212,7 +206,7 @@ func (p *planCommandRunner) deletePlans(ctx *CommandContext) {
 	}
 }
 
-func (p *planCommandRunner) partitionProjectCmds(
+func (p *PlanCommandRunner) partitionProjectCmds(
 	ctx *CommandContext,
 	cmds []models.ProjectCommandContext,
 ) (
@@ -232,6 +226,6 @@ func (p *planCommandRunner) partitionProjectCmds(
 	return
 }
 
-func (a *planCommandRunner) isParallelEnabled(ctx *CommandContext, projectCmds []models.ProjectCommandContext) bool {
+func (p *PlanCommandRunner) isParallelEnabled(projectCmds []models.ProjectCommandContext) bool {
 	return len(projectCmds) > 0 && projectCmds[0].ParallelPlanEnabled
 }

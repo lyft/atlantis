@@ -71,7 +71,7 @@ func TestApplyUpdateCommitStatus(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			csu := &MockCSU{}
-			cr := &applyCommandRunner{
+			cr := &ApplyCommandRunner{
 				commitStatusUpdater: csu,
 			}
 			cr.updateCommitStatus(&CommandContext{}, c.pullStatus)
@@ -133,7 +133,7 @@ func TestPlanUpdateCommitStatus(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			csu := &MockCSU{}
-			cr := &planCommandRunner{
+			cr := &PlanCommandRunner{
 				commitStatusUpdater: csu,
 			}
 			cr.updateCommitStatus(&CommandContext{}, c.pullStatus)

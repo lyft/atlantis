@@ -8,8 +8,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
-func NewApplyCommandRunner(cmdRunner *DefaultCommandRunner) *applyCommandRunner {
-	return &applyCommandRunner{
+func NewApplyCommandRunner(cmdRunner *DefaultCommandRunner) *ApplyCommandRunner {
+	return &ApplyCommandRunner{
 		cmdRunner:           cmdRunner,
 		vcsClient:           cmdRunner.VCSClient,
 		disableApplyAll:     cmdRunner.DisableApplyAll,
@@ -19,7 +19,7 @@ func NewApplyCommandRunner(cmdRunner *DefaultCommandRunner) *applyCommandRunner 
 	}
 }
 
-type applyCommandRunner struct {
+type ApplyCommandRunner struct {
 	cmdRunner           *DefaultCommandRunner
 	disableApplyAll     bool
 	vcsClient           vcs.Client
@@ -28,7 +28,7 @@ type applyCommandRunner struct {
 	prjCmdRunnerFunc    cmdRunnerFunc
 }
 
-func (a *applyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
+func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
@@ -98,11 +98,11 @@ func (a *applyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	}
 }
 
-func (a *applyCommandRunner) isParallelEnabled(projectCmds []models.ProjectCommandContext) bool {
+func (a *ApplyCommandRunner) isParallelEnabled(projectCmds []models.ProjectCommandContext) bool {
 	return len(projectCmds) > 0 && projectCmds[0].ParallelApplyEnabled
 }
 
-func (a *applyCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus models.PullStatus) {
+func (a *ApplyCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus models.PullStatus) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus

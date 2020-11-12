@@ -8,19 +8,19 @@ import (
 func NewUnlockCommandRunner(
 	deleteLockCommand DeleteLockCommand,
 	vcsClient vcs.Client,
-) *unlockCommandRunner {
-	return &unlockCommandRunner{
+) *UnlockCommandRunner {
+	return &UnlockCommandRunner{
 		deleteLockCommand: deleteLockCommand,
 		vcsClient:         vcsClient,
 	}
 }
 
-type unlockCommandRunner struct {
+type UnlockCommandRunner struct {
 	vcsClient         vcs.Client
 	deleteLockCommand DeleteLockCommand
 }
 
-func (u *unlockCommandRunner) Run(
+func (u *UnlockCommandRunner) Run(
 	ctx *CommandContext,
 	cmd *CommentCommand,
 ) {
@@ -36,6 +36,4 @@ func (u *unlockCommandRunner) Run(
 	if commentErr := u.vcsClient.CreateComment(baseRepo, pullNum, vcsMessage, models.UnlockCommand.String()); commentErr != nil {
 		ctx.Log.Err("unable to comment: %s", commentErr)
 	}
-
-	return
 }

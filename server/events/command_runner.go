@@ -70,8 +70,8 @@ type cmdRunnerFunc func(ctx models.ProjectCommandContext) models.ProjectResult
 type cmdBuilderFunc func(ctx *CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error)
 type cmdAutoplanBuilderFunc func(ctx *CommandContext) ([]models.ProjectCommandContext, error)
 
-// commentCommandRunner runs individual command workflows.
-type commentCommandRunner interface {
+// CommentCommandRunner runs individual command workflows.
+type CommentCommandRunner interface {
 	Run(*CommandContext, *CommentCommand)
 }
 
@@ -79,7 +79,7 @@ func buildCommentCommandRunner(
 	cmdRunner *DefaultCommandRunner,
 	cmdName models.CommandName,
 	isAutoplan bool,
-) commentCommandRunner {
+) CommentCommandRunner {
 	switch cmdName {
 	case models.ApplyCommand:
 		return NewApplyCommandRunner(cmdRunner)
@@ -212,35 +212,6 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 	cmdRunner.Run(ctx, cmd)
 }
 
-func (c *DefaultCommandRunner) automerge(ctx *CommandContext, pullStatus models.PullStatus) {
-	// We only automerge if all projects have been successfully applied.
-	for _, p := range pullStatus.Projects {
-		if p.Status != models.AppliedPlanStatus {
-			ctx.Log.Info("not automerging because project at dir %q, workspace %q has status %q", p.RepoRelDir, p.Workspace, p.Status.String())
-			return
-		}
-	}
-
-	// Comment that we're automerging the pull request.
-	if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, automergeComment, models.ApplyCommand.String()); err != nil {
-		ctx.Log.Err("failed to comment about automerge: %s", err)
-		// Commenting isn't required so continue.
-	}
-
-	// Make the API call to perform the merge.
-	ctx.Log.Info("automerging pull request")
-	err := c.VCSClient.MergePull(ctx.Pull)
-
-	if err != nil {
-		ctx.Log.Err("automerging failed: %s", err)
-
-		failureComment := fmt.Sprintf("Automerging failed:\n```\n%s\n```", err)
-		if commentErr := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, failureComment, models.ApplyCommand.String()); commentErr != nil {
-			ctx.Log.Err("failed to comment about automerge failing: %s", err)
-		}
-	}
-}
-
 func (c *DefaultCommandRunner) getGithubData(baseRepo models.Repo, pullNum int) (models.PullRequest, models.Repo, error) {
 	if c.GithubPullGetter == nil {
 		return models.PullRequest{}, models.Repo{}, errors.New("Atlantis not configured to support GitHub")
@@ -286,6 +257,45 @@ func (c *DefaultCommandRunner) getAzureDevopsData(baseRepo models.Repo, pullNum 
 func (c *DefaultCommandRunner) buildLogger(repoFullName string, pullNum int) *logging.SimpleLogger {
 	src := fmt.Sprintf("%s#%d", repoFullName, pullNum)
 	return c.Logger.NewLogger(src, true, c.Logger.GetLevel())
+}
+
+func (c *DefaultCommandRunner) ensureValidRepoMetadata(
+	baseRepo models.Repo,
+	maybeHeadRepo *models.Repo,
+	maybePull *models.PullRequest,
+	user models.User,
+	pullNum int,
+	log *logging.SimpleLogger,
+) (headRepo models.Repo, pull models.PullRequest, err error) {
+	if maybeHeadRepo != nil {
+		headRepo = *maybeHeadRepo
+	}
+
+	switch baseRepo.VCSHost.Type {
+	case models.Github:
+		pull, headRepo, err = c.getGithubData(baseRepo, pullNum)
+	case models.Gitlab:
+		pull, err = c.getGitlabData(baseRepo, pullNum)
+	case models.BitbucketCloud, models.BitbucketServer:
+		if maybePull == nil {
+			err = errors.New("pull request should not be nil–this is a bug")
+			break
+		}
+		pull = *maybePull
+	case models.AzureDevops:
+		pull, headRepo, err = c.getAzureDevopsData(baseRepo, pullNum)
+	default:
+		err = errors.New("Unknown VCS type–this is a bug")
+	}
+
+	if err != nil {
+		log.Err(err.Error())
+		if commentErr := c.VCSClient.CreateComment(baseRepo, pullNum, fmt.Sprintf("`Error: %s`", err), ""); commentErr != nil {
+			log.Err("unable to comment: %s", commentErr)
+		}
+	}
+
+	return
 }
 
 func (c *DefaultCommandRunner) validateCtxAndComment(ctx *CommandContext) bool {
@@ -365,43 +375,33 @@ func (c *DefaultCommandRunner) updateDB(ctx *CommandContext, pull models.PullReq
 	return c.DB.UpdatePullWithResults(pull, filtered)
 }
 
-func (d *DefaultCommandRunner) ensureValidRepoMetadata(
-	baseRepo models.Repo,
-	maybeHeadRepo *models.Repo,
-	maybePull *models.PullRequest,
-	user models.User,
-	pullNum int,
-	log *logging.SimpleLogger,
-) (headRepo models.Repo, pull models.PullRequest, err error) {
-	if maybeHeadRepo != nil {
-		headRepo = *maybeHeadRepo
+func (c *DefaultCommandRunner) automerge(ctx *CommandContext, pullStatus models.PullStatus) {
+	// We only automerge if all projects have been successfully applied.
+	for _, p := range pullStatus.Projects {
+		if p.Status != models.AppliedPlanStatus {
+			ctx.Log.Info("not automerging because project at dir %q, workspace %q has status %q", p.RepoRelDir, p.Workspace, p.Status.String())
+			return
+		}
 	}
 
-	switch baseRepo.VCSHost.Type {
-	case models.Github:
-		pull, headRepo, err = d.getGithubData(baseRepo, pullNum)
-	case models.Gitlab:
-		pull, err = d.getGitlabData(baseRepo, pullNum)
-	case models.BitbucketCloud, models.BitbucketServer:
-		if maybePull == nil {
-			err = errors.New("pull request should not be nil–this is a bug")
-			break
-		}
-		pull = *maybePull
-	case models.AzureDevops:
-		pull, headRepo, err = d.getAzureDevopsData(baseRepo, pullNum)
-	default:
-		err = errors.New("Unknown VCS type–this is a bug")
+	// Comment that we're automerging the pull request.
+	if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, automergeComment, models.ApplyCommand.String()); err != nil {
+		ctx.Log.Err("failed to comment about automerge: %s", err)
+		// Commenting isn't required so continue.
 	}
+
+	// Make the API call to perform the merge.
+	ctx.Log.Info("automerging pull request")
+	err := c.VCSClient.MergePull(ctx.Pull)
 
 	if err != nil {
-		log.Err(err.Error())
-		if commentErr := d.VCSClient.CreateComment(baseRepo, pullNum, fmt.Sprintf("`Error: %s`", err), ""); commentErr != nil {
-			log.Err("unable to comment: %s", commentErr)
+		ctx.Log.Err("automerging failed: %s", err)
+
+		failureComment := fmt.Sprintf("Automerging failed:\n```\n%s\n```", err)
+		if commentErr := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, failureComment, models.ApplyCommand.String()); commentErr != nil {
+			ctx.Log.Err("failed to comment about automerge failing: %s", err)
 		}
 	}
-
-	return
 }
 
 // automergeEnabled returns true if automerging is enabled in this context.
@@ -410,11 +410,6 @@ func (c *DefaultCommandRunner) automergeEnabled(projectCmds []models.ProjectComm
 	return c.GlobalAutomerge ||
 		// Otherwise we check if this repo is configured for automerging.
 		(len(projectCmds) > 0 && projectCmds[0].AutomergeEnabled)
-}
-
-// parallelPlanEnabled returns true if parallel plan is enabled in this context.
-func (c *DefaultCommandRunner) parallelPlanEnabled(ctx *CommandContext, projectCmds []models.ProjectCommandContext) bool {
-	return len(projectCmds) > 0 && projectCmds[0].ParallelPlanEnabled
 }
 
 // automergeComment is the comment that gets posted when Atlantis automatically
