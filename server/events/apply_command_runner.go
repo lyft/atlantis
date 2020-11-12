@@ -93,7 +93,7 @@ func (a *applyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 
 	a.updateCommitStatus(ctx, pullStatus)
 
-	if a.cmdRunner.automergeEnabled(ctx, projectCmds) {
+	if a.cmdRunner.automergeEnabled(projectCmds) {
 		a.cmdRunner.automerge(ctx, pullStatus)
 	}
 }

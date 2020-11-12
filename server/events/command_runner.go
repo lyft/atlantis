@@ -15,12 +15,10 @@ package events
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mcdafydd/go-azuredevops/azuredevops"
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"github.com/runatlantis/atlantis/server/events/db"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
@@ -164,6 +162,10 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 	}
 
 	autoPlanRunner := buildCommentCommandRunner(c, models.PlanCommand, true)
+	if autoPlanRunner == nil {
+		ctx.Log.Err("invalid autoplan command")
+		return
+	}
 
 	autoPlanRunner.Run(ctx, nil)
 }
@@ -210,62 +212,6 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 	cmdRunner.Run(ctx, cmd)
 }
 
-func (c *DefaultCommandRunner) partitionProjectCmds(
-	ctx *CommandContext,
-	cmds []models.ProjectCommandContext,
-) (
-	projectCmds []models.ProjectCommandContext,
-	policyCheckCmds []models.ProjectCommandContext,
-) {
-	for _, cmd := range cmds {
-		switch cmd.CommandName {
-		case models.PlanCommand:
-			projectCmds = append(projectCmds, cmd)
-		case models.PolicyCheckCommand:
-			policyCheckCmds = append(policyCheckCmds, cmd)
-		default:
-			ctx.Log.Err("%s is not supported", cmd.CommandName)
-		}
-	}
-	return
-}
-
-func (c *DefaultCommandRunner) updateCommitStatus(ctx *CommandContext, cmd models.CommandName, pullStatus models.PullStatus) {
-	var numSuccess int
-	var numErrored int
-	status := models.SuccessCommitStatus
-
-	switch cmd {
-	case models.PlanCommand:
-		numErrored = pullStatus.StatusCount(models.ErroredPlanStatus)
-		// We consider anything that isn't a plan error as a plan success.
-		// For example, if there is an apply error, that means that at least a
-		// plan was generated successfully.
-		numSuccess = len(pullStatus.Projects) - numErrored
-	case models.PolicyCheckCommand:
-		numSuccess = pullStatus.StatusCount(models.PassedPolicyCheckStatus)
-		numErrored = pullStatus.StatusCount(models.ErroredPolicyCheckStatus)
-	case models.ApplyCommand:
-		numSuccess = pullStatus.StatusCount(models.AppliedPlanStatus)
-		numErrored = pullStatus.StatusCount(models.ErroredApplyStatus)
-	default:
-		ctx.Log.Err("cmd %s is not supported", cmd)
-		return
-	}
-
-	if numErrored > 0 {
-		status = models.FailedCommitStatus
-	} else if numSuccess < len(pullStatus.Projects) && cmd == models.ApplyCommand {
-		// If there are plans that haven't been applied yet, we'll use a pending
-		// status.
-		status = models.PendingCommitStatus
-	}
-
-	if err := c.CommitStatusUpdater.UpdateCombinedCount(ctx.Pull.BaseRepo, ctx.Pull, status, cmd, numSuccess, len(pullStatus.Projects)); err != nil {
-		ctx.Log.Warn("unable to update commit status: %s", err)
-	}
-}
-
 func (c *DefaultCommandRunner) automerge(ctx *CommandContext, pullStatus models.PullStatus) {
 	// We only automerge if all projects have been successfully applied.
 	for _, p := range pullStatus.Projects {
@@ -293,66 +239,6 @@ func (c *DefaultCommandRunner) automerge(ctx *CommandContext, pullStatus models.
 			ctx.Log.Err("failed to comment about automerge failing: %s", err)
 		}
 	}
-}
-
-func (c *DefaultCommandRunner) runProjectCmdsParallel(cmds []models.ProjectCommandContext, cmdName models.CommandName) CommandResult {
-	var results []models.ProjectResult
-	mux := &sync.Mutex{}
-
-	wg := sizedwaitgroup.New(15)
-	for _, pCmd := range cmds {
-		pCmd := pCmd
-		var execute func()
-		wg.Add()
-
-		switch cmdName {
-		case models.PlanCommand:
-			execute = func() {
-				defer wg.Done()
-				res := c.ProjectCommandRunner.Plan(pCmd)
-				mux.Lock()
-				results = append(results, res)
-				mux.Unlock()
-			}
-		case models.PolicyCheckCommand:
-			execute = func() {
-				defer wg.Done()
-				res := c.ProjectCommandRunner.PolicyCheck(pCmd)
-				mux.Lock()
-				results = append(results, res)
-				mux.Unlock()
-			}
-		case models.ApplyCommand:
-			execute = func() {
-				defer wg.Done()
-				res := c.ProjectCommandRunner.Apply(pCmd)
-				mux.Lock()
-				results = append(results, res)
-				mux.Unlock()
-			}
-		}
-		go execute()
-	}
-
-	wg.Wait()
-	return CommandResult{ProjectResults: results}
-}
-
-func (c *DefaultCommandRunner) runProjectCmds(cmds []models.ProjectCommandContext, cmdName models.CommandName) CommandResult {
-	var results []models.ProjectResult
-	for _, pCmd := range cmds {
-		var res models.ProjectResult
-		switch cmdName {
-		case models.PlanCommand:
-			res = c.ProjectCommandRunner.Plan(pCmd)
-		case models.PolicyCheckCommand:
-			res = c.ProjectCommandRunner.PolicyCheck(pCmd)
-		case models.ApplyCommand:
-			res = c.ProjectCommandRunner.Apply(pCmd)
-		}
-		results = append(results, res)
-	}
-	return CommandResult{ProjectResults: results}
 }
 
 func (c *DefaultCommandRunner) getGithubData(baseRepo models.Repo, pullNum int) (models.PullRequest, models.Repo, error) {
@@ -463,17 +349,6 @@ func (c *DefaultCommandRunner) logPanics(baseRepo models.Repo, pullNum int, logg
 	}
 }
 
-// deletePlans deletes all plans generated in this ctx.
-func (c *DefaultCommandRunner) deletePlans(ctx *CommandContext) {
-	pullDir, err := c.WorkingDir.GetPullDir(ctx.Pull.BaseRepo, ctx.Pull)
-	if err != nil {
-		ctx.Log.Err("getting pull dir: %s", err)
-	}
-	if err := c.PendingPlanFinder.DeletePlans(pullDir); err != nil {
-		ctx.Log.Err("deleting pending plans: %s", err)
-	}
-}
-
 func (c *DefaultCommandRunner) updateDB(ctx *CommandContext, pull models.PullRequest, results []models.ProjectResult) (models.PullStatus, error) {
 	// Filter out results that errored due to the directory not existing. We
 	// don't store these in the database because they would never be "apply-able"
@@ -530,7 +405,7 @@ func (d *DefaultCommandRunner) ensureValidRepoMetadata(
 }
 
 // automergeEnabled returns true if automerging is enabled in this context.
-func (c *DefaultCommandRunner) automergeEnabled(ctx *CommandContext, projectCmds []models.ProjectCommandContext) bool {
+func (c *DefaultCommandRunner) automergeEnabled(projectCmds []models.ProjectCommandContext) bool {
 	// If the global automerge is set, we always automerge.
 	return c.GlobalAutomerge ||
 		// Otherwise we check if this repo is configured for automerging.
