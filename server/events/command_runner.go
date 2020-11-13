@@ -90,6 +90,8 @@ func buildCommentCommandRunner(
 		)
 	case models.PlanCommand:
 		return NewPlanCommandRunner(cmdRunner, isAutoplan)
+	case models.ApprovePoliciesCommand:
+		return NewApprovePoliciesCommandRunner(cmdRunner)
 	}
 
 	return nil
@@ -135,6 +137,8 @@ type DefaultCommandRunner struct {
 	DB                *db.BoltDB
 	Drainer           *Drainer
 	DeleteLockCommand DeleteLockCommand
+	// PolicyApprovers list of usernames that are allowed to approve failing policies
+	PolicyApprovers []string
 }
 
 // RunAutoplanCommand runs plan and policy_checks when a pull request is opened or updated.

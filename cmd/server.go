@@ -52,6 +52,7 @@ const (
 	CheckoutStrategyFlag       = "checkout-strategy"
 	DataDirFlag                = "data-dir"
 	DefaultTFVersionFlag       = "default-tf-version"
+	DefinePolicyApprovers      = "define-policy-approvers"
 	DisableApplyAllFlag        = "disable-apply-all"
 	DisableAutoplanFlag        = "disable-autoplan"
 	DisableMarkdownFoldingFlag = "disable-markdown-folding"
@@ -109,6 +110,13 @@ const (
 	DefaultTFEHostname      = "app.terraform.io"
 	DefaultVCSStatusName    = "atlantis"
 )
+
+var sliceStringFlags = map[string]stringFlag{
+	DefinePolicyApprovers: {
+		description:  "Specify a comma separated list of github usernames that are allowed to approve failing policies. Required if --enable-policy-checks is set.",
+		defaultValue: "",
+	},
+}
 
 var stringFlags = map[string]stringFlag{
 	ADTokenFlag: {
@@ -434,12 +442,25 @@ func (s *ServerCmd) Init() *cobra.Command {
 	s.Viper.AutomaticEnv()
 	s.Viper.SetTypeByDefaultValue(true)
 
-	c.SetUsageTemplate(usageTmpl(stringFlags, intFlags, boolFlags))
+	c.SetUsageTemplate(usageTmpl(sliceStringFlags, stringFlags, intFlags, boolFlags))
 	// If a user passes in an invalid flag, tell them what the flag was.
 	c.SetFlagErrorFunc(func(c *cobra.Command, err error) error {
 		s.printErr(err)
 		return err
 	})
+
+	// Set string slice flags.
+	for name, f := range sliceStringFlags {
+		usage := f.description
+		if f.defaultValue != "" {
+			usage = fmt.Sprintf("%s (default %q)", usage, f.defaultValue)
+		}
+		c.Flags().StringSlice(name, []string{}, usage+"\n")
+		s.Viper.BindPFlag(name, c.Flags().Lookup(name)) // nolint: errcheck
+		if f.hidden {
+			c.Flags().MarkHidden(name) // nolint: errcheck
+		}
+	}
 
 	// Set string flags.
 	for name, f := range stringFlags {
@@ -661,6 +682,10 @@ func (s *ServerCmd) validate(userConfig server.UserConfig) error {
 
 	if userConfig.EnablePolicyChecksFlag && userConfig.TFEToken != "" {
 		return fmt.Errorf("--%s flag cannot be used together with --%s", EnablePolicyChecksFlag, TFETokenFlag)
+	}
+
+	if userConfig.EnablePolicyChecksFlag && len(userConfig.PolicyApprovers) == 0 {
+		return fmt.Errorf("--%s is a required to be set when --%s flag is set", DefinePolicyApprovers, EnablePolicyChecksFlag)
 	}
 
 	if userConfig.TFEHostname != DefaultTFEHostname && userConfig.TFEToken == "" {

@@ -14,8 +14,14 @@ import (
 //   --name=<value>
 //    <description>
 // We use it over the default template so that the output it easier to read.
-func usageTmpl(stringFlags map[string]stringFlag, intFlags map[string]intFlag, boolFlags map[string]boolFlag) string {
+func usageTmpl(sliceStringFlags map[string]stringFlag, stringFlags map[string]stringFlag, intFlags map[string]intFlag, boolFlags map[string]boolFlag) string {
 	var flagNames []string
+	for name, f := range sliceStringFlags {
+		if f.hidden {
+			continue
+		}
+		flagNames = append(flagNames, name)
+	}
 	for name, f := range stringFlags {
 		if f.hidden {
 			continue
@@ -46,7 +52,14 @@ func usageTmpl(stringFlags map[string]stringFlag, intFlags map[string]intFlag, b
 	for _, name := range flagNames {
 		var descrip string
 		var isBool bool
-		if f, ok := stringFlags[name]; ok {
+		if f, ok := sliceStringFlags[name]; ok {
+			descripWithDefault := f.description
+			if f.defaultValue != "" {
+				descripWithDefault += fmt.Sprintf(" (default %q)", f.defaultValue)
+			}
+			descrip = to80CharCols(descripWithDefault)
+			isBool = false
+		} else if f, ok := stringFlags[name]; ok {
 			descripWithDefault := f.description
 			if f.defaultValue != "" {
 				descripWithDefault += fmt.Sprintf(" (default %q)", f.defaultValue)
