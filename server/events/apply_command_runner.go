@@ -57,7 +57,9 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
 
-	if pullStatus, _ := a.cmdRunner.DB.GetPullStatus(pull); pullStatus.StatusCount(models.ErroredPolicyCheckStatus) > 0 {
+	// TODO: This needs to be revisited and new PullMergeable like conditions should
+	// be added to check against it.
+	if a.anyFailedPolicyChecks(pull) {
 		ctx.PullMergeable = false
 		ctx.Log.Warn("when using policy checks all policies have to be approved or pass. Continuin with mergeable assumed false")
 	}
@@ -87,8 +89,6 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 		cmd,
 		result)
 
-	r, err := a.cmdRunner.DB.GetPullStatus(pull)
-	ctx.Log.Info("%+v\n %s", r, err)
 	pullStatus, err := a.cmdRunner.updateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		a.cmdRunner.Logger.Err("writing results: %s", err)
@@ -132,6 +132,16 @@ func (a *ApplyCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus 
 	); err != nil {
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
+}
+
+func (a *ApplyCommandRunner) anyFailedPolicyChecks(pull models.PullRequest) bool {
+	policyCheckPullStatus, _ := a.cmdRunner.DB.GetPullStatus(pull)
+	if policyCheckPullStatus != nil && policyCheckPullStatus.StatusCount(models.ErroredPolicyCheckStatus) > 0 {
+		return true
+	}
+
+	return false
+
 }
 
 // applyAllDisabledComment is posted when apply all commands (i.e. "atlantis apply")

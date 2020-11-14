@@ -318,9 +318,9 @@ var applyWrappedSuccessTmpl = template.Must(template.New("").Parse(
 var unwrappedErrTmplText = "**{{.Command}} Error**\n" +
 	"```\n" +
 	"{{.Error}}\n" +
-	"```\n" +
+	"```" +
 	"{{ if eq .Command \"Policy Check\" }}" +
-	"* :heavy_check_mark: To **approve** failing policies either request an approval from approvers or address the failure by modifying the codebase.\n" +
+	"\n* :heavy_check_mark: To **approve** failing policies either request an approval from approvers or address the failure by modifying the codebase.\n" +
 	"{{ end }}"
 var wrappedErrTmplText = "**{{.Command}} Error**\n" +
 	"<details><summary>Show Output</summary>\n\n" +

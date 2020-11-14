@@ -65,7 +65,6 @@ func NewProjectCommandBuilder(
 	}
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_builder.go ProjectCommandBuilder
 type ProjectPlanCommandBuilder interface {
 	// BuildAutoplanCommands builds project commands that will run plan on
 	// the projects determined to be modified.
@@ -87,6 +86,8 @@ type ProjectApprovePoliciesCommandBuilder interface {
 	// BuildApprovePoliciesCommands builds project PolicyCheck commands for this ctx and comment.
 	BuildApprovePoliciesCommands(ctx *CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error)
 }
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_builder.go ProjectCommandBuilder
 
 // ProjectCommandBuilder builds commands that run on individual projects.
 type ProjectCommandBuilder interface {
