@@ -25,8 +25,7 @@ func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder Comm
 
 	return &CommandScopedStatsProjectCommandContextBuilder{
 		ProjectCommandContextBuilder: projectCommandContextBuilder,
-		ProjectCounter: scope.NewCounter("projects"),
-
+		ProjectCounter:               scope.NewCounter("projects"),
 	}
 }
 

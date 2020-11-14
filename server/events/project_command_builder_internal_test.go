@@ -790,7 +790,7 @@ workflows:
 				PendingPlanFinder:  &DefaultPendingPlanFinder{},
 				SkipCloneNoChanges: true,
 				ProjectCommandContextBuilder: &PolicyCheckProjectCommandContextBuilder{
-					ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder {
+					ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
 						CommentBuilder: &CommentParser{},
 					},
 					CommentBuilder: &CommentParser{},
