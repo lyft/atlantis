@@ -16,6 +16,7 @@ import (
 	"github.com/google/go-github/v31/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-version"
+	stats "github.com/lyft/gostats"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server"
 	"github.com/runatlantis/atlantis/server/events"
@@ -936,6 +937,8 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 		Drainer:               drainer,
 		PreWorkflowHookRunner: &runtime.PreWorkflowHookRunner{},
 	}
+	statsScope := stats.NewStore(stats.NewNullSink(), false)
+
 	projectCommandBuilder := events.NewProjectCommandBuilder(
 		policyChecksEnabled,
 		parser,
@@ -947,6 +950,8 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 		&events.DefaultPendingPlanFinder{},
 		commentParser,
 		false,
+		statsScope,
+		logger,
 	)
 
 	commandRunner := &events.DefaultCommandRunner{
@@ -987,6 +992,7 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 		CommitStatusUpdater:      e2eStatusUpdater,
 		MarkdownRenderer:         &events.MarkdownRenderer{},
 		Logger:                   logger,
+		StatsScope:               statsScope,
 		AllowForkPRs:             allowForkPRs,
 		AllowForkPRsFlag:         "allow-fork-prs",
 		ProjectCommandBuilder:    projectCommandBuilder,
