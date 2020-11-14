@@ -51,7 +51,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *CommandContext, cmd *CommentComm
 		}
 	} else {
 		result = CommandResult{
-			Error: fmt.Errorf("Only %s can approve policies.", strings.Join(a.policyApprovers, ",")),
+			Error: fmt.Errorf("only %s can approve policies", strings.Join(a.policyApprovers, ",")),
 		}
 	}
 
