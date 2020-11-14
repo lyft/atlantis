@@ -57,6 +57,11 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
 
+	if pullStatus, _ := a.cmdRunner.DB.GetPullStatus(pull); pullStatus.StatusCount(models.ErroredPolicyCheckStatus) > 0 {
+		ctx.PullMergeable = false
+		ctx.Log.Warn("when using policy checks all policies have to be approved or pass. Continuin with mergeable assumed false")
+	}
+
 	var projectCmds []models.ProjectCommandContext
 	projectCmds, err = a.prjCmdBuilder.BuildApplyCommands(ctx, cmd)
 
@@ -82,6 +87,8 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 		cmd,
 		result)
 
+	r, err := a.cmdRunner.DB.GetPullStatus(pull)
+	ctx.Log.Info("%+v\n %s", r, err)
 	pullStatus, err := a.cmdRunner.updateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		a.cmdRunner.Logger.Err("writing results: %s", err)

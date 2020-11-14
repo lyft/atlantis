@@ -295,7 +295,6 @@ var policyCheckSuccessWrappedTmpl = template.Must(template.New("").Parse(
 var policyCheckNextSteps = "* :arrow_forward: To **apply** this plan, comment:\n" +
 	"    * `{{.ApplyCmd}}`\n" +
 	"* :put_litter_in_its_place: To **delete** this plan click [here]({{.LockURL}})\n" +
-	"* :heavy_check_mark: **approve** failing policies please contact admins.\n" +
 	"* :repeat: To re-run policies **plan** this project again by commenting:\n" +
 	"    * `{{.RePlanCmd}}`"
 
@@ -319,7 +318,10 @@ var applyWrappedSuccessTmpl = template.Must(template.New("").Parse(
 var unwrappedErrTmplText = "**{{.Command}} Error**\n" +
 	"```\n" +
 	"{{.Error}}\n" +
-	"```"
+	"```\n" +
+	"{{ if eq .Command \"Policy Check\" }}" +
+	"* :heavy_check_mark: To **approve** failing policies either request an approval from approvers or address the failure by modifying the codebase.\n" +
+	"{{ end }}"
 var wrappedErrTmplText = "**{{.Command}} Error**\n" +
 	"<details><summary>Show Output</summary>\n\n" +
 	"```\n" +
