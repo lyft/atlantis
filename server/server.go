@@ -479,7 +479,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB:                       boltdb,
 		DeleteLockCommand:        deleteLockCommand,
 		GlobalAutomerge:          userConfig.Automerge,
-		PolicyApprovers:          userConfig.PolicyApprovers,
 		Drainer:                  drainer,
 	}
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)

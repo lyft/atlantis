@@ -2,7 +2,6 @@ package events
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/runatlantis/atlantis/server/events/models"
 )
@@ -15,7 +14,6 @@ func NewApprovePoliciesCommandRunner(
 		commitStatusUpdater: cmdRunner.CommitStatusUpdater,
 		prjCmdBuilder:       cmdRunner.ProjectCommandBuilder,
 		prjCmdRunner:        cmdRunner.ProjectCommandRunner,
-		policyApprovers:     cmdRunner.PolicyApprovers,
 	}
 }
 
@@ -24,7 +22,6 @@ type ApprovePoliciesCommandRunner struct {
 	commitStatusUpdater CommitStatusUpdater
 	prjCmdBuilder       ProjectApprovePoliciesCommandBuilder
 	prjCmdRunner        ProjectPolicyCheckCommandRunner
-	policyApprovers     []string
 }
 
 func (a *ApprovePoliciesCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
@@ -44,19 +41,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *CommandContext, cmd *CommentComm
 		return
 	}
 
-	var result CommandResult
-	// At this point we do not need to run ProjectCommandRunner. If current user
-	// is an approver we should override the failing policies without re-running
-	// them. Otherwise fail with an error.
-	if a.isApprover(ctx.User.Username) {
-		result = CommandResult{
-			ProjectResults: a.buildProjectResults(ctx, projectCmds),
-		}
-	} else {
-		result = CommandResult{
-			Error: fmt.Errorf("only %s can approve policies", strings.Join(a.policyApprovers, ",")),
-		}
-	}
+	result := a.buildApprovePolicyCommandResults(ctx, projectCmds)
 
 	a.cmdRunner.updatePull(
 		ctx,
@@ -73,17 +58,19 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *CommandContext, cmd *CommentComm
 	a.updateCommitStatus(ctx, pullStatus)
 }
 
-func (a *ApprovePoliciesCommandRunner) isApprover(username string) bool {
-	for _, approver := range a.policyApprovers {
-		if approver == username {
-			return true
-		}
+func (a *ApprovePoliciesCommandRunner) buildApprovePolicyCommandResults(ctx *CommandContext, prjCmds []models.ProjectCommandContext) (result CommandResult) {
+	// Check if vcs user is in the owner list of the PolicySets. All projects
+	// share the same Owners list at this time so no reason to iterate over each
+	// project.
+	if !prjCmds[0].PolicySets.IsOwner(ctx.User.Username) {
+		result.Error = fmt.Errorf("contact #orchestration channel for policy approvals")
+		return
 	}
-	return false
-}
 
-func (a *ApprovePoliciesCommandRunner) buildProjectResults(ctx *CommandContext, prjCmds []models.ProjectCommandContext) (prjResults []models.ProjectResult) {
+	var prjResults []models.ProjectResult
+
 	for _, prjCmd := range prjCmds {
+
 		prjResult := models.ProjectResult{
 			Command: models.PolicyCheckCommand,
 			PolicyCheckSuccess: &models.PolicyCheckSuccess{
@@ -95,6 +82,7 @@ func (a *ApprovePoliciesCommandRunner) buildProjectResults(ctx *CommandContext, 
 		}
 		prjResults = append(prjResults, prjResult)
 	}
+	result.ProjectResults = prjResults
 	return
 }
 
@@ -110,7 +98,6 @@ func (a *ApprovePoliciesCommandRunner) updateCommitStatus(ctx *CommandContext, p
 		status = models.FailedCommitStatus
 	}
 
-	ctx.Log.Info("status: %+v, numSuccess: %d", pullStatus, numSuccess)
 	if err := a.commitStatusUpdater.UpdateCombinedCount(ctx.Pull.BaseRepo, ctx.Pull, status, models.PolicyCheckCommand, numSuccess, len(pullStatus.Projects)); err != nil {
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
