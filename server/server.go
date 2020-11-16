@@ -128,11 +128,11 @@ type WebhookConfig struct {
 func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	logger := logging.NewSimpleLogger("server", false, userConfig.ToLogLevel())
 
-	statsScope := stats.NewDefaultStore().Scope("atlantis")
+	statsScope := stats.NewDefaultStore().Scope(userConfig.StatsNamespace)
 	statsScope.Store().AddStatGenerator(stats.NewRuntimeStats(statsScope.Scope("go")))
 
 	var supportedVCSHosts []models.VCSHostType
-	var githubClient *vcs.GithubClient
+	var githubClient vcs.IGithubClient
 	var githubAppEnabled bool
 	var githubCredentials vcs.GithubCredentials
 	var gitlabClient *vcs.GitlabClient
@@ -163,10 +163,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		}
 
 		var err error
-		githubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger)
+		rawGithubClient, err := vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger)
 		if err != nil {
 			return nil, err
 		}
+
+		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, logger)
 	}
 	if userConfig.GitlabUser != "" {
 		supportedVCSHosts = append(supportedVCSHosts, models.Gitlab)
@@ -411,7 +413,47 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		pendingPlanFinder,
 		commentParser,
 		userConfig.SkipCloneNoChanges,
+		statsScope,
+		logger,
 	)
+
+	projectCommandRunner := &events.DefaultProjectCommandRunner{
+		Locker:           projectLocker,
+		LockURLGenerator: router,
+		InitStepRunner: &runtime.InitStepRunner{
+			TerraformExecutor: terraformClient,
+			DefaultTFVersion:  defaultTfVersion,
+		},
+		PlanStepRunner: &runtime.PlanStepRunner{
+			TerraformExecutor:   terraformClient,
+			DefaultTFVersion:    defaultTfVersion,
+			CommitStatusUpdater: commitStatusUpdater,
+			AsyncTFExec:         terraformClient,
+		},
+		ShowStepRunner: &runtime.ShowStepRunner{
+			TerraformExecutor: terraformClient,
+			DefaultTFVersion:  defaultTfVersion,
+		},
+		PolicyCheckStepRunner: runtime.NewPolicyCheckStepRunner(
+			policy.NewConfTestExecutorWorkflow(logger, binDir, &terraform.DefaultDownloader{}),
+		),
+		ApplyStepRunner: &runtime.ApplyStepRunner{
+			TerraformExecutor:   terraformClient,
+			CommitStatusUpdater: commitStatusUpdater,
+			AsyncTFExec:         terraformClient,
+		},
+		RunStepRunner: runStepRunner,
+		EnvStepRunner: &runtime.EnvStepRunner{
+			RunStepRunner: runStepRunner,
+		},
+		PullApprovedChecker: vcsClient,
+		WorkingDir:          workingDir,
+		Webhooks:            webhooksManager,
+		WorkingDirLocker:    workingDirLocker,
+	}
+	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
+		ProjectCommandRunner: projectCommandRunner,
+	}
 	commandRunner := &events.DefaultCommandRunner{
 		VCSClient:                vcsClient,
 		GithubPullGetter:         githubClient,
@@ -421,6 +463,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EventParser:              eventParser,
 		MarkdownRenderer:         markdownRenderer,
 		Logger:                   logger,
+		StatsScope:               statsScope.Scope("cmd"),
 		AllowForkPRs:             userConfig.AllowForkPRs,
 		AllowForkPRsFlag:         config.AllowForkPRsFlag,
 		HidePrevPlanComments:     userConfig.HidePrevPlanComments,
@@ -430,46 +473,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DisableApplyAll:          userConfig.DisableApplyAll,
 		DisableAutoplan:          userConfig.DisableAutoplan,
 		ProjectCommandBuilder:    projectCommandBuilder,
-		ProjectCommandRunner: &events.DefaultProjectCommandRunner{
-			Locker:           projectLocker,
-			LockURLGenerator: router,
-			InitStepRunner: &runtime.InitStepRunner{
-				TerraformExecutor: terraformClient,
-				DefaultTFVersion:  defaultTfVersion,
-			},
-			PlanStepRunner: &runtime.PlanStepRunner{
-				TerraformExecutor:   terraformClient,
-				DefaultTFVersion:    defaultTfVersion,
-				CommitStatusUpdater: commitStatusUpdater,
-				AsyncTFExec:         terraformClient,
-			},
-			ShowStepRunner: &runtime.ShowStepRunner{
-				TerraformExecutor: terraformClient,
-				DefaultTFVersion:  defaultTfVersion,
-			},
-			PolicyCheckStepRunner: runtime.NewPolicyCheckStepRunner(
-				policy.NewConfTestExecutorWorkflow(logger, binDir, &terraform.DefaultDownloader{}),
-			),
-			ApplyStepRunner: &runtime.ApplyStepRunner{
-				TerraformExecutor:   terraformClient,
-				CommitStatusUpdater: commitStatusUpdater,
-				AsyncTFExec:         terraformClient,
-			},
-			RunStepRunner: runStepRunner,
-			EnvStepRunner: &runtime.EnvStepRunner{
-				RunStepRunner: runStepRunner,
-			},
-			PullApprovedChecker: vcsClient,
-			WorkingDir:          workingDir,
-			Webhooks:            webhooksManager,
-			WorkingDirLocker:    workingDirLocker,
-		},
-		WorkingDir:        workingDir,
-		PendingPlanFinder: pendingPlanFinder,
-		DB:                boltdb,
-		DeleteLockCommand: deleteLockCommand,
-		GlobalAutomerge:   userConfig.Automerge,
-		Drainer:           drainer,
+		ProjectCommandRunner:     instrumentedProjectCmdRunner,
+		WorkingDir:               workingDir,
+		PendingPlanFinder:        pendingPlanFinder,
+		DB:                       boltdb,
+		DeleteLockCommand:        deleteLockCommand,
+		GlobalAutomerge:          userConfig.Automerge,
+		Drainer:                  drainer,
 	}
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
 	if err != nil {

@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	stats "github.com/lyft/gostats"
 	"github.com/runatlantis/atlantis/server/events/db"
 	"github.com/runatlantis/atlantis/server/logging"
 
@@ -72,6 +73,8 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	When(logger.GetLevel()).ThenReturn(logging.Info)
 	When(logger.NewLogger("runatlantis/atlantis#1", true, logging.Info)).
 		ThenReturn(pullLogger)
+
+	scope := stats.NewDefaultStore()
 	ch = events.DefaultCommandRunner{
 		VCSClient:                vcsClient,
 		CommitStatusUpdater:      &events.DefaultCommitStatusUpdater{vcsClient, "atlantis"},
@@ -81,6 +84,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		GitlabMergeRequestGetter: gitlabGetter,
 		AzureDevopsPullGetter:    azuredevopsGetter,
 		Logger:                   logger,
+		StatsScope:               scope,
 		AllowForkPRs:             false,
 		AllowForkPRsFlag:         "allow-fork-prs-flag",
 		ProjectCommandBuilder:    projectCommandBuilder,
