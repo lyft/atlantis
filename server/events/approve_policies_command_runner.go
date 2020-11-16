@@ -45,6 +45,9 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *CommandContext, cmd *CommentComm
 	}
 
 	var result CommandResult
+	// At this point we do not need to run ProjectCommandRunner. If current user
+	// is an approver we should override the failing policies without re-running
+	// them. Otherwise fail with an error.
 	if a.isApprover(ctx.User.Username) {
 		result = CommandResult{
 			ProjectResults: a.buildProjectResults(ctx, projectCmds),
