@@ -61,7 +61,7 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	// be added to check against it.
 	if a.anyFailedPolicyChecks(pull) {
 		ctx.PullMergeable = false
-		ctx.Log.Warn("when using policy checks all policies have to be approved or pass. Continuin with mergeable assumed false")
+		ctx.Log.Warn("when using policy checks all policies have to be approved or pass. Continuing with mergeable assumed false")
 	}
 
 	var projectCmds []models.ProjectCommandContext

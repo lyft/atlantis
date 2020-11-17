@@ -62,7 +62,7 @@ func (a *ApprovePoliciesCommandRunner) buildApprovePolicyCommandResults(ctx *Com
 	// Check if vcs user is in the owner list of the PolicySets. All projects
 	// share the same Owners list at this time so no reason to iterate over each
 	// project.
-	if !prjCmds[0].PolicySets.IsOwner(ctx.User.Username) {
+	if len(prjCmds) > 0 && !prjCmds[0].PolicySets.IsOwner(ctx.User.Username) {
 		result.Error = fmt.Errorf("contact #orchestration channel for policy approvals")
 		return
 	}

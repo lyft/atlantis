@@ -21,6 +21,7 @@ import (
 
 	stats "github.com/lyft/gostats"
 	"github.com/runatlantis/atlantis/server/events/db"
+	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 
 	"github.com/google/go-github/v31/github"
@@ -48,6 +49,7 @@ var workingDir events.WorkingDir
 var pendingPlanFinder *mocks.MockPendingPlanFinder
 var drainer *events.Drainer
 var deleteLockCommand *mocks.MockDeleteLockCommand
+var commitUpdater *mocks.MockCommitStatusUpdater
 
 func setup(t *testing.T) *vcsmocks.MockClient {
 	RegisterMockTestingT(t)
@@ -62,6 +64,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	projectCommandRunner = mocks.NewMockProjectCommandRunner()
 	workingDir = mocks.NewMockWorkingDir()
 	pendingPlanFinder = mocks.NewMockPendingPlanFinder()
+	commitUpdater = mocks.NewMockCommitStatusUpdater()
 
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
@@ -77,7 +80,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	scope := stats.NewDefaultStore()
 	ch = events.DefaultCommandRunner{
 		VCSClient:                vcsClient,
-		CommitStatusUpdater:      &events.DefaultCommitStatusUpdater{vcsClient, "atlantis"},
+		CommitStatusUpdater:      commitUpdater, //&events.DefaultCommitStatusUpdater{vcsClient, "atlantis"},
 		EventParser:              eventParsing,
 		MarkdownRenderer:         &events.MarkdownRenderer{},
 		GithubPullGetter:         githubGetter,
@@ -325,6 +328,133 @@ func TestRunAutoplanCommand_DeletePlans(t *testing.T) {
 	fixtures.Pull.BaseRepo = fixtures.GithubRepo
 	ch.RunAutoplanCommand(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	pendingPlanFinder.VerifyWasCalledOnce().DeletePlans(tmp)
+}
+
+func TestFailedApprovalCreatesFailedStatusUpdate(t *testing.T) {
+	t.Log("if \"atlantis approve_policies\" is run by non policy owner policy check status fails.")
+	setup(t)
+	tmp, cleanup := TempDir(t)
+	defer cleanup()
+	boltDB, err := db.New(tmp)
+	Ok(t, err)
+	ch.DB = boltDB
+	ch.GlobalAutomerge = true
+	defer func() { ch.GlobalAutomerge = false }()
+
+	pull := &github.PullRequest{
+		State: github.String("open"),
+	}
+
+	modelPull := models.PullRequest{
+		BaseRepo: fixtures.GithubRepo,
+		State:    models.OpenPullState,
+		Num:      fixtures.Pull.Num,
+	}
+	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
+	When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
+
+	When(projectCommandBuilder.BuildApprovePoliciesCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn([]models.ProjectCommandContext{
+		{
+			CommandName: models.ApprovePoliciesCommand,
+		},
+		{
+			CommandName: models.ApprovePoliciesCommand,
+		},
+	}, nil)
+
+	When(workingDir.GetPullDir(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(tmp, nil)
+
+	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, &fixtures.Pull, fixtures.User, fixtures.Pull.Num, &events.CommentCommand{Name: models.ApprovePoliciesCommand})
+	commitUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
+		matchers.AnyModelsRepo(),
+		matchers.AnyModelsPullRequest(),
+		matchers.EqModelsCommitStatus(models.SuccessCommitStatus),
+		matchers.EqModelsCommandName(models.PolicyCheckCommand),
+		EqInt(0),
+		EqInt(0),
+	)
+}
+
+func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
+	t.Log("if \"atlantis approve_policies\" is run by policy owner all policy checks are approved.")
+	setup(t)
+	tmp, cleanup := TempDir(t)
+	defer cleanup()
+	boltDB, err := db.New(tmp)
+	Ok(t, err)
+	ch.DB = boltDB
+	ch.GlobalAutomerge = true
+	defer func() { ch.GlobalAutomerge = false }()
+
+	pull := &github.PullRequest{
+		State: github.String("open"),
+	}
+
+	modelPull := models.PullRequest{
+		BaseRepo: fixtures.GithubRepo,
+		State:    models.OpenPullState,
+		Num:      fixtures.Pull.Num,
+	}
+	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
+	When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
+
+	When(projectCommandBuilder.BuildApprovePoliciesCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn([]models.ProjectCommandContext{
+		{
+			CommandName: models.ApprovePoliciesCommand,
+			PolicySets: valid.PolicySets{
+				Owners: []string{fixtures.User.Username},
+			},
+		},
+	}, nil)
+
+	When(workingDir.GetPullDir(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(tmp, nil)
+
+	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, &fixtures.Pull, fixtures.User, fixtures.Pull.Num, &events.CommentCommand{Name: models.ApprovePoliciesCommand})
+	commitUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
+		matchers.AnyModelsRepo(),
+		matchers.AnyModelsPullRequest(),
+		matchers.EqModelsCommitStatus(models.SuccessCommitStatus),
+		matchers.EqModelsCommandName(models.PolicyCheckCommand),
+		EqInt(1),
+		EqInt(1),
+	)
+}
+
+func TestApplyWithPassingPolicy(t *testing.T) {
+	t.Log("if \"atlantis apply\" is run with failing policy check then apply is not performend")
+	setup(t)
+	tmp, cleanup := TempDir(t)
+	defer cleanup()
+	boltDB, err := db.New(tmp)
+	Ok(t, err)
+	ch.DB = boltDB
+	ch.GlobalAutomerge = true
+	defer func() { ch.GlobalAutomerge = false }()
+
+	pull := &github.PullRequest{
+		State: github.String("open"),
+	}
+
+	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
+	When(eventParsing.ParseGithubPull(pull)).ThenReturn(fixtures.Pull, fixtures.Pull.BaseRepo, fixtures.GithubRepo, nil)
+	boltDB.UpdatePullWithResults(fixtures.Pull, []models.ProjectResult{
+		{
+			Command:            models.PolicyCheckCommand,
+			PolicyCheckSuccess: &models.PolicyCheckSuccess{},
+		},
+	})
+
+	When(ch.VCSClient.PullIsMergeable(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(true, nil)
+	prjApplyCmds := []models.ProjectCommandContext{
+		{
+			CommandName: models.ApplyCommand,
+		},
+	}
+	When(projectCommandBuilder.BuildApplyCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn(prjApplyCmds, nil)
+
+	When(workingDir.GetPullDir(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(tmp, nil)
+	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, &fixtures.Pull, fixtures.User, fixtures.Pull.Num, &events.CommentCommand{Name: models.ApplyCommand})
+	projectCommandRunner.VerifyWasCalledOnce().Apply(matchers.AnyModelsProjectCommandContext())
 }
 
 func TestApplyWithAutoMerge_VSCMerge(t *testing.T) {
