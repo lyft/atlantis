@@ -420,8 +420,8 @@ func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
 	)
 }
 
-func TestApplyWithPassingPolicy(t *testing.T) {
-	t.Log("if \"atlantis apply\" is run with failing policy check then apply is not performend")
+func TestApplyMergeablityWhenPolicyCheckFails(t *testing.T) {
+	t.Log("if \"atlantis apply\" is run with failing policy check then apply is not performed")
 	setup(t)
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
@@ -435,26 +435,45 @@ func TestApplyWithPassingPolicy(t *testing.T) {
 		State: github.String("open"),
 	}
 
+	modelPull := models.PullRequest{
+		BaseRepo: fixtures.GithubRepo,
+		State:    models.OpenPullState,
+		Num:      fixtures.Pull.Num,
+	}
 	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
-	When(eventParsing.ParseGithubPull(pull)).ThenReturn(fixtures.Pull, fixtures.Pull.BaseRepo, fixtures.GithubRepo, nil)
-	_, _ = boltDB.UpdatePullWithResults(fixtures.Pull, []models.ProjectResult{
+	When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
+
+	_, _ = boltDB.UpdatePullWithResults(modelPull, []models.ProjectResult{
 		{
-			Command:            models.PolicyCheckCommand,
-			PolicyCheckSuccess: &models.PolicyCheckSuccess{},
+			Command:     models.PolicyCheckCommand,
+			Error:       fmt.Errorf("failing policy"),
+			ProjectName: "default",
+			Workspace:   "default",
+			RepoRelDir:  ".",
 		},
 	})
 
-	When(ch.VCSClient.PullIsMergeable(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(true, nil)
-	prjApplyCmds := []models.ProjectCommandContext{
-		{
-			CommandName: models.ApplyCommand,
-		},
-	}
-	When(projectCommandBuilder.BuildApplyCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn(prjApplyCmds, nil)
+	When(ch.VCSClient.PullIsMergeable(fixtures.GithubRepo, modelPull)).ThenReturn(true, nil)
 
-	When(workingDir.GetPullDir(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(tmp, nil)
-	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, &fixtures.Pull, fixtures.User, fixtures.Pull.Num, &events.CommentCommand{Name: models.ApplyCommand})
-	projectCommandRunner.VerifyWasCalledOnce().Apply(matchers.AnyModelsProjectCommandContext())
+	When(projectCommandBuilder.BuildApplyCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).Then(func(args []Param) ReturnValues {
+		ctx := args[0].(*events.CommandContext)
+		Equals(t, false, ctx.PullMergeable)
+
+		return ReturnValues{
+			[]models.ProjectCommandContext{
+				{
+					CommandName: models.ApplyCommand,
+					ProjectName: "default",
+					Workspace:   "default",
+					RepoRelDir:  ".",
+				},
+			},
+			nil,
+		}
+	})
+
+	When(workingDir.GetPullDir(fixtures.GithubRepo, modelPull)).ThenReturn(tmp, nil)
+	ch.RunCommentCommand(fixtures.GithubRepo, &fixtures.GithubRepo, &modelPull, fixtures.User, fixtures.Pull.Num, &events.CommentCommand{Name: models.ApplyCommand})
 }
 
 func TestApplyWithAutoMerge_VSCMerge(t *testing.T) {
