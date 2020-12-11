@@ -1,0 +1,53 @@
+Ran Plan for 2 projects:
+
+1. dir: `.` workspace: `default`
+1. dir: `.` workspace: `staging`
+
+### 1. dir: `.` workspace: `default`
+**Plan Error**
+```
+running "/usr/local/bin/terraform init -input=false -no-color -upgrade" in "/var/folders/yg/zbjpqcts43xfd12kmfnz0kg00000gp/T/342662093/repos/runatlantis/atlantis-tests/2/default": exit status 2
+preinit
+
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Checking for available provider plugins...
+- Downloading plugin for provider "null" (hashicorp/null) 3.0.0...
+
+```
+
+---
+### 2. dir: `.` workspace: `staging`
+<details><summary>Show Output</summary>
+
+```diff
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
++ create
+
+Terraform will perform the following actions:
+
+  # null_resource.simple[0] will be created
++ resource "null_resource" "simple" {
+      + id = (known after apply)
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+
+```
+
+* :arrow_forward: To **apply** this plan, comment:
+    * `atlantis apply -w staging`
+* :put_litter_in_its_place: To **delete** this plan click [here](lock-url)
+* :repeat: To **plan** this project again, comment:
+    * `atlantis plan -w staging`
+</details>
+
+---
+* :fast_forward: To **apply** all unapplied plans from this pull request, comment:
+    * `atlantis apply`
+* :put_litter_in_its_place: To delete all plans and locks for the PR, comment:
+    * `atlantis unlock`
