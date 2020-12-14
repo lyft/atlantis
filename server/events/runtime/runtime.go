@@ -49,6 +49,7 @@ type StatusUpdater interface {
 	UpdateProject(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus, url string) error
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_runner.go Runner
 // Runner mirrors events.StepRunner as a way to bring it into this package
 type Runner interface {
 	Run(ctx models.ProjectCommandContext, extraArgs []string, path string, envs map[string]string) (string, error)
