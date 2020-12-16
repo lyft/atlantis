@@ -541,7 +541,7 @@ func GithubAppTestServer(t *testing.T) (string, error) {
 
 				w.Write([]byte(githubAppInstallationJSON)) // nolint: errcheck
 				return
-			case "/api/v3/app":
+			case "/api/v3/apps/some-app":
 				token := strings.Replace(r.Header.Get("Authorization"), "token ", "", 1)
 
 				// token is taken from githubAppTokenJSON

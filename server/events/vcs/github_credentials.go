@@ -87,6 +87,10 @@ func (c *GithubAppCredentials) Client() (*http.Client, error) {
 
 // GetUser returns the username for these credentials.
 func (c *GithubAppCredentials) GetUser() (string, error) {
+	// Keeping backwards compatibility since this flag is optional
+	if c.AppSlug == "" {
+		return "", nil
+	}
 	client, err := c.Client()
 
 	if err != nil {
