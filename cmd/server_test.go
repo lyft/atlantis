@@ -71,6 +71,7 @@ var testFlags = map[string]interface{}{
 	GHUserFlag:                 "user",
 	GHAppIDFlag:                int64(0),
 	GHAppKeyFileFlag:           "",
+	GHAppSlugFlag:              "atlantis",
 	GHOrganizationFlag:         "",
 	GHWebhookSecretFlag:        "secret",
 	GitlabHostnameFlag:         "gitlab-hostname",
