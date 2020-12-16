@@ -158,6 +158,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 				AppID:    userConfig.GithubAppID,
 				KeyPath:  userConfig.GithubAppKey,
 				Hostname: userConfig.GithubHostname,
+				AppSlug:  userConfig.GithubAppSlug,
 			}
 			githubAppEnabled = true
 		}
