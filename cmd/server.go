@@ -183,7 +183,7 @@ var stringFlags = map[string]stringFlag{
 		defaultValue: "",
 	},
 	GHAppSlugFlag: {
-		description:  "The Github app slug (ie. the URL-friendly name of your GitHub App)",
+		description: "The Github app slug (ie. the URL-friendly name of your GitHub App)",
 	},
 	GHOrganizationFlag: {
 		description:  "The name of the GitHub organization to use during the creation of a Github App for Atlantis",
