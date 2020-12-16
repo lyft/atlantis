@@ -105,6 +105,7 @@ const (
 	DefaultGitlabHostname   = "gitlab.com"
 	DefaultLogLevel         = "info"
 	DefaultStatsNamespace   = "atlantis"
+	DefaultGithubAppSlug    = "atlantis"
 	DefaultPort             = 4141
 	DefaultTFDownloadURL    = "https://releases.hashicorp.com"
 	DefaultTFEHostname      = "app.terraform.io"
@@ -184,7 +185,7 @@ var stringFlags = map[string]stringFlag{
 	},
 	GHAppSlugFlag: {
 		description:  "The Github app slug (ie. the URL-friendly name of your GitHub App)",
-		defaultValue: "atlantis",
+		defaultValue: DefaultGithubAppSlug,
 	},
 	GHOrganizationFlag: {
 		description:  "The name of the GitHub organization to use during the creation of a Github App for Atlantis",
@@ -571,6 +572,9 @@ func (s *ServerCmd) setDefaults(c *server.UserConfig) {
 	}
 	if c.StatsNamespace == "" {
 		c.StatsNamespace = DefaultStatsNamespace
+	}
+	if c.GithubAppSlug == "" {
+		c.GithubAppSlug = DefaultGithubAppSlug
 	}
 	if c.Port == 0 {
 		c.Port = DefaultPort
