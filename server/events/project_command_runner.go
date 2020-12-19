@@ -174,14 +174,14 @@ func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx models.ProjectCommandCon
 	ctx.Log.Debug("acquired lock for project")
 
 	// Acquire internal lock for the directory we're going to operate in.
-	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, ctx.Workspace)
+	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, ctx.ProjectCloneDir())
 	if err != nil {
 		return nil, "", err
 	}
 	defer unlockFn()
 
 	// Clone is idempotent so okay to run even if the repo was already cloned.
-	repoDir, hasDiverged, cloneErr := p.WorkingDir.Clone(ctx.Log, ctx.HeadRepo, ctx.Pull, ctx.Workspace)
+	repoDir, hasDiverged, cloneErr := p.WorkingDir.Clone(ctx.Log, ctx.HeadRepo, ctx.Pull, ctx.ProjectCloneDir())
 	if cloneErr != nil {
 		if unlockErr := lockAttempt.UnlockFn(); unlockErr != nil {
 			ctx.Log.Err("error unlocking state after policy_check error: %v", unlockErr)
@@ -222,14 +222,14 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 	ctx.Log.Debug("acquired lock for project")
 
 	// Acquire internal lock for the directory we're going to operate in.
-	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, ctx.Workspace)
+	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, ctx.ProjectCloneDir())
 	if err != nil {
 		return nil, "", err
 	}
 	defer unlockFn()
 
 	// Clone is idempotent so okay to run even if the repo was already cloned.
-	repoDir, hasDiverged, cloneErr := p.WorkingDir.Clone(ctx.Log, ctx.HeadRepo, ctx.Pull, ctx.Workspace)
+	repoDir, hasDiverged, cloneErr := p.WorkingDir.Clone(ctx.Log, ctx.HeadRepo, ctx.Pull, ctx.ProjectCloneDir())
 	if cloneErr != nil {
 		if unlockErr := lockAttempt.UnlockFn(); unlockErr != nil {
 			ctx.Log.Err("error unlocking state after plan error: %v", unlockErr)
