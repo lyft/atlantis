@@ -418,6 +418,21 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		logger,
 	)
 
+	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTfVersion)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing show step runner")
+	}
+
+	policyCheckRunner, err := runtime.NewPolicyCheckStepRunner(
+		defaultTfVersion,
+		policy.NewConfTestExecutorWorkflow(logger, binDir, &terraform.DefaultDownloader{}),
+	)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing policy check runner")
+	}
+
 	projectCommandRunner := &events.DefaultProjectCommandRunner{
 		Locker:           projectLocker,
 		LockURLGenerator: router,
@@ -431,10 +446,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			CommitStatusUpdater: commitStatusUpdater,
 			AsyncTFExec:         terraformClient,
 		},
-		ShowStepRunner: runtime.NewShowStepRunner(terraformClient, defaultTfVersion),
-		PolicyCheckStepRunner: runtime.NewPolicyCheckStepRunner(
-			policy.NewConfTestExecutorWorkflow(logger, binDir, &terraform.DefaultDownloader{}),
-		),
+		ShowStepRunner: showStepRunner,
+		PolicyCheckStepRunner: policyCheckRunner,
 		ApplyStepRunner: &runtime.ApplyStepRunner{
 			TerraformExecutor:   terraformClient,
 			CommitStatusUpdater: commitStatusUpdater,
