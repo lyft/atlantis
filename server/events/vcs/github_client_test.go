@@ -235,8 +235,8 @@ func TestGithubClient_PaginatesComments(t *testing.T) {
 }
 
 func TestGithubClient_HideOldComments(t *testing.T) {
-	// Only comment 6, 7, 9 should be minimized, because it's by the same Atlantis bot user
-	// and it has "plan" and "policy_check" respectively in the first line of the comment body.
+	// Only comment 6 should be minimized, because it's by the same Atlantis bot user
+	// and it has "plan" in the first line of the comment body.
 	issueResp := `[
 	{"node_id": "1", "body": "asd\nplan\nasd", "user": {"login": "someone-else"}},
 	{"node_id": "2", "body": "asd plan\nasd", "user": {"login": "someone-else"}},
@@ -244,10 +244,9 @@ func TestGithubClient_HideOldComments(t *testing.T) {
 	{"node_id": "4", "body": "asdasdasd\nasdasdasd", "user": {"login": "user"}},
 	{"node_id": "5", "body": "asd\nplan\nasd", "user": {"login": "user"}},
 	{"node_id": "6", "body": "asd plan\nasd", "user": {"login": "user"}},
-	{"node_id": "7", "body": "asd policy_check\nasd", "user": {"login": "user"}},
-	{"node_id": "8", "body": "asdasdasd", "user": {"login": "user"}},
-	{"node_id": "9", "body": "asd plan\nasd", "user": {"login": "user"}},
-	{"node_id": "10", "body": "Continued Plan from previous comment\nasd", "user": {"login": "user"}}
+	{"node_id": "7", "body": "asdasdasd", "user": {"login": "user"}},
+	{"node_id": "8", "body": "asd plan\nasd", "user": {"login": "user"}},
+	{"node_id": "9", "body": "Continued Plan from previous comment\nasd", "user": {"login": "user"}}
 ]`
 	minimizeResp := "{}"
 	type graphQLCall struct {
@@ -316,11 +315,9 @@ func TestGithubClient_HideOldComments(t *testing.T) {
 		123,
 	)
 	Ok(t, err)
-	Equals(t, 4, len(gotMinimizeCalls))
+	Equals(t, 3, len(gotMinimizeCalls))
 	Equals(t, "6", gotMinimizeCalls[0].Variables.Input.SubjectID)
-	Equals(t, "7", gotMinimizeCalls[1].Variables.Input.SubjectID)
 	Equals(t, "9", gotMinimizeCalls[2].Variables.Input.SubjectID)
-	Equals(t, "10", gotMinimizeCalls[3].Variables.Input.SubjectID)
 	Equals(t, githubv4.ReportedContentClassifiersOutdated, gotMinimizeCalls[0].Variables.Input.Classifier)
 }
 
