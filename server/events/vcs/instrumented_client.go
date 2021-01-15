@@ -130,7 +130,7 @@ func (c *InstrumentedClient) HidePrevCommandComments(repo models.Repo, pullNum i
 
 	if err := c.Client.HidePrevCommandComments(repo, pullNum, command); err != nil {
 		executionError.Inc()
-		logger.Err("Unable to hide previous plan comments, error: %s", err.Error())
+		logger.Err("Unable to hide previous %s comments, error: %s", command, err.Error())
 		return err
 	}
 
