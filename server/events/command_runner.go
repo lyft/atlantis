@@ -350,7 +350,7 @@ func (c *DefaultCommandRunner) updatePull(ctx *CommandContext, command PullComma
 	// clutter in a pull/merge request. This will not delete the comment, since the
 	// comment trail may be useful in auditing or backtracing problems.
 	if c.HidePrevPlanComments {
-		if err := c.VCSClient.HidePrevPlanComments(ctx.Pull.BaseRepo, ctx.Pull.Num); err != nil {
+		if err := c.VCSClient.HidePrevCommandComments(ctx.Pull.BaseRepo, ctx.Pull.Num, command.CommandName().String()); err != nil {
 			ctx.Log.Err("unable to hide old comments: %s", err)
 		}
 	}
