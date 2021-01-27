@@ -5,7 +5,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-
 type DBUpdater struct {
 	DB *db.BoltDB
 }

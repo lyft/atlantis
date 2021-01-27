@@ -34,7 +34,7 @@ func NewPlanCommandRunner(
 }
 
 type PlanCommandRunner struct {
-	vcsClient                vcs.Client
+	vcsClient vcs.Client
 	// SilenceVCSStatusNoPlans is whether autoplan should set commit status if no plans
 	// are found
 	silenceVCSStatusNoPlans  bool

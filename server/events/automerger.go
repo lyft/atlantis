@@ -7,12 +7,10 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
-
 type AutoMerger struct {
-	VCSClient vcs.Client
+	VCSClient       vcs.Client
 	GlobalAutomerge bool
 }
-
 
 func (c *AutoMerger) automerge(ctx *CommandContext, pullStatus models.PullStatus) {
 	// We only automerge if all projects have been successfully applied.

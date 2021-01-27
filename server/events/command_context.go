@@ -29,8 +29,6 @@ const (
 	Comment
 )
 
-
-
 // CommandContext represents the context of a command that should be executed
 // for a pull request.
 type CommandContext struct {
