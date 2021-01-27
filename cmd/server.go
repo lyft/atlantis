@@ -23,6 +23,7 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server"
+	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -70,6 +71,7 @@ const (
 	GitlabWebhookSecretFlag    = "gitlab-webhook-secret" // nolint: gosec
 	HidePrevPlanComments       = "hide-prev-plan-comments"
 	LogLevelFlag               = "log-level"
+	MaxProjectsPerPR           = "max-projects-per-pr"
 	StatsNamespace             = "stats-namespace"
 	AllowDraftPRs              = "allow-draft-prs"
 	PortFlag                   = "port"
@@ -346,6 +348,10 @@ var boolFlags = map[string]boolFlag{
 	},
 }
 var intFlags = map[string]intFlag{
+	MaxProjectsPerPR: {
+		description:  "Max number of projects to operate on in a given pull request.",
+		defaultValue: events.InfiniteProjectsPerPR,
+	},
 	PortFlag: {
 		description:  "Port to bind to.",
 		defaultValue: DefaultPort,
@@ -582,6 +588,9 @@ func (s *ServerCmd) setDefaults(c *server.UserConfig) {
 	}
 	if c.TFEHostname == "" {
 		c.TFEHostname = DefaultTFEHostname
+	}
+	if c.MaxProjectsPerPR == 0 {
+		c.MaxProjectsPerPR = events.InfiniteProjectsPerPR
 	}
 }
 
