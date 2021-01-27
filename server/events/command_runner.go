@@ -76,9 +76,15 @@ func buildCommentCommandRunner(
 	cmdRunner *DefaultCommandRunner,
 	cmdName models.CommandName,
 ) CommentCommandRunner {
-	// no need for error checking here, we want to fail fast and hard since
+	// panic here, we want to fail fast and hard since
 	// this would be an internal service configuration error.
-	return cmdRunner.CommentCommandRunnerByCmd[cmdName]
+	runner, ok := cmdRunner.CommentCommandRunnerByCmd[cmdName]
+
+	if !ok {
+		panic(fmt.Sprintf("command runner not configured for command %s", cmdName.String()))
+	}
+
+	return runner
 }
 
 // DefaultCommandRunner is the first step when processing a comment command.
