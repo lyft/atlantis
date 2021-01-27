@@ -12,7 +12,7 @@ func NewPlanCommandRunner(
 	workingDir WorkingDir,
 	commitStatusUpdater CommitStatusUpdater,
 	projectCommandBuilder ProjectPlanCommandBuilder,
-	projectCommandRunner ProjectCommandRunner,
+	projectCommandRunner ProjectPlanCommandRunner,
 	dbUpdater *DBUpdater,
 	pullUpdater *PullUpdater,
 	policyCheckCommandRunner *PolicyCheckCommandRunner,

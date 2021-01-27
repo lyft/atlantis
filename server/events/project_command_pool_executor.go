@@ -9,7 +9,6 @@ import (
 
 type prjCmdRunnerFunc func(ctx models.ProjectCommandContext) models.ProjectResult
 
-
 func runProjectCmdsParallel(
 	cmds []models.ProjectCommandContext,
 	runnerFunc prjCmdRunnerFunc,

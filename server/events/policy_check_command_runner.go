@@ -9,8 +9,8 @@ func NewPolicyCheckCommandRunner(
 	projectCommandRunner ProjectPolicyCheckCommandRunner,
 ) *PolicyCheckCommandRunner {
 	return &PolicyCheckCommandRunner{
-		dbUpdater: dbUpdater,
-		pullUpdater: pullUpdater,
+		dbUpdater:           dbUpdater,
+		pullUpdater:         pullUpdater,
 		commitStatusUpdater: commitStatusUpdater,
 		prjCmdRunner:        projectCommandRunner,
 	}
