@@ -50,7 +50,7 @@ type LocalConftestCache struct {
 }
 
 func (m *LocalConftestCache) Get(key *version.Version) (string, error) {
-	return exec.LookPath("conftest")
+	return exec.LookPath("conftest0.21.0")
 }
 
 func TestGitHubWorkflow(t *testing.T) {
@@ -404,6 +404,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 	}
 	// Ensure we have >= TF 0.12 locally.
 	ensureRunning012(t)
+	// Ensure we have >= Conftest 0.21 locally.
 	ensureRunningConftest(t)
 
 	cases := []struct {
@@ -984,9 +985,9 @@ func mkSubDirs(t *testing.T) (string, string, string, func()) {
 	return tmp, binDir, cachedir, cleanup
 }
 
-// Will fail test if terraform isn't in path and isn't version >= 0.12
+// Will fail test if conftest isn't in path and isn't version >= 0.21.0
 func ensureRunningConftest(t *testing.T) {
-	localPath, err := exec.LookPath("conftest")
+	localPath, err := exec.LookPath("conftest0.21.0")
 	if err != nil {
 		t.Log("conftest >= 0.21 must be installed to run this test")
 		t.FailNow()
