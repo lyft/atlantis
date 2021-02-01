@@ -614,7 +614,6 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 		globalCfg, err = parser.ParseGlobalCfg(expCfgPath, globalCfg)
 		Ok(t, err)
 	}
-	fmt.Printf("%v\n", globalCfg.PolicySets.PolicySets)
 	drainer := &events.Drainer{}
 	preWorkflowHooksCommandRunner := &events.DefaultPreWorkflowHooksCommandRunner{
 		VCSClient:             e2eVCSClient,
