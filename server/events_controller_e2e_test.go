@@ -46,6 +46,13 @@ func (m *NoopTFDownloader) GetAny(dst, src string, opts ...getter.ClientOption) 
 	return nil
 }
 
+type LocalConftestCache struct {
+}
+
+func (m *LocalConftestCache) Get(key *version.Version) (string, error) {
+	return exec.LookPath("conftest0.21.0")
+}
+
 func TestGitHubWorkflow(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
@@ -68,12 +75,14 @@ func TestGitHubWorkflow(t *testing.T) {
 		ExpAutoplan bool
 		// ExpParallel is true if we expect Atlantis to run parallel plans or applies.
 		ExpParallel bool
+		// ExpMergeable is true if we expect Atlantis to be able to merge.
+		// If for instance policy check is failing and there are no approvals
+		// ExpMergeable should be false
+		ExpMergeable bool
 		// ExpReplies is a list of files containing the expected replies that
 		// Atlantis writes to the pull request in order. A reply from a parallel operation
 		// will be matched using a substring check.
 		ExpReplies [][]string
-		// PolicyCheckEnabled runs integration tests through PolicyCheckProjectCommandBuilder.
-		PolicyCheckEnabled bool
 	}{
 		{
 			Description:   "simple",
@@ -87,8 +96,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
 			},
-			ExpAutoplan:        true,
-			PolicyCheckEnabled: false,
+			ExpAutoplan: true,
 		},
 		{
 			Description:   "simple with plan comment",
@@ -105,7 +113,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with comment -var",
@@ -122,7 +129,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-var.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with workspaces",
@@ -143,7 +149,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-var-new-workspace.txt"},
 				{"exp-output-merge-workspaces.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with workspaces and apply all",
@@ -162,7 +167,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-var-all.txt"},
 				{"exp-output-merge-workspaces.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with atlantis.yaml",
@@ -179,7 +183,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-default.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "simple with atlantis.yaml and apply all",
@@ -194,24 +197,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-all.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
-		},
-		{
-			Description:   "simple with atlantis.yaml and plan/apply all",
-			RepoDir:       "simple-yaml",
-			ModifiedFiles: []string{"main.tf"},
-			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis plan",
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply-all.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "modules staging only",
@@ -226,7 +211,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-staging.txt"},
 				{"exp-output-merge-only-staging.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "modules modules only",
@@ -246,7 +230,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-production.txt"},
 				{"exp-output-merge-all-dirs.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "modules-yaml",
@@ -263,7 +246,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-production.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "tfvars-yaml",
@@ -280,7 +262,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-default.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "tfvars no autoplan",
@@ -300,7 +281,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-default.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "automerge",
@@ -319,7 +299,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-automerge.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "server-side cfg",
@@ -337,7 +316,6 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-default-workspace.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 		{
 			Description:   "workspaces parallel with atlantis.yaml",
@@ -353,14 +331,13 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-apply-all-staging.txt", "exp-output-apply-all-production.txt"},
 				{"exp-output-merge.txt"},
 			},
-			PolicyCheckEnabled: false,
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
 			RegisterMockTestingT(t)
 
-			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir, c.PolicyCheckEnabled)
+			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir, false)
 			// Set the repo to be cloned through the testing backdoor.
 			repoDir, headSHA, cleanup := initializeRepo(t, c.RepoDir)
 			defer cleanup()
@@ -392,30 +369,13 @@ func TestGitHubWorkflow(t *testing.T) {
 			responseContains(t, w, 200, "Pull request cleaned successfully")
 
 			// Now we're ready to verify Atlantis made all the comments back (or
-			// replies) that we expect.  We expect each plan to have 2 comments,
-			// one for plan one for policy check and apply have 1 for each
-			// comment plus one for the locks deleted at the end.
+			// replies) that we expect.  We expect each plan to have 1 comment,
+			// and apply have 1 for each comment plus one for the locks deleted at the
+			// end.
 			expNumReplies := len(c.Comments) + 1
 
 			if c.ExpAutoplan {
 				expNumReplies++
-			}
-
-			// When enabled policy_check runs right after plan. So whenever
-			// comment matches plan we add additional call to expected
-			// number.
-			if c.PolicyCheckEnabled {
-				var planRegex = regexp.MustCompile("plan")
-				for _, comment := range c.Comments {
-					if planRegex.MatchString(comment) {
-						expNumReplies++
-					}
-				}
-
-				// Adding 1 for policy_check autorun
-				if c.ExpAutoplan {
-					expNumReplies++
-				}
 			}
 
 			if c.ExpAutomerge {
@@ -444,6 +404,8 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 	}
 	// Ensure we have >= TF 0.12 locally.
 	ensureRunning012(t)
+	// Ensure we have >= Conftest 0.21 locally.
+	ensureRunningConftest(t)
 
 	cases := []struct {
 		Description string
@@ -456,6 +418,10 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 		Comments []string
 		// ExpAutomerge is true if we expect Atlantis to automerge.
 		ExpAutomerge bool
+		// ExpMergeable is true if we expect Atlantis to be able to merge.
+		// If for instance policy check is failing and there are no approvals
+		// ExpMergeable should be false
+		ExpMergeable bool
 		// ExpAutoplan is true if we expect Atlantis to autoplan.
 		ExpAutoplan bool
 		// ExpParallel is true if we expect Atlantis to run parallel plans or applies.
@@ -464,339 +430,64 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 		// Atlantis writes to the pull request in order. A reply from a parallel operation
 		// will be matched using a substring check.
 		ExpReplies [][]string
-		// PolicyCheckEnabled runs integration tests through PolicyCheckProjectCommandBuilder.
-		PolicyCheckEnabled bool
 	}{
 		{
-			Description:   "simple",
-			RepoDir:       "simple",
+			Description:   "failing policy approved by the owner",
+			RepoDir:       "policy-checks",
 			ModifiedFiles: []string{"main.tf"},
+			ExpAutoplan:   true,
+			ExpMergeable:  true,
 			Comments: []string{
+				"atlantis approve_policies",
 				"atlantis apply",
 			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-approve-policies.txt"},
 				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
 			},
-			ExpAutoplan:        true,
-			PolicyCheckEnabled: true,
 		},
 		{
-			Description:   "simple with plan comment",
-			RepoDir:       "simple",
+			Description:   "failing policy without approval",
+			RepoDir:       "policy-checks",
 			ModifiedFiles: []string{"main.tf"},
 			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis plan",
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "policy check enabled: simple with plan comment",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis plan",
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "simple with comment -var",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis plan -- -var var=overridden",
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-atlantis-plan-var-overridden.txt"},
-				{"exp-output-atlantis-policy-check-var-overriden.txt"},
-				{"exp-output-apply-var.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "simple with workspaces",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis plan -- -var var=default_workspace",
-				"atlantis plan -w new_workspace -- -var var=new_workspace",
-				"atlantis apply -w default",
-				"atlantis apply -w new_workspace",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-atlantis-plan.txt"},
-				{"exp-output-atlantis-policy-check.txt"},
-				{"exp-output-atlantis-plan-new-workspace.txt"},
-				{"exp-output-atlantis-policy-check-new-workspace.txt"},
-				{"exp-output-apply-var-default-workspace.txt"},
-				{"exp-output-apply-var-new-workspace.txt"},
-				{"exp-output-merge-workspaces.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "simple with workspaces and apply all",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis plan -- -var var=default_workspace",
-				"atlantis plan -w new_workspace -- -var var=new_workspace",
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-atlantis-plan.txt"},
-				{"exp-output-atlantis-policy-check.txt"},
-				{"exp-output-atlantis-plan-new-workspace.txt"},
-				{"exp-output-atlantis-policy-check-new-workspace.txt"},
-				{"exp-output-apply-var-all.txt"},
-				{"exp-output-merge-workspaces.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "simple with atlantis.yaml",
-			RepoDir:       "simple-yaml",
-			ModifiedFiles: []string{"main.tf"},
-			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis apply -w staging",
-				"atlantis apply -w default",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-apply-default.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "simple with atlantis.yaml and apply all",
-			RepoDir:       "simple-yaml",
-			ModifiedFiles: []string{"main.tf"},
-			ExpAutoplan:   true,
+			ExpMergeable:  false,
 			Comments: []string{
 				"atlantis apply",
 			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-all.txt"},
-				{"exp-output-merge.txt"},
+				{"exp-output-apply-failed.txt"},
 			},
-			PolicyCheckEnabled: true,
 		},
 		{
-			Description:   "simple with atlantis.yaml and plan/apply all",
-			RepoDir:       "simple-yaml",
+			Description:   "failing policy approved by non owner",
+			RepoDir:       "policy-checks-diff-owner",
 			ModifiedFiles: []string{"main.tf"},
 			ExpAutoplan:   true,
+			ExpMergeable:  false,
 			Comments: []string{
-				"atlantis plan",
+				"atlantis approve_policies",
 				"atlantis apply",
 			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-all.txt"},
-				{"exp-output-merge.txt"},
+				{"exp-output-approve-policies.txt"},
+				{"exp-output-apply-failed.txt"},
 			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "modules staging only",
-			RepoDir:       "modules",
-			ModifiedFiles: []string{"staging/main.tf"},
-			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis apply -d staging",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan-only-staging.txt"},
-				{"exp-output-auto-policy-check-only-staging.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-merge-only-staging.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "modules modules only",
-			RepoDir:       "modules",
-			ModifiedFiles: []string{"modules/null/main.tf"},
-			ExpAutoplan:   false,
-			Comments: []string{
-				"atlantis plan -d staging",
-				"atlantis plan -d production",
-				"atlantis apply -d staging",
-				"atlantis apply -d production",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-plan-staging.txt"},
-				{"exp-output-policy-check-staging.txt"},
-				{"exp-output-plan-production.txt"},
-				{"exp-output-policy-check-production.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-apply-production.txt"},
-				{"exp-output-merge-all-dirs.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "modules-yaml",
-			RepoDir:       "modules-yaml",
-			ModifiedFiles: []string{"modules/null/main.tf"},
-			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis apply -d staging",
-				"atlantis apply -d production",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-apply-production.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "tfvars-yaml",
-			RepoDir:       "tfvars-yaml",
-			ModifiedFiles: []string{"main.tf"},
-			ExpAutoplan:   true,
-			Comments: []string{
-				"atlantis apply -p staging",
-				"atlantis apply -p default",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-apply-default.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "tfvars no autoplan",
-			RepoDir:       "tfvars-yaml-no-autoplan",
-			ModifiedFiles: []string{"main.tf"},
-			ExpAutoplan:   false,
-			Comments: []string{
-				"atlantis plan -p staging",
-				"atlantis plan -p default",
-				"atlantis apply -p staging",
-				"atlantis apply -p default",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-plan-staging.txt"},
-				{"exp-output-policy-check-staging.txt"},
-				{"exp-output-plan-default.txt"},
-				{"exp-output-policy-check-default.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-apply-default.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "automerge",
-			RepoDir:       "automerge",
-			ExpAutomerge:  true,
-			ExpAutoplan:   true,
-			ModifiedFiles: []string{"dir1/main.tf", "dir2/main.tf"},
-			Comments: []string{
-				"atlantis apply -d dir1",
-				"atlantis apply -d dir2",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-dir1.txt"},
-				{"exp-output-apply-dir2.txt"},
-				{"exp-output-automerge.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "server-side cfg",
-			RepoDir:       "server-side-cfg",
-			ExpAutomerge:  false,
-			ExpAutoplan:   true,
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply -w staging",
-				"atlantis apply -w default",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-staging-workspace.txt"},
-				{"exp-output-apply-default-workspace.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
-		},
-		{
-			Description:   "workspaces parallel with atlantis.yaml",
-			RepoDir:       "workspace-parallel-yaml",
-			ModifiedFiles: []string{"production/main.tf", "staging/main.tf"},
-			ExpAutoplan:   true,
-			ExpParallel:   true,
-			Comments: []string{
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan-staging.txt", "exp-output-autoplan-production.txt"},
-				{"exp-output-auto-policy-check.txt", "exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-all-staging.txt", "exp-output-apply-all-production.txt"},
-				{"exp-output-merge.txt"},
-			},
-			PolicyCheckEnabled: true,
 		},
 	}
+
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
 			RegisterMockTestingT(t)
 
-			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir, c.PolicyCheckEnabled)
+			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir, true)
 			// Set the repo to be cloned through the testing backdoor.
 			repoDir, headSHA, cleanup := initializeRepo(t, c.RepoDir)
 			defer cleanup()
@@ -804,6 +495,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 
 			// Setup test dependencies.
 			w := httptest.NewRecorder()
+			When(vcsClient.PullIsMergeable(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(true, nil)
 			When(githubGetter.GetPullRequest(AnyRepo(), AnyInt())).ThenReturn(GitHubPullRequestParsed(headSHA), nil)
 			When(vcsClient.GetModifiedFiles(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(c.ModifiedFiles, nil)
 
@@ -831,25 +523,20 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			// replies) that we expect.  We expect each plan to have 2 comments,
 			// one for plan one for policy check and apply have 1 for each
 			// comment plus one for the locks deleted at the end.
-			expNumReplies := len(c.Comments) + 1
+			expNumReplies := len(c.Comments)
 
-			if c.ExpAutoplan {
+			if c.ExpMergeable {
 				expNumReplies++
 			}
 
-			// When enabled policy_check runs right after plan. So whenever
-			// comment matches plan we add additional call to expected
-			// number.
-			if c.PolicyCheckEnabled {
-				var planRegex = regexp.MustCompile("plan")
-				for _, comment := range c.Comments {
-					if planRegex.MatchString(comment) {
-						expNumReplies++
-					}
-				}
+			if c.ExpAutoplan {
+				expNumReplies++
+				expNumReplies++
+			}
 
-				// Adding 1 for policy_check autorun
-				if c.ExpAutoplan {
+			var planRegex = regexp.MustCompile("plan")
+			for _, comment := range c.Comments {
+				if planRegex.MatchString(comment) {
 					expNumReplies++
 				}
 			}
@@ -958,9 +645,17 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 
 	Ok(t, err)
 
+	conftestVersion, _ := version.NewVersion("0.21.0")
+
+	conftextExec := policy.NewConfTestExecutorWorkflow(logger, binDir, &NoopTFDownloader{})
+
+	// swapping out version cache to something that always returns local contest
+	// binary
+	conftextExec.VersionCache = &LocalConftestCache{}
+
 	policyCheckRunner, err := runtime.NewPolicyCheckStepRunner(
-		defaultTFVersion,
-		policy.NewConfTestExecutorWorkflow(logger, binDir, &NoopTFDownloader{}),
+		conftestVersion,
+		conftextExec,
 	)
 
 	Ok(t, err)
@@ -1289,6 +984,34 @@ func mkSubDirs(t *testing.T) (string, string, string, func()) {
 	return tmp, binDir, cachedir, cleanup
 }
 
+// Will fail test if conftest isn't in path and isn't version >= 0.21.0
+func ensureRunningConftest(t *testing.T) {
+	localPath, err := exec.LookPath("conftest0.21.0")
+	if err != nil {
+		t.Log("conftest >= 0.21 must be installed to run this test")
+		t.FailNow()
+	}
+	versionOutBytes, err := exec.Command(localPath, "--version").Output() // #nosec
+	if err != nil {
+		t.Logf("error running conftest version: %s", err)
+		t.FailNow()
+	}
+	versionOutput := string(versionOutBytes)
+	match := versionConftestRegex.FindStringSubmatch(versionOutput)
+	if len(match) <= 1 {
+		t.Logf("could not parse contest version from %s", versionOutput)
+		t.FailNow()
+	}
+	localVersion, err := version.NewVersion(match[1])
+	Ok(t, err)
+	minVersion, err := version.NewVersion("0.21.0")
+	Ok(t, err)
+	if localVersion.LessThan(minVersion) {
+		t.Logf("must have contest version >= %s, you have %s", minVersion, localVersion)
+		t.FailNow()
+	}
+}
+
 // Will fail test if terraform isn't in path and isn't version >= 0.12
 func ensureRunning012(t *testing.T) {
 	localPath, err := exec.LookPath("terraform")
@@ -1324,3 +1047,5 @@ func ensureRunning012(t *testing.T) {
 //     Terraform v0.11.10
 //	   => 0.11.10
 var versionRegex = regexp.MustCompile("Terraform v(.*?)(\\s.*)?\n")
+
+var versionConftestRegex = regexp.MustCompile("Version: (.*?)(\\s.*)?\n")
