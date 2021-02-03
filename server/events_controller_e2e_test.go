@@ -753,16 +753,16 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 	}
 
 	commandRunner := &events.DefaultCommandRunner{
-		EventParser:               eventParser,
-		VCSClient:                 e2eVCSClient,
-		GithubPullGetter:          e2eGithubGetter,
-		GitlabMergeRequestGetter:  e2eGitlabGetter,
-		Logger:                    logger,
-		StatsScope:                statsScope,
-		AllowForkPRs:              allowForkPRs,
-		AllowForkPRsFlag:          "allow-fork-prs",
-		CommentCommandRunnerByCmd: commentCommandRunnerByCmd,
-		Drainer:                   drainer,
+		EventParser:                   eventParser,
+		VCSClient:                     e2eVCSClient,
+		GithubPullGetter:              e2eGithubGetter,
+		GitlabMergeRequestGetter:      e2eGitlabGetter,
+		Logger:                        logger,
+		StatsScope:                    statsScope,
+		AllowForkPRs:                  allowForkPRs,
+		AllowForkPRsFlag:              "allow-fork-prs",
+		CommentCommandRunnerByCmd:     commentCommandRunnerByCmd,
+		Drainer:                       drainer,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 	}
 
@@ -770,8 +770,8 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 	Ok(t, err)
 
 	ctrl := server.EventsController{
-		TestingMode:                   true,
-		CommandRunner:                 commandRunner,
+		TestingMode:   true,
+		CommandRunner: commandRunner,
 		PullCleaner: &events.PullClosedExecutor{
 			Locker:     lockingClient,
 			VCSClient:  e2eVCSClient,
