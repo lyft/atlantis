@@ -752,19 +752,19 @@ func setup(t *testing.T) (server.EventsController, *mocks.MockGithubRequestValid
 	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")
 	Ok(t, err)
 	e := server.EventsController{
-		TestingMode:                   true,
-		Logger:                        logging.NewNoopLogger(),
-		GithubRequestValidator:        v,
-		Parser:                        p,
-		CommentParser:                 cp,
-		CommandRunner:                 cr,
-		PullCleaner:                   c,
-		GithubWebhookSecret:           secret,
-		SupportedVCSHosts:             []models.VCSHostType{models.Github, models.Gitlab},
-		GitlabWebhookSecret:           secret,
-		GitlabRequestParserValidator:  gl,
-		RepoAllowlistChecker:          repoAllowlistChecker,
-		VCSClient:                     vcsmock,
+		TestingMode:                  true,
+		Logger:                       logging.NewNoopLogger(),
+		GithubRequestValidator:       v,
+		Parser:                       p,
+		CommentParser:                cp,
+		CommandRunner:                cr,
+		PullCleaner:                  c,
+		GithubWebhookSecret:          secret,
+		SupportedVCSHosts:            []models.VCSHostType{models.Github, models.Gitlab},
+		GitlabWebhookSecret:          secret,
+		GitlabRequestParserValidator: gl,
+		RepoAllowlistChecker:         repoAllowlistChecker,
+		VCSClient:                    vcsmock,
 	}
 	return e, v, gl, p, cr, c, vcsmock, cp
 }
