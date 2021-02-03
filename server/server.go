@@ -397,11 +397,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	preWorkflowHooksCommandRunner := &events.DefaultPreWorkflowHooksCommandRunner{
 		VCSClient:             vcsClient,
 		GlobalCfg:             globalCfg,
-		Logger:                logger,
 		WorkingDirLocker:      workingDirLocker,
 		WorkingDir:            workingDir,
-		Drainer:               drainer,
-		PreWorkflowHookRunner: &runtime.PreWorkflowHookRunner{},
+		PreWorkflowHookRunner: runtime.DefaultPreWorkflowHookRunner{},
 	}
 	projectCommandBuilder := events.NewProjectCommandBuilderWithLimit(
 		policyChecksEnabled,
@@ -550,6 +548,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		SilenceForkPRErrorsFlag:   config.SilenceForkPRErrorsFlag,
 		DisableAutoplan:           userConfig.DisableAutoplan,
 		Drainer:                   drainer,
+		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 	}
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
 	if err != nil {
@@ -568,7 +567,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DeleteLockCommand:  deleteLockCommand,
 	}
 	eventsController := &EventsController{
-		PreWorkflowHooksCommandRunner:   preWorkflowHooksCommandRunner,
 		CommandRunner:                   commandRunner,
 		PullCleaner:                     pullClosedExecutor,
 		Parser:                          eventParser,

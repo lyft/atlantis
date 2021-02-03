@@ -45,12 +45,11 @@ const bitbucketServerSignatureHeader = "X-Hub-Signature"
 // EventsController handles all webhook requests which signify 'events' in the
 // VCS host, ex. GitHub.
 type EventsController struct {
-	PreWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
-	CommandRunner                 events.CommandRunner
-	PullCleaner                   events.PullCleaner
-	Logger                        *logging.SimpleLogger
-	Parser                        events.EventParsing
-	CommentParser                 events.CommentParsing
+	CommandRunner events.CommandRunner
+	PullCleaner   events.PullCleaner
+	Logger        *logging.SimpleLogger
+	Parser        events.EventParsing
+	CommentParser events.CommentParsing
 	// GithubWebhookSecret is the secret added to this webhook via the GitHub
 	// UI that identifies this call as coming from GitHub. If empty, no
 	// request validation is done.

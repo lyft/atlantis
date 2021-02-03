@@ -108,9 +108,9 @@ type DefaultCommandRunner struct {
 	// SilenceForkPRErrorsFlag is the name of the flag that controls fork PR's. We use
 	// this in our error message back to the user on a forked PR so they know
 	// how to disable error comment
-	SilenceForkPRErrorsFlag   string
-	CommentCommandRunnerByCmd map[models.CommandName]CommentCommandRunner
-	Drainer                   *Drainer
+	SilenceForkPRErrorsFlag       string
+	CommentCommandRunnerByCmd     map[models.CommandName]CommentCommandRunner
+	Drainer                       *Drainer
 	PreWorkflowHooksCommandRunner PreWorkflowHooksCommandRunner
 }
 
@@ -146,7 +146,11 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 		return
 	}
 
-	c.PreWorkflowHooksCommandRunner.RunPreHooks(baseRepo, headRepo, pull, user)
+	err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
+
+	if err != nil {
+		ctx.Log.Err("Error running pre-workflow hooks %s. Proceeding with %s command.", err, models.PlanCommand)
+	}
 
 	autoPlanRunner := buildCommentCommandRunner(c, models.PlanCommand)
 	if autoPlanRunner == nil {
@@ -199,7 +203,11 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 		return
 	}
 
-	c.PreWorkflowHooksCommandRunner.RunPreHooks(baseRepo, headRepo, pull, user)
+	err = c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
+
+	if err != nil {
+		ctx.Log.Err("Error running pre-workflow hooks %s. Proceeding with %s command.", err, cmd.Name.String())
+	}
 
 	cmdRunner := buildCommentCommandRunner(c, cmd.CommandName())
 	if cmdRunner == nil {

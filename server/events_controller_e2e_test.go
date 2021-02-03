@@ -618,11 +618,9 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 	preWorkflowHooksCommandRunner := &events.DefaultPreWorkflowHooksCommandRunner{
 		VCSClient:             e2eVCSClient,
 		GlobalCfg:             globalCfg,
-		Logger:                logger,
 		WorkingDirLocker:      locker,
 		WorkingDir:            workingDir,
-		Drainer:               drainer,
-		PreWorkflowHookRunner: &runtime.PreWorkflowHookRunner{},
+		PreWorkflowHookRunner: runtime.DefaultPreWorkflowHookRunner{},
 	}
 	statsScope := stats.NewStore(stats.NewNullSink(), false)
 
@@ -765,6 +763,7 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 		AllowForkPRsFlag:          "allow-fork-prs",
 		CommentCommandRunnerByCmd: commentCommandRunnerByCmd,
 		Drainer:                   drainer,
+		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 	}
 
 	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")
@@ -772,7 +771,6 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 
 	ctrl := server.EventsController{
 		TestingMode:                   true,
-		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		CommandRunner:                 commandRunner,
 		PullCleaner: &events.PullClosedExecutor{
 			Locker:     lockingClient,
