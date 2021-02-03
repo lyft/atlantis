@@ -13,7 +13,7 @@ type PreWorkflowHookRunner interface {
 	Run(ctx models.PreWorkflowHookCommandContext, command string, path string) (string, error)
 }
 
-type DefaultPreWorkflowHookRunner struct {}
+type DefaultPreWorkflowHookRunner struct{}
 
 func (wh DefaultPreWorkflowHookRunner) Run(ctx models.PreWorkflowHookCommandContext, command string, path string) (string, error) {
 	cmd := exec.Command("sh", "-c", command) // #nosec

@@ -19,7 +19,6 @@ import (
 var wh events.DefaultPreWorkflowHooksCommandRunner
 var whWorkingDir *mocks.MockWorkingDir
 var whWorkingDirLocker *mocks.MockWorkingDirLocker
-var whDrainer *events.Drainer
 var whPreWorkflowHookRunner *runtime_mocks.MockPreWorkflowHookRunner
 
 func preWorkflowHooksSetup(t *testing.T) {
@@ -219,6 +218,4 @@ func TestRunPreHooks_Clone(t *testing.T) {
 		Assert(t, err != nil, "error not nil")
 		Assert(t, *unlockCalled == true, "unlock function called")
 	})
-
-	wh.RunPreHooks(ctx)
 }
