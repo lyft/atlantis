@@ -111,6 +111,7 @@ type DefaultCommandRunner struct {
 	SilenceForkPRErrorsFlag   string
 	CommentCommandRunnerByCmd map[models.CommandName]CommentCommandRunner
 	Drainer                   *Drainer
+	PreWorkflowHooksCommandRunner PreWorkflowHooksCommandRunner
 }
 
 // RunAutoplanCommand runs plan and policy_checks when a pull request is opened or updated.
@@ -145,10 +146,11 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 		return
 	}
 
+	c.PreWorkflowHooksCommandRunner.RunPreHooks(baseRepo, headRepo, pull, user)
+
 	autoPlanRunner := buildCommentCommandRunner(c, models.PlanCommand)
 	if autoPlanRunner == nil {
 		ctx.Log.Err("invalid autoplan command")
-		return
 	}
 
 	autoPlanRunner.Run(ctx, nil)
@@ -196,6 +198,8 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 	if !c.validateCtxAndComment(ctx) {
 		return
 	}
+
+	c.PreWorkflowHooksCommandRunner.RunPreHooks(baseRepo, headRepo, pull, user)
 
 	cmdRunner := buildCommentCommandRunner(c, cmd.CommandName())
 	if cmdRunner == nil {

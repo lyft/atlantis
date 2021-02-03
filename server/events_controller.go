@@ -343,9 +343,6 @@ func (e *EventsController) handlePullRequestEvent(w http.ResponseWriter, baseRep
 		// closed.
 		fmt.Fprintln(w, "Processing...")
 
-		e.Logger.Info("running pre workflow hooks if present")
-		e.PreWorkflowHooksCommandRunner.RunPreHooks(baseRepo, headRepo, pull, user)
-
 		e.Logger.Info("executing autoplan")
 		if !e.TestingMode {
 			go e.CommandRunner.RunAutoplanCommand(baseRepo, headRepo, pull, user)
