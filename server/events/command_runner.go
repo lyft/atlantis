@@ -153,9 +153,6 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 	}
 
 	autoPlanRunner := buildCommentCommandRunner(c, models.PlanCommand)
-	if autoPlanRunner == nil {
-		ctx.Log.Err("invalid autoplan command")
-	}
 
 	autoPlanRunner.Run(ctx, nil)
 }
@@ -210,10 +207,6 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 	}
 
 	cmdRunner := buildCommentCommandRunner(c, cmd.CommandName())
-	if cmdRunner == nil {
-		ctx.Log.Err("command %s is not supported", cmd.Name.String())
-		return
-	}
 
 	cmdRunner.Run(ctx, cmd)
 }
