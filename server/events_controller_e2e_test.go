@@ -425,10 +425,6 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 		Comments []string
 		// ExpAutomerge is true if we expect Atlantis to automerge.
 		ExpAutomerge bool
-		// ExpMergeable is true if we expect Atlantis to be able to merge.
-		// If for instance policy check is failing and there are no approvals
-		// ExpMergeable should be false
-		ExpMergeable bool
 		// ExpAutoplan is true if we expect Atlantis to autoplan.
 		ExpAutoplan bool
 		// ExpParallel is true if we expect Atlantis to run parallel plans or applies.
@@ -443,7 +439,6 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			RepoDir:       "policy-checks",
 			ModifiedFiles: []string{"main.tf"},
 			ExpAutoplan:   true,
-			ExpMergeable:  true,
 			Comments: []string{
 				"atlantis approve_policies",
 				"atlantis apply",
@@ -461,7 +456,6 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			RepoDir:       "policy-checks",
 			ModifiedFiles: []string{"main.tf"},
 			ExpAutoplan:   true,
-			ExpMergeable:  false,
 			Comments: []string{
 				"atlantis apply",
 			},
@@ -477,7 +471,6 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			RepoDir:       "policy-checks-diff-owner",
 			ModifiedFiles: []string{"main.tf"},
 			ExpAutoplan:   true,
-			ExpMergeable:  false,
 			Comments: []string{
 				"atlantis approve_policies",
 				"atlantis apply",
