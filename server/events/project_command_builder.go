@@ -230,6 +230,8 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 	// Need to lock the workspace we're about to clone to.
 	workspace := DefaultWorkspace
 
+	var projCtxs []models.ProjectCommandContext
+
 	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, workspace)
 	if err != nil {
 		ctx.Log.Warn("workspace was locked")
@@ -243,13 +245,13 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 		return nil, err
 	}
 
+	defer p.cleanWorkingDir(ctx, &projCtxs)
+
 	// Parse config file if it exists.
 	hasRepoCfg, err := p.ParserValidator.HasRepoCfg(repoDir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "looking for %s file in %q", yaml.AtlantisYAMLFilename, repoDir)
 	}
-
-	var projCtxs []models.ProjectCommandContext
 
 	if hasRepoCfg {
 		// If there's a repo cfg then we'll use it to figure out which projects
@@ -310,6 +312,20 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 	return projCtxs, nil
 }
 
+// cleanWorkingDir ensures that we clean up after ourselves, if we have no project commands to run
+func (p *DefaultProjectCommandBuilder) cleanWorkingDir(ctx *CommandContext, projects *[]models.ProjectCommandContext) {
+	if len(*projects) > 0 {
+		return
+	}
+	// Delete the whole pull dir here since we don't have anything for atlantis to do.
+	err := p.WorkingDir.Delete(ctx.HeadRepo, ctx.Pull)
+	if err != nil {
+		ctx.Log.Warn("Unable to delete working directory")
+	}
+
+	ctx.Log.Debug("Deleted working directory")
+}
+
 // buildProjectPlanCommand builds a plan context for a single project.
 // cmd must be for only one project.
 func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
@@ -332,12 +348,14 @@ func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *CommandConte
 		return pcc, err
 	}
 
+	defer p.cleanWorkingDir(ctx, &pcc)
+
 	repoRelDir := DefaultRepoRelDir
 	if cmd.RepoRelDir != "" {
 		repoRelDir = cmd.RepoRelDir
 	}
 
-	return p.buildProjectCommandCtx(
+	pcc, err = p.buildProjectCommandCtx(
 		ctx,
 		models.PlanCommand,
 		cmd.ProjectName,
@@ -347,6 +365,8 @@ func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *CommandConte
 		workspace,
 		cmd.Verbose,
 	)
+
+	return pcc, err
 }
 
 // getCfg returns the atlantis.yaml config (if it exists) for this project. If
