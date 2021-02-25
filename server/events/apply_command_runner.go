@@ -9,6 +9,7 @@ import (
 func NewApplyCommandRunner(
 	vcsClient vcs.Client,
 	disableApplyAll bool,
+	disableApply bool,
 	commitStatusUpdater CommitStatusUpdater,
 	prjCommandBuilder ProjectApplyCommandBuilder,
 	prjCmdRunner ProjectApplyCommandRunner,
@@ -20,6 +21,7 @@ func NewApplyCommandRunner(
 	return &ApplyCommandRunner{
 		vcsClient:           vcsClient,
 		DisableApplyAll:     disableApplyAll,
+		DisableApply:        disableApply,
 		commitStatusUpdater: commitStatusUpdater,
 		prjCmdBuilder:       prjCommandBuilder,
 		prjCmdRunner:        prjCmdRunner,
@@ -32,6 +34,7 @@ func NewApplyCommandRunner(
 
 type ApplyCommandRunner struct {
 	DisableApplyAll     bool
+	DisableApply        bool
 	DB                  *db.BoltDB
 	vcsClient           vcs.Client
 	commitStatusUpdater CommitStatusUpdater
@@ -46,6 +49,14 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
+
+	if a.DisableApply {
+		ctx.Log.Info("ignoring apply command since apply disabled globally")
+		if err := a.vcsClient.CreateComment(baseRepo, pull.Num, applyDisabledComment, models.ApplyCommand.String()); err != nil {
+			ctx.Log.Err("unable to comment on pull request: %s", err)
+		}
+		return
+	}
 
 	if a.DisableApplyAll && !cmd.IsForSpecificProject() {
 		ctx.Log.Info("ignoring apply command without flags since apply all is disabled")
@@ -166,3 +177,6 @@ func (a *ApplyCommandRunner) anyFailedPolicyChecks(pull models.PullRequest) bool
 // are disabled and an apply all command is issued.
 var applyAllDisabledComment = "**Error:** Running `atlantis apply` without flags is disabled." +
 	" You must specify which project to apply via the `-d <dir>`, `-w <workspace>` or `-p <project name>` flags."
+
+// applyDisabledComment is posted when apply commands are disabled globally and an apply command is issued.
+var applyDisabledComment = "**Error:** Running `atlantis apply` is disabled."
