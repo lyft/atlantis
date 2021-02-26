@@ -390,13 +390,6 @@ projects:
 					actCtxs, err = builder.BuildPlanCommands(&events.CommandContext{
 						Scope: scope,
 					}, &c.Cmd)
-
-					// Test that clean up occured only when there weren't ctxs returned or errors
-					if len(actCtxs) == 0 || err != nil {
-						workingDir.VerifyWasCalledOnce().Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
-					} else {
-						workingDir.VerifyWasCalled(Never()).Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
-					}
 				} else {
 					actCtxs, err = builder.BuildApplyCommands(&events.CommandContext{Scope: scope}, &c.Cmd)
 				}
