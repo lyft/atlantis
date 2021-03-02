@@ -50,6 +50,7 @@ type TryLockResponse struct {
 
 // ApplyCommandLockResponse contains information about apply command lock status.
 type ApplyCommandLockResponse struct {
+	// Present is true is when apply lock is present
 	Present bool
 	Time    time.Time
 }
@@ -71,7 +72,11 @@ type ApplyLockChecker interface {
 
 // ApplyLocker interface that manages locks for apply command runner
 type ApplyLocker interface {
+	// LockApply creates a lock for ApplyCommand if lock already exists it will
+	// return existing lock without any changes
 	LockApply() (ApplyCommandLockResponse, error)
+	// UnlockApply deletes apply lock created by LockApply if present, otherwise
+	// it is a no-op
 	UnlockApply() error
 	ApplyLockChecker
 }
