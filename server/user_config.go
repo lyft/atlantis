@@ -79,6 +79,10 @@ type UserConfig struct {
 	WriteGitCreds          bool            `mapstructure:"write-git-creds"`
 }
 
+func (u *UserConfig) IsApplyDisabled() bool {
+	return u.DisableApply
+}
+
 // ToLogLevel returns the LogLevel object corresponding to the user-passed
 // log level.
 func (u UserConfig) ToLogLevel() logging.LogLevel {

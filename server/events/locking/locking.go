@@ -32,6 +32,10 @@ type Backend interface {
 	List() ([]models.ProjectLock, error)
 	GetLock(project models.Project, workspace string) (*models.ProjectLock, error)
 	UnlockByPull(repoFullName string, pullNum int) ([]models.ProjectLock, error)
+
+	LockCommand(cmdName models.CommandName, lockTime time.Time) (models.CommandLock, error)
+	UnlockCommand(cmdName models.CommandName) error
+	GetCommandLock(cmdName models.CommandName) (models.CommandLock, error)
 }
 
 // TryLockResponse results from an attempted lock.
@@ -44,9 +48,22 @@ type TryLockResponse struct {
 	LockKey string
 }
 
+// ApplyCommandLockResponse contains information about apply command lock status.
+type ApplyCommandLockResponse struct {
+	Present bool
+	Time    time.Time
+}
+
 // Client is used to perform locking actions.
 type Client struct {
 	backend Backend
+}
+
+// ApplyLocker interface that manages locks for apply command runner
+type ApplyLocker interface {
+	LockApply() (ApplyCommandLockResponse, error)
+	UnlockApply() error
+	GetApplyLock() (ApplyCommandLockResponse, error)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_locker.go Locker
@@ -64,6 +81,45 @@ func NewClient(backend Backend) *Client {
 	return &Client{
 		backend: backend,
 	}
+}
+
+// LockApply acquires global apply lock.
+func (c *Client) LockApply() (ApplyCommandLockResponse, error) {
+	response := ApplyCommandLockResponse{}
+
+	applyCmdLock, err := c.backend.LockCommand(models.ApplyCommand, time.Now().Local())
+	if err != nil {
+		return response, err
+	}
+
+	response.Present = !applyCmdLock.Time.IsZero()
+	response.Time = applyCmdLock.Time
+	return response, nil
+}
+
+// UnlockApply releases a global apply lock.
+func (c *Client) UnlockApply() error {
+	err := c.backend.UnlockCommand(models.ApplyCommand)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetApplyLock retrieves an apply command lock if present.
+func (c *Client) GetApplyLock() (ApplyCommandLockResponse, error) {
+	response := ApplyCommandLockResponse{}
+
+	applyCmdLock, err := c.backend.GetCommandLock(models.ApplyCommand)
+	if err != nil {
+		return response, err
+	}
+
+	response.Present = !applyCmdLock.Time.IsZero()
+	response.Time = applyCmdLock.Time
+
+	return response, nil
 }
 
 // keyRegex matches and captures {repoFullName}/{path}/{workspace} where path can have multiple /'s in it.

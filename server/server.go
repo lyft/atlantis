@@ -86,6 +86,7 @@ type Server struct {
 	Logger                        *logging.SimpleLogger
 	StatsScope                    stats.Scope
 	Locker                        locking.Locker
+	ApplyLocker                   locking.ApplyLocker
 	EventsController              *EventsController
 	GithubAppController           *GithubAppController
 	LocksController               *LocksController
@@ -571,6 +572,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		AtlantisVersion:    config.AtlantisVersion,
 		AtlantisURL:        parsedURL,
 		Locker:             lockingClient,
+		ApplyLocker:        lockingClient,
 		Logger:             logger,
 		VCSClient:          vcsClient,
 		LockDetailTemplate: lockTemplate,
@@ -617,6 +619,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Logger:                        logger,
 		StatsScope:                    statsScope,
 		Locker:                        lockingClient,
+		ApplyLocker:                   lockingClient,
 		EventsController:              eventsController,
 		GithubAppController:           githubAppController,
 		LocksController:               locksController,
@@ -640,6 +643,8 @@ func (s *Server) Start() error {
 	s.Router.HandleFunc("/events", s.EventsController.Post).Methods("POST")
 	s.Router.HandleFunc("/github-app/exchange-code", s.GithubAppController.ExchangeCode).Methods("GET")
 	s.Router.HandleFunc("/github-app/setup", s.GithubAppController.New).Methods("GET")
+	s.Router.HandleFunc("/apply/lock", s.LocksController.LockApplyCmd).Methods("POST").Queries()
+	s.Router.HandleFunc("/apply/unlock", s.LocksController.UnLockApply).Methods("DELETE").Queries()
 	s.Router.HandleFunc("/locks", s.LocksController.DeleteLock).Methods("DELETE").Queries("id", "{id:.*}")
 	s.Router.HandleFunc("/lock", s.LocksController.GetLock).Methods("GET").
 		Queries(LockViewRouteIDQueryParam, fmt.Sprintf("{%s}", LockViewRouteIDQueryParam)).Name(LockViewRouteName)
@@ -730,11 +735,25 @@ func (s *Server) Index(w http.ResponseWriter, _ *http.Request) {
 		})
 	}
 
+	applyCmdLock, err := s.ApplyLocker.GetApplyLock()
+	s.Logger.Info("Apply Lock: %v", applyCmdLock)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprintf(w, "Could not retrieve global apply lock: %s", err)
+		return
+	}
+
+	applyLockData := ApplyLockData{
+		Time:          applyCmdLock.Time,
+		Present:       applyCmdLock.Present,
+		TimeFormatted: applyCmdLock.Time.Format("02-01-2006 15:04:05"),
+	}
 	//Sort by date - newest to oldest.
 	sort.SliceStable(lockResults, func(i, j int) bool { return lockResults[i].Time.After(lockResults[j].Time) })
 
 	err = s.IndexTemplate.Execute(w, IndexData{
 		Locks:           lockResults,
+		ApplyLock:       applyLockData,
 		AtlantisVersion: s.AtlantisVersion,
 		CleanedBasePath: s.AtlantisURL.Path,
 	})
