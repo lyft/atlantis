@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	stats "github.com/lyft/gostats"
 	"github.com/runatlantis/atlantis/server/events/db"
@@ -90,7 +91,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	When(logger.NewLogger("runatlantis/atlantis#1", true, logging.Info)).
 		ThenReturn(pullLogger)
 
-	scope := stats.NewDefaultStore()
+	scope := stats.NewStore(stats.NewNullSink(), false)
 	dbUpdater = &events.DBUpdater{
 		DB: defaultBoltDB,
 	}
@@ -129,6 +130,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 
 	applyCommandRunner = events.NewApplyCommandRunner(
 		vcsClient,
+		false,
 		false,
 		commitUpdater,
 		projectCommandBuilder,
@@ -290,14 +292,37 @@ func TestRunCommentCommand_DisableApplyAllDisabled(t *testing.T) {
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "**Error:** Running `atlantis apply` without flags is disabled. You must specify which project to apply via the `-d <dir>`, `-w <workspace>` or `-p <project name>` flags.", "apply")
 }
 
-func TestRunCommentCommand_ApplyDisabled(t *testing.T) {
-	t.Log("if \"atlantis apply\" is run and this is disabled globally atlantis should" +
-		" comment saying that this is not allowed")
-	vcsClient := setup(t)
-	ch.DisableApply = true
-	modelPull := models.PullRequest{State: models.OpenPullState}
-	ch.RunCommentCommand(fixtures.GithubRepo, nil, nil, fixtures.User, modelPull.Num, &events.CommentCommand{Name: models.ApplyCommand})
-	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "**Error:** Running `atlantis apply` is disabled.", "apply")
+func TestRunCommentCommand_IsApplyDisabled(t *testing.T) {
+	t.Run("if \"atlantis apply\" is run DisableApply flag is set atlantis should"+
+		" comment saying that this is not allowed", func(t *testing.T) {
+		vcsClient := setup(t)
+		applyCommandRunner.DisableApply = true
+		defer func() { applyCommandRunner.DisableApply = false }()
+		pull := &github.PullRequest{
+			State: github.String("open"),
+		}
+		modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState, Num: fixtures.Pull.Num}
+		When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
+		When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
+
+		ch.RunCommentCommand(fixtures.GithubRepo, nil, nil, fixtures.User, modelPull.Num, &events.CommentCommand{Name: models.ApplyCommand})
+		vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "**Error:** Running `atlantis apply` is disabled.", "apply")
+	})
+
+	t.Run("if \"atlantis apply\" is run and ApplyCmdLock is set atlantis should"+
+		" comment saying that this is not allowed", func(t *testing.T) {
+		vcsClient := setup(t)
+		applyCommandRunner.DB.LockApplyCmd(time.Now())
+		pull := &github.PullRequest{
+			State: github.String("open"),
+		}
+		modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState, Num: fixtures.Pull.Num}
+		When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
+		When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
+
+		ch.RunCommentCommand(fixtures.GithubRepo, nil, nil, fixtures.User, modelPull.Num, &events.CommentCommand{Name: models.ApplyCommand})
+		vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "**Error:** Running `atlantis apply` is disabled.", "apply")
+	})
 }
 
 func TestRunCommentCommand_DisableDisableAutoplan(t *testing.T) {

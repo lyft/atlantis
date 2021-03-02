@@ -208,6 +208,14 @@ type User struct {
 	Username string
 }
 
+// CommandLock represents a global lock for an atlantis command (plan, apply, policy_check).
+// It is used to prevent commands from being executed
+type CommandLock struct {
+	// Time is the time at which the lock was first created.
+	Time        time.Time
+	CommandName CommandName
+}
+
 // ProjectLock represents a lock on a project.
 type ProjectLock struct {
 	// Project is the project that is being locked.

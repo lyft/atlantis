@@ -40,9 +40,17 @@ type LockIndexData struct {
 	TimeFormatted string
 }
 
+// ApplyLockData holds the fields to display in the index view
+type ApplyLockData struct {
+	Present       bool
+	Time          time.Time
+	TimeFormatted string
+}
+
 // IndexData holds the data for rendering the index page
 type IndexData struct {
 	Locks           []LockIndexData
+	ApplyLock       ApplyLockData
 	AtlantisVersion string
 	// CleanedBasePath is the path Atlantis is accessible at externally. If
 	// not using a path-based proxy, this will be an empty string. Never ends
@@ -50,66 +58,7 @@ type IndexData struct {
 	CleanedBasePath string
 }
 
-var indexTemplate = template.Must(template.New("index.html.tmpl").Parse(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>atlantis</title>
-  <meta name="description" content="">
-  <meta name="author" content="">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="{{ .CleanedBasePath }}/static/js/jquery-3.5.1.min.js"></script>
-  <script>
-    $(document).ready(function () {
-      $("p.js-discard-success").toggle(document.URL.indexOf("discard=true") !== -1);
-    });
-    setTimeout(function() {
-        $("p.js-discard-success").fadeOut('slow');
-    }, 5000); // <-- time in milliseconds
-  </script>
-  <link rel="stylesheet" href="{{ .CleanedBasePath }}/static/css/normalize.css">
-  <link rel="stylesheet" href="{{ .CleanedBasePath }}/static/css/skeleton.css">
-  <link rel="stylesheet" href="{{ .CleanedBasePath }}/static/css/custom.css">
-  <link rel="icon" type="image/png" href="{{ .CleanedBasePath }}/static/images/atlantis-icon.png">
-</head>
-<body>
-<div class="container">
-  <section class="header">
-    <a title="atlantis" href="{{ .CleanedBasePath }}/"><img class="hero" src="{{ .CleanedBasePath }}/static/images/atlantis-icon_512.png"/></a>
-    <p class="title-heading">atlantis</p>
-    <p class="js-discard-success"><strong>Plan discarded and unlocked!</strong></p>
-  </section>
-  <nav class="navbar">
-    <div class="container">
-    </div>
-  </nav>
-  <div class="navbar-spacer"></div>
-  <br>
-  <section>
-    <p class="title-heading small"><strong>Locks</strong></p>
-    {{ if .Locks }}
-    {{ $basePath := .CleanedBasePath }}
-    {{ range .Locks }}
-      <a href="{{ $basePath }}{{.LockPath}}">
-        <div class="twelve columns button content lock-row">
-        <div class="list-title">{{.RepoFullName}} <span class="heading-font-size">#{{.PullNum}}</span> <code>{{.Path}}</code> <code>{{.Workspace}}</code></div>
-        <div class="list-status"><code>Locked</code></div>
-        <div class="list-timestamp"><span class="heading-font-size">{{.TimeFormatted}}</span></div>
-        </div>
-      </a>
-    {{ end }}
-    {{ else }}
-    <p class="placeholder">No locks found.</p>
-    {{ end }}
-  </section>
-</div>
-<footer>
-v{{ .AtlantisVersion }}
-</footer>
-</body>
-</html>
-`))
+var indexTemplate = template.Must(template.New("index.html.tmpl").ParseFiles("server/templates/index.html.tmpl"))
 
 // LockDetailData holds the fields needed to display the lock detail view.
 type LockDetailData struct {
@@ -185,7 +134,7 @@ v{{ .AtlantisVersion }}
 <script>
   // Get the modal
   var modal = $("#discardMessageModal");
-  
+
   // Get the button that opens the modal
   var btn = $("#discardPlanUnlock");
   var btnDiscard = $("#discardYes");
@@ -196,7 +145,7 @@ v{{ .AtlantisVersion }}
   var span = document.getElementsByClassName("close")[0];
   var cancelBtn = document.getElementsByClassName("cancel")[0];
 
-  // When the user clicks the button, open the modal 
+  // When the user clicks the button, open the modal
   btn.click(function() {
     modal.css("display", "block");
   });

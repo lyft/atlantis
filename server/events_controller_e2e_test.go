@@ -727,6 +727,7 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 	applyCommandRunner := events.NewApplyCommandRunner(
 		e2eVCSClient,
 		false,
+		false,
 		e2eStatusUpdater,
 		projectCommandBuilder,
 		projectCommandRunner,

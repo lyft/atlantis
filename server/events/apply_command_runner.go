@@ -45,12 +45,25 @@ type ApplyCommandRunner struct {
 	dbUpdater           *DBUpdater
 }
 
+// IsApplyDisabled checks if applies are disabled globally through UI or through
+// a userConfig flag.
+func (a *ApplyCommandRunner) IsApplyDisabled(ctx *CommandContext) bool {
+	globalLock, err := a.DB.GetCommandLock(models.ApplyCommand)
+	if err != nil {
+		ctx.Log.Err("failed to retrieve globalApplyCmdLock: %s", err)
+		return a.DisableApply
+	}
+
+	disableApply := !globalLock.Time.IsZero() || a.DisableApply
+	return disableApply
+}
+
 func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
-	if a.DisableApply {
+	if a.IsApplyDisabled(ctx) {
 		ctx.Log.Info("ignoring apply command since apply disabled globally")
 		if err := a.vcsClient.CreateComment(baseRepo, pull.Num, applyDisabledComment, models.ApplyCommand.String()); err != nil {
 			ctx.Log.Err("unable to comment on pull request: %s", err)
