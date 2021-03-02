@@ -2,14 +2,49 @@ package events
 
 import (
 	"github.com/runatlantis/atlantis/server/events/db"
+	"github.com/runatlantis/atlantis/server/events/locking"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_apply_command_locker.go ApplyCommandLocker
+
+type ApplyCommandLocker interface {
+	IsDisabled(ctx *CommandContext) bool
+}
+
+func NewApplyCommandLocker(
+	applyLockChecker locking.ApplyLockChecker,
+	disableApply bool,
+) *DefaultApplyCommandLocker {
+	return &DefaultApplyCommandLocker{
+		ApplyLockChecker: applyLockChecker,
+		DisableApply:     disableApply,
+	}
+}
+
+type DefaultApplyCommandLocker struct {
+	ApplyLockChecker locking.ApplyLockChecker
+	DisableApply     bool
+}
+
+// IsDisabled returns true if there is a global apply command lock or
+// DisableApply flag is set to true
+func (a *DefaultApplyCommandLocker) IsDisabled(ctx *CommandContext) bool {
+	lock, err := a.ApplyLockChecker.CheckApplyLock()
+	if err != nil {
+		ctx.Log.Err("failed to retrieve globalApplyCmdLock: %s", err)
+		return a.DisableApply
+	}
+
+	disableApply := lock.Present || a.DisableApply
+	return disableApply
+}
+
 func NewApplyCommandRunner(
 	vcsClient vcs.Client,
 	disableApplyAll bool,
-	disableApply bool,
+	applyCommandLocker ApplyCommandLocker,
 	commitStatusUpdater CommitStatusUpdater,
 	prjCommandBuilder ProjectApplyCommandBuilder,
 	prjCmdRunner ProjectApplyCommandRunner,
@@ -21,7 +56,7 @@ func NewApplyCommandRunner(
 	return &ApplyCommandRunner{
 		vcsClient:           vcsClient,
 		DisableApplyAll:     disableApplyAll,
-		DisableApply:        disableApply,
+		locker:              applyCommandLocker,
 		commitStatusUpdater: commitStatusUpdater,
 		prjCmdBuilder:       prjCommandBuilder,
 		prjCmdRunner:        prjCmdRunner,
@@ -34,8 +69,8 @@ func NewApplyCommandRunner(
 
 type ApplyCommandRunner struct {
 	DisableApplyAll     bool
-	DisableApply        bool
 	DB                  *db.BoltDB
+	locker              ApplyCommandLocker
 	vcsClient           vcs.Client
 	commitStatusUpdater CommitStatusUpdater
 	prjCmdBuilder       ProjectApplyCommandBuilder
@@ -45,25 +80,12 @@ type ApplyCommandRunner struct {
 	dbUpdater           *DBUpdater
 }
 
-// IsApplyDisabled checks if applies are disabled globally through UI or through
-// a userConfig flag.
-func (a *ApplyCommandRunner) IsApplyDisabled(ctx *CommandContext) bool {
-	globalLock, err := a.DB.GetCommandLock(models.ApplyCommand)
-	if err != nil {
-		ctx.Log.Err("failed to retrieve globalApplyCmdLock: %s", err)
-		return a.DisableApply
-	}
-
-	disableApply := !globalLock.Time.IsZero() || a.DisableApply
-	return disableApply
-}
-
 func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
-	if a.IsApplyDisabled(ctx) {
+	if a.locker.IsDisabled(ctx) {
 		ctx.Log.Info("ignoring apply command since apply disabled globally")
 		if err := a.vcsClient.CreateComment(baseRepo, pull.Num, applyDisabledComment, models.ApplyCommand.String()); err != nil {
 			ctx.Log.Err("unable to comment on pull request: %s", err)

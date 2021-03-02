@@ -59,11 +59,21 @@ type Client struct {
 	backend Backend
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_apply_lock_checker.go ApplyLockChecker
+
+// ApplyLockChecker is an implementation of the global apply lock retrieval.
+// It returns an object that contains information about apply locks status.
+type ApplyLockChecker interface {
+	CheckApplyLock() (ApplyCommandLockResponse, error)
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_apply_locker.go ApplyLocker
+
 // ApplyLocker interface that manages locks for apply command runner
 type ApplyLocker interface {
 	LockApply() (ApplyCommandLockResponse, error)
 	UnlockApply() error
-	GetApplyLock() (ApplyCommandLockResponse, error)
+	ApplyLockChecker
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_locker.go Locker
@@ -107,8 +117,8 @@ func (c *Client) UnlockApply() error {
 	return nil
 }
 
-// GetApplyLock retrieves an apply command lock if present.
-func (c *Client) GetApplyLock() (ApplyCommandLockResponse, error) {
+// CheckApplyLock retrieves an apply command lock if present.
+func (c *Client) CheckApplyLock() (ApplyCommandLockResponse, error) {
 	response := ApplyCommandLockResponse{}
 
 	applyCmdLock, err := c.backend.GetCommandLock(models.ApplyCommand)

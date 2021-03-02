@@ -503,10 +503,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		autoMerger,
 	)
 
+	applyCommandLocker := events.NewApplyCommandLocker(lockingClient, userConfig.DisableApply)
 	applyCommandRunner := events.NewApplyCommandRunner(
 		vcsClient,
 		userConfig.DisableApplyAll,
-		userConfig.DisableApply,
+		applyCommandLocker,
 		commitStatusUpdater,
 		projectCommandBuilder,
 		instrumentedProjectCmdRunner,
@@ -632,8 +633,8 @@ func (s *Server) Start() error {
 	s.Router.HandleFunc("/events", s.EventsController.Post).Methods("POST")
 	s.Router.HandleFunc("/github-app/exchange-code", s.GithubAppController.ExchangeCode).Methods("GET")
 	s.Router.HandleFunc("/github-app/setup", s.GithubAppController.New).Methods("GET")
-	s.Router.HandleFunc("/apply/lock", s.LocksController.LockApplyCmd).Methods("POST").Queries()
-	s.Router.HandleFunc("/apply/unlock", s.LocksController.UnLockApply).Methods("DELETE").Queries()
+	s.Router.HandleFunc("/apply/lock", s.LocksController.LockApply).Methods("POST").Queries()
+	s.Router.HandleFunc("/apply/unlock", s.LocksController.UnlockApply).Methods("DELETE").Queries()
 	s.Router.HandleFunc("/locks", s.LocksController.DeleteLock).Methods("DELETE").Queries("id", "{id:.*}")
 	s.Router.HandleFunc("/lock", s.LocksController.GetLock).Methods("GET").
 		Queries(LockViewRouteIDQueryParam, fmt.Sprintf("{%s}", LockViewRouteIDQueryParam)).Name(LockViewRouteName)
@@ -724,7 +725,7 @@ func (s *Server) Index(w http.ResponseWriter, _ *http.Request) {
 		})
 	}
 
-	applyCmdLock, err := s.ApplyLocker.GetApplyLock()
+	applyCmdLock, err := s.ApplyLocker.CheckApplyLock()
 	s.Logger.Info("Apply Lock: %v", applyCmdLock)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
