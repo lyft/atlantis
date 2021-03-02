@@ -38,6 +38,8 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
+var applyLocker locking.ApplyLocker
+
 type NoopTFDownloader struct{}
 
 var mockPreWorkflowHookRunner *runtimemocks.MockPreWorkflowHookRunner
@@ -74,6 +76,8 @@ func TestGitHubWorkflow(t *testing.T) {
 		ModifiedFiles []string
 		// Comments are what our mock user writes to the pull request.
 		Comments []string
+		// CreateApplyLock disables apply command if set to true
+		CreateApplyLock bool
 		// ExpAutomerge is true if we expect Atlantis to automerge.
 		ExpAutomerge bool
 		// ExpAutoplan is true if we expect Atlantis to autoplan.
@@ -337,6 +341,21 @@ func TestGitHubWorkflow(t *testing.T) {
 				{"exp-output-merge.txt"},
 			},
 		},
+		{
+			Description:     "global apply lock disables apply commands",
+			RepoDir:         "simple-yaml",
+			ModifiedFiles:   []string{"main.tf"},
+			CreateApplyLock: true,
+			ExpAutoplan:     true,
+			Comments: []string{
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-apply-locked.txt"},
+				{"exp-output-merge.txt"},
+			},
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
@@ -357,6 +376,11 @@ func TestGitHubWorkflow(t *testing.T) {
 			pullOpenedReq := GitHubPullRequestOpenedEvent(t, headSHA)
 			ctrl.Post(w, pullOpenedReq)
 			responseContains(t, w, 200, "Processing...")
+
+			// Create global apply lock if required
+			if c.CreateApplyLock {
+				applyLocker.LockApply()
+			}
 
 			// Now send any other comments.
 			for _, comment := range c.Comments {
@@ -707,6 +731,9 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 		GlobalAutomerge: false,
 	}
 
+	applyLocker = lockingClient
+	applyCommandLocker := events.NewApplyCommandLocker(applyLocker, false)
+
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
 		pullUpdater,
@@ -733,7 +760,7 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 	applyCommandRunner := events.NewApplyCommandRunner(
 		e2eVCSClient,
 		false,
-		false,
+		applyCommandLocker,
 		e2eStatusUpdater,
 		projectCommandBuilder,
 		projectCommandRunner,

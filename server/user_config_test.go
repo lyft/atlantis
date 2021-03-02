@@ -8,30 +8,6 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
-func TestUserConfig_DisableApply(t *testing.T) {
-	t.Run("DisableApply is static and false", func(t *testing.T) {
-		u := server.UserConfig{
-			DisableApply: false,
-		}
-		Equals(t, false, u.IsApplyDisabled())
-	})
-
-	t.Run("DisableApply is static and true", func(t *testing.T) {
-		u := server.UserConfig{
-			DisableApply: true,
-		}
-		Equals(t, true, u.IsApplyDisabled())
-	})
-
-	t.Run("DisableApply is overriden", func(t *testing.T) {
-		u := server.UserConfig{
-			DisableApply: false,
-		}
-
-		Equals(t, true, u.IsApplyDisabled())
-	})
-}
-
 func TestUserConfig_ToLogLevel(t *testing.T) {
 	cases := []struct {
 		userLvl string
