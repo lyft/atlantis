@@ -33,9 +33,9 @@ type Backend interface {
 	GetLock(project models.Project, workspace string) (*models.ProjectLock, error)
 	UnlockByPull(repoFullName string, pullNum int) ([]models.ProjectLock, error)
 
-	LockCommand(cmdName models.CommandName, lockTime time.Time) (models.CommandLock, error)
+	LockCommand(cmdName models.CommandName, lockTime time.Time) (*models.CommandLock, error)
 	UnlockCommand(cmdName models.CommandName) error
-	GetCommandLock(cmdName models.CommandName) (models.CommandLock, error)
+	CheckCommandLock(cmdName models.CommandName) (*models.CommandLock, error)
 }
 
 // TryLockResponse results from an attempted lock.
@@ -107,8 +107,10 @@ func (c *Client) LockApply() (ApplyCommandLockResponse, error) {
 		return response, err
 	}
 
-	response.Present = !applyCmdLock.Time.IsZero()
-	response.Time = applyCmdLock.Time
+	if applyCmdLock != nil {
+		response.Present = true
+		response.Time = applyCmdLock.Time
+	}
 	return response, nil
 }
 
@@ -126,13 +128,15 @@ func (c *Client) UnlockApply() error {
 func (c *Client) CheckApplyLock() (ApplyCommandLockResponse, error) {
 	response := ApplyCommandLockResponse{}
 
-	applyCmdLock, err := c.backend.GetCommandLock(models.ApplyCommand)
+	applyCmdLock, err := c.backend.CheckCommandLock(models.ApplyCommand)
 	if err != nil {
 		return response, err
 	}
 
-	response.Present = !applyCmdLock.Time.IsZero()
-	response.Time = applyCmdLock.Time
+	if applyCmdLock != nil {
+		response.Present = true
+		response.Time = applyCmdLock.Time
+	}
 
 	return response, nil
 }
