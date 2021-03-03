@@ -12,9 +12,6 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
-var applyLockCheckerMock lockingmocks.MockApplyLockChecker
-var ctx *events.CommandContext
-
 func TestApplyCommandLocker_IsDisabled(t *testing.T) {
 	ctx := &events.CommandContext{
 		Log: logging.NewNoopLogger(),

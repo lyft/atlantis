@@ -27,7 +27,6 @@ const (
 	locksBucketName       = "runLocks"
 	pullsBucketName       = "pulls"
 	globalLocksBucketName = "global"
-	glbApplyCmdLockKey    = "/apply/lock"
 	pullKeySeparator      = "::"
 )
 
