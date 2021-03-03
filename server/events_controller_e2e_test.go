@@ -379,7 +379,7 @@ func TestGitHubWorkflow(t *testing.T) {
 
 			// Create global apply lock if required
 			if c.CreateApplyLock {
-				applyLocker.LockApply()
+				_, _ = applyLocker.LockApply()
 			}
 
 			// Now send any other comments.

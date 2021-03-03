@@ -73,7 +73,9 @@ func TestUnlockApplyCmdDisabled(t *testing.T) {
 	timeNow := time.Now()
 	_, err := b.LockCommand(models.ApplyCommand, timeNow)
 	Ok(t, err)
+
 	config, err := b.CheckCommandLock(models.ApplyCommand)
+	Ok(t, err)
 	Equals(t, false, config.Time.IsZero())
 
 	err = b.UnlockCommand(models.ApplyCommand)
