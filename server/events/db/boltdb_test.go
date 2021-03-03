@@ -48,9 +48,9 @@ func TestApplyCmdLockNotSet(t *testing.T) {
 	t.Log("retrieving apply lock when there are none should return empty ApplyCmdLock")
 	db, b := newTestDB()
 	defer cleanupDB(db)
-	exists, err := b.GetCommandLock(models.ApplyCommand)
+	exists, err := b.CheckCommandLock(models.ApplyCommand)
 	Ok(t, err)
-	Equals(t, true, exists.Time.IsZero())
+	Assert(t, exists == nil, "exp nil")
 }
 
 func TestApplyCmdLockEnabled(t *testing.T) {
@@ -61,7 +61,7 @@ func TestApplyCmdLockEnabled(t *testing.T) {
 	_, err := b.LockCommand(models.ApplyCommand, timeNow)
 	Ok(t, err)
 
-	config, err := b.GetCommandLock(models.ApplyCommand)
+	config, err := b.CheckCommandLock(models.ApplyCommand)
 	Ok(t, err)
 	Equals(t, false, config.Time.IsZero())
 }
@@ -73,15 +73,15 @@ func TestUnlockApplyCmdDisabled(t *testing.T) {
 	timeNow := time.Now()
 	_, err := b.LockCommand(models.ApplyCommand, timeNow)
 	Ok(t, err)
-	config, err := b.GetCommandLock(models.ApplyCommand)
+	config, err := b.CheckCommandLock(models.ApplyCommand)
 	Equals(t, false, config.Time.IsZero())
 
 	err = b.UnlockCommand(models.ApplyCommand)
 	Ok(t, err)
 
-	config, err = b.GetCommandLock(models.ApplyCommand)
+	config, err = b.CheckCommandLock(models.ApplyCommand)
 	Ok(t, err)
-	Equals(t, true, config.Time.IsZero())
+	Assert(t, config == nil, "exp nil object")
 }
 
 func TestMixedLocksPresent(t *testing.T) {

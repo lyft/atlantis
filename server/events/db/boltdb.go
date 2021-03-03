@@ -171,9 +171,11 @@ func (b *BoltDB) List() ([]models.ProjectLock, error) {
 	return locks, nil
 }
 
-// LockCommand creates an CommandLock that is used to stop apply workflow from
-// executing.
-func (b *BoltDB) LockCommand(cmdName models.CommandName, lockTime time.Time) (models.CommandLock, error) {
+// LockCommand attempts to create a new lock for a CommandName. If the lock is
+// not present, it will create a lock and return a pointer to it.
+// If the lock already exists, it will just return pointer to the existing lock
+// If lock creation fails it will return nil
+func (b *BoltDB) LockCommand(cmdName models.CommandName, lockTime time.Time) (*models.CommandLock, error) {
 	lock := models.CommandLock{
 		CommandName: cmdName,
 		Time:        lockTime,
@@ -199,13 +201,13 @@ func (b *BoltDB) LockCommand(cmdName models.CommandName, lockTime time.Time) (mo
 	})
 
 	if transactionErr != nil {
-		return models.CommandLock{}, errors.Wrap(transactionErr, "DB transaction failed")
+		return nil, errors.Wrap(transactionErr, "DB transaction failed")
 	}
 
-	return lock, nil
+	return &lock, nil
 }
 
-// UnlockApplyCmd removes any global apply locks if present
+// UnlockApplyCmd removes CommandName lock if present
 func (b *BoltDB) UnlockCommand(cmdName models.CommandName) error {
 	transactionErr := b.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(b.globalLocksBucketName)
@@ -219,13 +221,14 @@ func (b *BoltDB) UnlockCommand(cmdName models.CommandName) error {
 	return nil
 }
 
-// GetApplyCmdLock checks if global apply cmd lock was set.
-// If global apply lock exists return true, otherwise false
-// Apply locks stops apply command runner from executing apply workflow globally
-func (b *BoltDB) GetCommandLock(cmdName models.CommandName) (models.CommandLock, error) {
+// CheckCommandLock checks if CommandName lock was set.
+// If the lock exists return the pointer to the lock object, otherwise return nil
+func (b *BoltDB) CheckCommandLock(cmdName models.CommandName) (*models.CommandLock, error) {
 	cmdLock := models.CommandLock{
 		CommandName: cmdName,
 	}
+
+	found := false
 
 	err := b.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(b.globalLocksBucketName)
@@ -236,12 +239,17 @@ func (b *BoltDB) GetCommandLock(cmdName models.CommandName) (models.CommandLock,
 			if err := json.Unmarshal(serializedLock, &cmdLock); err != nil {
 				return errors.Wrap(err, "failed to deserialize UserConfig")
 			}
+			found = true
 		}
 
 		return nil
 	})
 
-	return cmdLock, err
+	if found {
+		return &cmdLock, err
+	}
+
+	return nil, err
 }
 
 // UnlockByPull deletes all locks associated with that pull request and returns them.

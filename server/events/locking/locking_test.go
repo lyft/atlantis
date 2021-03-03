@@ -144,3 +144,67 @@ func TestGetLock(t *testing.T) {
 	Ok(t, err)
 	Equals(t, &pl, lock)
 }
+
+func TestApplyLocker_LockCommand(t *testing.T) {
+	RegisterMockTestingT(t)
+	backend := mocks.NewMockBackend()
+
+	t.Run("errors", func(t *testing.T) {
+		When(backend.LockCommand(matchers.AnyModelsCommandName(), matchers.AnyTimeTime())).ThenReturn(nil, errExpected)
+		l := locking.NewClient(backend)
+		lock, err := l.LockApply()
+		Equals(t, errExpected, err)
+		Assert(t, !lock.Present, "exp false")
+	})
+
+	t.Run("succeeds", func(t *testing.T) {
+		timeNow := time.Now()
+		When(backend.LockCommand(matchers.AnyModelsCommandName(), matchers.AnyTimeTime())).ThenReturn(&models.CommandLock{Time: timeNow, CommandName: models.ApplyCommand}, nil)
+		l := locking.NewClient(backend)
+		lock, _ := l.LockApply()
+		Assert(t, lock.Present, "exp lock present")
+	})
+}
+
+func TestApplyLocker_UnlockCommand(t *testing.T) {
+	RegisterMockTestingT(t)
+	backend := mocks.NewMockBackend()
+
+	t.Run("UnlockCommand fails", func(t *testing.T) {
+		When(backend.UnlockCommand(matchers.AnyModelsCommandName())).ThenReturn(errExpected)
+		l := locking.NewClient(backend)
+		err := l.UnlockApply()
+		Equals(t, errExpected, err)
+	})
+
+	t.Run("UnlockCommand succeeds", func(t *testing.T) {
+		When(backend.UnlockCommand(matchers.AnyModelsCommandName())).ThenReturn(nil)
+		l := locking.NewClient(backend)
+		err := l.UnlockApply()
+		Equals(t, nil, err)
+	})
+
+}
+
+func TestApplyLocker_CheckApplyLock(t *testing.T) {
+	RegisterMockTestingT(t)
+	backend := mocks.NewMockBackend()
+
+	t.Run("fails", func(t *testing.T) {
+		When(backend.CheckCommandLock(matchers.AnyModelsCommandName())).ThenReturn(nil, errExpected)
+		l := locking.NewClient(backend)
+		lock, err := l.CheckApplyLock()
+		Equals(t, errExpected, err)
+		Equals(t, lock.Present, false)
+	})
+
+	t.Run("UnlockCommand succeeds", func(t *testing.T) {
+		timeNow := time.Now()
+		When(backend.CheckCommandLock(matchers.AnyModelsCommandName())).ThenReturn(&models.CommandLock{Time: timeNow, CommandName: models.ApplyCommand}, nil)
+		l := locking.NewClient(backend)
+		lock, err := l.CheckApplyLock()
+		Equals(t, nil, err)
+		Assert(t, lock.Present, "exp lock present")
+	})
+
+}
