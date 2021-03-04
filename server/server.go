@@ -303,10 +303,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, err
 	}
 	var lockingClient locking.Locker
+	var applyLockingClient locking.ApplyLocker
 	if userConfig.DisableRepoLocking {
 		lockingClient = locking.NewNoOpLocker()
 	} else {
 		lockingClient = locking.NewClient(boltdb)
+		applyLockingClient = locking.NewClient(boltdb)
 	}
 	workingDirLocker := events.NewDefaultWorkingDirLocker()
 
@@ -513,7 +515,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
-	applyCommandLocker := events.NewApplyCommandLocker(lockingClient, userConfig.DisableApply)
+	applyCommandLocker := events.NewApplyCommandLocker(applyLockingClient, userConfig.DisableApply)
 	applyCommandRunner := events.NewApplyCommandRunner(
 		vcsClient,
 		userConfig.DisableApplyAll,
@@ -573,7 +575,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		AtlantisVersion:    config.AtlantisVersion,
 		AtlantisURL:        parsedURL,
 		Locker:             lockingClient,
-		ApplyLocker:        lockingClient,
+		ApplyLocker:        applyLockingClient,
 		Logger:             logger,
 		VCSClient:          vcsClient,
 		LockDetailTemplate: lockTemplate,
@@ -620,7 +622,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Logger:                        logger,
 		StatsScope:                    statsScope,
 		Locker:                        lockingClient,
-		ApplyLocker:                   lockingClient,
+		ApplyLocker:                   applyLockingClient,
 		EventsController:              eventsController,
 		GithubAppController:           githubAppController,
 		LocksController:               locksController,
