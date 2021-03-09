@@ -7,44 +7,10 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_apply_command_locker.go ApplyCommandLocker
-
-type ApplyCommandLocker interface {
-	IsDisabled(ctx *CommandContext) bool
-}
-
-func NewApplyCommandLocker(
-	applyLockChecker locking.ApplyLockChecker,
-	disableApply bool,
-) *DefaultApplyCommandLocker {
-	return &DefaultApplyCommandLocker{
-		ApplyLockChecker: applyLockChecker,
-		DisableApply:     disableApply,
-	}
-}
-
-type DefaultApplyCommandLocker struct {
-	ApplyLockChecker locking.ApplyLockChecker
-	DisableApply     bool
-}
-
-// IsDisabled returns true if there is a global apply command lock or
-// DisableApply flag is set to true
-func (a *DefaultApplyCommandLocker) IsDisabled(ctx *CommandContext) bool {
-	lock, err := a.ApplyLockChecker.CheckApplyLock()
-	if err != nil {
-		ctx.Log.Err("failed to retrieve globalApplyCmdLock: %s", err)
-		return a.DisableApply
-	}
-
-	disableApply := lock.Present || a.DisableApply
-	return disableApply
-}
-
 func NewApplyCommandRunner(
 	vcsClient vcs.Client,
 	disableApplyAll bool,
-	applyCommandLocker ApplyCommandLocker,
+	applyCommandLocker locking.ApplyLockChecker,
 	commitStatusUpdater CommitStatusUpdater,
 	prjCommandBuilder ProjectApplyCommandBuilder,
 	prjCmdRunner ProjectApplyCommandRunner,
@@ -72,7 +38,7 @@ func NewApplyCommandRunner(
 type ApplyCommandRunner struct {
 	DisableApplyAll     bool
 	DB                  *db.BoltDB
-	locker              ApplyCommandLocker
+	locker              locking.ApplyLockChecker
 	vcsClient           vcs.Client
 	commitStatusUpdater CommitStatusUpdater
 	prjCmdBuilder       ProjectApplyCommandBuilder
@@ -88,7 +54,15 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
-	if a.locker.IsDisabled(ctx) {
+	locked, err := a.IsLocked()
+	// CheckApplyLock falls back to DisableApply flag if fetching the lock
+	// raises an erro r
+	// We will log failure as warning
+	if err != nil {
+		ctx.Log.Warn("checking global apply lock: %s", err)
+	}
+
+	if locked {
 		ctx.Log.Info("ignoring apply command since apply disabled globally")
 		if err := a.vcsClient.CreateComment(baseRepo, pull.Num, applyDisabledComment, models.ApplyCommand.String()); err != nil {
 			ctx.Log.Err("unable to comment on pull request: %s", err)
@@ -168,6 +142,12 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	if a.autoMerger.automergeEnabled(projectCmds) {
 		a.autoMerger.automerge(ctx, pullStatus)
 	}
+}
+
+func (a *ApplyCommandRunner) IsLocked() (bool, error) {
+	lock, err := a.locker.CheckApplyLock()
+
+	return lock.Locked, err
 }
 
 func (a *ApplyCommandRunner) isParallelEnabled(projectCmds []models.ProjectCommandContext) bool {

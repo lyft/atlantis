@@ -44,8 +44,8 @@ var lock = models.ProjectLock{
 	Time:      time.Now(),
 }
 
-func TestApplyCmdLockNotSet(t *testing.T) {
-	t.Log("retrieving apply lock when there are none should return empty ApplyCmdLock")
+func TestLockCommandNotSet(t *testing.T) {
+	t.Log("retrieving apply lock when there are none should return empty LockCommand")
 	db, b := newTestDB()
 	defer cleanupDB(db)
 	exists, err := b.CheckCommandLock(models.ApplyCommand)
@@ -53,7 +53,7 @@ func TestApplyCmdLockNotSet(t *testing.T) {
 	Assert(t, exists == nil, "exp nil")
 }
 
-func TestApplyCmdLockEnabled(t *testing.T) {
+func TestLockCommandEnabled(t *testing.T) {
 	t.Log("setting the apply lock")
 	db, b := newTestDB()
 	defer cleanupDB(db)
@@ -63,10 +63,22 @@ func TestApplyCmdLockEnabled(t *testing.T) {
 
 	config, err := b.CheckCommandLock(models.ApplyCommand)
 	Ok(t, err)
-	Equals(t, false, config.Time.IsZero())
+	Equals(t, true, config.IsLocked())
 }
 
-func TestUnlockApplyCmdDisabled(t *testing.T) {
+func TestLockCommandFail(t *testing.T) {
+	t.Log("setting the apply lock")
+	db, b := newTestDB()
+	defer cleanupDB(db)
+	timeNow := time.Now()
+	_, err := b.LockCommand(models.ApplyCommand, timeNow)
+	Ok(t, err)
+
+	_, err = b.LockCommand(models.ApplyCommand, timeNow)
+	ErrEquals(t, "db transaction failed: lock already exists", err)
+}
+
+func TestUnlockCommandDisabled(t *testing.T) {
 	t.Log("unsetting the apply lock")
 	db, b := newTestDB()
 	defer cleanupDB(db)
@@ -76,7 +88,7 @@ func TestUnlockApplyCmdDisabled(t *testing.T) {
 
 	config, err := b.CheckCommandLock(models.ApplyCommand)
 	Ok(t, err)
-	Equals(t, false, config.Time.IsZero())
+	Equals(t, true, config.IsLocked())
 
 	err = b.UnlockCommand(models.ApplyCommand)
 	Ok(t, err)
@@ -84,6 +96,14 @@ func TestUnlockApplyCmdDisabled(t *testing.T) {
 	config, err = b.CheckCommandLock(models.ApplyCommand)
 	Ok(t, err)
 	Assert(t, config == nil, "exp nil object")
+}
+
+func TestUnlockCommandFail(t *testing.T) {
+	t.Log("setting the apply lock")
+	db, b := newTestDB()
+	defer cleanupDB(db)
+	err := b.UnlockCommand(models.ApplyCommand)
+	ErrEquals(t, "db transaction failed: no lock exists", err)
 }
 
 func TestMixedLocksPresent(t *testing.T) {

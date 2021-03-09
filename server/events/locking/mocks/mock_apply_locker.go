@@ -25,17 +25,17 @@ func NewMockApplyLocker(options ...pegomock.Option) *MockApplyLocker {
 func (mock *MockApplyLocker) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockApplyLocker) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockApplyLocker) LockApply() (locking.ApplyCommandLockResponse, error) {
+func (mock *MockApplyLocker) LockApply() (locking.ApplyCommandLock, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockApplyLocker().")
 	}
 	params := []pegomock.Param{}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("LockApply", params, []reflect.Type{reflect.TypeOf((*locking.ApplyCommandLockResponse)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 locking.ApplyCommandLockResponse
+	result := pegomock.GetGenericMockFrom(mock).Invoke("LockApply", params, []reflect.Type{reflect.TypeOf((*locking.ApplyCommandLock)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 locking.ApplyCommandLock
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(locking.ApplyCommandLockResponse)
+			ret0 = result[0].(locking.ApplyCommandLock)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)
@@ -59,17 +59,17 @@ func (mock *MockApplyLocker) UnlockApply() error {
 	return ret0
 }
 
-func (mock *MockApplyLocker) CheckApplyLock() (locking.ApplyCommandLockResponse, error) {
+func (mock *MockApplyLocker) CheckApplyLock() (locking.ApplyCommandLock, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockApplyLocker().")
 	}
 	params := []pegomock.Param{}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("CheckApplyLock", params, []reflect.Type{reflect.TypeOf((*locking.ApplyCommandLockResponse)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 locking.ApplyCommandLockResponse
+	result := pegomock.GetGenericMockFrom(mock).Invoke("CheckApplyLock", params, []reflect.Type{reflect.TypeOf((*locking.ApplyCommandLock)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 locking.ApplyCommandLock
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(locking.ApplyCommandLockResponse)
+			ret0 = result[0].(locking.ApplyCommandLock)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)

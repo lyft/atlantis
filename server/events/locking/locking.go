@@ -48,37 +48,9 @@ type TryLockResponse struct {
 	LockKey string
 }
 
-// ApplyCommandLockResponse contains information about apply command lock status.
-type ApplyCommandLockResponse struct {
-	// Present is true is when apply lock is present
-	Present bool
-	Time    time.Time
-}
-
 // Client is used to perform locking actions.
 type Client struct {
 	backend Backend
-}
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_apply_lock_checker.go ApplyLockChecker
-
-// ApplyLockChecker is an implementation of the global apply lock retrieval.
-// It returns an object that contains information about apply locks status.
-type ApplyLockChecker interface {
-	CheckApplyLock() (ApplyCommandLockResponse, error)
-}
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_apply_locker.go ApplyLocker
-
-// ApplyLocker interface that manages locks for apply command runner
-type ApplyLocker interface {
-	// LockApply creates a lock for ApplyCommand if lock already exists it will
-	// return existing lock without any changes
-	LockApply() (ApplyCommandLockResponse, error)
-	// UnlockApply deletes apply lock created by LockApply if present, otherwise
-	// it is a no-op
-	UnlockApply() error
-	ApplyLockChecker
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_locker.go Locker
@@ -96,49 +68,6 @@ func NewClient(backend Backend) *Client {
 	return &Client{
 		backend: backend,
 	}
-}
-
-// LockApply acquires global apply lock.
-func (c *Client) LockApply() (ApplyCommandLockResponse, error) {
-	response := ApplyCommandLockResponse{}
-
-	applyCmdLock, err := c.backend.LockCommand(models.ApplyCommand, time.Now().Local())
-	if err != nil {
-		return response, err
-	}
-
-	if applyCmdLock != nil {
-		response.Present = true
-		response.Time = applyCmdLock.Time
-	}
-	return response, nil
-}
-
-// UnlockApply releases a global apply lock.
-func (c *Client) UnlockApply() error {
-	err := c.backend.UnlockCommand(models.ApplyCommand)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// CheckApplyLock retrieves an apply command lock if present.
-func (c *Client) CheckApplyLock() (ApplyCommandLockResponse, error) {
-	response := ApplyCommandLockResponse{}
-
-	applyCmdLock, err := c.backend.CheckCommandLock(models.ApplyCommand)
-	if err != nil {
-		return response, err
-	}
-
-	if applyCmdLock != nil {
-		response.Present = true
-		response.Time = applyCmdLock.Time
-	}
-
-	return response, nil
 }
 
 // keyRegex matches and captures {repoFullName}/{path}/{workspace} where path can have multiple /'s in it.

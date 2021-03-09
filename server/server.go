@@ -308,7 +308,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		lockingClient = locking.NewNoOpLocker()
 	} else {
 		lockingClient = locking.NewClient(boltdb)
-		applyLockingClient = locking.NewClient(boltdb)
+		applyLockingClient = locking.NewApplyClient(boltdb, userConfig.DisableApply)
 	}
 	workingDirLocker := events.NewDefaultWorkingDirLocker()
 
@@ -515,11 +515,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
-	applyCommandLocker := events.NewApplyCommandLocker(applyLockingClient, userConfig.DisableApply)
 	applyCommandRunner := events.NewApplyCommandRunner(
 		vcsClient,
 		userConfig.DisableApplyAll,
-		applyCommandLocker,
+		applyLockingClient,
 		commitStatusUpdater,
 		projectCommandBuilder,
 		instrumentedProjectCmdRunner,
@@ -748,7 +747,7 @@ func (s *Server) Index(w http.ResponseWriter, _ *http.Request) {
 
 	applyLockData := ApplyLockData{
 		Time:          applyCmdLock.Time,
-		Present:       applyCmdLock.Present,
+		Locked:        applyCmdLock.Locked,
 		TimeFormatted: applyCmdLock.Time.Format("02-01-2006 15:04:05"),
 	}
 	//Sort by date - newest to oldest.

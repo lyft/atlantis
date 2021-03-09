@@ -7,14 +7,14 @@ import (
 	locking "github.com/runatlantis/atlantis/server/events/locking"
 )
 
-func AnyLockingApplyCommandLockResponse() locking.ApplyCommandLockResponse {
-	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(locking.ApplyCommandLockResponse))(nil)).Elem()))
-	var nullValue locking.ApplyCommandLockResponse
+func AnyLockingApplyCommandLockResponse() locking.ApplyCommandLock {
+	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(locking.ApplyCommandLock))(nil)).Elem()))
+	var nullValue locking.ApplyCommandLock
 	return nullValue
 }
 
-func EqLockingApplyCommandLockResponse(value locking.ApplyCommandLockResponse) locking.ApplyCommandLockResponse {
+func EqLockingApplyCommandLockResponse(value locking.ApplyCommandLock) locking.ApplyCommandLock {
 	pegomock.RegisterMatcher(&pegomock.EqMatcher{Value: value})
-	var nullValue locking.ApplyCommandLockResponse
+	var nullValue locking.ApplyCommandLock
 	return nullValue
 }

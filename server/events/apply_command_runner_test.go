@@ -4,65 +4,120 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/go-github/v31/github"
+	stats "github.com/lyft/gostats"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/locking"
-	lockingmocks "github.com/runatlantis/atlantis/server/events/locking/mocks"
-	"github.com/runatlantis/atlantis/server/logging"
-	. "github.com/runatlantis/atlantis/testing"
+	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/models/fixtures"
 )
 
-func TestApplyCommandLocker_IsDisabled(t *testing.T) {
-	ctx := &events.CommandContext{
-		Log: logging.NewNoopLogger(),
-	}
+// func setupApplyCmd(t *testing.T) *events.ApplyCommandRunner {
+// 	tmp, cleanup := TempDir(t)
+// 	defer cleanup()
+
+// 	githubGetter = mocks.NewMockGithubPullGetter()
+// 	eventParsing = mocks.NewMockEventParsing()
+// 	vcsClient = vcsmocks.NewMockClient()
+// 	commitUpdater = mocks.NewMockCommitStatusUpdater()
+// 	applyLockChecker = lockingmocks.NewMockApplyLockChecker()
+
+// 	projectCommandBuilder = mocks.NewMockProjectCommandBuilder()
+// 	projectCommandRunner = mocks.NewMockProjectCommandRunner()
+
+// 	pullUpdater := &events.PullUpdater{
+// 		HidePrevPlanComments: false,
+// 		VCSClient:            vcsClient,
+// 		MarkdownRenderer:     &events.MarkdownRenderer{},
+// 	}
+
+// 	defaultBoltDB, err := db.New(tmp)
+// 	Ok(t, err)
+
+// 	dbUpdater := &events.DBUpdater{
+// 		DB: defaultBoltDB,
+// 	}
+
+// 	autoMerger := &events.AutoMerger{
+// 		VCSClient:       vcsClient,
+// 		GlobalAutomerge: false,
+// 	}
+
+// 	scopeNull := stats.NewStore(stats.NewNullSink(), false)
+// 	parallelPoolSize := 1
+
+// 	return events.NewApplyCommandRunner(
+// 		vcsClient,
+// 		false,
+// 		applyLockChecker,
+// 		commitUpdater,
+// 		projectCommandBuilder,
+// 		projectCommandRunner,
+// 		autoMerger,
+// 		pullUpdater,
+// 		dbUpdater,
+// 		defaultBoltDB,
+// 		parallelPoolSize,
+// 	)
+
+//}
+
+func TestApplyCommandRunner_IsLocked(t *testing.T) {
+	RegisterMockTestingT(t)
 
 	cases := []struct {
-		Description      string
-		DisableApply     bool
-		ApplyLockPresent bool
-		ApplyLockError   error
-		ExpIsDisabled    bool
+		Description    string
+		ApplyLocked    bool
+		ApplyLockError error
+		ExpComment     string
 	}{
 		{
-			Description:      "When global apply lock is present IsDisabled returns true",
-			DisableApply:     false,
-			ApplyLockPresent: true,
-			ApplyLockError:   nil,
-			ExpIsDisabled:    true,
+			Description:    "When global apply lock is present IsDisabled returns true",
+			ApplyLocked:    true,
+			ApplyLockError: nil,
+			ExpComment:     "**Error:** Running `atlantis apply` is disabled.",
 		},
 		{
-			Description:      "When no global apply lock is present and DisableApply flag is false IsDisabled returns false",
-			DisableApply:     false,
-			ApplyLockPresent: false,
-			ApplyLockError:   nil,
-			ExpIsDisabled:    false,
+			Description:    "When no global apply lock is present and DisableApply flag is false IsDisabled returns false",
+			ApplyLocked:    false,
+			ApplyLockError: nil,
+			ExpComment:     "Ran Apply for 0 projects:\n\n\n\n",
 		},
 		{
-			Description:      "When no global apply lock is present and DisableApply flag is true IsDisabled returns true",
-			ApplyLockPresent: false,
-			DisableApply:     true,
-			ApplyLockError:   nil,
-			ExpIsDisabled:    true,
-		},
-		{
-			Description:      "If ApplyLockChecker returns an error IsDisabled return value of DisableApply flag",
-			ApplyLockError:   errors.New("error"),
-			ApplyLockPresent: false,
-			DisableApply:     true,
-			ExpIsDisabled:    true,
+			Description:    "If ApplyLockChecker returns an error IsDisabled return value of DisableApply flag",
+			ApplyLockError: errors.New("error"),
+			ApplyLocked:    false,
+			ExpComment:     "Ran Apply for 0 projects:\n\n\n\n",
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			applyLockChecker := lockingmocks.NewMockApplyLockChecker()
-			When(applyLockChecker.CheckApplyLock()).ThenReturn(locking.ApplyCommandLockResponse{Present: c.ApplyLockPresent}, nil)
+			vcsClient := setup(t)
 
-			applyCommandLocker := events.NewApplyCommandLocker(applyLockChecker, c.DisableApply)
+			scopeNull := stats.NewStore(stats.NewNullSink(), false)
 
-			Equals(t, c.ExpIsDisabled, applyCommandLocker.IsDisabled(ctx))
+			pull := &github.PullRequest{
+				State: github.String("open"),
+			}
+			modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState, Num: fixtures.Pull.Num}
+			When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
+			When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
+
+			ctx := &events.CommandContext{
+				User:     fixtures.User,
+				Log:      noopLogger,
+				Pull:     modelPull,
+				HeadRepo: fixtures.GithubRepo,
+				Trigger:  events.Comment,
+				Scope:    scopeNull,
+			}
+
+			When(applyLockChecker.CheckApplyLock()).ThenReturn(locking.ApplyCommandLock{Locked: c.ApplyLocked}, c.ApplyLockError)
+			applyCommandRunner.Run(ctx, &events.CommentCommand{Name: models.ApplyCommand})
+
+			vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, c.ExpComment, "apply")
 		})
-
 	}
 }

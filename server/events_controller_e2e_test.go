@@ -39,6 +39,7 @@ import (
 )
 
 var applyLocker locking.ApplyLocker
+var userConfig server.UserConfig
 
 type NoopTFDownloader struct{}
 
@@ -76,8 +77,10 @@ func TestGitHubWorkflow(t *testing.T) {
 		ModifiedFiles []string
 		// Comments are what our mock user writes to the pull request.
 		Comments []string
-		// CreateApplyLock disables apply command if set to true
-		CreateApplyLock bool
+		// DisableApply flag used by userConfig object when initializing atlantis server.
+		DisableApply bool
+		// ApplyLock creates an apply lock that temporarily disables apply command
+		ApplyLock bool
 		// ExpAutomerge is true if we expect Atlantis to automerge.
 		ExpAutomerge bool
 		// ExpAutoplan is true if we expect Atlantis to autoplan.
@@ -342,11 +345,28 @@ func TestGitHubWorkflow(t *testing.T) {
 			},
 		},
 		{
-			Description:     "global apply lock disables apply commands",
-			RepoDir:         "simple-yaml",
-			ModifiedFiles:   []string{"main.tf"},
-			CreateApplyLock: true,
-			ExpAutoplan:     true,
+			Description:   "global apply lock disables apply commands",
+			RepoDir:       "simple-yaml",
+			ModifiedFiles: []string{"main.tf"},
+			DisableApply:  false,
+			ApplyLock:     true,
+			ExpAutoplan:   true,
+			Comments: []string{
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-apply-locked.txt"},
+				{"exp-output-merge.txt"},
+			},
+		},
+		{
+			Description:   "disable apply flag always takes presedence",
+			RepoDir:       "simple-yaml",
+			ModifiedFiles: []string{"main.tf"},
+			DisableApply:  true,
+			ApplyLock:     false,
+			ExpAutoplan:   true,
 			Comments: []string{
 				"atlantis apply",
 			},
@@ -361,6 +381,7 @@ func TestGitHubWorkflow(t *testing.T) {
 		t.Run(c.Description, func(t *testing.T) {
 			RegisterMockTestingT(t)
 
+			userConfig.DisableApply = c.DisableApply
 			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir, false)
 			// Set the repo to be cloned through the testing backdoor.
 			repoDir, headSHA, cleanup := initializeRepo(t, c.RepoDir)
@@ -378,7 +399,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			responseContains(t, w, 200, "Processing...")
 
 			// Create global apply lock if required
-			if c.CreateApplyLock {
+			if c.ApplyLock {
 				_, _ = applyLocker.LockApply()
 			}
 
@@ -619,6 +640,7 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 	boltdb, err := db.New(dataDir)
 	Ok(t, err)
 	lockingClient := locking.NewClient(boltdb)
+	applyLocker = locking.NewApplyClient(boltdb, userConfig.DisableApply)
 	projectLocker := &events.DefaultProjectLocker{
 		Locker:    lockingClient,
 		VCSClient: e2eVCSClient,
@@ -731,9 +753,6 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 		GlobalAutomerge: false,
 	}
 
-	applyLocker = lockingClient
-	applyCommandLocker := events.NewApplyCommandLocker(applyLocker, false)
-
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
 		pullUpdater,
@@ -760,7 +779,7 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 	applyCommandRunner := events.NewApplyCommandRunner(
 		e2eVCSClient,
 		false,
-		applyCommandLocker,
+		applyLocker,
 		e2eStatusUpdater,
 		projectCommandBuilder,
 		projectCommandRunner,

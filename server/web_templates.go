@@ -42,7 +42,7 @@ type LockIndexData struct {
 
 // ApplyLockData holds the fields to display in the index view
 type ApplyLockData struct {
-	Present       bool
+	Locked       bool
 	Time          time.Time
 	TimeFormatted string
 }
@@ -89,7 +89,7 @@ var indexTemplate = template.Must(template.New("index.html.tmpl").Parse(`
     <p class="js-discard-success"><strong>Plan discarded and unlocked!</strong></p>
   </section>
   <section>
-    {{ if .ApplyLock.Present }}
+    {{ if .ApplyLock.Locked }}
     <div class="twelve center columns">
       <h6><strong>Apply commands are disabled globally</strong></h6>
       <h6><code>Lock Status</code>: <strong>Active</strong></h6>
@@ -198,7 +198,7 @@ v{{ .AtlantisVersion }}
       return [modal, btn];
   }
 
-  {{ if .ApplyLock.Present }}
+  {{ if .ApplyLock.Locked }}
   var [modal, btn] = applyLockModalSetup("unlock");
   {{ else }}
   var [modal, btn] = applyLockModalSetup("lock");

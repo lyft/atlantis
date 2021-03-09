@@ -25,17 +25,17 @@ func NewMockApplyLockChecker(options ...pegomock.Option) *MockApplyLockChecker {
 func (mock *MockApplyLockChecker) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockApplyLockChecker) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockApplyLockChecker) CheckApplyLock() (locking.ApplyCommandLockResponse, error) {
+func (mock *MockApplyLockChecker) CheckApplyLock() (locking.ApplyCommandLock, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockApplyLockChecker().")
 	}
 	params := []pegomock.Param{}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("CheckApplyLock", params, []reflect.Type{reflect.TypeOf((*locking.ApplyCommandLockResponse)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 locking.ApplyCommandLockResponse
+	result := pegomock.GetGenericMockFrom(mock).Invoke("CheckApplyLock", params, []reflect.Type{reflect.TypeOf((*locking.ApplyCommandLock)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 locking.ApplyCommandLock
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(locking.ApplyCommandLockResponse)
+			ret0 = result[0].(locking.ApplyCommandLock)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)

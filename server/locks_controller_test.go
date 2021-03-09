@@ -44,9 +44,9 @@ func TestCreateApplyLock(t *testing.T) {
 		lockTime, _ := time.Parse(layout, strLockTime)
 
 		l := mocks.NewMockApplyLocker()
-		When(l.LockApply()).ThenReturn(locking.ApplyCommandLockResponse{
-			Present: true,
-			Time:    lockTime,
+		When(l.LockApply()).ThenReturn(locking.ApplyCommandLock{
+			Locked: true,
+			Time:   lockTime,
 		}, nil)
 
 		lc := server.LocksController{
@@ -63,8 +63,8 @@ func TestCreateApplyLock(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		l := mocks.NewMockApplyLocker()
-		When(l.LockApply()).ThenReturn(locking.ApplyCommandLockResponse{
-			Present: false,
+		When(l.LockApply()).ThenReturn(locking.ApplyCommandLock{
+			Locked: false,
 		}, errors.New("failed to acquire lock"))
 
 		lc := server.LocksController{

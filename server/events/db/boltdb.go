@@ -177,7 +177,9 @@ func (b *BoltDB) List() ([]models.ProjectLock, error) {
 func (b *BoltDB) LockCommand(cmdName models.CommandName, lockTime time.Time) (*models.CommandLock, error) {
 	lock := models.CommandLock{
 		CommandName: cmdName,
-		Time:        lockTime,
+		LockMetadata: models.LockMetadata{
+			UnixTime: lockTime.Unix(),
+		},
 	}
 
 	newLockSerialized, _ := json.Marshal(lock)
@@ -185,22 +187,17 @@ func (b *BoltDB) LockCommand(cmdName models.CommandName, lockTime time.Time) (*m
 		bucket := tx.Bucket(b.globalLocksBucketName)
 
 		currLockSerialized := bucket.Get([]byte(b.commandLockKey(cmdName)))
-		if currLockSerialized == nil {
-
-			// This will only error on readonly buckets, it's okay to ignore.
-			bucket.Put([]byte(b.commandLockKey(cmdName)), newLockSerialized) // nolint: errcheck
-			return nil
+		if currLockSerialized != nil {
+			return errors.New("lock already exists")
 		}
 
-		// otherwise the lock fails, return to caller the run that's holding the lock
-		if err := json.Unmarshal(currLockSerialized, &lock); err != nil {
-			return errors.Wrap(err, "failed to deserialize current lock")
-		}
+		// This will only error on readonly buckets, it's okay to ignore.
+		bucket.Put([]byte(b.commandLockKey(cmdName)), newLockSerialized) // nolint: errcheck
 		return nil
 	})
 
 	if transactionErr != nil {
-		return nil, errors.Wrap(transactionErr, "DB transaction failed")
+		return nil, errors.Wrap(transactionErr, "db transaction failed")
 	}
 
 	return &lock, nil
@@ -210,11 +207,16 @@ func (b *BoltDB) LockCommand(cmdName models.CommandName, lockTime time.Time) (*m
 func (b *BoltDB) UnlockCommand(cmdName models.CommandName) error {
 	transactionErr := b.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(b.globalLocksBucketName)
+
+		if l := bucket.Get([]byte(b.commandLockKey(cmdName))); l == nil {
+			return errors.New("no lock exists")
+		}
+
 		return bucket.Delete([]byte(b.commandLockKey(cmdName)))
 	})
 
 	if transactionErr != nil {
-		return errors.Wrap(transactionErr, "DB transaction failed")
+		return errors.Wrap(transactionErr, "db transaction failed")
 	}
 
 	return nil
@@ -223,9 +225,7 @@ func (b *BoltDB) UnlockCommand(cmdName models.CommandName) error {
 // CheckCommandLock checks if CommandName lock was set.
 // If the lock exists return the pointer to the lock object, otherwise return nil
 func (b *BoltDB) CheckCommandLock(cmdName models.CommandName) (*models.CommandLock, error) {
-	cmdLock := models.CommandLock{
-		CommandName: cmdName,
-	}
+	cmdLock := models.CommandLock{}
 
 	found := false
 

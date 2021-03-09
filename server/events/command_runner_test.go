@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-github/v31/github"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events"
+	lockingmocks "github.com/runatlantis/atlantis/server/events/locking/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	eventmocks "github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
@@ -60,7 +61,7 @@ var autoMerger *events.AutoMerger
 var policyCheckCommandRunner *events.PolicyCheckCommandRunner
 var approvePoliciesCommandRunner *events.ApprovePoliciesCommandRunner
 var planCommandRunner *events.PlanCommandRunner
-var applyCommandLocker *mocks.MockApplyCommandLocker
+var applyLockChecker *lockingmocks.MockApplyLockChecker
 var applyCommandRunner *events.ApplyCommandRunner
 var unlockCommandRunner *events.UnlockCommandRunner
 var preWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
@@ -87,7 +88,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 
 	drainer = &events.Drainer{}
 	deleteLockCommand = eventmocks.NewMockDeleteLockCommand()
-	applyCommandLocker = eventmocks.NewMockApplyCommandLocker()
+	applyLockChecker = lockingmocks.NewMockApplyLockChecker()
 	When(logger.GetLevel()).ThenReturn(logging.Info)
 	When(logger.NewLogger("runatlantis/atlantis#1", true, logging.Info)).
 		ThenReturn(pullLogger)
@@ -135,7 +136,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	applyCommandRunner = events.NewApplyCommandRunner(
 		vcsClient,
 		false,
-		applyCommandLocker,
+		applyLockChecker,
 		commitUpdater,
 		projectCommandBuilder,
 		projectCommandRunner,
@@ -295,39 +296,6 @@ func TestRunCommentCommand_DisableApplyAllDisabled(t *testing.T) {
 
 	ch.RunCommentCommand(fixtures.GithubRepo, nil, nil, fixtures.User, modelPull.Num, &events.CommentCommand{Name: models.ApplyCommand})
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "**Error:** Running `atlantis apply` without flags is disabled. You must specify which project to apply via the `-d <dir>`, `-w <workspace>` or `-p <project name>` flags.", "apply")
-}
-
-func TestRunCommentCommand_IsApplyDisabled(t *testing.T) {
-	t.Run("if \"atlantis apply\" is disabled globally atlantis should"+
-		" comment saying that this is not allowed", func(t *testing.T) {
-		vcsClient := setup(t)
-
-		pull := &github.PullRequest{
-			State: github.String("open"),
-		}
-		modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState, Num: fixtures.Pull.Num}
-		When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
-		When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
-		When(applyCommandLocker.IsDisabled(matchers.AnyPtrToModelsCommandContext())).ThenReturn(true)
-
-		ch.RunCommentCommand(fixtures.GithubRepo, nil, nil, fixtures.User, modelPull.Num, &events.CommentCommand{Name: models.ApplyCommand})
-		vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "**Error:** Running `atlantis apply` is disabled.", "apply")
-	})
-
-	t.Run("if \"atlantis apply\" is enabled globally atlantis should perform apply", func(t *testing.T) {
-		vcsClient := setup(t)
-
-		pull := &github.PullRequest{
-			State: github.String("open"),
-		}
-		modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState, Num: fixtures.Pull.Num}
-		When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
-		When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
-		When(applyCommandLocker.IsDisabled(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
-
-		ch.RunCommentCommand(fixtures.GithubRepo, nil, nil, fixtures.User, modelPull.Num, &events.CommentCommand{Name: models.ApplyCommand})
-		vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "Ran Apply for 0 projects:\n\n\n\n", "apply")
-	})
 }
 
 func TestRunCommentCommand_DisableDisableAutoplan(t *testing.T) {

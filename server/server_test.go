@@ -112,7 +112,7 @@ func TestIndex_Success(t *testing.T) {
 	s.Index(w, req)
 	it.VerifyWasCalledOnce().Execute(w, server.IndexData{
 		ApplyLock: server.ApplyLockData{
-			Present:       false,
+			Locked:        false,
 			Time:          time.Time{},
 			TimeFormatted: "01-01-0001 00:00:00",
 		},
