@@ -381,8 +381,11 @@ func TestGitHubWorkflow(t *testing.T) {
 		t.Run(c.Description, func(t *testing.T) {
 			RegisterMockTestingT(t)
 
+			// reset userConfig
+			userConfig = server.UserConfig{}
 			userConfig.DisableApply = c.DisableApply
-			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir, false)
+
+			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir)
 			// Set the repo to be cloned through the testing backdoor.
 			repoDir, headSHA, cleanup := initializeRepo(t, c.RepoDir)
 			defer cleanup()
@@ -535,7 +538,11 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 		t.Run(c.Description, func(t *testing.T) {
 			RegisterMockTestingT(t)
 
-			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir, true)
+			// reset userConfig
+			userConfig = server.UserConfig{}
+			userConfig.EnablePolicyChecksFlag = true
+
+			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir)
 			// Set the repo to be cloned through the testing backdoor.
 			repoDir, headSHA, cleanup := initializeRepo(t, c.RepoDir)
 			defer cleanup()
@@ -605,14 +612,14 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 	}
 }
 
-func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.EventsController, *vcsmocks.MockClient, *mocks.MockGithubPullGetter, *events.FileWorkspace) {
+func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.MockClient, *mocks.MockGithubPullGetter, *events.FileWorkspace) {
 	allowForkPRs := false
 	dataDir, binDir, cacheDir, cleanup := mkSubDirs(t)
 	defer cleanup()
 
 	//env vars
 
-	if policyChecksEnabled {
+	if userConfig.EnablePolicyChecksFlag {
 		// need this to be set or we'll fail the policy check step
 		os.Setenv(policy.DefaultConftestVersionEnvKey, "0.21.0")
 	}
@@ -679,7 +686,7 @@ func setupE2E(t *testing.T, repoDir string, policyChecksEnabled bool) (server.Ev
 	statsScope := stats.NewStore(stats.NewNullSink(), false)
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
-		policyChecksEnabled,
+		userConfig.EnablePolicyChecksFlag,
 		parser,
 		&events.DefaultProjectFinder{},
 		e2eVCSClient,
