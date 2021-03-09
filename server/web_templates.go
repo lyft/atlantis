@@ -42,7 +42,7 @@ type LockIndexData struct {
 
 // ApplyLockData holds the fields to display in the index view
 type ApplyLockData struct {
-	Locked       bool
+	Locked        bool
 	Time          time.Time
 	TimeFormatted string
 }
