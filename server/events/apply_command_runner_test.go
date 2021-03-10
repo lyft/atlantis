@@ -13,56 +13,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
 )
 
-// func setupApplyCmd(t *testing.T) *events.ApplyCommandRunner {
-// 	tmp, cleanup := TempDir(t)
-// 	defer cleanup()
-
-// 	githubGetter = mocks.NewMockGithubPullGetter()
-// 	eventParsing = mocks.NewMockEventParsing()
-// 	vcsClient = vcsmocks.NewMockClient()
-// 	commitUpdater = mocks.NewMockCommitStatusUpdater()
-// 	applyLockChecker = lockingmocks.NewMockApplyLockChecker()
-
-// 	projectCommandBuilder = mocks.NewMockProjectCommandBuilder()
-// 	projectCommandRunner = mocks.NewMockProjectCommandRunner()
-
-// 	pullUpdater := &events.PullUpdater{
-// 		HidePrevPlanComments: false,
-// 		VCSClient:            vcsClient,
-// 		MarkdownRenderer:     &events.MarkdownRenderer{},
-// 	}
-
-// 	defaultBoltDB, err := db.New(tmp)
-// 	Ok(t, err)
-
-// 	dbUpdater := &events.DBUpdater{
-// 		DB: defaultBoltDB,
-// 	}
-
-// 	autoMerger := &events.AutoMerger{
-// 		VCSClient:       vcsClient,
-// 		GlobalAutomerge: false,
-// 	}
-
-// 	scopeNull := stats.NewStore(stats.NewNullSink(), false)
-// 	parallelPoolSize := 1
-
-// 	return events.NewApplyCommandRunner(
-// 		vcsClient,
-// 		false,
-// 		applyLockChecker,
-// 		commitUpdater,
-// 		projectCommandBuilder,
-// 		projectCommandRunner,
-// 		autoMerger,
-// 		pullUpdater,
-// 		dbUpdater,
-// 		defaultBoltDB,
-// 		parallelPoolSize,
-// 	)
-
-//}
-
 func TestApplyCommandRunner_IsLocked(t *testing.T) {
 	RegisterMockTestingT(t)
 

@@ -26,7 +26,7 @@ type BoltDB struct {
 const (
 	locksBucketName       = "runLocks"
 	pullsBucketName       = "pulls"
-	globalLocksBucketName = "global"
+	globalLocksBucketName = "globalLocks"
 	pullKeySeparator      = "::"
 )
 
@@ -170,10 +170,9 @@ func (b *BoltDB) List() ([]models.ProjectLock, error) {
 	return locks, nil
 }
 
-// LockCommand attempts to create a new lock for a CommandName. If the lock is
-// not present, it will create a lock and return a pointer to it.
-// If the lock already exists, it will just return pointer to the existing lock
-// If lock creation fails it will return nil
+// LockCommand attempts to create a new lock for a CommandName.
+// If the lock doesn't exists, it will create a lock and return a pointer to it.
+// If the lock already exists, it will return an "lock already exists" error
 func (b *BoltDB) LockCommand(cmdName models.CommandName, lockTime time.Time) (*models.CommandLock, error) {
 	lock := models.CommandLock{
 		CommandName: cmdName,
@@ -203,7 +202,8 @@ func (b *BoltDB) LockCommand(cmdName models.CommandName, lockTime time.Time) (*m
 	return &lock, nil
 }
 
-// UnlockApplyCmd removes CommandName lock if present
+// UnlockCommand removes CommandName lock if present.
+// If there are no lock it returns an error.
 func (b *BoltDB) UnlockCommand(cmdName models.CommandName) error {
 	transactionErr := b.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(b.globalLocksBucketName)

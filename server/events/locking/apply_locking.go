@@ -51,6 +51,8 @@ func NewApplyClient(backend Backend, disableApplyFlag bool) ApplyLocker {
 }
 
 // LockApply acquires global apply lock.
+// DisableApplyFlag takes presedence to any existing locks, if it is set to true
+// this function returns an error
 func (c *ApplyClient) LockApply() (ApplyCommandLock, error) {
 	response := ApplyCommandLock{}
 
@@ -71,6 +73,8 @@ func (c *ApplyClient) LockApply() (ApplyCommandLock, error) {
 }
 
 // UnlockApply releases a global apply lock.
+// DisableApplyFlag takes presedence to any existing locks, if it is set to true
+// this function returns an error
 func (c *ApplyClient) UnlockApply() error {
 	if c.disableApplyFlag {
 		return errors.New("apply commands are disabled until DisableApply flag is unset")
@@ -85,6 +89,7 @@ func (c *ApplyClient) UnlockApply() error {
 }
 
 // CheckApplyLock retrieves an apply command lock if present.
+// If DisableApplyFlag is set it will always return a lock.
 func (c *ApplyClient) CheckApplyLock() (ApplyCommandLock, error) {
 	response := ApplyCommandLock{}
 
