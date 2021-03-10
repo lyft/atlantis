@@ -93,7 +93,6 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	When(logger.NewLogger("runatlantis/atlantis#1", true, logging.Info)).
 		ThenReturn(pullLogger)
 
-	scope := stats.NewStore(stats.NewNullSink(), false)
 	dbUpdater = &events.DBUpdater{
 		DB: defaultBoltDB,
 	}
@@ -170,6 +169,8 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	preWorkflowHooksCommandRunner = mocks.NewMockPreWorkflowHooksCommandRunner()
 
 	When(preWorkflowHooksCommandRunner.RunPreHooks(matchers.AnyPtrToEventsCommandContext())).ThenReturn(nil)
+
+	scope := stats.NewDefaultStore()
 
 	ch = events.DefaultCommandRunner{
 		VCSClient:                     vcsClient,
