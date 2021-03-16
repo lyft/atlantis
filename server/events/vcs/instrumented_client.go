@@ -1,12 +1,12 @@
 package vcs
 
 import (
-	"strconv"
 	"github.com/google/go-github/v31/github"
 	stats "github.com/lyft/gostats"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
+	"strconv"
 )
 
 // NewInstrumentedGithubClient creates a client proxy responsible for gathering stats and logging
