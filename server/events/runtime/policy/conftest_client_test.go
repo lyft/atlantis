@@ -168,7 +168,7 @@ func TestRun(t *testing.T) {
 		},
 		ProjectName: "testproj",
 		Workspace:   "default",
-		Log: log,
+		Log:         log,
 	}
 
 	t.Run("success", func(t *testing.T) {
