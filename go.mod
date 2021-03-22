@@ -34,7 +34,6 @@ require (
 	github.com/jmespath/go-jmespath v0.3.1-0.20200310193758-2437e8417af5 // indirect
 	github.com/kelseyhightower/envconfig v1.4.1-0.20200624135755-c974cae29cf5 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
-	github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 // indirect
 	github.com/lusis/slack-test v0.0.0-20190426140909-c40012f20018 // indirect
 	github.com/lyft/gostats v0.4.5
 	github.com/mcdafydd/go-azuredevops v0.12.0
@@ -59,7 +58,7 @@ require (
 	github.com/zclconf/go-cty v1.5.1 // indirect
 	go.etcd.io/bbolt v1.3.5
 	go.opencensus.io v0.22.3 // indirect
-	go.uber.org/zap v1.15.0
+	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/oauth2 v0.0.0-20191122200657-5d9234df094c // indirect
 	golang.org/x/tools v0.0.0-20201023174141-c8cfbd0f21e6 // indirect
