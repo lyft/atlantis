@@ -11,6 +11,7 @@ import (
 
 const MergeableApplyReq = "mergeable"
 const ApprovedApplyReq = "approved"
+const PoliciesPassedApplyReq = "policies_passed"
 const ApplyRequirementsKey = "apply_requirements"
 const PreWorkflowHooksKey = "pre_workflow_hooks"
 const WorkflowKey = "workflow"
@@ -94,7 +95,40 @@ var DefaultPlanStage = Stage{
 	},
 }
 
+// Deprecated: use NewGlobalCfgFromArgs
 func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq bool, preWorkflowHooks []*PreWorkflowHook) GlobalCfg {
+	return NewGlobalCfgFromArgs(GlobalCfgArgs{
+		AllowRepoCfg:     allowRepoCfg,
+		MergeableReq:     mergeableReq,
+		ApprovedReq:      approvedReq,
+		PreWorkflowHooks: preWorkflowHooks,
+	})
+}
+
+// NewGlobalCfg returns a global config that respects the parameters.
+// allowRepoCfg is true if users want to allow repos full config functionality.
+// mergeableReq is true if users want to set the mergeable apply requirement
+// for all repos.
+// approvedReq is true if users want to set the approved apply requirement
+// for all repos.
+// Deprecated: use NewGlobalCfgFromArgs
+func NewGlobalCfg(allowRepoCfg bool, mergeableReq bool, approvedReq bool) GlobalCfg {
+	return NewGlobalCfgFromArgs(GlobalCfgArgs{
+		AllowRepoCfg: allowRepoCfg,
+		MergeableReq: mergeableReq,
+		ApprovedReq:  approvedReq,
+	})
+}
+
+type GlobalCfgArgs struct {
+	AllowRepoCfg       bool
+	MergeableReq       bool
+	ApprovedReq        bool
+	PolicyCheckEnabled bool
+	PreWorkflowHooks   []*PreWorkflowHook
+}
+
+func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 	defaultWorkflow := Workflow{
 		Name:        DefaultWorkflowName,
 		Apply:       DefaultApplyStage,
@@ -106,15 +140,19 @@ func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq boo
 	applyReqs := []string{}
 	allowedOverrides := []string{}
 	allowedWorkflows := []string{}
-	if mergeableReq {
+	if args.MergeableReq {
 		applyReqs = append(applyReqs, MergeableApplyReq)
 	}
-	if approvedReq {
+	if args.ApprovedReq {
 		applyReqs = append(applyReqs, ApprovedApplyReq)
 	}
 
+	if args.PolicyCheckEnabled {
+		applyReqs = append(applyReqs, PoliciesPassedApplyReq)
+	}
+
 	allowCustomWorkflows := false
-	if allowRepoCfg {
+	if args.AllowRepoCfg {
 		allowedOverrides = []string{ApplyRequirementsKey, WorkflowKey}
 		allowCustomWorkflows = true
 	}
@@ -124,7 +162,7 @@ func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq boo
 			{
 				IDRegex:              regexp.MustCompile(".*"),
 				ApplyRequirements:    applyReqs,
-				PreWorkflowHooks:     preWorkflowHooks,
+				PreWorkflowHooks:     args.PreWorkflowHooks,
 				Workflow:             &defaultWorkflow,
 				AllowedWorkflows:     allowedWorkflows,
 				AllowedOverrides:     allowedOverrides,
@@ -135,19 +173,6 @@ func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq boo
 			DefaultWorkflowName: defaultWorkflow,
 		},
 	}
-}
-
-// NewGlobalCfg returns a global config that respects the parameters.
-// allowRepoCfg is true if users want to allow repos full config functionality.
-// mergeableReq is true if users want to set the mergeable apply requirement
-// for all repos.
-// approvedReq is true if users want to set the approved apply requirement
-// for all repos.
-
-func NewGlobalCfg(allowRepoCfg bool, mergeableReq bool, approvedReq bool) GlobalCfg {
-	preWorkflowHooks := make([]*PreWorkflowHook, 0)
-
-	return NewGlobalCfgWithHooks(allowRepoCfg, mergeableReq, approvedReq, preWorkflowHooks)
 }
 
 // IDMatches returns true if the repo ID otherID matches this config.

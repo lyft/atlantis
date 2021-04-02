@@ -1,10 +1,13 @@
 package events
 
 import (
+	"fmt"
+
 	"github.com/runatlantis/atlantis/server/events/db"
 	"github.com/runatlantis/atlantis/server/events/locking"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	"github.com/runatlantis/atlantis/server/logging"
 )
 
 func NewApplyCommandRunner(
@@ -93,14 +96,16 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 		ctx.Log.Warn("unable to get mergeable status: %s. Continuing with mergeable assumed false", err)
 	}
 
-	// TODO: This needs to be revisited and new PullMergeable like conditions should
-	// be added to check against it.
-	if a.anyFailedPolicyChecks(pull) {
-		ctx.PullMergeable = false
-		ctx.Log.Warn("when using policy checks all policies have to be approved or pass. Continuing with mergeable assumed false")
+	ctx.Log.Info("pull request mergeable status: %t", ctx.PullMergeable)
+
+	currPullStatus, err := a.DB.GetPullStatus(pull)
+
+	if err != nil {
+		a.postErrorComment(pull, err, ctx.Log)
+		return
 	}
 
-	ctx.Log.Info("pull request mergeable status: %t", ctx.PullMergeable)
+	ctx.PullStatus = currPullStatus
 
 	if err = a.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.PendingCommitStatus, cmd.CommandName()); err != nil {
 		ctx.Log.Warn("unable to update commit status: %s", err)
@@ -182,14 +187,15 @@ func (a *ApplyCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus 
 	}
 }
 
-func (a *ApplyCommandRunner) anyFailedPolicyChecks(pull models.PullRequest) bool {
-	policyCheckPullStatus, _ := a.DB.GetPullStatus(pull)
-	if policyCheckPullStatus != nil && policyCheckPullStatus.StatusCount(models.ErroredPolicyCheckStatus) > 0 {
-		return true
+func (a *ApplyCommandRunner) postErrorComment(pull models.PullRequest, err error, log logging.SimpleLogging) {
+	comment := fmt.Sprintf("error: %s", err)
+
+	// log comment in case posting the comment to vcs fails
+	log.Err(comment)
+
+	if err := a.vcsClient.CreateComment(pull.BaseRepo, pull.Num, comment, models.ApplyCommand.String()); err != nil {
+		log.Err("unable to comment", err)
 	}
-
-	return false
-
 }
 
 // applyAllDisabledComment is posted when apply all commands (i.e. "atlantis apply")

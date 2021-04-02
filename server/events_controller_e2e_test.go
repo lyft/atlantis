@@ -667,12 +667,20 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 	defaultTFVersion := terraformClient.DefaultVersion()
 	locker := events.NewDefaultWorkingDirLocker()
 	parser := &yaml.ParserValidator{}
-	globalCfg := valid.NewGlobalCfgWithHooks(true, false, false, []*valid.PreWorkflowHook{
-		{
-			StepName:   "global_hook",
-			RunCommand: "some dummy command",
+
+	globalCfgArgs := valid.GlobalCfgArgs{
+		AllowRepoCfg: true,
+		MergeableReq: false,
+		ApprovedReq: false,
+		PreWorkflowHooks: []*valid.PreWorkflowHook{
+			{
+				StepName:   "global_hook",
+				RunCommand: "some dummy command",
+			},
 		},
-	})
+		PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
+	}
+	globalCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
 	expCfgPath := filepath.Join(absRepoPath(t, repoDir), "repos.yaml")
 	if _, err := os.Stat(expCfgPath); err == nil {
 		globalCfg, err = parser.ParseGlobalCfg(expCfgPath, globalCfg)

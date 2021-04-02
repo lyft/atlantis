@@ -351,7 +351,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 	validator := &yaml.ParserValidator{}
 
-	globalCfg := valid.NewGlobalCfg(userConfig.AllowRepoConfig, userConfig.RequireMergeable, userConfig.RequireApproval)
+	globalCfg := valid.NewGlobalCfgFromArgs(
+		valid.GlobalCfgArgs{
+			AllowRepoCfg: userConfig.AllowRepoConfig,
+			MergeableReq: userConfig.RequireMergeable,
+			ApprovedReq: userConfig.RequireApproval,
+			PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
+		})
 	if userConfig.RepoConfig != "" {
 		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
 		if err != nil {

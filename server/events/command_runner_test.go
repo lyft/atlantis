@@ -549,9 +549,6 @@ func TestApplyMergeablityWhenPolicyCheckFails(t *testing.T) {
 	When(ch.VCSClient.PullIsMergeable(fixtures.GithubRepo, modelPull)).ThenReturn(true, nil)
 
 	When(projectCommandBuilder.BuildApplyCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).Then(func(args []Param) ReturnValues {
-		ctx := args[0].(*events.CommandContext)
-		Equals(t, false, ctx.PullMergeable)
-
 		return ReturnValues{
 			[]models.ProjectCommandContext{
 				{
@@ -559,6 +556,7 @@ func TestApplyMergeablityWhenPolicyCheckFails(t *testing.T) {
 					ProjectName: "default",
 					Workspace:   "default",
 					RepoRelDir:  ".",
+					ProjectPlanStatus: models.ErroredPolicyCheckStatus,
 				},
 			},
 			nil,

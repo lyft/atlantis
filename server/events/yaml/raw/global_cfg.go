@@ -174,7 +174,7 @@ func (r Repo) ToValid(workflows map[string]valid.Workflow) valid.Repo {
 		workflow = &ptr
 	}
 
-	preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
+	var preWorkflowHooks []*valid.PreWorkflowHook
 	if len(r.PreWorkflowHooks) > 0 {
 		for _, hook := range r.PreWorkflowHooks {
 			preWorkflowHooks = append(preWorkflowHooks, hook.ToValid())
