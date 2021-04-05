@@ -501,8 +501,23 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			},
 		},
 		{
-			Description:   "failing policy without approval",
+			Description:   "failing policy without policies passing",
 			RepoDir:       "policy-checks",
+			ModifiedFiles: []string{"main.tf"},
+			ExpAutoplan:   true,
+			Comments: []string{
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-apply-failed.txt"},
+				{"exp-output-merge.txt"},
+			},
+		},
+		{
+			Description:   "failing policy additional apply requirements specified",
+			RepoDir:       "policy-checks-apply-reqs",
 			ModifiedFiles: []string{"main.tf"},
 			ExpAutoplan:   true,
 			Comments: []string{
@@ -551,6 +566,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			// Setup test dependencies.
 			w := httptest.NewRecorder()
 			When(vcsClient.PullIsMergeable(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(true, nil)
+			When(vcsClient.PullIsApproved(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(true, nil)
 			When(githubGetter.GetPullRequest(AnyRepo(), AnyInt())).ThenReturn(GitHubPullRequestParsed(headSHA), nil)
 			When(vcsClient.GetModifiedFiles(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(c.ModifiedFiles, nil)
 
