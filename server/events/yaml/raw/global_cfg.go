@@ -86,6 +86,7 @@ func (g GlobalCfg) Validate() error {
 func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 	workflows := make(map[string]valid.Workflow)
 
+	// assumes: globalcfg is always initialized with one repo .*
 	applyReqs := defaultCfg.Repos[0].ApplyRequirements
 
 	var globalApplyReqs []string
