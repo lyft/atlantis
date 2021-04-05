@@ -199,7 +199,7 @@ func (r Repo) ToValid(workflows map[string]valid.Workflow, globalApplyReqs []str
 	mergedApplyReqs = append(mergedApplyReqs, r.ApplyRequirements...)
 
 	// only add global reqs if they don't exist already.
-    OUTER:
+OUTER:
 	for _, globalReq := range globalApplyReqs {
 		for _, currReq := range r.ApplyRequirements {
 			if globalReq == currReq {

@@ -20,12 +20,13 @@ const AllowedOverridesKey = "allowed_overrides"
 const AllowCustomWorkflowsKey = "allow_custom_workflows"
 const DefaultWorkflowName = "default"
 
-// these will get applied across all "repos" in the server side config.
+// NonOverrideableApplyReqs will get applied across all "repos" in the server side config.
 // If repo config is allowed overrides, they can override this.
 // TODO: Make this more customizable, not everyone wants this rigid workflow
 // maybe something along the lines of defining overridable/non-overrideable apply
 // requirements in the config and removing the flag to enable policy checking.
-var NonOverrideableApplyReqs []string =  []string{ PoliciesPassedApplyReq }
+var NonOverrideableApplyReqs []string = []string{PoliciesPassedApplyReq}
+
 // GlobalCfg is the final parsed version of server-side repo config.
 type GlobalCfg struct {
 	Repos      []Repo
