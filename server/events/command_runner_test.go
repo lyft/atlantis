@@ -552,10 +552,10 @@ func TestApplyMergeablityWhenPolicyCheckFails(t *testing.T) {
 		return ReturnValues{
 			[]models.ProjectCommandContext{
 				{
-					CommandName: models.ApplyCommand,
-					ProjectName: "default",
-					Workspace:   "default",
-					RepoRelDir:  ".",
+					CommandName:       models.ApplyCommand,
+					ProjectName:       "default",
+					Workspace:         "default",
+					RepoRelDir:        ".",
 					ProjectPlanStatus: models.ErroredPolicyCheckStatus,
 				},
 			},

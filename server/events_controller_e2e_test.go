@@ -687,7 +687,7 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 	globalCfgArgs := valid.GlobalCfgArgs{
 		AllowRepoCfg: true,
 		MergeableReq: false,
-		ApprovedReq: false,
+		ApprovedReq:  false,
 		PreWorkflowHooks: []*valid.PreWorkflowHook{
 			{
 				StepName:   "global_hook",
