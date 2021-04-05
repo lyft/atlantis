@@ -124,6 +124,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		policyCheckCommandRunner,
 		autoMerger,
 		parallelPoolSize,
+		defaultBoltDB,
 	)
 
 	applyCommandRunner = events.NewApplyCommandRunner(
@@ -179,6 +180,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		AllowForkPRsFlag:              "allow-fork-prs-flag",
 		Drainer:                       drainer,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
+		PullStatusFetcher:             defaultBoltDB,
 	}
 	return vcsClient
 }

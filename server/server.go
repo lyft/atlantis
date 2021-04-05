@@ -523,6 +523,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		policyCheckCommandRunner,
 		autoMerger,
 		userConfig.ParallelPoolSize,
+		boltdb,
 	)
 
 	applyCommandRunner := events.NewApplyCommandRunner(
@@ -575,6 +576,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DisableAutoplan:               userConfig.DisableAutoplan,
 		Drainer:                       drainer,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
+		PullStatusFetcher:             boltdb,
 	}
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
 	if err != nil {

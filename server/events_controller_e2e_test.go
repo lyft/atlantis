@@ -484,18 +484,16 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 		ExpReplies [][]string
 	}{
 		{
-			Description:   "failing policy approved by the owner",
-			RepoDir:       "policy-checks",
-			ModifiedFiles: []string{"main.tf"},
+			Description:   "1 failing policy and 1 passing policy ",
+			RepoDir:       "policy-checks-multi-projects",
+			ModifiedFiles: []string{"dir1/main.tf,", "dir2/main.tf"},
 			ExpAutoplan:   true,
 			Comments: []string{
-				"atlantis approve_policies",
 				"atlantis apply",
 			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-approve-policies.txt"},
 				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
 			},
@@ -647,13 +645,7 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 	e2eGitlabGetter := mocks.NewMockGitlabMergeRequestGetter()
 
 	// Real dependencies.
-	logger, err := logging.NewStructuredLogger()
-
-	if err != nil {
-		panic("Could not setup logger for e2e")
-	}
-
-	logger.SetLevel(logging.Error)
+	logger := logging.NewNoopLogger(t)
 
 	eventParser := &events.EventParser{
 		GithubUser:  "github-user",
@@ -812,6 +804,7 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 		policyCheckCommandRunner,
 		autoMerger,
 		parallelPoolSize,
+		boltdb,
 	)
 
 	applyCommandRunner := events.NewApplyCommandRunner(
@@ -860,6 +853,7 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 		CommentCommandRunnerByCmd:     commentCommandRunnerByCmd,
 		Drainer:                       drainer,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
+		PullStatusFetcher:             boltdb,
 	}
 
 	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")
