@@ -1076,7 +1076,7 @@ func mkSubDirs(t *testing.T) (string, string, string, func()) {
 func ensureRunningConftest(t *testing.T) {
 	localPath, err := exec.LookPath("conftest0.23.0")
 	if err != nil {
-		t.Log("conftest >= 0.21 must be installed to run this test")
+		t.Log("conftest >= 0.23 must be installed to run this test")
 		t.FailNow()
 	}
 	versionOutBytes, err := exec.Command(localPath, "--version").Output() // #nosec
