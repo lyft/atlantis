@@ -57,7 +57,7 @@ type LocalConftestCache struct {
 }
 
 func (m *LocalConftestCache) Get(key *version.Version) (string, error) {
-	return exec.LookPath("conftest0.23.0")
+	return exec.LookPath("conftest0.21.0")
 }
 
 func TestGitHubWorkflow(t *testing.T) {
@@ -635,7 +635,7 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 
 	if userConfig.EnablePolicyChecksFlag {
 		// need this to be set or we'll fail the policy check step
-		os.Setenv(policy.DefaultConftestVersionEnvKey, "0.23.0")
+		os.Setenv(policy.DefaultConftestVersionEnvKey, "0.21.0")
 	}
 
 	// Mocks.
@@ -727,7 +727,7 @@ func setupE2E(t *testing.T, repoDir string) (server.EventsController, *vcsmocks.
 
 	Ok(t, err)
 
-	conftestVersion, _ := version.NewVersion("0.23.0")
+	conftestVersion, _ := version.NewVersion("0.21.0")
 
 	conftextExec := policy.NewConfTestExecutorWorkflow(logger, binDir, &NoopTFDownloader{})
 
@@ -1072,11 +1072,11 @@ func mkSubDirs(t *testing.T) (string, string, string, func()) {
 	return tmp, binDir, cachedir, cleanup
 }
 
-// Will fail test if conftest isn't in path and isn't version >= 0.23.0
+// Will fail test if conftest isn't in path and isn't version >= 0.21.0
 func ensureRunningConftest(t *testing.T) {
-	localPath, err := exec.LookPath("conftest0.23.0")
+	localPath, err := exec.LookPath("conftest0.21.0")
 	if err != nil {
-		t.Log("conftest >= 0.23 must be installed to run this test")
+		t.Log("conftest >= 0.21 must be installed to run this test")
 		t.FailNow()
 	}
 	versionOutBytes, err := exec.Command(localPath, "--version").Output() // #nosec
@@ -1092,7 +1092,7 @@ func ensureRunningConftest(t *testing.T) {
 	}
 	localVersion, err := version.NewVersion(match[1])
 	Ok(t, err)
-	minVersion, err := version.NewVersion("0.23.0")
+	minVersion, err := version.NewVersion("0.21.0")
 	Ok(t, err)
 	if localVersion.LessThan(minVersion) {
 		t.Logf("must have contest version >= %s, you have %s", minVersion, localVersion)
