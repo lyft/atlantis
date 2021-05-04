@@ -85,6 +85,7 @@ const (
 	RepoAllowlistFlag          = "repo-allowlist"
 	RequireApprovalFlag        = "require-approval"
 	RequireMergeableFlag       = "require-mergeable"
+	RequireUnDivergedFlag      = "require-undiverged"
 	SilenceForkPRErrorsFlag    = "silence-fork-pr-errors"
 	SilenceVCSStatusNoPlans    = "silence-vcs-status-no-plans"
 	SilenceAllowlistErrorsFlag = "silence-allowlist-errors"
@@ -324,6 +325,11 @@ var boolFlags = map[string]boolFlag{
 	},
 	RequireMergeableFlag: {
 		description:  "Require pull requests to be mergeable before allowing the apply command to be run.",
+		defaultValue: false,
+		hidden:       true,
+	},
+	RequireUnDivergedFlag: {
+		description:  "Require pull requests to be undiverged from default before allowing the apply command to be run.",
 		defaultValue: false,
 		hidden:       true,
 	},
@@ -773,6 +779,12 @@ func (s *ServerCmd) deprecationWarnings(userConfig *server.UserConfig) error {
 		deprecatedFlags = append(deprecatedFlags, RequireMergeableFlag)
 		applyReqs = append(applyReqs, valid.MergeableApplyReq)
 	}
+
+	if userConfig.RequireUnDiverged {
+		deprecatedFlags = append(deprecatedFlags, RequireUnDivergedFlag)
+		applyReqs = append(applyReqs, valid.UnDivergedApplyReq)
+	}
+
 
 	// Build up strings with what the recommended yaml and json config should
 	// be instead of using the deprecated flags.

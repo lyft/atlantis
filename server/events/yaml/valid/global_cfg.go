@@ -11,6 +11,7 @@ import (
 
 const MergeableApplyReq = "mergeable"
 const ApprovedApplyReq = "approved"
+const UnDivergedApplyReq = "undiverged"
 const PoliciesPassedApplyReq = "policies_passed"
 const ApplyRequirementsKey = "apply_requirements"
 const PreWorkflowHooksKey = "pre_workflow_hooks"
@@ -103,11 +104,12 @@ var DefaultPlanStage = Stage{
 }
 
 // Deprecated: use NewGlobalCfgFromArgs
-func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq bool, preWorkflowHooks []*PreWorkflowHook) GlobalCfg {
+func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq bool, unDivergedReq bool, preWorkflowHooks []*PreWorkflowHook) GlobalCfg {
 	return NewGlobalCfgFromArgs(GlobalCfgArgs{
 		AllowRepoCfg:     allowRepoCfg,
 		MergeableReq:     mergeableReq,
 		ApprovedReq:      approvedReq,
+		UnDivergedReq:    unDivergedReq,
 		PreWorkflowHooks: preWorkflowHooks,
 	})
 }
@@ -119,11 +121,12 @@ func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq boo
 // approvedReq is true if users want to set the approved apply requirement
 // for all repos.
 // Deprecated: use NewGlobalCfgFromArgs
-func NewGlobalCfg(allowRepoCfg bool, mergeableReq bool, approvedReq bool) GlobalCfg {
+func NewGlobalCfg(allowRepoCfg bool, mergeableReq bool, approvedReq bool, unDivergedReq bool) GlobalCfg {
 	return NewGlobalCfgFromArgs(GlobalCfgArgs{
-		AllowRepoCfg: allowRepoCfg,
-		MergeableReq: mergeableReq,
-		ApprovedReq:  approvedReq,
+		AllowRepoCfg: 	allowRepoCfg,
+		MergeableReq: 	mergeableReq,
+		ApprovedReq:  	approvedReq,
+		UnDivergedReq:  unDivergedReq,
 	})
 }
 
@@ -131,6 +134,7 @@ type GlobalCfgArgs struct {
 	AllowRepoCfg       bool
 	MergeableReq       bool
 	ApprovedReq        bool
+	UnDivergedReq      bool
 	PolicyCheckEnabled bool
 	PreWorkflowHooks   []*PreWorkflowHook
 }
@@ -152,6 +156,9 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 	}
 	if args.ApprovedReq {
 		applyReqs = append(applyReqs, ApprovedApplyReq)
+	}
+	if args.UnDivergedReq {
+		applyReqs = append(applyReqs, UnDivergedApplyReq)
 	}
 
 	if args.PolicyCheckEnabled {

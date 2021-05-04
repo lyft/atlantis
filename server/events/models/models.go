@@ -362,6 +362,8 @@ type ProjectCommandContext struct {
 	Scope stats.Scope
 	// PullMergeable is true if the pull request for this project is able to be merged.
 	PullMergeable bool
+	// PullDiverged is true if the pull request for this project has diverged from master.
+	PullDiverged bool
 	// CurrentProjectPlanStatus is the status of the current project prior to this command.
 	ProjectPlanStatus ProjectPlanStatus
 	// Pull is the pull request we're responding to.
