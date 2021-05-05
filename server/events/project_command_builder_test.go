@@ -145,7 +145,7 @@ projects:
 				vcsClient,
 				workingDir,
 				events.NewDefaultWorkingDirLocker(),
-				valid.NewGlobalCfg(false, false, false),
+				valid.NewGlobalCfg(false, false, false, false),
 				&events.DefaultPendingPlanFinder{},
 				&events.CommentParser{},
 				false,
@@ -377,7 +377,7 @@ projects:
 					vcsClient,
 					workingDir,
 					events.NewDefaultWorkingDirLocker(),
-					valid.NewGlobalCfg(true, false, false),
+					valid.NewGlobalCfg(true, false, false, false),
 					&events.DefaultPendingPlanFinder{},
 					&events.CommentParser{},
 					false,
@@ -521,7 +521,7 @@ projects:
 				vcsClient,
 				workingDir,
 				events.NewDefaultWorkingDirLocker(),
-				valid.NewGlobalCfg(true, false, false),
+				valid.NewGlobalCfg(true, false, false, false),
 				&events.DefaultPendingPlanFinder{},
 				&events.CommentParser{},
 				false,
@@ -603,7 +603,7 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 		nil,
 		workingDir,
 		events.NewDefaultWorkingDirLocker(),
-		valid.NewGlobalCfg(false, false, false),
+		valid.NewGlobalCfg(false, false, false, false),
 		&events.DefaultPendingPlanFinder{},
 		&events.CommentParser{},
 		false,
@@ -680,7 +680,7 @@ projects:
 		nil,
 		workingDir,
 		events.NewDefaultWorkingDirLocker(),
-		valid.NewGlobalCfg(true, false, false),
+		valid.NewGlobalCfg(true, false, false, false),
 		&events.DefaultPendingPlanFinder{},
 		&events.CommentParser{},
 		false,
@@ -750,7 +750,7 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 				vcsClient,
 				workingDir,
 				events.NewDefaultWorkingDirLocker(),
-				valid.NewGlobalCfg(true, false, false),
+				valid.NewGlobalCfg(true, false, false, false),
 				&events.DefaultPendingPlanFinder{},
 				&events.CommentParser{},
 				false,
@@ -924,7 +924,7 @@ projects:
 				vcsClient,
 				workingDir,
 				events.NewDefaultWorkingDirLocker(),
-				valid.NewGlobalCfg(true, false, false),
+				valid.NewGlobalCfg(true, false, false, false),
 				&events.DefaultPendingPlanFinder{},
 				&events.CommentParser{},
 				false,
@@ -982,7 +982,7 @@ projects:
 		vcsClient,
 		workingDir,
 		events.NewDefaultWorkingDirLocker(),
-		valid.NewGlobalCfg(true, false, false),
+		valid.NewGlobalCfg(true, false, false, false),
 		&events.DefaultPendingPlanFinder{},
 		&events.CommentParser{},
 		true,
@@ -1019,7 +1019,7 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 	When(workingDir.Clone(matchers.AnyPtrToLoggingSimpleLogger(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), AnyString())).ThenReturn(tmpDir, false, nil)
 	vcsClient := vcsmocks.NewMockClient()
 	When(vcsClient.GetModifiedFiles(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn([]string{"main.tf"}, nil)
-	globalCfg := valid.NewGlobalCfg(false, false, false)
+	globalCfg := valid.NewGlobalCfg(false, false, false, false)
 
 	builder := events.NewProjectCommandBuilder(
 		true,

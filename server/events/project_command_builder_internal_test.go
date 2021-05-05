@@ -572,7 +572,7 @@ projects:
 			globalCfgPath := filepath.Join(tmp, "global.yaml")
 			Ok(t, ioutil.WriteFile(globalCfgPath, []byte(c.globalCfg), 0600))
 			parser := &yaml.ParserValidator{}
-			globalCfg, err := parser.ParseGlobalCfg(globalCfgPath, valid.NewGlobalCfg(false, false, false))
+			globalCfg, err := parser.ParseGlobalCfg(globalCfgPath, valid.NewGlobalCfg(false, false, false, false))
 			Ok(t, err)
 
 			if c.repoCfg != "" {
@@ -777,7 +777,7 @@ workflows:
 			globalCfgPath := filepath.Join(tmp, "global.yaml")
 			Ok(t, ioutil.WriteFile(globalCfgPath, []byte(c.globalCfg), 0600))
 			parser := &yaml.ParserValidator{}
-			globalCfg, err := parser.ParseGlobalCfg(globalCfgPath, valid.NewGlobalCfg(false, false, false))
+			globalCfg, err := parser.ParseGlobalCfg(globalCfgPath, valid.NewGlobalCfg(false, false, false, false))
 			Ok(t, err)
 
 			if c.repoCfg != "" {
