@@ -63,47 +63,88 @@ func TestNewGlobalCfg(t *testing.T) {
 	}
 
 	cases := []struct {
-		allowRepoCfg bool
-		approvedReq  bool
-		mergeableReq bool
+		allowRepoCfg  bool
+		approvedReq   bool
+		mergeableReq  bool
 		unDivergedReq bool
-
 	}{
 		{
-			allowRepoCfg: false,
-			approvedReq:  false,
-			mergeableReq: false,
+			allowRepoCfg:  false,
+			approvedReq:   false,
+			mergeableReq:  false,
+			unDivergedReq: false,
 		},
 		{
-			allowRepoCfg: true,
-			approvedReq:  false,
-			mergeableReq: false,
+			allowRepoCfg:  true,
+			approvedReq:   false,
+			mergeableReq:  false,
+			unDivergedReq: false,
 		},
 		{
-			allowRepoCfg: false,
-			approvedReq:  true,
-			mergeableReq: false,
+			allowRepoCfg:  false,
+			approvedReq:   true,
+			mergeableReq:  false,
+			unDivergedReq: false,
 		},
 		{
-			allowRepoCfg: false,
-			approvedReq:  false,
-			mergeableReq: true,
+			allowRepoCfg:  false,
+			approvedReq:   false,
+			mergeableReq:  true,
+			unDivergedReq: false,
 		},
 		{
-			allowRepoCfg: false,
-			approvedReq:  true,
-			mergeableReq: true,
+			allowRepoCfg:  false,
+			approvedReq:   true,
+			mergeableReq:  true,
+			unDivergedReq: false,
 		},
 		{
-			allowRepoCfg: true,
-			approvedReq:  true,
-			mergeableReq: true,
+			allowRepoCfg:  true,
+			approvedReq:   true,
+			mergeableReq:  true,
+			unDivergedReq: false,
+		},
+		{
+			allowRepoCfg:  false,
+			approvedReq:   false,
+			mergeableReq:  false,
+			unDivergedReq: true,
+		},
+		{
+			allowRepoCfg:  true,
+			approvedReq:   false,
+			mergeableReq:  false,
+			unDivergedReq: true,
+		},
+		{
+			allowRepoCfg:  false,
+			approvedReq:   true,
+			mergeableReq:  false,
+			unDivergedReq: true,
+		},
+		{
+			allowRepoCfg:  false,
+			approvedReq:   false,
+			mergeableReq:  true,
+			unDivergedReq: true,
+		},
+		{
+			allowRepoCfg:  false,
+			approvedReq:   true,
+			mergeableReq:  true,
+			unDivergedReq: true,
+		},
+		{
+			allowRepoCfg:  true,
+			approvedReq:   true,
+			mergeableReq:  true,
+			unDivergedReq: true,
 		},
 	}
 
 	for _, c := range cases {
-		caseName := fmt.Sprintf("allow_repo: %t, approved: %t, mergeable: %t",
-			c.allowRepoCfg, c.approvedReq, c.mergeableReq)
+		caseName := fmt.Sprintf("allow_repo: %t, approved: %t, mergeable: %t, undiverged: %t",
+			c.allowRepoCfg, c.approvedReq, c.mergeableReq, c.unDivergedReq)
 		t.Run(caseName, func(t *testing.T) {
 			act := valid.NewGlobalCfg(c.allowRepoCfg, c.mergeableReq, c.approvedReq, c.unDivergedReq)
 
