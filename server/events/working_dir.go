@@ -171,6 +171,11 @@ func (w *FileWorkspace) warnDiverged(log logging.SimpleLogging, p models.PullReq
 }
 
 func (w *FileWorkspace) HasDiverged(log logging.SimpleLogging, cloneDir string) bool {
+	if !w.CheckoutMerge {
+		// Both the diverged warning and the UnDiverged apply requirement only apply to merge checkout strategy so
+		// we assume false here for 'branch' strategy.
+		return false
+	}
 	// Check if remote master branch has diverged.
 	statusUnoCmd := exec.Command("git", "status", "--untracked-files=no")
 	statusUnoCmd.Dir = cloneDir
