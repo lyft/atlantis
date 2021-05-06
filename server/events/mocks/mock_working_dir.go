@@ -49,7 +49,7 @@ func (mock *MockWorkingDir) Clone(log logging.SimpleLogging, headRepo models.Rep
 	return ret0, ret1, ret2
 }
 func (mock *MockWorkingDir) HasDiverged(log logging.SimpleLogging, cloneDir string) bool {
-	return false
+	return true
 }
 
 func (mock *MockWorkingDir) GetWorkingDir(r models.Repo, p models.PullRequest, workspace string) (string, error) {
