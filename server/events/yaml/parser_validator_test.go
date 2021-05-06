@@ -458,6 +458,45 @@ workflows:
 			},
 		},
 		{
+			description: "project field with undiverged apply requirement",
+			input: `
+version: 3
+projects:
+- dir: .
+  workspace: myworkspace
+  terraform_version: v0.11.0
+  apply_requirements: [undiverged]
+  workflow: myworkflow
+  autoplan:
+    enabled: false
+workflows:
+  myworkflow: ~`,
+			exp: valid.RepoCfg{
+				Version: 3,
+				Projects: []valid.Project{
+					{
+						Dir:              ".",
+						Workspace:        "myworkspace",
+						WorkflowName:     String("myworkflow"),
+						TerraformVersion: tfVersion,
+						Autoplan: valid.Autoplan{
+							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
+							Enabled:      false,
+						},
+						ApplyRequirements: []string{"undiverged"},
+					},
+				},
+				Workflows: map[string]valid.Workflow{
+					"myworkflow": {
+						Name:        "myworkflow",
+						Apply:       valid.DefaultApplyStage,
+						Plan:        valid.DefaultPlanStage,
+						PolicyCheck: valid.DefaultPolicyCheckStage,
+					},
+				},
+			},
+		},
+		{
 			description: "project field with mergeable and approved apply requirements",
 			input: `
 version: 3
@@ -484,6 +523,123 @@ workflows:
 							Enabled:      false,
 						},
 						ApplyRequirements: []string{"mergeable", "approved"},
+					},
+				},
+				Workflows: map[string]valid.Workflow{
+					"myworkflow": {
+						Name:        "myworkflow",
+						Apply:       valid.DefaultApplyStage,
+						Plan:        valid.DefaultPlanStage,
+						PolicyCheck: valid.DefaultPolicyCheckStage,
+					},
+				},
+			},
+		},
+		{
+			description: "project field with undiverged and approved apply requirements",
+			input: `
+version: 3
+projects:
+- dir: .
+  workspace: myworkspace
+  terraform_version: v0.11.0
+  apply_requirements: [undiverged, approved]
+  workflow: myworkflow
+  autoplan:
+    enabled: false
+workflows:
+  myworkflow: ~`,
+			exp: valid.RepoCfg{
+				Version: 3,
+				Projects: []valid.Project{
+					{
+						Dir:              ".",
+						Workspace:        "myworkspace",
+						WorkflowName:     String("myworkflow"),
+						TerraformVersion: tfVersion,
+						Autoplan: valid.Autoplan{
+							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
+							Enabled:      false,
+						},
+						ApplyRequirements: []string{"undiverged", "approved"},
+					},
+				},
+				Workflows: map[string]valid.Workflow{
+					"myworkflow": {
+						Name:        "myworkflow",
+						Apply:       valid.DefaultApplyStage,
+						Plan:        valid.DefaultPlanStage,
+						PolicyCheck: valid.DefaultPolicyCheckStage,
+					},
+				},
+			},
+		},
+		{
+			description: "project field with undiverged and mergeable apply requirements",
+			input: `
+version: 3
+projects:
+- dir: .
+  workspace: myworkspace
+  terraform_version: v0.11.0
+  apply_requirements: [undiverged, mergeable]
+  workflow: myworkflow
+  autoplan:
+    enabled: false
+workflows:
+  myworkflow: ~`,
+			exp: valid.RepoCfg{
+				Version: 3,
+				Projects: []valid.Project{
+					{
+						Dir:              ".",
+						Workspace:        "myworkspace",
+						WorkflowName:     String("myworkflow"),
+						TerraformVersion: tfVersion,
+						Autoplan: valid.Autoplan{
+							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
+							Enabled:      false,
+						},
+						ApplyRequirements: []string{"undiverged", "mergeable"},
+					},
+				},
+				Workflows: map[string]valid.Workflow{
+					"myworkflow": {
+						Name:        "myworkflow",
+						Apply:       valid.DefaultApplyStage,
+						Plan:        valid.DefaultPlanStage,
+						PolicyCheck: valid.DefaultPolicyCheckStage,
+					},
+				},
+			},
+		},
+		{
+			description: "project field with undiverged, mergeable and approved apply requirements",
+			input: `
+version: 3
+projects:
+- dir: .
+  workspace: myworkspace
+  terraform_version: v0.11.0
+  apply_requirements: [undiverged, mergeable, approved]
+  workflow: myworkflow
+  autoplan:
+    enabled: false
+workflows:
+  myworkflow: ~`,
+			exp: valid.RepoCfg{
+				Version: 3,
+				Projects: []valid.Project{
+					{
+						Dir:              ".",
+						Workspace:        "myworkspace",
+						WorkflowName:     String("myworkflow"),
+						TerraformVersion: tfVersion,
+						Autoplan: valid.Autoplan{
+							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
+							Enabled:      false,
+						},
+						ApplyRequirements: []string{"undiverged", "mergeable", "approved"},
 					},
 				},
 				Workflows: map[string]valid.Workflow{
