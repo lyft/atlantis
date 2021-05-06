@@ -193,8 +193,8 @@ func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 	}
 	ctx := models.ProjectCommandContext{
-		PullDiverged:     	true,
-		ApplyRequirements: 	[]string{"undiverged"},
+		PullDiverged:      true,
+		ApplyRequirements: []string{"undiverged"},
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()

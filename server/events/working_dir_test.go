@@ -398,7 +398,6 @@ func TestClone_MasterHasDiverged(t *testing.T) {
 	Equals(t, hasDiverged, false)
 }
 
-
 func TestHasDiverged_MasterHasDiverged(t *testing.T) {
 	// Initialize the git repo.
 	repoDir, cleanup := initRepo(t)
@@ -446,20 +445,20 @@ func TestHasDiverged_MasterHasDiverged(t *testing.T) {
 	runCmd(t, repoDir, "cp", "-R", secondPRDir, "repos/0/default")
 
 	// "git", "remote", "set-url", "origin", p.BaseRepo.CloneURL,
-	runCmd(t, repoDir + "/repos/0/default", "git", "remote", "update")
+	runCmd(t, repoDir+"/repos/0/default", "git", "remote", "update")
 
 	// Run the clone.
 	wd := &events.FileWorkspace{
 		DataDir:       repoDir,
 		CheckoutMerge: true,
 	}
-	hasDiverged := wd.HasDiverged(logging.NewNoopLogger(t), repoDir + "/repos/0/default")
+	hasDiverged := wd.HasDiverged(logging.NewNoopLogger(t), repoDir+"/repos/0/default")
 	Equals(t, hasDiverged, true)
 
 	// Run it again but without the checkout merge strategy. It should return
 	// false.
 	wd.CheckoutMerge = false
-	hasDiverged = wd.HasDiverged(logging.NewNoopLogger(t), repoDir + "/repos/0/default")
+	hasDiverged = wd.HasDiverged(logging.NewNoopLogger(t), repoDir+"/repos/0/default")
 	Equals(t, hasDiverged, false)
 }
 

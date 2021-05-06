@@ -123,10 +123,10 @@ func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq boo
 // Deprecated: use NewGlobalCfgFromArgs
 func NewGlobalCfg(allowRepoCfg bool, mergeableReq bool, approvedReq bool, unDivergedReq bool) GlobalCfg {
 	return NewGlobalCfgFromArgs(GlobalCfgArgs{
-		AllowRepoCfg: 	allowRepoCfg,
-		MergeableReq: 	mergeableReq,
-		ApprovedReq:  	approvedReq,
-		UnDivergedReq:  unDivergedReq,
+		AllowRepoCfg:  allowRepoCfg,
+		MergeableReq:  mergeableReq,
+		ApprovedReq:   approvedReq,
+		UnDivergedReq: unDivergedReq,
 	})
 }
 

@@ -785,7 +785,6 @@ func (s *ServerCmd) deprecationWarnings(userConfig *server.UserConfig) error {
 		applyReqs = append(applyReqs, valid.UnDivergedApplyReq)
 	}
 
-
 	// Build up strings with what the recommended yaml and json config should
 	// be instead of using the deprecated flags.
 	yamlCfg := "---\nrepos:\n- id: /.*/"

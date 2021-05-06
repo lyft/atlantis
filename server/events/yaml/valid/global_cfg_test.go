@@ -166,7 +166,6 @@ func TestNewGlobalCfg(t *testing.T) {
 				exp.Repos[0].ApplyRequirements = append(exp.Repos[0].ApplyRequirements, "undiverged")
 			}
 
-
 			Equals(t, exp, act)
 
 			// Have to hand-compare regexes because Equals doesn't do it.
