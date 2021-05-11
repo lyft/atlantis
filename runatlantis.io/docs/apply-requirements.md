@@ -135,7 +135,7 @@ In Azure DevOps, all pull requests are mergeable unless there is a conflict. You
 At this time, the Azure DevOps client only supports merging using the default 'no fast-forward' strategy. Make sure your branch policies permit this type of merge.
 :::
 
-###UnDiverged
+### UnDiverged
 Prevent applies if there are any changes on the base branch since the most recent plan. 
 Applies to `merge` checkout strategy only.
 
@@ -163,7 +163,7 @@ You can set the `undiverged` requirement by:
     - dir: .
       apply_requirements: [undiverged]
      ```
-###Meaning
+### Meaning
 The `merge` checkout strategy creates a temporary merge commit and runs the `plan` on the Atlantis local version of the PR 
 source and destination branch. The local destination branch can become out of date since changes to the destination branch are not fetched 
 if there are no changes to the source branch. `undiverged` enforces that Atlantis local version of master is up to date 
