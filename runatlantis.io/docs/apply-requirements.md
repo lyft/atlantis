@@ -141,7 +141,6 @@ Applies to `merge` checkout strategy only.
 
 #### Usage
 You can set the `undiverged` requirement by:
-1. Passing the `--require-undiverged` flag to `atlantis server` or
 1. Creating a `repos.yaml` file with the `apply_requirements` key:
    ```yaml
    repos:
