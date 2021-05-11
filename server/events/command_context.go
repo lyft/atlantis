@@ -47,7 +47,6 @@ type CommandContext struct {
 	// set our own build statuses which can affect mergeability if users have
 	// required the Atlantis status to be successful prior to merging.
 	PullMergeable bool
-	PullDiverged  bool
 
 	PullStatus *models.PullStatus
 
