@@ -121,12 +121,11 @@ func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq boo
 // approvedReq is true if users want to set the approved apply requirement
 // for all repos.
 // Deprecated: use NewGlobalCfgFromArgs
-func NewGlobalCfg(allowRepoCfg bool, mergeableReq bool, approvedReq bool, unDivergedReq bool) GlobalCfg {
+func NewGlobalCfg(allowRepoCfg bool, mergeableReq bool, approvedReq bool) GlobalCfg {
 	return NewGlobalCfgFromArgs(GlobalCfgArgs{
-		AllowRepoCfg:  allowRepoCfg,
-		MergeableReq:  mergeableReq,
-		ApprovedReq:   approvedReq,
-		UnDivergedReq: unDivergedReq,
+		AllowRepoCfg: allowRepoCfg,
+		MergeableReq: mergeableReq,
+		ApprovedReq:  approvedReq,
 	})
 }
 

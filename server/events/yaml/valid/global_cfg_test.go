@@ -146,7 +146,13 @@ func TestNewGlobalCfg(t *testing.T) {
 		caseName := fmt.Sprintf("allow_repo: %t, approved: %t, mergeable: %t, undiverged: %t",
 			c.allowRepoCfg, c.approvedReq, c.mergeableReq, c.unDivergedReq)
 		t.Run(caseName, func(t *testing.T) {
-			act := valid.NewGlobalCfg(c.allowRepoCfg, c.mergeableReq, c.approvedReq, c.unDivergedReq)
+			globalCfgArgs := valid.GlobalCfgArgs{
+				AllowRepoCfg:  c.allowRepoCfg,
+				MergeableReq:  c.mergeableReq,
+				ApprovedReq:   c.approvedReq,
+				UnDivergedReq: c.unDivergedReq,
+			}
+			act := valid.NewGlobalCfgFromArgs(globalCfgArgs)
 
 			// For each test, we change our expected cfg based on the parameters.
 			exp := deepcopy.Copy(baseCfg).(valid.GlobalCfg)
@@ -190,7 +196,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side but not allowed (with custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfg(true, false, false, false).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+						AllowRepoCfg:  true,
+						MergeableReq:  false,
+						ApprovedReq:   false,
+						UnDivergedReq: false,
+					}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -218,7 +229,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side but not allowed (without custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfg(true, false, false, false).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+						AllowRepoCfg:  true,
+						MergeableReq:  false,
+						ApprovedReq:   false,
+						UnDivergedReq: false,
+					}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(false),
@@ -246,7 +262,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined in both places with same name (without custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfg(true, false, false, false).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+						AllowRepoCfg:  true,
+						MergeableReq:  false,
+						ApprovedReq:   false,
+						UnDivergedReq: false,
+					}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(false),
@@ -276,7 +297,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined repo side, but not allowed (with custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfg(true, false, false, false).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+						AllowRepoCfg:  true,
+						MergeableReq:  false,
+						ApprovedReq:   false,
+						UnDivergedReq: false,
+					}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -306,7 +332,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side and allowed (without custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfg(true, false, false, false).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+						AllowRepoCfg:  true,
+						MergeableReq:  false,
+						ApprovedReq:   false,
+						UnDivergedReq: false,
+					}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(false),
@@ -334,7 +365,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side and allowed (with custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfg(true, false, false, false).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+						AllowRepoCfg:  true,
+						MergeableReq:  false,
+						ApprovedReq:   false,
+						UnDivergedReq: false,
+					}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -360,7 +396,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "",
 		},
 		"workflow not allowed": {
-			gCfg: valid.NewGlobalCfg(false, false, false, false),
+			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+				AllowRepoCfg:  false,
+				MergeableReq:  false,
+				ApprovedReq:   false,
+				UnDivergedReq: false,
+			}),
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -372,7 +413,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "repo config not allowed to set 'workflow' key: server-side config needs 'allowed_overrides: [workflow]'",
 		},
 		"custom workflows not allowed": {
-			gCfg: valid.NewGlobalCfg(false, false, false, false),
+			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+				AllowRepoCfg:  false,
+				MergeableReq:  false,
+				ApprovedReq:   false,
+				UnDivergedReq: false,
+			}),
 			rCfg: valid.RepoCfg{
 				Workflows: map[string]valid.Workflow{
 					"custom": {},
@@ -382,7 +428,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "repo config not allowed to define custom workflows: server-side config needs 'allow_custom_workflows: true'",
 		},
 		"custom workflows allowed": {
-			gCfg: valid.NewGlobalCfg(true, false, false, false),
+			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+				AllowRepoCfg:  true,
+				MergeableReq:  false,
+				ApprovedReq:   false,
+				UnDivergedReq: false,
+			}),
 			rCfg: valid.RepoCfg{
 				Workflows: map[string]valid.Workflow{
 					"custom": {},
@@ -392,7 +443,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "",
 		},
 		"repo uses custom workflow defined on repo": {
-			gCfg: valid.NewGlobalCfg(true, false, false, false),
+			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+				AllowRepoCfg:  true,
+				MergeableReq:  false,
+				ApprovedReq:   false,
+				UnDivergedReq: false,
+			}),
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -411,7 +467,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"custom workflows allowed for this repo only": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfg(false, false, false, false).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+						AllowRepoCfg:  false,
+						MergeableReq:  false,
+						ApprovedReq:   false,
+						UnDivergedReq: false,
+					}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -427,7 +488,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "",
 		},
 		"repo uses global workflow": {
-			gCfg: valid.NewGlobalCfg(true, false, false, false),
+			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+				AllowRepoCfg:  true,
+				MergeableReq:  false,
+				ApprovedReq:   false,
+				UnDivergedReq: false,
+			}),
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -441,7 +507,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "",
 		},
 		"apply_reqs not allowed": {
-			gCfg: valid.NewGlobalCfg(false, false, false, false),
+			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+				AllowRepoCfg:  false,
+				MergeableReq:  false,
+				ApprovedReq:   false,
+				UnDivergedReq: false,
+			}),
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -455,7 +526,12 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "repo config not allowed to set 'apply_requirements' key: server-side config needs 'allowed_overrides: [apply_requirements]'",
 		},
 		"repo workflow doesn't exist": {
-			gCfg: valid.NewGlobalCfg(true, false, false, false),
+			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
+				AllowRepoCfg:  true,
+				MergeableReq:  false,
+				ApprovedReq:   false,
+				UnDivergedReq: false,
+			}),
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -580,10 +656,22 @@ policies:
 				path := filepath.Join(tmp, "config.yaml")
 				Ok(t, ioutil.WriteFile(path, []byte(c.gCfg), 0600))
 				var err error
-				global, err = (&yaml.ParserValidator{}).ParseGlobalCfg(path, valid.NewGlobalCfg(false, false, false, false))
+				globalCfgArgs := valid.GlobalCfgArgs{
+					AllowRepoCfg:  false,
+					MergeableReq:  false,
+					ApprovedReq:   false,
+					UnDivergedReq: false,
+				}
+				global, err = (&yaml.ParserValidator{}).ParseGlobalCfg(path, valid.NewGlobalCfgFromArgs(globalCfgArgs))
 				Ok(t, err)
 			} else {
-				global = valid.NewGlobalCfg(false, false, false, false)
+				globalCfgArgs := valid.GlobalCfgArgs{
+					AllowRepoCfg:  false,
+					MergeableReq:  false,
+					ApprovedReq:   false,
+					UnDivergedReq: false,
+				}
+				global = valid.NewGlobalCfgFromArgs(globalCfgArgs)
 			}
 
 			Equals(t,
@@ -739,10 +827,23 @@ repos:
 				path := filepath.Join(tmp, "config.yaml")
 				Ok(t, ioutil.WriteFile(path, []byte(c.gCfg), 0600))
 				var err error
-				global, err = (&yaml.ParserValidator{}).ParseGlobalCfg(path, valid.NewGlobalCfg(false, false, false, false))
+				globalCfgArgs := valid.GlobalCfgArgs{
+					AllowRepoCfg:  false,
+					MergeableReq:  false,
+					ApprovedReq:   false,
+					UnDivergedReq: false,
+				}
+
+				global, err = (&yaml.ParserValidator{}).ParseGlobalCfg(path, valid.NewGlobalCfgFromArgs(globalCfgArgs))
 				Ok(t, err)
 			} else {
-				global = valid.NewGlobalCfg(false, false, false, false)
+				globalCfgArgs := valid.GlobalCfgArgs{
+					AllowRepoCfg:  false,
+					MergeableReq:  false,
+					ApprovedReq:   false,
+					UnDivergedReq: false,
+				}
+				global = valid.NewGlobalCfgFromArgs(globalCfgArgs)
 			}
 
 			global.PolicySets = emptyPolicySets
