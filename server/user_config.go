@@ -58,7 +58,10 @@ type UserConfig struct {
 	RequireApproval bool `mapstructure:"require-approval"`
 	// RequireMergeable is whether to require pull requests to be mergeable before
 	// allowing terraform apply's to run.
-	RequireMergeable    bool `mapstructure:"require-mergeable"`
+	RequireMergeable bool `mapstructure:"require-mergeable"`
+	// RequireUnDiverged is whether to require pull requests to rebase default branch before
+	// allowing terraform apply's to run.
+	RequireUnDiverged   bool `mapstructure:"require-undiverged"`
 	SilenceForkPRErrors bool `mapstructure:"silence-fork-pr-errors"`
 	// SilenceVCSStatusNoPlans is whether autoplan should set commit status if no plans
 	// are found.
