@@ -96,6 +96,7 @@ type Server struct {
 	SSLCertFile                   string
 	SSLKeyFile                    string
 	Drainer                       *events.Drainer
+	CronService                   *CronService
 }
 
 // Config holds config for server that isn't passed in by the user.
@@ -624,6 +625,17 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubOrg:           userConfig.GithubOrg,
 	}
 
+	cronService := NewCronService(
+		events.NewFileWorkDirIterator(
+			githubClient,
+			eventParser,
+			userConfig.DataDir,
+			logger,
+		),
+		statsScope,
+		logger,
+	)
+
 	return &Server{
 		AtlantisVersion:               config.AtlantisVersion,
 		AtlantisURL:                   parsedURL,
@@ -644,6 +656,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		SSLKeyFile:                    userConfig.SSLKeyFile,
 		SSLCertFile:                   userConfig.SSLCertFile,
 		Drainer:                       drainer,
+		CronService:                   cronService,
 	}, nil
 }
 
@@ -675,6 +688,8 @@ func (s *Server) Start() error {
 	stop := make(chan os.Signal, 1)
 	// Stop on SIGINTs and SIGTERMs.
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go s.CronService.Run()
 
 	server := &http.Server{Addr: fmt.Sprintf(":%d", s.Port), Handler: n}
 	go func() {

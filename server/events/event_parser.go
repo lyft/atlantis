@@ -510,6 +510,7 @@ func (e *EventParser) ParseGithubPull(pull *github.PullRequest) (pullModel model
 	}
 
 	pullState := models.ClosedPullState
+	closedAt := pull.GetClosedAt()
 	if pull.GetState() == "open" {
 		pullState = models.OpenPullState
 	}
@@ -523,6 +524,7 @@ func (e *EventParser) ParseGithubPull(pull *github.PullRequest) (pullModel model
 		State:      pullState,
 		BaseRepo:   baseRepo,
 		BaseBranch: baseBranch,
+		ClosedAt:   closedAt,
 	}
 	return
 }
