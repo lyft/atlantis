@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 func TestListCurrentWorkingDirPulls(t *testing.T) {
 
 	mockGHClient := vcsmocks.NewMockGithubPullRequestGetter()
@@ -26,12 +25,12 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 	t.Run("repos subdir not exist", func(t *testing.T) {
 
 		baseDir, _ := ioutil.TempDir("", "atlantis-data")
-		
+
 		subject := &events.FileWorkDirIterator{
-			Log: log,
+			Log:          log,
 			GithubClient: mockGHClient,
-			EventParser: mockEventParser,
-			DataDir: baseDir,
+			EventParser:  mockEventParser,
+			DataDir:      baseDir,
 		}
 
 		pulls, err := subject.ListCurrentWorkingDirPulls()
@@ -57,12 +56,12 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 
 		pegomock.When(mockGHClient.GetPullRequestFromName("repo1", "nish", 1)).ThenReturn(expectedGithubPull, nil)
 		pegomock.When(mockEventParser.ParseGithubPull(expectedGithubPull)).ThenReturn(expectedInternalPull, models.Repo{}, models.Repo{}, nil)
-		
+
 		subject := &events.FileWorkDirIterator{
-			Log: log,
+			Log:          log,
 			GithubClient: mockGHClient,
-			EventParser: mockEventParser,
-			DataDir: baseDir,
+			EventParser:  mockEventParser,
+			DataDir:      baseDir,
 		}
 
 		pulls, err := subject.ListCurrentWorkingDirPulls()
@@ -101,12 +100,12 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 		pegomock.When(mockGHClient.GetPullRequestFromName("repo1", "nish", pullNum2)).ThenReturn(expectedGithubPull2, nil)
 		pegomock.When(mockEventParser.ParseGithubPull(expectedGithubPull1)).ThenReturn(expectedInternalPull1, models.Repo{}, models.Repo{}, nil)
 		pegomock.When(mockEventParser.ParseGithubPull(expectedGithubPull2)).ThenReturn(expectedInternalPull2, models.Repo{}, models.Repo{}, nil)
-		
+
 		subject := &events.FileWorkDirIterator{
-			Log: log,
+			Log:          log,
 			GithubClient: mockGHClient,
-			EventParser: mockEventParser,
-			DataDir: baseDir,
+			EventParser:  mockEventParser,
+			DataDir:      baseDir,
 		}
 
 		pulls, err := subject.ListCurrentWorkingDirPulls()
@@ -146,12 +145,12 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 		pegomock.When(mockGHClient.GetPullRequestFromName("repo2", "nish", pullNum2)).ThenReturn(expectedGithubPull2, nil)
 		pegomock.When(mockEventParser.ParseGithubPull(expectedGithubPull1)).ThenReturn(expectedInternalPull1, models.Repo{}, models.Repo{}, nil)
 		pegomock.When(mockEventParser.ParseGithubPull(expectedGithubPull2)).ThenReturn(expectedInternalPull2, models.Repo{}, models.Repo{}, nil)
-		
+
 		subject := &events.FileWorkDirIterator{
-			Log: log,
+			Log:          log,
 			GithubClient: mockGHClient,
-			EventParser: mockEventParser,
-			DataDir: baseDir,
+			EventParser:  mockEventParser,
+			DataDir:      baseDir,
 		}
 
 		pulls, err := subject.ListCurrentWorkingDirPulls()
@@ -161,6 +160,5 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 		assert.Contains(t, pulls, expectedInternalPull1)
 		assert.Contains(t, pulls, expectedInternalPull2)
 	})
-
 
 }
