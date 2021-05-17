@@ -1,12 +1,14 @@
 package vcs
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/google/go-github/v31/github"
 	stats "github.com/lyft/gostats"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	"strconv"
 )
 
 // NewInstrumentedGithubClient creates a client proxy responsible for gathering stats and logging
@@ -27,8 +29,11 @@ func NewInstrumentedGithubClient(client *GithubClient, statsScope stats.Scope, l
 	}
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_request_getter.go GithubPullRequestGetter
+
 type GithubPullRequestGetter interface {
 	GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error)
+	GetPullRequestFromName(repoName string, repoOwner string, pullNum int) (*github.PullRequest, error)
 }
 
 // IGithubClient exists to bridge the gap between GithubPullRequestGetter and Client interface to allow
@@ -48,8 +53,16 @@ type InstrumentedGithubClient struct {
 }
 
 func (c *InstrumentedGithubClient) GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error) {
+	return c.GetPullRequestFromName(repo.Name, repo.Owner, pullNum)
+
+}
+
+func (c *InstrumentedGithubClient) GetPullRequestFromName(repoName string, repoOwner string, pullNum int) (*github.PullRequest, error) {
 	scope := c.StatsScope.Scope("get_pull_request")
-	logger := c.Logger.WithHistory(fmtLogSrc(repo, pullNum)...)
+	logger := c.Logger.WithHistory([]interface{}{
+		"repository", fmt.Sprintf("%s/%s", repoOwner, repoName),
+		"pull-num", strconv.Itoa(pullNum),
+	}...)
 
 	executionTime := scope.NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
 	defer executionTime.Complete()
@@ -57,7 +70,7 @@ func (c *InstrumentedGithubClient) GetPullRequest(repo models.Repo, pullNum int)
 	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
 	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
 
-	pull, err := c.PullRequestGetter.GetPullRequest(repo, pullNum)
+	pull, err := c.PullRequestGetter.GetPullRequestFromName(repoName, repoOwner, pullNum)
 
 	if err != nil {
 		executionError.Inc()
@@ -67,7 +80,6 @@ func (c *InstrumentedGithubClient) GetPullRequest(repo models.Repo, pullNum int)
 	}
 
 	return pull, err
-
 }
 
 type InstrumentedClient struct {
