@@ -13,21 +13,21 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
-type CronService struct {
+type ScheduledExecutorService struct {
 	log logging.SimpleLogging
 
 	// jobs
 	garbageCollector CronDefinition
 }
 
-func NewCronService(
+func NewScheduledExecutorService(
 	workingDirIterator events.WorkDirIterator,
 	statsScope stats.Scope,
 	log logging.SimpleLogging,
-) *CronService {
+) *ScheduledExecutorService {
 	garbageCollector := &GarbageCollector{
 		workingDirIterator: workingDirIterator,
-		stats:              statsScope.Scope("crons.garbagecollector"),
+		stats:              statsScope.Scope("scheduled.garbagecollector"),
 		log:                log,
 	}
 
@@ -38,7 +38,7 @@ func NewCronService(
 		Period: 5 * time.Minute,
 	}
 
-	return &CronService{
+	return &ScheduledExecutorService{
 		log:              log,
 		garbageCollector: garbageCollectorCron,
 	}
@@ -49,8 +49,8 @@ type CronDefinition struct {
 	Period time.Duration
 }
 
-func (s *CronService) Run() {
-	s.log.Info("Cron Service started")
+func (s *ScheduledExecutorService) Run() {
+	s.log.Info("Scheduled Executor Service started")
 
 	// create tickers
 	garbageCollectorTicker := time.NewTicker(s.garbageCollector.Period)
@@ -64,7 +64,7 @@ func (s *CronService) Run() {
 	for {
 		select {
 		case <-interrupt:
-			s.log.Warn("Received interrupt. Shutting down cron service")
+			s.log.Warn("Received interrupt. Shutting down scheduled executor service")
 			return
 		case <-garbageCollectorTicker.C:
 			go s.garbageCollector.Job.Run()

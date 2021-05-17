@@ -96,7 +96,7 @@ type Server struct {
 	SSLCertFile                   string
 	SSLKeyFile                    string
 	Drainer                       *events.Drainer
-	CronService                   *CronService
+	ScheduledExecutorService      *ScheduledExecutorService
 }
 
 // Config holds config for server that isn't passed in by the user.
@@ -625,7 +625,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubOrg:           userConfig.GithubOrg,
 	}
 
-	cronService := NewCronService(
+	scheduledExecutorService := NewScheduledExecutorService(
 		events.NewFileWorkDirIterator(
 			githubClient,
 			eventParser,
@@ -656,7 +656,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		SSLKeyFile:                    userConfig.SSLKeyFile,
 		SSLCertFile:                   userConfig.SSLCertFile,
 		Drainer:                       drainer,
-		CronService:                   cronService,
+		ScheduledExecutorService:      scheduledExecutorService,
 	}, nil
 }
 
@@ -689,7 +689,7 @@ func (s *Server) Start() error {
 	// Stop on SIGINTs and SIGTERMs.
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	go s.CronService.Run()
+	go s.ScheduledExecutorService.Run()
 
 	server := &http.Server{Addr: fmt.Sprintf(":%d", s.Port), Handler: n}
 	go func() {
