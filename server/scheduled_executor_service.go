@@ -27,15 +27,15 @@ func NewScheduledExecutorService(
 	workingDirIterator events.WorkDirIterator,
 	statsScope stats.Scope,
 	log logging.SimpleLogging,
-	closedpullCleaner events.PullCleaner,
-	openpullCleaner events.PullCleaner,
+	closedPullCleaner events.PullCleaner,
+	openPullCleaner events.PullCleaner,
 ) *ScheduledExecutorService {
 	garbageCollector := &GarbageCollector{
 		workingDirIterator: workingDirIterator,
 		stats:              statsScope.Scope("scheduled.garbagecollector"),
 		log:                log,
-		closedPullCleaner:  closedpullCleaner,
-		openPullCleaner:    openpullCleaner,
+		closedPullCleaner:  closedPullCleaner,
+		openPullCleaner:    openPullCleaner,
 	}
 
 	garbageCollectorCron := CronDefinition{
