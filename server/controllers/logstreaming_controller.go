@@ -82,8 +82,9 @@ func (j *LogStreamingController) GetLogStream(w http.ResponseWriter, r *http.Req
 	}
 
 	if !exist {
-		j.LogStreamErrorTemplate.Execute(w, err)
-		j.respond(w, logging.Warn, http.StatusNotFound, "Project Does Not Exist")
+		if err = j.LogStreamErrorTemplate.Execute(w, err); err != nil {
+			j.Logger.Err(err.Error())
+		}
 		return
 	}
 
