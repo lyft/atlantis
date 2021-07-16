@@ -436,7 +436,7 @@ func (p ProjectCommandContext) GetShowResultFileName() string {
 }
 
 // Gets a unique identifier for the current pull request as a single string
-func (c *ProjectCommandContext) PullInfo() string {
+func (p *ProjectCommandContext) PullInfo() string {
 	return fmt.Sprintf("%s/%d/%s", c.BaseRepo.FullName, c.Pull.Num, c.ProjectName)
 }
 
