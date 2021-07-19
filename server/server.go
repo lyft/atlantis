@@ -624,7 +624,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB:                 boltdb,
 		DeleteLockCommand:  deleteLockCommand,
 	}
-
+	var websocketHandler controllers.WebsocketHandler
 	logStreamingController := &controllers.LogStreamingController{
 		AtlantisVersion:        config.AtlantisVersion,
 		AtlantisURL:            parsedURL,
@@ -633,6 +633,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		LogStreamErrorTemplate: templates.LogStreamErrorTemplate,
 		Db:                     boltdb,
 		TerraformOutputChan:    terraformOutputChan,
+		WebsocketHandler:       websocketHandler,
 	}
 
 	eventsController := &events_controllers.VCSEventsController{

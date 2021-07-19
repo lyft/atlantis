@@ -16,6 +16,18 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_websocket_handler.go WebsocketHandler
+
+type WebsocketHandler interface {
+	Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (WebsocketResponseWriter, error)
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_websocket_response_writer.go WebsocketResponseWriter
+type WebsocketResponseWriter interface {
+	WriteMessage(messageType int, data []byte) error
+	Close() error
+}
+
 type LogStreamingController struct {
 	AtlantisVersion        string
 	AtlantisURL            *url.URL
@@ -25,9 +37,11 @@ type LogStreamingController struct {
 	Db                     *db.BoltDB
 	TerraformOutputChan    chan *models.TerraformOutputLine
 
-	logBuffers map[string][]string
-	wsChans    map[string]map[chan string]bool
-	chanLock   sync.RWMutex
+	logBuffers              map[string][]string
+	wsChans                 map[string]map[chan string]bool
+	chanLock                sync.RWMutex
+	WebsocketHandler        WebsocketHandler
+	WebsocketResponseWriter WebsocketResponseWriter
 }
 
 type PullInfo struct {
@@ -75,7 +89,6 @@ func (j *LogStreamingController) writeLogLine(pull string, line string) {
 		select {
 		case ch <- line:
 		default:
-
 			delete(j.wsChans[pull], ch)
 		}
 	}
@@ -112,6 +125,8 @@ func (p *PullInfo) String() string {
 
 // Gets the PR information from the HTTP request params
 func newPullInfo(r *http.Request) (*PullInfo, error) {
+	fmt.Printf("%+v", r)
+	fmt.Printf("\n%+v", mux.Vars(r))
 	org, ok := mux.Vars(r)["org"]
 	if !ok {
 		return nil, fmt.Errorf("Internal error: no org in route")
@@ -173,8 +188,6 @@ func (j *LogStreamingController) GetLogStream(w http.ResponseWriter, r *http.Req
 	}
 }
 
-var upgrader = websocket.Upgrader{}
-
 func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.Request) {
 	pullInfo, err := newPullInfo(r)
 	if err != nil {
@@ -182,7 +195,7 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	c, err := upgrader.Upgrade(w, r, nil)
+	c, err := j.WebsocketHandler.Upgrade(w, r, nil)
 	if err != nil {
 		j.Logger.Warn("Failed to upgrade websocket: %s", err)
 		return
@@ -196,7 +209,7 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 
 	for msg := range ch {
 		j.Logger.Info(msg)
-		if err := c.WriteMessage(websocket.BinaryMessage, []byte(msg+"\r\n")); err != nil {
+		if err := c.WriteMessage(websocket.BinaryMessage, []byte(msg)); err != nil {
 			j.Logger.Warn("Failed to write ws message: %s", err)
 			return
 		}
