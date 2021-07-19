@@ -28,6 +28,21 @@ type WebsocketResponseWriter interface {
 	Close() error
 }
 
+type DefaultWebsocketHandler struct {
+	handler websocket.Upgrader
+}
+  
+func NewWebsocketHandler() WebsocketHandler {
+	return &DefaultWebsocketHandler{
+	  handler: websocket.Upgrader{},
+	}
+}
+  
+func (wh *DefaultWebsocketHandler) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (WebsocketResponseWriter, error) {
+	return wh.handler.Upgrade(w, r, responseHeader)
+}
+  
+
 type LogStreamingController struct {
 	AtlantisVersion        string
 	AtlantisURL            *url.URL
@@ -37,11 +52,10 @@ type LogStreamingController struct {
 	Db                     *db.BoltDB
 	TerraformOutputChan    chan *models.TerraformOutputLine
 
-	logBuffers              map[string][]string
-	wsChans                 map[string]map[chan string]bool
-	chanLock                sync.RWMutex
-	WebsocketHandler        WebsocketHandler
-	WebsocketResponseWriter WebsocketResponseWriter
+	logBuffers       map[string][]string
+	wsChans          map[string]map[chan string]bool
+	chanLock         sync.RWMutex
+	WebsocketHandler WebsocketHandler
 }
 
 type PullInfo struct {
