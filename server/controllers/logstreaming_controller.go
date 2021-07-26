@@ -207,7 +207,6 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
 		return
 	}
-	j.Logger.Info(fmt.Sprint())
 
 	c, err := j.WebsocketHandler.Upgrade(w, r, nil)
 	if err != nil {
