@@ -4,15 +4,18 @@
 package mocks
 
 import (
-	go_version "github.com/hashicorp/go-version"
-	pegomock "github.com/petergtz/pegomock"
-	logging "github.com/runatlantis/atlantis/server/logging"
 	"reflect"
 	"time"
+
+	go_version "github.com/hashicorp/go-version"
+	pegomock "github.com/petergtz/pegomock"
+	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/terraform"
+	logging "github.com/runatlantis/atlantis/server/logging"
 )
 
 type MockClient struct {
-	fail func(message string, callerSkip ...int)
+	fail        func(message string, callerSkip ...int)
 }
 
 func NewMockClient(options ...pegomock.Option) *MockClient {
@@ -26,11 +29,11 @@ func NewMockClient(options ...pegomock.Option) *MockClient {
 func (mock *MockClient) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockClient) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockClient) RunCommandWithVersion(log logging.SimpleLogging, path string, args []string, envs map[string]string, v *go_version.Version, workspace string) (string, error) {
+func (mock *MockClient) RunCommandWithVersion(ctx models.ProjectCommandContext, path string, args []string, envs map[string]string, v *go_version.Version, workspace string) (string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockClient().")
 	}
-	params := []pegomock.Param{log, path, args, envs, v, workspace}
+	params := []pegomock.Param{ctx, path, args, envs, v, workspace}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("RunCommandWithVersion", params, []reflect.Type{reflect.TypeOf((*string)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 string
 	var ret1 error
@@ -43,6 +46,16 @@ func (mock *MockClient) RunCommandWithVersion(log logging.SimpleLogging, path st
 		}
 	}
 	return ret0, ret1
+}
+
+func (mock *MockClient) RunCommandAsync(ctx models.ProjectCommandContext, path string, args []string, envs map[string]string, v *go_version.Version, workspace string) (chan<- string, <-chan terraform.Line) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockClient().")
+	}
+	outCh := make(chan terraform.Line)
+	inCh := make(chan string)
+
+	return inCh, outCh
 }
 
 func (mock *MockClient) EnsureVersion(log logging.SimpleLogging, v *go_version.Version) error {

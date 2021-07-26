@@ -296,18 +296,6 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 	}
 
 	outputs, err := p.runSteps(ctx.Steps, ctx, projAbsPath)
-	outputString := strings.Join(outputs, "\n")
-	projectInfoString := ctx.PullInfo()
-	chanInfo := &models.TerraformOutputLine{
-		ProjectInfo: projectInfoString,
-		Line:        outputString,
-	}
-	ctx.Log.Info("Before Terraform output: %s", chanInfo.Line)
-	go func() {
-		ctx.Log.Info("After Terraform output: %s", chanInfo.Line)
-		p.TerraformOutputChan <- chanInfo
-
-	}()
 
 	if err != nil {
 		if unlockErr := lockAttempt.UnlockFn(); unlockErr != nil {

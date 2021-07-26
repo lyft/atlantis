@@ -1,7 +1,6 @@
 package runtime_test
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -20,7 +19,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/terraform/mocks"
 	matchers2 "github.com/runatlantis/atlantis/server/events/terraform/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/logging"
-	logging_matchers "github.com/runatlantis/atlantis/server/logging/mocks/matchers"
+
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -62,7 +61,7 @@ func TestRun_Success(t *testing.T) {
 	}
 	logger := logging.NewNoopLogger(t)
 
-	When(terraform.RunCommandWithVersion(matchers.AnyPtrToLoggingSimpleLogger(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+	When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", nil)
 	output, err := o.Run(models.ProjectCommandContext{
 		Log:                logger,
@@ -92,7 +91,7 @@ func TestRun_AppliesCorrectProjectPlan(t *testing.T) {
 	}
 	logger := logging.NewNoopLogger(t)
 
-	When(terraform.RunCommandWithVersion(matchers.AnyPtrToLoggingSimpleLogger(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+	When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", nil)
 	output, err := o.Run(models.ProjectCommandContext{
 		Log:                logger,
@@ -123,7 +122,7 @@ func TestRun_UsesConfiguredTFVersion(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	tfVersion, _ := version.NewVersion("0.11.0")
 
-	When(terraform.RunCommandWithVersion(logging_matchers.AnyLoggingSimpleLogging(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+	When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", nil)
 	output, err := o.Run(models.ProjectCommandContext{
 		Workspace:          "workspace",
@@ -240,8 +239,8 @@ Plan: 0 to add, 0 to change, 1 to destroy.`
 	Ok(t, err)
 
 	RegisterMockTestingT(t)
-	tfOut := fmt.Sprintf(preConfirmOutFmt, planFileContents) + postConfirmOut
-	tfExec := &remoteApplyMock{LinesToSend: tfOut, DoneCh: make(chan bool)}
+	//tfOut := fmt.Sprintf(preConfirmOutFmt, planFileContents) + postConfirmOut
+	tfExec := &remoteApplyMock{}
 	updater := mocks2.NewMockCommitStatusUpdater()
 	o := runtime.ApplyStepRunner{
 		AsyncTFExec:         tfExec,
@@ -298,12 +297,8 @@ Plan: 0 to add, 0 to change, 1 to destroy.`
 	Ok(t, err)
 
 	RegisterMockTestingT(t)
-	tfOut := fmt.Sprintf(preConfirmOutFmt, "not the expected plan!") + noConfirmationOut
-	tfExec := &remoteApplyMock{
-		LinesToSend: tfOut,
-		Err:         errors.New("exit status 1"),
-		DoneCh:      make(chan bool),
-	}
+	//tfOut := fmt.Sprintf(preConfirmOutFmt, "not the expected plan!") + noConfirmationOut
+	tfExec := &remoteApplyMock{}
 	o := runtime.ApplyStepRunner{
 		AsyncTFExec:         tfExec,
 		CommitStatusUpdater: mocks2.NewMockCommitStatusUpdater(),
@@ -365,7 +360,7 @@ type remoteApplyMock struct {
 }
 
 // RunCommandAsync fakes out running terraform async.
-func (r *remoteApplyMock) RunCommandAsync(log logging.SimpleLogging, path string, args []string, envs map[string]string, v *version.Version, workspace string) (chan<- string, <-chan terraform.Line) {
+func (r *remoteApplyMock) RunCommandAsync(ctx models.ProjectCommandContext, path string, args []string, envs map[string]string, v *version.Version, workspace string) (chan<- string, <-chan terraform.Line) {
 	r.CalledArgs = args
 
 	in := make(chan string)

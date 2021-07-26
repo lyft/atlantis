@@ -29,6 +29,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/terraform"
 	"github.com/runatlantis/atlantis/server/events/terraform/mocks"
+	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -62,6 +63,30 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 `
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan<- *models.TerraformOutputLine)
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName:    "env",
+				EnvVarName:  "name",
+				EnvVarValue: "value",
+			},
+			{
+				StepName: "run",
+			},
+			{
+				StepName: "apply",
+			},
+			{
+				StepName: "plan",
+			},
+			{
+				StepName: "init",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
 	defer cleanup()
 
 	logger := logging.NewNoopLogger(t)
@@ -78,7 +103,7 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
-	output, err := c.RunCommandWithVersion(logger, tmp, nil, map[string]string{"test": "123"}, nil, "")
+	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{"test": "123"}, nil, "")
 	Ok(t, err)
 	Equals(t, fakeBinOut+"\n", output)
 }
@@ -94,6 +119,30 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan<- *models.TerraformOutputLine)
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName:    "env",
+				EnvVarName:  "name",
+				EnvVarValue: "value",
+			},
+			{
+				StepName: "run",
+			},
+			{
+				StepName: "apply",
+			},
+			{
+				StepName: "plan",
+			},
+			{
+				StepName: "init",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
 	defer cleanup()
 
 	// We're testing this by adding our own "fake" terraform binary to path that
@@ -108,7 +157,7 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
-	output, err := c.RunCommandWithVersion(logger, tmp, nil, map[string]string{}, nil, "")
+	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, fakeBinOut+"\n", output)
 }
@@ -135,6 +184,30 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan<- *models.TerraformOutputLine)
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName:    "env",
+				EnvVarName:  "name",
+				EnvVarValue: "value",
+			},
+			{
+				StepName: "run",
+			},
+			{
+				StepName: "apply",
+			},
+			{
+				StepName: "plan",
+			},
+			{
+				StepName: "init",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
 	defer cleanup()
 
 	// We're testing this by adding our own "fake" terraform binary to path that
@@ -149,7 +222,7 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
-	output, err := c.RunCommandWithVersion(logger, tmp, nil, map[string]string{}, nil, "")
+	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, fakeBinOut+"\n", output)
 }
@@ -158,9 +231,32 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 // bin dir that we use it.
 func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	fakeBinOut := "Terraform v0.11.10\n"
-	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan<- *models.TerraformOutputLine)
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName:    "env",
+				EnvVarName:  "name",
+				EnvVarValue: "value",
+			},
+			{
+				StepName: "run",
+			},
+			{
+				StepName: "apply",
+			},
+			{
+				StepName: "plan",
+			},
+			{
+				StepName: "init",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
 	defer cleanup()
 
 	// Add our fake binary to {datadir}/bin/terraform{version}.
@@ -174,7 +270,7 @@ func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
-	output, err := c.RunCommandWithVersion(logger, tmp, nil, map[string]string{}, nil, "")
+	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, fakeBinOut+"\n", output)
 }
@@ -185,6 +281,30 @@ func TestNewClient_DefaultTFFlagDownload(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan<- *models.TerraformOutputLine)
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName:    "env",
+				EnvVarName:  "name",
+				EnvVarValue: "value",
+			},
+			{
+				StepName: "run",
+			},
+			{
+				StepName: "apply",
+			},
+			{
+				StepName: "plan",
+			},
+			{
+				StepName: "init",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
 	defer cleanup()
 
 	// Set PATH to empty so there's no TF available.
@@ -211,7 +331,7 @@ func TestNewClient_DefaultTFFlagDownload(t *testing.T) {
 
 	// Reset PATH so that it has sh.
 	Ok(t, os.Setenv("PATH", orig))
-	output, err := c.RunCommandWithVersion(logger, tmp, nil, map[string]string{}, nil, "")
+	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, "\nTerraform v0.11.10\n\n", output)
 }
@@ -232,6 +352,30 @@ func TestRunCommandWithVersion_DLsTF(t *testing.T) {
 	RegisterMockTestingT(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan<- *models.TerraformOutputLine)
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName:    "env",
+				EnvVarName:  "name",
+				EnvVarValue: "value",
+			},
+			{
+				StepName: "run",
+			},
+			{
+				StepName: "apply",
+			},
+			{
+				StepName: "plan",
+			},
+			{
+				StepName: "init",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
 	defer cleanup()
 
 	mockDownloader := mocks.NewMockDownloader()
@@ -253,7 +397,7 @@ func TestRunCommandWithVersion_DLsTF(t *testing.T) {
 
 	v, err := version.NewVersion("99.99.99")
 	Ok(t, err)
-	output, err := c.RunCommandWithVersion(logger, tmp, nil, map[string]string{}, v, "")
+	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, v, "")
 	Assert(t, err == nil, "err: %s: %s", err, output)
 	Equals(t, "\nTerraform v99.99.99\n\n", output)
 }

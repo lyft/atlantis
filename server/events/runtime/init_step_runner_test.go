@@ -14,7 +14,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/terraform/mocks"
 	matchers2 "github.com/runatlantis/atlantis/server/events/terraform/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/logging"
-	logging_matchers "github.com/runatlantis/atlantis/server/logging/mocks/matchers"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -53,7 +52,7 @@ func TestRun_UsesGetOrInitForRightVersion(t *testing.T) {
 				TerraformExecutor: terraform,
 				DefaultTFVersion:  tfVersion,
 			}
-			When(terraform.RunCommandWithVersion(logging_matchers.AnyLoggingSimpleLogging(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+			When(terraform.RunCommandWithVersion(models.ProjectCommandContext{}, AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 				ThenReturn("output", nil)
 
 			output, err := iso.Run(models.ProjectCommandContext{
@@ -80,7 +79,7 @@ func TestRun_ShowInitOutputOnError(t *testing.T) {
 	RegisterMockTestingT(t)
 	tfClient := mocks.NewMockClient()
 	logger := logging.NewNoopLogger(t)
-	When(tfClient.RunCommandWithVersion(logging_matchers.AnyLoggingSimpleLogging(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+	When(tfClient.RunCommandWithVersion(models.ProjectCommandContext{}, AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", errors.New("error"))
 
 	tfVersion, _ := version.NewVersion("0.11.0")
@@ -115,7 +114,7 @@ func TestRun_InitOmitsUpgradeFlagIfLockFilePresent(t *testing.T) {
 		TerraformExecutor: terraform,
 		DefaultTFVersion:  tfVersion,
 	}
-	When(terraform.RunCommandWithVersion(logging_matchers.AnyLoggingSimpleLogging(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+	When(terraform.RunCommandWithVersion(models.ProjectCommandContext{}, AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", nil)
 
 	output, err := iso.Run(models.ProjectCommandContext{
@@ -145,7 +144,7 @@ func TestRun_InitKeepsUpgradeFlagIfLockFileNotPresent(t *testing.T) {
 		TerraformExecutor: terraform,
 		DefaultTFVersion:  tfVersion,
 	}
-	When(terraform.RunCommandWithVersion(logging_matchers.AnyLoggingSimpleLogging(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+	When(terraform.RunCommandWithVersion(models.ProjectCommandContext{}, AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", nil)
 
 	output, err := iso.Run(models.ProjectCommandContext{
@@ -178,7 +177,7 @@ func TestRun_InitKeepUpgradeFlagIfLockFilePresentAndTFLessThanPoint14(t *testing
 		TerraformExecutor: terraform,
 		DefaultTFVersion:  tfVersion,
 	}
-	When(terraform.RunCommandWithVersion(logging_matchers.AnyLoggingSimpleLogging(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+	When(terraform.RunCommandWithVersion(models.ProjectCommandContext{}, AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", nil)
 
 	output, err := iso.Run(models.ProjectCommandContext{
@@ -244,7 +243,7 @@ func TestRun_InitExtraArgsDeDupe(t *testing.T) {
 				TerraformExecutor: terraform,
 				DefaultTFVersion:  tfVersion,
 			}
-			When(terraform.RunCommandWithVersion(logging_matchers.AnyLoggingSimpleLogging(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+			When(terraform.RunCommandWithVersion(models.ProjectCommandContext{}, AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 				ThenReturn("output", nil)
 
 			output, err := iso.Run(models.ProjectCommandContext{

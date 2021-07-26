@@ -269,23 +269,19 @@ func (c *DefaultClient) EnsureVersion(log logging.SimpleLogging, v *version.Vers
 }
 
 // See Client.RunCommandWithVersion.
-func (c *DefaultClient) RunCommandWithVersion(log logging.SimpleLogging, path string, args []string, customEnvVars map[string]string, v *version.Version, workspace string) (string, error) {
-	tfCmd, cmd, err := c.prepCmd(log, v, workspace, path, args)
-	if err != nil {
-		return "", err
+func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, path string, args []string, customEnvVars map[string]string, v *version.Version, workspace string) (string, error) {
+	_, outCh := c.RunCommandAsync(ctx, path, args, customEnvVars, v, workspace)
+	var lines []string
+	var err error
+	for line := range outCh {
+		if line.Err != nil {
+			err = line.Err
+			break
+		}
+		lines = append(lines, line.Line)
 	}
-	envVars := cmd.Env
-	for key, val := range customEnvVars {
-		envVars = append(envVars, fmt.Sprintf("%s=%s", key, val))
-	}
-	cmd.Env = envVars
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		err = errors.Wrapf(err, "running %q in %q", tfCmd, path)
-		log.Err(err.Error())
-		return string(out), err
-	}
-	return string(out), nil
+	output := strings.Join(lines, "\n")
+	return output, err
 }
 
 // prepCmd builds a ready to execute command based on the version of terraform
@@ -348,7 +344,7 @@ type Line struct {
 // Callers can use the input channel to pass stdin input to the command.
 // If any error is passed on the out channel, there will be no
 // further output (so callers are free to exit).
-func (c *DefaultClient) RunCommandAsync(log logging.SimpleLogging, path string, args []string, customEnvVars map[string]string, v *version.Version, workspace string) (chan<- string, <-chan Line) {
+func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path string, args []string, customEnvVars map[string]string, v *version.Version, workspace string) (chan<- string, <-chan Line) {
 	outCh := make(chan Line)
 	inCh := make(chan string)
 
@@ -362,9 +358,9 @@ func (c *DefaultClient) RunCommandAsync(log logging.SimpleLogging, path string, 
 			close(inCh)
 		}()
 
-		tfCmd, cmd, err := c.prepCmd(log, v, workspace, path, args)
+		tfCmd, cmd, err := c.prepCmd(ctx.Log, v, workspace, path, args)
 		if err != nil {
-			log.Err(err.Error())
+			ctx.Log.Err(err.Error())
 			outCh <- Line{Err: err}
 			return
 		}
@@ -377,11 +373,11 @@ func (c *DefaultClient) RunCommandAsync(log logging.SimpleLogging, path string, 
 		}
 		cmd.Env = envVars
 
-		log.Debug("starting %q in %q", tfCmd, path)
+		ctx.Log.Debug("starting %q in %q", tfCmd, path)
 		err = cmd.Start()
 		if err != nil {
 			err = errors.Wrapf(err, "running %q in %q", tfCmd, path)
-			log.Err(err.Error())
+			ctx.Log.Err(err.Error())
 			outCh <- Line{Err: err}
 			return
 		}
@@ -390,10 +386,10 @@ func (c *DefaultClient) RunCommandAsync(log logging.SimpleLogging, path string, 
 		// This function will exit when inCh is closed which we do in our defer.
 		go func() {
 			for line := range inCh {
-				log.Debug("writing %q to remote command's stdin", line)
+				ctx.Log.Debug("writing %q to remote command's stdin", line)
 				_, err := io.WriteString(stdin, line)
 				if err != nil {
-					log.Err(errors.Wrapf(err, "writing %q to process", line).Error())
+					ctx.Log.Err(errors.Wrapf(err, "writing %q to process", line).Error())
 				}
 			}
 		}()
@@ -407,6 +403,10 @@ func (c *DefaultClient) RunCommandAsync(log logging.SimpleLogging, path string, 
 			s := bufio.NewScanner(stdout)
 			for s.Scan() {
 				outCh <- Line{Line: s.Text()}
+				c.terraformOutputChan <- &models.TerraformOutputLine{
+					ProjectInfo: ctx.PullInfo(),
+					Line:        s.Text(),
+				}
 			}
 			wg.Done()
 		}()
@@ -414,6 +414,10 @@ func (c *DefaultClient) RunCommandAsync(log logging.SimpleLogging, path string, 
 			s := bufio.NewScanner(stderr)
 			for s.Scan() {
 				outCh <- Line{Line: s.Text()}
+				c.terraformOutputChan <- &models.TerraformOutputLine{
+					ProjectInfo: ctx.PullInfo(),
+					Line:        s.Text(),
+				}
 			}
 			wg.Done()
 		}()
@@ -428,10 +432,10 @@ func (c *DefaultClient) RunCommandAsync(log logging.SimpleLogging, path string, 
 		// We're done now. Send an error if there was one.
 		if err != nil {
 			err = errors.Wrapf(err, "running %q in %q", tfCmd, path)
-			log.Err(err.Error())
+			ctx.Log.Err(err.Error())
 			outCh <- Line{Err: err}
 		} else {
-			log.Info("successfully ran %q in %q", tfCmd, path)
+			ctx.Log.Info("successfully ran %q in %q", tfCmd, path)
 		}
 	}()
 
