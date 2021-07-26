@@ -73,7 +73,7 @@ type DefaultClient struct {
 	// usePluginCache determines whether or not to set the TF_PLUGIN_CACHE_DIR env var
 	usePluginCache bool
 
-	terraformOutputChan chan<- *models.TerraformOutputLine
+	terraformOutputChan chan *models.TerraformOutputLine
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_downloader.go Downloader

@@ -11,6 +11,7 @@ import (
 
 	version "github.com/hashicorp/go-version"
 	. "github.com/petergtz/pegomock"
+	"github.com/pkg/errors"
 	mocks2 "github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -239,8 +240,8 @@ Plan: 0 to add, 0 to change, 1 to destroy.`
 	Ok(t, err)
 
 	RegisterMockTestingT(t)
-	//tfOut := fmt.Sprintf(preConfirmOutFmt, planFileContents) + postConfirmOut
-	tfExec := &remoteApplyMock{}
+	tfOut := fmt.Sprintf(preConfirmOutFmt, planFileContents) + postConfirmOut
+	tfExec := &remoteApplyMock{LinesToSend: tfOut, DoneCh: make(chan bool)}
 	updater := mocks2.NewMockCommitStatusUpdater()
 	o := runtime.ApplyStepRunner{
 		AsyncTFExec:         tfExec,
@@ -297,8 +298,12 @@ Plan: 0 to add, 0 to change, 1 to destroy.`
 	Ok(t, err)
 
 	RegisterMockTestingT(t)
-	//tfOut := fmt.Sprintf(preConfirmOutFmt, "not the expected plan!") + noConfirmationOut
-	tfExec := &remoteApplyMock{}
+	tfOut := fmt.Sprintf(preConfirmOutFmt, "not the expected plan!") + noConfirmationOut
+	tfExec := &remoteApplyMock{
+		LinesToSend: tfOut,
+		Err:         errors.New("exit status 1"),
+		DoneCh:      make(chan bool),
+	}
 	o := runtime.ApplyStepRunner{
 		AsyncTFExec:         tfExec,
 		CommitStatusUpdater: mocks2.NewMockCommitStatusUpdater(),

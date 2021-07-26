@@ -31,17 +31,16 @@ type WebsocketResponseWriter interface {
 type DefaultWebsocketHandler struct {
 	handler websocket.Upgrader
 }
-  
+
 func NewWebsocketHandler() WebsocketHandler {
 	return &DefaultWebsocketHandler{
-	  handler: websocket.Upgrader{},
+		handler: websocket.Upgrader{},
 	}
 }
-  
+
 func (wh *DefaultWebsocketHandler) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (WebsocketResponseWriter, error) {
 	return wh.handler.Upgrade(w, r, responseHeader)
 }
-  
 
 type LogStreamingController struct {
 	AtlantisVersion        string
@@ -208,6 +207,7 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
 		return
 	}
+	j.Logger.Info(fmt.Sprint())
 
 	c, err := j.WebsocketHandler.Upgrade(w, r, nil)
 	if err != nil {
