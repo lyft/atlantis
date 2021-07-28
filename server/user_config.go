@@ -66,6 +66,9 @@ type UserConfig struct {
 	// RequireUnDiverged is whether to require pull requests to rebase default branch before
 	// allowing terraform apply's to run.
 	RequireUnDiverged   bool `mapstructure:"require-undiverged"`
+	// RequireUnlocked is where to require pull requests to be unlocked before running 
+	// terraform apply. 
+	RequireUnlocked     bool `mapstructure:"require-unlocked"`
 	SilenceForkPRErrors bool `mapstructure:"silence-fork-pr-errors"`
 	// SilenceVCSStatusNoPlans is whether autoplan should set commit status if no plans
 	// are found.

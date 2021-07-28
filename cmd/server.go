@@ -102,6 +102,7 @@ const (
 	VCSStatusName              = "vcs-status-name"
 	TFEHostnameFlag            = "tfe-hostname"
 	TFETokenFlag               = "tfe-token"
+	UnlockedReq                = "require-unlocked"
 	WriteGitCredsFlag          = "write-git-creds"
 
 	// NOTE: Must manually set these as defaults in the setDefaults function.
@@ -376,6 +377,10 @@ var boolFlags = map[string]boolFlag{
 	SkipCloneNoChanges: {
 		description:  "Skips cloning the PR repo if there are no projects were changed in the PR.",
 		defaultValue: false,
+	},
+	UnlockedReq: {
+		description: "Allows a user to lock a PR",
+		defaultValue: true,
 	},
 }
 var intFlags = map[string]intFlag{
