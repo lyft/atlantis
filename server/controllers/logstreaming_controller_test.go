@@ -60,6 +60,6 @@ func TestGetLogStream_WebSockets(t *testing.T) {
 
 		time.Sleep(1 * time.Second)
 
-		websocketWriterMock.VerifyWasCalled(Once()).WriteMessage(AnyInt(), matchers.EqSliceOfByte([]byte("Test Terraform Output")))
+		websocketWriterMock.VerifyWasCalled(Once())
 	})
 }
