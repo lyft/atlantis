@@ -140,7 +140,8 @@ func (p *PullInfo) String() string {
 func newPullInfo(r *http.Request) (*PullInfo, error) {
 	fmt.Printf("%+v", r)
 	fmt.Printf("\n%+v", mux.Vars(r))
-	org, ok := mux.Vars(r)["org"]
+
+  org, ok := mux.Vars(r)["org"]
 	if !ok {
 		return nil, fmt.Errorf("Internal error: no org in route")
 	}
@@ -186,6 +187,7 @@ func (j *LogStreamingController) GetLogStream(w http.ResponseWriter, r *http.Req
 	if !exist {
 		j.LogStreamErrorTemplate.Execute(w, err)
 		j.respond(w, logging.Warn, http.StatusNotFound, "")
+    
 		return
 	}
 
@@ -209,7 +211,8 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 	}
 
 	c, err := j.WebsocketHandler.Upgrade(w, r, nil)
-	if err != nil {
+
+  if err != nil {
 		j.Logger.Warn("Failed to upgrade websocket: %s", err)
 		return
 	}

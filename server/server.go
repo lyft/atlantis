@@ -145,6 +145,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	statsScope.Store().AddStatGenerator(stats.NewRuntimeStats(statsScope.Scope("go")))
 
 	var supportedVCSHosts []models.VCSHostType
+
+	// not to be used directly, currently this is just used
+	// for reporting rate limits
+	var rawGithubClient *vcs.GithubClient
+
 	var githubClient vcs.IGithubClient
 	var githubAppEnabled bool
 	var githubCredentials vcs.GithubCredentials
@@ -177,7 +182,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		}
 
 		var err error
-		rawGithubClient, err := vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger)
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -681,8 +686,22 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			DB:         boltdb,
 
 			// using a specific template to signal that this is from an async process
-			PullClosedTemplate: &GCStalePullTemplate{},
+			PullClosedTemplate: NewGCStaleClosedPull(),
 		},
+
+		// using a pullclosed executor for stale open PRs. Naming is weird, we need to come up with something better.
+		&events.PullClosedExecutor{
+			VCSClient:  vcsClient,
+			Locker:     lockingClient,
+			WorkingDir: workingDir,
+			Logger:     logger,
+			DB:         boltdb,
+
+			// using a specific template to signal that this is from an async process
+			PullClosedTemplate: NewGCStaleOpenPull(),
+		},
+
+		rawGithubClient,
 	)
 
 	return &Server{
