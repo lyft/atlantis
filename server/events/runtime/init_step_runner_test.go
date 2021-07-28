@@ -14,6 +14,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/runtime"
 	"github.com/runatlantis/atlantis/server/events/terraform/mocks"
 	matchers2 "github.com/runatlantis/atlantis/server/events/terraform/mocks/matchers"
+	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -47,6 +48,30 @@ func TestRun_UsesGetOrInitForRightVersion(t *testing.T) {
 			terraform := mocks.NewMockClient()
 
 			logger := logging.NewNoopLogger(t)
+			ctx := models.ProjectCommandContext{
+				Log: logging.NewNoopLogger(t),
+				Steps: []valid.Step{
+					{
+						StepName:    "env",
+						EnvVarName:  "name",
+						EnvVarValue: "value",
+					},
+					{
+						StepName: "run",
+					},
+					{
+						StepName: "apply",
+					},
+					{
+						StepName: "plan",
+					},
+					{
+						StepName: "init",
+					},
+				},
+				Workspace:  "default",
+				RepoRelDir: ".",
+			}
 
 			tfVersion, _ := version.NewVersion(c.version)
 			iso := runtime.InitStepRunner{
@@ -70,7 +95,7 @@ func TestRun_UsesGetOrInitForRightVersion(t *testing.T) {
 			if c.expCmd == "get" {
 				expArgs = []string{c.expCmd, "-no-color", "-upgrade", "extra", "args"}
 			}
-			terraform.VerifyWasCalledOnce().RunCommandWithVersion(logger, "/path", expArgs, map[string]string(nil), tfVersion, "workspace")
+			terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, "/path", expArgs, map[string]string(nil), tfVersion, "workspace")
 		})
 	}
 }
@@ -103,6 +128,30 @@ func TestRun_InitOmitsUpgradeFlagIfLockFilePresent(t *testing.T) {
 	defer cleanup()
 	lockFilePath := filepath.Join(tmpDir, ".terraform.lock.hcl")
 	err := ioutil.WriteFile(lockFilePath, nil, 0600)
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName:    "env",
+				EnvVarName:  "name",
+				EnvVarValue: "value",
+			},
+			{
+				StepName: "run",
+			},
+			{
+				StepName: "apply",
+			},
+			{
+				StepName: "plan",
+			},
+			{
+				StepName: "init",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
 	Ok(t, err)
 
 	RegisterMockTestingT(t)
@@ -128,7 +177,7 @@ func TestRun_InitOmitsUpgradeFlagIfLockFilePresent(t *testing.T) {
 	Equals(t, "", output)
 
 	expectedArgs := []string{"init", "-input=false", "-no-color", "extra", "args"}
-	terraform.VerifyWasCalledOnce().RunCommandWithVersion(logger, tmpDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
+	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, tmpDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
 }
 
 func TestRun_InitKeepsUpgradeFlagIfLockFileNotPresent(t *testing.T) {
@@ -137,6 +186,30 @@ func TestRun_InitKeepsUpgradeFlagIfLockFileNotPresent(t *testing.T) {
 
 	RegisterMockTestingT(t)
 	terraform := mocks.NewMockClient()
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName:    "env",
+				EnvVarName:  "name",
+				EnvVarValue: "value",
+			},
+			{
+				StepName: "run",
+			},
+			{
+				StepName: "apply",
+			},
+			{
+				StepName: "plan",
+			},
+			{
+				StepName: "init",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
 
 	logger := logging.NewNoopLogger(t)
 
@@ -158,7 +231,7 @@ func TestRun_InitKeepsUpgradeFlagIfLockFileNotPresent(t *testing.T) {
 	Equals(t, "", output)
 
 	expectedArgs := []string{"init", "-input=false", "-no-color", "-upgrade", "extra", "args"}
-	terraform.VerifyWasCalledOnce().RunCommandWithVersion(logger, tmpDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
+	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, tmpDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
 }
 
 func TestRun_InitKeepUpgradeFlagIfLockFilePresentAndTFLessThanPoint14(t *testing.T) {
@@ -166,6 +239,30 @@ func TestRun_InitKeepUpgradeFlagIfLockFilePresentAndTFLessThanPoint14(t *testing
 	defer cleanup()
 	lockFilePath := filepath.Join(tmpDir, ".terraform.lock.hcl")
 	err := ioutil.WriteFile(lockFilePath, nil, 0600)
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName:    "env",
+				EnvVarName:  "name",
+				EnvVarValue: "value",
+			},
+			{
+				StepName: "run",
+			},
+			{
+				StepName: "apply",
+			},
+			{
+				StepName: "plan",
+			},
+			{
+				StepName: "init",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
 	Ok(t, err)
 
 	RegisterMockTestingT(t)
@@ -191,7 +288,7 @@ func TestRun_InitKeepUpgradeFlagIfLockFilePresentAndTFLessThanPoint14(t *testing
 	Equals(t, "", output)
 
 	expectedArgs := []string{"init", "-input=false", "-no-color", "-upgrade", "extra", "args"}
-	terraform.VerifyWasCalledOnce().RunCommandWithVersion(logger, tmpDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
+	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, tmpDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
 }
 
 func TestRun_InitExtraArgsDeDupe(t *testing.T) {
@@ -236,6 +333,30 @@ func TestRun_InitExtraArgsDeDupe(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
 			terraform := mocks.NewMockClient()
+			ctx := models.ProjectCommandContext{
+				Log: logging.NewNoopLogger(t),
+				Steps: []valid.Step{
+					{
+						StepName:    "env",
+						EnvVarName:  "name",
+						EnvVarValue: "value",
+					},
+					{
+						StepName: "run",
+					},
+					{
+						StepName: "apply",
+					},
+					{
+						StepName: "plan",
+					},
+					{
+						StepName: "init",
+					},
+				},
+				Workspace:  "default",
+				RepoRelDir: ".",
+			}
 
 			logger := logging.NewNoopLogger(t)
 
@@ -256,7 +377,7 @@ func TestRun_InitExtraArgsDeDupe(t *testing.T) {
 			// When there is no error, should not return init output to PR.
 			Equals(t, "", output)
 
-			terraform.VerifyWasCalledOnce().RunCommandWithVersion(logger, "/path", c.expectedArgs, map[string]string(nil), tfVersion, "workspace")
+			terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, "/path", c.expectedArgs, map[string]string(nil), tfVersion, "workspace")
 		})
 	}
 }

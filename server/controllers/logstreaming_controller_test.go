@@ -15,7 +15,6 @@ import (
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/controllers/mocks"
 	"github.com/runatlantis/atlantis/server/controllers/mocks/matchers"
-	//. "github.com/runatlantis/atlantis/testing"
 )
 
 func TestGetLogStream_WebSockets(t *testing.T) {
@@ -23,6 +22,7 @@ func TestGetLogStream_WebSockets(t *testing.T) {
 		RegisterMockTestingT(t)
 		tempchan := make(chan *models.TerraformOutputLine)
 		websocketMock := mocks.NewMockWebsocketHandler()
+		logger := logging.NewNoopLogger(t)
 		websocketWriterMock := mocks.NewMockWebsocketResponseWriter()
 		params := map[string]string{
 			"org":     "test-org",
@@ -36,17 +36,20 @@ func TestGetLogStream_WebSockets(t *testing.T) {
 		request = mux.SetURLVars(request, params)
 		response := httptest.NewRecorder()
 		logStreamingController := &controllers.LogStreamingController{
-			Logger:              logging.NewNoopLogger(t),
+			Logger:              logger,
 			TerraformOutputChan: tempchan,
 			WebsocketHandler:    websocketMock,
 		}
+
 		When(websocketMock.Upgrade(matchers.AnyHttpResponseWriter(), matchers.AnyPtrToHttpRequest(), matchers.AnyHttpHeader())).ThenReturn(websocketWriterMock, nil)
+
 		go func() {
 			tempchan <- &models.TerraformOutputLine{
 				ProjectInfo: "test-org/test-repo/1/test-project",
 				Line:        "Test Terraform Output",
 			}
 		}()
+
 		go func() {
 			logStreamingController.Listen()
 		}()
@@ -54,9 +57,9 @@ func TestGetLogStream_WebSockets(t *testing.T) {
 		go func() {
 			logStreamingController.GetLogStreamWS(response, request)
 		}()
+
 		time.Sleep(1 * time.Second)
+
 		websocketWriterMock.VerifyWasCalled(Once()).WriteMessage(AnyInt(), matchers.EqSliceOfByte([]byte("Test Terraform Output")))
 	})
-} //make sure write message is not being called when diff project info
-//add test to plan command runner
-//nested structs with gorilla and websocker that implements upgrade and implements interface
+}

@@ -15,7 +15,7 @@ import (
 )
 
 type MockClient struct {
-	fail        func(message string, callerSkip ...int)
+	fail func(message string, callerSkip ...int)
 }
 
 func NewMockClient(options ...pegomock.Option) *MockClient {
@@ -110,8 +110,8 @@ type VerifierMockClient struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockClient) RunCommandWithVersion(log logging.SimpleLogging, path string, args []string, envs map[string]string, v *go_version.Version, workspace string) *MockClient_RunCommandWithVersion_OngoingVerification {
-	params := []pegomock.Param{log, path, args, envs, v, workspace}
+func (verifier *VerifierMockClient) RunCommandWithVersion(ctx models.ProjectCommandContext, path string, args []string, envs map[string]string, v *go_version.Version, workspace string) *MockClient_RunCommandWithVersion_OngoingVerification {
+	params := []pegomock.Param{ctx, path, args, envs, v, workspace}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "RunCommandWithVersion", params, verifier.timeout)
 	return &MockClient_RunCommandWithVersion_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
