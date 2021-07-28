@@ -73,7 +73,7 @@ type DefaultClient struct {
 	// usePluginCache determines whether or not to set the TF_PLUGIN_CACHE_DIR env var
 	usePluginCache bool
 
-	terraformOutputChan chan *models.TerraformOutputLine
+	terraformOutputChan chan<- *models.TerraformOutputLine
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_downloader.go Downloader
@@ -105,6 +105,7 @@ func NewClientWithDefaultVersion(
 	tfDownloader Downloader,
 	usePluginCache bool,
 	fetchAsync bool,
+	terraformOutputChan chan<- *models.TerraformOutputLine,
 ) (*DefaultClient, error) {
 	var finalDefaultVersion *version.Version
 	var localVersion *version.Version
@@ -162,8 +163,6 @@ func NewClientWithDefaultVersion(
 			return nil, err
 		}
 	}
-
-	tempChan := make(chan *models.TerraformOutputLine)
 	return &DefaultClient{
 		defaultVersion:          finalDefaultVersion,
 		terraformPluginCacheDir: cacheDir,
@@ -173,7 +172,7 @@ func NewClientWithDefaultVersion(
 		versionsLock:            &versionsLock,
 		versions:                versions,
 		usePluginCache:          usePluginCache,
-		terraformOutputChan:     tempChan,
+		terraformOutputChan:     terraformOutputChan,
 	}, nil
 
 }
@@ -188,7 +187,9 @@ func NewTestClient(
 	defaultVersionFlagName string,
 	tfDownloadURL string,
 	tfDownloader Downloader,
-	usePluginCache bool) (*DefaultClient, error) {
+	usePluginCache bool,
+	terraformOutputChan chan<- *models.TerraformOutputLine,
+) (*DefaultClient, error) {
 	return NewClientWithDefaultVersion(
 		log,
 		binDir,
@@ -201,6 +202,7 @@ func NewTestClient(
 		tfDownloader,
 		usePluginCache,
 		false,
+		terraformOutputChan,
 	)
 }
 
@@ -237,6 +239,7 @@ func NewClient(
 		tfDownloader,
 		usePluginCache,
 		true,
+		terraformOutputChan,
 	)
 }
 

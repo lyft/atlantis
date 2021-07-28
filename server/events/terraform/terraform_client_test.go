@@ -407,11 +407,12 @@ func TestEnsureVersion_downloaded(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	RegisterMockTestingT(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
+	tempchan := make(chan<- *models.TerraformOutputLine)
 	defer cleanup()
 
 	mockDownloader := mocks.NewMockDownloader()
 
-	c, err := terraform.NewTestClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, mockDownloader, true)
+	c, err := terraform.NewTestClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, mockDownloader, true, tempchan)
 	Ok(t, err)
 
 	Equals(t, "0.11.10", c.DefaultVersion().String())

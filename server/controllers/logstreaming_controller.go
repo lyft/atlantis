@@ -222,7 +222,7 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 
 	for msg := range ch {
 		j.Logger.Info(msg)
-		if err := c.WriteMessage(websocket.BinaryMessage, []byte(msg)); err != nil {
+		if err := c.WriteMessage(websocket.BinaryMessage, []byte(msg+"\r\n\t")); err != nil {
 			j.Logger.Warn("Failed to write ws message: %s", err)
 			return
 		}
