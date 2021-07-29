@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -10,7 +11,6 @@ import (
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/terraform/mocks"
-	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -21,30 +21,6 @@ func TestShowStepRunnner(t *testing.T) {
 	resultPath := filepath.Join(path, "test-default.json")
 	envs := map[string]string{"key": "val"}
 	tfVersion, _ := version.NewVersion("0.12")
-	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
-		Workspace:  "default",
-		RepoRelDir: ".",
-	}
 	context := models.ProjectCommandContext{
 		Workspace:   "default",
 		ProjectName: "test",
@@ -63,7 +39,7 @@ func TestShowStepRunnner(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 
 		When(mockExecutor.RunCommandWithVersion(
-			ctx, path, []string{"show", "-no-color", "-json", filepath.Join(path, "test-default.tfplan")}, envs, tfVersion, context.Workspace,
+			context, path, []string{"show", "-no-color", "-json", filepath.Join(path, "test-default.tfplan")}, envs, tfVersion, context.Workspace,
 		)).ThenReturn("success", nil)
 
 		r, err := subject.Run(context, []string{}, path, envs)
@@ -73,8 +49,8 @@ func TestShowStepRunnner(t *testing.T) {
 		actual, _ := ioutil.ReadFile(resultPath)
 
 		actualStr := string(actual)
-		Assert(t, actualStr == "success", "got expected result")
-		Assert(t, r == "success", "returned expected result")
+		Assert(t, actualStr == "success", fmt.Sprintf("expected '%s' to be success", actualStr))
+		Assert(t, r == "success", fmt.Sprintf("expected '%s' to be success", r))
 
 	})
 
@@ -90,7 +66,7 @@ func TestShowStepRunnner(t *testing.T) {
 		}
 
 		When(mockExecutor.RunCommandWithVersion(
-			ctx, path, []string{"show", "-no-color", "-json", filepath.Join(path, "test-default.tfplan")}, envs, v, context.Workspace,
+			contextWithVersionOverride, path, []string{"show", "-no-color", "-json", filepath.Join(path, "test-default.tfplan")}, envs, v, context.Workspace,
 		)).ThenReturn("success", nil)
 
 		r, err := subject.Run(contextWithVersionOverride, []string{}, path, envs)
@@ -107,7 +83,7 @@ func TestShowStepRunnner(t *testing.T) {
 
 	t.Run("failure running command", func(t *testing.T) {
 		When(mockExecutor.RunCommandWithVersion(
-			ctx, path, []string{"show", "-no-color", "-json", filepath.Join(path, "test-default.tfplan")}, envs, tfVersion, context.Workspace,
+			context, path, []string{"show", "-no-color", "-json", filepath.Join(path, "test-default.tfplan")}, envs, tfVersion, context.Workspace,
 		)).ThenReturn("success", errors.New("error"))
 
 		_, err := subject.Run(context, []string{}, path, envs)

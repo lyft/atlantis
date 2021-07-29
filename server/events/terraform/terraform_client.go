@@ -284,7 +284,7 @@ func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, 
 		lines = append(lines, line.Line)
 	}
 	output := strings.Join(lines, "\n")
-	return output, err
+	return fmt.Sprintf("%s\n", output), err
 }
 
 // prepCmd builds a ready to execute command based on the version of terraform

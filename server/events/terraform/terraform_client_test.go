@@ -29,7 +29,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/terraform"
 	"github.com/runatlantis/atlantis/server/events/terraform/mocks"
-	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -62,28 +61,9 @@ Your version of Terraform is out of date! The latest version
 is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 `
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan<- *models.TerraformOutputLine)
+	tempchan := make(chan *models.TerraformOutputLine)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
+		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
 	}
@@ -103,6 +83,8 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
+	waitTfStreaming(tempchan)
+
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{"test": "123"}, nil, "")
 	Ok(t, err)
 	Equals(t, fakeBinOut+"\n", output)
@@ -118,28 +100,9 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 `
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan<- *models.TerraformOutputLine)
+	tempchan := make(chan *models.TerraformOutputLine)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
+		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
 	}
@@ -157,6 +120,7 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
+	waitTfStreaming(tempchan)
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, fakeBinOut+"\n", output)
@@ -183,28 +147,9 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	fakeBinOut := "Terraform v0.11.10\n"
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan<- *models.TerraformOutputLine)
+	tempchan := make(chan *models.TerraformOutputLine)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
+		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
 	}
@@ -222,6 +167,8 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
+	waitTfStreaming(tempchan)
+
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, fakeBinOut+"\n", output)
@@ -232,28 +179,9 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	fakeBinOut := "Terraform v0.11.10\n"
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan<- *models.TerraformOutputLine)
+	tempchan := make(chan *models.TerraformOutputLine)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
+		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
 	}
@@ -270,6 +198,8 @@ func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
+	waitTfStreaming(tempchan)
+
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, fakeBinOut+"\n", output)
@@ -280,28 +210,9 @@ func TestNewClient_DefaultTFFlagDownload(t *testing.T) {
 	RegisterMockTestingT(t)
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan<- *models.TerraformOutputLine)
+	tempchan := make(chan *models.TerraformOutputLine)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
+		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
 	}
@@ -331,6 +242,8 @@ func TestNewClient_DefaultTFFlagDownload(t *testing.T) {
 
 	// Reset PATH so that it has sh.
 	Ok(t, os.Setenv("PATH", orig))
+
+	waitTfStreaming(tempchan)
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, "\nTerraform v0.11.10\n\n", output)
@@ -351,28 +264,9 @@ func TestRunCommandWithVersion_DLsTF(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	RegisterMockTestingT(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan<- *models.TerraformOutputLine)
+	tempchan := make(chan *models.TerraformOutputLine)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
+		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
 	}
@@ -397,7 +291,11 @@ func TestRunCommandWithVersion_DLsTF(t *testing.T) {
 
 	v, err := version.NewVersion("99.99.99")
 	Ok(t, err)
+
+	waitTfStreaming(tempchan)
+
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, v, "")
+
 	Assert(t, err == nil, "err: %s: %s", err, output)
 	Equals(t, "\nTerraform v99.99.99\n\n", output)
 }
@@ -453,4 +351,12 @@ func mkSubDirs(t *testing.T) (string, string, string, func()) {
 	Ok(t, err)
 
 	return tmp, binDir, cachedir, cleanup
+}
+
+func waitTfStreaming(ch chan *models.TerraformOutputLine) {
+	go func() {
+		for _ = range ch {
+		}
+		close(ch)
+	}()
 }

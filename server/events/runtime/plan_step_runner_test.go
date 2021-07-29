@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/go-version"
 	mocks2 "github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/terraform"
-	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 
 	. "github.com/petergtz/pegomock"
 	"github.com/pkg/errors"
@@ -31,40 +30,10 @@ func TestRun_NoWorkspaceIn08(t *testing.T) {
 	terraform := mocks.NewMockClient()
 
 	tfVersion, _ := version.NewVersion("0.8")
-	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
-		Workspace:  "default",
-		RepoRelDir: ".",
-	}
-	logger := logging.NewNoopLogger(t)
-	workspace := "default"
-	s := runtime.PlanStepRunner{
-		DefaultTFVersion:  tfVersion,
-		TerraformExecutor: terraform,
-	}
 
-	When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
-		ThenReturn("output", nil)
-	output, err := s.Run(models.ProjectCommandContext{
+	workspace := "default"
+	logger := logging.NewNoopLogger(t)
+	ctx := models.ProjectCommandContext{
 		Log:                logger,
 		EscapedCommentArgs: []string{"comment", "args"},
 		Workspace:          workspace,
@@ -78,7 +47,15 @@ func TestRun_NoWorkspaceIn08(t *testing.T) {
 			Owner:    "owner",
 			Name:     "repo",
 		},
-	}, []string{"extra", "args"}, "/path", map[string]string(nil))
+	}
+	s := runtime.PlanStepRunner{
+		DefaultTFVersion:  tfVersion,
+		TerraformExecutor: terraform,
+	}
+
+	When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+		ThenReturn("output", nil)
+	output, err := s.Run(ctx, []string{"extra", "args"}, "/path", map[string]string(nil))
 	Ok(t, err)
 
 	Equals(t, "output", output)
@@ -179,30 +156,6 @@ func TestRun_SwitchesWorkspace(t *testing.T) {
 			"workspace",
 		},
 	}
-	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
-		Workspace:  "default",
-		RepoRelDir: ".",
-	}
 
 	for _, c := range cases {
 		t.Run(c.tfVersion, func(t *testing.T) {
@@ -210,15 +163,7 @@ func TestRun_SwitchesWorkspace(t *testing.T) {
 
 			tfVersion, _ := version.NewVersion(c.tfVersion)
 			logger := logging.NewNoopLogger(t)
-
-			s := runtime.PlanStepRunner{
-				TerraformExecutor: terraform,
-				DefaultTFVersion:  tfVersion,
-			}
-
-			When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
-				ThenReturn("output", nil)
-			output, err := s.Run(models.ProjectCommandContext{
+			ctx := models.ProjectCommandContext{
 				Log:                logger,
 				Workspace:          "workspace",
 				RepoRelDir:         ".",
@@ -232,7 +177,15 @@ func TestRun_SwitchesWorkspace(t *testing.T) {
 					Owner:    "owner",
 					Name:     "repo",
 				},
-			}, []string{"extra", "args"}, "/path", map[string]string(nil))
+			}
+			s := runtime.PlanStepRunner{
+				TerraformExecutor: terraform,
+				DefaultTFVersion:  tfVersion,
+			}
+
+			When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
+				ThenReturn("output", nil)
+			output, err := s.Run(ctx, []string{"extra", "args"}, "/path", map[string]string(nil))
 			Ok(t, err)
 
 			Equals(t, "output", output)
@@ -307,28 +260,19 @@ func TestRun_CreatesWorkspace(t *testing.T) {
 			tfVersion, _ := version.NewVersion(c.tfVersion)
 			logger := logging.NewNoopLogger(t)
 			ctx := models.ProjectCommandContext{
-				Log: logging.NewNoopLogger(t),
-				Steps: []valid.Step{
-					{
-						StepName:    "env",
-						EnvVarName:  "name",
-						EnvVarValue: "value",
-					},
-					{
-						StepName: "run",
-					},
-					{
-						StepName: "apply",
-					},
-					{
-						StepName: "plan",
-					},
-					{
-						StepName: "init",
-					},
+				Log:                logger,
+				Workspace:          "workspace",
+				RepoRelDir:         ".",
+				User:               models.User{Username: "username"},
+				EscapedCommentArgs: []string{"comment", "args"},
+				Pull: models.PullRequest{
+					Num: 2,
 				},
-				Workspace:  "default",
-				RepoRelDir: ".",
+				BaseRepo: models.Repo{
+					FullName: "owner/repo",
+					Owner:    "owner",
+					Name:     "repo",
+				},
 			}
 			s := runtime.PlanStepRunner{
 				TerraformExecutor: terraform,
@@ -364,21 +308,7 @@ func TestRun_CreatesWorkspace(t *testing.T) {
 				"args"}
 			When(terraform.RunCommandWithVersion(ctx, "/path", expPlanArgs, map[string]string(nil), tfVersion, "workspace")).ThenReturn("output", nil)
 
-			output, err := s.Run(models.ProjectCommandContext{
-				Log:                logger,
-				Workspace:          "workspace",
-				RepoRelDir:         ".",
-				User:               models.User{Username: "username"},
-				EscapedCommentArgs: []string{"comment", "args"},
-				Pull: models.PullRequest{
-					Num: 2,
-				},
-				BaseRepo: models.Repo{
-					FullName: "owner/repo",
-					Owner:    "owner",
-					Name:     "repo",
-				},
-			}, []string{"extra", "args"}, "/path", map[string]string(nil))
+			output, err := s.Run(ctx, []string{"extra", "args"}, "/path", map[string]string(nil))
 			Ok(t, err)
 
 			Equals(t, "output", output)
@@ -397,28 +327,19 @@ func TestRun_NoWorkspaceSwitchIfNotNecessary(t *testing.T) {
 	tfVersion, _ := version.NewVersion("0.10.0")
 	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
+		Log:                logger,
+		Workspace:          "workspace",
+		RepoRelDir:         ".",
+		User:               models.User{Username: "username"},
+		EscapedCommentArgs: []string{"comment", "args"},
+		Pull: models.PullRequest{
+			Num: 2,
 		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		BaseRepo: models.Repo{
+			FullName: "owner/repo",
+			Owner:    "owner",
+			Name:     "repo",
+		},
 	}
 	s := runtime.PlanStepRunner{
 		TerraformExecutor: terraform,
@@ -448,21 +369,7 @@ func TestRun_NoWorkspaceSwitchIfNotNecessary(t *testing.T) {
 		"args"}
 	When(terraform.RunCommandWithVersion(ctx, "/path", expPlanArgs, map[string]string(nil), tfVersion, "workspace")).ThenReturn("output", nil)
 
-	output, err := s.Run(models.ProjectCommandContext{
-		Log:                logger,
-		Workspace:          "workspace",
-		RepoRelDir:         ".",
-		User:               models.User{Username: "username"},
-		EscapedCommentArgs: []string{"comment", "args"},
-		Pull: models.PullRequest{
-			Num: 2,
-		},
-		BaseRepo: models.Repo{
-			FullName: "owner/repo",
-			Owner:    "owner",
-			Name:     "repo",
-		},
-	}, []string{"extra", "args"}, "/path", map[string]string(nil))
+	output, err := s.Run(ctx, []string{"extra", "args"}, "/path", map[string]string(nil))
 	Ok(t, err)
 
 	Equals(t, "output", output)
@@ -518,32 +425,6 @@ func TestRun_AddsEnvVarFile(t *testing.T) {
 		envVarsFile,
 	}
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
-		Workspace:  "default",
-		RepoRelDir: ".",
-	}
-	When(terraform.RunCommandWithVersion(ctx, tmpDir, expPlanArgs, map[string]string(nil), tfVersion, "workspace")).ThenReturn("output", nil)
-
-	output, err := s.Run(models.ProjectCommandContext{
 		Log:                logger,
 		Workspace:          "workspace",
 		RepoRelDir:         ".",
@@ -557,7 +438,10 @@ func TestRun_AddsEnvVarFile(t *testing.T) {
 			Owner:    "owner",
 			Name:     "repo",
 		},
-	}, []string{"extra", "args"}, tmpDir, map[string]string(nil))
+	}
+	When(terraform.RunCommandWithVersion(ctx, tmpDir, expPlanArgs, map[string]string(nil), tfVersion, "workspace")).ThenReturn("output", nil)
+
+	output, err := s.Run(ctx, []string{"extra", "args"}, tmpDir, map[string]string(nil))
 	Ok(t, err)
 
 	// Verify that env select was never called since we're in version >= 0.10
@@ -578,28 +462,20 @@ func TestRun_UsesDiffPathForProject(t *testing.T) {
 		DefaultTFVersion:  tfVersion,
 	}
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
+		Log:                logger,
+		Workspace:          "default",
+		RepoRelDir:         ".",
+		User:               models.User{Username: "username"},
+		EscapedCommentArgs: []string{"comment", "args"},
+		ProjectName:        "projectname",
+		Pull: models.PullRequest{
+			Num: 2,
 		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		BaseRepo: models.Repo{
+			FullName: "owner/repo",
+			Owner:    "owner",
+			Name:     "repo",
+		},
 	}
 	When(terraform.RunCommandWithVersion(ctx, "/path", []string{"workspace", "show"}, map[string]string(nil), tfVersion, "workspace")).ThenReturn("workspace\n", nil)
 
@@ -626,22 +502,7 @@ func TestRun_UsesDiffPathForProject(t *testing.T) {
 	}
 	When(terraform.RunCommandWithVersion(ctx, "/path", expPlanArgs, map[string]string(nil), tfVersion, "default")).ThenReturn("output", nil)
 
-	output, err := s.Run(models.ProjectCommandContext{
-		Log:                logger,
-		Workspace:          "default",
-		RepoRelDir:         ".",
-		User:               models.User{Username: "username"},
-		EscapedCommentArgs: []string{"comment", "args"},
-		ProjectName:        "projectname",
-		Pull: models.PullRequest{
-			Num: 2,
-		},
-		BaseRepo: models.Repo{
-			FullName: "owner/repo",
-			Owner:    "owner",
-			Name:     "repo",
-		},
-	}, []string{"extra", "args"}, "/path", map[string]string(nil))
+	output, err := s.Run(ctx, []string{"extra", "args"}, "/path", map[string]string(nil))
 	Ok(t, err)
 	Equals(t, "output", output)
 }
@@ -809,31 +670,6 @@ func TestRun_NoOptionalVarsIn012(t *testing.T) {
 				DefaultTFVersion:  tfVersion,
 			}
 			ctx := models.ProjectCommandContext{
-				Log: logging.NewNoopLogger(t),
-				Steps: []valid.Step{
-					{
-						StepName:    "env",
-						EnvVarName:  "name",
-						EnvVarValue: "value",
-					},
-					{
-						StepName: "run",
-					},
-					{
-						StepName: "apply",
-					},
-					{
-						StepName: "plan",
-					},
-					{
-						StepName: "init",
-					},
-				},
-				Workspace:  "default",
-				RepoRelDir: ".",
-			}
-
-			output, err := s.Run(models.ProjectCommandContext{
 				Workspace:          "default",
 				RepoRelDir:         ".",
 				User:               models.User{Username: "username"},
@@ -846,7 +682,9 @@ func TestRun_NoOptionalVarsIn012(t *testing.T) {
 					Owner:    "owner",
 					Name:     "repo",
 				},
-			}, []string{"extra", "args"}, "/path", map[string]string(nil))
+			}
+
+			output, err := s.Run(ctx, []string{"extra", "args"}, "/path", map[string]string(nil))
 			Ok(t, err)
 			Equals(t, "output", output)
 

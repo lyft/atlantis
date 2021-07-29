@@ -19,7 +19,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/terraform"
 	"github.com/runatlantis/atlantis/server/events/terraform/mocks"
 	matchers2 "github.com/runatlantis/atlantis/server/events/terraform/mocks/matchers"
-	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 
 	. "github.com/runatlantis/atlantis/testing"
@@ -54,29 +53,12 @@ func TestRun_Success(t *testing.T) {
 	defer cleanup()
 	planPath := filepath.Join(tmpDir, "workspace.tfplan")
 	err := ioutil.WriteFile(planPath, nil, 0600)
+	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		Log:                logger,
+		Workspace:          "workspace",
+		RepoRelDir:         ".",
+		EscapedCommentArgs: []string{"comment", "args"},
 	}
 	Ok(t, err)
 
@@ -85,16 +67,10 @@ func TestRun_Success(t *testing.T) {
 	o := runtime.ApplyStepRunner{
 		TerraformExecutor: terraform,
 	}
-	logger := logging.NewNoopLogger(t)
 
 	When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", nil)
-	output, err := o.Run(models.ProjectCommandContext{
-		Log:                logger,
-		Workspace:          "workspace",
-		RepoRelDir:         ".",
-		EscapedCommentArgs: []string{"comment", "args"},
-	}, []string{"extra", "args"}, tmpDir, map[string]string(nil))
+	output, err := o.Run(ctx, []string{"extra", "args"}, tmpDir, map[string]string(nil))
 	Ok(t, err)
 	Equals(t, "output", output)
 	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, tmpDir, []string{"apply", "-input=false", "-no-color", "extra", "args", "comment", "args", fmt.Sprintf("%q", planPath)}, map[string]string(nil), nil, "workspace")
@@ -108,29 +84,14 @@ func TestRun_AppliesCorrectProjectPlan(t *testing.T) {
 	defer cleanup()
 	planPath := filepath.Join(tmpDir, "projectname-default.tfplan")
 	err := ioutil.WriteFile(planPath, nil, 0600)
+
+	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		Log:                logger,
+		Workspace:          "default",
+		RepoRelDir:         ".",
+		ProjectName:        "projectname",
+		EscapedCommentArgs: []string{"comment", "args"},
 	}
 	Ok(t, err)
 
@@ -139,17 +100,10 @@ func TestRun_AppliesCorrectProjectPlan(t *testing.T) {
 	o := runtime.ApplyStepRunner{
 		TerraformExecutor: terraform,
 	}
-	logger := logging.NewNoopLogger(t)
 
 	When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", nil)
-	output, err := o.Run(models.ProjectCommandContext{
-		Log:                logger,
-		Workspace:          "default",
-		RepoRelDir:         ".",
-		ProjectName:        "projectname",
-		EscapedCommentArgs: []string{"comment", "args"},
-	}, []string{"extra", "args"}, tmpDir, map[string]string(nil))
+	output, err := o.Run(ctx, []string{"extra", "args"}, tmpDir, map[string]string(nil))
 	Ok(t, err)
 	Equals(t, "output", output)
 	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, tmpDir, []string{"apply", "-input=false", "-no-color", "extra", "args", "comment", "args", fmt.Sprintf("%q", planPath)}, map[string]string(nil), nil, "default")
@@ -162,49 +116,27 @@ func TestRun_UsesConfiguredTFVersion(t *testing.T) {
 	defer cleanup()
 	planPath := filepath.Join(tmpDir, "workspace.tfplan")
 	err := ioutil.WriteFile(planPath, nil, 0600)
-	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
-		},
-		Workspace:  "default",
-		RepoRelDir: ".",
-	}
 	Ok(t, err)
+
+	logger := logging.NewNoopLogger(t)
+	tfVersion, _ := version.NewVersion("0.11.0")
+	ctx := models.ProjectCommandContext{
+		Workspace:          "workspace",
+		RepoRelDir:         ".",
+		EscapedCommentArgs: []string{"comment", "args"},
+		TerraformVersion:   tfVersion,
+		Log:                logger,
+	}
 
 	RegisterMockTestingT(t)
 	terraform := mocks.NewMockClient()
 	o := runtime.ApplyStepRunner{
 		TerraformExecutor: terraform,
 	}
-	logger := logging.NewNoopLogger(t)
-	tfVersion, _ := version.NewVersion("0.11.0")
 
 	When(terraform.RunCommandWithVersion(matchers.AnyModelsProjectCommandContext(), AnyString(), AnyStringSlice(), matchers2.AnyMapOfStringToString(), matchers2.AnyPtrToGoVersionVersion(), AnyString())).
 		ThenReturn("output", nil)
-	output, err := o.Run(models.ProjectCommandContext{
-		Workspace:          "workspace",
-		RepoRelDir:         ".",
-		EscapedCommentArgs: []string{"comment", "args"},
-		TerraformVersion:   tfVersion,
-		Log:                logger,
-	}, []string{"extra", "args"}, tmpDir, map[string]string(nil))
+	output, err := o.Run(ctx, []string{"extra", "args"}, tmpDir, map[string]string(nil))
 	Ok(t, err)
 	Equals(t, "output", output)
 	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, tmpDir, []string{"apply", "-input=false", "-no-color", "extra", "args", "comment", "args", fmt.Sprintf("%q", planPath)}, map[string]string(nil), tfVersion, "workspace")
