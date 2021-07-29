@@ -384,7 +384,6 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 			outCh <- Line{Err: err}
 			return
 		}
-		ctx.Log.Debug("After command Start:")
 
 		// If we get anything on inCh, write it to stdin.
 		// This function will exit when inCh is closed which we do in our defer.
@@ -407,7 +406,6 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 			s := bufio.NewScanner(stdout)
 			for s.Scan() {
 				message := s.Text()
-				ctx.Log.Debug("Scanner std out text: %s", message)
 				outCh <- Line{Line: message}
 				c.terraformOutputChan <- &models.TerraformOutputLine{
 					ProjectInfo: ctx.PullInfo(),
@@ -420,7 +418,6 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 			s := bufio.NewScanner(stderr)
 			for s.Scan() {
 				message := s.Text()
-				ctx.Log.Debug("Scanner std error text: %s", message)
 				outCh <- Line{Line: message}
 				c.terraformOutputChan <- &models.TerraformOutputLine{
 					ProjectInfo: ctx.PullInfo(),
@@ -429,12 +426,11 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 			}
 			wg.Done()
 		}()
-		ctx.Log.Debug("Waiting for Go routines to finish:")
+
 		// Wait for our copying to complete. This *must* be done before
 		// calling cmd.Wait(). (see https://github.com/golang/go/issues/19685)
 		wg.Wait()
 
-		ctx.Log.Debug("Waiting for command to finish:")
 		// Wait for the command to complete.
 		err = cmd.Wait()
 
