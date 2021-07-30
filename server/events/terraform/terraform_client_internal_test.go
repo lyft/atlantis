@@ -10,7 +10,6 @@ import (
 
 	version "github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -91,29 +90,22 @@ func TestDefaultClient_RunCommandWithVersion_EnvVars(t *testing.T) {
 	v, err := version.NewVersion("0.11.11")
 	Ok(t, err)
 	tmp, cleanup := TempDir(t)
+	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
+		Log:                logger,
+		Workspace:          "default",
+		RepoRelDir:         ".",
+		User:               models.User{Username: "username"},
+		EscapedCommentArgs: []string{"comment", "args"},
+		ProjectName:        "projectname",
+		Pull: models.PullRequest{
+			Num: 2,
 		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		BaseRepo: models.Repo{
+			FullName: "owner/repo",
+			Owner:    "owner",
+			Name:     "repo",
+		},
 	}
 	defer cleanup()
 	client := &DefaultClient{
@@ -130,7 +122,8 @@ func TestDefaultClient_RunCommandWithVersion_EnvVars(t *testing.T) {
 		"ATLANTIS_TERRAFORM_VERSION=$ATLANTIS_TERRAFORM_VERSION",
 		"DIR=$DIR",
 	}
-	out, err := client.RunCommandWithVersion(ctx, tmp, args, map[string]string{}, nil, "workspace")
+	customEnvVars := map[string]string{}
+	out, err := client.RunCommandWithVersion(ctx, tmp, args, customEnvVars, v, "workspace")
 	Ok(t, err)
 	exp := fmt.Sprintf("TF_IN_AUTOMATION=true TF_PLUGIN_CACHE_DIR=%s WORKSPACE=workspace ATLANTIS_TERRAFORM_VERSION=0.11.11 DIR=%s\n", tmp, tmp)
 	Equals(t, exp, out)
@@ -141,29 +134,22 @@ func TestDefaultClient_RunCommandWithVersion_Error(t *testing.T) {
 	v, err := version.NewVersion("0.11.11")
 	Ok(t, err)
 	tmp, cleanup := TempDir(t)
+	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
+		Log:                logger,
+		Workspace:          "default",
+		RepoRelDir:         ".",
+		User:               models.User{Username: "username"},
+		EscapedCommentArgs: []string{"comment", "args"},
+		ProjectName:        "projectname",
+		Pull: models.PullRequest{
+			Num: 2,
 		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		BaseRepo: models.Repo{
+			FullName: "owner/repo",
+			Owner:    "owner",
+			Name:     "repo",
+		},
 	}
 	defer cleanup()
 	client := &DefaultClient{
@@ -188,29 +174,22 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 	v, err := version.NewVersion("0.11.11")
 	Ok(t, err)
 	tmp, cleanup := TempDir(t)
+	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
+		Log:                logger,
+		Workspace:          "default",
+		RepoRelDir:         ".",
+		User:               models.User{Username: "username"},
+		EscapedCommentArgs: []string{"comment", "args"},
+		ProjectName:        "projectname",
+		Pull: models.PullRequest{
+			Num: 2,
 		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		BaseRepo: models.Repo{
+			FullName: "owner/repo",
+			Owner:    "owner",
+			Name:     "repo",
+		},
 	}
 	defer cleanup()
 	client := &DefaultClient{
@@ -239,29 +218,22 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 	v, err := version.NewVersion("0.11.11")
 	Ok(t, err)
 	tmp, cleanup := TempDir(t)
+	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
+		Log:                logger,
+		Workspace:          "default",
+		RepoRelDir:         ".",
+		User:               models.User{Username: "username"},
+		EscapedCommentArgs: []string{"comment", "args"},
+		ProjectName:        "projectname",
+		Pull: models.PullRequest{
+			Num: 2,
 		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		BaseRepo: models.Repo{
+			FullName: "owner/repo",
+			Owner:    "owner",
+			Name:     "repo",
+		},
 	}
 	defer cleanup()
 	client := &DefaultClient{
@@ -291,29 +263,22 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	v, err := version.NewVersion("0.11.11")
 	Ok(t, err)
 	tmp, cleanup := TempDir(t)
+	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
+		Log:                logger,
+		Workspace:          "default",
+		RepoRelDir:         ".",
+		User:               models.User{Username: "username"},
+		EscapedCommentArgs: []string{"comment", "args"},
+		ProjectName:        "projectname",
+		Pull: models.PullRequest{
+			Num: 2,
 		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		BaseRepo: models.Repo{
+			FullName: "owner/repo",
+			Owner:    "owner",
+			Name:     "repo",
+		},
 	}
 	defer cleanup()
 	client := &DefaultClient{
@@ -332,29 +297,22 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 	v, err := version.NewVersion("0.11.11")
 	Ok(t, err)
 	tmp, cleanup := TempDir(t)
+	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
+		Log:                logger,
+		Workspace:          "default",
+		RepoRelDir:         ".",
+		User:               models.User{Username: "username"},
+		EscapedCommentArgs: []string{"comment", "args"},
+		ProjectName:        "projectname",
+		Pull: models.PullRequest{
+			Num: 2,
 		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		BaseRepo: models.Repo{
+			FullName: "owner/repo",
+			Owner:    "owner",
+			Name:     "repo",
+		},
 	}
 	defer cleanup()
 	client := &DefaultClient{
@@ -374,29 +332,22 @@ func TestDefaultClient_RunCommandAsync_Input(t *testing.T) {
 	v, err := version.NewVersion("0.11.11")
 	Ok(t, err)
 	tmp, cleanup := TempDir(t)
+	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
-		Log: logging.NewNoopLogger(t),
-		Steps: []valid.Step{
-			{
-				StepName:    "env",
-				EnvVarName:  "name",
-				EnvVarValue: "value",
-			},
-			{
-				StepName: "run",
-			},
-			{
-				StepName: "apply",
-			},
-			{
-				StepName: "plan",
-			},
-			{
-				StepName: "init",
-			},
+		Log:                logger,
+		Workspace:          "default",
+		RepoRelDir:         ".",
+		User:               models.User{Username: "username"},
+		EscapedCommentArgs: []string{"comment", "args"},
+		ProjectName:        "projectname",
+		Pull: models.PullRequest{
+			Num: 2,
 		},
-		Workspace:  "default",
-		RepoRelDir: ".",
+		BaseRepo: models.Repo{
+			FullName: "owner/repo",
+			Owner:    "owner",
+			Name:     "repo",
+		},
 	}
 	defer cleanup()
 	client := &DefaultClient{
