@@ -108,7 +108,7 @@ func validProjectName(name string) bool {
 func validApplyReq(value interface{}) error {
 	reqs := value.([]string)
 	for _, r := range reqs {
-		if r != ApprovedApplyRequirement && r != MergeableApplyRequirement && r != UnDivergedApplyRequirement && r!= UnLockedApplyRequirement {
+		if r != ApprovedApplyRequirement && r != MergeableApplyRequirement && r != UnDivergedApplyRequirement && r != UnLockedApplyRequirement {
 			return fmt.Errorf("%q is not a valid apply_requirement, only %q, %q, %q and %q are supported", r, ApprovedApplyRequirement, MergeableApplyRequirement, UnDivergedApplyRequirement, UnLockedApplyRequirement)
 		}
 	}
