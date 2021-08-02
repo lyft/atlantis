@@ -185,13 +185,14 @@ func (j *LogStreamingController) GetLogStream(w http.ResponseWriter, r *http.Req
 	}
 
 	if !exist {
-		j.LogStreamErrorTemplate.Execute(w, err)
-		j.respond(w, logging.Warn, http.StatusNotFound, "")
-		return
-	}
-	if err != nil {
-		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
-		return
+		if err != nil {
+			j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
+			return
+		} else {
+			j.LogStreamErrorTemplate.Execute(w, err)
+			j.respond(w, logging.Warn, http.StatusNotFound, "")
+			return
+		}
 	}
 
 	viewData := templates.LogStreamData{

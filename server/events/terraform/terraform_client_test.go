@@ -355,7 +355,7 @@ func mkSubDirs(t *testing.T) (string, string, string, func()) {
 
 func waitTfStreaming(ch chan *models.TerraformOutputLine) {
 	go func() {
-		for _ = range ch {
+		for range ch {
 		}
 		close(ch)
 	}()
