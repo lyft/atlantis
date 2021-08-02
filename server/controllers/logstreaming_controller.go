@@ -185,9 +185,10 @@ func (j *LogStreamingController) GetLogStream(w http.ResponseWriter, r *http.Req
 	}
 
 	if !exist {
-		err = j.LogStreamErrorTemplate.Execute(w, err)
-		if err != nil {
+		if err := j.LogStreamErrorTemplate.Execute(w, err); err != nil {
 			j.Logger.Err(err.Error())
+			j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
+			return
 		}
 		j.respond(w, logging.Warn, http.StatusNotFound, "")
 		return
