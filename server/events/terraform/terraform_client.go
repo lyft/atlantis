@@ -443,7 +443,7 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 			ctx.Log.Info("successfully ran %q in %q", tfCmd, path)
 		}
 	}()
-	
+
 	return inCh, outCh
 }
 
