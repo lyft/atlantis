@@ -110,13 +110,13 @@ var DefaultPlanStage = Stage{
 }
 
 // Deprecated: use NewGlobalCfgFromArgs
-func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq bool, unDivergedReq bool, unlockedReq bool, preWorkflowHooks []*PreWorkflowHook) GlobalCfg {
+func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq bool, unDivergedReq bool, unLockedReq bool, preWorkflowHooks []*PreWorkflowHook) GlobalCfg {
 	return NewGlobalCfgFromArgs(GlobalCfgArgs{
 		AllowRepoCfg:     allowRepoCfg,
 		MergeableReq:     mergeableReq,
 		ApprovedReq:      approvedReq,
 		UnDivergedReq:    unDivergedReq,
-		UnLockedReq:      unlockedReq,
+		UnLockedReq:      unLockedReq,
 		PreWorkflowHooks: preWorkflowHooks,
 	})
 }

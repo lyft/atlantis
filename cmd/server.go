@@ -87,6 +87,7 @@ const (
 	RepoWhitelistFlag          = "repo-whitelist"
 	RepoAllowlistFlag          = "repo-allowlist"
 	RequireApprovalFlag        = "require-approval"
+	RequireUnlockedFlag        = "require-unlocked"
 	RequireMergeableFlag       = "require-mergeable"
 	SilenceNoProjectsFlag      = "silence-no-projects"
 	SilenceForkPRErrorsFlag    = "silence-fork-pr-errors"
@@ -102,7 +103,6 @@ const (
 	VCSStatusName              = "vcs-status-name"
 	TFEHostnameFlag            = "tfe-hostname"
 	TFETokenFlag               = "tfe-token"
-	UnlockedReq                = "require-unlocked"
 	WriteGitCredsFlag          = "write-git-creds"
 
 	// NOTE: Must manually set these as defaults in the setDefaults function.
@@ -344,6 +344,10 @@ var boolFlags = map[string]boolFlag{
 		defaultValue: false,
 		hidden:       true,
 	},
+	RequireUnlockedFlag: {
+		description:  "Require pull requests to be \"Unlocked\" before allowing the apply command to be run.",
+		defaultValue: false,
+	},
 	SilenceNoProjectsFlag: {
 		description:  "Silences Atlants from responding to PRs when it finds no projects.",
 		defaultValue: false,
@@ -377,10 +381,6 @@ var boolFlags = map[string]boolFlag{
 	SkipCloneNoChanges: {
 		description:  "Skips cloning the PR repo if there are no projects were changed in the PR.",
 		defaultValue: false,
-	},
-	UnlockedReq: {
-		description: "Allows a user to lock a PR",
-		defaultValue: true,
 	},
 }
 var intFlags = map[string]intFlag{
