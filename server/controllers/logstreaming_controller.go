@@ -98,7 +98,7 @@ func (j *LogStreamingController) writeLogLine(pull string, line string) {
 	}
 	j.Logger.Info("Project info: %s, content: %s", pull, line)
 
-	for ch, _ := range j.wsChans[pull] {
+	for ch := range j.wsChans[pull] {
 		select {
 		case ch <- line:
 		default:
@@ -186,11 +186,11 @@ func (j *LogStreamingController) GetLogStream(w http.ResponseWriter, r *http.Req
 
 	if !exist {
 		j.LogStreamErrorTemplate.Execute(w, err)
-		if err != nil {
-			j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
-			return
-		}
 		j.respond(w, logging.Warn, http.StatusNotFound, "")
+		return
+	}
+	if err != nil {
+		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
 		return
 	}
 

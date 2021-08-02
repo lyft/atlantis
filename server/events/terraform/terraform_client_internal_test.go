@@ -397,7 +397,7 @@ func waitCh(ch <-chan Line) (string, error) {
 
 func waitTfStreaming(ch chan *models.TerraformOutputLine) {
 	go func() {
-		for _ = range ch {
+		for range ch {
 		}
 		close(ch)
 	}()

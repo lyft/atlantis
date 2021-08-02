@@ -896,7 +896,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	Ok(t, err)
 
 	go func() {
-		for _ = range tempchan {
+		for range tempchan {
 		}
 	}()
 

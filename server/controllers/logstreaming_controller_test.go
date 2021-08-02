@@ -17,6 +17,12 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers/mocks/matchers"
 )
 
+type tempKey int
+
+const (
+	TempKey = tempKey(0)
+)
+
 func TestGetLogStream_WebSockets(t *testing.T) {
 	t.Run("Should Group by Project Info", func(t *testing.T) {
 		RegisterMockTestingT(t)
@@ -31,7 +37,7 @@ func TestGetLogStream_WebSockets(t *testing.T) {
 			"project": "test-project",
 		}
 		ctx := context.Background()
-		ctx = context.WithValue(ctx, int(0), params)
+		ctx = context.WithValue(ctx, TempKey, params)
 		request, _ := http.NewRequest(http.MethodGet, "/logStreaming/org/repo/1/project/ws", nil)
 		request = mux.SetURLVars(request, params)
 		response := httptest.NewRecorder()
