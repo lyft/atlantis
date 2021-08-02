@@ -1,7 +1,6 @@
 package controllers_test
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -30,8 +29,6 @@ func TestGetLogStream_WebSockets(t *testing.T) {
 			"pull":    "1",
 			"project": "test-project",
 		}
-		ctx := context.Background()
-		ctx = context.WithValue(ctx, int(0), params)
 		request, _ := http.NewRequest(http.MethodGet, "/logStreaming/org/repo/1/project/ws", nil)
 		request = mux.SetURLVars(request, params)
 		response := httptest.NewRecorder()
