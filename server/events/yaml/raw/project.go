@@ -139,7 +139,7 @@ func buildValidApplyRequirementsString() string {
 			break
 		}
 		returnString.WriteString(fmt.Sprintf("%q, ", applyReq))
-		counter += 1
+		counter++
 	}
 	return returnString.String()
 }
