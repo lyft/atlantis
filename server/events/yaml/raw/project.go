@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation"
@@ -123,9 +124,16 @@ func validApplyReq(value interface{}) error {
 }
 
 func buildValidApplyRequirementsString() string {
+	// Sort keys.
+	applyRequirementsList := make([]string, 0, len(applyRequirements))
+	for applyReq := range applyRequirements {
+		applyRequirementsList = append(applyRequirementsList, applyReq)
+	}
+	sort.Strings(applyRequirementsList)
+
 	var returnString strings.Builder
 	counter := 0
-	for applyReq := range applyRequirements {
+	for _, applyReq := range applyRequirementsList {
 		if counter == len(applyRequirements)-1 {
 			returnString.WriteString(fmt.Sprintf("and %q", applyReq))
 			break
