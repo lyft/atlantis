@@ -20,11 +20,11 @@ const (
 	UnlockedApplyRequirement   = "unlocked"
 )
 
-var applyRequirements = [...]string{
-	ApprovedApplyRequirement,
-	MergeableApplyRequirement,
-	UnDivergedApplyRequirement,
-	UnlockedApplyRequirement,
+var applyRequirements = map[string]bool{
+	ApprovedApplyRequirement:   true,
+	MergeableApplyRequirement:  true,
+	UnDivergedApplyRequirement: true,
+	UnlockedApplyRequirement:   true,
 }
 
 type Project struct {
@@ -115,14 +115,7 @@ func validProjectName(name string) bool {
 func validApplyReq(value interface{}) error {
 	reqs := value.([]string)
 	for _, req := range reqs {
-		isValid := false
-		for _, applyRequirement := range applyRequirements {
-			if req == applyRequirement {
-				isValid = true
-				break
-			}
-		}
-		if !isValid {
+		if _, ok := applyRequirements[req]; !ok {
 			return fmt.Errorf("%q is not a valid apply_requirement, only %s are supported", req, buildValidApplyRequirementsString())
 		}
 	}
@@ -131,9 +124,14 @@ func validApplyReq(value interface{}) error {
 
 func buildValidApplyRequirementsString() string {
 	var returnString strings.Builder
-	for _, applyReq := range applyRequirements[:len(applyRequirements)-1] {
+	counter := 0
+	for applyReq := range applyRequirements {
+		if counter == len(applyRequirements)-1 {
+			returnString.WriteString(fmt.Sprintf("and %q", applyReq))
+			break
+		}
 		returnString.WriteString(fmt.Sprintf("%q, ", applyReq))
+		counter += 1
 	}
-	returnString.WriteString(fmt.Sprintf("and %q", applyRequirements[len(applyRequirements)-1]))
 	return returnString.String()
 }
