@@ -423,7 +423,7 @@ func (p ProjectCommandContext) ProjectCloneDir() string {
 // SetScope sets the scope of the stats object field. Note: we deliberately set this on the value
 // instead of a pointer since we want scopes to mirror our function stack
 func (p ProjectCommandContext) SetScope(scope string) {
-	p.Scope = p.Scope.Scope(scope) //nolint
+	p.Scope = p.Scope.Scope(scope)
 }
 
 // GetShowResultFileName returns the filename (not the path) to store the tf show result

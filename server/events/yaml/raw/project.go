@@ -13,10 +13,19 @@ import (
 )
 
 const (
-	DefaultWorkspace = "default"
+	DefaultWorkspace           = "default"
+	ApprovedApplyRequirement   = "approved"
+	MergeableApplyRequirement  = "mergeable"
+	UnDivergedApplyRequirement = "undiverged"
+	UnlockedApplyRequirement   = "unlocked"
 )
 
-var applyRequirements = [...]string{"approved", "mergeable", "undiverged", "unlocked"}
+var applyRequirements = [...]string{
+	ApprovedApplyRequirement,
+	MergeableApplyRequirement,
+	UnDivergedApplyRequirement,
+	UnlockedApplyRequirement,
+}
 
 type Project struct {
 	Name                      *string   `yaml:"name,omitempty"`
