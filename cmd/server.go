@@ -87,7 +87,7 @@ const (
 	RepoWhitelistFlag          = "repo-whitelist"
 	RepoAllowlistFlag          = "repo-allowlist"
 	RequireApprovalFlag        = "require-approval"
-	RequireUnlockedFlag        = "require-unlocked"
+	RequireSQUnlockedFlag      = "require-unlocked"
 	RequireMergeableFlag       = "require-mergeable"
 	SilenceNoProjectsFlag      = "silence-no-projects"
 	SilenceForkPRErrorsFlag    = "silence-fork-pr-errors"
@@ -344,7 +344,7 @@ var boolFlags = map[string]boolFlag{
 		defaultValue: false,
 		hidden:       true,
 	},
-	RequireUnlockedFlag: {
+	RequireSQUnlockedFlag: {
 		description:  "Require pull requests to be \"Unlocked\" before allowing the apply command to be run.",
 		defaultValue: false,
 	},

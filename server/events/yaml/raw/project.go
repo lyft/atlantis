@@ -13,12 +13,10 @@ import (
 )
 
 const (
-	DefaultWorkspace           = "default"
-	ApprovedApplyRequirement   = "approved"
-	MergeableApplyRequirement  = "mergeable"
-	UnDivergedApplyRequirement = "undiverged"
-	UnLockedApplyRequirement   = "unlocked"
+	DefaultWorkspace = "default"
 )
+
+var applyRequirements = [...]string{"approved", "mergeable", "undiverged", "unlocked"}
 
 type Project struct {
 	Name                      *string   `yaml:"name,omitempty"`
@@ -107,10 +105,26 @@ func validProjectName(name string) bool {
 
 func validApplyReq(value interface{}) error {
 	reqs := value.([]string)
-	for _, r := range reqs {
-		if r != ApprovedApplyRequirement && r != MergeableApplyRequirement && r != UnDivergedApplyRequirement && r != UnLockedApplyRequirement {
-			return fmt.Errorf("%q is not a valid apply_requirement, only %q, %q, %q and %q are supported", r, ApprovedApplyRequirement, MergeableApplyRequirement, UnDivergedApplyRequirement, UnLockedApplyRequirement)
+	for _, req := range reqs {
+		isValid := false
+		for _, applyRequirement := range applyRequirements {
+			if req == applyRequirement {
+				isValid = true
+				break
+			}
+		}
+		if !isValid {
+			return fmt.Errorf("%q is not a valid apply_requirement, only %s are supported", req, buildValidApplyRequirementsString())
 		}
 	}
 	return nil
+}
+
+func buildValidApplyRequirementsString() string {
+	var returnString strings.Builder
+	for _, applyReq := range applyRequirements[:len(applyRequirements)-1] {
+		returnString.WriteString(fmt.Sprintf("%q, ", applyReq))
+	}
+	returnString.WriteString(fmt.Sprintf("and %q", applyRequirements[len(applyRequirements)-1]))
+	return returnString.String()
 }
