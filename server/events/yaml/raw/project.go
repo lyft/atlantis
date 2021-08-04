@@ -28,6 +28,8 @@ var applyRequirements = map[string]bool{
 	UnlockedApplyRequirement:   true,
 }
 
+var supportedApplyReqs = buildSupportedApplyReqs()
+
 type Project struct {
 	Name                      *string   `yaml:"name,omitempty"`
 	Dir                       *string   `yaml:"dir,omitempty"`
@@ -123,8 +125,19 @@ func validApplyReq(value interface{}) error {
 	reqs := value.([]string)
 	for _, req := range reqs {
 		if _, ok := applyRequirements[req]; !ok {
-			return fmt.Errorf("%q is not a valid apply_requirement, supported apply requirements are: %s", req, "\""+strings.Join(applyRequirementsList, "\", \"")+"\"")
+			return fmt.Errorf("%q is not a valid apply_requirement, supported apply requirements are: %s", req, supportedApplyReqs)
 		}
 	}
 	return nil
+}
+
+func buildSupportedApplyReqs() string {
+	// Sort keys.
+	applyRequirementsList := make([]string, 0, len(applyRequirements))
+	for applyReq := range applyRequirements {
+		applyRequirementsList = append(applyRequirementsList, applyReq)
+	}
+	sort.Strings(applyRequirementsList)
+
+	return "\"" + strings.Join(applyRequirementsList, "\", \"") + "\""
 }
