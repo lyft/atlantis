@@ -295,3 +295,7 @@ func (g *GitlabClient) DownloadRepoConfigFile(pull models.PullRequest) (bool, []
 func (g *GitlabClient) SupportsSingleFileDownload(repo models.Repo) bool {
 	return true
 }
+
+func (g *GitlabClient) PullIsLocked(baseRepo models.Repo, pull models.PullRequest) (bool, error) {
+	return false, fmt.Errorf("not implemented")
+}

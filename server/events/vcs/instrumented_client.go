@@ -192,6 +192,27 @@ func (c *InstrumentedClient) PullIsMergeable(repo models.Repo, pull models.PullR
 
 	return mergeable, err
 }
+func (c *InstrumentedClient) PullIsLocked(repo models.Repo, pull models.PullRequest) (bool, error) {
+	scope := c.StatsScope.Scope("pull_is_locked")
+	logger := c.Logger.WithHistory(fmtLogSrc(repo, pull.Num)...)
+
+	executionTime := scope.NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
+	defer executionTime.Complete()
+
+	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
+	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
+
+	isLocked, err := c.Client.PullIsLocked(repo, pull)
+
+	if err != nil {
+		executionError.Inc()
+		logger.Err("Unable to check pull lock status, error: %s", err.Error())
+	} else {
+		executionSuccess.Inc()
+	}
+
+	return isLocked, err
+}
 
 func (c *InstrumentedClient) UpdateStatus(repo models.Repo, pull models.PullRequest, state models.CommitStatus, src string, description string, url string) error {
 	scope := c.StatsScope.Scope("update_status")

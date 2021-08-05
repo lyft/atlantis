@@ -16,6 +16,7 @@ package vcs
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -39,6 +40,7 @@ const (
 	SubmitQueueReadinessStatusContext = "sq-ready-to-merge"
 	OwnersStatusContext               = "_owners-check"
 	AtlantisApplyStatusContext        = "atlantis/apply"
+	LockValue                         = "lock"
 )
 
 // GithubClient is used to perform GitHub actions.
@@ -305,6 +307,36 @@ func (g *GithubClient) PullIsMergeable(repo models.Repo, pull models.PullRequest
 		return g.getSubmitQueueMergeability(repo, pull)
 	}
 	return true, nil
+}
+
+// Check if the Pull Request is locked with :lock emoji
+func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest) (bool, error) {
+	statuses, err := g.getRepoStatuses(repo, pull)
+	if err != nil {
+		return false, errors.Wrapf(err, "fetching repo statuses for repo: %s, and pull number: %d", repo.FullName, pull.Num)
+	}
+
+	for _, status := range statuses {
+		if status.GetContext() == SubmitQueueReadinessStatusContext {
+			description := make(map[string]interface{})
+			err := json.Unmarshal([]byte(status.GetDescription()), &description)
+			if err != nil {
+				return false, errors.Wrapf(err, "parsing status description for repo: %s, and pull number: %d", repo.FullName, pull.Num)
+			}
+
+			// Skip the check if key not found.
+			if waitingList, ok := description["waiting"].([]string); ok {
+				for _, item := range waitingList {
+					if item == LockValue {
+						return true, nil
+					}
+				}
+			}
+		}
+	}
+
+	// No Lock found.
+	return false, nil
 }
 
 // Checks to make sure that all statuses are passing except the Submit Queue Readiness check and atlantis/apply

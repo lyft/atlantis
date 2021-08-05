@@ -322,3 +322,7 @@ func (b *Client) SupportsSingleFileDownload(repo models.Repo) bool {
 func (b *Client) DownloadRepoConfigFile(pull models.PullRequest) (bool, []byte, error) {
 	return false, []byte{}, fmt.Errorf("not implemented")
 }
+
+func (b *Client) PullIsLocked(baseRepo models.Repo, pull models.PullRequest) (bool, error) {
+	return false, fmt.Errorf("not implemented")
+}

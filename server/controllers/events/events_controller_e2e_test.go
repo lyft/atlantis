@@ -788,10 +788,13 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 			TerraformExecutor: terraformClient,
 			DefaultTFVersion:  defaultTFVersion,
 		},
-		PullApprovedChecker: e2eVCSClient,
-		WorkingDir:          workingDir,
-		Webhooks:            &mockWebhookSender{},
-		WorkingDirLocker:    locker,
+		WorkingDir:       workingDir,
+		Webhooks:         &mockWebhookSender{},
+		WorkingDirLocker: locker,
+		AggregateApplyRequirements: &events.AggregateApplyRequirements{
+			PullStatusChecker: e2eVCSClient,
+			WorkingDir:        workingDir,
+		},
 	}
 
 	dbUpdater := &events.DBUpdater{
