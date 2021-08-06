@@ -632,6 +632,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DeleteLockCommand:  deleteLockCommand,
 	}
 
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: terraformOutputChan,
+	}
+
 	logStreamingController := &controllers.LogStreamingController{
 		AtlantisVersion:             config.AtlantisVersion,
 		AtlantisURL:                 parsedURL,
@@ -640,7 +644,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		LogStreamErrorTemplate:      templates.LogStreamErrorTemplate,
 		Db:                          boltdb,
 		WebsocketHandler:            handlers.NewWebsocketHandler(),
-		ProjectCommandOutputHandler: &handlers.DefaultProjectCommandOutputHandler{},
+		ProjectCommandOutputHandler: projectCmdOutputHandler,
 	}
 
 	eventsController := &events_controllers.VCSEventsController{
@@ -730,7 +734,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		SSLCertFile:                   userConfig.SSLCertFile,
 		Drainer:                       drainer,
 		ScheduledExecutorService:      scheduledExecutorService,
-		ProjectCmdOutputHandler:       &handlers.DefaultProjectCommandOutputHandler{},
+		ProjectCmdOutputHandler:       projectCmdOutputHandler,
 	}, nil
 }
 

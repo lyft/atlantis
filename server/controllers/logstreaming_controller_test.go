@@ -4,12 +4,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 
 	. "github.com/petergtz/pegomock"
@@ -20,9 +18,8 @@ import (
 func TestGetLogStream_WebSockets(t *testing.T) {
 	t.Run("Should Group by Project Info", func(t *testing.T) {
 		RegisterMockTestingT(t)
-		tempchan := make(chan *models.ProjectCmdOutputLine)
 		websocketMock := mocks.NewMockWebsocketHandler()
-		projectOutputHandler := &handlers.DefaultProjectCommandOutputHandler{}
+		projectOutputHandler := mocks.NewMockProjectCommandOutputHandler()
 		logger := logging.NewNoopLogger(t)
 		websocketWriterMock := mocks.NewMockWebsocketResponseWriter()
 		params := map[string]string{
@@ -35,29 +32,28 @@ func TestGetLogStream_WebSockets(t *testing.T) {
 		request = mux.SetURLVars(request, params)
 		response := httptest.NewRecorder()
 		logStreamingController := &controllers.LogStreamingController{
-			Logger:              logger,
-			WebsocketHandler:    websocketMock,
+			Logger:                      logger,
+			WebsocketHandler:            websocketMock,
 			ProjectCommandOutputHandler: projectOutputHandler,
+		}
+		tempRepo := models.Repo{
+			FullName: "test-repo",
+		}
+		tempPullNum := models.PullRequest{
+			Num: 1,
+		}
+
+		ctx := models.ProjectCommandContext{
+			BaseRepo:    tempRepo,
+			Pull:        tempPullNum,
+			ProjectName: "test-project",
 		}
 
 		When(websocketMock.Upgrade(matchers.AnyHttpResponseWriter(), matchers.AnyPtrToHttpRequest(), matchers.AnyHttpHeader())).ThenReturn(websocketWriterMock, nil)
 
-		go func() {
-			tempchan <- &models.ProjectCmdOutputLine{
-				ProjectInfo: "test-org/test-repo/1/test-project",
-				Line:        "Test Terraform Output",
-			}
-		}()
-
-		go func() {
-			projectOutputHandler.Handle()
-		}()
-
-		go func() {
-			logStreamingController.GetLogStreamWS(response, request)
-		}()
-
-		time.Sleep(1 * time.Second)
+		projectOutputHandler.Send(ctx, "Test Terraform Output")
+		projectOutputHandler.Handle()
+		logStreamingController.GetLogStreamWS(response, request)
 
 		websocketWriterMock.VerifyWasCalled(Once())
 	})

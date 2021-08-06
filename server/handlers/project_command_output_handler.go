@@ -9,7 +9,7 @@ import (
 
 type DefaultProjectCommandOutputHandler struct {
 	// this is TerraformOutputChan
-	projectCmdOutput chan *models.ProjectCmdOutputLine
+	ProjectCmdOutput chan *models.ProjectCmdOutputLine
 	// this logBuffers
 	projectOutputBuffers map[string][]string
 	// this is wsChans
@@ -18,6 +18,8 @@ type DefaultProjectCommandOutputHandler struct {
 	controllerBufferLock sync.RWMutex
 	logger               logging.SimpleLogging
 }
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_output_handler.go ProjectCommandOutputHandler
 
 type ProjectCommandOutputHandler interface {
 	// Send will enqueue the msg and wait for Handle() to receive the message.
@@ -38,31 +40,25 @@ type ProjectCommandOutputHandler interface {
 	Handle()
 }
 
+func NewProjectCommandOutputHandler() ProjectCommandOutputHandler {
+	return &DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: make(chan *models.ProjectCmdOutputLine),
+	}
+}
+
 func (p *DefaultProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
-	p.projectCmdOutput <- &models.ProjectCmdOutputLine{
+	p.ProjectCmdOutput <- &models.ProjectCmdOutputLine{
 		ProjectInfo: ctx.PullInfo(),
 		Line:        msg,
 	}
 }
 
 func (p *DefaultProjectCommandOutputHandler) Receive(projectInfo string, callback func(msg string) error) error {
-	ch := make(chan string, 1000)
+	ch := p.addChan(projectInfo)
 	defer p.removeChan(projectInfo, ch)
-	p.controllerBufferLock.Lock()
-	for _, line := range p.projectOutputBuffers[projectInfo] {
-		ch <- line
-	}
-	if p.controllerBuffers == nil {
-		p.controllerBuffers = map[string]map[chan string]bool{}
-	}
-	if p.controllerBuffers[projectInfo] == nil {
-		p.controllerBuffers[projectInfo] = map[chan string]bool{}
-	}
-	p.controllerBuffers[projectInfo][ch] = true
-	p.controllerBufferLock.Unlock()
 
-	for msg := range p.projectCmdOutput {
-		err := callback(msg.Line)
+	for msg := range ch {
+		err := callback(msg)
 		if err != nil {
 			p.logger.Err(err.Error())
 		}
@@ -73,7 +69,7 @@ func (p *DefaultProjectCommandOutputHandler) Receive(projectInfo string, callbac
 }
 
 func (p *DefaultProjectCommandOutputHandler) Handle() {
-	for msg := range p.projectCmdOutput {
+	for msg := range p.ProjectCmdOutput {
 		p.logger.Info("Recieving message %s", msg.Line)
 		if msg.ClearBuffBefore {
 			p.clearLogLines(msg.ProjectInfo)
@@ -89,6 +85,23 @@ func (p *DefaultProjectCommandOutputHandler) clearLogLines(pull string) {
 	p.controllerBufferLock.Lock()
 	delete(p.projectOutputBuffers, pull)
 	p.controllerBufferLock.Unlock()
+}
+
+func (p *DefaultProjectCommandOutputHandler) addChan(pull string) chan string {
+	ch := make(chan string, 1000)
+	p.controllerBufferLock.Lock()
+	for _, line := range p.projectOutputBuffers[pull] {
+		ch <- line
+	}
+	if p.controllerBuffers == nil {
+		p.controllerBuffers = map[string]map[chan string]bool{}
+	}
+	if p.controllerBuffers[pull] == nil {
+		p.controllerBuffers[pull] = map[chan string]bool{}
+	}
+	p.controllerBuffers[pull][ch] = true
+	p.controllerBufferLock.Unlock()
+	return ch
 }
 
 //Add log line to buffer and send to all current channels

@@ -128,7 +128,6 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 	pull := pullInfo.String()
 
 	err = j.ProjectCommandOutputHandler.Receive(pull, func(msg string) error {
-		j.Logger.Info(msg) //delete when done
 		if err := c.WriteMessage(websocket.BinaryMessage, []byte(msg+"\r\n\t")); err != nil {
 			j.Logger.Warn("Failed to write ws message: %s", err)
 			return err
