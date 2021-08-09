@@ -280,9 +280,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
 	commitStatusUpdater := &events.DefaultCommitStatusUpdater{Client: vcsClient, StatusName: userConfig.VCSStatusName}
 	projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
-		ProjectCmdOutput: projectCmdOutput,
-	}
+	projectCmdOutputHandler := handlers.NewProjectCommandOutputHandler(projectCmdOutput, logger)
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
 

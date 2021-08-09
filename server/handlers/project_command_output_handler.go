@@ -40,9 +40,11 @@ type ProjectCommandOutputHandler interface {
 	Handle()
 }
 
-func NewProjectCommandOutputHandler() ProjectCommandOutputHandler {
+func NewProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutputLine, logger logging.SimpleLogging) ProjectCommandOutputHandler {
 	return &DefaultProjectCommandOutputHandler{
-		ProjectCmdOutput: make(chan *models.ProjectCmdOutputLine),
+		ProjectCmdOutput:  projectCmdOutput,
+		logger:            logger,
+		controllerBuffers : map[string]map[chan string]bool{},
 	}
 }
 
@@ -58,11 +60,9 @@ func (p *DefaultProjectCommandOutputHandler) Receive(projectInfo string, callbac
 	defer p.removeChan(projectInfo, ch)
 
 	for msg := range ch {
-		err := callback(msg)
-		if err != nil {
-			p.logger.Err(err.Error())
+		if err := callback(msg); err != nil {
+			return err
 		}
-		return nil
 	}
 
 	return nil
