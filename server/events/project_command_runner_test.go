@@ -43,7 +43,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
 	mockChannel := make(chan *models.ProjectCmdOutputLine)
-	mockProjectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	mockProjectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: mockChannel,
 	}
 

@@ -105,7 +105,7 @@ type Server struct {
 	SSLKeyFile                    string
 	Drainer                       *events.Drainer
 	ScheduledExecutorService      *ScheduledExecutorService
-	ProjectCmdOutputHandler       handlers.DefaultProjectCommandOutputHandler
+	ProjectCmdOutputHandler       handlers.ProjectCommandOutputHandler
 }
 
 // Config holds config for server that isn't passed in by the user.
@@ -280,7 +280,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
 	commitStatusUpdater := &events.DefaultCommitStatusUpdater{Client: vcsClient, StatusName: userConfig.VCSStatusName}
 	projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: projectCmdOutput,
 	}
 
@@ -733,6 +733,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		SSLCertFile:                   userConfig.SSLCertFile,
 		Drainer:                       drainer,
 		ScheduledExecutorService:      scheduledExecutorService,
+		ProjectCmdOutputHandler:       projectCmdOutputHandler,
 	}, nil
 }
 

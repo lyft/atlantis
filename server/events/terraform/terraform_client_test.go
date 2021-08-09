@@ -63,7 +63,7 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 `
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -105,7 +105,7 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -139,7 +139,7 @@ func TestNewClient_NoTF(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	defer cleanup()
@@ -158,7 +158,7 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -193,7 +193,7 @@ func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	fakeBinOut := "Terraform v0.11.10\n"
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -227,7 +227,7 @@ func TestNewClient_DefaultTFFlagDownload(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -273,7 +273,7 @@ func TestNewClient_BadVersion(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	_, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	defer cleanup()
@@ -287,7 +287,7 @@ func TestRunCommandWithVersion_DLsTF(t *testing.T) {
 	RegisterMockTestingT(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -331,7 +331,7 @@ func TestEnsureVersion_downloaded(t *testing.T) {
 	RegisterMockTestingT(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	defer cleanup()

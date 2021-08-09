@@ -74,7 +74,7 @@ type DefaultClient struct {
 	// usePluginCache determines whether or not to set the TF_PLUGIN_CACHE_DIR env var
 	usePluginCache bool
 
-	projectCmdOutputHandler handlers.DefaultProjectCommandOutputHandler
+	projectCmdOutputHandler handlers.ProjectCommandOutputHandler
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_downloader.go Downloader
@@ -106,7 +106,7 @@ func NewClientWithDefaultVersion(
 	tfDownloader Downloader,
 	usePluginCache bool,
 	fetchAsync bool,
-	projectCmdOutputHandler handlers.DefaultProjectCommandOutputHandler,
+	projectCmdOutputHandler handlers.ProjectCommandOutputHandler,
 ) (*DefaultClient, error) {
 	var finalDefaultVersion *version.Version
 	var localVersion *version.Version
@@ -189,7 +189,7 @@ func NewTestClient(
 	tfDownloadURL string,
 	tfDownloader Downloader,
 	usePluginCache bool,
-	projectCmdOutputHandler handlers.DefaultProjectCommandOutputHandler,
+	projectCmdOutputHandler handlers.ProjectCommandOutputHandler,
 ) (*DefaultClient, error) {
 	return NewClientWithDefaultVersion(
 		log,
@@ -226,7 +226,7 @@ func NewClient(
 	tfDownloadURL string,
 	tfDownloader Downloader,
 	usePluginCache bool,
-	projectCmdOutputHandler handlers.DefaultProjectCommandOutputHandler,
+	projectCmdOutputHandler handlers.ProjectCommandOutputHandler,
 ) (*DefaultClient, error) {
 	return NewClientWithDefaultVersion(
 		log,

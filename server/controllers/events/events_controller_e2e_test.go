@@ -668,7 +668,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	e2eGithubGetter := mocks.NewMockGithubPullGetter()
 	e2eGitlabGetter := mocks.NewMockGitlabMergeRequestGetter()
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 
@@ -793,10 +793,10 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 			TerraformExecutor: terraformClient,
 			DefaultTFVersion:  defaultTFVersion,
 		},
-		PullApprovedChecker: e2eVCSClient,
-		WorkingDir:          workingDir,
-		Webhooks:            &mockWebhookSender{},
-		WorkingDirLocker:    locker,
+		PullApprovedChecker:     e2eVCSClient,
+		WorkingDir:              workingDir,
+		Webhooks:                &mockWebhookSender{},
+		WorkingDirLocker:        locker,
 		ProjectCmdOutputHandler: projectCmdOutputHandler,
 	}
 

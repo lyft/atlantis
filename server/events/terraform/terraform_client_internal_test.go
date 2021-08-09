@@ -93,7 +93,7 @@ func TestDefaultClient_RunCommandWithVersion_EnvVars(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -143,7 +143,7 @@ func TestDefaultClient_RunCommandWithVersion_Error(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -189,7 +189,7 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -239,7 +239,7 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -290,7 +290,7 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -330,7 +330,7 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{
@@ -371,7 +371,7 @@ func TestDefaultClient_RunCommandAsync_Input(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: tempchan,
 	}
 	ctx := models.ProjectCommandContext{

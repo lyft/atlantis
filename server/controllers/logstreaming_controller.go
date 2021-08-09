@@ -25,7 +25,7 @@ type LogStreamingController struct {
 	Db                     *db.BoltDB
 
 	WebsocketHandler            handlers.WebsocketHandler
-	ProjectCommandOutputHandler handlers.DefaultProjectCommandOutputHandler
+	ProjectCommandOutputHandler handlers.ProjectCommandOutputHandler
 }
 
 type PullInfo struct {

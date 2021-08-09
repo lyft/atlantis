@@ -125,7 +125,7 @@ type DefaultProjectCommandRunner struct { //create object and test
 	WorkingDir              WorkingDir
 	Webhooks                WebhooksSender
 	WorkingDirLocker        WorkingDirLocker
-	ProjectCmdOutputHandler handlers.DefaultProjectCommandOutputHandler
+	ProjectCmdOutputHandler handlers.ProjectCommandOutputHandler
 	LogStreamURLGenerator   LogStreamURLGenerator
 }
 
