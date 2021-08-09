@@ -35,6 +35,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -667,6 +668,9 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	e2eGithubGetter := mocks.NewMockGithubPullGetter()
 	e2eGitlabGetter := mocks.NewMockGitlabMergeRequestGetter()
 	tempchan := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: tempchan,
+	}
 
 	// Real dependencies.
 	logger := logging.NewNoopLogger(t)
@@ -681,7 +685,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		GithubUser: "github-user",
 		GitlabUser: "gitlab-user",
 	}
-	terraformClient, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", &NoopTFDownloader{}, false, tempchan)
+	terraformClient, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", &NoopTFDownloader{}, false, projectCmdOutputHandler)
 	Ok(t, err)
 	boltdb, err := db.New(dataDir)
 	Ok(t, err)
@@ -793,7 +797,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		WorkingDir:          workingDir,
 		Webhooks:            &mockWebhookSender{},
 		WorkingDirLocker:    locker,
-		TerraformOutputChan: tempchan,
+		ProjectCmdOutputHandler: projectCmdOutputHandler,
 	}
 
 	dbUpdater := &events.DBUpdater{

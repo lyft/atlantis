@@ -279,7 +279,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
 	commitStatusUpdater := &events.DefaultCommitStatusUpdater{Client: vcsClient, StatusName: userConfig.VCSStatusName}
-	terraformOutputChan := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: projectCmdOutput,
+	}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
 
@@ -304,7 +307,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.TFDownloadURL,
 		&terraform.DefaultDownloader{},
 		true,
-		terraformOutputChan)
+		*projectCmdOutputHandler)
 	// The flag.Lookup call is to detect if we're running in a unit test. If we
 	// are, then we don't error out because we don't have/want terraform
 	// installed on our CI system where the unit tests run.
@@ -508,7 +511,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir:          workingDir,
 		Webhooks:            webhooksManager,
 		WorkingDirLocker:    workingDirLocker,
-		TerraformOutputChan: terraformOutputChan,
+		ProjectCmdOutputHandler: handlers.DefaultProjectCommandOutputHandler{
+			ProjectCmdOutput: projectCmdOutput,
+		},
 	}
 
 	dbUpdater := &events.DBUpdater{
@@ -632,10 +637,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DeleteLockCommand:  deleteLockCommand,
 	}
 
-	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
-		ProjectCmdOutput: terraformOutputChan,
-	}
-
 	logStreamingController := &controllers.LogStreamingController{
 		AtlantisVersion:             config.AtlantisVersion,
 		AtlantisURL:                 parsedURL,
@@ -734,7 +735,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		SSLCertFile:                   userConfig.SSLCertFile,
 		Drainer:                       drainer,
 		ScheduledExecutorService:      scheduledExecutorService,
-		ProjectCmdOutputHandler:       projectCmdOutputHandler,
 	}, nil
 }
 

@@ -25,6 +25,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml/raw"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
@@ -111,21 +112,21 @@ type ProjectCommandRunner interface {
 
 // DefaultProjectCommandRunner implements ProjectCommandRunner.
 type DefaultProjectCommandRunner struct { //create object and test
-	Locker                ProjectLocker
-	LockURLGenerator      LockURLGenerator
-	InitStepRunner        StepRunner
-	PlanStepRunner        StepRunner
-	ShowStepRunner        StepRunner
-	ApplyStepRunner       StepRunner
-	PolicyCheckStepRunner StepRunner
-	RunStepRunner         CustomStepRunner
-	EnvStepRunner         EnvStepRunner
-	PullApprovedChecker   runtime.PullApprovedChecker
-	WorkingDir            WorkingDir
-	Webhooks              WebhooksSender
-	WorkingDirLocker      WorkingDirLocker
-	TerraformOutputChan   chan<- *models.ProjectCmdOutputLine
-	LogStreamURLGenerator LogStreamURLGenerator
+	Locker                  ProjectLocker
+	LockURLGenerator        LockURLGenerator
+	InitStepRunner          StepRunner
+	PlanStepRunner          StepRunner
+	ShowStepRunner          StepRunner
+	ApplyStepRunner         StepRunner
+	PolicyCheckStepRunner   StepRunner
+	RunStepRunner           CustomStepRunner
+	EnvStepRunner           EnvStepRunner
+	PullApprovedChecker     runtime.PullApprovedChecker
+	WorkingDir              WorkingDir
+	Webhooks                WebhooksSender
+	WorkingDirLocker        WorkingDirLocker
+	ProjectCmdOutputHandler handlers.DefaultProjectCommandOutputHandler
+	LogStreamURLGenerator   LogStreamURLGenerator
 }
 
 // Plan runs terraform plan for the project described by ctx.

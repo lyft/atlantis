@@ -10,6 +10,7 @@ import (
 
 	version "github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -92,6 +93,9 @@ func TestDefaultClient_RunCommandWithVersion_EnvVars(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: tempchan,
+	}
 	ctx := models.ProjectCommandContext{
 		Log:                logger,
 		Workspace:          "default",
@@ -114,7 +118,7 @@ func TestDefaultClient_RunCommandWithVersion_EnvVars(t *testing.T) {
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
 		usePluginCache:          true,
-		terraformOutputChan:     tempchan,
+		projectCmdOutputHandler: projectCmdOutputHandler,
 	}
 
 	args := []string{
@@ -139,6 +143,9 @@ func TestDefaultClient_RunCommandWithVersion_Error(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: tempchan,
+	}
 	ctx := models.ProjectCommandContext{
 		Log:                logger,
 		Workspace:          "default",
@@ -160,7 +167,7 @@ func TestDefaultClient_RunCommandWithVersion_Error(t *testing.T) {
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
-		terraformOutputChan:     tempchan,
+		projectCmdOutputHandler: projectCmdOutputHandler,
 	}
 
 	args := []string{
@@ -182,6 +189,9 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: tempchan,
+	}
 	ctx := models.ProjectCommandContext{
 		Log:                logger,
 		Workspace:          "default",
@@ -204,7 +214,7 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
 		usePluginCache:          true,
-		terraformOutputChan:     tempchan,
+		projectCmdOutputHandler: projectCmdOutputHandler,
 	}
 
 	args := []string{
@@ -229,6 +239,9 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: tempchan,
+	}
 	ctx := models.ProjectCommandContext{
 		Log:                logger,
 		Workspace:          "default",
@@ -250,7 +263,7 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "cat",
-		terraformOutputChan:     tempchan,
+		projectCmdOutputHandler: projectCmdOutputHandler,
 	}
 	filename := filepath.Join(tmp, "data")
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -277,6 +290,9 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: tempchan,
+	}
 	ctx := models.ProjectCommandContext{
 		Log:                logger,
 		Workspace:          "default",
@@ -298,7 +314,7 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
-		terraformOutputChan:     tempchan,
+		projectCmdOutputHandler: projectCmdOutputHandler,
 	}
 	waitTfStreaming(tempchan)
 	_, outCh := client.RunCommandAsync(ctx, tmp, []string{"stderr", ">&2"}, map[string]string{}, nil, "workspace")
@@ -314,6 +330,9 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: tempchan,
+	}
 	ctx := models.ProjectCommandContext{
 		Log:                logger,
 		Workspace:          "default",
@@ -335,7 +354,7 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
-		terraformOutputChan:     tempchan,
+		projectCmdOutputHandler: projectCmdOutputHandler,
 	}
 	waitTfStreaming(tempchan)
 	_, outCh := client.RunCommandAsync(ctx, tmp, []string{"dying", "&&", "exit", "1"}, map[string]string{}, nil, "workspace")
@@ -352,6 +371,9 @@ func TestDefaultClient_RunCommandAsync_Input(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	logger := logging.NewNoopLogger(t)
 	tempchan := make(chan *models.ProjectCmdOutputLine)
+	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: tempchan,
+	}
 	ctx := models.ProjectCommandContext{
 		Log:                logger,
 		Workspace:          "default",
@@ -373,7 +395,7 @@ func TestDefaultClient_RunCommandAsync_Input(t *testing.T) {
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "read",
-		terraformOutputChan:     tempchan,
+		projectCmdOutputHandler: projectCmdOutputHandler,
 	}
 	waitTfStreaming(tempchan)
 	inCh, outCh := client.RunCommandAsync(ctx, tmp, []string{"a", "&&", "echo", "$a"}, map[string]string{}, nil, "workspace")

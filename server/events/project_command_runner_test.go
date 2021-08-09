@@ -27,6 +27,7 @@ import (
 	mocks2 "github.com/runatlantis/atlantis/server/events/runtime/mocks"
 	tmocks "github.com/runatlantis/atlantis/server/events/terraform/mocks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -42,20 +43,23 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
 	mockChannel := make(chan *models.ProjectCmdOutputLine)
+	mockProjectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
+		ProjectCmdOutput: mockChannel,
+	}
 
 	runner := events.DefaultProjectCommandRunner{
-		Locker:              mockLocker,
-		LockURLGenerator:    mockURLGenerator{},
-		InitStepRunner:      mockInit,
-		PlanStepRunner:      mockPlan,
-		ApplyStepRunner:     mockApply,
-		RunStepRunner:       mockRun,
-		EnvStepRunner:       &realEnv,
-		PullApprovedChecker: nil,
-		WorkingDir:          mockWorkingDir,
-		Webhooks:            nil,
-		WorkingDirLocker:    events.NewDefaultWorkingDirLocker(),
-		TerraformOutputChan: mockChannel,
+		Locker:                  mockLocker,
+		LockURLGenerator:        mockURLGenerator{},
+		InitStepRunner:          mockInit,
+		PlanStepRunner:          mockPlan,
+		ApplyStepRunner:         mockApply,
+		RunStepRunner:           mockRun,
+		EnvStepRunner:           &realEnv,
+		PullApprovedChecker:     nil,
+		WorkingDir:              mockWorkingDir,
+		Webhooks:                nil,
+		WorkingDirLocker:        events.NewDefaultWorkingDirLocker(),
+		ProjectCmdOutputHandler: mockProjectCmdOutputHandler,
 	}
 
 	repoDir, cleanup := TempDir(t)
