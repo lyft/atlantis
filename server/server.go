@@ -105,7 +105,7 @@ type Server struct {
 	SSLKeyFile                    string
 	Drainer                       *events.Drainer
 	ScheduledExecutorService      *ScheduledExecutorService
-	ProjectCmdOutputHandler       handlers.ProjectCommandOutputHandler
+	ProjectCmdOutputHandler       handlers.DefaultProjectCommandOutputHandler
 }
 
 // Config holds config for server that isn't passed in by the user.
@@ -280,7 +280,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
 	commitStatusUpdater := &events.DefaultCommitStatusUpdater{Client: vcsClient, StatusName: userConfig.VCSStatusName}
 	projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
+	projectCmdOutputHandler := handlers.DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput: projectCmdOutput,
 	}
 
@@ -307,7 +307,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.TFDownloadURL,
 		&terraform.DefaultDownloader{},
 		true,
-		*projectCmdOutputHandler)
+		projectCmdOutputHandler)
 	// The flag.Lookup call is to detect if we're running in a unit test. If we
 	// are, then we don't error out because we don't have/want terraform
 	// installed on our CI system where the unit tests run.
@@ -507,13 +507,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EnvStepRunner: &runtime.EnvStepRunner{
 			RunStepRunner: runStepRunner,
 		},
-		PullApprovedChecker: vcsClient,
-		WorkingDir:          workingDir,
-		Webhooks:            webhooksManager,
-		WorkingDirLocker:    workingDirLocker,
-		ProjectCmdOutputHandler: handlers.DefaultProjectCommandOutputHandler{
-			ProjectCmdOutput: projectCmdOutput,
-		},
+		PullApprovedChecker:     vcsClient,
+		WorkingDir:              workingDir,
+		Webhooks:                webhooksManager,
+		WorkingDirLocker:        workingDirLocker,
+		ProjectCmdOutputHandler: projectCmdOutputHandler,
 	}
 
 	dbUpdater := &events.DBUpdater{

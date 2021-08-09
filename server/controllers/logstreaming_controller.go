@@ -23,9 +23,9 @@ type LogStreamingController struct {
 	LogStreamTemplate      templates.TemplateWriter
 	LogStreamErrorTemplate templates.TemplateWriter
 	Db                     *db.BoltDB
-	
+
 	WebsocketHandler            handlers.WebsocketHandler
-	ProjectCommandOutputHandler handlers.ProjectCommandOutputHandler
+	ProjectCommandOutputHandler handlers.DefaultProjectCommandOutputHandler
 }
 
 type PullInfo struct {
@@ -133,7 +133,7 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 			return err
 		}
 		return nil
-	}) 
+	})
 
 	if err != nil {
 		j.Logger.Warn("Failed to receive message: %s", err)
