@@ -331,6 +331,8 @@ func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest) (
 						return true, nil
 					}
 				}
+			} else {
+				return true, fmt.Errorf("cast failed: %s", status.GetDescription())
 			}
 		}
 	}
