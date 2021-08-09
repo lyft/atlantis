@@ -325,7 +325,7 @@ func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest) (
 			}
 
 			// Skip the check if key not found.
-			if waitingList, ok := description["waiting"].([]string); ok {
+			if waitingList, ok := description["waiting"].([]interface{}); ok {
 				for _, item := range waitingList {
 					if item == LockValue {
 						return true, nil

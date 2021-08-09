@@ -1014,3 +1014,94 @@ func TestGithubClient_Retry404(t *testing.T) {
 	Ok(t, err)
 	Equals(t, 3, numCalls)
 }
+
+func TestGithubClient_PullIsLocked(t *testing.T) {
+	respTemplate := `{
+		"state": "pending",
+		"statuses": [
+		  {
+			"url": "https://api.github.com/repos/lyft/atlantis-private/statuses/2139595f13fb115eda570d78759a3b3f7c7ac044",
+			"avatar_url": "https://avatars.githubusercontent.com/in/123857?v=4",
+			"id": 13951649524,
+			"node_id": "MDEzOlN0YXR1c0NvbnRleHQxMzk1MTY0OTUyNA==",
+			"state": "pending",
+			"description": "{\"pr_number\": 390, \"waiting\": [\"lock\"]}",
+			"target_url": "",
+			"context": "sq-ready-to-merge",
+			"created_at": "2021-07-30T18:50:21Z",
+			"updated_at": "2021-07-30T18:50:21Z"
+		  }
+		],
+		"sha": "2139595f13fb115eda570d78759a3b3f7c7ac044",
+		"total_count": 17,
+		"repository": {
+		  "id": 287588111,
+		  "node_id": "MDEwOlJlcG9zaXRvcnkyODc1ODgxMTE=",
+		  "name": "atlantis-private",
+		  "full_name": "lyft/atlantis-private",
+		  "private": true,
+		  "owner": {
+			"login": "lyft",
+			"id": 4269340,
+			"node_id": "MDEyOk9yZ2FuaXphdGlvbjQyNjkzNDA=",
+			"avatar_url": "https://avatars.githubusercontent.com/u/4269340?v=4",
+			"gravatar_id": "",
+			"url": "https://api.github.com/users/lyft",
+			"html_url": "https://github.com/lyft",
+			"followers_url": "https://api.github.com/users/lyft/followers",
+			"following_url": "https://api.github.com/users/lyft/following{/other_user}",
+			"gists_url": "https://api.github.com/users/lyft/gists{/gist_id}",
+			"starred_url": "https://api.github.com/users/lyft/starred{/owner}{/repo}",
+			"subscriptions_url": "https://api.github.com/users/lyft/subscriptions",
+			"organizations_url": "https://api.github.com/users/lyft/orgs",
+			"repos_url": "https://api.github.com/users/lyft/repos",
+			"events_url": "https://api.github.com/users/lyft/events{/privacy}",
+			"received_events_url": "https://api.github.com/users/lyft/received_events",
+			"type": "Organization",
+			"site_admin": false
+		  }
+		},
+		"commit_url": "https://api.github.com/repos/lyft/atlantis-private/commits/2139595f13fb115eda570d78759a3b3f7c7ac044",
+		"url": "https://api.github.com/repos/lyft/atlantis-private/commits/2139595f13fb115eda570d78759a3b3f7c7ac044/status"
+	  }`
+
+	/*
+	  https://api.github.com/repos/lyft/atlantis-private/commits/2139595f13fb115eda570d78759a3b3f7c7ac044/status
+	*/
+	testServer := httptest.NewTLSServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.RequestURI {
+			// The first request should hit this URL.
+			case "/api/v3/repos/owner/repo/commits/2139595f13fb115eda570d78759a3b3f7c7ac044/status?per_page=100":
+				w.Write([]byte(respTemplate)) // nolint: errcheck
+				return
+			default:
+				t.Errorf("got unexpected request at %q", r.RequestURI)
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+		}))
+	testServerURL, err := url.Parse(testServer.URL)
+	Ok(t, err)
+	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
+	Ok(t, err)
+	defer disableSSLVerification()()
+
+	locked, err := client.PullIsLocked(models.Repo{
+		FullName:          "owner/repo",
+		Owner:             "owner",
+		Name:              "repo",
+		CloneURL:          "",
+		SanitizedCloneURL: "",
+		VCSHost: models.VCSHost{
+			Type:     models.Github,
+			Hostname: "github.com",
+		},
+	}, models.PullRequest{
+		Num:        1,
+		HeadCommit: "2139595f13fb115eda570d78759a3b3f7c7ac044",
+	})
+	Ok(t, err)
+	Equals(t, true, locked)
+
+}
