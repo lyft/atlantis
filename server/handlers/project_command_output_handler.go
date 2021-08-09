@@ -44,7 +44,7 @@ func NewProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutp
 	return &DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput:  projectCmdOutput,
 		logger:            logger,
-		controllerBuffers : map[string]map[chan string]bool{},
+		controllerBuffers: map[string]map[chan string]bool{},
 	}
 }
 
