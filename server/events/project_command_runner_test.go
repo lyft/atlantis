@@ -41,6 +41,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	realEnv := runtime.EnvStepRunner{}
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
+	mockChannel := make(chan *models.TerraformOutputLine)
 	mockApplyReqHandler := mocks.NewMockApplyRequirement()
 
 	runner := events.DefaultProjectCommandRunner{
@@ -55,6 +56,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 		Webhooks:                   nil,
 		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: mockApplyReqHandler,
+		TerraformOutputChan:        mockChannel,
 	}
 
 	repoDir, cleanup := TempDir(t)

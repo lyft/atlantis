@@ -116,12 +116,15 @@ type DefaultProjectCommandRunner struct {
 	ShowStepRunner             StepRunner
 	ApplyStepRunner            StepRunner
 	PolicyCheckStepRunner      StepRunner
+	VersionStepRunner          StepRunner
 	RunStepRunner              CustomStepRunner
 	EnvStepRunner              EnvStepRunner
 	WorkingDir                 WorkingDir
 	Webhooks                   WebhooksSender
 	WorkingDirLocker           WorkingDirLocker
 	AggregateApplyRequirements ApplyRequirement
+	TerraformOutputChan        chan<- *models.TerraformOutputLine
+	LogStreamURLGenerator      LogStreamURLGenerator
 }
 
 // Plan runs terraform plan for the project described by ctx.
@@ -292,6 +295,7 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 	}
 
 	outputs, err := p.runSteps(ctx.Steps, ctx, projAbsPath)
+
 	if err != nil {
 		if unlockErr := lockAttempt.UnlockFn(); unlockErr != nil {
 			ctx.Log.Err("error unlocking state after plan error: %v", unlockErr)
@@ -350,6 +354,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 
 func (p *DefaultProjectCommandRunner) runSteps(steps []valid.Step, ctx models.ProjectCommandContext, absPath string) ([]string, error) {
 	var outputs []string
+
 	envs := make(map[string]string)
 	for _, step := range steps {
 		var out string
