@@ -1020,60 +1020,12 @@ func TestGithubClient_PullIsLocked(t *testing.T) {
 		"state": "pending",
 		"statuses": [
 		  {
-			"url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-			"avatar_url": "https://avatars.githubusercontent.com/in/78712?v=4",
-			"id": 14049042721,
-			"node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA0MjcyMQ==",
-			"state": "success",
-			"description": "1/1 projects planned successfully.",
-			"target_url": "",
-			"context": "atlantis/plan",
-			"created_at": "2021-08-09T19:42:32Z",
-			"updated_at": "2021-08-09T19:42:32Z"
-		  },
-		  {
-			"url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-			"avatar_url": "https://avatars.githubusercontent.com/in/78712?v=4",
-			"id": 14049043795,
-			"node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA0Mzc5NQ==",
-			"state": "success",
-			"description": "1/1 projects policies checked successfully.",
-			"target_url": "",
-			"context": "atlantis/policy_check",
-			"created_at": "2021-08-09T19:42:36Z",
-			"updated_at": "2021-08-09T19:42:36Z"
-		  },
-		  {
-			"url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-			"avatar_url": "https://avatars.githubusercontent.com/in/123416?v=4",
-			"id": 14049054237,
-			"node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA1NDIzNw==",
-			"state": "success",
-			"description": "success",
-			"target_url": "https://ciexec.lyft.net/task:kjbM:1ScbOW2dBbc/go/actual",
-			"context": "_owners-check",
-			"created_at": "2021-08-09T19:43:28Z",
-			"updated_at": "2021-08-09T19:43:28Z"
-		  },
-		  {
-			"url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-			"avatar_url": "https://avatars.githubusercontent.com/in/78712?v=4",
-			"id": 14049058912,
-			"node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA1ODkxMg==",
-			"state": "success",
-			"description": "1/1 projects applied successfully.",
-			"target_url": "",
-			"context": "atlantis/apply",
-			"created_at": "2021-08-09T19:43:54Z",
-			"updated_at": "2021-08-09T19:43:54Z"
-		  },
-		  {
-			"url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
+			"url": "https://api.github.com/repos/owner/repo/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
 			"avatar_url": "https://avatars.githubusercontent.com/in/123528?v=4",
 			"id": 14049059268,
 			"node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA1OTI2OA==",
 			"state": "pending",
-			"description": "{\"pr_number\": 176, \"waiting\": [\"approval\", \"lock\"]}",
+			"description": "{\"pr_number\": 176, \"waiting\": %s}",
 			"target_url": "",
 			"context": "sq-ready-to-merge",
 			"created_at": "2021-08-09T19:43:56Z",
@@ -1081,255 +1033,67 @@ func TestGithubClient_PullIsLocked(t *testing.T) {
 		  }
 		],
 		"sha": "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-		"total_count": 5,
-		"repository": {
-		  "id": 291753144,
-		  "node_id": "MDEwOlJlcG9zaXRvcnkyOTE3NTMxNDQ=",
-		  "name": "orchestration-sandbox",
-		  "full_name": "lyft/orchestration-sandbox",
-		  "private": true,
-		  "owner": {
-			"login": "lyft",
-			"id": 4269340,
-			"node_id": "MDEyOk9yZ2FuaXphdGlvbjQyNjkzNDA=",
-			"avatar_url": "https://avatars.githubusercontent.com/u/4269340?v=4",
-			"gravatar_id": "",
-			"url": "https://api.github.com/users/lyft",
-			"html_url": "https://github.com/lyft",
-			"followers_url": "https://api.github.com/users/lyft/followers",
-			"following_url": "https://api.github.com/users/lyft/following{/other_user}",
-			"gists_url": "https://api.github.com/users/lyft/gists{/gist_id}",
-			"starred_url": "https://api.github.com/users/lyft/starred{/owner}{/repo}",
-			"subscriptions_url": "https://api.github.com/users/lyft/subscriptions",
-			"organizations_url": "https://api.github.com/users/lyft/orgs",
-			"repos_url": "https://api.github.com/users/lyft/repos",
-			"events_url": "https://api.github.com/users/lyft/events{/privacy}",
-			"received_events_url": "https://api.github.com/users/lyft/received_events",
-			"type": "Organization",
-			"site_admin": false
-		  },
-		  "html_url": "https://github.com/lyft/orchestration-sandbox",
-		  "description": "Sandbox repo for testing orchestration staging changes",
-		  "fork": false,
-		  "url": "https://api.github.com/repos/lyft/orchestration-sandbox",
-		  "forks_url": "https://api.github.com/repos/lyft/orchestration-sandbox/forks",
-		  "keys_url": "https://api.github.com/repos/lyft/orchestration-sandbox/keys{/key_id}",
-		  "collaborators_url": "https://api.github.com/repos/lyft/orchestration-sandbox/collaborators{/collaborator}",
-		  "teams_url": "https://api.github.com/repos/lyft/orchestration-sandbox/teams",
-		  "hooks_url": "https://api.github.com/repos/lyft/orchestration-sandbox/hooks",
-		  "issue_events_url": "https://api.github.com/repos/lyft/orchestration-sandbox/issues/events{/number}",
-		  "events_url": "https://api.github.com/repos/lyft/orchestration-sandbox/events",
-		  "assignees_url": "https://api.github.com/repos/lyft/orchestration-sandbox/assignees{/user}",
-		  "branches_url": "https://api.github.com/repos/lyft/orchestration-sandbox/branches{/branch}",
-		  "tags_url": "https://api.github.com/repos/lyft/orchestration-sandbox/tags",
-		  "blobs_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/blobs{/sha}",
-		  "git_tags_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/tags{/sha}",
-		  "git_refs_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/refs{/sha}",
-		  "trees_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/trees{/sha}",
-		  "statuses_url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/{sha}",
-		  "languages_url": "https://api.github.com/repos/lyft/orchestration-sandbox/languages",
-		  "stargazers_url": "https://api.github.com/repos/lyft/orchestration-sandbox/stargazers",
-		  "contributors_url": "https://api.github.com/repos/lyft/orchestration-sandbox/contributors",
-		  "subscribers_url": "https://api.github.com/repos/lyft/orchestration-sandbox/subscribers",
-		  "subscription_url": "https://api.github.com/repos/lyft/orchestration-sandbox/subscription",
-		  "commits_url": "https://api.github.com/repos/lyft/orchestration-sandbox/commits{/sha}",
-		  "git_commits_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/commits{/sha}",
-		  "comments_url": "https://api.github.com/repos/lyft/orchestration-sandbox/comments{/number}",
-		  "issue_comment_url": "https://api.github.com/repos/lyft/orchestration-sandbox/issues/comments{/number}",
-		  "contents_url": "https://api.github.com/repos/lyft/orchestration-sandbox/contents/{+path}",
-		  "compare_url": "https://api.github.com/repos/lyft/orchestration-sandbox/compare/{base}...{head}",
-		  "merges_url": "https://api.github.com/repos/lyft/orchestration-sandbox/merges",
-		  "archive_url": "https://api.github.com/repos/lyft/orchestration-sandbox/{archive_format}{/ref}",
-		  "downloads_url": "https://api.github.com/repos/lyft/orchestration-sandbox/downloads",
-		  "issues_url": "https://api.github.com/repos/lyft/orchestration-sandbox/issues{/number}",
-		  "pulls_url": "https://api.github.com/repos/lyft/orchestration-sandbox/pulls{/number}",
-		  "milestones_url": "https://api.github.com/repos/lyft/orchestration-sandbox/milestones{/number}",
-		  "notifications_url": "https://api.github.com/repos/lyft/orchestration-sandbox/notifications{?since,all,participating}",
-		  "labels_url": "https://api.github.com/repos/lyft/orchestration-sandbox/labels{/name}",
-		  "releases_url": "https://api.github.com/repos/lyft/orchestration-sandbox/releases{/id}",
-		  "deployments_url": "https://api.github.com/repos/lyft/orchestration-sandbox/deployments"
-		},
-		"commit_url": "https://api.github.com/repos/lyft/orchestration-sandbox/commits/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-		"url": "https://api.github.com/repos/lyft/orchestration-sandbox/commits/832812d4777ddc4197685c5a8f864eaf8a82d4ae/status"
+		"total_count": 1
 	  }`
 
 	/*
-	  https://api.github.com/repos/lyft/atlantis-private/commits/2139595f13fb115eda570d78759a3b3f7c7ac044/status
+	  1. Locked description.
+	  2. Unlocked description.
 	*/
-	testServer := httptest.NewTLSServer(
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.RequestURI {
-			// The first request should hit this URL.
-			case "/api/v3/repos/owner/repo/commits/2139595f13fb115eda570d78759a3b3f7c7ac044/status?per_page=100":
-				w.Write([]byte(respTemplate)) // nolint: errcheck
-				return
-			default:
-				t.Errorf("got unexpected request at %q", r.RequestURI)
-				http.Error(w, "not found", http.StatusNotFound)
-				return
-			}
-		}))
-	testServerURL, err := url.Parse(testServer.URL)
-	Ok(t, err)
-	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
-	Ok(t, err)
-	defer disableSSLVerification()()
 
-	locked, err := client.PullIsLocked(models.Repo{
-		FullName:          "owner/repo",
-		Owner:             "owner",
-		Name:              "repo",
-		CloneURL:          "",
-		SanitizedCloneURL: "",
-		VCSHost: models.VCSHost{
-			Type:     models.Github,
-			Hostname: "github.com",
+	cases := []struct {
+		state     string
+		resp      string
+		expLocked bool
+	}{
+		{
+			"locked",
+			fmt.Sprintf(respTemplate, `[\"approval\", \"lock\"]`),
+			true,
 		},
-	}, models.PullRequest{
-		Num:        1,
-		HeadCommit: "2139595f13fb115eda570d78759a3b3f7c7ac044",
-	})
-	Ok(t, err)
-	Equals(t, true, locked)
+		{
+			"unlocked",
+			fmt.Sprintf(respTemplate, `[\"approval\"]`),
+			false,
+		},
+	}
 
+	for _, c := range cases {
+		t.Run(c.state, func(t *testing.T) {
+			testServer := httptest.NewTLSServer(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					switch r.RequestURI {
+					case "/api/v3/repos/owner/repo/commits/832812d4777ddc4197685c5a8f864eaf8a82d4ae/status?per_page=100":
+						w.Write([]byte(c.resp)) // nolint: errcheck
+						return
+					default:
+						t.Errorf("got unexpected request at %q", r.RequestURI)
+						http.Error(w, "not found", http.StatusNotFound)
+						return
+					}
+				}))
+			testServerURL, err := url.Parse(testServer.URL)
+			Ok(t, err)
+			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
+			Ok(t, err)
+			defer disableSSLVerification()()
+
+			locked, err := client.PullIsLocked(models.Repo{
+				FullName:          "owner/repo",
+				Owner:             "owner",
+				Name:              "repo",
+				CloneURL:          "",
+				SanitizedCloneURL: "",
+				VCSHost: models.VCSHost{
+					Type:     models.Github,
+					Hostname: "github.com",
+				},
+			}, models.PullRequest{
+				Num:        1,
+				HeadCommit: "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
+			})
+			Ok(t, err)
+			Equals(t, c.expLocked, locked)
+		})
+	}
 }
-
-/*
-{
-  "state": "pending",
-  "statuses": [
-    {
-      "url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-      "avatar_url": "https://avatars.githubusercontent.com/in/78712?v=4",
-      "id": 14049042721,
-      "node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA0MjcyMQ==",
-      "state": "success",
-      "description": "1/1 projects planned successfully.",
-      "target_url": "",
-      "context": "atlantis/plan",
-      "created_at": "2021-08-09T19:42:32Z",
-      "updated_at": "2021-08-09T19:42:32Z"
-    },
-    {
-      "url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-      "avatar_url": "https://avatars.githubusercontent.com/in/78712?v=4",
-      "id": 14049043795,
-      "node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA0Mzc5NQ==",
-      "state": "success",
-      "description": "1/1 projects policies checked successfully.",
-      "target_url": "",
-      "context": "atlantis/policy_check",
-      "created_at": "2021-08-09T19:42:36Z",
-      "updated_at": "2021-08-09T19:42:36Z"
-    },
-    {
-      "url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-      "avatar_url": "https://avatars.githubusercontent.com/in/123416?v=4",
-      "id": 14049054237,
-      "node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA1NDIzNw==",
-      "state": "success",
-      "description": "success",
-      "target_url": "https://ciexec.lyft.net/task:kjbM:1ScbOW2dBbc/go/actual",
-      "context": "_owners-check",
-      "created_at": "2021-08-09T19:43:28Z",
-      "updated_at": "2021-08-09T19:43:28Z"
-    },
-    {
-      "url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-      "avatar_url": "https://avatars.githubusercontent.com/in/78712?v=4",
-      "id": 14049058912,
-      "node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA1ODkxMg==",
-      "state": "success",
-      "description": "1/1 projects applied successfully.",
-      "target_url": "",
-      "context": "atlantis/apply",
-      "created_at": "2021-08-09T19:43:54Z",
-      "updated_at": "2021-08-09T19:43:54Z"
-    },
-    {
-      "url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-      "avatar_url": "https://avatars.githubusercontent.com/in/123528?v=4",
-      "id": 14049059268,
-      "node_id": "MDEzOlN0YXR1c0NvbnRleHQxNDA0OTA1OTI2OA==",
-      "state": "pending",
-      "description": "{\"pr_number\": 176, \"waiting\": [\"approval\", \"lock\"]}",
-      "target_url": "",
-      "context": "sq-ready-to-merge",
-      "created_at": "2021-08-09T19:43:56Z",
-      "updated_at": "2021-08-09T19:43:56Z"
-    }
-  ],
-  "sha": "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-  "total_count": 5,
-  "repository": {
-    "id": 291753144,
-    "node_id": "MDEwOlJlcG9zaXRvcnkyOTE3NTMxNDQ=",
-    "name": "orchestration-sandbox",
-    "full_name": "lyft/orchestration-sandbox",
-    "private": true,
-    "owner": {
-      "login": "lyft",
-      "id": 4269340,
-      "node_id": "MDEyOk9yZ2FuaXphdGlvbjQyNjkzNDA=",
-      "avatar_url": "https://avatars.githubusercontent.com/u/4269340?v=4",
-      "gravatar_id": "",
-      "url": "https://api.github.com/users/lyft",
-      "html_url": "https://github.com/lyft",
-      "followers_url": "https://api.github.com/users/lyft/followers",
-      "following_url": "https://api.github.com/users/lyft/following{/other_user}",
-      "gists_url": "https://api.github.com/users/lyft/gists{/gist_id}",
-      "starred_url": "https://api.github.com/users/lyft/starred{/owner}{/repo}",
-      "subscriptions_url": "https://api.github.com/users/lyft/subscriptions",
-      "organizations_url": "https://api.github.com/users/lyft/orgs",
-      "repos_url": "https://api.github.com/users/lyft/repos",
-      "events_url": "https://api.github.com/users/lyft/events{/privacy}",
-      "received_events_url": "https://api.github.com/users/lyft/received_events",
-      "type": "Organization",
-      "site_admin": false
-    },
-    "html_url": "https://github.com/lyft/orchestration-sandbox",
-    "description": "Sandbox repo for testing orchestration staging changes",
-    "fork": false,
-    "url": "https://api.github.com/repos/lyft/orchestration-sandbox",
-    "forks_url": "https://api.github.com/repos/lyft/orchestration-sandbox/forks",
-    "keys_url": "https://api.github.com/repos/lyft/orchestration-sandbox/keys{/key_id}",
-    "collaborators_url": "https://api.github.com/repos/lyft/orchestration-sandbox/collaborators{/collaborator}",
-    "teams_url": "https://api.github.com/repos/lyft/orchestration-sandbox/teams",
-    "hooks_url": "https://api.github.com/repos/lyft/orchestration-sandbox/hooks",
-    "issue_events_url": "https://api.github.com/repos/lyft/orchestration-sandbox/issues/events{/number}",
-    "events_url": "https://api.github.com/repos/lyft/orchestration-sandbox/events",
-    "assignees_url": "https://api.github.com/repos/lyft/orchestration-sandbox/assignees{/user}",
-    "branches_url": "https://api.github.com/repos/lyft/orchestration-sandbox/branches{/branch}",
-    "tags_url": "https://api.github.com/repos/lyft/orchestration-sandbox/tags",
-    "blobs_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/blobs{/sha}",
-    "git_tags_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/tags{/sha}",
-    "git_refs_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/refs{/sha}",
-    "trees_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/trees{/sha}",
-    "statuses_url": "https://api.github.com/repos/lyft/orchestration-sandbox/statuses/{sha}",
-    "languages_url": "https://api.github.com/repos/lyft/orchestration-sandbox/languages",
-    "stargazers_url": "https://api.github.com/repos/lyft/orchestration-sandbox/stargazers",
-    "contributors_url": "https://api.github.com/repos/lyft/orchestration-sandbox/contributors",
-    "subscribers_url": "https://api.github.com/repos/lyft/orchestration-sandbox/subscribers",
-    "subscription_url": "https://api.github.com/repos/lyft/orchestration-sandbox/subscription",
-    "commits_url": "https://api.github.com/repos/lyft/orchestration-sandbox/commits{/sha}",
-    "git_commits_url": "https://api.github.com/repos/lyft/orchestration-sandbox/git/commits{/sha}",
-    "comments_url": "https://api.github.com/repos/lyft/orchestration-sandbox/comments{/number}",
-    "issue_comment_url": "https://api.github.com/repos/lyft/orchestration-sandbox/issues/comments{/number}",
-    "contents_url": "https://api.github.com/repos/lyft/orchestration-sandbox/contents/{+path}",
-    "compare_url": "https://api.github.com/repos/lyft/orchestration-sandbox/compare/{base}...{head}",
-    "merges_url": "https://api.github.com/repos/lyft/orchestration-sandbox/merges",
-    "archive_url": "https://api.github.com/repos/lyft/orchestration-sandbox/{archive_format}{/ref}",
-    "downloads_url": "https://api.github.com/repos/lyft/orchestration-sandbox/downloads",
-    "issues_url": "https://api.github.com/repos/lyft/orchestration-sandbox/issues{/number}",
-    "pulls_url": "https://api.github.com/repos/lyft/orchestration-sandbox/pulls{/number}",
-    "milestones_url": "https://api.github.com/repos/lyft/orchestration-sandbox/milestones{/number}",
-    "notifications_url": "https://api.github.com/repos/lyft/orchestration-sandbox/notifications{?since,all,participating}",
-    "labels_url": "https://api.github.com/repos/lyft/orchestration-sandbox/labels{/name}",
-    "releases_url": "https://api.github.com/repos/lyft/orchestration-sandbox/releases{/id}",
-    "deployments_url": "https://api.github.com/repos/lyft/orchestration-sandbox/deployments"
-  },
-  "commit_url": "https://api.github.com/repos/lyft/orchestration-sandbox/commits/832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-  "url": "https://api.github.com/repos/lyft/orchestration-sandbox/commits/832812d4777ddc4197685c5a8f864eaf8a82d4ae/status"
-}
-
-*/
