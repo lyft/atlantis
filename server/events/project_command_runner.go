@@ -21,7 +21,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/runtime"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/handlers"
@@ -121,7 +120,6 @@ type DefaultProjectCommandRunner struct {
 	VersionStepRunner          StepRunner
 	RunStepRunner              CustomStepRunner
 	EnvStepRunner              EnvStepRunner
-	PullApprovedChecker        runtime.PullApprovedChecker
 	WorkingDir                 WorkingDir
 	Webhooks                   WebhooksSender
 	WorkingDirLocker           WorkingDirLocker

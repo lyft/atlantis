@@ -53,7 +53,6 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 		ApplyStepRunner:         mockApply,
 		RunStepRunner:           mockRun,
 		EnvStepRunner:           &realEnv,
-		PullApprovedChecker:     nil,
 		WorkingDir:              mockWorkingDir,
 		Webhooks:                nil,
 		WorkingDirLocker:        events.NewDefaultWorkingDirLocker(),

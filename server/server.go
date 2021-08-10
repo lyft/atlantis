@@ -511,7 +511,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EnvStepRunner: &runtime.EnvStepRunner{
 			RunStepRunner: runStepRunner,
 		},
-		PullApprovedChecker:        vcsClient,
 		WorkingDir:                 workingDir,
 		Webhooks:                   webhooksManager,
 		WorkingDirLocker:           workingDirLocker,

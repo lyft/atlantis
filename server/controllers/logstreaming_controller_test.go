@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/runatlantis/atlantis/server/controllers"
-	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 
 	. "github.com/petergtz/pegomock"
@@ -36,23 +35,9 @@ func TestGetLogStream_WebSockets(t *testing.T) {
 			WebsocketHandler:            websocketMock,
 			ProjectCommandOutputHandler: projectOutputHandler,
 		}
-		tempRepo := models.Repo{
-			FullName: "test-repo",
-		}
-		tempPullNum := models.PullRequest{
-			Num: 1,
-		}
-
-		ctx := models.ProjectCommandContext{
-			BaseRepo:    tempRepo,
-			Pull:        tempPullNum,
-			ProjectName: "test-project",
-		}
 
 		When(websocketMock.Upgrade(matchers.AnyHttpResponseWriter(), matchers.AnyPtrToHttpRequest(), matchers.AnyHttpHeader())).ThenReturn(websocketWriterMock, nil)
 
-		projectOutputHandler.Send(ctx, "Test Terraform Output")
-		projectOutputHandler.Handle()
 		logStreamingController.GetLogStreamWS(response, request)
 
 		websocketWriterMock.VerifyWasCalled(Once())
