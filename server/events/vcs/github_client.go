@@ -311,6 +311,7 @@ func (g *GithubClient) PullIsMergeable(repo models.Repo, pull models.PullRequest
 
 // Check if the Pull Request is locked with :lock emoji
 func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest) (bool, error) {
+	g.logger.Debug("pull is locked called")
 	statuses, err := g.getRepoStatuses(repo, pull)
 	if err != nil {
 		return false, errors.Wrapf(err, "fetching repo statuses for repo: %s, and pull number: %d", repo.FullName, pull.Num)
@@ -318,16 +319,20 @@ func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest) (
 
 	for _, status := range statuses {
 		if status.GetContext() == SubmitQueueReadinessStatusContext {
+			g.logger.Debug("Looking at sq-ready-to-merge description: %s", status.GetDescription())
 			description := make(map[string]interface{})
 			err := json.Unmarshal([]byte(status.GetDescription()), &description)
 			if err != nil {
 				return false, errors.Wrapf(err, "parsing status description for repo: %s, and pull number: %d", repo.FullName, pull.Num)
 			}
 
+			g.logger.Debug("description parsed")
 			// Skip the check if key not found.
 			if waitingList, ok := description["waiting"].([]interface{}); ok {
+				g.logger.Debug("waiting key found")
 				for _, item := range waitingList {
 					if item == LockValue {
+						g.logger.Debug("Lock key found")
 						return true, nil
 					}
 				}
@@ -336,7 +341,6 @@ func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest) (
 			}
 		}
 	}
-
 	// No Lock found.
 	return false, nil
 }
