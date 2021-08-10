@@ -46,17 +46,17 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	mockApplyReqHandler := mocks.NewMockApplyRequirement()
 
 	runner := events.DefaultProjectCommandRunner{
-		Locker:                  mockLocker,
-		LockURLGenerator:        mockURLGenerator{},
-		InitStepRunner:          mockInit,
-		PlanStepRunner:          mockPlan,
-		ApplyStepRunner:         mockApply,
-		RunStepRunner:           mockRun,
-		EnvStepRunner:           &realEnv,
-		WorkingDir:              mockWorkingDir,
-		Webhooks:                nil,
-		WorkingDirLocker:        events.NewDefaultWorkingDirLocker(),
-		ProjectCmdOutputHandler: projectCmdOutputHandler,
+		Locker:                     mockLocker,
+		LockURLGenerator:           mockURLGenerator{},
+		InitStepRunner:             mockInit,
+		PlanStepRunner:             mockPlan,
+		ApplyStepRunner:            mockApply,
+		RunStepRunner:              mockRun,
+		EnvStepRunner:              &realEnv,
+		WorkingDir:                 mockWorkingDir,
+		Webhooks:                   nil,
+		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
+		ProjectCmdOutputHandler:    projectCmdOutputHandler,
 		AggregateApplyRequirements: mockApplyReqHandler,
 	}
 
