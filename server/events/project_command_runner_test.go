@@ -149,12 +149,12 @@ func TestDefaultProjectCommandRunner_ApplyNotCloned(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockApproved := mocks2.NewMockPullStatusChecker()
+	mockStatusChecker := mocks2.NewMockPullStatusChecker()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			PullStatusChecker: mockApproved,
+			PullStatusChecker: mockStatusChecker,
 			WorkingDir:        mockWorkingDir,
 		},
 	}
@@ -164,7 +164,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(mockApproved.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
+	When(mockStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "Pull request must be approved by at least one person other than the author before running apply.", res.Failure)
