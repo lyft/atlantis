@@ -796,6 +796,10 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		Webhooks:                &mockWebhookSender{},
 		WorkingDirLocker:        locker,
 		ProjectCmdOutputHandler: projectCmdOutputHandler,
+		AggregateApplyRequirements: &events.AggregateApplyRequirements{
+			PullApprovedChecker: e2eVCSClient,
+			WorkingDir:          workingDir,
+		},
 	}
 
 	dbUpdater := &events.DBUpdater{

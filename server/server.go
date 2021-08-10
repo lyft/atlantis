@@ -375,6 +375,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			MergeableReq:       userConfig.RequireMergeable,
 			ApprovedReq:        userConfig.RequireApproval,
 			UnDivergedReq:      userConfig.RequireUnDiverged,
+			SQUnLockedReq:      userConfig.RequireSQUnlocked,
 			PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
 		})
 	if userConfig.RepoConfig != "" {
@@ -481,6 +482,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing policy check runner")
 	}
 
+	applyRequirementHandler := &events.AggregateApplyRequirements{
+		PullApprovedChecker: vcsClient,
+		WorkingDir:          workingDir,
+	}
+
 	projectCommandRunner := &events.DefaultProjectCommandRunner{
 		Locker:           projectLocker,
 		LockURLGenerator: router,
@@ -505,11 +511,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EnvStepRunner: &runtime.EnvStepRunner{
 			RunStepRunner: runStepRunner,
 		},
-		PullApprovedChecker:     vcsClient,
-		WorkingDir:              workingDir,
-		Webhooks:                webhooksManager,
-		WorkingDirLocker:        workingDirLocker,
-		ProjectCmdOutputHandler: projectCmdOutputHandler,
+		PullApprovedChecker:        vcsClient,
+		WorkingDir:                 workingDir,
+		Webhooks:                   webhooksManager,
+		WorkingDirLocker:           workingDirLocker,
+		ProjectCmdOutputHandler:    projectCmdOutputHandler,
+		AggregateApplyRequirements: applyRequirementHandler,
 	}
 
 	dbUpdater := &events.DBUpdater{
