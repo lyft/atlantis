@@ -13,7 +13,7 @@ type DefaultProjectCommandOutputHandler struct {
 	// this logBuffers
 	projectOutputBuffers map[string][]string
 	// this is wsChans
-	controllerBuffers map[string]map[chan string]bool
+	receiverBuffers map[string]map[chan string]bool
 	// same as chanLock
 	controllerBufferLock sync.RWMutex
 	logger               logging.SimpleLogging
@@ -42,9 +42,10 @@ type ProjectCommandOutputHandler interface {
 
 func NewProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutputLine, logger logging.SimpleLogging) ProjectCommandOutputHandler {
 	return &DefaultProjectCommandOutputHandler{
-		ProjectCmdOutput:  projectCmdOutput,
-		logger:            logger,
-		controllerBuffers: map[string]map[chan string]bool{},
+		ProjectCmdOutput:     projectCmdOutput,
+		logger:               logger,
+		receiverBuffers:      map[string]map[chan string]bool{},
+		projectOutputBuffers: map[string][]string{},
 	}
 }
 
@@ -93,13 +94,10 @@ func (p *DefaultProjectCommandOutputHandler) addChan(pull string) chan string {
 	for _, line := range p.projectOutputBuffers[pull] {
 		ch <- line
 	}
-	if p.controllerBuffers == nil {
-		p.controllerBuffers = map[string]map[chan string]bool{}
+	if p.receiverBuffers[pull] == nil {
+		p.receiverBuffers[pull] = map[chan string]bool{}
 	}
-	if p.controllerBuffers[pull] == nil {
-		p.controllerBuffers[pull] = map[chan string]bool{}
-	}
-	p.controllerBuffers[pull][ch] = true
+	p.receiverBuffers[pull][ch] = true
 	p.controllerBufferLock.Unlock()
 	return ch
 }
@@ -112,11 +110,11 @@ func (p *DefaultProjectCommandOutputHandler) writeLogLine(pull string, line stri
 	}
 	p.logger.Info("Project info: %s, content: %s", pull, line)
 
-	for ch := range p.controllerBuffers[pull] {
+	for ch := range p.receiverBuffers[pull] {
 		select {
 		case ch <- line:
 		default:
-			delete(p.controllerBuffers[pull], ch)
+			delete(p.receiverBuffers[pull], ch)
 		}
 	}
 	if p.projectOutputBuffers[pull] == nil {
@@ -129,6 +127,7 @@ func (p *DefaultProjectCommandOutputHandler) writeLogLine(pull string, line stri
 //Remove channel, so client no longer receives Terraform output
 func (p *DefaultProjectCommandOutputHandler) removeChan(pull string, ch chan string) {
 	p.controllerBufferLock.Lock()
-	delete(p.controllerBuffers[pull], ch)
+	delete(p.receiverBuffers[pull], ch)
+	close(ch)
 	p.controllerBufferLock.Unlock()
 }
