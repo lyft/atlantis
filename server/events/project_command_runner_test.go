@@ -150,6 +150,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockApproved := mocks2.NewMockPullStatusChecker()
+	logger, _ := logging.NewStructuredLogger()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
@@ -160,6 +161,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	}
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"approved"},
+		Log:               logger,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
@@ -174,6 +176,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
+	logger, _ := logging.NewStructuredLogger()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
@@ -184,6 +187,7 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	ctx := models.ProjectCommandContext{
 		PullMergeable:     false,
 		ApplyRequirements: []string{"mergeable"},
+		Log:               logger,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
@@ -197,6 +201,7 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
+	logger, _ := logging.NewStructuredLogger()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
@@ -206,6 +211,7 @@ func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	}
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"undiverged"},
+		Log:               logger,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
