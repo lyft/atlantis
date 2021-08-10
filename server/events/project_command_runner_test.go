@@ -27,7 +27,7 @@ import (
 	mocks2 "github.com/runatlantis/atlantis/server/events/runtime/mocks"
 	tmocks "github.com/runatlantis/atlantis/server/events/terraform/mocks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/handlers"
+	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -42,10 +42,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	realEnv := runtime.EnvStepRunner{}
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
-	mockChannel := make(chan *models.ProjectCmdOutputLine)
-	mockProjectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
-		ProjectCmdOutput: mockChannel,
-	}
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 
 	runner := events.DefaultProjectCommandRunner{
 		Locker:                  mockLocker,
@@ -59,7 +56,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 		WorkingDir:              mockWorkingDir,
 		Webhooks:                nil,
 		WorkingDirLocker:        events.NewDefaultWorkingDirLocker(),
-		ProjectCmdOutputHandler: mockProjectCmdOutputHandler,
+		ProjectCmdOutputHandler: projectCmdOutputHandler,
 	}
 
 	repoDir, cleanup := TempDir(t)

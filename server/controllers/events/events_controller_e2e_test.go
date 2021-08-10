@@ -35,7 +35,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/handlers"
+	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -668,9 +668,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	e2eGithubGetter := mocks.NewMockGithubPullGetter()
 	e2eGitlabGetter := mocks.NewMockGitlabMergeRequestGetter()
 	tempchan := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := &handlers.DefaultProjectCommandOutputHandler{
-		ProjectCmdOutput: tempchan,
-	}
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 
 	// Real dependencies.
 	logger := logging.NewNoopLogger(t)
