@@ -325,14 +325,15 @@ func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest) (
 			}
 
 			if waitingList, ok := description["waiting"]; ok {
-				if waitingList, ok := waitingList.([]interface{}); ok {
-					for _, item := range waitingList {
-						if item == LockValue {
-							return true, nil
-						}
+				waitingList, ok := waitingList.([]interface{})
+				if !ok {
+					return true, fmt.Errorf("error retrieving waiting status from description: %s for repo: %s, pull number: %d", status.GetDescription(), repo.FullName, pull.Num)
+				}
+				for _, item := range waitingList {
+					if item == LockValue {
+						return true, nil
 					}
 				}
-				return true, fmt.Errorf("error retrieving waiting status from description: %s for repo: %s, pull number: %d", status.GetDescription(), repo.FullName, pull.Num)
 			}
 			// No waiting key means no lock.
 			return false, nil

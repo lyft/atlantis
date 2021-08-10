@@ -302,12 +302,12 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			mockApply := mocks.NewMockStepRunner()
 			mockRun := mocks.NewMockCustomStepRunner()
 			mockEnv := mocks.NewMockEnvStepRunner()
-			mockApproved := mocks2.NewMockPullStatusChecker()
+			mockStatusChecker := mocks2.NewMockPullStatusChecker()
 			mockWorkingDir := mocks.NewMockWorkingDir()
 			mockLocker := mocks.NewMockProjectLocker()
 			mockSender := mocks.NewMockWebhooksSender()
 			applyReqHandler := &events.AggregateApplyRequirements{
-				PullStatusChecker: mockApproved,
+				PullStatusChecker: mockStatusChecker,
 				WorkingDir:        mockWorkingDir,
 			}
 
@@ -348,7 +348,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			When(mockApply.Run(ctx, nil, repoDir, expEnvs)).ThenReturn("apply", nil)
 			When(mockRun.Run(ctx, "", repoDir, expEnvs)).ThenReturn("run", nil)
 			When(mockEnv.Run(ctx, "", "value", repoDir, make(map[string]string))).ThenReturn("value", nil)
-			When(mockApproved.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(true, nil)
+			When(mockStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(true, nil)
 
 			res := runner.Apply(ctx)
 			Equals(t, c.expOut, res.ApplySuccess)
@@ -357,7 +357,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			for _, step := range c.expSteps {
 				switch step {
 				case "approved":
-					mockApproved.VerifyWasCalledOnce().PullIsApproved(ctx.BaseRepo, ctx.Pull)
+					mockStatusChecker.VerifyWasCalledOnce().PullIsApproved(ctx.BaseRepo, ctx.Pull)
 				case "init":
 					mockInit.VerifyWasCalledOnce().Run(ctx, nil, repoDir, expEnvs)
 				case "plan":
