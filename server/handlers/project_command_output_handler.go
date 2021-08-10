@@ -105,9 +105,6 @@ func (p *DefaultProjectCommandOutputHandler) addChan(pull string) chan string {
 //Add log line to buffer and send to all current channels
 func (p *DefaultProjectCommandOutputHandler) writeLogLine(pull string, line string) {
 	p.controllerBufferLock.Lock()
-	if p.projectOutputBuffers == nil {
-		p.projectOutputBuffers = map[string][]string{}
-	}
 	p.logger.Info("Project info: %s, content: %s", pull, line)
 
 	for ch := range p.receiverBuffers[pull] {
