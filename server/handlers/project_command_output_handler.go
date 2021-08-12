@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -51,8 +52,9 @@ func NewProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutp
 
 func (p *DefaultProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
 	p.ProjectCmdOutput <- &models.ProjectCmdOutputLine{
-		ProjectInfo: ctx.PullInfo(),
-		Line:        msg,
+		ProjectInfo:     ctx.PullInfo(),
+		ClearBuffBefore: true,
+		Line:            msg,
 	}
 }
 
@@ -70,8 +72,10 @@ func (p *DefaultProjectCommandOutputHandler) Receive(projectInfo string, callbac
 }
 
 func (p *DefaultProjectCommandOutputHandler) Handle() {
+	fmt.Printf("Testing Handle func")
 	for msg := range p.ProjectCmdOutput {
-		p.logger.Info("Recieving message %s", msg.Line)
+		p.logger.Info("Receiving message %s", msg.Line)
+		fmt.Printf("Receiving message %s", msg.Line)
 		if msg.ClearBuffBefore {
 			p.clearLogLines(msg.ProjectInfo)
 		}

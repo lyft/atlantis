@@ -124,6 +124,7 @@ type DefaultProjectCommandRunner struct {
 	Webhooks                   WebhooksSender
 	WorkingDirLocker           WorkingDirLocker
 	AggregateApplyRequirements ApplyRequirement
+	ProjectCmdOutputLine       models.ProjectCmdOutputLine
 	ProjectCmdOutputHandler    handlers.ProjectCommandOutputHandler
 	LogStreamURLGenerator      LogStreamURLGenerator
 }
