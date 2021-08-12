@@ -22,10 +22,11 @@ func NewInstrumentedGithubClient(client *GithubClient, statsScope stats.Scope, l
 	}
 
 	return &InstrumentedGithubClient{
-		InstrumentedClient: instrumentedGHClient,
-		PullRequestGetter:  client,
-		StatsScope:         scope,
-		Logger:             logger,
+		InstrumentedClient:  instrumentedGHClient,
+		PullRequestGetter:   client,
+		PullApprovalChecker: client,
+		StatsScope:          scope,
+		Logger:              logger,
 	}
 }
 
@@ -41,15 +42,17 @@ type GithubPullRequestGetter interface {
 type IGithubClient interface {
 	Client
 	GithubPullRequestGetter
+	PullApprovalChecker
 }
 
 // InstrumentedGithubClient should delegate to the underlying InstrumentedClient for vcs provider-agnostic
 // methods and implement soley any github specific interfaces.
 type InstrumentedGithubClient struct {
 	*InstrumentedClient
-	PullRequestGetter GithubPullRequestGetter
-	StatsScope        stats.Scope
-	Logger            logging.SimpleLogging
+	PullRequestGetter   GithubPullRequestGetter
+	PullApprovalChecker PullApprovalChecker
+	StatsScope          stats.Scope
+	Logger              logging.SimpleLogging
 }
 
 func (c *InstrumentedGithubClient) GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error) {
@@ -80,6 +83,72 @@ func (c *InstrumentedGithubClient) GetPullRequestFromName(repoName string, repoO
 	}
 
 	return pull, err
+}
+
+func (c *InstrumentedGithubClient) PullIsSQMergeable(repo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error) {
+	scope := c.StatsScope.Scope("pull_is_sq_mergeable")
+	logger := c.Logger.WithHistory(fmtLogSrc(repo, pull.Num)...)
+
+	executionTime := scope.NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
+	defer executionTime.Complete()
+
+	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
+	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
+
+	sqMergeable, err := c.PullApprovalChecker.PullIsSQMergeable(repo, pull, statuses)
+
+	if err != nil {
+		executionError.Inc()
+		logger.Err("Unable to check pull sq mergeable status, error: %s", err.Error())
+	} else {
+		executionSuccess.Inc()
+	}
+
+	return sqMergeable, err
+}
+
+func (c *InstrumentedGithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error) {
+	scope := c.StatsScope.Scope("pull_is_locked")
+	logger := c.Logger.WithHistory(fmtLogSrc(repo, pull.Num)...)
+
+	executionTime := scope.NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
+	defer executionTime.Complete()
+
+	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
+	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
+
+	locked, err := c.PullApprovalChecker.PullIsLocked(repo, pull, statuses)
+
+	if err != nil {
+		executionError.Inc()
+		logger.Err("Unable to check pull lock status, error: %s", err.Error())
+	} else {
+		executionSuccess.Inc()
+	}
+
+	return locked, err
+}
+
+func (c *InstrumentedGithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest) ([]*github.RepoStatus, error) {
+	scope := c.StatsScope.Scope("get_repo_status")
+	logger := c.Logger.WithHistory(fmtLogSrc(repo, pull.Num)...)
+
+	executionTime := scope.NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
+	defer executionTime.Complete()
+
+	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
+	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
+
+	statuses, err := c.PullApprovalChecker.GetRepoStatuses(repo, pull)
+
+	if err != nil {
+		executionError.Inc()
+		logger.Err("Unable to get repo status: %s", err.Error())
+	} else {
+		executionSuccess.Inc()
+	}
+
+	return statuses, err
 }
 
 type InstrumentedClient struct {

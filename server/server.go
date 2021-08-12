@@ -562,7 +562,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	// TODO: Replace with IGithubClient
 	sqBasedPullStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		ApprovedPullChecker: rawGithubClient,
+		ApprovedPullChecker: githubClient,
 	}
 
 	applyCommandRunner := events.NewApplyCommandRunner(

@@ -150,25 +150,6 @@ func (mock *MockClient) PullIsApproved(_param0 models.Repo, _param1 models.PullR
 	return ret0, ret1
 }
 
-func (mock *MockClient) PullIsLocked(_param0 models.Repo, _param1 models.PullRequest) (bool, error) {
-	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockClient().")
-	}
-	params := []pegomock.Param{_param0, _param1}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("PullIsLocked", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 bool
-	var ret1 error
-	if len(result) != 0 {
-		if result[0] != nil {
-			ret0 = result[0].(bool)
-		}
-		if result[1] != nil {
-			ret1 = result[1].(error)
-		}
-	}
-	return ret0, ret1
-}
-
 func (mock *MockClient) PullIsMergeable(_param0 models.Repo, _param1 models.PullRequest) (bool, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockClient().")
@@ -462,37 +443,6 @@ func (c *MockClient_PullIsApproved_OngoingVerification) GetCapturedArguments() (
 }
 
 func (c *MockClient_PullIsApproved_OngoingVerification) GetAllCapturedArguments() (_param0 []models.Repo, _param1 []models.PullRequest) {
-	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
-	if len(params) > 0 {
-		_param0 = make([]models.Repo, len(c.methodInvocations))
-		for u, param := range params[0] {
-			_param0[u] = param.(models.Repo)
-		}
-		_param1 = make([]models.PullRequest, len(c.methodInvocations))
-		for u, param := range params[1] {
-			_param1[u] = param.(models.PullRequest)
-		}
-	}
-	return
-}
-
-func (verifier *VerifierMockClient) PullIsLocked(_param0 models.Repo, _param1 models.PullRequest) *MockClient_PullIsLocked_OngoingVerification {
-	params := []pegomock.Param{_param0, _param1}
-	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "PullIsLocked", params, verifier.timeout)
-	return &MockClient_PullIsLocked_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
-}
-
-type MockClient_PullIsLocked_OngoingVerification struct {
-	mock              *MockClient
-	methodInvocations []pegomock.MethodInvocation
-}
-
-func (c *MockClient_PullIsLocked_OngoingVerification) GetCapturedArguments() (models.Repo, models.PullRequest) {
-	_param0, _param1 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1], _param1[len(_param1)-1]
-}
-
-func (c *MockClient_PullIsLocked_OngoingVerification) GetAllCapturedArguments() (_param0 []models.Repo, _param1 []models.PullRequest) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]models.Repo, len(c.methodInvocations))

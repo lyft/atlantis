@@ -154,8 +154,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			PullStatusChecker: mockStatusChecker,
-			WorkingDir:        mockWorkingDir,
+			WorkingDir: mockWorkingDir,
 		},
 	}
 	ctx := models.ProjectCommandContext{
@@ -307,8 +306,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			mockLocker := mocks.NewMockProjectLocker()
 			mockSender := mocks.NewMockWebhooksSender()
 			applyReqHandler := &events.AggregateApplyRequirements{
-				PullStatusChecker: mockStatusChecker,
-				WorkingDir:        mockWorkingDir,
+				WorkingDir: mockWorkingDir,
 			}
 
 			runner := events.DefaultProjectCommandRunner{

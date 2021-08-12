@@ -31,6 +31,7 @@ import (
 	runtimematchers "github.com/runatlantis/atlantis/server/events/runtime/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/runtime/policy"
 	"github.com/runatlantis/atlantis/server/events/terraform"
+	"github.com/runatlantis/atlantis/server/events/vcs"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml"
@@ -664,6 +665,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	// Mocks.
 	e2eVCSClient := vcsmocks.NewMockClient()
 	e2eStatusUpdater := &events.DefaultCommitStatusUpdater{Client: e2eVCSClient}
+	e2ePullApprovedCheker := vcsmocks.NewMockPullApprovalChecker()
 	e2eGithubGetter := mocks.NewMockGithubPullGetter()
 	e2eGitlabGetter := mocks.NewMockGitlabMergeRequestGetter()
 	tempchan := make(chan *models.TerraformOutputLine)
@@ -793,8 +795,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		Webhooks:         &mockWebhookSender{},
 		WorkingDirLocker: locker,
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			PullStatusChecker: e2eVCSClient,
-			WorkingDir:        workingDir,
+			WorkingDir: workingDir,
 		},
 		TerraformOutputChan: tempchan,
 	}
@@ -841,6 +842,10 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		boltdb,
 	)
 
+	sqBasedPullStatusFetcher := vcs.SQBasedPullStatusFetcher{
+		ApprovedPullChecker: e2ePullApprovedCheker,
+	}
+
 	applyCommandRunner := events.NewApplyCommandRunner(
 		e2eVCSClient,
 		false,
@@ -855,6 +860,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		parallelPoolSize,
 		silenceNoProjects,
 		false,
+		&sqBasedPullStatusFetcher,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(

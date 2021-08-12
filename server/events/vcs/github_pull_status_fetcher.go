@@ -10,6 +10,7 @@ type PullStatusFetcher interface {
 	FetchPullStatus(repo models.Repo, pull models.PullRequest) (models.SQPullStatus, error)
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_status_fetcher.go PullApprovalChecker
 type PullApprovalChecker interface {
 	GetRepoStatuses(repo models.Repo, pull models.PullRequest) ([]*github.RepoStatus, error)
 	PullIsApproved(repo models.Repo, pull models.PullRequest) (bool, error)
