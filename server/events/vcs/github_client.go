@@ -363,12 +363,6 @@ func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest, s
 // Checks to make sure that all statuses are passing except the Submit Queue Readiness check and atlantis/apply
 // Additionally checks if the Owners Check has been applied and is successful.
 func (g *GithubClient) getSubmitQueueMergeability(repo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error) {
-	statuses, err := g.GetRepoStatuses(repo, pull)
-
-	if err != nil {
-		return false, errors.Wrapf(err, "fetching repo statuses for repo: %s, and pull number: %d", repo.FullName, pull.Num)
-	}
-
 	ownersCheckApplied := false
 	for _, status := range statuses {
 		state := status.GetState()
