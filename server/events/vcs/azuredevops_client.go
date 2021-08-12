@@ -403,7 +403,3 @@ func GitStatusContextFromSrc(src string) *azuredevops.GitStatusContext {
 		Genre: &genre,
 	}
 }
-
-func (g *AzureDevopsClient) PullIsLocked(baseRepo models.Repo, pull models.PullRequest) (bool, error) {
-	return false, fmt.Errorf("not implemented")
-}

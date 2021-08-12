@@ -21,6 +21,7 @@ func NewApplyCommandRunner(
 	parallelPoolSize int,
 	SilenceNoProjects bool,
 	silenceVCSStatusNoProjects bool,
+	pullStatusFetcher vcs.PullStatusFetcher,
 ) *ApplyCommandRunner {
 	return &ApplyCommandRunner{
 		vcsClient:                  vcsClient,
@@ -36,6 +37,7 @@ func NewApplyCommandRunner(
 		parallelPoolSize:           parallelPoolSize,
 		SilenceNoProjects:          SilenceNoProjects,
 		silenceVCSStatusNoProjects: silenceVCSStatusNoProjects,
+		pullStatusFetcher:          pullStatusFetcher,
 	}
 }
 
@@ -44,6 +46,7 @@ type ApplyCommandRunner struct {
 	DB                  *db.BoltDB
 	locker              locking.ApplyLockChecker
 	vcsClient           vcs.Client
+	pullStatusFetcher   vcs.PullStatusFetcher
 	commitStatusUpdater CommitStatusUpdater
 	prjCmdBuilder       ProjectApplyCommandBuilder
 	prjCmdRunner        ProjectApplyCommandRunner
@@ -98,12 +101,13 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	// We do this here because when we set a "Pending" status, if users have
 	// required the Atlantis status checks to pass, then we've now changed
 	// the mergeability status of the pull request.
-	ctx.PullMergeable, err = a.vcsClient.PullIsMergeable(baseRepo, pull)
+	ctx.PullRequestStatus, err = a.pullStatusFetcher.FetchPullStatus(baseRepo, pull)
+
 	if err != nil {
 		// On error we continue the request with mergeable assumed false.
 		// We want to continue because not all apply's will need this status,
 		// only if they rely on the mergeability requirement.
-		ctx.PullMergeable = false
+		// PullRequestStatus sets approved, mergeable, and sqlocked to false when error.
 		ctx.Log.Warn("unable to get mergeable status: %s. Continuing with mergeable assumed false", err)
 	}
 

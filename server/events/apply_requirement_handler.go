@@ -1,9 +1,7 @@
 package events
 
 import (
-	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/runtime"
 	"github.com/runatlantis/atlantis/server/events/yaml/raw"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 )
@@ -14,19 +12,14 @@ type ApplyRequirement interface {
 }
 
 type AggregateApplyRequirements struct {
-	PullStatusChecker runtime.PullStatusChecker
-	WorkingDir        WorkingDir
+	WorkingDir WorkingDir
 }
 
 func (a *AggregateApplyRequirements) ValidateProject(repoDir string, ctx models.ProjectCommandContext) (failure string, err error) {
 	for _, req := range ctx.ApplyRequirements {
 		switch req {
 		case raw.ApprovedApplyRequirement:
-			approved, err := a.PullStatusChecker.PullIsApproved(ctx.Pull.BaseRepo, ctx.Pull) // nolint: vetshadow
-			if err != nil {
-				return "", errors.Wrap(err, "checking if pull request was approved")
-			}
-			if !approved {
+			if !ctx.PullStatus.Approved {
 				return "Pull request must be approved by at least one person other than the author before running apply.", nil
 			}
 		// this should come before mergeability check since mergeability is a superset of this check.
@@ -35,7 +28,7 @@ func (a *AggregateApplyRequirements) ValidateProject(repoDir string, ctx models.
 				return "All policies must pass for project before running apply", nil
 			}
 		case raw.MergeableApplyRequirement:
-			if !ctx.PullMergeable {
+			if !ctx.PullStatus.Mergeable {
 				return "Pull request must be mergeable before running apply.", nil
 			}
 		case raw.UnDivergedApplyRequirement:
@@ -43,12 +36,7 @@ func (a *AggregateApplyRequirements) ValidateProject(repoDir string, ctx models.
 				return "Default branch must be rebased onto pull request before running apply.", nil
 			}
 		case raw.UnlockedApplyRequirement:
-			locked, err := a.PullStatusChecker.PullIsLocked(ctx.Pull.BaseRepo, ctx.Pull)
-			if err != nil {
-				return "", errors.Wrap(err, "checking if pull request was locked")
-			}
-
-			if locked {
+			if ctx.PullStatus.SQLocked {
 				return "Pull request must be unlocked before running apply.", nil
 			}
 		}

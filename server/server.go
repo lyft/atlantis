@@ -480,8 +480,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	applyRequirementHandler := &events.AggregateApplyRequirements{
-		PullStatusChecker: vcsClient,
-		WorkingDir:        workingDir,
+		WorkingDir: workingDir,
 	}
 
 	projectCommandRunner := &events.DefaultProjectCommandRunner{
@@ -561,6 +560,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		boltdb,
 	)
 
+	// TODO: Replace with IGithubClient
+	sqBasedPullStatusFetcher := vcs.SQBasedPullStatusFetcher{
+		ApprovedPullChecker: rawGithubClient,
+	}
+
 	applyCommandRunner := events.NewApplyCommandRunner(
 		vcsClient,
 		userConfig.DisableApplyAll,
@@ -575,6 +579,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceNoProjects,
 		userConfig.SilenceVCSStatusNoProjects,
+		&sqBasedPullStatusFetcher,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(

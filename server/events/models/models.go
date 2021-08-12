@@ -37,6 +37,12 @@ const (
 	planfileSlashReplace = "::"
 )
 
+type SQPullStatus struct {
+	Approved  bool
+	Mergeable bool
+	SQLocked  bool
+}
+
 // Repo is a VCS repository.
 type Repo struct {
 	// FullName is the owner and repo name separated
@@ -374,6 +380,7 @@ type ProjectCommandContext struct {
 	Scope stats.Scope
 	// PullMergeable is true if the pull request for this project is able to be merged.
 	PullMergeable bool
+	PullStatus    SQPullStatus
 	// CurrentProjectPlanStatus is the status of the current project prior to this command.
 	ProjectPlanStatus ProjectPlanStatus
 	// Pull is the pull request we're responding to.

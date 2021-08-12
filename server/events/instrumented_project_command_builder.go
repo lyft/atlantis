@@ -22,6 +22,12 @@ func (b *InstrumentedProjectCommandBuilder) BuildApplyCommands(ctx *CommandConte
 
 	projectCmds, err := b.ProjectCommandBuilder.BuildApplyCommands(ctx, comment)
 
+	// Add the pull status contexts.
+	// TODO: What kind of check for mapping CommandContext to ProjectCommandContext.
+	for _, projectCmd := range projectCmds {
+		projectCmd.PullStatus = ctx.PullRequestStatus
+	}
+
 	if err != nil {
 		executionError.Inc()
 		b.Logger.Err("Error building apply commands: %s", err)

@@ -72,10 +72,6 @@ func (d *ClientProxy) PullIsMergeable(repo models.Repo, pull models.PullRequest)
 	return d.clients[repo.VCSHost.Type].PullIsMergeable(repo, pull)
 }
 
-func (d *ClientProxy) PullIsLocked(repo models.Repo, pull models.PullRequest) (bool, error) {
-	return d.clients[repo.VCSHost.Type].PullIsLocked(repo, pull)
-}
-
 func (d *ClientProxy) UpdateStatus(repo models.Repo, pull models.PullRequest, state models.CommitStatus, src string, description string, url string) error {
 	return d.clients[repo.VCSHost.Type].UpdateStatus(repo, pull, state, src, description, url)
 }
