@@ -560,8 +560,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		boltdb,
 	)
 
-	// TODO: Replace with IGithubClient
-	sqBasedPullStatusFetcher := vcs.SQBasedPullStatusFetcher{
+	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
 		ApprovedPullChecker: githubClient,
 	}
 
@@ -579,7 +578,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceNoProjects,
 		userConfig.SilenceVCSStatusNoProjects,
-		&sqBasedPullStatusFetcher,
+		&pullReqStatusFetcher,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(

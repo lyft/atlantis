@@ -37,7 +37,7 @@ const (
 	planfileSlashReplace = "::"
 )
 
-type SQPullStatus struct {
+type PullReqStatus struct {
 	Approved  bool
 	Mergeable bool
 	SQLocked  bool
@@ -380,7 +380,7 @@ type ProjectCommandContext struct {
 	Scope stats.Scope
 	// PullMergeable is true if the pull request for this project is able to be merged.
 	PullMergeable bool
-	PullStatus    SQPullStatus
+	PullStatus    PullReqStatus
 	// CurrentProjectPlanStatus is the status of the current project prior to this command.
 	ProjectPlanStatus ProjectPlanStatus
 	// Pull is the pull request we're responding to.

@@ -6,8 +6,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-type PullStatusFetcher interface {
-	FetchPullStatus(repo models.Repo, pull models.PullRequest) (models.SQPullStatus, error)
+type PullReqStatusFetcher interface {
+	FetchPullStatus(repo models.Repo, pull models.PullRequest) (models.PullReqStatus, error)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_status_fetcher.go PullApprovalChecker
@@ -22,16 +22,10 @@ type SQBasedPullStatusFetcher struct {
 	ApprovedPullChecker PullApprovalChecker
 }
 
-func (s *SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models.PullRequest) (models.SQPullStatus, error) {
+func (s *SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models.PullRequest) (pullStatus models.PullReqStatus, err error) {
 	// Get Repo statuses.
 	// Pass that that Pull Is Locked and Pull Is Mergeable (which forwards to getSubmitQueueMergeability)
 	// Check pull is approved.
-
-	pullStatus := models.SQPullStatus{
-		Approved:  false,
-		Mergeable: false,
-		SQLocked:  false,
-	}
 
 	statuses, err := s.ApprovedPullChecker.GetRepoStatuses(repo, pull)
 	if err != nil {
@@ -53,9 +47,9 @@ func (s *SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models
 		return pullStatus, errors.Wrapf(err, "fetching mergeability status for repo: %s, and pull number: %d", repo.FullName, pull.Num)
 	}
 
-	return models.SQPullStatus{
+	return models.PullReqStatus{
 		Approved:  approved,
 		Mergeable: sqLocked,
 		SQLocked:  mergeable,
-	}, nil
+	}, err
 }

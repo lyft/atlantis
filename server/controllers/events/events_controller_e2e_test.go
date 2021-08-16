@@ -579,7 +579,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			userConfig = server.UserConfig{}
 			userConfig.EnablePolicyChecksFlag = true
 
-			ctrl, vcsClient, githubGetter, atlantisWorkspace, pullApprovalChecker := setupE2E(t, c.RepoDir)
+			ctrl, vcsClient, githubGetter, atlantisWorkspace, _ := setupE2E(t, c.RepoDir)
 
 			// Set the repo to be cloned through the testing backdoor.
 			repoDir, headSHA, cleanup := initializeRepo(t, c.RepoDir)
@@ -589,8 +589,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			// Setup test dependencies.
 			w := httptest.NewRecorder()
 			When(vcsClient.PullIsMergeable(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(true, nil)
-			When(pullApprovalChecker.PullIsSQMergeable(AnyRepo(), matchers.AnyModelsPullRequest(), AnyStatus())).ThenReturn(true, nil)
-			When(pullApprovalChecker.PullIsApproved(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(true, nil)
+			When(vcsClient.PullIsApproved(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(true, nil)
 			When(githubGetter.GetPullRequest(AnyRepo(), AnyInt())).ThenReturn(GitHubPullRequestParsed(headSHA), nil)
 			When(vcsClient.GetModifiedFiles(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(c.ModifiedFiles, nil)
 

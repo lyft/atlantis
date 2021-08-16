@@ -21,7 +21,7 @@ func NewApplyCommandRunner(
 	parallelPoolSize int,
 	SilenceNoProjects bool,
 	silenceVCSStatusNoProjects bool,
-	pullStatusFetcher vcs.PullStatusFetcher,
+	pullReqStatusFetcher vcs.PullReqStatusFetcher,
 ) *ApplyCommandRunner {
 	return &ApplyCommandRunner{
 		vcsClient:                  vcsClient,
@@ -37,23 +37,23 @@ func NewApplyCommandRunner(
 		parallelPoolSize:           parallelPoolSize,
 		SilenceNoProjects:          SilenceNoProjects,
 		silenceVCSStatusNoProjects: silenceVCSStatusNoProjects,
-		pullStatusFetcher:          pullStatusFetcher,
+		pullReqStatusFetcher:       pullReqStatusFetcher,
 	}
 }
 
 type ApplyCommandRunner struct {
-	DisableApplyAll     bool
-	DB                  *db.BoltDB
-	locker              locking.ApplyLockChecker
-	vcsClient           vcs.Client
-	pullStatusFetcher   vcs.PullStatusFetcher
-	commitStatusUpdater CommitStatusUpdater
-	prjCmdBuilder       ProjectApplyCommandBuilder
-	prjCmdRunner        ProjectApplyCommandRunner
-	autoMerger          *AutoMerger
-	pullUpdater         *PullUpdater
-	dbUpdater           *DBUpdater
-	parallelPoolSize    int
+	DisableApplyAll      bool
+	DB                   *db.BoltDB
+	locker               locking.ApplyLockChecker
+	vcsClient            vcs.Client
+	pullReqStatusFetcher vcs.PullReqStatusFetcher
+	commitStatusUpdater  CommitStatusUpdater
+	prjCmdBuilder        ProjectApplyCommandBuilder
+	prjCmdRunner         ProjectApplyCommandRunner
+	autoMerger           *AutoMerger
+	pullUpdater          *PullUpdater
+	dbUpdater            *DBUpdater
+	parallelPoolSize     int
 	// SilenceNoProjects is whether Atlantis should respond to PRs if no projects
 	// are found
 	SilenceNoProjects bool
@@ -101,7 +101,7 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	// We do this here because when we set a "Pending" status, if users have
 	// required the Atlantis status checks to pass, then we've now changed
 	// the mergeability status of the pull request.
-	ctx.PullRequestStatus, err = a.pullStatusFetcher.FetchPullStatus(baseRepo, pull)
+	ctx.PullRequestStatus, err = a.pullReqStatusFetcher.FetchPullStatus(baseRepo, pull)
 
 	if err != nil {
 		// On error we continue the request with mergeable assumed false.
