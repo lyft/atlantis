@@ -101,33 +101,21 @@ func TestProjectCommandOutputHandler_ClearBuff(t *testing.T) {
 
 		var wg sync.WaitGroup
 
-		wg.Add(1)
 		go func() {
 			projectOutputHandler.Handle()
-			wg.Done()
 		}()
-		wg.Wait()
 
-		wg.Add(1)
 		go func() {
 			projectOutputHandler.Send(ctx, "Test Terraform Output")
-			wg.Done()
 		}()
-		wg.Wait()
 
-		wg.Add(1)
 		go func() {
 			projectOutputHandler.Clear(ctx, "")
-			wg.Done()
 		}()
-		wg.Wait()
 
-		wg.Add(1)
 		go func() {
 			projectOutputHandler.Send(ctx, "Test Terraform Output")
-			wg.Done()
 		}()
-		wg.Wait()
 
 		expectMsg := ""
 		wg.Add(1)
@@ -141,7 +129,7 @@ func TestProjectCommandOutputHandler_ClearBuff(t *testing.T) {
 		wg.Wait()
 		Equals(t, expectMsg, "Test Terraform Output")
 
-		time.Sleep(20 * time.Second)
+		time.Sleep(10 * time.Second)
 
 	})
 }
