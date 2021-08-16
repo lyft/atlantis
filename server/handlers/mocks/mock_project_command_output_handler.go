@@ -33,6 +33,14 @@ func (mock *MockProjectCommandOutputHandler) Send(ctx models.ProjectCommandConte
 	pegomock.GetGenericMockFrom(mock).Invoke("Send", params, []reflect.Type{})
 }
 
+func (mock *MockProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext, msg string) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockProjectCommandOutputHandler().")
+	}
+	params := []pegomock.Param{ctx, msg}
+	pegomock.GetGenericMockFrom(mock).Invoke("Clear", params, []reflect.Type{})
+}
+
 func (mock *MockProjectCommandOutputHandler) Receive(projectInfo string, callback func(string) error) error {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectCommandOutputHandler().")
@@ -110,6 +118,37 @@ func (c *MockProjectCommandOutputHandler_Send_OngoingVerification) GetCapturedAr
 }
 
 func (c *MockProjectCommandOutputHandler_Send_OngoingVerification) GetAllCapturedArguments() (_param0 []models.ProjectCommandContext, _param1 []string) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]models.ProjectCommandContext, len(c.methodInvocations))
+		for u, param := range params[0] {
+			_param0[u] = param.(models.ProjectCommandContext)
+		}
+		_param1 = make([]string, len(c.methodInvocations))
+		for u, param := range params[1] {
+			_param1[u] = param.(string)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierMockProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext, msg string) *MockProjectCommandOutputHandler_Clear_OngoingVerification {
+	params := []pegomock.Param{ctx, msg}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Clear", params, verifier.timeout)
+	return &MockProjectCommandOutputHandler_Clear_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type MockProjectCommandOutputHandler_Clear_OngoingVerification struct {
+	mock              *MockProjectCommandOutputHandler
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *MockProjectCommandOutputHandler_Clear_OngoingVerification) GetCapturedArguments() (models.ProjectCommandContext, string) {
+	ctx, msg := c.GetAllCapturedArguments()
+	return ctx[len(ctx)-1], msg[len(msg)-1]
+}
+
+func (c *MockProjectCommandOutputHandler_Clear_OngoingVerification) GetAllCapturedArguments() (_param0 []models.ProjectCommandContext, _param1 []string) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]models.ProjectCommandContext, len(c.methodInvocations))

@@ -27,6 +27,7 @@ type ProjectCommandOutputHandler interface {
 	// this will be called in the RunCommandAsync where we currently sending messages to the terraform channel
 	Send(ctx models.ProjectCommandContext, msg string)
 
+	Clear(ctx models.ProjectCommandContext, msg string)
 	// Receive will create a channel for projectPullInfo and run a callback function argument when the new channel receives a message. This will be called from the controller.
 	// j.ProjectCommandOutputHandler.Receive(pull, func(msg string) {
 	//   j.Logger.Info(msg)
@@ -52,9 +53,8 @@ func NewProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutp
 
 func (p *DefaultProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
 	p.ProjectCmdOutput <- &models.ProjectCmdOutputLine{
-		ProjectInfo:     ctx.PullInfo(),
-		ClearBuffBefore: true,
-		Line:            msg,
+		ProjectInfo: ctx.PullInfo(),
+		Line:        msg,
 	}
 }
 
@@ -83,6 +83,14 @@ func (p *DefaultProjectCommandOutputHandler) Handle() {
 		if msg.ClearBuffAfter {
 			p.clearLogLines(msg.ProjectInfo)
 		}
+	}
+}
+
+func (p *DefaultProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext, msg string) {
+	p.ProjectCmdOutput <- &models.ProjectCmdOutputLine{
+		ProjectInfo:     ctx.PullInfo(),
+		Line:            msg,
+		ClearBuffBefore: true,
 	}
 }
 

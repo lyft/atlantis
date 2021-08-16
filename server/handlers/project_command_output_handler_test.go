@@ -109,7 +109,9 @@ func TestProjectCommandOutputHandler_ClearBuff(t *testing.T) {
 			projectOutputHandler.Send(ctx, "Test Terraform Output")
 		}()
 
-		//struggling to make a correct assignment to clear buffer logic here
+		go func() {
+			projectOutputHandler.Clear(ctx, "")
+		}()
 
 		go func() {
 			projectOutputHandler.Send(ctx, "Test Terraform Output")
@@ -127,7 +129,7 @@ func TestProjectCommandOutputHandler_ClearBuff(t *testing.T) {
 		wg.Wait()
 		Equals(t, expectMsg, "Test Terraform Output")
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(20 * time.Second)
 
 	})
 }
