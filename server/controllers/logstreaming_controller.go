@@ -16,6 +16,10 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+//LogViewRouteName is the named route in mux.Router for the log stream view.
+//Can be retrieved by mux.Router.Get(LogViewRouteName)
+const LogViewRouteName = "log-detail"
+
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_websocket_handler.go WebsocketHandler
 
 type WebsocketHandler interface {

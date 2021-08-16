@@ -9,7 +9,10 @@ import (
 	"testing"
 
 	version "github.com/hashicorp/go-version"
+	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/feature"
+	fmocks "github.com/runatlantis/atlantis/server/feature/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -109,12 +112,15 @@ func TestDefaultClient_RunCommandWithVersion_EnvVars(t *testing.T) {
 		},
 	}
 	defer cleanup()
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
 	client := &DefaultClient{
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
 		usePluginCache:          true,
 		terraformOutputChan:     tempchan,
+		featureAllocator:        allocator,
 	}
 
 	args := []string{
@@ -156,11 +162,14 @@ func TestDefaultClient_RunCommandWithVersion_Error(t *testing.T) {
 		},
 	}
 	defer cleanup()
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
 	client := &DefaultClient{
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
 		terraformOutputChan:     tempchan,
+		featureAllocator:        allocator,
 	}
 
 	args := []string{
@@ -199,12 +208,15 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 		},
 	}
 	defer cleanup()
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
 	client := &DefaultClient{
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
 		usePluginCache:          true,
 		terraformOutputChan:     tempchan,
+		featureAllocator:        allocator,
 	}
 
 	args := []string{
@@ -246,11 +258,14 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 		},
 	}
 	defer cleanup()
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
 	client := &DefaultClient{
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "cat",
 		terraformOutputChan:     tempchan,
+		featureAllocator:        allocator,
 	}
 	filename := filepath.Join(tmp, "data")
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -294,11 +309,14 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 		},
 	}
 	defer cleanup()
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
 	client := &DefaultClient{
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
 		terraformOutputChan:     tempchan,
+		featureAllocator:        allocator,
 	}
 	waitTfStreaming(tempchan)
 	_, outCh := client.RunCommandAsync(ctx, tmp, []string{"stderr", ">&2"}, map[string]string{}, nil, "workspace")
@@ -331,11 +349,14 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 		},
 	}
 	defer cleanup()
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
 	client := &DefaultClient{
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "echo",
 		terraformOutputChan:     tempchan,
+		featureAllocator:        allocator,
 	}
 	waitTfStreaming(tempchan)
 	_, outCh := client.RunCommandAsync(ctx, tmp, []string{"dying", "&&", "exit", "1"}, map[string]string{}, nil, "workspace")
@@ -369,11 +390,14 @@ func TestDefaultClient_RunCommandAsync_Input(t *testing.T) {
 		},
 	}
 	defer cleanup()
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
 	client := &DefaultClient{
 		defaultVersion:          v,
 		terraformPluginCacheDir: tmp,
 		overrideTF:              "read",
 		terraformOutputChan:     tempchan,
+		featureAllocator:        allocator,
 	}
 	waitTfStreaming(tempchan)
 	inCh, outCh := client.RunCommandAsync(ctx, tmp, []string{"a", "&&", "echo", "$a"}, map[string]string{}, nil, "workspace")
