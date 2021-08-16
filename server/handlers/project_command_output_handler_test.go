@@ -105,28 +105,31 @@ func TestProjectCommandOutputHandler_ClearBuff(t *testing.T) {
 			projectOutputHandler.Handle()
 		}()
 
+		wg.Add(1)
 		go func() {
 			projectOutputHandler.Send(ctx, "Test Terraform Output")
 		}()
-
+		
+		wg.Add(1)
 		go func() {
 			projectOutputHandler.Clear(ctx, "")
 		}()
 
+		wg.Add(1)
 		go func() {
 			projectOutputHandler.Send(ctx, "Test Terraform Output")
 		}()
 
 		expectMsg := ""
-		wg.Add(1)
 		go func() {
 			projectOutputHandler.Receive(ctx.PullInfo(), func(msg string) error {
 				expectMsg = msg
+				wg.Done()
 				return nil
 			})
-			wg.Done()
 		}()
 		wg.Wait()
+
 		Equals(t, expectMsg, "Test Terraform Output")
 
 		time.Sleep(10 * time.Second)
