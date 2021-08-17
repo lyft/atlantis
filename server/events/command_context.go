@@ -48,7 +48,7 @@ type CommandContext struct {
 	// required the Atlantis status to be successful prior to merging.
 	PullMergeable bool
 
-	// Approved, Mergeable, and Locked status for the PR.
+	// Current PR state
 	PullRequestStatus models.PullReqStatus
 
 	PullStatus *models.PullStatus
