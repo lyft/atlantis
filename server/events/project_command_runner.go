@@ -296,7 +296,7 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 		return nil, "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	p.ProjectCmdOutputHandler.Clear(ctx, "")
+	p.ProjectCmdOutputHandler.Clear(ctx)
 	outputs, err := p.runSteps(ctx.Steps, ctx, projAbsPath)
 
 	if err != nil {

@@ -113,7 +113,7 @@ func TestProjectCommandOutputHandler_ClearBuff(t *testing.T) {
 
 		wg.Add(1)
 		go func() {
-			projectOutputHandler.Clear(ctx, "")
+			projectOutputHandler.Clear(ctx)
 		}()
 
 		wg.Add(1)

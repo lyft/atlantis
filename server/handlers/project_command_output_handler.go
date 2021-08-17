@@ -24,21 +24,15 @@ type DefaultProjectCommandOutputHandler struct {
 
 type ProjectCommandOutputHandler interface {
 	// Send will enqueue the msg and wait for Handle() to receive the message.
-	// this will be called in the RunCommandAsync where we currently sending messages to the terraform channel
 	Send(ctx models.ProjectCommandContext, msg string)
 
-	Clear(ctx models.ProjectCommandContext, msg string)
-	// Receive will create a channel for projectPullInfo and run a callback function argument when the new channel receives a message. This will be called from the controller.
-	// j.ProjectCommandOutputHandler.Receive(pull, func(msg string) {
-	//   j.Logger.Info(msg)
-	//   if err := c.WriteMessage(websocket.BinaryMessage, []byte(msg+"\r\n\t")); err != nil {
-	//     j.Logger.Warn("Failed to write ws message: %s", err)
-	//     return err
-	//   }
-	// })
+	// Clears buffer for new project to run
+	Clear(ctx models.ProjectCommandContext)
+
+	// Receive will create a channel for projectPullInfo and run a callback function argument when the new channel receives a message.
 	Receive(projectInfo string, callback func(msg string) error) error
 
-	// Is basically the same as Listen function from logstreaming controller.
+	// Listens for msg from channel
 	Handle()
 }
 
@@ -86,10 +80,10 @@ func (p *DefaultProjectCommandOutputHandler) Handle() {
 	}
 }
 
-func (p *DefaultProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext, msg string) {
+func (p *DefaultProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext) {
 	p.ProjectCmdOutput <- &models.ProjectCmdOutputLine{
 		ProjectInfo:     ctx.PullInfo(),
-		Line:            msg,
+		Line:            "",
 		ClearBuffBefore: true,
 	}
 }
