@@ -33,9 +33,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/feature"
 )
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_terraform_client.go Client
@@ -75,7 +75,7 @@ type DefaultClient struct {
 	// usePluginCache determines whether or not to set the TF_PLUGIN_CACHE_DIR env var
 	usePluginCache bool
 
-	featureAllocator feature.Allocator
+	featureAllocator        feature.Allocator
 	projectCmdOutputHandler handlers.ProjectCommandOutputHandler
 }
 
@@ -304,27 +304,26 @@ func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, 
 		output := strings.Join(lines, "\n")
 		return fmt.Sprintf("%s\n", output), err
 
-	} else {
-		tfCmd, cmd, err := c.prepCmd(ctx.Log, v, workspace, path, args)
-		if err != nil {
-			return "", err
-		}
-		envVars := cmd.Env
-		for key, val := range customEnvVars {
-			envVars = append(envVars, fmt.Sprintf("%s=%s", key, val))
-		}
-		cmd.Env = envVars
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			err = errors.Wrapf(err, "running %q in %q", tfCmd, path)
-			ctx.Log.Err(err.Error())
-			return string(out), err
-		}
-		ctx.Log.Info("successfully ran %q in %q", tfCmd, path)
-
-		return string(out), nil
-
 	}
+
+	tfCmd, cmd, err := c.prepCmd(ctx.Log, v, workspace, path, args)
+	if err != nil {
+		return "", err
+	}
+	envVars := cmd.Env
+	for key, val := range customEnvVars {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", key, val))
+	}
+	cmd.Env = envVars
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		err = errors.Wrapf(err, "running %q in %q", tfCmd, path)
+		ctx.Log.Err(err.Error())
+		return string(out), err
+	}
+	ctx.Log.Info("successfully ran %q in %q", tfCmd, path)
+
+	return string(out), nil
 }
 
 // prepCmd builds a ready to execute command based on the version of terraform
