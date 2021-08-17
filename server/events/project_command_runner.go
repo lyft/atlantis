@@ -340,6 +340,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 	}
 	defer unlockFn()
 
+	p.ProjectCmdOutputHandler.Clear(ctx)
 	outputs, err := p.runSteps(ctx.Steps, ctx, absPath)
 	p.Webhooks.Send(ctx.Log, webhooks.ApplyResult{ // nolint: errcheck
 		Workspace: ctx.Workspace,
