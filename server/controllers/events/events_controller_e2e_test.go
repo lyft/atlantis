@@ -682,7 +682,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		GithubUser: "github-user",
 		GitlabUser: "gitlab-user",
 	}
-	featureAllocator, _ := feature.NewRepoAllocator()
+	featureAllocator, _ := feature.NewStringSourcedAllocator(logger)
 
 	terraformClient, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", &NoopTFDownloader{}, false, tempchan, featureAllocator)
 	Ok(t, err)

@@ -292,10 +292,16 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, err
 	}
 
-	featureAllocator, err := feature.NewFileRepoAllocator(userConfig.FeatureFlagsFilePath)
+	featureAllocator, err := feature.NewGHSourcedAllocator(
+		feature.RepoConfig{
+			Owner:  userConfig.FFOwner,
+			Repo:   userConfig.FFRepo,
+			Branch: userConfig.FFBranch,
+			Path:   userConfig.FFPath,
+		}, githubClient, logger)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "initializing feature allocator")
 	}
 
 	terraformClient, err := terraform.NewClient(
