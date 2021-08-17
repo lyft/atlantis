@@ -305,11 +305,13 @@ func (g *GithubClient) PullIsMergeable(repo models.Repo, pull models.PullRequest
 
 // PullIsMergeable returns true if the pull request is mergeable.
 func (g *GithubClient) PullIsSQMergeable(repo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error) {
+	g.logger.Info(fmt.Sprintf("statuses: %v", statuses))
 	githubPR, err := g.GetPullRequest(repo, pull.Num)
 	if err != nil {
 		return false, errors.Wrap(err, "getting pull request")
 	}
 	state := githubPR.GetMergeableState()
+	g.logger.Info(fmt.Sprintf("State: %v", state))
 	// We map our mergeable check to when the GitHub merge button is clickable.
 	// This corresponds to the following states:
 	// clean: No conflicts, all requirements satisfied.
@@ -326,7 +328,9 @@ func (g *GithubClient) PullIsSQMergeable(repo models.Repo, pull models.PullReque
 			return false, nil
 		}
 
-		return g.getSubmitQueueMergeability(repo, pull, statuses)
+		temp, err := g.getSubmitQueueMergeability(repo, pull, statuses)
+		g.logger.Info(fmt.Sprintf("statuses: %v", statuses))
+		return temp, err
 	}
 	return true, nil
 }
@@ -374,7 +378,7 @@ func (g *GithubClient) getSubmitQueueMergeability(repo models.Repo, pull models.
 	ownersCheckApplied := false
 	for _, status := range statuses {
 		state := status.GetState()
-
+		g.logger.Info(fmt.Sprintf("%v State: %v", status.GetContext(), state))
 		if status.GetContext() == OwnersStatusContext {
 			ownersCheckApplied = true
 		}
