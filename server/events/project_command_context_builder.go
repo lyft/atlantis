@@ -24,7 +24,7 @@ func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder Comm
 	}
 
 	return &CommandScopedStatsProjectCommandContextBuilder{
-		ProjectCommandContextBuilder: &PullStatusProjectCommandContextBuilder{
+		ProjectCommandContextBuilder: &PullReqStatusProjectCommandContextBuilder{
 			ProjectCommandContextBuilder: projectCommandContextBuilder,
 		},
 		ProjectCounter: scope.NewCounter("projects"),
@@ -80,13 +80,13 @@ func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 	return
 }
 
-// PullStatusProjectCommandContextBuilder maps the command context to project command context
-type PullStatusProjectCommandContextBuilder struct {
+// PullReqStatusProjectCommandContextBuilder maps the command context to project command context
+type PullReqStatusProjectCommandContextBuilder struct {
 	ProjectCommandContextBuilder
 }
 
-// BuildProjectContext builds the context and injects the appropriate command level scope after the fact.
-func (cb *PullStatusProjectCommandContextBuilder) BuildProjectContext(
+// BuildProjectContext builds the context and injects the appropriate command level pull request status.
+func (cb *PullReqStatusProjectCommandContextBuilder) BuildProjectContext(
 	ctx *CommandContext,
 	cmdName models.CommandName,
 	prjCfg valid.MergedProjectCfg,
@@ -99,9 +99,9 @@ func (cb *PullStatusProjectCommandContextBuilder) BuildProjectContext(
 	)
 
 	// Add the pull status contexts.
-	// TODO: What kind of check for mapping CommandContext to ProjectCommandContext.
+	// TODO: What kind of check for mapping CommandContext to ProjectCommandContext?
 	for _, projectCmd := range projectCmds {
-		projectCmd.PullStatus = ctx.PullRequestStatus
+		projectCmd.PullReqStatus = ctx.PullRequestStatus
 	}
 
 	return

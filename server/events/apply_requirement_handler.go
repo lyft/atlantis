@@ -19,7 +19,7 @@ func (a *AggregateApplyRequirements) ValidateProject(repoDir string, ctx models.
 	for _, req := range ctx.ApplyRequirements {
 		switch req {
 		case raw.ApprovedApplyRequirement:
-			if !ctx.PullStatus.Approved {
+			if !ctx.PullReqStatus.Approved {
 				return "Pull request must be approved by at least one person other than the author before running apply.", nil
 			}
 		// this should come before mergeability check since mergeability is a superset of this check.
@@ -28,7 +28,7 @@ func (a *AggregateApplyRequirements) ValidateProject(repoDir string, ctx models.
 				return "All policies must pass for project before running apply", nil
 			}
 		case raw.MergeableApplyRequirement:
-			if !ctx.PullStatus.Mergeable {
+			if !ctx.PullReqStatus.Mergeable {
 				return "Pull request must be mergeable before running apply.", nil
 			}
 		case raw.UnDivergedApplyRequirement:
@@ -36,7 +36,7 @@ func (a *AggregateApplyRequirements) ValidateProject(repoDir string, ctx models.
 				return "Default branch must be rebased onto pull request before running apply.", nil
 			}
 		case raw.UnlockedApplyRequirement:
-			if ctx.PullStatus.SQLocked {
+			if ctx.PullReqStatus.SQLocked {
 				return "Pull request must be unlocked before running apply.", nil
 			}
 		}

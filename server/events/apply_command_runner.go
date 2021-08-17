@@ -46,7 +46,6 @@ type ApplyCommandRunner struct {
 	DB                   *db.BoltDB
 	locker               locking.ApplyLockChecker
 	vcsClient            vcs.Client
-	pullReqStatusFetcher vcs.PullReqStatusFetcher
 	commitStatusUpdater  CommitStatusUpdater
 	prjCmdBuilder        ProjectApplyCommandBuilder
 	prjCmdRunner         ProjectApplyCommandRunner
@@ -54,6 +53,7 @@ type ApplyCommandRunner struct {
 	pullUpdater          *PullUpdater
 	dbUpdater            *DBUpdater
 	parallelPoolSize     int
+	pullReqStatusFetcher vcs.PullReqStatusFetcher
 	// SilenceNoProjects is whether Atlantis should respond to PRs if no projects
 	// are found
 	SilenceNoProjects bool
@@ -101,6 +101,7 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	// We do this here because when we set a "Pending" status, if users have
 	// required the Atlantis status checks to pass, then we've now changed
 	// the mergeability status of the pull request.
+	// This sets the approved, mergeable, and sqlocked status in the context.
 	ctx.PullRequestStatus, err = a.pullReqStatusFetcher.FetchPullStatus(baseRepo, pull)
 
 	if err != nil {

@@ -25,7 +25,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-github/v31/github"
 	. "github.com/petergtz/pegomock"
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/runatlantis/atlantis/server/controllers/events/mocks"
@@ -48,11 +47,6 @@ var secret = []byte("secret")
 func AnyRepo() models.Repo {
 	RegisterMatcher(NewAnyMatcher(reflect.TypeOf(models.Repo{})))
 	return models.Repo{}
-}
-
-func AnyStatus() []*github.RepoStatus {
-	RegisterMatcher(NewAnyMatcher(reflect.TypeOf(github.RepoStatus{})))
-	return []*github.RepoStatus{}
 }
 
 func TestPost_NotGithubOrGitlab(t *testing.T) {

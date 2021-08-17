@@ -334,27 +334,35 @@ func (g *GithubClient) PullIsSQMergeable(repo models.Repo, pull models.PullReque
 // Check if the Pull Request is locked with :lock emoji
 func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error) {
 	for _, status := range statuses {
-		if status.GetContext() == SubmitQueueReadinessStatusContext {
-			description := make(map[string]interface{})
-			err := json.Unmarshal([]byte(status.GetDescription()), &description)
-			if err != nil {
-				return false, errors.Wrapf(err, "parsing status description for repo: %s, and pull number: %d", repo.FullName, pull.Num)
-			}
+		if status.GetContext() != SubmitQueueReadinessStatusContext {
+			continue
+		}
 
-			if waitingList, ok := description["waiting"]; ok {
-				waitingList, ok := waitingList.([]interface{})
-				if !ok {
-					return true, fmt.Errorf("error retrieving waiting status from description: %s for repo: %s, pull number: %d", status.GetDescription(), repo.FullName, pull.Num)
-				}
-				for _, item := range waitingList {
-					if item == LockValue {
-						return true, nil
-					}
-				}
-			}
+		// Not using struct tags because there's no predefined schema for description.
+		description := make(map[string]interface{})
+		err := json.Unmarshal([]byte(status.GetDescription()), &description)
+		if err != nil {
+			return false, errors.Wrapf(err, "parsing status description for repo: %s, and pull number: %d", repo.FullName, pull.Num)
+		}
+
+		waitingList, ok := description["waiting"]
+		if !ok {
 			// No waiting key means no lock.
 			return false, nil
 		}
+
+		typedWaitingList, ok := waitingList.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("cast failed for %v", waitingList)
+		}
+		for _, item := range typedWaitingList {
+			if item == LockValue {
+				return true, nil
+			}
+		}
+
+		// No waiting key means no lock.
+		return false, nil
 	}
 	// No Lock found.
 	return false, nil

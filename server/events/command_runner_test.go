@@ -133,7 +133,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		defaultBoltDB,
 	)
 
-	sqBasedPullStatusFetcher := vcs.SQBasedPullStatusFetcher{
+	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
 		ApprovedPullChecker: pullApprovedCheker,
 	}
 
@@ -151,7 +151,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		parallelPoolSize,
 		SilenceNoProjects,
 		false,
-		&sqBasedPullStatusFetcher,
+		&pullReqStatusFetcher,
 	)
 
 	approvePoliciesCommandRunner = events.NewApprovePoliciesCommandRunner(

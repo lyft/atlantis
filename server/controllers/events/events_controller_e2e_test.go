@@ -389,7 +389,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			userConfig = server.UserConfig{}
 			userConfig.DisableApply = c.DisableApply
 
-			ctrl, vcsClient, githubGetter, atlantisWorkspace, _ := setupE2E(t, c.RepoDir)
+			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir)
 			// Set the repo to be cloned through the testing backdoor.
 			repoDir, headSHA, cleanup := initializeRepo(t, c.RepoDir)
 			defer cleanup()
@@ -579,7 +579,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			userConfig = server.UserConfig{}
 			userConfig.EnablePolicyChecksFlag = true
 
-			ctrl, vcsClient, githubGetter, atlantisWorkspace, _ := setupE2E(t, c.RepoDir)
+			ctrl, vcsClient, githubGetter, atlantisWorkspace := setupE2E(t, c.RepoDir)
 
 			// Set the repo to be cloned through the testing backdoor.
 			repoDir, headSHA, cleanup := initializeRepo(t, c.RepoDir)
@@ -651,7 +651,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 	}
 }
 
-func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsController, *vcsmocks.MockClient, *mocks.MockGithubPullGetter, *events.FileWorkspace, *vcsmocks.MockPullApprovalChecker) {
+func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsController, *vcsmocks.MockClient, *mocks.MockGithubPullGetter, *events.FileWorkspace) {
 	allowForkPRs := false
 	dataDir, binDir, cacheDir, cleanup := mkSubDirs(t)
 	defer cleanup()
@@ -666,7 +666,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	// Mocks.
 	e2eVCSClient := vcsmocks.NewMockClient()
 	e2eStatusUpdater := &events.DefaultCommitStatusUpdater{Client: e2eVCSClient}
-	e2ePullApprovedCheker := vcsmocks.NewMockPullApprovalChecker()
+	e2ePullReqStatusChecker := vcsmocks.NewMockPullApprovalChecker()
 	e2eGithubGetter := mocks.NewMockGithubPullGetter()
 	e2eGitlabGetter := mocks.NewMockGitlabMergeRequestGetter()
 	tempchan := make(chan *models.TerraformOutputLine)
@@ -843,8 +843,8 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		boltdb,
 	)
 
-	sqBasedPullStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		ApprovedPullChecker: e2ePullApprovedCheker,
+	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
+		ApprovedPullChecker: e2ePullReqStatusChecker,
 	}
 
 	applyCommandRunner := events.NewApplyCommandRunner(
@@ -861,7 +861,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		parallelPoolSize,
 		silenceNoProjects,
 		false,
-		&sqBasedPullStatusFetcher,
+		&pullReqStatusFetcher,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
@@ -931,7 +931,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		SupportedVCSHosts:            []models.VCSHostType{models.Gitlab, models.Github, models.BitbucketCloud},
 		VCSClient:                    e2eVCSClient,
 	}
-	return ctrl, e2eVCSClient, e2eGithubGetter, workingDir, e2ePullApprovedCheker
+	return ctrl, e2eVCSClient, e2eGithubGetter, workingDir
 }
 
 type mockLockURLGenerator struct{}

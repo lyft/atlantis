@@ -380,7 +380,8 @@ type ProjectCommandContext struct {
 	Scope stats.Scope
 	// PullMergeable is true if the pull request for this project is able to be merged.
 	PullMergeable bool
-	PullStatus    PullReqStatus
+	// PullReqStatus holds approved, mergeable, and lock status for the project.
+	PullReqStatus PullReqStatus
 	// CurrentProjectPlanStatus is the status of the current project prior to this command.
 	ProjectPlanStatus ProjectPlanStatus
 	// Pull is the pull request we're responding to.
