@@ -39,6 +39,8 @@ type GithubPullRequestGetter interface {
 
 // IGithubClient exists to bridge the gap between GithubPullRequestGetter and Client interface to allow
 // for a single instrumented client
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_IGithub_client.go IGithubClient
 type IGithubClient interface {
 	Client
 	GithubPullRequestGetter

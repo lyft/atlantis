@@ -12,8 +12,11 @@ import (
 )
 
 func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope stats.Scope) ProjectCommandContextBuilder {
-	projectCommandContextBuilder := &DefaultProjectCommandContextBuilder{
-		CommentBuilder: commentBuilder,
+	// Adding PullReqStatusProjectCommandContextBuilder as adapter for building CommandContext by default.
+	projectCommandContextBuilder := &PullReqStatusProjectCommandContextBuilder{
+		ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
+			CommentBuilder: commentBuilder,
+		},
 	}
 
 	if policyCheckEnabled {
@@ -94,14 +97,14 @@ func (cb *PullReqStatusProjectCommandContextBuilder) BuildProjectContext(
 	repoDir string,
 	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
 ) (projectCmds []models.ProjectCommandContext) {
-	projectCmds = cb.ProjectCommandContextBuilder.BuildProjectContext(
+	cmds := cb.ProjectCommandContextBuilder.BuildProjectContext(
 		ctx, cmdName, prjCfg, commentFlags, repoDir, automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose,
 	)
+	projectCmds = []models.ProjectCommandContext{}
 
-	// Add the pull status contexts.
-	// TODO: What kind of check for mapping CommandContext to ProjectCommandContext?
-	for _, projectCmd := range projectCmds {
+	for _, projectCmd := range cmds {
 		projectCmd.PullReqStatus = ctx.PullRequestStatus
+		projectCmds = append(projectCmds, projectCmd)
 	}
 
 	return
@@ -156,7 +159,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 }
 
 type PolicyCheckProjectCommandContextBuilder struct {
-	ProjectCommandContextBuilder *DefaultProjectCommandContextBuilder
+	ProjectCommandContextBuilder ProjectCommandContextBuilder
 	CommentBuilder               CommentBuilder
 }
 

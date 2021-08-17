@@ -22,7 +22,7 @@ type SQBasedPullStatusFetcher struct {
 	ApprovedPullChecker PullApprovalChecker
 }
 
-func (s *SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models.PullRequest) (pullStatus models.PullReqStatus, err error) {
+func (s SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models.PullRequest) (pullStatus models.PullReqStatus, err error) {
 	statuses, err := s.ApprovedPullChecker.GetRepoStatuses(repo, pull)
 	if err != nil {
 		return pullStatus, errors.Wrapf(err, "fetching repo statuses for repo: %s, and pull number: %d", repo.FullName, pull.Num)
