@@ -109,7 +109,7 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 		// We want to continue because not all apply's will need this status,
 		// only if they rely on the mergeability requirement.
 		// PullRequestStatus sets approved, mergeable, and sqlocked to false when error.
-		ctx.Log.Warn("unable to get mergeable status: %s. Continuing with mergeable assumed false", err)
+		ctx.Log.Warn("unable to get pull request status: %s. Continuing with mergeable, approved, and sqlocked assumed false", err)
 	}
 
 	ctx.Log.Info("pull request mergeable status: %t", ctx.PullMergeable)

@@ -1024,12 +1024,10 @@ func TestGithubClient_PullIsLocked_Locked(t *testing.T) {
 	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
 	Ok(t, err)
 
-	context := vcs.SubmitQueueReadinessStatusContext
-	description := "{\"pr_number\": 176, \"waiting\": [\"approval\", \"lock\"]}"
 	statuses := []*github.RepoStatus{
 		{
-			Context:     &context,
-			Description: &description,
+			Context:     helper(vcs.SubmitQueueReadinessStatusContext),
+			Description: helper("{\"pr_number\": 176, \"waiting\": [\"approval\", \"lock\"]}"),
 		},
 	}
 
@@ -1055,12 +1053,10 @@ func TestGithubClient_PullIsLocked_Unlocked(t *testing.T) {
 	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
 	Ok(t, err)
 
-	context := vcs.SubmitQueueReadinessStatusContext
-	description := "{\"pr_number\": 176, \"waiting\": [\"approval\"]}"
 	statuses := []*github.RepoStatus{
 		{
-			Context:     &context,
-			Description: &description,
+			Context:     helper(vcs.SubmitQueueReadinessStatusContext),
+			Description: helper("{\"pr_number\": 176, \"waiting\": [\"approval\"]}"),
 		},
 	}
 
@@ -1086,12 +1082,10 @@ func TestGithubClient_PullIsLocked_SQContextNotFound(t *testing.T) {
 	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
 	Ok(t, err)
 
-	context := "random"
-	description := "{\"pr_number\": 176, \"waiting\": [\"approval\"]}"
 	statuses := []*github.RepoStatus{
 		{
-			Context:     &context,
-			Description: &description,
+			Context:     helper("random"),
+			Description: helper("{\"pr_number\": 176, \"waiting\": [\"approval\"]}"),
 		},
 	}
 
@@ -1117,43 +1111,10 @@ func TestGithubClient_PullIsLocked_WaitingKeyNotFound(t *testing.T) {
 	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
 	Ok(t, err)
 
-	context := vcs.SubmitQueueReadinessStatusContext
-	description := "{\"pr_number\": 176}"
 	statuses := []*github.RepoStatus{
 		{
-			Context:     &context,
-			Description: &description,
-		},
-	}
-
-	locked, err := client.PullIsLocked(models.Repo{
-		FullName:          "owner/repo",
-		Owner:             "owner",
-		Name:              "repo",
-		CloneURL:          "",
-		SanitizedCloneURL: "",
-		VCSHost: models.VCSHost{
-			Type:     models.Github,
-			Hostname: "github.com",
-		},
-	}, models.PullRequest{
-		Num:        1,
-		HeadCommit: "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-	}, statuses)
-	Ok(t, err)
-	Equals(t, false, locked)
-}
-
-func TestGithubClient_PullIsLocked_(t *testing.T) {
-	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
-	Ok(t, err)
-
-	context := vcs.SubmitQueueReadinessStatusContext
-	description := "{\"pr_number\": 176, \"waiting\": [\"approval\"]}"
-	statuses := []*github.RepoStatus{
-		{
-			Context:     &context,
-			Description: &description,
+			Context:     helper(vcs.SubmitQueueReadinessStatusContext),
+			Description: helper("{\"pr_number\": 176}"),
 		},
 	}
 

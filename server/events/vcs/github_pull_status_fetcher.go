@@ -23,10 +23,6 @@ type SQBasedPullStatusFetcher struct {
 }
 
 func (s *SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models.PullRequest) (pullStatus models.PullReqStatus, err error) {
-	// Get Repo statuses.
-	// Pass that that Pull Is Locked and Pull Is Mergeable (which forwards to getSubmitQueueMergeability)
-	// Check pull is approved.
-
 	statuses, err := s.ApprovedPullChecker.GetRepoStatuses(repo, pull)
 	if err != nil {
 		return pullStatus, errors.Wrapf(err, "fetching repo statuses for repo: %s, and pull number: %d", repo.FullName, pull.Num)
@@ -39,7 +35,7 @@ func (s *SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models
 
 	sqLocked, err := s.ApprovedPullChecker.PullIsLocked(repo, pull, statuses)
 	if err != nil {
-		return pullStatus, errors.Wrapf(err, "fetching pull approval status for repo: %s, and pull number: %d", repo.FullName, pull.Num)
+		return pullStatus, errors.Wrapf(err, "fetching pull locked status for repo: %s, and pull number: %d", repo.FullName, pull.Num)
 	}
 
 	mergeable, err := s.ApprovedPullChecker.PullIsSQMergeable(repo, pull, statuses)
