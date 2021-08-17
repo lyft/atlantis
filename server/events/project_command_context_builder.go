@@ -14,10 +14,8 @@ import (
 
 func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope stats.Scope) ProjectCommandContextBuilder {
 	// Adding PullReqStatusProjectCommandContextBuilder as adapter for building CommandContext by default.
-	projectCommandContextBuilder := &PullReqStatusProjectCommandContextBuilder{
-		ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
-			CommentBuilder: commentBuilder,
-		},
+	projectCommandContextBuilder := &DefaultProjectCommandContextBuilder{
+		CommentBuilder: commentBuilder,
 	}
 
 	if policyCheckEnabled {
@@ -28,10 +26,8 @@ func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder Comm
 	}
 
 	return &CommandScopedStatsProjectCommandContextBuilder{
-		ProjectCommandContextBuilder: &PullReqStatusProjectCommandContextBuilder{
-			ProjectCommandContextBuilder: projectCommandContextBuilder,
-		},
-		ProjectCounter: scope.NewCounter("projects"),
+		ProjectCommandContextBuilder: projectCommandContextBuilder,
+		ProjectCounter:               scope.NewCounter("projects"),
 	}
 }
 
@@ -141,7 +137,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		prjCfg.TerraformVersion = getTfVersion(ctx, filepath.Join(repoDir, prjCfg.RepoRelDir))
 	}
 
-	projectCmds = append(projectCmds, newProjectCommandContext(
+	projectCmdContext := newProjectCommandContext(
 		ctx,
 		cmdName,
 		cb.CommentBuilder.BuildApplyComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name, prjCfg.AutoMergeDisabled),
@@ -156,7 +152,11 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		parallelPlan,
 		verbose,
 		ctx.Scope,
-	))
+	)
+	// Map the CommandContext PullReqStatus to ProjectCommandContext PullReqStatus.
+	projectCmdContext.PullReqStatus = ctx.PullRequestStatus
+
+	projectCmds = append(projectCmds, projectCmdContext)
 
 	return
 }

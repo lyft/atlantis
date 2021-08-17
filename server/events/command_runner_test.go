@@ -70,9 +70,9 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	projectCommandBuilder = mocks.NewMockProjectCommandBuilder()
 	eventParsing = mocks.NewMockEventParsing()
 	vcsClient := vcsmocks.NewMockClient()
+	githubClient := vcsmocks.NewMockIGithubClient()
 	githubGetter = mocks.NewMockGithubPullGetter()
 	gitlabGetter = mocks.NewMockGitlabMergeRequestGetter()
-	pullApprovedCheker := vcsmocks.NewMockPullApprovalChecker()
 	azuredevopsGetter = mocks.NewMockAzureDevopsPullGetter()
 	logger = logging.NewNoopLogger(t)
 	projectCommandRunner = mocks.NewMockProjectCommandRunner()
@@ -134,7 +134,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	)
 
 	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		ApprovedPullChecker: pullApprovedCheker,
+		ApprovedPullChecker: githubClient,
 	}
 
 	applyCommandRunner = events.NewApplyCommandRunner(

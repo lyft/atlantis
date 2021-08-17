@@ -37,7 +37,7 @@ func (a *AggregateApplyRequirements) ValidateProject(repoDir string, ctx models.
 			}
 		case raw.UnlockedApplyRequirement:
 			if ctx.PullReqStatus.SQLocked {
-				return "Pull request must be unlocked before running apply.", nil
+				return "Pull request must be unlocked using the 🔓  emoji before running apply.", nil
 			}
 		}
 	}
