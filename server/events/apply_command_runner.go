@@ -1,6 +1,8 @@
 package events
 
 import (
+	"fmt"
+
 	"github.com/runatlantis/atlantis/server/events/db"
 	"github.com/runatlantis/atlantis/server/events/locking"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -103,6 +105,7 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	// the mergeability status of the pull request.
 	// This sets the approved, mergeable, and sqlocked status in the context.
 	ctx.PullRequestStatus, err = a.pullReqStatusFetcher.FetchPullStatus(baseRepo, pull)
+	ctx.Log.Debug(fmt.Sprintf("Status for Repo: %v fetched: %+v", ctx.HeadRepo.FullName, ctx.PullRequestStatus))
 
 	if err != nil {
 		// On error we continue the request with mergeable assumed false.
@@ -112,7 +115,7 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 		ctx.Log.Warn("unable to get pull request status: %s. Continuing with mergeable, approved, and sqlocked assumed false", err)
 	}
 
-	ctx.Log.Info("pull request mergeable status: %t", ctx.PullMergeable)
+	ctx.Log.Info("pull request mergeable status: %t", ctx.PullRequestStatus.Mergeable)
 
 	var projectCmds []models.ProjectCommandContext
 	projectCmds, err = a.prjCmdBuilder.BuildApplyCommands(ctx, cmd)

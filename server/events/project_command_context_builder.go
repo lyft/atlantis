@@ -1,6 +1,7 @@
 package events
 
 import (
+	"fmt"
 	"path/filepath"
 	"regexp"
 
@@ -102,9 +103,11 @@ func (cb *PullReqStatusProjectCommandContextBuilder) BuildProjectContext(
 	)
 	projectCmds = []models.ProjectCommandContext{}
 
+	ctx.Log.Debug("Mapping Command Context to ProjectCommandContext")
 	for _, projectCmd := range cmds {
 		projectCmd.PullReqStatus = ctx.PullRequestStatus
 		projectCmds = append(projectCmds, projectCmd)
+		ctx.Log.Debug(fmt.Sprintf("%v Status: %+v", projectCmd.PullInfo(), projectCmd.PullReqStatus))
 	}
 
 	return
