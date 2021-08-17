@@ -33,6 +33,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/feature"
 )
@@ -74,9 +75,8 @@ type DefaultClient struct {
 	// usePluginCache determines whether or not to set the TF_PLUGIN_CACHE_DIR env var
 	usePluginCache bool
 
-	terraformOutputChan chan<- *models.TerraformOutputLine
-
 	featureAllocator feature.Allocator
+	projectCmdOutputHandler handlers.ProjectCommandOutputHandler
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_downloader.go Downloader
@@ -108,7 +108,7 @@ func NewClientWithDefaultVersion(
 	tfDownloader Downloader,
 	usePluginCache bool,
 	fetchAsync bool,
-	terraformOutputChan chan<- *models.TerraformOutputLine,
+	projectCmdOutputHandler handlers.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
 ) (*DefaultClient, error) {
 	var finalDefaultVersion *version.Version
@@ -176,8 +176,8 @@ func NewClientWithDefaultVersion(
 		versionsLock:            &versionsLock,
 		versions:                versions,
 		usePluginCache:          usePluginCache,
-		terraformOutputChan:     terraformOutputChan,
 		featureAllocator:        featureAllocator,
+		projectCmdOutputHandler: projectCmdOutputHandler,
 	}, nil
 
 }
@@ -193,7 +193,7 @@ func NewTestClient(
 	tfDownloadURL string,
 	tfDownloader Downloader,
 	usePluginCache bool,
-	terraformOutputChan chan<- *models.TerraformOutputLine,
+	projectCmdOutputHandler handlers.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
 ) (*DefaultClient, error) {
 	return NewClientWithDefaultVersion(
@@ -208,7 +208,7 @@ func NewTestClient(
 		tfDownloader,
 		usePluginCache,
 		false,
-		terraformOutputChan,
+		projectCmdOutputHandler,
 		featureAllocator,
 	)
 }
@@ -232,7 +232,7 @@ func NewClient(
 	tfDownloadURL string,
 	tfDownloader Downloader,
 	usePluginCache bool,
-	terraformOutputChan chan<- *models.TerraformOutputLine,
+	projectCmdOutputHandler handlers.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
 ) (*DefaultClient, error) {
 	return NewClientWithDefaultVersion(
@@ -247,7 +247,7 @@ func NewClient(
 		tfDownloader,
 		usePluginCache,
 		true,
-		terraformOutputChan,
+		projectCmdOutputHandler,
 		featureAllocator,
 	)
 }
@@ -447,10 +447,7 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 			for s.Scan() {
 				message := s.Text()
 				outCh <- Line{Line: message}
-				c.terraformOutputChan <- &models.TerraformOutputLine{
-					ProjectInfo: ctx.PullInfo(),
-					Line:        message,
-				}
+				c.projectCmdOutputHandler.Send(ctx, message)
 			}
 			wg.Done()
 		}()
@@ -459,10 +456,7 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 			for s.Scan() {
 				message := s.Text()
 				outCh <- Line{Line: message}
-				c.terraformOutputChan <- &models.TerraformOutputLine{
-					ProjectInfo: ctx.PullInfo(),
-					Line:        message,
-				}
+				c.projectCmdOutputHandler.Send(ctx, message)
 			}
 			wg.Done()
 		}()
