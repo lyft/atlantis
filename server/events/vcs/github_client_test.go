@@ -1020,58 +1020,157 @@ func TestGithubClient_Retry404(t *testing.T) {
 	Equals(t, 3, numCalls)
 }
 
-func TestGithubClient_PullIsLocked(t *testing.T) {
-	/*
-	  1. Locked description.
-	  2. Unlocked description.
-	*/
+func TestGithubClient_PullIsLocked_Locked(t *testing.T) {
+	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
+	Ok(t, err)
 
-	cases := []struct {
-		state     string
-		descr     string
-		expLocked bool
-	}{
+	context := vcs.SubmitQueueReadinessStatusContext
+	description := "{\"pr_number\": 176, \"waiting\": [\"approval\", \"lock\"]}"
+	statuses := []*github.RepoStatus{
 		{
-			"locked",
-			"{\"pr_number\": 176, \"waiting\": [\"approval\", \"lock\"]}",
-			true,
-		},
-		{
-			"unlocked",
-			"{\"pr_number\": 176, \"waiting\": [\"approval\"]}",
-			false,
+			Context:     &context,
+			Description: &description,
 		},
 	}
 
-	for _, c := range cases {
-		t.Run(c.state, func(t *testing.T) {
-			client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
-			Ok(t, err)
+	locked, err := client.PullIsLocked(models.Repo{
+		FullName:          "owner/repo",
+		Owner:             "owner",
+		Name:              "repo",
+		CloneURL:          "",
+		SanitizedCloneURL: "",
+		VCSHost: models.VCSHost{
+			Type:     models.Github,
+			Hostname: "github.com",
+		},
+	}, models.PullRequest{
+		Num:        1,
+		HeadCommit: "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
+	}, statuses)
+	Ok(t, err)
+	Equals(t, true, locked)
+}
 
-			context := vcs.SubmitQueueReadinessStatusContext
-			statuses := []*github.RepoStatus{
-				{
-					Context:     &context,
-					Description: &c.descr,
-				},
-			}
+func TestGithubClient_PullIsLocked_Unlocked(t *testing.T) {
+	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
+	Ok(t, err)
 
-			locked, err := client.PullIsLocked(models.Repo{
-				FullName:          "owner/repo",
-				Owner:             "owner",
-				Name:              "repo",
-				CloneURL:          "",
-				SanitizedCloneURL: "",
-				VCSHost: models.VCSHost{
-					Type:     models.Github,
-					Hostname: "github.com",
-				},
-			}, models.PullRequest{
-				Num:        1,
-				HeadCommit: "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
-			}, statuses)
-			Ok(t, err)
-			Equals(t, c.expLocked, locked)
-		})
+	context := vcs.SubmitQueueReadinessStatusContext
+	description := "{\"pr_number\": 176, \"waiting\": [\"approval\"]}"
+	statuses := []*github.RepoStatus{
+		{
+			Context:     &context,
+			Description: &description,
+		},
 	}
+
+	locked, err := client.PullIsLocked(models.Repo{
+		FullName:          "owner/repo",
+		Owner:             "owner",
+		Name:              "repo",
+		CloneURL:          "",
+		SanitizedCloneURL: "",
+		VCSHost: models.VCSHost{
+			Type:     models.Github,
+			Hostname: "github.com",
+		},
+	}, models.PullRequest{
+		Num:        1,
+		HeadCommit: "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
+	}, statuses)
+	Ok(t, err)
+	Equals(t, false, locked)
+}
+
+func TestGithubClient_PullIsLocked_SQContextNotFound(t *testing.T) {
+	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
+	Ok(t, err)
+
+	context := "random"
+	description := "{\"pr_number\": 176, \"waiting\": [\"approval\"]}"
+	statuses := []*github.RepoStatus{
+		{
+			Context:     &context,
+			Description: &description,
+		},
+	}
+
+	locked, err := client.PullIsLocked(models.Repo{
+		FullName:          "owner/repo",
+		Owner:             "owner",
+		Name:              "repo",
+		CloneURL:          "",
+		SanitizedCloneURL: "",
+		VCSHost: models.VCSHost{
+			Type:     models.Github,
+			Hostname: "github.com",
+		},
+	}, models.PullRequest{
+		Num:        1,
+		HeadCommit: "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
+	}, statuses)
+	Ok(t, err)
+	Equals(t, false, locked)
+}
+
+func TestGithubClient_PullIsLocked_WaitingKeyNotFound(t *testing.T) {
+	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
+	Ok(t, err)
+
+	context := vcs.SubmitQueueReadinessStatusContext
+	description := "{\"pr_number\": 176}"
+	statuses := []*github.RepoStatus{
+		{
+			Context:     &context,
+			Description: &description,
+		},
+	}
+
+	locked, err := client.PullIsLocked(models.Repo{
+		FullName:          "owner/repo",
+		Owner:             "owner",
+		Name:              "repo",
+		CloneURL:          "",
+		SanitizedCloneURL: "",
+		VCSHost: models.VCSHost{
+			Type:     models.Github,
+			Hostname: "github.com",
+		},
+	}, models.PullRequest{
+		Num:        1,
+		HeadCommit: "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
+	}, statuses)
+	Ok(t, err)
+	Equals(t, false, locked)
+}
+
+func TestGithubClient_PullIsLocked_(t *testing.T) {
+	client, err := vcs.NewGithubClient("temp", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t))
+	Ok(t, err)
+
+	context := vcs.SubmitQueueReadinessStatusContext
+	description := "{\"pr_number\": 176, \"waiting\": [\"approval\"]}"
+	statuses := []*github.RepoStatus{
+		{
+			Context:     &context,
+			Description: &description,
+		},
+	}
+
+	locked, err := client.PullIsLocked(models.Repo{
+		FullName:          "owner/repo",
+		Owner:             "owner",
+		Name:              "repo",
+		CloneURL:          "",
+		SanitizedCloneURL: "",
+		VCSHost: models.VCSHost{
+			Type:     models.Github,
+			Hostname: "github.com",
+		},
+	}, models.PullRequest{
+		Num:        1,
+		HeadCommit: "832812d4777ddc4197685c5a8f864eaf8a82d4ae",
+	}, statuses)
+	Ok(t, err)
+	Equals(t, false, locked)
 }
