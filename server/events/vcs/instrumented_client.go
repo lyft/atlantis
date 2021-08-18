@@ -22,11 +22,11 @@ func NewInstrumentedGithubClient(client *GithubClient, statsScope stats.Scope, l
 	}
 
 	return &InstrumentedGithubClient{
-		InstrumentedClient:  instrumentedGHClient,
-		PullRequestGetter:   client,
-		PullApprovalChecker: client,
-		StatsScope:          scope,
-		Logger:              logger,
+		InstrumentedClient: instrumentedGHClient,
+		PullRequestGetter:  client,
+		GithubClient:       client,
+		StatsScope:         scope,
+		Logger:             logger,
 	}
 }
 
@@ -58,10 +58,10 @@ type IGithubClient interface {
 // methods and implement soley any github specific interfaces.
 type InstrumentedGithubClient struct {
 	*InstrumentedClient
-	PullRequestGetter   GithubPullRequestGetter
-	PullApprovalChecker PullApprovalChecker
-	StatsScope          stats.Scope
-	Logger              logging.SimpleLogging
+	PullRequestGetter GithubPullRequestGetter
+	GithubClient      PullApprovalChecker
+	StatsScope        stats.Scope
+	Logger            logging.SimpleLogging
 }
 
 func (c *InstrumentedGithubClient) GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error) {
@@ -104,7 +104,7 @@ func (c *InstrumentedGithubClient) PullIsSQMergeable(repo models.Repo, pull mode
 	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
 	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
 
-	sqMergeable, err := c.PullApprovalChecker.PullIsSQMergeable(repo, pull, statuses)
+	sqMergeable, err := c.GithubClient.PullIsSQMergeable(repo, pull, statuses)
 
 	if err != nil {
 		executionError.Inc()
@@ -126,7 +126,7 @@ func (c *InstrumentedGithubClient) PullIsLocked(repo models.Repo, pull models.Pu
 	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
 	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
 
-	locked, err := c.PullApprovalChecker.PullIsLocked(repo, pull, statuses)
+	locked, err := c.GithubClient.PullIsLocked(repo, pull, statuses)
 
 	if err != nil {
 		executionError.Inc()
@@ -148,7 +148,7 @@ func (c *InstrumentedGithubClient) GetRepoStatuses(repo models.Repo, pull models
 	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
 	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
 
-	statuses, err := c.PullApprovalChecker.GetRepoStatuses(repo, pull)
+	statuses, err := c.GithubClient.GetRepoStatuses(repo, pull)
 
 	if err != nil {
 		executionError.Inc()

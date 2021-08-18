@@ -12,7 +12,6 @@ import (
 )
 
 func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope stats.Scope) ProjectCommandContextBuilder {
-	// Adding PullReqStatusProjectCommandContextBuilder as adapter for building CommandContext by default.
 	projectCommandContextBuilder := &DefaultProjectCommandContextBuilder{
 		CommentBuilder: commentBuilder,
 	}
@@ -133,7 +132,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 }
 
 type PolicyCheckProjectCommandContextBuilder struct {
-	ProjectCommandContextBuilder ProjectCommandContextBuilder
+	ProjectCommandContextBuilder *DefaultProjectCommandContextBuilder
 	CommentBuilder               CommentBuilder
 }
 
