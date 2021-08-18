@@ -844,7 +844,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 
 	e2eMockGithubClient := vcsmocks.NewMockIGithubClient()
 	e2ePullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		ApprovedPullChecker: e2eMockGithubClient,
+		GithubClient: e2eMockGithubClient,
 	}
 
 	applyCommandRunner := events.NewApplyCommandRunner(

@@ -134,7 +134,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	)
 
 	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		ApprovedPullChecker: githubClient,
+		GithubClient: githubClient,
 	}
 
 	applyCommandRunner = events.NewApplyCommandRunner(

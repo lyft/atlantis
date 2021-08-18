@@ -561,7 +561,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	)
 
 	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		ApprovedPullChecker: githubClient,
+		GithubClient: githubClient,
 	}
 
 	applyCommandRunner := events.NewApplyCommandRunner(

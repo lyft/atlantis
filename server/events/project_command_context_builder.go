@@ -1,7 +1,6 @@
 package events
 
 import (
-	"fmt"
 	"path/filepath"
 	"regexp"
 
@@ -80,35 +79,6 @@ func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 	return
 }
 
-// PullReqStatusProjectCommandContextBuilder maps the command context to project command context
-type PullReqStatusProjectCommandContextBuilder struct {
-	ProjectCommandContextBuilder
-}
-
-// BuildProjectContext builds the context and injects the appropriate command level pull request status.
-func (cb *PullReqStatusProjectCommandContextBuilder) BuildProjectContext(
-	ctx *CommandContext,
-	cmdName models.CommandName,
-	prjCfg valid.MergedProjectCfg,
-	commentFlags []string,
-	repoDir string,
-	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
-) (projectCmds []models.ProjectCommandContext) {
-	cmds := cb.ProjectCommandContextBuilder.BuildProjectContext(
-		ctx, cmdName, prjCfg, commentFlags, repoDir, automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose,
-	)
-	projectCmds = []models.ProjectCommandContext{}
-
-	ctx.Log.Info("Mapping Command Context to ProjectCommandContext")
-	for _, projectCmd := range cmds {
-		projectCmd.PullReqStatus = ctx.PullRequestStatus
-		projectCmds = append(projectCmds, projectCmd)
-		ctx.Log.Info(fmt.Sprintf("%v Status: %+v", projectCmd.PullInfo(), projectCmd.PullReqStatus))
-	}
-
-	return
-}
-
 type DefaultProjectCommandContextBuilder struct {
 	CommentBuilder CommentBuilder
 }
@@ -153,6 +123,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		verbose,
 		ctx.Scope,
 	)
+
 	// Map the CommandContext PullReqStatus to ProjectCommandContext PullReqStatus.
 	projectCmdContext.PullReqStatus = ctx.PullRequestStatus
 
