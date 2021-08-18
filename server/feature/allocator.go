@@ -80,7 +80,7 @@ func NewGHSourcedAllocator(repoConfig RepoConfig, githubClient vcs.IGithubClient
 		return nil, errors.Wrapf(err, "initializing feature allocator")
 	}
 
-	return &PercentageBasedAllocator{}, err
+	return &PercentageBasedAllocator{logger: logger}, err
 
 }
 
