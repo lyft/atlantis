@@ -24,6 +24,8 @@ const (
 	conftestArch                 = "x86_64"
 )
 
+var outputArg = &Arg{Param: "github", Option: "-o"}
+
 type Arg struct {
 	Param  string
 	Option string
@@ -60,7 +62,10 @@ func (c ConftestTestCommandArgs) build() ([]string, error) {
 		commandArgs = append(commandArgs, a.build()...)
 	}
 
-	// add hardcoded options
+	// add hardcoded output arg
+	commandArgs = append(commandArgs, outputArg.build()...)
+
+	// add other hardcoded options
 	commandArgs = append(commandArgs, c.InputFile, "--no-color")
 
 	// add extra args provided through server config
