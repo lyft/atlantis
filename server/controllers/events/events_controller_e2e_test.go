@@ -868,6 +868,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		silenceNoProjects,
 		false,
 		&e2ePullReqStatusFetcher,
+		mocks.NewMockLogStreamURLGenerator(),
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(

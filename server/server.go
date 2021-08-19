@@ -599,6 +599,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.SilenceNoProjects,
 		userConfig.SilenceVCSStatusNoProjects,
 		&pullReqStatusFetcher,
+		router,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(

@@ -153,6 +153,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		SilenceNoProjects,
 		false,
 		&pullReqStatusFetcher,
+		eventmocks.NewMockLogStreamURLGenerator(),
 	)
 
 	approvePoliciesCommandRunner = events.NewApprovePoliciesCommandRunner(
