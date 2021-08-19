@@ -1,6 +1,8 @@
 package events
 
 import (
+	"strings"
+
 	"github.com/runatlantis/atlantis/server/events/db"
 	"github.com/runatlantis/atlantis/server/events/locking"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -60,6 +62,7 @@ type ApplyCommandRunner struct {
 	// SilenceVCSStatusNoPlans is whether any plan should set commit status if no projects
 	// are found
 	silenceVCSStatusNoProjects bool
+	logStreamURLGenerator      LogStreamURLGenerator
 }
 
 func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
@@ -135,6 +138,17 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 			}
 		}
 		return
+	}
+
+	projectLogStreamURLs := make([]string, 0)
+
+	for _, projectCommand := range projectCmds {
+		projectLogStreamURLs = append(projectLogStreamURLs, a.logStreamURLGenerator.GenerateLogStreamURL(pull, projectCommand))
+	}
+
+	err = a.vcsClient.CreateComment(baseRepo, pull.Num, ("Log Stream: " + strings.Join(projectLogStreamURLs, "\n")), models.ApplyCommand.String())
+	if err != nil {
+		ctx.Log.Err("unable to comment on pull request: %s", err)
 	}
 
 	// Only run commands in parallel if enabled
