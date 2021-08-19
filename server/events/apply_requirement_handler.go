@@ -4,6 +4,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/raw"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	"github.com/runatlantis/atlantis/server/feature"
 )
 
 //go:generate pegomock generate -m --package mocks -o mocks/mock_apply_handler.go ApplyRequirement
@@ -12,7 +13,8 @@ type ApplyRequirement interface {
 }
 
 type AggregateApplyRequirements struct {
-	WorkingDir WorkingDir
+	WorkingDir       WorkingDir
+	FeatureAllocator feature.Allocator
 }
 
 func (a *AggregateApplyRequirements) ValidateProject(repoDir string, ctx models.ProjectCommandContext) (failure string, err error) {
@@ -36,7 +38,12 @@ func (a *AggregateApplyRequirements) ValidateProject(repoDir string, ctx models.
 				return "Default branch must be rebased onto pull request before running apply.", nil
 			}
 		case raw.UnlockedApplyRequirement:
-			if ctx.PullReqStatus.SQLocked {
+			shouldAllocate, err := a.FeatureAllocator.ShouldAllocate(feature.AtlantisLock, ctx.BaseRepo.FullName)
+			if err != nil {
+				ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.AtlantisLock, err)
+			}
+
+			if shouldAllocate && ctx.PullReqStatus.SQLocked {
 				return "Pull request must be unlocked using the 🔓  emoji before running apply.", nil
 			}
 		}
