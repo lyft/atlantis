@@ -404,6 +404,8 @@ type ProjectCommandContext struct {
 	// commands for this project. This can be set to nil in which case we will
 	// use the default Atlantis terraform version.
 	TerraformVersion *version.Version
+	// Configuration metadata for a given project.
+	Tags map[string]string
 	// User is the user that triggered this command.
 	User User
 	// Verbose is true when the user would like verbose output.
@@ -667,7 +669,7 @@ func (c CommandName) TitleString() string {
 	return strings.Title(strings.ReplaceAll(strings.ToLower(c.String()), "_", " "))
 }
 
-type TerraformOutputLine struct {
+type ProjectCmdOutputLine struct {
 	ProjectInfo string
 
 	Line string

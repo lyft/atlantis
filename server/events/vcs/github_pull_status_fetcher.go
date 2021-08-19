@@ -24,7 +24,7 @@ func (s SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models.
 		return pullStatus, errors.Wrapf(err, "fetching pull approval status for repo: %s, and pull number: %d", repo.FullName, pull.Num)
 	}
 
-	sqLocked, err := s.GithubClient.PullIsLocked(repo, pull, statuses)
+	sqLocked, err := s.GithubClient.PullIsSQLocked(repo, pull, statuses)
 	if err != nil {
 		return pullStatus, errors.Wrapf(err, "fetching pull locked status for repo: %s, and pull number: %d", repo.FullName, pull.Num)
 	}

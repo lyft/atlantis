@@ -23,18 +23,17 @@ func NewInstrumentedGithubClient(client *GithubClient, statsScope stats.Scope, l
 
 	return &InstrumentedGithubClient{
 		InstrumentedClient: instrumentedGHClient,
-		PullRequestGetter:  client,
-		GithubClient:       client,
+		GhClient:           client,
 		StatsScope:         scope,
 		Logger:             logger,
 	}
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_status_fetcher.go PullApprovalChecker
-type PullApprovalChecker interface {
+type SQPullStatusChecker interface {
 	GetRepoStatuses(repo models.Repo, pull models.PullRequest) ([]*github.RepoStatus, error)
 	PullIsSQMergeable(repo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error)
-	PullIsLocked(baseRepo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error)
+	PullIsSQLocked(baseRepo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_request_getter.go GithubPullRequestGetter
@@ -51,17 +50,42 @@ type GithubPullRequestGetter interface {
 type IGithubClient interface {
 	Client
 	GithubPullRequestGetter
-	PullApprovalChecker
+	SQPullStatusChecker
+
+	GetContents(owner, repo, branch, path string) ([]byte, error)
 }
 
 // InstrumentedGithubClient should delegate to the underlying InstrumentedClient for vcs provider-agnostic
 // methods and implement soley any github specific interfaces.
 type InstrumentedGithubClient struct {
 	*InstrumentedClient
-	PullRequestGetter GithubPullRequestGetter
-	GithubClient      PullApprovalChecker
-	StatsScope        stats.Scope
-	Logger            logging.SimpleLogging
+	GhClient   *GithubClient
+	StatsScope stats.Scope
+	Logger     logging.SimpleLogging
+}
+
+func (c *InstrumentedGithubClient) GetContents(owner, repo, branch, path string) ([]byte, error) {
+	scope := c.StatsScope.Scope("get_contents")
+	logger := c.Logger.WithHistory([]interface{}{
+		"repository", fmt.Sprintf("%s/%s", owner, repo),
+	}...)
+
+	executionTime := scope.NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
+	defer executionTime.Complete()
+
+	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
+	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
+
+	contents, err := c.GhClient.GetContents(owner, repo, branch, path)
+
+	if err != nil {
+		executionError.Inc()
+		logger.Err("Unable to get contents, error: %s", err.Error())
+	} else {
+		executionSuccess.Inc()
+	}
+
+	return contents, err
 }
 
 func (c *InstrumentedGithubClient) GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error) {
@@ -82,7 +106,7 @@ func (c *InstrumentedGithubClient) GetPullRequestFromName(repoName string, repoO
 	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
 	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
 
-	pull, err := c.PullRequestGetter.GetPullRequestFromName(repoName, repoOwner, pullNum)
+	pull, err := c.GhClient.GetPullRequestFromName(repoName, repoOwner, pullNum)
 
 	if err != nil {
 		executionError.Inc()
@@ -104,7 +128,7 @@ func (c *InstrumentedGithubClient) PullIsSQMergeable(repo models.Repo, pull mode
 	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
 	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
 
-	sqMergeable, err := c.GithubClient.PullIsSQMergeable(repo, pull, statuses)
+	sqMergeable, err := c.GhClient.PullIsSQMergeable(repo, pull, statuses)
 
 	if err != nil {
 		executionError.Inc()
@@ -116,7 +140,7 @@ func (c *InstrumentedGithubClient) PullIsSQMergeable(repo models.Repo, pull mode
 	return sqMergeable, err
 }
 
-func (c *InstrumentedGithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error) {
+func (c *InstrumentedGithubClient) PullIsSQLocked(repo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error) {
 	scope := c.StatsScope.Scope("pull_is_locked")
 	logger := c.Logger.WithHistory(fmtLogSrc(repo, pull.Num)...)
 
@@ -126,7 +150,7 @@ func (c *InstrumentedGithubClient) PullIsLocked(repo models.Repo, pull models.Pu
 	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
 	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
 
-	locked, err := c.GithubClient.PullIsLocked(repo, pull, statuses)
+	locked, err := c.GhClient.PullIsLocked(repo, pull, statuses)
 
 	if err != nil {
 		executionError.Inc()
@@ -148,7 +172,7 @@ func (c *InstrumentedGithubClient) GetRepoStatuses(repo models.Repo, pull models
 	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
 	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
 
-	statuses, err := c.GithubClient.GetRepoStatuses(repo, pull)
+	statuses, err := c.GhClient.GetRepoStatuses(repo, pull)
 
 	if err != nil {
 		executionError.Inc()

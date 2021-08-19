@@ -64,6 +64,25 @@ func (mock *MockIGithubClient) DownloadRepoConfigFile(_param0 models.PullRequest
 	return ret0, ret1, ret2
 }
 
+func (mock *MockIGithubClient) GetContents(_param0 string, _param1 string, _param2 string, _param3 string) ([]byte, error) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockIGithubClient().")
+	}
+	params := []pegomock.Param{_param0, _param1, _param2, _param3}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("GetContents", params, []reflect.Type{reflect.TypeOf((*[]byte)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 []byte
+	var ret1 error
+	if len(result) != 0 {
+		if result[0] != nil {
+			ret0 = result[0].([]byte)
+		}
+		if result[1] != nil {
+			ret1 = result[1].(error)
+		}
+	}
+	return ret0, ret1
+}
+
 func (mock *MockIGithubClient) GetModifiedFiles(_param0 models.Repo, _param1 models.PullRequest) ([]string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockIGithubClient().")
@@ -208,12 +227,12 @@ func (mock *MockIGithubClient) PullIsApproved(_param0 models.Repo, _param1 model
 	return ret0, ret1
 }
 
-func (mock *MockIGithubClient) PullIsLocked(_param0 models.Repo, _param1 models.PullRequest, _param2 []*github.RepoStatus) (bool, error) {
+func (mock *MockIGithubClient) PullIsMergeable(_param0 models.Repo, _param1 models.PullRequest) (bool, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockIGithubClient().")
 	}
-	params := []pegomock.Param{_param0, _param1, _param2}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("PullIsLocked", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	params := []pegomock.Param{_param0, _param1}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("PullIsMergeable", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 bool
 	var ret1 error
 	if len(result) != 0 {
@@ -227,12 +246,12 @@ func (mock *MockIGithubClient) PullIsLocked(_param0 models.Repo, _param1 models.
 	return ret0, ret1
 }
 
-func (mock *MockIGithubClient) PullIsMergeable(_param0 models.Repo, _param1 models.PullRequest) (bool, error) {
+func (mock *MockIGithubClient) PullIsSQLocked(_param0 models.Repo, _param1 models.PullRequest, _param2 []*github.RepoStatus) (bool, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockIGithubClient().")
 	}
-	params := []pegomock.Param{_param0, _param1}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("PullIsMergeable", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	params := []pegomock.Param{_param0, _param1, _param2}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("PullIsSQLocked", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 bool
 	var ret1 error
 	if len(result) != 0 {
@@ -393,6 +412,45 @@ func (c *MockIGithubClient_DownloadRepoConfigFile_OngoingVerification) GetAllCap
 		_param0 = make([]models.PullRequest, len(c.methodInvocations))
 		for u, param := range params[0] {
 			_param0[u] = param.(models.PullRequest)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierMockIGithubClient) GetContents(_param0 string, _param1 string, _param2 string, _param3 string) *MockIGithubClient_GetContents_OngoingVerification {
+	params := []pegomock.Param{_param0, _param1, _param2, _param3}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "GetContents", params, verifier.timeout)
+	return &MockIGithubClient_GetContents_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type MockIGithubClient_GetContents_OngoingVerification struct {
+	mock              *MockIGithubClient
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *MockIGithubClient_GetContents_OngoingVerification) GetCapturedArguments() (string, string, string, string) {
+	_param0, _param1, _param2, _param3 := c.GetAllCapturedArguments()
+	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1], _param3[len(_param3)-1]
+}
+
+func (c *MockIGithubClient_GetContents_OngoingVerification) GetAllCapturedArguments() (_param0 []string, _param1 []string, _param2 []string, _param3 []string) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]string, len(c.methodInvocations))
+		for u, param := range params[0] {
+			_param0[u] = param.(string)
+		}
+		_param1 = make([]string, len(c.methodInvocations))
+		for u, param := range params[1] {
+			_param1[u] = param.(string)
+		}
+		_param2 = make([]string, len(c.methodInvocations))
+		for u, param := range params[2] {
+			_param2[u] = param.(string)
+		}
+		_param3 = make([]string, len(c.methodInvocations))
+		for u, param := range params[3] {
+			_param3[u] = param.(string)
 		}
 	}
 	return
@@ -650,41 +708,6 @@ func (c *MockIGithubClient_PullIsApproved_OngoingVerification) GetAllCapturedArg
 	return
 }
 
-func (verifier *VerifierMockIGithubClient) PullIsLocked(_param0 models.Repo, _param1 models.PullRequest, _param2 []*github.RepoStatus) *MockIGithubClient_PullIsLocked_OngoingVerification {
-	params := []pegomock.Param{_param0, _param1, _param2}
-	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "PullIsLocked", params, verifier.timeout)
-	return &MockIGithubClient_PullIsLocked_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
-}
-
-type MockIGithubClient_PullIsLocked_OngoingVerification struct {
-	mock              *MockIGithubClient
-	methodInvocations []pegomock.MethodInvocation
-}
-
-func (c *MockIGithubClient_PullIsLocked_OngoingVerification) GetCapturedArguments() (models.Repo, models.PullRequest, []*github.RepoStatus) {
-	_param0, _param1, _param2 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1]
-}
-
-func (c *MockIGithubClient_PullIsLocked_OngoingVerification) GetAllCapturedArguments() (_param0 []models.Repo, _param1 []models.PullRequest, _param2 [][]*github.RepoStatus) {
-	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
-	if len(params) > 0 {
-		_param0 = make([]models.Repo, len(c.methodInvocations))
-		for u, param := range params[0] {
-			_param0[u] = param.(models.Repo)
-		}
-		_param1 = make([]models.PullRequest, len(c.methodInvocations))
-		for u, param := range params[1] {
-			_param1[u] = param.(models.PullRequest)
-		}
-		_param2 = make([][]*github.RepoStatus, len(c.methodInvocations))
-		for u, param := range params[2] {
-			_param2[u] = param.([]*github.RepoStatus)
-		}
-	}
-	return
-}
-
 func (verifier *VerifierMockIGithubClient) PullIsMergeable(_param0 models.Repo, _param1 models.PullRequest) *MockIGithubClient_PullIsMergeable_OngoingVerification {
 	params := []pegomock.Param{_param0, _param1}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "PullIsMergeable", params, verifier.timeout)
@@ -711,6 +734,41 @@ func (c *MockIGithubClient_PullIsMergeable_OngoingVerification) GetAllCapturedAr
 		_param1 = make([]models.PullRequest, len(c.methodInvocations))
 		for u, param := range params[1] {
 			_param1[u] = param.(models.PullRequest)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierMockIGithubClient) PullIsSQLocked(_param0 models.Repo, _param1 models.PullRequest, _param2 []*github.RepoStatus) *MockIGithubClient_PullIsSQLocked_OngoingVerification {
+	params := []pegomock.Param{_param0, _param1, _param2}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "PullIsSQLocked", params, verifier.timeout)
+	return &MockIGithubClient_PullIsSQLocked_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type MockIGithubClient_PullIsSQLocked_OngoingVerification struct {
+	mock              *MockIGithubClient
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *MockIGithubClient_PullIsSQLocked_OngoingVerification) GetCapturedArguments() (models.Repo, models.PullRequest, []*github.RepoStatus) {
+	_param0, _param1, _param2 := c.GetAllCapturedArguments()
+	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1]
+}
+
+func (c *MockIGithubClient_PullIsSQLocked_OngoingVerification) GetAllCapturedArguments() (_param0 []models.Repo, _param1 []models.PullRequest, _param2 [][]*github.RepoStatus) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]models.Repo, len(c.methodInvocations))
+		for u, param := range params[0] {
+			_param0[u] = param.(models.Repo)
+		}
+		_param1 = make([]models.PullRequest, len(c.methodInvocations))
+		for u, param := range params[1] {
+			_param1[u] = param.(models.PullRequest)
+		}
+		_param2 = make([][]*github.RepoStatus, len(c.methodInvocations))
+		for u, param := range params[2] {
+			_param2[u] = param.([]*github.RepoStatus)
 		}
 	}
 	return

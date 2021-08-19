@@ -29,6 +29,9 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/terraform"
 	"github.com/runatlantis/atlantis/server/events/terraform/mocks"
+	"github.com/runatlantis/atlantis/server/feature"
+	fmocks "github.com/runatlantis/atlantis/server/feature/mocks"
+	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -61,11 +64,12 @@ Your version of Terraform is out of date! The latest version
 is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 `
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan *models.TerraformOutputLine)
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	ctx := models.ProjectCommandContext{
 		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
+		BaseRepo:   models.Repo{FullName: "owner/repo"},
 	}
 	defer cleanup()
 
@@ -77,13 +81,14 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 	Ok(t, err)
 	defer tempSetEnv(t, "PATH", fmt.Sprintf("%s:%s", tmp, os.Getenv("PATH")))()
 
-	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, tempchan)
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
+
+	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator)
 	Ok(t, err)
 
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
-
-	waitTfStreaming(tempchan)
 
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{"test": "123"}, nil, "")
 	Ok(t, err)
@@ -100,11 +105,12 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 `
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan *models.TerraformOutputLine)
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	ctx := models.ProjectCommandContext{
 		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
+		BaseRepo:   models.Repo{FullName: "owner/repo"},
 	}
 	defer cleanup()
 
@@ -114,13 +120,15 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 	Ok(t, err)
 	defer tempSetEnv(t, "PATH", fmt.Sprintf("%s:%s", tmp, os.Getenv("PATH")))()
 
-	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, tempchan)
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
+
+	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator)
 	Ok(t, err)
 
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
-	waitTfStreaming(tempchan)
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, fakeBinOut+"\n", output)
@@ -131,13 +139,16 @@ is 0.11.13. You can update by downloading from www.terraform.io/downloads.html
 func TestNewClient_NoTF(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan<- *models.TerraformOutputLine)
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	defer cleanup()
 
 	// Set PATH to only include our empty directory.
 	defer tempSetEnv(t, "PATH", tmp)()
 
-	_, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, tempchan)
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
+
+	_, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator)
 	ErrEquals(t, "terraform not found in $PATH. Set --default-tf-version or download terraform from https://www.terraform.io/downloads.html", err)
 }
 
@@ -147,11 +158,12 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	fakeBinOut := "Terraform v0.11.10\n"
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan *models.TerraformOutputLine)
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	ctx := models.ProjectCommandContext{
 		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
+		BaseRepo:   models.Repo{FullName: "owner/repo"},
 	}
 	defer cleanup()
 
@@ -161,13 +173,14 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	Ok(t, err)
 	defer tempSetEnv(t, "PATH", fmt.Sprintf("%s:%s", tmp, os.Getenv("PATH")))()
 
-	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, tempchan)
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
+
+	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator)
 	Ok(t, err)
 
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
-
-	waitTfStreaming(tempchan)
 
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
@@ -179,11 +192,12 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	fakeBinOut := "Terraform v0.11.10\n"
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan *models.TerraformOutputLine)
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	ctx := models.ProjectCommandContext{
 		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
+		BaseRepo:   models.Repo{FullName: "owner/repo"},
 	}
 	defer cleanup()
 
@@ -192,13 +206,14 @@ func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	Ok(t, err)
 	defer tempSetEnv(t, "PATH", fmt.Sprintf("%s:%s", tmp, os.Getenv("PATH")))()
 
-	c, err := terraform.NewClient(logging.NewNoopLogger(t), binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, tempchan)
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
+
+	c, err := terraform.NewClient(logging.NewNoopLogger(t), binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator)
 	Ok(t, err)
 
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
-
-	waitTfStreaming(tempchan)
 
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
@@ -210,11 +225,12 @@ func TestNewClient_DefaultTFFlagDownload(t *testing.T) {
 	RegisterMockTestingT(t)
 	logger := logging.NewNoopLogger(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan *models.TerraformOutputLine)
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	ctx := models.ProjectCommandContext{
 		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
+		BaseRepo:   models.Repo{FullName: "owner/repo"},
 	}
 	defer cleanup()
 
@@ -227,7 +243,9 @@ func TestNewClient_DefaultTFFlagDownload(t *testing.T) {
 		err := ioutil.WriteFile(params[0].(string), []byte("#!/bin/sh\necho '\nTerraform v0.11.10\n'"), 0700) // #nosec G306
 		return []pegomock.ReturnValue{err}
 	})
-	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, "https://my-mirror.releases.mycompany.com", mockDownloader, true, tempchan)
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
+	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, "https://my-mirror.releases.mycompany.com", mockDownloader, true, projectCmdOutputHandler, allocator)
 	Ok(t, err)
 
 	Ok(t, err)
@@ -243,7 +261,6 @@ func TestNewClient_DefaultTFFlagDownload(t *testing.T) {
 	// Reset PATH so that it has sh.
 	Ok(t, os.Setenv("PATH", orig))
 
-	waitTfStreaming(tempchan)
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, nil, "")
 	Ok(t, err)
 	Equals(t, "\nTerraform v0.11.10\n\n", output)
@@ -253,9 +270,11 @@ func TestNewClient_DefaultTFFlagDownload(t *testing.T) {
 func TestNewClient_BadVersion(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	_, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan<- *models.TerraformOutputLine)
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	defer cleanup()
-	_, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "malformed", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, tempchan)
+	allocator := fmocks.NewMockAllocator()
+
+	_, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "malformed", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator)
 	ErrEquals(t, "Malformed version: malformed", err)
 }
 
@@ -264,11 +283,12 @@ func TestRunCommandWithVersion_DLsTF(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	RegisterMockTestingT(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan *models.TerraformOutputLine)
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	ctx := models.ProjectCommandContext{
 		Log:        logging.NewNoopLogger(t),
 		Workspace:  "default",
 		RepoRelDir: ".",
+		BaseRepo:   models.Repo{FullName: "owner/repo"},
 	}
 	defer cleanup()
 
@@ -285,14 +305,15 @@ func TestRunCommandWithVersion_DLsTF(t *testing.T) {
 		return []pegomock.ReturnValue{err}
 	})
 
-	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, mockDownloader, true, tempchan)
+	allocator := fmocks.NewMockAllocator()
+	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
+
+	c, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, mockDownloader, true, projectCmdOutputHandler, allocator)
 	Ok(t, err)
 	Equals(t, "0.11.10", c.DefaultVersion().String())
 
 	v, err := version.NewVersion("99.99.99")
 	Ok(t, err)
-
-	waitTfStreaming(tempchan)
 
 	output, err := c.RunCommandWithVersion(ctx, tmp, nil, map[string]string{}, v, "")
 
@@ -305,12 +326,14 @@ func TestEnsureVersion_downloaded(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	RegisterMockTestingT(t)
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
-	tempchan := make(chan<- *models.TerraformOutputLine)
+	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	defer cleanup()
 
 	mockDownloader := mocks.NewMockDownloader()
 
-	c, err := terraform.NewTestClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, mockDownloader, true, tempchan)
+	allocator := fmocks.NewMockAllocator()
+
+	c, err := terraform.NewTestClient(logger, binDir, cacheDir, "", "", "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, mockDownloader, true, projectCmdOutputHandler, allocator)
 	Ok(t, err)
 
 	Equals(t, "0.11.10", c.DefaultVersion().String())
@@ -351,12 +374,4 @@ func mkSubDirs(t *testing.T) (string, string, string, func()) {
 	Ok(t, err)
 
 	return tmp, binDir, cachedir, cleanup
-}
-
-func waitTfStreaming(ch chan *models.TerraformOutputLine) {
-	go func() {
-		for range ch {
-		}
-		close(ch)
-	}()
 }
