@@ -23,6 +23,7 @@ func NewPlanCommandRunner(
 	parallelPoolSize int,
 	SilenceNoProjects bool,
 	pullStatusFetcher PullStatusFetcher,
+	logStreamURLGenerator LogStreamURLGenerator,
 ) *PlanCommandRunner {
 	return &PlanCommandRunner{
 		silenceVCSStatusNoPlans:    silenceVCSStatusNoPlans,
@@ -40,6 +41,7 @@ func NewPlanCommandRunner(
 		parallelPoolSize:           parallelPoolSize,
 		SilenceNoProjects:          SilenceNoProjects,
 		pullStatusFetcher:          pullStatusFetcher,
+		logStreamURLGenerator:      logStreamURLGenerator,
 	}
 }
 

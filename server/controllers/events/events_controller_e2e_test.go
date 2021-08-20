@@ -802,6 +802,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: workingDir,
 		},
+		LogStreamURLGenerator: mocks.NewMockLogStreamURLGenerator(),
 	}
 
 	dbUpdater := &events.DBUpdater{
@@ -844,6 +845,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		parallelPoolSize,
 		silenceNoProjects,
 		boltdb,
+		mocks.NewMockLogStreamURLGenerator(),
 	)
 
 	e2eMockGithubClient := vcsmocks.NewMockIGithubClient()

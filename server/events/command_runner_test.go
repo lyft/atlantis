@@ -131,6 +131,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		parallelPoolSize,
 		SilenceNoProjects,
 		defaultBoltDB,
+		eventmocks.NewMockLogStreamURLGenerator(),
 	)
 
 	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{

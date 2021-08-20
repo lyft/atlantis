@@ -530,6 +530,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDirLocker:           workingDirLocker,
 		ProjectCmdOutputHandler:    projectCmdOutputHandler,
 		AggregateApplyRequirements: applyRequirementHandler,
+		LogStreamURLGenerator:      router,
 	}
 
 	dbUpdater := &events.DBUpdater{
@@ -576,6 +577,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceNoProjects,
 		boltdb,
+		router,
 	)
 
 	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
