@@ -109,7 +109,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			Comments: []string{
 				"atlantis apply",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 5, exp 3
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
@@ -125,7 +125,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis plan",
 				"atlantis apply",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 7 exp 4
 				{"exp-output-autoplan.txt"},
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply.txt"},
@@ -141,7 +141,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis plan -- -var var=overridden",
 				"atlantis apply",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 7 exp 4
 				{"exp-output-autoplan.txt"},
 				{"exp-output-atlantis-plan-var-overridden.txt"},
 				{"exp-output-apply-var.txt"},
@@ -159,7 +159,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis apply -w default",
 				"atlantis apply -w new_workspace",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 11 exp 6
 				{"exp-output-autoplan.txt"},
 				{"exp-output-atlantis-plan.txt"},
 				{"exp-output-atlantis-plan-new-workspace.txt"},
@@ -178,7 +178,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis plan -w new_workspace -- -var var=new_workspace",
 				"atlantis apply",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 9 exp 5
 				{"exp-output-autoplan.txt"},
 				{"exp-output-atlantis-plan.txt"},
 				{"exp-output-atlantis-plan-new-workspace.txt"},
@@ -195,7 +195,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis apply -w staging",
 				"atlantis apply -w default",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 7 exp 4
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply-staging.txt"},
 				{"exp-output-apply-default.txt"},
@@ -210,7 +210,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			Comments: []string{
 				"atlantis apply",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 5 exp 3
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply-all.txt"},
 				{"exp-output-merge.txt"},
@@ -224,7 +224,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			Comments: []string{
 				"atlantis apply -d staging",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 5 exp 3
 				{"exp-output-autoplan-only-staging.txt"},
 				{"exp-output-apply-staging.txt"},
 				{"exp-output-merge-only-staging.txt"},
@@ -241,7 +241,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis apply -d staging",
 				"atlantis apply -d production",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 9 exp 5
 				{"exp-output-plan-staging.txt"},
 				{"exp-output-plan-production.txt"},
 				{"exp-output-apply-staging.txt"},
@@ -258,7 +258,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis apply -d staging",
 				"atlantis apply -d production",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 7 exp 4
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply-staging.txt"},
 				{"exp-output-apply-production.txt"},
@@ -274,7 +274,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis apply -p staging",
 				"atlantis apply -p default",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 7 exp 4
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply-staging.txt"},
 				{"exp-output-apply-default.txt"},
@@ -292,7 +292,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis apply -p staging",
 				"atlantis apply -p default",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 9 exp 5
 				{"exp-output-plan-staging.txt"},
 				{"exp-output-plan-default.txt"},
 				{"exp-output-apply-staging.txt"},
@@ -310,7 +310,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis apply -d dir1",
 				"atlantis apply -d dir2",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 8 exp 5
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply-dir1.txt"},
 				{"exp-output-apply-dir2.txt"},
@@ -328,7 +328,7 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis apply -w staging",
 				"atlantis apply -w default",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 7 exp 4
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply-staging-workspace.txt"},
 				{"exp-output-apply-default-workspace.txt"},
@@ -344,7 +344,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			Comments: []string{
 				"atlantis apply",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 5 exp 3
 				{"exp-output-autoplan-staging.txt", "exp-output-autoplan-production.txt"},
 				{"exp-output-apply-all-staging.txt", "exp-output-apply-all-production.txt"},
 				{"exp-output-merge.txt"},
@@ -360,7 +360,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			Comments: []string{
 				"atlantis apply",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 4 exp 3
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply-locked.txt"},
 				{"exp-output-merge.txt"},
@@ -376,7 +376,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			Comments: []string{
 				"atlantis apply",
 			},
-			ExpReplies: [][]string{
+			ExpReplies: [][]string{ //got 4 exp 3
 				{"exp-output-autoplan.txt"},
 				{"exp-output-apply-locked.txt"},
 				{"exp-output-merge.txt"},

@@ -111,7 +111,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
 		projectLogStreamURLs = append(projectLogStreamURLs, p.logStreamURLGenerator.GenerateLogStreamURL(pull, projectCommand))
 	}
 
-	err = p.vcsClient.CreateComment(baseRepo, pull.Num, ("Log Stream: " + strings.Join(projectLogStreamURLs, "\n")), models.PlanCommand.String())
+	err = p.vcsClient.CreateComment(baseRepo, pull.Num, ("Real-time terraform output for autoplan: " + strings.Join(projectLogStreamURLs, "\n")), models.PlanCommand.String())
 	if err != nil {
 		ctx.Log.Err("unable to comment on pull request: %s", err)
 	}
@@ -199,7 +199,7 @@ func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 		projectLogStreamURLs = append(projectLogStreamURLs, tempURLHold)
 	}
 
-	err = p.vcsClient.CreateComment(baseRepo, pull.Num, ("Log Stream: " + strings.Join(projectLogStreamURLs, "\n")), models.PlanCommand.String())
+	err = p.vcsClient.CreateComment(baseRepo, pull.Num, ("Real-time terraform output for plan workflow: " + strings.Join(projectLogStreamURLs, "\n")), models.PlanCommand.String())
 	if err != nil {
 		ctx.Log.Err("unable to comment on pull request: %s", err)
 	}

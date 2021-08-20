@@ -146,7 +146,7 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 		projectLogStreamURLs = append(projectLogStreamURLs, a.logStreamURLGenerator.GenerateLogStreamURL(pull, projectCommand))
 	}
 
-	err = a.vcsClient.CreateComment(baseRepo, pull.Num, ("Log Stream: " + strings.Join(projectLogStreamURLs, "\n")), models.ApplyCommand.String())
+	err = a.vcsClient.CreateComment(baseRepo, pull.Num, ("Real-time terraform output for apply workflow: " + strings.Join(projectLogStreamURLs, "\n")), models.ApplyCommand.String())
 	if err != nil {
 		ctx.Log.Err("unable to comment on pull request: %s", err)
 	}
