@@ -95,8 +95,7 @@ Similarly, subscribe for the following events:
 ```
 - Create a test terraform repository in your GitHub.
 - Create a personal access token for Atlantis. See [Create a GitHub token](https://github.com/runatlantis/atlantis/tree/master/runatlantis.io/docs/access-credentials.md#generating-an-access-token).
-
-### Start Atlantis in server mode using that token:
+- Start Atlantis in server mode using that token:
 ```
 atlantis server --gh-user <your username> --gh-token <your token> --repo-allowlist <your repo> --gh-webhook-secret <your webhook secret> --log-level debug
 ```
