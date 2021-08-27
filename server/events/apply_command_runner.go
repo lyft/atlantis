@@ -26,6 +26,7 @@ func NewApplyCommandRunner(
 	silenceVCSStatusNoProjects bool,
 	pullReqStatusFetcher vcs.PullReqStatusFetcher,
 	logStreamURLGenerator LogStreamURLGenerator,
+	featureAllocator feature.Allocator,
 ) *ApplyCommandRunner {
 	return &ApplyCommandRunner{
 		vcsClient:                  vcsClient,
@@ -43,6 +44,7 @@ func NewApplyCommandRunner(
 		silenceVCSStatusNoProjects: silenceVCSStatusNoProjects,
 		pullReqStatusFetcher:       pullReqStatusFetcher,
 		logStreamURLGenerator:      logStreamURLGenerator,
+		featureAllocator:           featureAllocator,
 	}
 }
 

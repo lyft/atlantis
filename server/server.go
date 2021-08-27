@@ -578,6 +578,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.SilenceNoProjects,
 		boltdb,
 		router,
+		featureAllocator,
 	)
 
 	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
@@ -600,6 +601,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.SilenceVCSStatusNoProjects,
 		&pullReqStatusFetcher,
 		router,
+		featureAllocator,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(

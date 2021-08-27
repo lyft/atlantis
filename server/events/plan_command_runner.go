@@ -25,6 +25,7 @@ func NewPlanCommandRunner(
 	SilenceNoProjects bool,
 	pullStatusFetcher PullStatusFetcher,
 	logStreamURLGenerator LogStreamURLGenerator,
+	featureAllocator feature.Allocator,
 ) *PlanCommandRunner {
 	return &PlanCommandRunner{
 		silenceVCSStatusNoPlans:    silenceVCSStatusNoPlans,
@@ -43,6 +44,7 @@ func NewPlanCommandRunner(
 		SilenceNoProjects:          SilenceNoProjects,
 		pullStatusFetcher:          pullStatusFetcher,
 		logStreamURLGenerator:      logStreamURLGenerator,
+		featureAllocator:           featureAllocator,
 	}
 }
 

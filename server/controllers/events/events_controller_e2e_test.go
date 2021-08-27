@@ -846,6 +846,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		silenceNoProjects,
 		boltdb,
 		mocks.NewMockLogStreamURLGenerator(),
+		featureAllocator,
 	)
 
 	e2eMockGithubClient := vcsmocks.NewMockIGithubClient()
@@ -869,6 +870,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		false,
 		&e2ePullReqStatusFetcher,
 		mocks.NewMockLogStreamURLGenerator(),
+		featureAllocator,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
