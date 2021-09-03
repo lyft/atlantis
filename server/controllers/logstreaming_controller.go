@@ -117,17 +117,35 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 	}
 
 	c, err := j.WebsocketHandler.Upgrade(w, r, nil)
-
 	if err != nil {
 		j.Logger.Warn("Failed to upgrade websocket: %s", err)
 		return
 	}
 
-	defer c.Close()
+	// Add a reader goroutine to listen for socket.close() events.
+	go func() {
+		for {
+			_, _, err := c.ReadMessage()
+			if err != nil {
+				j.Logger.Warn("Failed to read WS message: %s", err)
+				return
+			}
+		}
+	}()
 
 	pull := pullInfo.String()
 
-	err = j.ProjectCommandOutputHandler.Receive(pull, func(msg string) error {
+	wsChannel := make(chan string)
+	c.SetCloseHandler(func(code int, text string) error {
+		j.Logger.Info(fmt.Sprintf("Nana closing ws code: %d text: %s", code, text))
+
+		// Close the channnel after websocket connection closed.
+		// Will gracefully exit the ProjectCommandOutputHandler.Receive() call and cleanup.
+		close(wsChannel)
+		return nil
+	})
+
+	err = j.ProjectCommandOutputHandler.Receive(pull, wsChannel, func(msg string) error {
 		if err := c.WriteMessage(websocket.BinaryMessage, []byte(msg+"\r\n\t")); err != nil {
 			j.Logger.Warn("Failed to write ws message: %s", err)
 			return err

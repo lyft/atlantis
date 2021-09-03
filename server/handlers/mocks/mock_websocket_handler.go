@@ -26,17 +26,17 @@ func NewMockWebsocketHandler(options ...pegomock.Option) *MockWebsocketHandler {
 func (mock *MockWebsocketHandler) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockWebsocketHandler) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockWebsocketHandler) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (handlers.WebsocketResponseWriter, error) {
+func (mock *MockWebsocketHandler) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (handlers.WebsocketConnectionWrapper, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockWebsocketHandler().")
 	}
 	params := []pegomock.Param{w, r, responseHeader}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("Upgrade", params, []reflect.Type{reflect.TypeOf((*handlers.WebsocketResponseWriter)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 handlers.WebsocketResponseWriter
+	result := pegomock.GetGenericMockFrom(mock).Invoke("Upgrade", params, []reflect.Type{reflect.TypeOf((*handlers.WebsocketConnectionWrapper)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 handlers.WebsocketConnectionWrapper
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(handlers.WebsocketResponseWriter)
+			ret0 = result[0].(handlers.WebsocketConnectionWrapper)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)
