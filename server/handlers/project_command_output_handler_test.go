@@ -21,38 +21,38 @@ func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutp
 
 func TestProjectCommandOutputHandler(t *testing.T) {
 
-	REPO_NAME := "test-repo"
-	REPO_OWNER := "test-org"
-	REPO_BASE_BRANCH := "master"
-	USER := "test-user"
-	WORKSPACE := "myworkspace"
-	REPO_DIR := "test-dir"
-	PROJECT_NAME := "test-project"
-	MSG := "Test Terraform Output"
+	RepoName := "test-repo"
+	RepoOwner := "test-org"
+	RepoBaseBranch := "master"
+	User := "test-user"
+	Workspace := "myworkspace"
+	RepoDir := "test-dir"
+	ProjectName := "test-project"
+	Msg := "Test Terraform Output"
 
 	logger := logging.NewNoopLogger(t)
 	ctx := models.ProjectCommandContext{
 		BaseRepo: models.Repo{
-			Name:  REPO_NAME,
-			Owner: REPO_OWNER,
+			Name:  RepoName,
+			Owner: RepoOwner,
 		},
 		HeadRepo: models.Repo{
-			Name:  REPO_NAME,
-			Owner: REPO_OWNER,
+			Name:  RepoName,
+			Owner: RepoOwner,
 		},
 		Pull: models.PullRequest{
 			Num:        1,
-			HeadBranch: REPO_BASE_BRANCH,
-			BaseBranch: REPO_BASE_BRANCH,
-			Author:     USER,
+			HeadBranch: RepoBaseBranch,
+			BaseBranch: RepoBaseBranch,
+			Author:     User,
 		},
 		User: models.User{
-			Username: USER,
+			Username: User,
 		},
 		Log:         logger,
-		Workspace:   WORKSPACE,
-		RepoRelDir:  REPO_DIR,
-		ProjectName: PROJECT_NAME,
+		Workspace:   Workspace,
+		RepoRelDir:  RepoDir,
+		ProjectName: ProjectName,
 	}
 
 	t.Run("Should Receive Message Sent in the ProjectCmdOutput channel", func(t *testing.T) {
@@ -75,11 +75,11 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 			Ok(t, err)
 		}()
 
-		projectOutputHandler.Send(ctx, MSG)
+		projectOutputHandler.Send(ctx, Msg)
 
 		// Wait for the msg to be read.
 		wg.Wait()
-		Equals(t, expectedMsg, MSG)
+		Equals(t, expectedMsg, Msg)
 	})
 
 	t.Run("Should Clear ProjectOutputBuffer when new Plan", func(t *testing.T) {
@@ -100,7 +100,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 			Ok(t, err)
 		}()
 
-		projectOutputHandler.Send(ctx, MSG)
+		projectOutputHandler.Send(ctx, Msg)
 
 		// Wait for the msg to be read.
 		wg.Wait()
@@ -131,7 +131,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 			Ok(t, err)
 		}()
 
-		projectOutputHandler.Send(ctx, MSG)
+		projectOutputHandler.Send(ctx, Msg)
 
 		// Wait for the msg to be read.
 		wg.Wait()
@@ -163,7 +163,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 			Ok(t, err)
 		}()
 
-		projectOutputHandler.Send(ctx, MSG)
+		projectOutputHandler.Send(ctx, Msg)
 
 		// Wait for the msg to be read.
 		wg.Wait()
@@ -190,11 +190,11 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// Make sure addChan gets the buffer lock and adds ch to the map.
 		time.Sleep(1 * time.Second)
 
-		projectOutputHandler.Send(ctx, MSG)
+		projectOutputHandler.Send(ctx, Msg)
 
 		// Wait for the message to be read.
 		wg.Wait()
 		close(ch)
-		assert.Equal(t, []string{MSG, MSG}, expectedMsg)
+		assert.Equal(t, []string{Msg, Msg}, expectedMsg)
 	})
 }
