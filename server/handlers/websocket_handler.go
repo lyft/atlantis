@@ -12,7 +12,7 @@ type WebsocketHandler interface {
 	Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (WebsocketConnectionWrapper, error)
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_websocket_response_writer.go WebsocketResponseWriter
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_websocket_connection_wrapper.go WebsocketConnectionWrapper
 
 type WebsocketConnectionWrapper interface {
 	ReadMessage() (messageType int, p []byte, err error)

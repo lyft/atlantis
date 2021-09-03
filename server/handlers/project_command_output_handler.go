@@ -121,6 +121,7 @@ func (p *DefaultProjectCommandOutputHandler) writeLogLine(pull string, line stri
 		select {
 		case ch <- line:
 		default:
+			// Buffered chan of size 10. Delete chan if still blocking
 			delete(p.receiverBuffers[pull], ch)
 		}
 	}

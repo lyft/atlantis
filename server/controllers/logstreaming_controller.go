@@ -135,10 +135,9 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 
 	pull := pullInfo.String()
 
-	wsChannel := make(chan string)
+	// Buffer size = 10 allows for any dealys in ws connection message.
+	wsChannel := make(chan string, 10)
 	c.SetCloseHandler(func(code int, text string) error {
-		j.Logger.Info(fmt.Sprintf("Nana closing ws code: %d text: %s", code, text))
-
 		// Close the channnel after websocket connection closed.
 		// Will gracefully exit the ProjectCommandOutputHandler.Receive() call and cleanup.
 		close(wsChannel)
