@@ -35,10 +35,6 @@ type ProjectCommandOutputHandler interface {
 
 	// Listens for msg from channel
 	Handle()
-
-	// Testing
-	GetReceiverBufferForPull(pull string) map[chan string]bool
-	GetProjectOutputBuffer(pull string) []string
 }
 
 func NewProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutputLine, logger logging.SimpleLogging) ProjectCommandOutputHandler {
@@ -57,16 +53,14 @@ func (p *DefaultProjectCommandOutputHandler) Send(ctx models.ProjectCommandConte
 	}
 }
 
-func (p *DefaultProjectCommandOutputHandler) Receive(projectInfo string, ch chan string, callback func(msg string) error) error {
+func (p *DefaultProjectCommandOutputHandler) Receive(projectInfo string, receiverCh chan string, callback func(msg string) error) error {
 
 	// Avoid deadlock when projectOutputBuffer size is greater than the channel (currently set to 1000)
 	// Running this as a goroutine allows for the channel to be read in callback
-	go p.addChan(ch, projectInfo)
+	go p.addChan(receiverCh, projectInfo)
+	defer p.cleanUp(projectInfo, receiverCh)
 
-	// Cleanup after WS conn is closed.
-	defer p.removeChan(projectInfo, ch)
-
-	for msg := range ch {
+	for msg := range receiverCh {
 		if err := callback(msg); err != nil {
 			return err
 		}
@@ -121,7 +115,12 @@ func (p *DefaultProjectCommandOutputHandler) writeLogLine(pull string, line stri
 		select {
 		case ch <- line:
 		default:
-			// Buffered chan of size 10. Delete chan if still blocking
+			// Client ws conn could be closed in two ways:
+			// 1. Client closes the conn gracefully -> the closeHandler() is executed which
+			//  	closes the channel and cleans up resources.
+			// 2. Client does not close the conn and the closeHandler() is not executed -> the
+			// 		receiverChan will be blocking for N number of messages (equal to buffer size)
+			// 		before we delete the channel and clean up the resources.
 			delete(p.receiverBuffers[pull], ch)
 		}
 	}
@@ -136,7 +135,7 @@ func (p *DefaultProjectCommandOutputHandler) writeLogLine(pull string, line stri
 }
 
 //Remove channel, so client no longer receives Terraform output
-func (p *DefaultProjectCommandOutputHandler) removeChan(pull string, ch chan string) {
+func (p *DefaultProjectCommandOutputHandler) cleanUp(pull string, ch chan string) {
 	p.receiverBuffersLock.Lock()
 	delete(p.receiverBuffers[pull], ch)
 	p.receiverBuffersLock.Unlock()

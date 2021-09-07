@@ -108,9 +108,12 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// Send a clear msg
 		projectOutputHandler.Clear(ctx)
 
+		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.DefaultProjectCommandOutputHandler)
+		assert.True(t, ok)
+
 		// Wait for the clear msg to be received by handle()
 		time.Sleep(1 * time.Second)
-		assert.Empty(t, projectOutputHandler.GetProjectOutputBuffer(ctx.PullInfo()))
+		assert.Empty(t, dfProjectOutputHandler.GetProjectOutputBuffer(ctx.PullInfo()))
 	})
 
 	t.Run("Should Cleanup receiverBuffers receiving WS channel closed", func(t *testing.T) {
@@ -140,7 +143,10 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		close(ch)
 		time.Sleep(1 * time.Second)
 
-		x := projectOutputHandler.GetReceiverBufferForPull(ctx.PullInfo())
+		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.DefaultProjectCommandOutputHandler)
+		assert.True(t, ok)
+
+		x := dfProjectOutputHandler.GetReceiverBufferForPull(ctx.PullInfo())
 		assert.Empty(t, x)
 	})
 
