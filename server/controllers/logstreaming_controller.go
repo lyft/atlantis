@@ -16,7 +16,7 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
-type LogStreamingController struct {
+type JobsController struct {
 	AtlantisVersion        string
 	AtlantisURL            *url.URL
 	Logger                 logging.SimpleLogging
@@ -74,7 +74,7 @@ func newPullInfo(r *http.Request) (*PullInfo, error) {
 	}, nil
 }
 
-func (j *LogStreamingController) GetLogStream(w http.ResponseWriter, r *http.Request) {
+func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) {
 	pullInfo, err := newPullInfo(r)
 	if err != nil {
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
@@ -109,7 +109,7 @@ func (j *LogStreamingController) GetLogStream(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.Request) {
+func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request) {
 	pullInfo, err := newPullInfo(r)
 	if err != nil {
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
@@ -144,10 +144,13 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
 		return
 	}
+}
+
+func (j *JobsController) GetPullRequestJobs(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (j *LogStreamingController) respond(w http.ResponseWriter, lvl logging.LogLevel, responseCode int, format string, args ...interface{}) {
+func (j *JobsController) respond(w http.ResponseWriter, lvl logging.LogLevel, responseCode int, format string, args ...interface{}) {
 	response := fmt.Sprintf(format, args...)
 	j.Logger.Log(lvl, response)
 	w.WriteHeader(responseCode)
@@ -155,7 +158,7 @@ func (j *LogStreamingController) respond(w http.ResponseWriter, lvl logging.LogL
 }
 
 //repo, pull num, project name moved to db
-func (j *LogStreamingController) RetrievePrStatus(pullInfo *PullInfo) (bool, error) {
+func (j *JobsController) RetrievePrStatus(pullInfo *PullInfo) (bool, error) {
 	pull := models.PullRequest{
 		Num: pullInfo.Pull,
 		BaseRepo: models.Repo{

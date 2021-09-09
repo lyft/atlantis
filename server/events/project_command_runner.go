@@ -45,10 +45,11 @@ type LockURLGenerator interface {
 	GenerateLockURL(lockID string) string
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_log_stream_url_generator.go LogStreamURLGenerator
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_log_stream_url_generator.go JobsURLGenerator
 
-type LogStreamURLGenerator interface {
-	GenerateLogStreamURL(pull models.PullRequest, p models.ProjectCommandContext) string
+type JobsURLGenerator interface {
+	ProjectJobsUrl(pull models.PullRequest, p models.ProjectCommandContext) string
+	PullRequestJobsUrl(pull models.PullRequest) string
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_step_runner.go StepRunner
@@ -132,7 +133,7 @@ type DefaultProjectCommandRunner struct {
 	AggregateApplyRequirements ApplyRequirement
 	ProjectCmdOutputLine       models.ProjectCmdOutputLine
 	ProjectCmdOutputHandler    handlers.ProjectCommandOutputHandler
-	LogStreamURLGenerator      LogStreamURLGenerator
+	JobsURLGenerator           JobsURLGenerator
 }
 
 // Plan runs terraform plan for the project described by ctx.

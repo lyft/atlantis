@@ -58,7 +58,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 		ProjectCmdOutputHandler:    projectCmdOutputHandler,
 		AggregateApplyRequirements: mockApplyReqHandler,
-		LogStreamURLGenerator:      mocks.NewMockLogStreamURLGenerator(),
+		JobsURLGenerator:      mocks.NewMockJobsURLGenerator(),
 	}
 
 	repoDir, cleanup := TempDir(t)
@@ -323,7 +323,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 				Webhooks:                   mockSender,
 				WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 				AggregateApplyRequirements: applyReqHandler,
-				LogStreamURLGenerator:      mocks.NewMockLogStreamURLGenerator(),
+				JobsURLGenerator:      mocks.NewMockJobsURLGenerator(),
 			}
 			repoDir, cleanup := TempDir(t)
 			defer cleanup()
@@ -401,7 +401,7 @@ func TestDefaultProjectCommandRunner_RunEnvSteps(t *testing.T) {
 		Webhooks:                nil,
 		WorkingDirLocker:        events.NewDefaultWorkingDirLocker(),
 		ProjectCmdOutputHandler: handlermocks.NewMockProjectCommandOutputHandler(),
-		LogStreamURLGenerator:   mocks.NewMockLogStreamURLGenerator(),
+		JobsURLGenerator:   mocks.NewMockJobsURLGenerator(),
 	}
 
 	repoDir, cleanup := TempDir(t)

@@ -25,7 +25,7 @@ func NewApplyCommandRunner(
 	SilenceNoProjects bool,
 	silenceVCSStatusNoProjects bool,
 	pullReqStatusFetcher vcs.PullReqStatusFetcher,
-	logStreamURLGenerator LogStreamURLGenerator,
+	jobsURLGenerator JobsURLGenerator,
 	featureAllocator feature.Allocator,
 ) *ApplyCommandRunner {
 	return &ApplyCommandRunner{
@@ -43,7 +43,7 @@ func NewApplyCommandRunner(
 		SilenceNoProjects:          SilenceNoProjects,
 		silenceVCSStatusNoProjects: silenceVCSStatusNoProjects,
 		pullReqStatusFetcher:       pullReqStatusFetcher,
-		logStreamURLGenerator:      logStreamURLGenerator,
+		jobsUrlGenerator:           jobsUrlGenerator,
 		featureAllocator:           featureAllocator,
 	}
 }
@@ -67,7 +67,7 @@ type ApplyCommandRunner struct {
 	// SilenceVCSStatusNoPlans is whether any plan should set commit status if no projects
 	// are found
 	silenceVCSStatusNoProjects bool
-	logStreamURLGenerator      LogStreamURLGenerator
+	jobsURLGenerator           JobsURLGenerator
 	featureAllocator           feature.Allocator
 }
 
@@ -156,10 +156,10 @@ func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 		projectLogStreamURLs := make([]string, 0)
 
 		for _, projectCommand := range projectCmds {
-			projectLogStreamURLs = append(projectLogStreamURLs, a.logStreamURLGenerator.GenerateLogStreamURL(pull, projectCommand))
+			projectJobsUrls = append(projectJobsUrls, a.jobsUrlGenerator.ProjectJobsUrl(pull, projectCommand))
 		}
 
-		err = a.vcsClient.CreateComment(baseRepo, pull.Num, ("Real-time terraform output for apply workflow: " + strings.Join(projectLogStreamURLs, "\n")), models.ApplyCommand.String())
+		err = a.commitStatusUpdater.UpdateMetadata(baseRepo, pull.Num, ("Real-time terraform output for apply workflow: " + strings.Join(projectLogStreamURLs, "\n")), models.ApplyCommand.String())
 		if err != nil {
 			ctx.Log.Err("unable to comment on pull request: %s", err)
 		}

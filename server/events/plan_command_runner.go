@@ -24,7 +24,7 @@ func NewPlanCommandRunner(
 	parallelPoolSize int,
 	SilenceNoProjects bool,
 	pullStatusFetcher PullStatusFetcher,
-	logStreamURLGenerator LogStreamURLGenerator,
+	jobsURLGenerator JobsURLGenerator,
 	featureAllocator feature.Allocator,
 ) *PlanCommandRunner {
 	return &PlanCommandRunner{
@@ -43,7 +43,7 @@ func NewPlanCommandRunner(
 		parallelPoolSize:           parallelPoolSize,
 		SilenceNoProjects:          SilenceNoProjects,
 		pullStatusFetcher:          pullStatusFetcher,
-		logStreamURLGenerator:      logStreamURLGenerator,
+		jobsUrlGenerator:           jobsUrlGenerator,
 		featureAllocator:           featureAllocator,
 	}
 }
@@ -70,7 +70,7 @@ type PlanCommandRunner struct {
 	autoMerger                 *AutoMerger
 	parallelPoolSize           int
 	pullStatusFetcher          PullStatusFetcher
-	logStreamURLGenerator      LogStreamURLGenerator
+	jobsURLGenerator           JobsURLGenerator
 	featureAllocator           feature.Allocator
 }
 
@@ -119,12 +119,11 @@ func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
 		projectLogStreamURLs := make([]string, 0)
 
 		for _, projectCommand := range projectCmds {
-			projectLogStreamURLs = append(projectLogStreamURLs, p.logStreamURLGenerator.GenerateLogStreamURL(pull, projectCommand))
+			projectJobsUrls = append(projectJobsUrls, p.jobsUrlGenerator.ProjectJobsUrl(pull, projectCommand))
 		}
-
-		err = p.vcsClient.CreateComment(baseRepo, pull.Num, ("Real-time terraform output for autoplan: " + strings.Join(projectLogStreamURLs, "\n")), models.PlanCommand.String())
+		err = p.commitStatusUpdater.UpdateStatusURL(baseRepo, pull, models.PlanCommand, url)
 		if err != nil {
-			ctx.Log.Err("unable to comment on pull request: %s", err)
+			ctx.Log.Err("unable to update url of the status on pull request: %s", err)
 		}
 	}
 
@@ -214,7 +213,7 @@ func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 	if shouldAllocate {
 		projectLogStreamURLs := make([]string, 0)
 		for _, projectCommand := range projectCmds {
-			tempURLHold := p.logStreamURLGenerator.GenerateLogStreamURL(pull, projectCommand)
+			tempURLHold := p.jobsUrlGenerator.ProjectJobsUrl(pull, projectCommand)
 			projectLogStreamURLs = append(projectLogStreamURLs, tempURLHold)
 		}
 
