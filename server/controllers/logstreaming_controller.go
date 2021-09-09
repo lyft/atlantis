@@ -124,14 +124,14 @@ func (j *LogStreamingController) GetLogStreamWS(w http.ResponseWriter, r *http.R
 
 	// Buffer size set to 1000 to ensure messages get queued (upto 1000) if the receiverCh is not ready to
 	// receive messages before the channel is closed and resources cleaned up.
-	receiverChan := make(chan string, 1000)
-	j.WebsocketHandler.SetCloseHandler(c, receiverChan)
+	receiver := make(chan string, 1000)
+	j.WebsocketHandler.SetCloseHandler(c, receiver)
 
 	// Add a reader goroutine to listen for socket.close() events.
 	go j.WebsocketHandler.SetReadHandler(c)
 
 	pull := pullInfo.String()
-	err = j.ProjectCommandOutputHandler.Receive(pull, receiverChan, func(msg string) error {
+	err = j.ProjectCommandOutputHandler.Receive(pull, receiver, func(msg string) error {
 		if err := c.WriteMessage(websocket.BinaryMessage, []byte(msg+"\r\n\t")); err != nil {
 			j.Logger.Warn("Failed to write ws message: %s", err)
 			return err

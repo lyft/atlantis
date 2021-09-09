@@ -31,7 +31,7 @@ type ProjectCommandOutputHandler interface {
 	Clear(ctx models.ProjectCommandContext)
 
 	// Receive will create a channel for projectPullInfo and run a callback function argument when the new channel receives a message.
-	Receive(projectInfo string, ch chan string, callback func(msg string) error) error
+	Receive(projectInfo string, receiver chan string, callback func(msg string) error) error
 
 	// Listens for msg from channel
 	Handle()
@@ -53,14 +53,14 @@ func (p *DefaultProjectCommandOutputHandler) Send(ctx models.ProjectCommandConte
 	}
 }
 
-func (p *DefaultProjectCommandOutputHandler) Receive(projectInfo string, receiverCh chan string, callback func(msg string) error) error {
+func (p *DefaultProjectCommandOutputHandler) Receive(projectInfo string, receiver chan string, callback func(msg string) error) error {
 
 	// Avoid deadlock when projectOutputBuffer size is greater than the channel (currently set to 1000)
 	// Running this as a goroutine allows for the channel to be read in callback
-	go p.addChan(receiverCh, projectInfo)
-	defer p.cleanUp(projectInfo, receiverCh)
+	go p.addChan(receiver, projectInfo)
+	defer p.cleanUp(projectInfo, receiver)
 
-	for msg := range receiverCh {
+	for msg := range receiver {
 		if err := callback(msg); err != nil {
 			return err
 		}
