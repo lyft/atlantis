@@ -25,6 +25,14 @@ func NewMockProjectCommandOutputHandler(options ...pegomock.Option) *MockProject
 func (mock *MockProjectCommandOutputHandler) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockProjectCommandOutputHandler) FailHandler() pegomock.FailHandler      { return mock.fail }
 
+func (mock *MockProjectCommandOutputHandler) CleanUp(_param0 string) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockProjectCommandOutputHandler().")
+	}
+	params := []pegomock.Param{_param0}
+	pegomock.GetGenericMockFrom(mock).Invoke("CleanUp", params, []reflect.Type{})
+}
+
 func (mock *MockProjectCommandOutputHandler) Clear(_param0 models.ProjectCommandContext) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectCommandOutputHandler().")
@@ -99,6 +107,33 @@ type VerifierMockProjectCommandOutputHandler struct {
 	invocationCountMatcher pegomock.InvocationCountMatcher
 	inOrderContext         *pegomock.InOrderContext
 	timeout                time.Duration
+}
+
+func (verifier *VerifierMockProjectCommandOutputHandler) CleanUp(_param0 string) *MockProjectCommandOutputHandler_CleanUp_OngoingVerification {
+	params := []pegomock.Param{_param0}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "CleanUp", params, verifier.timeout)
+	return &MockProjectCommandOutputHandler_CleanUp_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type MockProjectCommandOutputHandler_CleanUp_OngoingVerification struct {
+	mock              *MockProjectCommandOutputHandler
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *MockProjectCommandOutputHandler_CleanUp_OngoingVerification) GetCapturedArguments() string {
+	_param0 := c.GetAllCapturedArguments()
+	return _param0[len(_param0)-1]
+}
+
+func (c *MockProjectCommandOutputHandler_CleanUp_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]string, len(c.methodInvocations))
+		for u, param := range params[0] {
+			_param0[u] = param.(string)
+		}
+	}
+	return
 }
 
 func (verifier *VerifierMockProjectCommandOutputHandler) Clear(_param0 models.ProjectCommandContext) *MockProjectCommandOutputHandler_Clear_OngoingVerification {

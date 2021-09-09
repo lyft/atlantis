@@ -35,6 +35,14 @@ type ProjectCommandOutputHandler interface {
 
 	// Listens for msg from channel
 	Handle()
+
+	ResourceCleaner
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_resource_cleaner.go ResourceCleaner
+
+type ResourceCleaner interface {
+	CleanUp(pull string)
 }
 
 func NewProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutputLine, logger logging.SimpleLogging) ProjectCommandOutputHandler {
@@ -147,4 +155,17 @@ func (p *DefaultProjectCommandOutputHandler) GetReceiverBufferForPull(pull strin
 
 func (p *DefaultProjectCommandOutputHandler) GetProjectOutputBuffer(pull string) []string {
 	return p.projectOutputBuffers[pull]
+}
+
+func (p *DefaultProjectCommandOutputHandler) CleanUp(pull string) {
+	p.projectOutputBuffersLock.Lock()
+	delete(p.projectOutputBuffers, pull)
+	p.projectOutputBuffersLock.Unlock()
+
+	p.receiverBuffersLock.Lock()
+	for ch := range p.receiverBuffers[pull] {
+		close(ch)
+	}
+	delete(p.receiverBuffers, pull)
+	p.receiverBuffersLock.Unlock()
 }

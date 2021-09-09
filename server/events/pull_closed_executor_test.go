@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/events/db"
+	"github.com/runatlantis/atlantis/server/logging"
 
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events"
@@ -37,8 +38,10 @@ func TestCleanUpPullWorkspaceErr(t *testing.T) {
 	pce := events.PullClosedExecutor{
 		WorkingDir:         w,
 		PullClosedTemplate: &events.PullClosedEventTemplate{},
+		Logger:             logging.NewNoopLogger(t),
 	}
 	err := errors.New("err")
+	When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn("", err)
 	When(w.Delete(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(err)
 	actualErr := pce.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
 	Equals(t, "cleaning workspace: err", actualErr.Error())
@@ -53,8 +56,10 @@ func TestCleanUpPullUnlockErr(t *testing.T) {
 		Locker:             l,
 		WorkingDir:         w,
 		PullClosedTemplate: &events.PullClosedEventTemplate{},
+		Logger:             logging.NewNoopLogger(t),
 	}
 	err := errors.New("err")
+	When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn("", err)
 	When(l.UnlockByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(nil, err)
 	actualErr := pce.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
 	Equals(t, "cleaning up locks: err", actualErr.Error())
@@ -76,7 +81,10 @@ func TestCleanUpPullNoLocks(t *testing.T) {
 		WorkingDir:         w,
 		DB:                 db,
 		PullClosedTemplate: &events.PullClosedEventTemplate{},
+		Logger:             logging.NewNoopLogger(t),
 	}
+	err = errors.New("err")
+	When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn("", err)
 	When(l.UnlockByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(nil, nil)
 	err = pce.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
 	Ok(t, err)
@@ -163,8 +171,11 @@ func TestCleanUpPullComments(t *testing.T) {
 				WorkingDir:         w,
 				DB:                 db,
 				PullClosedTemplate: &events.PullClosedEventTemplate{},
+				Logger:             logging.NewNoopLogger(t),
 			}
 			t.Log("testing: " + c.Description)
+			err = errors.New("err")
+			When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn("", err)
 			When(l.UnlockByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(c.Locks, nil)
 			err = pce.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
 			Ok(t, err)
@@ -175,3 +186,65 @@ func TestCleanUpPullComments(t *testing.T) {
 		}()
 	}
 }
+
+/*
+Testing Resource cleanup
+
+1. Add a project to buffers manually and run the cleanup.
+
+*/
+
+// func TestCleanUpLogStreaming(t *testing.T) {
+// 	w := mocks.NewMockWorkingDir()
+// 	cp := vcsmocks.NewMockClient()
+// 	l := lockmocks.NewMockLocker()
+// 	logger := logging.NewNoopLogger(t)
+// 	parserValidator := yamlmocks.NewMockIParserValidator()
+// 	prjCmdOutput := make(chan *models.ProjectCmdOutputLine)
+// 	prjCmdOutHandler := handlers.NewProjectCommandOutputHandler(prjCmdOutput, logger)
+// 	ctx := models.ProjectCommandContext{
+// 		BaseRepo:    fixtures.GithubRepo,
+// 		Pull:        fixtures.Pull,
+// 		ProjectName: *fixtures.Project.Name,
+// 	}
+
+// 	// Go routine to add new
+// 	go prjCmdOutHandler.Handle()
+
+// 	tmp, cleanup := TempDir(t)
+// 	defer cleanup()
+// 	db, err := db.New(tmp)
+// 	Ok(t, err)
+
+// 	pullClosedExecutor := events.PullClosedExecutor{
+// 		Locker:                   l,
+// 		VCSClient:                cp,
+// 		WorkingDir:               w,
+// 		DB:                       db,
+// 		PullClosedTemplate:       &events.PullClosedEventTemplate{},
+// 		LogStreamResourceCleaner: prjCmdOutHandler,
+// 		Logger:                   logging.NewNoopLogger(t),
+// 		ParserVarlidator:         parserValidator,
+// 	}
+
+// 	// Send a tf message to log-streaming handler
+// 	prjCmdOutHandler.Send(ctx, "Test Message")
+
+// 	// Make sure channels are added.
+// 	time.Sleep(1 * time.Second)
+
+// 	// Clean up.
+// 	err = pullClosedExecutor.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
+// 	Ok(t, err)
+
+// 	repoDir := "/Users/TestEnv/runatlantis/atlantis/1/default"
+// 	// Mock workingDir to return: /Users/TestEnv/runatlantis/atlantis/1/default
+// 	When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn(repoDir, nil)
+
+// 	// Mock VCSClient to return: main.tf
+// 	When(cp.GetModifiedFiles(fixtures.GithubRepo, fixtures.Pull)).ThenReturn([]string{"main.tf"}, nil)
+
+// 	When(parserValidator.HasRepoCfg(repoDir)).ThenReturn(true, nil)
+// 	When(parserValidator.ParseRepoCfg(repoDir, Any))
+
+// }

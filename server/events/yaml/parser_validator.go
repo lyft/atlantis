@@ -19,6 +19,15 @@ import (
 // AtlantisYAMLFilename is the name of the config file for each repo.
 const AtlantisYAMLFilename = "atlantis.yaml"
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_parser_validator.go IParserValidator
+type IParserValidator interface {
+	HasRepoCfg(absRepoDir string) (bool, error)
+	ParseRepoCfg(absRepoDir string, globalCfg valid.GlobalCfg, repoID string) (valid.RepoCfg, error)
+	ParseRepoCfgData(repoCfgData []byte, globalCfg valid.GlobalCfg, repoID string) (valid.RepoCfg, error)
+	ParseGlobalCfg(configFile string, defaultCfg valid.GlobalCfg) (valid.GlobalCfg, error)
+	ParseGlobalCfgJSON(cfgJSON string, defaultCfg valid.GlobalCfg) (valid.GlobalCfg, error)
+}
+
 // ParserValidator parses and validates server-side repo config files and
 // repo-level atlantis.yaml files.
 type ParserValidator struct{}
@@ -26,7 +35,7 @@ type ParserValidator struct{}
 // HasRepoCfg returns true if there is a repo config (atlantis.yaml) file
 // for the repo at absRepoDir.
 // Returns an error if for some reason it can't read that directory.
-func (p *ParserValidator) HasRepoCfg(absRepoDir string) (bool, error) {
+func (p ParserValidator) HasRepoCfg(absRepoDir string) (bool, error) {
 	// Checks for a config file with an invalid extension (atlantis.yml)
 	const invalidExtensionFilename = "atlantis.yml"
 	_, err := os.Stat(p.repoCfgPath(absRepoDir, invalidExtensionFilename))
@@ -44,7 +53,7 @@ func (p *ParserValidator) HasRepoCfg(absRepoDir string) (bool, error) {
 // ParseRepoCfg returns the parsed and validated atlantis.yaml config for the
 // repo at absRepoDir.
 // If there was no config file, it will return an os.IsNotExist(error).
-func (p *ParserValidator) ParseRepoCfg(absRepoDir string, globalCfg valid.GlobalCfg, repoID string) (valid.RepoCfg, error) {
+func (p ParserValidator) ParseRepoCfg(absRepoDir string, globalCfg valid.GlobalCfg, repoID string) (valid.RepoCfg, error) {
 	configFile := p.repoCfgPath(absRepoDir, AtlantisYAMLFilename)
 	configData, err := ioutil.ReadFile(configFile) // nolint: gosec
 
@@ -59,7 +68,7 @@ func (p *ParserValidator) ParseRepoCfg(absRepoDir string, globalCfg valid.Global
 	return p.ParseRepoCfgData(configData, globalCfg, repoID)
 }
 
-func (p *ParserValidator) ParseRepoCfgData(repoCfgData []byte, globalCfg valid.GlobalCfg, repoID string) (valid.RepoCfg, error) {
+func (p ParserValidator) ParseRepoCfgData(repoCfgData []byte, globalCfg valid.GlobalCfg, repoID string) (valid.RepoCfg, error) {
 	var rawConfig raw.RepoCfg
 	if err := yaml.UnmarshalStrict(repoCfgData, &rawConfig); err != nil {
 		return valid.RepoCfg{}, err
@@ -93,7 +102,7 @@ func (p *ParserValidator) ParseRepoCfgData(repoCfgData []byte, globalCfg valid.G
 // ParseGlobalCfg returns the parsed and validated global repo config file at
 // configFile. defaultCfg will be merged into the parsed config.
 // If there is no file at configFile it will return an error.
-func (p *ParserValidator) ParseGlobalCfg(configFile string, defaultCfg valid.GlobalCfg) (valid.GlobalCfg, error) {
+func (p ParserValidator) ParseGlobalCfg(configFile string, defaultCfg valid.GlobalCfg) (valid.GlobalCfg, error) {
 	configData, err := ioutil.ReadFile(configFile) // nolint: gosec
 	if err != nil {
 		return valid.GlobalCfg{}, errors.Wrapf(err, "unable to read %s file", configFile)
@@ -111,7 +120,7 @@ func (p *ParserValidator) ParseGlobalCfg(configFile string, defaultCfg valid.Glo
 }
 
 // ParseGlobalCfgJSON parses a json string cfgJSON into global config.
-func (p *ParserValidator) ParseGlobalCfgJSON(cfgJSON string, defaultCfg valid.GlobalCfg) (valid.GlobalCfg, error) {
+func (p ParserValidator) ParseGlobalCfgJSON(cfgJSON string, defaultCfg valid.GlobalCfg) (valid.GlobalCfg, error) {
 	var rawCfg raw.GlobalCfg
 	err := json.Unmarshal([]byte(cfgJSON), &rawCfg)
 	if err != nil {
