@@ -37,19 +37,19 @@ func (d DirNotExistErr) Error() string {
 	return fmt.Sprintf("dir %q does not exist", d.RepoRelDir)
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_log_stream_url_generator.go JobsUrlGenerator
+
+// JobsUrlGenerator generates urls to view project's progress.
+type JobsUrlGenerator interface {
+	GenerateProjectJobsUrl(p models.ProjectCommandContext) string
+}
+
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_lock_url_generator.go LockURLGenerator
 
 // LockURLGenerator generates urls to locks.
 type LockURLGenerator interface {
 	// GenerateLockURL returns the full URL to the lock at lockID.
 	GenerateLockURL(lockID string) string
-}
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_log_stream_url_generator.go JobsURLGenerator
-
-type JobsURLGenerator interface {
-	ProjectJobsUrl(pull models.PullRequest, p models.ProjectCommandContext) string
-	PullRequestJobsUrl(pull models.PullRequest) string
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_step_runner.go StepRunner
@@ -119,6 +119,7 @@ type ProjectCommandRunner interface {
 type DefaultProjectCommandRunner struct {
 	Locker                     ProjectLocker
 	LockURLGenerator           LockURLGenerator
+	JobsUrlGenerator           JobsUrlGenerator
 	InitStepRunner             StepRunner
 	PlanStepRunner             StepRunner
 	ShowStepRunner             StepRunner
@@ -131,9 +132,8 @@ type DefaultProjectCommandRunner struct {
 	Webhooks                   WebhooksSender
 	WorkingDirLocker           WorkingDirLocker
 	AggregateApplyRequirements ApplyRequirement
-	ProjectCmdOutputLine       models.ProjectCmdOutputLine
 	ProjectCmdOutputHandler    handlers.ProjectCommandOutputHandler
-	JobsURLGenerator           JobsURLGenerator
+	ProjectStatusUpdater       ProjectStatusUpdater
 }
 
 // Plan runs terraform plan for the project described by ctx.
@@ -304,13 +304,29 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 	}
 
 	p.ProjectCmdOutputHandler.Clear(ctx)
+
+	// Create a PR status to track project's plan status. The status will
+	// include a link to view the progress of atlantis plan command in real
+	// time
+	if err := p.ProjectStatusUpdater.UpdateProject(ctx, models.PlanCommand, models.PendingCommitStatus, p.JobsUrlGenerator.GenerateProjectJobsUrl(ctx)); err != nil {
+		ctx.Log.Err("updating project PR status", err)
+	}
+
 	outputs, err := p.runSteps(ctx.Steps, ctx, projAbsPath)
 
 	if err != nil {
+		if err := p.ProjectStatusUpdater.UpdateProject(ctx, models.PlanCommand, models.FailedCommitStatus, p.JobsUrlGenerator.GenerateProjectJobsUrl(ctx)); err != nil {
+			ctx.Log.Err("updating project PR status", err)
+		}
+
 		if unlockErr := lockAttempt.UnlockFn(); unlockErr != nil {
 			ctx.Log.Err("error unlocking state after plan error: %v", unlockErr)
 		}
 		return nil, "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
+	}
+
+	if err := p.ProjectStatusUpdater.UpdateProject(ctx, models.PlanCommand, models.SuccessCommitStatus, p.JobsUrlGenerator.GenerateProjectJobsUrl(ctx)); err != nil {
+		ctx.Log.Err("updating project PR status", err)
 	}
 
 	return &models.PlanSuccess{
@@ -347,7 +363,15 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 	}
 	defer unlockFn()
 
+	// Create a PR status to track project's apply status. The status will
+	// include a link to view the progress of atlantis apply command in real
+	// time
+	if err := p.ProjectStatusUpdater.UpdateProject(ctx, models.ApplyCommand, models.PendingCommitStatus, p.JobsUrlGenerator.GenerateProjectJobsUrl(ctx)); err != nil {
+		ctx.Log.Err("updating project PR status", err)
+	}
+
 	outputs, err := p.runSteps(ctx.Steps, ctx, absPath)
+
 	p.Webhooks.Send(ctx.Log, webhooks.ApplyResult{ // nolint: errcheck
 		Workspace: ctx.Workspace,
 		User:      ctx.User,
@@ -356,9 +380,19 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 		Success:   err == nil,
 		Directory: ctx.RepoRelDir,
 	})
+
 	if err != nil {
+		if err := p.ProjectStatusUpdater.UpdateProject(ctx, models.ApplyCommand, models.FailedCommitStatus, p.JobsUrlGenerator.GenerateProjectJobsUrl(ctx)); err != nil {
+			ctx.Log.Err("updating project PR status", err)
+		}
+
 		return "", "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
 	}
+
+	if err := p.ProjectStatusUpdater.UpdateProject(ctx, models.ApplyCommand, models.SuccessCommitStatus, p.JobsUrlGenerator.GenerateProjectJobsUrl(ctx)); err != nil {
+		ctx.Log.Err("updating project PR status", err)
+	}
+
 	return strings.Join(outputs, "\n"), "", nil
 }
 

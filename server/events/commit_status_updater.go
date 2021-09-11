@@ -21,6 +21,12 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
+type ProjectStatusUpdater interface {
+	// UpdateProject sets the commit status for the project represented by
+	// ctx.
+	UpdateProject(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus, url string) error
+}
+
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_commit_status_updater.go CommitStatusUpdater
 
 // CommitStatusUpdater updates the status of a commit with the VCS host. We set
@@ -29,14 +35,10 @@ type CommitStatusUpdater interface {
 	// UpdateCombined updates the combined status of the head commit of pull.
 	// A combined status represents all the projects modified in the pull.
 	UpdateCombined(repo models.Repo, pull models.PullRequest, status models.CommitStatus, command models.CommandName) error
-	// UpdateStatusURL updates the status of the head commit of pull with a URL.
-	UpdateStatusURL(repo models.Repo, pull models.PullRequest, command models.CommandName, url string) error
 	// UpdateCombinedCount updates the combined status to reflect the
 	// numSuccess out of numTotal.
 	UpdateCombinedCount(repo models.Repo, pull models.PullRequest, status models.CommitStatus, command models.CommandName, numSuccess int, numTotal int) error
-	// UpdateProject sets the commit status for the project represented by
-	// ctx.
-	UpdateProject(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus, url string) error
+	ProjectStatusUpdater
 }
 
 // DefaultCommitStatusUpdater implements CommitStatusUpdater.
@@ -44,14 +46,6 @@ type DefaultCommitStatusUpdater struct {
 	Client vcs.Client
 	// StatusName is the name used to identify Atlantis when creating PR statuses.
 	StatusName string
-}
-
-func (d *DefaultCommitStatusUpdater) UpdateStatusURL(repo models.Repo, pull models.PullRequest, command models.CommandName, url string) error {
-	src := fmt.Sprintf("%s/%s", d.StatusName, command.String())
-
-	status := models.PendingCommitStatus
-	descrip := fmt.Sprintf("%s %s", strings.Title(command.String()), d.statusDescription(status))
-	return d.Client.UpdateStatus(repo, pull, status, src, descrip, url)
 }
 
 func (d *DefaultCommitStatusUpdater) UpdateCombined(repo models.Repo, pull models.PullRequest, status models.CommitStatus, command models.CommandName) error {

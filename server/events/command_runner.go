@@ -117,7 +117,6 @@ type DefaultCommandRunner struct {
 	Drainer                       *Drainer
 	PreWorkflowHooksCommandRunner PreWorkflowHooksCommandRunner
 	PullStatusFetcher             PullStatusFetcher
-	JobsURLGenerator         JobsURLGenerator
 }
 
 // RunAutoplanCommand runs plan and policy_checks when a pull request is opened or updated.

@@ -352,14 +352,14 @@ v{{ .AtlantisVersion }}
 </html>
 `))
 
-// pullStreamData holds the data needed to stream the current PR information
-type LogStreamData struct {
+// ProjectJobData holds the data needed to stream the current PR information
+type ProjectJobData struct {
 	AtlantisVersion string
-	PullInfo        string
+	ProjectPath     string
 	CleanedBasePath string
 }
 
-var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
+var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -409,7 +409,7 @@ var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
     <script>
       var term = new Terminal();
       var socket = new WebSocket(
-        (document.location.protocol === "http:" ? "ws://" : "wss://") + 
+        (document.location.protocol === "http:" ? "ws://" : "wss://") +
         document.location.host +
         document.location.pathname +
         "/ws");
@@ -425,13 +425,68 @@ var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
 </html>
 `))
 
-type LogStreamError struct {
+// PullRequestJobsData holds the data needed to stream the current PR information
+type PullRequestJobsData struct {
 	AtlantisVersion string
-	PullInfo        string
+	PullRequestPath string
+	Projects        ProjectJobData
 	CleanedBasePath string
 }
 
-var LogStreamErrorTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
+var PullRequestJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>atlantis</title>
+    <meta name="description" content>
+    <meta name="author" content>
+    <link
+       rel="stylesheet"
+       href="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/xterm.min.css"
+       integrity="sha256-uTIrmf95e6IHlacC0wpDaPS58eWF314UC7OgdrD6AdU="
+       crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="/static/css/normalize.css">
+    <link rel="stylesheet" href="/static/css/skeleton.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <link rel="icon" type="image/png" href="/static/images/atlantis-icon.png">
+    <style>
+      #terminal {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <section class="header">
+      <a title="atlantis" href="/"><img class="hero" src="/static/images/atlantis-icon_512.png"/></a>
+      <p class="title-heading">atlantis</p>
+      <p class="title-heading"><strong></strong></p>
+      </section>
+      <div class="spacer"></div>
+      <br>
+      <section>
+        {{range $project := .Projects}}
+          <a title="{{$project.Name}}" href="{{$project.Url}}">{{$project.Name}}</a>
+        {{end}}
+      </section>
+    </div>
+    <footer>
+    </footer>
+  </body>
+</html>
+`))
+
+type ProjectJobsError struct {
+	AtlantisVersion string
+	ProjectPath     string
+	CleanedBasePath string
+}
+
+var ProjectJobsErrorTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
 <!DOCTYPE html>
 <html lang="en">
   <head>

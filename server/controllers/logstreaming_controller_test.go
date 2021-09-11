@@ -38,7 +38,7 @@ func TestGetProjectJobs_WebSockets(t *testing.T) {
 
 		When(websocketMock.Upgrade(matchers.AnyHttpResponseWriter(), matchers.AnyPtrToHttpRequest(), matchers.AnyHttpHeader())).ThenReturn(webSocketWrapper, nil)
 
-		logStreamingController.GetProjectJobsWS(response, request)
+		jobsController.GetProjectJobsWS(response, request)
 
 		webSocketWrapper.VerifyWasCalled(Once())
 	})

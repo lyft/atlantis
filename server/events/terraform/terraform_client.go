@@ -282,7 +282,6 @@ func (c *DefaultClient) EnsureVersion(log logging.SimpleLogging, v *version.Vers
 
 // See Client.RunCommandWithVersion.
 func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, path string, args []string, customEnvVars map[string]string, v *version.Version, workspace string) (string, error) {
-
 	shouldAllocate, err := c.featureAllocator.ShouldAllocate(feature.LogStreaming, ctx.BaseRepo.FullName)
 
 	if err != nil {
@@ -303,7 +302,6 @@ func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, 
 		}
 		output := strings.Join(lines, "\n")
 		return fmt.Sprintf("%s\n", output), err
-
 	}
 
 	tfCmd, cmd, err := c.prepCmd(ctx.Log, v, workspace, path, args)

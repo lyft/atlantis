@@ -1,11 +1,8 @@
 package events
 
 import (
-	"strings"
-
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
-	"github.com/runatlantis/atlantis/server/feature"
 )
 
 func NewPlanCommandRunner(
@@ -24,8 +21,6 @@ func NewPlanCommandRunner(
 	parallelPoolSize int,
 	SilenceNoProjects bool,
 	pullStatusFetcher PullStatusFetcher,
-	jobsURLGenerator JobsURLGenerator,
-	featureAllocator feature.Allocator,
 ) *PlanCommandRunner {
 	return &PlanCommandRunner{
 		silenceVCSStatusNoPlans:    silenceVCSStatusNoPlans,
@@ -43,8 +38,6 @@ func NewPlanCommandRunner(
 		parallelPoolSize:           parallelPoolSize,
 		SilenceNoProjects:          SilenceNoProjects,
 		pullStatusFetcher:          pullStatusFetcher,
-		jobsUrlGenerator:           jobsUrlGenerator,
-		featureAllocator:           featureAllocator,
 	}
 }
 
@@ -70,8 +63,6 @@ type PlanCommandRunner struct {
 	autoMerger                 *AutoMerger
 	parallelPoolSize           int
 	pullStatusFetcher          PullStatusFetcher
-	jobsURLGenerator           JobsURLGenerator
-	featureAllocator           feature.Allocator
 }
 
 func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
@@ -107,24 +98,6 @@ func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
 			}
 		}
 		return
-	}
-
-	shouldAllocate, err := p.featureAllocator.ShouldAllocate(feature.LogStreaming, ctx.HeadRepo.FullName)
-
-	if err != nil {
-		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.LogStreaming, err)
-	}
-
-	if shouldAllocate {
-		projectLogStreamURLs := make([]string, 0)
-
-		for _, projectCommand := range projectCmds {
-			projectJobsUrls = append(projectJobsUrls, p.jobsUrlGenerator.ProjectJobsUrl(pull, projectCommand))
-		}
-		err = p.commitStatusUpdater.UpdateStatusURL(baseRepo, pull, models.PlanCommand, url)
-		if err != nil {
-			ctx.Log.Err("unable to update url of the status on pull request: %s", err)
-		}
 	}
 
 	// At this point we are sure Atlantis has work to do, so set commit status to pending
@@ -202,25 +175,6 @@ func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 			}
 		}
 		return
-	}
-
-	shouldAllocate, err := p.featureAllocator.ShouldAllocate(feature.LogStreaming, ctx.HeadRepo.FullName)
-
-	if err != nil {
-		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.LogStreaming, err)
-	}
-
-	if shouldAllocate {
-		projectLogStreamURLs := make([]string, 0)
-		for _, projectCommand := range projectCmds {
-			tempURLHold := p.jobsUrlGenerator.ProjectJobsUrl(pull, projectCommand)
-			projectLogStreamURLs = append(projectLogStreamURLs, tempURLHold)
-		}
-
-		err = p.vcsClient.CreateComment(baseRepo, pull.Num, ("Real-time terraform output for plan workflow: " + strings.Join(projectLogStreamURLs, "\n")), models.PlanCommand.String())
-		if err != nil {
-			ctx.Log.Err("unable to comment on pull request: %s", err)
-		}
 	}
 
 	projectCmds, policyCheckCmds := p.partitionProjectCmds(ctx, projectCmds)

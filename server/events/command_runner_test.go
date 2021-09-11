@@ -133,7 +133,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		parallelPoolSize,
 		SilenceNoProjects,
 		defaultBoltDB,
-		eventmocks.NewMockJobsURLGenerator(),
+		eventmocks.NewMockJobsUrlGenerator(),
 		featureAllocator,
 	)
 
@@ -156,7 +156,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		SilenceNoProjects,
 		false,
 		&pullReqStatusFetcher,
-		eventmocks.NewMockJobsURLGenerator(),
+		eventmocks.NewMockJobsUrlGenerator(),
 		featureAllocator,
 	)
 

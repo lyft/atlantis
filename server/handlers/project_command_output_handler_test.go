@@ -16,7 +16,7 @@ import (
 func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutputHandler {
 	logger := logging.NewNoopLogger(t)
 	prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
-	return handlers.NewProjectCommandOutputHandler(prjCmdOutputChan, logger)
+	return handlers.NewAsyncProjectCommandOutputHandler(prjCmdOutputChan, logger)
 }
 
 func TestProjectCommandOutputHandler(t *testing.T) {
@@ -108,7 +108,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// Send a clear msg
 		projectOutputHandler.Clear(ctx)
 
-		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.DefaultProjectCommandOutputHandler)
+		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.AsyncProjectCommandOutputHandler)
 		assert.True(t, ok)
 
 		// Wait for the clear msg to be received by handle()
@@ -143,7 +143,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		close(ch)
 		time.Sleep(1 * time.Second)
 
-		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.DefaultProjectCommandOutputHandler)
+		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.AsyncProjectCommandOutputHandler)
 		assert.True(t, ok)
 
 		x := dfProjectOutputHandler.GetReceiverBufferForPull(ctx.PullInfo())
