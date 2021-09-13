@@ -37,7 +37,7 @@ type ProjectCommandContextBuilder interface {
 		prjCfg valid.MergedProjectCfg,
 		commentFlags []string,
 		repoDir string,
-		automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
+		automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose, force bool,
 	) []models.ProjectCommandContext
 }
 
@@ -88,7 +88,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
 	repoDir string,
-	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
+	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose, force bool,
 ) (projectCmds []models.ProjectCommandContext) {
 	ctx.Log.Debug("Building project command context for %s", cmdName)
 
@@ -120,6 +120,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		parallelApply,
 		parallelPlan,
 		verbose,
+		force,
 		ctx.Scope,
 	)
 
@@ -142,7 +143,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
 	repoDir string,
-	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
+	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose, force bool,
 ) (projectCmds []models.ProjectCommandContext) {
 	ctx.Log.Debug("PolicyChecks are enabled")
 
@@ -163,6 +164,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 		parallelApply,
 		parallelPlan,
 		verbose,
+		force,
 	)
 
 	if cmdName == models.PlanCommand {
@@ -183,13 +185,9 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 			parallelApply,
 			parallelPlan,
 			verbose,
+			force,
 			ctx.Scope,
 		))
-	}
-
-	return
-}
-
 // newProjectCommandContext is a initializer method that handles constructing the
 // ProjectCommandContext.
 func newProjectCommandContext(ctx *CommandContext,
@@ -205,6 +203,7 @@ func newProjectCommandContext(ctx *CommandContext,
 	parallelApplyEnabled bool,
 	parallelPlanEnabled bool,
 	verbose bool,
+	force bool,
 	scope stats.Scope,
 ) models.ProjectCommandContext {
 
@@ -251,6 +250,7 @@ func newProjectCommandContext(ctx *CommandContext,
 		TerraformVersion:          projCfg.TerraformVersion,
 		User:                      ctx.User,
 		Verbose:                   verbose,
+		Force:                     force,
 		Workspace:                 projCfg.Workspace,
 		PolicySets:                policySets,
 	}
