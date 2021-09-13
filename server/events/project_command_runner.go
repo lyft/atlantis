@@ -299,14 +299,14 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 	// Create a PR status to track project's plan status. The status will
 	// include a link to view the progress of atlantis plan command in real
 	// time
-	if err := p.ProjectCmdOutputHandler.SetJobUrlWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus); err != nil {
+	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus); err != nil {
 		ctx.Log.Err("updating project PR status", err)
 	}
 
 	outputs, err := p.runSteps(ctx.Steps, ctx, projAbsPath)
 
 	if err != nil {
-		if err := p.ProjectCmdOutputHandler.SetJobUrlWithStatus(ctx, models.PlanCommand, models.FailedCommitStatus); err != nil {
+		if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.FailedCommitStatus); err != nil {
 			ctx.Log.Err("updating project PR status", err)
 		}
 
@@ -316,7 +316,7 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 		return nil, "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
 	}
 
-	if err := p.ProjectCmdOutputHandler.SetJobUrlWithStatus(ctx, models.PlanCommand, models.SuccessCommitStatus); err != nil {
+	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.SuccessCommitStatus); err != nil {
 		ctx.Log.Err("updating project PR status", err)
 	}
 
@@ -357,7 +357,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 	// Create a PR status to track project's apply status. The status will
 	// include a link to view the progress of atlantis apply command in real
 	// time
-	if err := p.ProjectCmdOutputHandler.SetJobUrlWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus); err != nil {
+	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus); err != nil {
 		ctx.Log.Err("updating project PR status", err)
 	}
 
@@ -373,14 +373,14 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 	})
 
 	if err != nil {
-		if err := p.ProjectCmdOutputHandler.SetJobUrlWithStatus(ctx, models.ApplyCommand, models.FailedCommitStatus); err != nil {
+		if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.ApplyCommand, models.FailedCommitStatus); err != nil {
 			ctx.Log.Err("updating project PR status", err)
 		}
 
 		return "", "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
 	}
 
-	if err := p.ProjectCmdOutputHandler.SetJobUrlWithStatus(ctx, models.ApplyCommand, models.SuccessCommitStatus); err != nil {
+	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.ApplyCommand, models.SuccessCommitStatus); err != nil {
 		ctx.Log.Err("updating project PR status", err)
 	}
 

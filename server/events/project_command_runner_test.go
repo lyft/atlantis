@@ -119,8 +119,8 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	Equals(t, "run\napply\nplan\ninit", res.PlanSuccess.TerraformOutput)
 
 	inOrderContext := new(InOrderContext)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.PlanCommand, models.SuccessCommitStatus)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.PlanCommand, models.SuccessCommitStatus)
 
 	expSteps := []string{"run", "apply", "plan", "init", "env"}
 	for _, step := range expSteps {
@@ -192,8 +192,8 @@ func TestDefaultProjectCommandRunner_PlanStepRunnerFail(t *testing.T) {
 	Assert(t, res.PlanSuccess == nil, "exp plan failure")
 
 	inOrderContext := new(InOrderContext)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.PlanCommand, models.FailedCommitStatus)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.PlanCommand, models.FailedCommitStatus)
 
 	mockPlan.VerifyWasCalledOnce().Run(ctx, nil, repoDir, expEnvs)
 }
@@ -422,8 +422,8 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			Equals(t, c.expFailure, res.Failure)
 
 			inOrderContext := new(InOrderContext)
-			mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus)
-			mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.ApplyCommand, models.SuccessCommitStatus)
+			mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus)
+			mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.ApplyCommand, models.SuccessCommitStatus)
 
 			for _, step := range c.expSteps {
 				switch step {
@@ -494,8 +494,8 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 	Assert(t, res.ApplySuccess == "", "exp apply failure")
 
 	inOrderContext := new(InOrderContext)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.ApplyCommand, models.FailedCommitStatus)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.ApplyCommand, models.FailedCommitStatus)
 
 	mockApply.VerifyWasCalledOnce().Run(ctx, nil, repoDir, expEnvs)
 }

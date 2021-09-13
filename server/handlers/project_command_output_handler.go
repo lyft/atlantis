@@ -20,17 +20,17 @@ type AsyncProjectCommandOutputHandler struct {
 	receiverBuffersLock sync.RWMutex
 
 	projectStatusUpdater   ProjectStatusUpdater
-	projectJobUrlGenerator ProjectJobUrlGenerator
+	projectJobURLGenerator ProjectJobURLGenerator
 
 	logger           logging.SimpleLogging
 	featureAllocator feature.Allocator
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobUrlGenerator
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobURLGenerator
 
-// ProjectJobUrlGenerator generates urls to view project's progress.
-type ProjectJobUrlGenerator interface {
-	GenerateProjectJobUrl(p models.ProjectCommandContext) string
+// ProjectJobURLGenerator generates urls to view project's progress.
+type ProjectJobURLGenerator interface {
+	GenerateProjectJobURL(p models.ProjectCommandContext) string
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_status_updater.go ProjectStatusUpdater
@@ -56,15 +56,15 @@ type ProjectCommandOutputHandler interface {
 	// Listens for msg from channel
 	Handle()
 
-	// SetJobUrlWithStatus sets the commit status for the project represented by
+	// SetJobURLWithStatus sets the commit status for the project represented by
 	// ctx and updates the status with and url to a job.
-	SetJobUrlWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error
+	SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error
 }
 
 func NewAsyncProjectCommandOutputHandler(
 	projectCmdOutput chan *models.ProjectCmdOutputLine,
 	projectStatusUpdater ProjectStatusUpdater,
-	projectJobUrlGenerator ProjectJobUrlGenerator,
+	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
 	featureAllocator feature.Allocator,
 ) ProjectCommandOutputHandler {
@@ -73,7 +73,7 @@ func NewAsyncProjectCommandOutputHandler(
 		logger:                 logger,
 		receiverBuffers:        map[string]map[chan string]bool{},
 		projectStatusUpdater:   projectStatusUpdater,
-		projectJobUrlGenerator: projectJobUrlGenerator,
+		projectJobURLGenerator: projectJobURLGenerator,
 		projectOutputBuffers:   map[string][]string{},
 		featureAllocator:       featureAllocator,
 	}
@@ -139,12 +139,12 @@ func (p *AsyncProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContex
 	}
 }
 
-func (p *AsyncProjectCommandOutputHandler) SetJobUrlWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
+func (p *AsyncProjectCommandOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
 	if !p.featureEnabled(ctx) {
 		return nil
 	}
 
-	url := p.projectJobUrlGenerator.GenerateProjectJobUrl(ctx)
+	url := p.projectJobURLGenerator.GenerateProjectJobURL(ctx)
 	return p.projectStatusUpdater.UpdateProject(ctx, cmdName, status, url)
 }
 

@@ -23,12 +23,12 @@ func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutp
 	logger := logging.NewNoopLogger(t)
 	prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
 	projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
-	projectJobUrlGenerator := mocks.NewMockProjectJobUrlGenerator()
+	projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
 	featureAllocator := featuremocks.NewMockAllocator()
 	prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
 		prjCmdOutputChan,
 		projectStatusUpdater,
-		projectJobUrlGenerator,
+		projectJobURLGenerator,
 		logger,
 		featureAllocator,
 	)
@@ -216,19 +216,19 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		logger := logging.NewNoopLogger(t)
 		prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
 		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
-		projectJobUrlGenerator := mocks.NewMockProjectJobUrlGenerator()
+		projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
 		featureAllocator := featuremocks.NewMockAllocator()
 		prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
 			prjCmdOutputChan,
 			projectStatusUpdater,
-			projectJobUrlGenerator,
+			projectJobURLGenerator,
 			logger,
 			featureAllocator,
 		)
 
 		When(featureAllocator.ShouldAllocate(featurematchers.AnyFeatureName(), pegomock.AnyString())).ThenReturn(true, nil)
-		When(projectJobUrlGenerator.GenerateProjectJobUrl(matchers.EqModelsProjectCommandContext(ctx))).ThenReturn("url-to-project-jobs")
-		prjCmdOutputHandler.SetJobUrlWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
+		When(projectJobURLGenerator.GenerateProjectJobURL(matchers.EqModelsProjectCommandContext(ctx))).ThenReturn("url-to-project-jobs")
+		prjCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
 		projectStatusUpdater.VerifyWasCalledOnce().UpdateProject(ctx, models.PlanCommand, models.PendingCommitStatus, "url-to-project-jobs")
 	})
 }

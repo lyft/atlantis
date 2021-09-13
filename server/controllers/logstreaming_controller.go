@@ -28,10 +28,9 @@ type JobsController struct {
 }
 
 type pullInfo struct {
-	org         string
-	repo        string
-	pull        int
-	projectName string
+	org  string
+	repo string
+	pull int
 }
 
 func (p *pullInfo) String() string {
