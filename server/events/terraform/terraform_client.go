@@ -38,6 +38,8 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+const ShowCommand = "show"
+
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_terraform_client.go Client
 
 type Client interface {
@@ -442,11 +444,16 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 
 		// Asynchronously copy from stdout/err to outCh.
 		go func() {
-			s := bufio.NewScanner(stdout)
-			for s.Scan() {
-				message := s.Text()
-				outCh <- Line{Line: message}
-				c.projectCmdOutputHandler.Send(ctx, message)
+			// Don't stream policy check output to outCh
+			cmds := strings.Split(tfCmd, " ")
+			ctx.Log.Info(fmt.Sprintf("Command Here: %v", cmds))
+			if cmds[1] != ShowCommand {
+				s := bufio.NewScanner(stdout)
+				for s.Scan() {
+					message := s.Text()
+					outCh <- Line{Line: message}
+					c.projectCmdOutputHandler.Send(ctx, message)
+				}
 			}
 			wg.Done()
 		}()
