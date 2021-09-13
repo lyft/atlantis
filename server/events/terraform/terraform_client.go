@@ -444,9 +444,8 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 
 		// Asynchronously copy from stdout/err to outCh.
 		go func() {
-			// Don't stream policy check output to outCh
+			// Don't stream terraform show output to outCh
 			cmds := strings.Split(tfCmd, " ")
-			ctx.Log.Info(fmt.Sprintf("Command Here: %v", cmds))
 			if cmds[1] != ShowCommand {
 				s := bufio.NewScanner(stdout)
 				for s.Scan() {
