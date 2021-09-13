@@ -922,6 +922,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 			VCSClient:          e2eVCSClient,
 			WorkingDir:         workingDir,
 			DB:                 boltdb,
+			ProjectFinder:      mocks.NewMockProjectFinder(),
 			PullClosedTemplate: &events.PullClosedEventTemplate{},
 		},
 		Logger:                       logger,

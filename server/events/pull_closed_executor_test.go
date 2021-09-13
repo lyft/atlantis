@@ -87,7 +87,6 @@ func TestCleanUpPullNoLocks(t *testing.T) {
 		DB:                 db,
 		ProjectFinder:      projectFinder,
 		PullClosedTemplate: &events.PullClosedEventTemplate{},
-		Logger:             logging.NewNoopLogger(t),
 	}
 	When(l.UnlockByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(nil, nil)
 	err = pce.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
@@ -176,7 +175,6 @@ func TestCleanUpPullComments(t *testing.T) {
 				VCSClient:          cp,
 				WorkingDir:         w,
 				PullClosedTemplate: &events.PullClosedEventTemplate{},
-				Logger:             logging.NewNoopLogger(t),
 				ProjectFinder:      projectFinder,
 			}
 			t.Log("testing: " + c.Description)

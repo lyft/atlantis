@@ -54,7 +54,7 @@ var ignoredFilenameFragments = []string{"terraform.tfstate", "terraform.tfstate.
 type DefaultProjectFinder struct {
 	VCSClient        vcs.Client
 	WorkingDir       WorkingDir
-	ParserVarlidator yaml.IParserValidator
+	ParserVarlidator yaml.ParserValidator
 	GlobalCfg        valid.GlobalCfg
 	AutoplanFileList string
 }
