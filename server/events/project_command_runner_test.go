@@ -189,7 +189,6 @@ func TestDefaultProjectCommandRunner_PlanStepRunnerFail(t *testing.T) {
 	When(mockPlan.Run(ctx, nil, repoDir, expEnvs)).ThenReturn("plan", fmt.Errorf("everything is broken"))
 	res := runner.Plan(ctx)
 
-	fmt.Printf("%v\n", res.PlanSuccess)
 	Assert(t, res.PlanSuccess == nil, "exp plan failure")
 
 	inOrderContext := new(InOrderContext)
