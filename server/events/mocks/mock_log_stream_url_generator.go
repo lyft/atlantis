@@ -40,21 +40,6 @@ func (mock *MockJobsUrlGenerator) GenerateProjectJobsUrl(pull models.PullRequest
 	return ret0
 }
 
-func (mock *MockJobsUrlGenerator) PullRequestJobsUrl(pull models.PullRequest) string {
-	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockJobsUrlGenerator().")
-	}
-	params := []pegomock.Param{pull}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("GenerateProjectJobsUrl", params, []reflect.Type{reflect.TypeOf((*string)(nil)).Elem()})
-	var ret0 string
-	if len(result) != 0 {
-		if result[0] != nil {
-			ret0 = result[0].(string)
-		}
-	}
-	return ret0
-}
-
 func (mock *MockJobsUrlGenerator) VerifyWasCalledOnce() *VerifierMockJobsUrlGenerator {
 	return &VerifierMockJobsUrlGenerator{
 		mock:                   mock,

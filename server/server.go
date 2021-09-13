@@ -73,9 +73,6 @@ const (
 	// ProjectJobsViewRouteName is the named route in mux.Router for the log stream view.
 	// Can be retrieved by mux.Router.Get(ProjectJobsViewRouteName)
 	ProjectJobsViewRouteName = "project-jobs-detail"
-	// PullRequestJobsViewRouteName is the named route in mux.Router for the log stream view.
-	// Can be retrieved by mux.Router.Get(PullRequestJobsViewRouteName)
-	PullRequestJobsViewRouteName = "pullrequest-jobs-detail"
 	// binDirName is the name of the directory inside our data dir where
 	// we download binaries.
 	BinDirName = "bin"
@@ -787,7 +784,6 @@ func (s *Server) Start() error {
 	s.Router.HandleFunc("/locks", s.LocksController.DeleteLock).Methods("DELETE").Queries("id", "{id:.*}")
 	s.Router.HandleFunc("/lock", s.LocksController.GetLock).Methods("GET").
 		Queries(LockViewRouteIDQueryParam, fmt.Sprintf("{%s}", LockViewRouteIDQueryParam)).Name(LockViewRouteName)
-	s.Router.HandleFunc("/jobs/{org}/{repo}/{pull}", s.JobsController.GetPullRequestJobs).Methods("GET").Name(PullRequestJobsViewRouteName)
 	s.Router.HandleFunc("/jobs/{org}/{repo}/{pull}/{project}", s.JobsController.GetProjectJobs).Methods("GET").Name(ProjectJobsViewRouteName)
 	s.Router.HandleFunc("/jobs/{org}/{repo}/{pull}/{project}/ws", s.JobsController.GetProjectJobsWS).Methods("GET")
 	n := negroni.New(&negroni.Recovery{

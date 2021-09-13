@@ -146,25 +146,6 @@ func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (j *JobsController) GetPullRequestJobs(w http.ResponseWriter, r *http.Request) {
-	pullInfo, err := newPullInfo(r)
-	if err != nil {
-		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	viewData := templates.PullRequestJobsData{
-		AtlantisVersion: j.AtlantisVersion,
-		PullRequestPath: pullInfo.String(),
-		CleanedBasePath: j.AtlantisURL.Path,
-	}
-
-	err = j.ProjectJobsTemplate.Execute(w, viewData)
-	if err != nil {
-		j.Logger.Err(err.Error())
-	}
-}
-
 func (j *JobsController) respond(w http.ResponseWriter, lvl logging.LogLevel, responseCode int, format string, args ...interface{}) {
 	response := fmt.Sprintf(format, args...)
 	j.Logger.Log(lvl, response)

@@ -19,9 +19,6 @@ type Router struct {
 	LockViewRouteName string
 	// ProjectJobsViewRouteName is the named route for the projects active jobs
 	ProjectJobsViewRouteName string
-	// PullRequestJobsViewRouteName is the named route for the aggregated view
-	// of active projects with jobs
-	PullRequestJobsViewRouteName string
 	// LockViewRouteIDQueryParam is the query parameter needed to construct the
 	// lock view: underlying.Get(LockViewRouteName).URL(LockViewRouteIDQueryParam, "my id").
 	LockViewRouteIDQueryParam string
@@ -48,15 +45,6 @@ func (r *Router) GenerateProjectJobUrl(p models.ProjectCommandContext) string {
 		"repo", pull.BaseRepo.Name,
 		"pull", fmt.Sprintf("%d", pull.Num),
 		"project", p.ProjectName,
-	)
-	return r.AtlantisURL.String() + jobURL.String()
-}
-
-func (r *Router) PullRequestJobsUrl(pull models.PullRequest) string {
-	jobURL, _ := r.Underlying.Get(r.PullRequestJobsViewRouteName).URL(
-		"org", pull.BaseRepo.Owner,
-		"repo", pull.BaseRepo.Name,
-		"pull", fmt.Sprintf("%d", pull.Num),
 	)
 	return r.AtlantisURL.String() + jobURL.String()
 }
