@@ -329,6 +329,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		router,
 		logger,
+		featureAllocator,
 	)
 
 	terraformClient, err := terraform.NewClient(

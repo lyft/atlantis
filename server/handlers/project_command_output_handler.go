@@ -5,9 +5,12 @@ import (
 	"sync"
 
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+// AsyncProjectCommandOutputHandler is a handler to transport terraform client
+// outputs to the front end.
 type AsyncProjectCommandOutputHandler struct {
 	projectCmdOutput chan *models.ProjectCmdOutputLine
 
@@ -20,7 +23,8 @@ type AsyncProjectCommandOutputHandler struct {
 	projectStatusUpdater   ProjectStatusUpdater
 	projectJobUrlGenerator ProjectJobUrlGenerator
 
-	logger logging.SimpleLogging
+	logger           logging.SimpleLogging
+	featureAllocator feature.Allocator
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobUrlGenerator
@@ -63,6 +67,7 @@ func NewAsyncProjectCommandOutputHandler(
 	projectStatusUpdater ProjectStatusUpdater,
 	projectJobUrlGenerator ProjectJobUrlGenerator,
 	logger logging.SimpleLogging,
+	featureAllocator feature.Allocator,
 ) ProjectCommandOutputHandler {
 	return &AsyncProjectCommandOutputHandler{
 		projectCmdOutput:       projectCmdOutput,
@@ -71,10 +76,27 @@ func NewAsyncProjectCommandOutputHandler(
 		projectStatusUpdater:   projectStatusUpdater,
 		projectJobUrlGenerator: projectJobUrlGenerator,
 		projectOutputBuffers:   map[string][]string{},
+		featureAllocator:       featureAllocator,
 	}
 }
 
+// Helper function to check if the log-streaming feature is enabled
+// It dynamically decides based on repo name that is defined in the models.ProjectCommandContext
+func (p *AsyncProjectCommandOutputHandler) featureEnabled(ctx models.ProjectCommandContext) bool {
+	shouldAllocate, err := p.featureAllocator.ShouldAllocate(feature.LogStreaming, ctx.Pull.BaseRepo.FullName)
+
+	if err != nil {
+		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.LogStreaming, err)
+	}
+
+	return shouldAllocate
+}
+
 func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
+	if !p.featureEnabled(ctx) {
+		return
+	}
+
 	p.projectCmdOutput <- &models.ProjectCmdOutputLine{
 		ProjectInfo: ctx.PullInfo(),
 		Line:        msg,
@@ -107,6 +129,10 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 }
 
 func (p *AsyncProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext) {
+	if !p.featureEnabled(ctx) {
+		return
+	}
+
 	p.projectCmdOutput <- &models.ProjectCmdOutputLine{
 		ProjectInfo:     ctx.PullInfo(),
 		ClearBuffBefore: true,
@@ -115,6 +141,10 @@ func (p *AsyncProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContex
 }
 
 func (p *AsyncProjectCommandOutputHandler) SetJobUrlWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
+	if !p.enabled(ctx) {
+		return nil
+	}
+
 	url := p.projectJobUrlGenerator.GenerateProjectJobUrl(ctx)
 	return p.projectStatusUpdater.UpdateProject(ctx, cmdName, status, url)
 }
