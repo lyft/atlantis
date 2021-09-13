@@ -38,7 +38,7 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
-const ShowCommand = "show"
+var LogStreamingValidCmds = [...]string{"init", "plan", "apply"}
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_terraform_client.go Client
 
@@ -446,7 +446,7 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 		go func() {
 			// Don't stream terraform show output to outCh
 			cmds := strings.Split(tfCmd, " ")
-			if cmds[1] != ShowCommand {
+			if isValidCommand(cmds[1]) {
 				s := bufio.NewScanner(stdout)
 				for s.Scan() {
 					message := s.Text()
@@ -562,6 +562,15 @@ func generateRCFile(tfeToken string, tfeHostname string, home string) error {
 		return errors.Wrapf(err, "writing generated %s file with TFE token to %s", rcFilename, rcFile)
 	}
 	return nil
+}
+
+func isValidCommand(cmd string) bool {
+	for _, validCmd := range LogStreamingValidCmds {
+		if validCmd == cmd {
+			return true
+		}
+	}
+	return false
 }
 
 func getVersion(tfBinary string) (*version.Version, error) {
