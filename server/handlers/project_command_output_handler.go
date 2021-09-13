@@ -66,7 +66,7 @@ func (p *DefaultProjectCommandOutputHandler) Receive(projectInfo string, receive
 	// Avoid deadlock when projectOutputBuffer size is greater than the channel (currently set to 1000)
 	// Running this as a goroutine allows for the channel to be read in callback
 	go p.addChan(receiver, projectInfo)
-	defer p.cleanUp(projectInfo, receiver)
+	defer p.removeChan(projectInfo, receiver)
 
 	for msg := range receiver {
 		if err := callback(msg); err != nil {
@@ -143,7 +143,7 @@ func (p *DefaultProjectCommandOutputHandler) writeLogLine(pull string, line stri
 }
 
 //Remove channel, so client no longer receives Terraform output
-func (p *DefaultProjectCommandOutputHandler) cleanUp(pull string, ch chan string) {
+func (p *DefaultProjectCommandOutputHandler) removeChan(pull string, ch chan string) {
 	p.receiverBuffersLock.Lock()
 	delete(p.receiverBuffers[pull], ch)
 	p.receiverBuffersLock.Unlock()

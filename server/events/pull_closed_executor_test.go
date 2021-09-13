@@ -19,7 +19,6 @@ import (
 
 	"github.com/runatlantis/atlantis/server/events/db"
 	"github.com/runatlantis/atlantis/server/handlers"
-	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/petergtz/pegomock"
@@ -42,7 +41,6 @@ func TestCleanUpPullWorkspaceErr(t *testing.T) {
 	pce := events.PullClosedExecutor{
 		WorkingDir:         w,
 		PullClosedTemplate: &events.PullClosedEventTemplate{},
-		Logger:             logging.NewNoopLogger(t),
 		ProjectFinder:      projectFinder,
 	}
 	err := errors.New("err")
@@ -61,7 +59,6 @@ func TestCleanUpPullUnlockErr(t *testing.T) {
 		Locker:             l,
 		WorkingDir:         w,
 		PullClosedTemplate: &events.PullClosedEventTemplate{},
-		Logger:             logging.NewNoopLogger(t),
 		ProjectFinder:      projectFinder,
 	}
 	err := errors.New("err")
@@ -197,7 +194,7 @@ func TestCleanUpLogStreaming(t *testing.T) {
 		locker := lockmocks.NewMockLocker()
 		client := vcsmocks.NewMockClient()
 		projectFinder := mocks.NewMockProjectFinder()
-		logger := logging.NewNoopLogger(t)
+		logger := loggermocks.NewMockSimpleLogging()
 
 		// Log streaming resources
 		prjCmdOutput := make(chan *models.ProjectCmdOutputLine)

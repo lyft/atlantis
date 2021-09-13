@@ -217,6 +217,9 @@ func (p *DefaultProjectFinder) FindMatchingProjects(log logging.SimpleLogging, r
 		if err != nil {
 			return pullInfoList, errors.Wrapf(err, "finding modified projects: %s", modifiedFiles)
 		}
+
+		// TODO: Handle scenarios when project name is not specified in the config.
+		// Current implementation uses the project path/dir relative to the root instead of project name
 		for _, project := range modifiedProjects {
 			pullInfoList = append(pullInfoList, fmt.Sprintf("%s/%d/%s", pull.BaseRepo.FullName, pull.Num, project.Path))
 		}
