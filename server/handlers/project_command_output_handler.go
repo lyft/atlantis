@@ -177,7 +177,6 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(pull string, line string
 		select {
 		case ch <- line:
 		default:
-			fmt.Printf("somehow we are here\n")
 			// Client ws conn could be closed in two ways:
 			// 1. Client closes the conn gracefully -> the closeHandler() is executed which
 			//  	closes the channel and cleans up resources.
