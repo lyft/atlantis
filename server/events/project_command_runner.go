@@ -334,11 +334,12 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 		return "", "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	failure, err = p.AggregateApplyRequirements.ValidateProject(repoDir, ctx)
-	if failure != "" || err != nil {
-		return "", failure, err
+	if !ctx.Force {
+		failure, err = p.AggregateApplyRequirements.ValidateProject(repoDir, ctx)
+		if failure != "" || err != nil {
+			return "", failure, err
+		}
 	}
-
 	// Acquire internal lock for the directory we're going to operate in.
 	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, ctx.Workspace)
 	if err != nil {
