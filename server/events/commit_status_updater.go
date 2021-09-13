@@ -21,12 +21,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
-type ProjectStatusUpdater interface {
-	// UpdateProject sets the commit status for the project represented by
-	// ctx.
-	UpdateProject(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus, url string) error
-}
-
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_commit_status_updater.go CommitStatusUpdater
 
 // CommitStatusUpdater updates the status of a commit with the VCS host. We set
@@ -38,7 +32,9 @@ type CommitStatusUpdater interface {
 	// UpdateCombinedCount updates the combined status to reflect the
 	// numSuccess out of numTotal.
 	UpdateCombinedCount(repo models.Repo, pull models.PullRequest, status models.CommitStatus, command models.CommandName, numSuccess int, numTotal int) error
-	ProjectStatusUpdater
+	// UpdateProject sets the commit status for the project represented by
+	// ctx.
+	UpdateProject(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus, url string) error
 }
 
 // DefaultCommitStatusUpdater implements CommitStatusUpdater.

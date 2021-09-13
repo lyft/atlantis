@@ -802,7 +802,6 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: workingDir,
 		},
-		JobsURLGenerator: mocks.NewMockJobsURLGenerator(),
 	}
 
 	dbUpdater := &events.DBUpdater{
@@ -845,7 +844,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		parallelPoolSize,
 		silenceNoProjects,
 		boltdb,
-		mocks.NewMockJobsURLGenerator(),
+		mocks.NewMockJobsUrlGenerator(),
 		featureAllocator,
 	)
 
@@ -869,7 +868,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		silenceNoProjects,
 		false,
 		&e2ePullReqStatusFetcher,
-		mocks.NewMockJobsURLGenerator(),
+		mocks.NewMockJobsUrlGenerator(),
 		featureAllocator,
 	)
 

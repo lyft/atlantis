@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -16,7 +17,25 @@ type AsyncProjectCommandOutputHandler struct {
 	receiverBuffers     map[string]map[chan string]bool
 	receiverBuffersLock sync.RWMutex
 
+	projectStatusUpdater   ProjectStatusUpdater
+	projectJobUrlGenerator ProjectJobUrlGenerator
+
 	logger logging.SimpleLogging
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobUrlGenerator
+
+// ProjectJobUrlGenerator generates urls to view project's progress.
+type ProjectJobUrlGenerator interface {
+	GenerateProjectJobUrl(p models.ProjectCommandContext) string
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_status_updater.go ProjectStatusUpdater
+
+type ProjectStatusUpdater interface {
+	// UpdateProject sets the commit status for the project represented by
+	// ctx.
+	UpdateProject(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus, url string) error
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_output_handler.go ProjectCommandOutputHandler
@@ -33,17 +52,25 @@ type ProjectCommandOutputHandler interface {
 
 	// Listens for msg from channel
 	Handle()
+
+	// SetJobUrlWithStatus sets the commit status for the project represented by
+	// ctx and updates the status with and url to a job.
+	SetJobUrlWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error
 }
 
 func NewAsyncProjectCommandOutputHandler(
 	projectCmdOutput chan *models.ProjectCmdOutputLine,
+	projectStatusUpdater ProjectStatusUpdater,
+	projectJobUrlGenerator ProjectJobUrlGenerator,
 	logger logging.SimpleLogging,
 ) ProjectCommandOutputHandler {
 	return &AsyncProjectCommandOutputHandler{
-		projectCmdOutput:     projectCmdOutput,
-		logger:               logger,
-		receiverBuffers:      map[string]map[chan string]bool{},
-		projectOutputBuffers: map[string][]string{},
+		projectCmdOutput:       projectCmdOutput,
+		logger:                 logger,
+		receiverBuffers:        map[string]map[chan string]bool{},
+		projectStatusUpdater:   projectStatusUpdater,
+		projectJobUrlGenerator: projectJobUrlGenerator,
+		projectOutputBuffers:   map[string][]string{},
 	}
 }
 
@@ -55,7 +82,6 @@ func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext
 }
 
 func (p *AsyncProjectCommandOutputHandler) Receive(projectInfo string, receiver chan string, callback func(msg string) error) error {
-
 	// Avoid deadlock when projectOutputBuffer size is greater than the channel (currently set to 1000)
 	// Running this as a goroutine allows for the channel to be read in callback
 	go p.addChan(receiver, projectInfo)
@@ -88,6 +114,11 @@ func (p *AsyncProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContex
 	}
 }
 
+func (p *AsyncProjectCommandOutputHandler) SetJobUrlWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
+	url := p.projectJobUrlGenerator.GenerateProjectJobUrl(ctx)
+	return p.projectStatusUpdater.UpdateProject(ctx, cmdName, status, url)
+}
+
 func (p *AsyncProjectCommandOutputHandler) clearLogLines(pull string) {
 	p.projectOutputBuffersLock.Lock()
 	delete(p.projectOutputBuffers, pull)
@@ -116,6 +147,7 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(pull string, line string
 		select {
 		case ch <- line:
 		default:
+			fmt.Printf("somehow we are here\n")
 			// Client ws conn could be closed in two ways:
 			// 1. Client closes the conn gracefully -> the closeHandler() is executed which
 			//  	closes the channel and cleans up resources.

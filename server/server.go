@@ -326,6 +326,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
 	projectCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
 		projectCmdOutput,
+		commitStatusUpdater,
+		router,
 		logger,
 	)
 
@@ -512,7 +514,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	projectCommandRunner := &events.DefaultProjectCommandRunner{
 		Locker:           projectLocker,
 		LockURLGenerator: router,
-		JobsUrlGenerator: router,
 		InitStepRunner: &runtime.InitStepRunner{
 			TerraformExecutor: terraformClient,
 			DefaultTFVersion:  defaultTfVersion,
@@ -539,7 +540,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDirLocker:           workingDirLocker,
 		ProjectCmdOutputHandler:    projectCmdOutputHandler,
 		AggregateApplyRequirements: applyRequirementHandler,
-		ProjectStatusUpdater:       commitStatusUpdater,
 	}
 
 	dbUpdater := &events.DBUpdater{

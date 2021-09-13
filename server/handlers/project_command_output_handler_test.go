@@ -1,22 +1,71 @@
 package handlers_test
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/handlers"
+	"github.com/runatlantis/atlantis/server/handlers/mocks"
+	"github.com/runatlantis/atlantis/server/handlers/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/logging"
-	. "github.com/runatlantis/atlantis/testing"
 	"github.com/stretchr/testify/assert"
+
+	. "github.com/petergtz/pegomock"
+	. "github.com/runatlantis/atlantis/testing"
 )
 
 func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutputHandler {
 	logger := logging.NewNoopLogger(t)
 	prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
-	return handlers.NewAsyncProjectCommandOutputHandler(prjCmdOutputChan, logger)
+	projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
+	projectJobUrlGenerator := mocks.NewMockProjectJobUrlGenerator()
+	prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
+		prjCmdOutputChan,
+		projectStatusUpdater,
+		projectJobUrlGenerator,
+		logger,
+	)
+
+	go func() {
+		prjCmdOutputHandler.Handle()
+	}()
+
+	return prjCmdOutputHandler
+}
+
+func runAsyncOutputHandler(
+	t *testing.T,
+	projectOutputHandler handlers.ProjectCommandOutputHandler,
+	ctx models.ProjectCommandContext,
+	msg string,
+	expReceiveCalls int,
+) []string {
+	var wg sync.WaitGroup
+	var actMsgs []string
+
+	wg.Add(expReceiveCalls)
+	ch := make(chan string)
+	go func() {
+		err := projectOutputHandler.Receive(ctx.PullInfo(), ch, func(msg string) error {
+			actMsgs = append(actMsgs, msg)
+			wg.Done()
+			return nil
+		})
+		Ok(t, err)
+	}()
+
+	projectOutputHandler.Send(ctx, msg)
+
+	// Wait for the msg to be read.
+	wg.Wait()
+
+	// Close channel to close prev connection.
+	// This should close the first go routine with receive call.
+	close(ch)
+
+	return actMsgs
 }
 
 func TestProjectCommandOutputHandler(t *testing.T) {
@@ -58,11 +107,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 	t.Run("Should Receive Message Sent in the ProjectCmdOutput channel", func(t *testing.T) {
 		var wg sync.WaitGroup
 		var expectedMsg string
-
 		projectOutputHandler := createProjectCommandOutputHandler(t)
-		go func() {
-			projectOutputHandler.Handle()
-		}()
 
 		wg.Add(1)
 		ch := make(chan string)
@@ -86,9 +131,6 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		var wg sync.WaitGroup
 
 		projectOutputHandler := createProjectCommandOutputHandler(t)
-		go func() {
-			projectOutputHandler.Handle()
-		}()
 
 		wg.Add(1)
 		ch := make(chan string)
@@ -120,9 +162,6 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		var wg sync.WaitGroup
 
 		projectOutputHandler := createProjectCommandOutputHandler(t)
-		go func() {
-			projectOutputHandler.Handle()
-		}()
 
 		wg.Add(1)
 		ch := make(chan string)
@@ -154,15 +193,11 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		var wg sync.WaitGroup
 
 		projectOutputHandler := createProjectCommandOutputHandler(t)
-		go func() {
-			projectOutputHandler.Handle()
-		}()
 
 		wg.Add(1)
 		ch := make(chan string)
 		go func() {
 			err := projectOutputHandler.Receive(ctx.PullInfo(), ch, func(msg string) error {
-				fmt.Println(msg)
 				wg.Done()
 				return nil
 			})
@@ -202,5 +237,23 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		wg.Wait()
 		close(ch)
 		assert.Equal(t, []string{Msg, Msg}, expectedMsg)
+	})
+
+	t.Run("update project status with project jobs url", func(t *testing.T) {
+		RegisterMockTestingT(t)
+		logger := logging.NewNoopLogger(t)
+		prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
+		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
+		projectJobUrlGenerator := mocks.NewMockProjectJobUrlGenerator()
+		prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
+			prjCmdOutputChan,
+			projectStatusUpdater,
+			projectJobUrlGenerator,
+			logger,
+		)
+
+		When(projectJobUrlGenerator.GenerateProjectJobUrl(matchers.EqModelsProjectCommandContext(ctx))).ThenReturn("url-to-project-jobs")
+		prjCmdOutputHandler.SetJobUrlWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
+		projectStatusUpdater.VerifyWasCalledOnce().UpdateProject(ctx, models.PlanCommand, models.PendingCommitStatus, "url-to-project-jobs")
 	})
 }

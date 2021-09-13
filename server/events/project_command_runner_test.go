@@ -14,6 +14,7 @@
 package events_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -42,8 +43,8 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	realEnv := runtime.EnvStepRunner{}
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
-	projectCmdOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	mockApplyReqHandler := mocks.NewMockApplyRequirement()
+	mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 
 	runner := events.DefaultProjectCommandRunner{
 		Locker:                     mockLocker,
@@ -56,7 +57,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 		WorkingDir:                 mockWorkingDir,
 		Webhooks:                   nil,
 		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
-		ProjectCmdOutputHandler:    projectCmdOutputHandler,
+		ProjectCmdOutputHandler:    mockProjectCommandOutputHandler,
 		AggregateApplyRequirements: mockApplyReqHandler,
 	}
 
@@ -117,6 +118,10 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	Equals(t, "https://lock-key", res.PlanSuccess.LockURL)
 	Equals(t, "run\napply\nplan\ninit", res.PlanSuccess.TerraformOutput)
 
+	inOrderContext := new(InOrderContext)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.PlanCommand, models.SuccessCommitStatus)
+
 	expSteps := []string{"run", "apply", "plan", "init", "env"}
 	for _, step := range expSteps {
 		switch step {
@@ -130,6 +135,68 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 			mockRun.VerifyWasCalledOnce().Run(ctx, "", repoDir, expEnvs)
 		}
 	}
+}
+
+func TestDefaultProjectCommandRunner_PlanStepRunnerFail(t *testing.T) {
+	RegisterMockTestingT(t)
+	mockPlan := mocks.NewMockStepRunner()
+	mockWorkingDir := mocks.NewMockWorkingDir()
+	mockLocker := mocks.NewMockProjectLocker()
+	mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
+
+	runner := events.DefaultProjectCommandRunner{
+		Locker:                  mockLocker,
+		LockURLGenerator:        mockURLGenerator{},
+		PlanStepRunner:          mockPlan,
+		WorkingDir:              mockWorkingDir,
+		Webhooks:                nil,
+		WorkingDirLocker:        events.NewDefaultWorkingDirLocker(),
+		ProjectCmdOutputHandler: mockProjectCommandOutputHandler,
+	}
+
+	repoDir, cleanup := TempDir(t)
+	defer cleanup()
+	When(mockWorkingDir.Clone(
+		matchers.AnyPtrToLoggingSimpleLogger(),
+		matchers.AnyModelsRepo(),
+		matchers.AnyModelsPullRequest(),
+		AnyString(),
+	)).ThenReturn(repoDir, false, nil)
+	When(mockLocker.TryLock(
+		matchers.AnyPtrToLoggingSimpleLogger(),
+		matchers.AnyModelsPullRequest(),
+		matchers.AnyModelsUser(),
+		AnyString(),
+		matchers.AnyModelsProject(),
+	)).ThenReturn(&events.TryLockResponse{
+		LockAcquired: true,
+		LockKey:      "lock-key",
+		UnlockFn:     func() error { return nil },
+	}, nil)
+
+	expEnvs := map[string]string{}
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName: "plan",
+			},
+		},
+		Workspace:  "default",
+		RepoRelDir: ".",
+	}
+	// Each step will output its step name.
+	When(mockPlan.Run(ctx, nil, repoDir, expEnvs)).ThenReturn("plan", fmt.Errorf("everything is broken"))
+	res := runner.Plan(ctx)
+
+	fmt.Printf("%v\n", res.PlanSuccess)
+	Assert(t, res.PlanSuccess == nil, "exp plan failure")
+
+	inOrderContext := new(InOrderContext)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.PlanCommand, models.FailedCommitStatus)
+
+	mockPlan.VerifyWasCalledOnce().Run(ctx, nil, repoDir, expEnvs)
 }
 
 // Test what happens if there's no working dir. This signals that the project
@@ -306,6 +373,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			mockWorkingDir := mocks.NewMockWorkingDir()
 			mockLocker := mocks.NewMockProjectLocker()
 			mockSender := mocks.NewMockWebhooksSender()
+			mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 			applyReqHandler := &events.AggregateApplyRequirements{
 				WorkingDir: mockWorkingDir,
 			}
@@ -322,6 +390,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 				Webhooks:                   mockSender,
 				WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 				AggregateApplyRequirements: applyReqHandler,
+				ProjectCmdOutputHandler:    mockProjectCommandOutputHandler,
 			}
 			repoDir, cleanup := TempDir(t)
 			defer cleanup()
@@ -353,6 +422,10 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			Equals(t, c.expOut, res.ApplySuccess)
 			Equals(t, c.expFailure, res.Failure)
 
+			inOrderContext := new(InOrderContext)
+			mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus)
+			mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.ApplyCommand, models.SuccessCommitStatus)
+
 			for _, step := range c.expSteps {
 				switch step {
 				case "approved":
@@ -371,6 +444,61 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test that it runs the expected apply steps.
+func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
+	RegisterMockTestingT(t)
+	mockApply := mocks.NewMockStepRunner()
+	mockWorkingDir := mocks.NewMockWorkingDir()
+	mockLocker := mocks.NewMockProjectLocker()
+	mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
+	mockSender := mocks.NewMockWebhooksSender()
+	applyReqHandler := &events.AggregateApplyRequirements{
+		WorkingDir: mockWorkingDir,
+	}
+
+	runner := events.DefaultProjectCommandRunner{
+		Locker:                     mockLocker,
+		LockURLGenerator:           mockURLGenerator{},
+		ApplyStepRunner:            mockApply,
+		WorkingDir:                 mockWorkingDir,
+		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
+		AggregateApplyRequirements: applyReqHandler,
+		ProjectCmdOutputHandler:    mockProjectCommandOutputHandler,
+		Webhooks:                   mockSender,
+	}
+	repoDir, cleanup := TempDir(t)
+	defer cleanup()
+	When(mockWorkingDir.GetWorkingDir(
+		matchers.AnyModelsRepo(),
+		matchers.AnyModelsPullRequest(),
+		AnyString(),
+	)).ThenReturn(repoDir, nil)
+
+	ctx := models.ProjectCommandContext{
+		Log: logging.NewNoopLogger(t),
+		Steps: []valid.Step{
+			{
+				StepName: "apply",
+			},
+		},
+		Workspace:         "default",
+		ApplyRequirements: []string{},
+		RepoRelDir:        ".",
+		PullMergeable:     true,
+	}
+	expEnvs := map[string]string{}
+	When(mockApply.Run(ctx, nil, repoDir, expEnvs)).ThenReturn("apply", fmt.Errorf("something went wrong"))
+
+	res := runner.Apply(ctx)
+	Assert(t, res.ApplySuccess == "", "exp apply failure")
+
+	inOrderContext := new(InOrderContext)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus)
+	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobUrlWithStatus(ctx, models.ApplyCommand, models.FailedCommitStatus)
+
+	mockApply.VerifyWasCalledOnce().Run(ctx, nil, repoDir, expEnvs)
 }
 
 // Test run and env steps. We don't use mocks for this test since we're
