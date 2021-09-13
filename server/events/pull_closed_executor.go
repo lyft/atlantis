@@ -22,7 +22,6 @@ import (
 	"text/template"
 
 	"github.com/runatlantis/atlantis/server/events/db"
-	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 
 	"github.com/runatlantis/atlantis/server/logging"
 
@@ -30,7 +29,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/locking"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
-	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/handlers"
 )
 
@@ -47,17 +45,13 @@ type PullCleaner interface {
 // request.
 type PullClosedExecutor struct {
 	Locker                   locking.Locker
-	VCSClient                vcs.Client
-	WorkingDir               WorkingDir
 	Logger                   logging.SimpleLogging
 	DB                       *db.BoltDB
 	PullClosedTemplate       PullCleanupTemplate
 	LogStreamResourceCleaner handlers.ResourceCleaner
-	VCSCient                 vcs.Client
-	GlobalCfg                valid.GlobalCfg
+	VCSClient                vcs.Client
 	ProjectFinder            ProjectFinder
-	AutoplanFileList         string
-	ParserVarlidator         yaml.IParserValidator
+	WorkingDir               WorkingDir
 }
 
 type templatedProject struct {
@@ -82,7 +76,7 @@ var pullClosedTemplate = template.Must(template.New("").Parse(
 
 // CleanUpPull cleans up after a closed pull request.
 func (p *PullClosedExecutor) CleanUpPull(repo models.Repo, pull models.PullRequest) error {
-	pullInfoList, err := p.findMatchingProjects(repo, pull)
+	pullInfoList, err := p.ProjectFinder.FindMatchingProjects(p.Logger, repo, pull)
 	if err != nil {
 		// Log and continue to clean up other resources.
 		p.Logger.Err("retrieving matching projects: %s", err)
@@ -159,49 +153,4 @@ func (p *PullClosedExecutor) buildTemplateData(locks []models.ProjectLock) []tem
 		}
 	}
 	return projects
-}
-
-func (p *PullClosedExecutor) findMatchingProjects(repo models.Repo, pull models.PullRequest) ([]string, error) {
-
-	var pullInfoList []string
-	repoDir, err := p.WorkingDir.GetWorkingDir(repo, pull, "default")
-	if err != nil {
-		return pullInfoList, errors.Wrap(err, "retrieving working dir")
-	}
-
-	modifiedFiles, err := p.VCSClient.GetModifiedFiles(repo, pull)
-	if err != nil {
-		return pullInfoList, err
-	}
-
-	hasRepoCfg, err := p.ParserVarlidator.HasRepoCfg(repoDir)
-	if err != nil {
-		return pullInfoList, errors.Wrapf(err, "looking for %s file in %q", yaml.AtlantisYAMLFilename, repoDir)
-	}
-
-	if hasRepoCfg {
-		repoCfg, err := p.ParserVarlidator.ParseRepoCfg(repoDir, p.GlobalCfg, repo.ID())
-		if err != nil {
-			return pullInfoList, errors.Wrapf(err, "parsing %s", yaml.AtlantisYAMLFilename)
-		}
-
-		matchingProjects, err := p.ProjectFinder.DetermineProjectsViaConfig(p.Logger, modifiedFiles, repoCfg, repoDir)
-		if err != nil {
-			return pullInfoList, err
-		}
-
-		for _, project := range matchingProjects {
-			pullInfoList = append(pullInfoList, fmt.Sprintf("%s/%d/%s", pull.BaseRepo.FullName, pull.Num, *project.Name))
-		}
-	} else {
-		modifiedProjects := p.ProjectFinder.DetermineProjects(p.Logger, modifiedFiles, repo.FullName, repoDir, p.AutoplanFileList)
-		if err != nil {
-			return pullInfoList, errors.Wrapf(err, "finding modified projects: %s", modifiedFiles)
-		}
-		for _, project := range modifiedProjects {
-			pullInfoList = append(pullInfoList, fmt.Sprintf("%s/%d/%s", pull.BaseRepo.FullName, pull.Num, project.Path))
-		}
-	}
-
-	return pullInfoList, nil
 }

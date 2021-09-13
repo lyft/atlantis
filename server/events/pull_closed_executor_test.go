@@ -18,7 +18,9 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/events/db"
+	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/stretchr/testify/assert"
 
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events"
@@ -28,6 +30,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
+	loggermocks "github.com/runatlantis/atlantis/server/logging/mocks"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -35,13 +38,14 @@ func TestCleanUpPullWorkspaceErr(t *testing.T) {
 	t.Log("when workspace.Delete returns an error, we return it")
 	RegisterMockTestingT(t)
 	w := mocks.NewMockWorkingDir()
+	projectFinder := mocks.NewMockProjectFinder()
 	pce := events.PullClosedExecutor{
 		WorkingDir:         w,
 		PullClosedTemplate: &events.PullClosedEventTemplate{},
 		Logger:             logging.NewNoopLogger(t),
+		ProjectFinder:      projectFinder,
 	}
 	err := errors.New("err")
-	When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn("", err)
 	When(w.Delete(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(err)
 	actualErr := pce.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
 	Equals(t, "cleaning workspace: err", actualErr.Error())
@@ -52,14 +56,15 @@ func TestCleanUpPullUnlockErr(t *testing.T) {
 	RegisterMockTestingT(t)
 	w := mocks.NewMockWorkingDir()
 	l := lockmocks.NewMockLocker()
+	projectFinder := mocks.NewMockProjectFinder()
 	pce := events.PullClosedExecutor{
 		Locker:             l,
 		WorkingDir:         w,
 		PullClosedTemplate: &events.PullClosedEventTemplate{},
 		Logger:             logging.NewNoopLogger(t),
+		ProjectFinder:      projectFinder,
 	}
 	err := errors.New("err")
-	When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn("", err)
 	When(l.UnlockByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(nil, err)
 	actualErr := pce.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
 	Equals(t, "cleaning up locks: err", actualErr.Error())
@@ -71,20 +76,19 @@ func TestCleanUpPullNoLocks(t *testing.T) {
 	w := mocks.NewMockWorkingDir()
 	l := lockmocks.NewMockLocker()
 	cp := vcsmocks.NewMockClient()
+	projectFinder := mocks.NewMockProjectFinder()
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	db, err := db.New(tmp)
 	Ok(t, err)
 	pce := events.PullClosedExecutor{
 		Locker:             l,
-		VCSClient:          cp,
 		WorkingDir:         w,
 		DB:                 db,
+		ProjectFinder:      projectFinder,
 		PullClosedTemplate: &events.PullClosedEventTemplate{},
 		Logger:             logging.NewNoopLogger(t),
 	}
-	err = errors.New("err")
-	When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn("", err)
 	When(l.UnlockByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(nil, nil)
 	err = pce.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
 	Ok(t, err)
@@ -158,24 +162,24 @@ func TestCleanUpPullComments(t *testing.T) {
 	}
 	for _, c := range cases {
 		func() {
-			w := mocks.NewMockWorkingDir()
 			cp := vcsmocks.NewMockClient()
 			l := lockmocks.NewMockLocker()
+			w := mocks.NewMockWorkingDir()
+			projectFinder := mocks.NewMockProjectFinder()
 			tmp, cleanup := TempDir(t)
 			defer cleanup()
 			db, err := db.New(tmp)
 			Ok(t, err)
 			pce := events.PullClosedExecutor{
 				Locker:             l,
+				DB:                 db,
 				VCSClient:          cp,
 				WorkingDir:         w,
-				DB:                 db,
 				PullClosedTemplate: &events.PullClosedEventTemplate{},
 				Logger:             logging.NewNoopLogger(t),
+				ProjectFinder:      projectFinder,
 			}
 			t.Log("testing: " + c.Description)
-			err = errors.New("err")
-			When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn("", err)
 			When(l.UnlockByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(c.Locks, nil)
 			err = pce.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
 			Ok(t, err)
@@ -187,64 +191,108 @@ func TestCleanUpPullComments(t *testing.T) {
 	}
 }
 
-/*
-Testing Resource cleanup
+func TestCleanUpLogStreaming(t *testing.T) {
+	RegisterMockTestingT(t)
 
-1. Add a project to buffers manually and run the cleanup.
+	t.Run("Should Clean Up Log Streaming Resources When PR is closed", func(t *testing.T) {
+		workingDir := mocks.NewMockWorkingDir()
+		locker := lockmocks.NewMockLocker()
+		client := vcsmocks.NewMockClient()
+		projectFinder := mocks.NewMockProjectFinder()
+		logger := logging.NewNoopLogger(t)
 
-*/
+		// Log streaming resources
+		prjCmdOutput := make(chan *models.ProjectCmdOutputLine)
+		prjCmdOutHandler := handlers.NewProjectCommandOutputHandler(prjCmdOutput, logger)
+		ctx := models.ProjectCommandContext{
+			BaseRepo:    fixtures.GithubRepo,
+			Pull:        fixtures.Pull,
+			ProjectName: *fixtures.Project.Name,
+		}
 
-// func TestCleanUpLogStreaming(t *testing.T) {
-// 	w := mocks.NewMockWorkingDir()
-// 	cp := vcsmocks.NewMockClient()
-// 	l := lockmocks.NewMockLocker()
-// 	logger := logging.NewNoopLogger(t)
-// 	parserValidator := yamlmocks.NewMockIParserValidator()
-// 	prjCmdOutput := make(chan *models.ProjectCmdOutputLine)
-// 	prjCmdOutHandler := handlers.NewProjectCommandOutputHandler(prjCmdOutput, logger)
-// 	ctx := models.ProjectCommandContext{
-// 		BaseRepo:    fixtures.GithubRepo,
-// 		Pull:        fixtures.Pull,
-// 		ProjectName: *fixtures.Project.Name,
-// 	}
+		go prjCmdOutHandler.Handle()
+		prjCmdOutHandler.Send(ctx, "Test Message")
 
-// 	// Go routine to add new
-// 	go prjCmdOutHandler.Handle()
+		tmp, cleanup := TempDir(t)
+		defer cleanup()
+		db, err := db.New(tmp)
+		Ok(t, err)
 
-// 	tmp, cleanup := TempDir(t)
-// 	defer cleanup()
-// 	db, err := db.New(tmp)
-// 	Ok(t, err)
+		pullClosedExecutor := events.PullClosedExecutor{
+			Locker:                   locker,
+			WorkingDir:               workingDir,
+			DB:                       db,
+			VCSClient:                client,
+			PullClosedTemplate:       &events.PullClosedEventTemplate{},
+			LogStreamResourceCleaner: prjCmdOutHandler,
+			Logger:                   logger,
+			ProjectFinder:            projectFinder,
+		}
 
-// 	pullClosedExecutor := events.PullClosedExecutor{
-// 		Locker:                   l,
-// 		VCSClient:                cp,
-// 		WorkingDir:               w,
-// 		DB:                       db,
-// 		PullClosedTemplate:       &events.PullClosedEventTemplate{},
-// 		LogStreamResourceCleaner: prjCmdOutHandler,
-// 		Logger:                   logging.NewNoopLogger(t),
-// 		ParserVarlidator:         parserValidator,
-// 	}
+		locks := []models.ProjectLock{
+			{
+				Project:   models.NewProject(fixtures.GithubRepo.FullName, ""),
+				Workspace: "default",
+			},
+		}
+		When(projectFinder.FindMatchingProjects(logger, fixtures.GithubRepo, fixtures.Pull)).ThenReturn([]string{ctx.PullInfo()}, nil)
+		When(locker.UnlockByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(locks, nil)
 
-// 	// Send a tf message to log-streaming handler
-// 	prjCmdOutHandler.Send(ctx, "Test Message")
+		// Clean up.
+		err = pullClosedExecutor.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
+		Ok(t, err)
 
-// 	// Make sure channels are added.
-// 	time.Sleep(1 * time.Second)
+		close(prjCmdOutput)
+		_, _, comment, _ := client.VerifyWasCalledOnce().CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString()).GetCapturedArguments()
+		expectedComment := "Locks and plans deleted for the projects and workspaces modified in this pull request:\n\n" + "- dir: `.` workspace: `default`"
+		Equals(t, expectedComment, comment)
 
-// 	// Clean up.
-// 	err = pullClosedExecutor.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
-// 	Ok(t, err)
+		dfPrjCmdOutputHandler := prjCmdOutHandler.(*handlers.DefaultProjectCommandOutputHandler)
+		assert.Empty(t, dfPrjCmdOutputHandler.GetProjectOutputBuffer(ctx.PullInfo()))
+		assert.Empty(t, dfPrjCmdOutputHandler.GetReceiverBufferForPull(ctx.PullInfo()))
+	})
 
-// 	repoDir := "/Users/TestEnv/runatlantis/atlantis/1/default"
-// 	// Mock workingDir to return: /Users/TestEnv/runatlantis/atlantis/1/default
-// 	When(w.GetWorkingDir(fixtures.GithubRepo, fixtures.Pull, "default")).ThenReturn(repoDir, nil)
+	t.Run("Should Log Error and continue clean up when FindMatchingProjects Fails", func(t *testing.T) {
+		workingDir := mocks.NewMockWorkingDir()
+		locker := lockmocks.NewMockLocker()
+		client := vcsmocks.NewMockClient()
+		projectFinder := mocks.NewMockProjectFinder()
+		logger := loggermocks.NewMockSimpleLogging()
 
-// 	// Mock VCSClient to return: main.tf
-// 	When(cp.GetModifiedFiles(fixtures.GithubRepo, fixtures.Pull)).ThenReturn([]string{"main.tf"}, nil)
+		tmp, cleanup := TempDir(t)
+		defer cleanup()
+		db, err := db.New(tmp)
+		Ok(t, err)
 
-// 	When(parserValidator.HasRepoCfg(repoDir)).ThenReturn(true, nil)
-// 	When(parserValidator.ParseRepoCfg(repoDir, Any))
+		pullClosedExecutor := events.PullClosedExecutor{
+			Locker:             locker,
+			WorkingDir:         workingDir,
+			DB:                 db,
+			VCSClient:          client,
+			PullClosedTemplate: &events.PullClosedEventTemplate{},
+			Logger:             logger,
+			ProjectFinder:      projectFinder,
+		}
 
-// }
+		locks := []models.ProjectLock{
+			{
+				Project:   models.NewProject(fixtures.GithubRepo.FullName, ""),
+				Workspace: "default",
+			},
+		}
+		expetedErr := errors.New("error finding projects")
+		When(projectFinder.FindMatchingProjects(logger, fixtures.GithubRepo, fixtures.Pull)).ThenReturn([]string{}, expetedErr)
+		When(locker.UnlockByPull(fixtures.GithubRepo.FullName, fixtures.Pull.Num)).ThenReturn(locks, nil)
+
+		// Clean up.
+		err = pullClosedExecutor.CleanUpPull(fixtures.GithubRepo, fixtures.Pull)
+		Ok(t, err)
+
+		_, _, comment, _ := client.VerifyWasCalledOnce().CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString()).GetCapturedArguments()
+		expected := "Locks and plans deleted for the projects and workspaces modified in this pull request:\n\n" + "- dir: `.` workspace: `default`"
+		Equals(t, expected, comment)
+
+		logger.VerifyWasCalledOnce().Err("retrieving matching projects: %s", expetedErr)
+	})
+
+}

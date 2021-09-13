@@ -417,18 +417,14 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		statsScope,
 		logger,
 		&events.PullClosedExecutor{
-			VCSClient:                vcsClient,
 			Locker:                   lockingClient,
 			WorkingDir:               workingDir,
 			Logger:                   logger,
 			DB:                       boltdb,
 			PullClosedTemplate:       &events.PullClosedEventTemplate{},
 			LogStreamResourceCleaner: projectCmdOutputHandler,
-			VCSCient:                 vcsClient,
-			GlobalCfg:                globalCfg,
+			VCSClient:                vcsClient,
 			ProjectFinder:            &events.DefaultProjectFinder{},
-			AutoplanFileList:         userConfig.AutoplanFileList,
-			ParserVarlidator:         yaml.ParserValidator{},
 		},
 	)
 	eventParser := &events.EventParser{
@@ -719,11 +715,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		statsScope,
 		logger,
 		&events.PullClosedExecutor{
-			VCSClient:  vcsClient,
-			Locker:     lockingClient,
-			WorkingDir: workingDir,
-			Logger:     logger,
-			DB:         boltdb,
+			VCSClient:                vcsClient,
+			Locker:                   lockingClient,
+			WorkingDir:               workingDir,
+			Logger:                   logger,
+			DB:                       boltdb,
+			LogStreamResourceCleaner: projectCmdOutputHandler,
+			ProjectFinder:            &events.DefaultProjectFinder{},
 
 			// using a specific template to signal that this is from an async process
 			PullClosedTemplate: NewGCStaleClosedPull(),
@@ -731,11 +729,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 		// using a pullclosed executor for stale open PRs. Naming is weird, we need to come up with something better.
 		&events.PullClosedExecutor{
-			VCSClient:  vcsClient,
-			Locker:     lockingClient,
-			WorkingDir: workingDir,
-			Logger:     logger,
-			DB:         boltdb,
+			VCSClient:                vcsClient,
+			Locker:                   lockingClient,
+			WorkingDir:               workingDir,
+			Logger:                   logger,
+			DB:                       boltdb,
+			LogStreamResourceCleaner: projectCmdOutputHandler,
+			ProjectFinder:            &events.DefaultProjectFinder{},
 
 			// using a specific template to signal that this is from an async process
 			PullClosedTemplate: NewGCStaleOpenPull(),

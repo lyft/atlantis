@@ -62,4 +62,4 @@ var Project = valid.Project{
 	Name: &projectName,
 }
 
-var PullInfo = fmt.Sprintf("%s/%d/%s", Pull.BaseRepo.FullName, Pull.Num, *Project.Name)
+var PullInfo = fmt.Sprintf("%s/%d/%s", GithubRepo.FullName, Pull.Num, *Project.Name)
