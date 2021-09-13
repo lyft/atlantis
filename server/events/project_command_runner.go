@@ -359,6 +359,9 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 	if err != nil {
 		return "", "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
 	}
+	if ctx.Force {
+		outputs = append(outputs, "WARNING: this apply run with --force option bypassing the apply requirements. This should only be used in an emergency.")
+	}
 	return strings.Join(outputs, "\n"), "", nil
 }
 
