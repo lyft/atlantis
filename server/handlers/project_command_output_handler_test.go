@@ -6,12 +6,15 @@ import (
 	"time"
 
 	"github.com/runatlantis/atlantis/server/events/models"
+	featuremocks "github.com/runatlantis/atlantis/server/feature/mocks"
+	featurematchers "github.com/runatlantis/atlantis/server/feature/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/handlers/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/petergtz/pegomock"
 	. "github.com/petergtz/pegomock"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -21,12 +24,15 @@ func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutp
 	prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
 	projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
 	projectJobUrlGenerator := mocks.NewMockProjectJobUrlGenerator()
+	featureAllocator := featuremocks.NewMockAllocator()
 	prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
 		prjCmdOutputChan,
 		projectStatusUpdater,
 		projectJobUrlGenerator,
 		logger,
+		featureAllocator,
 	)
+	When(featureAllocator.ShouldAllocate(featurematchers.AnyFeatureName(), pegomock.AnyString())).ThenReturn(true, nil)
 
 	go func() {
 		prjCmdOutputHandler.Handle()
@@ -35,41 +41,7 @@ func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutp
 	return prjCmdOutputHandler
 }
 
-func runAsyncOutputHandler(
-	t *testing.T,
-	projectOutputHandler handlers.ProjectCommandOutputHandler,
-	ctx models.ProjectCommandContext,
-	msg string,
-	expReceiveCalls int,
-) []string {
-	var wg sync.WaitGroup
-	var actMsgs []string
-
-	wg.Add(expReceiveCalls)
-	ch := make(chan string)
-	go func() {
-		err := projectOutputHandler.Receive(ctx.PullInfo(), ch, func(msg string) error {
-			actMsgs = append(actMsgs, msg)
-			wg.Done()
-			return nil
-		})
-		Ok(t, err)
-	}()
-
-	projectOutputHandler.Send(ctx, msg)
-
-	// Wait for the msg to be read.
-	wg.Wait()
-
-	// Close channel to close prev connection.
-	// This should close the first go routine with receive call.
-	close(ch)
-
-	return actMsgs
-}
-
 func TestProjectCommandOutputHandler(t *testing.T) {
-
 	RepoName := "test-repo"
 	RepoOwner := "test-org"
 	RepoBaseBranch := "master"
@@ -245,13 +217,16 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
 		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
 		projectJobUrlGenerator := mocks.NewMockProjectJobUrlGenerator()
+		featureAllocator := featuremocks.NewMockAllocator()
 		prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
 			prjCmdOutputChan,
 			projectStatusUpdater,
 			projectJobUrlGenerator,
 			logger,
+			featureAllocator,
 		)
 
+		When(featureAllocator.ShouldAllocate(featurematchers.AnyFeatureName(), pegomock.AnyString())).ThenReturn(true, nil)
 		When(projectJobUrlGenerator.GenerateProjectJobUrl(matchers.EqModelsProjectCommandContext(ctx))).ThenReturn("url-to-project-jobs")
 		prjCmdOutputHandler.SetJobUrlWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
 		projectStatusUpdater.VerifyWasCalledOnce().UpdateProject(ctx, models.PlanCommand, models.PendingCommitStatus, "url-to-project-jobs")

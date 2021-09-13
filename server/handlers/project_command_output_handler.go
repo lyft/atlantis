@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -141,7 +140,7 @@ func (p *AsyncProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContex
 }
 
 func (p *AsyncProjectCommandOutputHandler) SetJobUrlWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
-	if !p.enabled(ctx) {
+	if !p.featureEnabled(ctx) {
 		return nil
 	}
 
