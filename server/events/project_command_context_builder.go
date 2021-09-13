@@ -56,12 +56,12 @@ func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
 	repoDir string,
-	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
+	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose, force bool,
 ) (projectCmds []models.ProjectCommandContext) {
 	cb.ProjectCounter.Inc()
 
 	cmds := cb.ProjectCommandContextBuilder.BuildProjectContext(
-		ctx, cmdName, prjCfg, commentFlags, repoDir, automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose,
+		ctx, cmdName, prjCfg, commentFlags, repoDir, automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose, force,
 	)
 
 	projectCmds = []models.ProjectCommandContext{}
@@ -188,6 +188,11 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 			force,
 			ctx.Scope,
 		))
+	}
+
+	return
+}
+
 // newProjectCommandContext is a initializer method that handles constructing the
 // ProjectCommandContext.
 func newProjectCommandContext(ctx *CommandContext,
