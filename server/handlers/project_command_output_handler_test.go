@@ -19,20 +19,44 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
+func createTestProjectCmdContext(t *testing.T) models.ProjectCommandContext {
+	logger := logging.NewNoopLogger(t)
+	return models.ProjectCommandContext{
+		BaseRepo: models.Repo{
+			Name:  "test-repo",
+			Owner: "test-org",
+		},
+		HeadRepo: models.Repo{
+			Name:  "test-repo",
+			Owner: "test-org",
+		},
+		Pull: models.PullRequest{
+			Num:        1,
+			HeadBranch: "master",
+			BaseBranch: "master",
+			Author:     "test-user",
+		},
+		User: models.User{
+			Username: "test-user",
+		},
+		Log:         logger,
+		Workspace:   "myworkspace",
+		RepoRelDir:  "test-dir",
+		ProjectName: "test-project",
+	}
+}
+
 func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutputHandler {
 	logger := logging.NewNoopLogger(t)
 	prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
 	projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
 	projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
-	featureAllocator := featuremocks.NewMockAllocator()
 	prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
 		prjCmdOutputChan,
 		projectStatusUpdater,
 		projectJobURLGenerator,
 		logger,
-		featureAllocator,
 	)
-	When(featureAllocator.ShouldAllocate(featurematchers.AnyFeatureName(), pegomock.AnyString())).ThenReturn(true, nil)
 
 	go func() {
 		prjCmdOutputHandler.Handle()
@@ -42,39 +66,8 @@ func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutp
 }
 
 func TestProjectCommandOutputHandler(t *testing.T) {
-	RepoName := "test-repo"
-	RepoOwner := "test-org"
-	RepoBaseBranch := "master"
-	User := "test-user"
-	Workspace := "myworkspace"
-	RepoDir := "test-dir"
-	ProjectName := "test-project"
 	Msg := "Test Terraform Output"
-
-	logger := logging.NewNoopLogger(t)
-	ctx := models.ProjectCommandContext{
-		BaseRepo: models.Repo{
-			Name:  RepoName,
-			Owner: RepoOwner,
-		},
-		HeadRepo: models.Repo{
-			Name:  RepoName,
-			Owner: RepoOwner,
-		},
-		Pull: models.PullRequest{
-			Num:        1,
-			HeadBranch: RepoBaseBranch,
-			BaseBranch: RepoBaseBranch,
-			Author:     User,
-		},
-		User: models.User{
-			Username: User,
-		},
-		Log:         logger,
-		Workspace:   Workspace,
-		RepoRelDir:  RepoDir,
-		ProjectName: ProjectName,
-	}
+	ctx := createTestProjectCmdContext(t)
 
 	t.Run("Should Receive Message Sent in the ProjectCmdOutput channel", func(t *testing.T) {
 		var wg sync.WaitGroup
@@ -217,20 +210,66 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
 		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
 		projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
-		featureAllocator := featuremocks.NewMockAllocator()
 		prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
 			prjCmdOutputChan,
 			projectStatusUpdater,
 			projectJobURLGenerator,
 			logger,
-			featureAllocator,
 		)
 
-		When(featureAllocator.ShouldAllocate(featurematchers.AnyFeatureName(), pegomock.AnyString())).ThenReturn(true, nil)
 		When(projectJobURLGenerator.GenerateProjectJobURL(matchers.EqModelsProjectCommandContext(ctx))).ThenReturn("url-to-project-jobs")
 		err := prjCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
 		Ok(t, err)
 
 		projectStatusUpdater.VerifyWasCalledOnce().UpdateProject(ctx, models.PlanCommand, models.PendingCommitStatus, "url-to-project-jobs")
 	})
+}
+
+func TestFeatureAwareOutputHandler(t *testing.T) {
+	ctx := createTestProjectCmdContext(t)
+	RegisterMockTestingT(t)
+	projectOutputHandler := mocks.NewMockProjectCommandOutputHandler()
+
+	featureAllocator := featuremocks.NewMockAllocator()
+	featureAwareOutputHandler := handlers.FeatureAwareOutputHandler{
+		FeatureAllocator:            featureAllocator,
+		ProjectCommandOutputHandler: projectOutputHandler,
+	}
+
+	cases := []struct {
+		Description        string
+		FeatureFlagEnabled bool
+	}{
+		{
+			Description:        "noop when feature is disabled",
+			FeatureFlagEnabled: false,
+		},
+		{
+			Description:        "delegate when feature is enabled",
+			FeatureFlagEnabled: true,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.Description, func(t *testing.T) {
+			var expectedWasCalled func() *EqMatcher
+
+			if c.FeatureFlagEnabled {
+				expectedWasCalled = Once
+			} else {
+				expectedWasCalled = Never
+			}
+			When(featureAllocator.ShouldAllocate(featurematchers.AnyFeatureName(), pegomock.AnyString())).ThenReturn(c.FeatureFlagEnabled, nil)
+
+			err := featureAwareOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
+			Ok(t, err)
+			projectOutputHandler.VerifyWasCalled(expectedWasCalled()).SetJobURLWithStatus(matchers.AnyModelsProjectCommandContext(), matchers.AnyModelsCommandName(), matchers.AnyModelsCommitStatus())
+
+			featureAwareOutputHandler.Clear(ctx)
+			projectOutputHandler.VerifyWasCalled(expectedWasCalled()).Clear(matchers.AnyModelsProjectCommandContext())
+
+			featureAwareOutputHandler.Send(ctx, "test")
+			projectOutputHandler.VerifyWasCalled(expectedWasCalled()).Send(matchers.AnyModelsProjectCommandContext(), pegomock.AnyString())
+		})
+	}
 }

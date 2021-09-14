@@ -22,8 +22,7 @@ type AsyncProjectCommandOutputHandler struct {
 	projectStatusUpdater   ProjectStatusUpdater
 	projectJobURLGenerator ProjectJobURLGenerator
 
-	logger           logging.SimpleLogging
-	featureAllocator feature.Allocator
+	logger logging.SimpleLogging
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobURLGenerator
@@ -66,7 +65,6 @@ func NewAsyncProjectCommandOutputHandler(
 	projectStatusUpdater ProjectStatusUpdater,
 	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
-	featureAllocator feature.Allocator,
 ) ProjectCommandOutputHandler {
 	return &AsyncProjectCommandOutputHandler{
 		projectCmdOutput:       projectCmdOutput,
@@ -75,27 +73,10 @@ func NewAsyncProjectCommandOutputHandler(
 		projectStatusUpdater:   projectStatusUpdater,
 		projectJobURLGenerator: projectJobURLGenerator,
 		projectOutputBuffers:   map[string][]string{},
-		featureAllocator:       featureAllocator,
 	}
-}
-
-// Helper function to check if the log-streaming feature is enabled
-// It dynamically decides based on repo name that is defined in the models.ProjectCommandContext
-func (p *AsyncProjectCommandOutputHandler) featureEnabled(ctx models.ProjectCommandContext) bool {
-	shouldAllocate, err := p.featureAllocator.ShouldAllocate(feature.LogStreaming, ctx.Pull.BaseRepo.FullName)
-
-	if err != nil {
-		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.LogStreaming, err)
-	}
-
-	return shouldAllocate
 }
 
 func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
-	if !p.featureEnabled(ctx) {
-		return
-	}
-
 	p.projectCmdOutput <- &models.ProjectCmdOutputLine{
 		ProjectInfo: ctx.PullInfo(),
 		Line:        msg,
@@ -128,10 +109,6 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 }
 
 func (p *AsyncProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext) {
-	if !p.featureEnabled(ctx) {
-		return
-	}
-
 	p.projectCmdOutput <- &models.ProjectCmdOutputLine{
 		ProjectInfo:     ctx.PullInfo(),
 		ClearBuffBefore: true,
@@ -140,10 +117,6 @@ func (p *AsyncProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContex
 }
 
 func (p *AsyncProjectCommandOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
-	if !p.featureEnabled(ctx) {
-		return nil
-	}
-
 	url := p.projectJobURLGenerator.GenerateProjectJobURL(ctx)
 	return p.projectStatusUpdater.UpdateProject(ctx, cmdName, status, url)
 }
@@ -208,4 +181,73 @@ func (p *AsyncProjectCommandOutputHandler) GetReceiverBufferForPull(pull string)
 
 func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(pull string) []string {
 	return p.projectOutputBuffers[pull]
+}
+
+// FeatureAwareOutputHandler is a decorator that add feature allocator
+// functionality to the AsyncProjectCommandOutputHandler
+type FeatureAwareOutputHandler struct {
+	FeatureAllocator feature.Allocator
+	ProjectCommandOutputHandler
+}
+
+func NewFeatureAwareOutputHandler(
+	projectCmdOutput chan *models.ProjectCmdOutputLine,
+	projectStatusUpdater ProjectStatusUpdater,
+	projectJobURLGenerator ProjectJobURLGenerator,
+	logger logging.SimpleLogging,
+	featureAllocator feature.Allocator,
+) ProjectCommandOutputHandler {
+	return &FeatureAwareOutputHandler{
+		FeatureAllocator: featureAllocator,
+		ProjectCommandOutputHandler: NewAsyncProjectCommandOutputHandler(
+			projectCmdOutput,
+			projectStatusUpdater,
+			projectJobURLGenerator,
+			logger,
+		),
+	}
+}
+
+// Helper function to check if the log-streaming feature is enabled
+// It dynamically decides based on repo name that is defined in the models.ProjectCommandContext
+func (p *FeatureAwareOutputHandler) featureEnabled(ctx models.ProjectCommandContext) bool {
+	shouldAllocate, err := p.FeatureAllocator.ShouldAllocate(feature.LogStreaming, ctx.Pull.BaseRepo.FullName)
+
+	if err != nil {
+		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.LogStreaming, err)
+	}
+
+	return shouldAllocate
+}
+
+func (p *FeatureAwareOutputHandler) Clear(ctx models.ProjectCommandContext) {
+	if !p.featureEnabled(ctx) {
+		return
+	}
+
+	p.ProjectCommandOutputHandler.Clear(ctx)
+}
+
+func (p *FeatureAwareOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
+	if !p.featureEnabled(ctx) {
+		return
+	}
+
+	p.ProjectCommandOutputHandler.Send(ctx, msg)
+}
+
+func (p *FeatureAwareOutputHandler) Receive(projectInfo string, receiver chan string, callback func(msg string) error) error {
+	return p.ProjectCommandOutputHandler.Receive(projectInfo, receiver, callback)
+}
+
+func (p *FeatureAwareOutputHandler) Handle() {
+	p.ProjectCommandOutputHandler.Handle()
+}
+
+func (p *FeatureAwareOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
+	if !p.featureEnabled(ctx) {
+		return nil
+	}
+
+	return p.ProjectCommandOutputHandler.SetJobURLWithStatus(ctx, cmdName, status)
 }

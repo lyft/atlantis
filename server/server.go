@@ -321,7 +321,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
-	projectCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
+	projectCmdOutputHandler := handlers.NewFeatureAwareOutputHandler(
 		projectCmdOutput,
 		commitStatusUpdater,
 		router,
