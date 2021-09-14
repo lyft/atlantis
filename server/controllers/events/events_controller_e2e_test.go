@@ -795,10 +795,9 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 			TerraformExecutor: terraformClient,
 			DefaultTFVersion:  defaultTFVersion,
 		},
-		WorkingDir:              workingDir,
-		Webhooks:                &mockWebhookSender{},
-		WorkingDirLocker:        locker,
-		ProjectCmdOutputHandler: projectCmdOutputHandler,
+		WorkingDir:       workingDir,
+		Webhooks:         &mockWebhookSender{},
+		WorkingDirLocker: locker,
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: workingDir,
 		},
