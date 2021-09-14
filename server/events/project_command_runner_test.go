@@ -14,6 +14,7 @@
 package events_test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -44,7 +45,6 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
 	mockApplyReqHandler := mocks.NewMockApplyRequirement()
-	mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 
 	runner := events.DefaultProjectCommandRunner{
 		Locker:                     mockLocker,
@@ -57,7 +57,6 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 		WorkingDir:                 mockWorkingDir,
 		Webhooks:                   nil,
 		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
-		ProjectCmdOutputHandler:    mockProjectCommandOutputHandler,
 		AggregateApplyRequirements: mockApplyReqHandler,
 	}
 
@@ -117,11 +116,6 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	Assert(t, res.PlanSuccess != nil, "exp plan success")
 	Equals(t, "https://lock-key", res.PlanSuccess.LockURL)
 	Equals(t, "run\napply\nplan\ninit", res.PlanSuccess.TerraformOutput)
-
-	inOrderContext := new(InOrderContext)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.PlanCommand, models.SuccessCommitStatus)
-
 	expSteps := []string{"run", "apply", "plan", "init", "env"}
 	for _, step := range expSteps {
 		switch step {
@@ -137,44 +131,8 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	}
 }
 
-func TestDefaultProjectCommandRunner_PlanStepRunnerFail(t *testing.T) {
+func TestProjectCommandRunnerWithJobs(t *testing.T) {
 	RegisterMockTestingT(t)
-	mockPlan := mocks.NewMockStepRunner()
-	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockLocker := mocks.NewMockProjectLocker()
-	mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
-
-	runner := events.DefaultProjectCommandRunner{
-		Locker:                  mockLocker,
-		LockURLGenerator:        mockURLGenerator{},
-		PlanStepRunner:          mockPlan,
-		WorkingDir:              mockWorkingDir,
-		Webhooks:                nil,
-		WorkingDirLocker:        events.NewDefaultWorkingDirLocker(),
-		ProjectCmdOutputHandler: mockProjectCommandOutputHandler,
-	}
-
-	repoDir, cleanup := TempDir(t)
-	defer cleanup()
-	When(mockWorkingDir.Clone(
-		matchers.AnyPtrToLoggingSimpleLogger(),
-		matchers.AnyModelsRepo(),
-		matchers.AnyModelsPullRequest(),
-		AnyString(),
-	)).ThenReturn(repoDir, false, nil)
-	When(mockLocker.TryLock(
-		matchers.AnyPtrToLoggingSimpleLogger(),
-		matchers.AnyModelsPullRequest(),
-		matchers.AnyModelsUser(),
-		AnyString(),
-		matchers.AnyModelsProject(),
-	)).ThenReturn(&events.TryLockResponse{
-		LockAcquired: true,
-		LockKey:      "lock-key",
-		UnlockFn:     func() error { return nil },
-	}, nil)
-
-	expEnvs := map[string]string{}
 	ctx := models.ProjectCommandContext{
 		Log: logging.NewNoopLogger(t),
 		Steps: []valid.Step{
@@ -185,17 +143,98 @@ func TestDefaultProjectCommandRunner_PlanStepRunnerFail(t *testing.T) {
 		Workspace:  "default",
 		RepoRelDir: ".",
 	}
-	// Each step will output its step name.
-	When(mockPlan.Run(ctx, nil, repoDir, expEnvs)).ThenReturn("plan", fmt.Errorf("everything is broken"))
-	res := runner.Plan(ctx)
 
-	Assert(t, res.PlanSuccess == nil, "exp plan failure")
+	cases := []struct {
+		Description string
+		Failure     bool
+		Error       bool
+		Success     bool
+		CommandName models.CommandName
+	}{
+		{
+			Description: "plan success",
+			Success:     true,
+			CommandName: models.PlanCommand,
+		},
+		{
+			Description: "plan failure",
+			Failure:     true,
+			CommandName: models.PlanCommand,
+		},
+		{
+			Description: "plan error",
+			Error:       true,
+			CommandName: models.PlanCommand,
+		},
+		{
+			Description: "apply success",
+			Success:     true,
+			CommandName: models.ApplyCommand,
+		},
+		{
+			Description: "apply failure",
+			Failure:     true,
+			CommandName: models.ApplyCommand,
+		},
+		{
+			Description: "apply error",
+			Error:       true,
+			CommandName: models.ApplyCommand,
+		},
+	}
 
-	inOrderContext := new(InOrderContext)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.PlanCommand, models.FailedCommitStatus)
+	for _, c := range cases {
+		t.Run(c.Description, func(t *testing.T) {
+			var prjResult models.ProjectResult
+			var expCommitStatus models.CommitStatus
 
-	mockPlan.VerifyWasCalledOnce().Run(ctx, nil, repoDir, expEnvs)
+			mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
+			mockProjectCommandRunner := mocks.NewMockProjectCommandRunner()
+
+			runner := &events.ProjectCommandRunnerWithJobs{
+				ProjectCmdOutputHandler: mockProjectCommandOutputHandler,
+				ProjectCommandRunner:    mockProjectCommandRunner,
+			}
+
+			if c.Success {
+				prjResult = models.ProjectResult{
+					PlanSuccess:  &models.PlanSuccess{},
+					ApplySuccess: "exists",
+				}
+				expCommitStatus = models.SuccessCommitStatus
+			} else if c.Failure {
+				prjResult = models.ProjectResult{
+					Failure: "failure",
+				}
+				expCommitStatus = models.FailedCommitStatus
+			} else if c.Error {
+				prjResult = models.ProjectResult{
+					Error: errors.New("error"),
+				}
+				expCommitStatus = models.FailedCommitStatus
+			}
+
+			When(mockProjectCommandRunner.Plan(matchers.AnyModelsProjectCommandContext())).ThenReturn(prjResult)
+			When(mockProjectCommandRunner.Apply(matchers.AnyModelsProjectCommandContext())).ThenReturn(prjResult)
+
+			switch c.CommandName {
+			case models.PlanCommand:
+				runner.Plan(ctx)
+			case models.ApplyCommand:
+				runner.Apply(ctx)
+			}
+
+			mockProjectCommandOutputHandler.VerifyWasCalled(Once()).SetJobURLWithStatus(ctx, c.CommandName, models.PendingCommitStatus)
+			mockProjectCommandOutputHandler.VerifyWasCalled(Once()).SetJobURLWithStatus(ctx, c.CommandName, expCommitStatus)
+
+			switch c.CommandName {
+			case models.PlanCommand:
+				mockProjectCommandRunner.VerifyWasCalledOnce().Plan(ctx)
+			case models.ApplyCommand:
+				mockProjectCommandRunner.VerifyWasCalledOnce().Apply(ctx)
+			}
+		})
+	}
 }
 
 // Test what happens if there's no working dir. This signals that the project
@@ -372,7 +411,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			mockWorkingDir := mocks.NewMockWorkingDir()
 			mockLocker := mocks.NewMockProjectLocker()
 			mockSender := mocks.NewMockWebhooksSender()
-			mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 			applyReqHandler := &events.AggregateApplyRequirements{
 				WorkingDir: mockWorkingDir,
 			}
@@ -389,7 +427,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 				Webhooks:                   mockSender,
 				WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 				AggregateApplyRequirements: applyReqHandler,
-				ProjectCmdOutputHandler:    mockProjectCommandOutputHandler,
 			}
 			repoDir, cleanup := TempDir(t)
 			defer cleanup()
@@ -421,10 +458,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			Equals(t, c.expOut, res.ApplySuccess)
 			Equals(t, c.expFailure, res.Failure)
 
-			inOrderContext := new(InOrderContext)
-			mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus)
-			mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.ApplyCommand, models.SuccessCommitStatus)
-
 			for _, step := range c.expSteps {
 				switch step {
 				case "approved":
@@ -451,7 +484,6 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 	mockApply := mocks.NewMockStepRunner()
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
-	mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 	mockSender := mocks.NewMockWebhooksSender()
 	applyReqHandler := &events.AggregateApplyRequirements{
 		WorkingDir: mockWorkingDir,
@@ -464,7 +496,6 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 		WorkingDir:                 mockWorkingDir,
 		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: applyReqHandler,
-		ProjectCmdOutputHandler:    mockProjectCommandOutputHandler,
 		Webhooks:                   mockSender,
 	}
 	repoDir, cleanup := TempDir(t)
@@ -493,10 +524,6 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 	res := runner.Apply(ctx)
 	Assert(t, res.ApplySuccess == "", "exp apply failure")
 
-	inOrderContext := new(InOrderContext)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus)
-	mockProjectCommandOutputHandler.VerifyWasCalledInOrder(Once(), inOrderContext).SetJobURLWithStatus(ctx, models.ApplyCommand, models.FailedCommitStatus)
-
 	mockApply.VerifyWasCalledOnce().Run(ctx, nil, repoDir, expEnvs)
 }
 
@@ -518,14 +545,13 @@ func TestDefaultProjectCommandRunner_RunEnvSteps(t *testing.T) {
 	mockLocker := mocks.NewMockProjectLocker()
 
 	runner := events.DefaultProjectCommandRunner{
-		Locker:                  mockLocker,
-		LockURLGenerator:        mockURLGenerator{},
-		RunStepRunner:           &run,
-		EnvStepRunner:           &env,
-		WorkingDir:              mockWorkingDir,
-		Webhooks:                nil,
-		WorkingDirLocker:        events.NewDefaultWorkingDirLocker(),
-		ProjectCmdOutputHandler: handlermocks.NewMockProjectCommandOutputHandler(),
+		Locker:           mockLocker,
+		LockURLGenerator: mockURLGenerator{},
+		RunStepRunner:    &run,
+		EnvStepRunner:    &env,
+		WorkingDir:       mockWorkingDir,
+		Webhooks:         nil,
+		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 	}
 
 	repoDir, cleanup := TempDir(t)

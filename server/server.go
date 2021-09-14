@@ -536,7 +536,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir:                 workingDir,
 		Webhooks:                   webhooksManager,
 		WorkingDirLocker:           workingDirLocker,
-		ProjectCmdOutputHandler:    projectCmdOutputHandler,
 		AggregateApplyRequirements: applyRequirementHandler,
 	}
 
@@ -555,8 +554,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GlobalAutomerge: userConfig.Automerge,
 	}
 
+	projectCommandRunnerWithJobs := &events.ProjectCommandRunnerWithJobs{
+		ProjectCmdOutputHandler: projectCmdOutputHandler,
+		ProjectCommandRunner:    projectCommandRunner,
+	}
+
 	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
-		ProjectCommandRunner: projectCommandRunner,
+		ProjectCommandRunner: projectCommandRunnerWithJobs,
 	}
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(

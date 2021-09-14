@@ -108,6 +108,58 @@ type ProjectCommandRunner interface {
 	ProjectApprovePoliciesCommandRunner
 }
 
+// ProjectCommandRunnerWithJobs is a decorator that creates a new PR status check per project.
+// The status contains a url that outputs current progress of the terraform plan/apply command.
+type ProjectCommandRunnerWithJobs struct {
+	ProjectCmdOutputHandler handlers.ProjectCommandOutputHandler
+	ProjectCommandRunner    ProjectCommandRunner
+}
+
+func (p *ProjectCommandRunnerWithJobs) Plan(ctx models.ProjectCommandContext) models.ProjectResult {
+	// Reset the buffer when running the plan. We only need to do this for plan,
+	// apply is a continuation of the same workflow
+	p.ProjectCmdOutputHandler.Clear(ctx)
+	return p.updateProjectPRStatus(models.PlanCommand, ctx, p.ProjectCommandRunner.Plan)
+}
+
+func (p *ProjectCommandRunnerWithJobs) PolicyCheck(ctx models.ProjectCommandContext) models.ProjectResult {
+	return p.ProjectCommandRunner.PolicyCheck(ctx)
+}
+
+func (p *ProjectCommandRunnerWithJobs) ApprovePolicies(ctx models.ProjectCommandContext) models.ProjectResult {
+	return p.ProjectCommandRunner.ApprovePolicies(ctx)
+}
+
+func (p *ProjectCommandRunnerWithJobs) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
+	return p.updateProjectPRStatus(models.ApplyCommand, ctx, p.ProjectCommandRunner.Apply)
+}
+
+func (p *ProjectCommandRunnerWithJobs) updateProjectPRStatus(commandName models.CommandName, ctx models.ProjectCommandContext, execute func(ctx models.ProjectCommandContext) models.ProjectResult) models.ProjectResult {
+	// Create a PR status to track project's plan status. The status will
+	// include a link to view the progress of atlantis plan command in real
+	// time
+	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, commandName, models.PendingCommitStatus); err != nil {
+		ctx.Log.Err("updating project PR status", err)
+	}
+
+	// ensures we are differentiating between project level command and overall command
+	result := execute(ctx)
+
+	if result.Error != nil || result.Failure != "" {
+		if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, commandName, models.FailedCommitStatus); err != nil {
+			ctx.Log.Err("updating project PR status", err)
+		}
+
+		return result
+	}
+
+	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, commandName, models.SuccessCommitStatus); err != nil {
+		ctx.Log.Err("updating project PR status", err)
+	}
+
+	return result
+}
+
 // DefaultProjectCommandRunner implements ProjectCommandRunner.
 type DefaultProjectCommandRunner struct {
 	Locker                     ProjectLocker
@@ -124,7 +176,6 @@ type DefaultProjectCommandRunner struct {
 	Webhooks                   WebhooksSender
 	WorkingDirLocker           WorkingDirLocker
 	AggregateApplyRequirements ApplyRequirement
-	ProjectCmdOutputHandler    handlers.ProjectCommandOutputHandler
 }
 
 // Plan runs terraform plan for the project described by ctx.
@@ -294,30 +345,13 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 		return nil, "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	p.ProjectCmdOutputHandler.Clear(ctx)
-
-	// Create a PR status to track project's plan status. The status will
-	// include a link to view the progress of atlantis plan command in real
-	// time
-	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus); err != nil {
-		ctx.Log.Err("updating project PR status", err)
-	}
-
 	outputs, err := p.runSteps(ctx.Steps, ctx, projAbsPath)
 
 	if err != nil {
-		if handlerErr := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.FailedCommitStatus); handlerErr != nil {
-			ctx.Log.Err("updating project PR status", handlerErr)
-		}
-
 		if unlockErr := lockAttempt.UnlockFn(); unlockErr != nil {
 			ctx.Log.Err("error unlocking state after plan error: %v", unlockErr)
 		}
 		return nil, "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
-	}
-
-	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.SuccessCommitStatus); err != nil {
-		ctx.Log.Err("updating project PR status", err)
 	}
 
 	return &models.PlanSuccess{
@@ -354,13 +388,6 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 	}
 	defer unlockFn()
 
-	// Create a PR status to track project's apply status. The status will
-	// include a link to view the progress of atlantis apply command in real
-	// time
-	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.ApplyCommand, models.PendingCommitStatus); err != nil {
-		ctx.Log.Err("updating project PR status", err)
-	}
-
 	outputs, err := p.runSteps(ctx.Steps, ctx, absPath)
 
 	p.Webhooks.Send(ctx.Log, webhooks.ApplyResult{ // nolint: errcheck
@@ -373,15 +400,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 	})
 
 	if err != nil {
-		if handlerErr := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.ApplyCommand, models.FailedCommitStatus); handlerErr != nil {
-			ctx.Log.Err("updating project PR status", handlerErr)
-		}
-
 		return "", "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
-	}
-
-	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.ApplyCommand, models.SuccessCommitStatus); err != nil {
-		ctx.Log.Err("updating project PR status", err)
 	}
 
 	return strings.Join(outputs, "\n"), "", nil
