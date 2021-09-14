@@ -306,8 +306,8 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 	outputs, err := p.runSteps(ctx.Steps, ctx, projAbsPath)
 
 	if err != nil {
-		if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.FailedCommitStatus); err != nil {
-			ctx.Log.Err("updating project PR status", err)
+		if handlerErr := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.FailedCommitStatus); handlerErr != nil {
+			ctx.Log.Err("updating project PR status", handlerErr)
 		}
 
 		if unlockErr := lockAttempt.UnlockFn(); unlockErr != nil {
@@ -373,8 +373,8 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 	})
 
 	if err != nil {
-		if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.ApplyCommand, models.FailedCommitStatus); err != nil {
-			ctx.Log.Err("updating project PR status", err)
+		if handlerErr := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, models.ApplyCommand, models.FailedCommitStatus); handlerErr != nil {
+			ctx.Log.Err("updating project PR status", handlerErr)
 		}
 
 		return "", "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
