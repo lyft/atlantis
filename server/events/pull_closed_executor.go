@@ -83,7 +83,7 @@ func (p *PullClosedExecutor) CleanUpPull(repo models.Repo, pull models.PullReque
 
 	if pullStatus != nil {
 		for _, project := range pullStatus.Projects {
-			// TODO: Set projectName to "<dir>/<workspace>" when project name is not set.
+			// TODO [ORCA-943]: Set projectName to "<dir>/<workspace>" when project name is not set.
 			// Upstream atlantis only requires project name to be set if there's more than one project
 			// with same dir and workspace. If a project name has not been set, we'll use the dir and
 			// workspace to build project key.
