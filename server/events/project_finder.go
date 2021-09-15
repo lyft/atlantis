@@ -14,14 +14,11 @@
 package events
 
 import (
-	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/runatlantis/atlantis/server/events/vcs"
-	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 
 	"github.com/docker/docker/pkg/fileutils"
@@ -29,8 +26,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_finder.go ProjectFinder
 
 // ProjectFinder determines which projects were modified in a given pull
 // request.
@@ -43,21 +38,13 @@ type ProjectFinder interface {
 	// based on modifiedFiles and the repo's config.
 	// absRepoDir is the path to the cloned repo on disk.
 	DetermineProjectsViaConfig(log logging.SimpleLogging, modifiedFiles []string, config valid.RepoCfg, absRepoDir string) ([]valid.Project, error)
-
-	FindMatchingProjects(log logging.SimpleLogging, repo models.Repo, pull models.PullRequest) ([]string, error)
 }
 
 // ignoredFilenameFragments contains filename fragments to ignore while looking at changes
 var ignoredFilenameFragments = []string{"terraform.tfstate", "terraform.tfstate.backup", "tflint.hcl"}
 
 // DefaultProjectFinder implements ProjectFinder.
-type DefaultProjectFinder struct {
-	VCSClient        vcs.Client
-	WorkingDir       WorkingDir
-	ParserVarlidator yaml.ParserValidator
-	GlobalCfg        valid.GlobalCfg
-	AutoplanFileList string
-}
+type DefaultProjectFinder struct{}
 
 // See ProjectFinder.DetermineProjects.
 func (p *DefaultProjectFinder) DetermineProjects(log logging.SimpleLogging, modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList string) []models.Project {
@@ -179,53 +166,6 @@ func (p *DefaultProjectFinder) filterToFileList(log logging.SimpleLogging, files
 	}
 
 	return filtered
-}
-
-func (p *DefaultProjectFinder) FindMatchingProjects(log logging.SimpleLogging, repo models.Repo, pull models.PullRequest) ([]string, error) {
-	var pullInfoList []string
-	repoDir, err := p.WorkingDir.GetWorkingDir(repo, pull, "default")
-	if err != nil {
-		return pullInfoList, errors.Wrap(err, "retrieving working dir")
-	}
-
-	modifiedFiles, err := p.VCSClient.GetModifiedFiles(repo, pull)
-	if err != nil {
-		return pullInfoList, errors.Wrap(err, "retrieving modified files")
-	}
-
-	hasRepoCfg, err := p.ParserVarlidator.HasRepoCfg(repoDir)
-	if err != nil {
-		return pullInfoList, errors.Wrapf(err, "looking for %s file in %q", yaml.AtlantisYAMLFilename, repoDir)
-	}
-
-	if hasRepoCfg {
-		repoCfg, err := p.ParserVarlidator.ParseRepoCfg(repoDir, p.GlobalCfg, repo.ID())
-		if err != nil {
-			return pullInfoList, errors.Wrapf(err, "parsing %s", yaml.AtlantisYAMLFilename)
-		}
-
-		matchingProjects, err := p.DetermineProjectsViaConfig(log, modifiedFiles, repoCfg, repoDir)
-		if err != nil {
-			return pullInfoList, err
-		}
-
-		for _, project := range matchingProjects {
-			pullInfoList = append(pullInfoList, fmt.Sprintf("%s/%d/%s", pull.BaseRepo.FullName, pull.Num, *project.Name))
-		}
-	} else {
-		modifiedProjects := p.DetermineProjects(log, modifiedFiles, repo.FullName, repoDir, p.AutoplanFileList)
-		if err != nil {
-			return pullInfoList, errors.Wrapf(err, "finding modified projects: %s", modifiedFiles)
-		}
-
-		// TODO: Handle scenarios when project name is not specified in the config.
-		// Current implementation uses the project path/dir relative to the root instead of project name
-		for _, project := range modifiedProjects {
-			pullInfoList = append(pullInfoList, fmt.Sprintf("%s/%d/%s", pull.BaseRepo.FullName, pull.Num, project.Path))
-		}
-	}
-
-	return pullInfoList, nil
 }
 
 // shouldIgnore returns true if we shouldn't trigger a plan on changes to this file.

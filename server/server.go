@@ -424,13 +424,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			PullClosedTemplate:       &events.PullClosedEventTemplate{},
 			LogStreamResourceCleaner: projectCmdOutputHandler,
 			VCSClient:                vcsClient,
-			ProjectFinder: &events.DefaultProjectFinder{
-				VCSClient:        vcsClient,
-				WorkingDir:       workingDir,
-				ParserVarlidator: yaml.ParserValidator{},
-				GlobalCfg:        globalCfg,
-				AutoplanFileList: userConfig.AutoplanFileList,
-			},
 		},
 	)
 	eventParser := &events.EventParser{
@@ -474,13 +467,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	projectCommandBuilder := events.NewProjectCommandBuilderWithLimit(
 		policyChecksEnabled,
 		validator,
-		&events.DefaultProjectFinder{
-			VCSClient:        vcsClient,
-			WorkingDir:       workingDir,
-			ParserVarlidator: yaml.ParserValidator{},
-			GlobalCfg:        globalCfg,
-			AutoplanFileList: userConfig.AutoplanFileList,
-		},
+		&events.DefaultProjectFinder{},
 		vcsClient,
 		workingDir,
 		workingDirLocker,
@@ -733,13 +720,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			Logger:                   logger,
 			DB:                       boltdb,
 			LogStreamResourceCleaner: projectCmdOutputHandler,
-			ProjectFinder: &events.DefaultProjectFinder{
-				VCSClient:        vcsClient,
-				WorkingDir:       workingDir,
-				ParserVarlidator: yaml.ParserValidator{},
-				GlobalCfg:        globalCfg,
-				AutoplanFileList: userConfig.AutoplanFileList,
-			},
 
 			// using a specific template to signal that this is from an async process
 			PullClosedTemplate: NewGCStaleClosedPull(),
@@ -753,13 +733,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			Logger:                   logger,
 			DB:                       boltdb,
 			LogStreamResourceCleaner: projectCmdOutputHandler,
-			ProjectFinder: &events.DefaultProjectFinder{
-				VCSClient:        vcsClient,
-				WorkingDir:       workingDir,
-				ParserVarlidator: yaml.ParserValidator{},
-				GlobalCfg:        globalCfg,
-				AutoplanFileList: userConfig.AutoplanFileList,
-			},
 
 			// using a specific template to signal that this is from an async process
 			PullClosedTemplate: NewGCStaleOpenPull(),

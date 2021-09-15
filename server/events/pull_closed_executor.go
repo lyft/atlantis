@@ -50,7 +50,6 @@ type PullClosedExecutor struct {
 	PullClosedTemplate       PullCleanupTemplate
 	LogStreamResourceCleaner handlers.ResourceCleaner
 	VCSClient                vcs.Client
-	ProjectFinder            ProjectFinder
 	WorkingDir               WorkingDir
 }
 
@@ -76,15 +75,22 @@ var pullClosedTemplate = template.Must(template.New("").Parse(
 
 // CleanUpPull cleans up after a closed pull request.
 func (p *PullClosedExecutor) CleanUpPull(repo models.Repo, pull models.PullRequest) error {
-	pullInfoList, err := p.ProjectFinder.FindMatchingProjects(p.Logger, repo, pull)
+	pullStatus, err := p.DB.GetPullStatus(pull)
 	if err != nil {
 		// Log and continue to clean up other resources.
-		p.Logger.Err("retrieving matching projects: %s", err)
+		p.Logger.Err("retrieving pull status: %s", err)
 	}
 
-	// Clean up logstreaming resources for all projects.
-	for _, pullInfo := range pullInfoList {
-		p.LogStreamResourceCleaner.CleanUp(pullInfo)
+	if pullStatus != nil {
+		for _, project := range pullStatus.Projects {
+			// TODO: Set projectName to "<dir>/<workspace>" when project name is not set.
+			// Upstream atlantis only requires project name to be set if there's more than one project
+			// with same dir and workspace. If a project name has not been set, we'll use the dir and
+			// workspace to build project key.
+			// Source: https://www.runatlantis.io/docs/repo-level-atlantis-yaml.html#reference
+			projectKey := models.BuildPullInfo(pullStatus.Pull.BaseRepo.FullName, pull.Num, project.ProjectName)
+			p.LogStreamResourceCleaner.CleanUp(projectKey)
+		}
 	}
 
 	if err := p.WorkingDir.Delete(repo, pull); err != nil {

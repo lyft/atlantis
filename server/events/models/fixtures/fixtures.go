@@ -26,6 +26,7 @@ var Pull = models.PullRequest{
 	HeadBranch: "branch",
 	Author:     "lkysow",
 	URL:        "url",
+	BaseRepo:   GithubRepo,
 }
 
 var GithubRepo = models.Repo{
