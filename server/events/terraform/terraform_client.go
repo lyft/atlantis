@@ -284,7 +284,6 @@ func (c *DefaultClient) EnsureVersion(log logging.SimpleLogging, v *version.Vers
 
 // See Client.RunCommandWithVersion.
 func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, path string, args []string, customEnvVars map[string]string, v *version.Version, workspace string) (string, error) {
-
 	shouldAllocate, err := c.featureAllocator.ShouldAllocate(feature.LogStreaming, ctx.BaseRepo.FullName)
 
 	if err != nil {
@@ -305,7 +304,6 @@ func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, 
 		}
 		output := strings.Join(lines, "\n")
 		return fmt.Sprintf("%s\n", output), err
-
 	}
 
 	tfCmd, cmd, err := c.prepCmd(ctx.Log, v, workspace, path, args)
@@ -446,6 +444,7 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 		go func() {
 			// Don't stream terraform show output to outCh
 			cmds := strings.Split(tfCmd, " ")
+			c.projectCmdOutputHandler.Send(ctx, fmt.Sprintf("\n----- running terraform %s -----\n", args[0]))
 			s := bufio.NewScanner(stdout)
 			for s.Scan() {
 				message := s.Text()
@@ -457,11 +456,14 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 			wg.Done()
 		}()
 		go func() {
+			cmds := strings.Split(tfCmd, " ")
 			s := bufio.NewScanner(stderr)
 			for s.Scan() {
 				message := s.Text()
 				outCh <- Line{Line: message}
-				c.projectCmdOutputHandler.Send(ctx, message)
+				if isValidCommand(cmds[1]) {
+					c.projectCmdOutputHandler.Send(ctx, message)
+				}
 			}
 			wg.Done()
 		}()
