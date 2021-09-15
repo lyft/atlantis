@@ -446,7 +446,8 @@ func (c *DefaultClient) RunCommandAsync(ctx models.ProjectCommandContext, path s
 		go func() {
 			// Don't stream terraform show output to outCh
 			cmds := strings.Split(tfCmd, " ")
-			if isValidCommand(cmds[1]) {
+			// OverrideTF used for testing with non terraform commands.
+			if c.overrideTF != "" || isValidCommand(cmds[1]) {
 				s := bufio.NewScanner(stdout)
 				for s.Scan() {
 					message := s.Text()
