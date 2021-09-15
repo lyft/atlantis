@@ -108,33 +108,25 @@ type ProjectCommandRunner interface {
 	ProjectApprovePoliciesCommandRunner
 }
 
-// ProjectCommandRunnerWithJobs is a decorator that creates a new PR status check per project.
+// ProjectOutputWrapper is a decorator that creates a new PR status check per project.
 // The status contains a url that outputs current progress of the terraform plan/apply command.
-type ProjectCommandRunnerWithJobs struct {
+type ProjectOutputWrapper struct {
+	ProjectCommandRunner
 	ProjectCmdOutputHandler handlers.ProjectCommandOutputHandler
-	ProjectCommandRunner    ProjectCommandRunner
 }
 
-func (p *ProjectCommandRunnerWithJobs) Plan(ctx models.ProjectCommandContext) models.ProjectResult {
+func (p *ProjectOutputWrapper) Plan(ctx models.ProjectCommandContext) models.ProjectResult {
 	// Reset the buffer when running the plan. We only need to do this for plan,
 	// apply is a continuation of the same workflow
 	p.ProjectCmdOutputHandler.Clear(ctx)
 	return p.updateProjectPRStatus(models.PlanCommand, ctx, p.ProjectCommandRunner.Plan)
 }
 
-func (p *ProjectCommandRunnerWithJobs) PolicyCheck(ctx models.ProjectCommandContext) models.ProjectResult {
-	return p.ProjectCommandRunner.PolicyCheck(ctx)
-}
-
-func (p *ProjectCommandRunnerWithJobs) ApprovePolicies(ctx models.ProjectCommandContext) models.ProjectResult {
-	return p.ProjectCommandRunner.ApprovePolicies(ctx)
-}
-
-func (p *ProjectCommandRunnerWithJobs) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
+func (p *ProjectOutputWrapper) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
 	return p.updateProjectPRStatus(models.ApplyCommand, ctx, p.ProjectCommandRunner.Apply)
 }
 
-func (p *ProjectCommandRunnerWithJobs) updateProjectPRStatus(commandName models.CommandName, ctx models.ProjectCommandContext, execute func(ctx models.ProjectCommandContext) models.ProjectResult) models.ProjectResult {
+func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName models.CommandName, ctx models.ProjectCommandContext, execute func(ctx models.ProjectCommandContext) models.ProjectResult) models.ProjectResult {
 	// Create a PR status to track project's plan status. The status will
 	// include a link to view the progress of atlantis plan command in real
 	// time

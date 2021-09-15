@@ -554,13 +554,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GlobalAutomerge: userConfig.Automerge,
 	}
 
-	projectCommandRunnerWithJobs := &events.ProjectCommandRunnerWithJobs{
+	projectOutputWrapper := &events.ProjectOutputWrapper{
 		ProjectCmdOutputHandler: projectCmdOutputHandler,
 		ProjectCommandRunner:    projectCommandRunner,
 	}
 
 	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
-		ProjectCommandRunner: projectCommandRunnerWithJobs,
+		ProjectCommandRunner: projectOutputWrapper,
 	}
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(

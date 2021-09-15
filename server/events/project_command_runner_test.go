@@ -131,7 +131,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	}
 }
 
-func TestProjectCommandRunnerWithJobs(t *testing.T) {
+func TestProjectOutputWrapper(t *testing.T) {
 	RegisterMockTestingT(t)
 	ctx := models.ProjectCommandContext{
 		Log: logging.NewNoopLogger(t),
@@ -191,7 +191,7 @@ func TestProjectCommandRunnerWithJobs(t *testing.T) {
 			mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
 			mockProjectCommandRunner := mocks.NewMockProjectCommandRunner()
 
-			runner := &events.ProjectCommandRunnerWithJobs{
+			runner := &events.ProjectOutputWrapper{
 				ProjectCmdOutputHandler: mockProjectCommandOutputHandler,
 				ProjectCommandRunner:    mockProjectCommandRunner,
 			}

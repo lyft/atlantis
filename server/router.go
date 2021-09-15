@@ -38,13 +38,14 @@ func (r *Router) GenerateLockURL(lockID string) string {
 	return r.AtlantisURL.String() + lockURL.String()
 }
 
-func (r *Router) GenerateProjectJobURL(p models.ProjectCommandContext) string {
-	pull := p.Pull
+func (r *Router) GenerateProjectJobURL(ctx models.ProjectCommandContext) string {
+	pull := ctx.Pull
+
 	jobURL, _ := r.Underlying.Get(r.ProjectJobsViewRouteName).URL(
 		"org", pull.BaseRepo.Owner,
 		"repo", pull.BaseRepo.Name,
 		"pull", fmt.Sprintf("%d", pull.Num),
-		"project", p.ProjectName,
+		"project", ctx.ProjectName,
 	)
 	return r.AtlantisURL.String() + jobURL.String()
 }

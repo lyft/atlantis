@@ -236,14 +236,6 @@ func (p *FeatureAwareOutputHandler) Send(ctx models.ProjectCommandContext, msg s
 	p.ProjectCommandOutputHandler.Send(ctx, msg)
 }
 
-func (p *FeatureAwareOutputHandler) Receive(projectInfo string, receiver chan string, callback func(msg string) error) error {
-	return p.ProjectCommandOutputHandler.Receive(projectInfo, receiver, callback)
-}
-
-func (p *FeatureAwareOutputHandler) Handle() {
-	p.ProjectCommandOutputHandler.Handle()
-}
-
 func (p *FeatureAwareOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
 	if !p.featureEnabled(ctx) {
 		return nil
