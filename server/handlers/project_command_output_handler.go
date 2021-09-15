@@ -37,6 +37,8 @@ type ProjectCommandOutputHandler interface {
 	Handle()
 }
 
+var ClearMsg = "CLEAR"
+
 func NewProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutputLine, logger logging.SimpleLogging) ProjectCommandOutputHandler {
 	return &DefaultProjectCommandOutputHandler{
 		ProjectCmdOutput:     projectCmdOutput,
@@ -73,7 +75,6 @@ func (p *DefaultProjectCommandOutputHandler) Handle() {
 	for msg := range p.ProjectCmdOutput {
 		if msg.ClearBuffBefore {
 			p.clearLogLines(msg.ProjectInfo)
-			continue
 		}
 		p.writeLogLine(msg.ProjectInfo, msg.Line)
 	}
@@ -82,7 +83,7 @@ func (p *DefaultProjectCommandOutputHandler) Handle() {
 func (p *DefaultProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext) {
 	p.ProjectCmdOutput <- &models.ProjectCmdOutputLine{
 		ProjectInfo:     ctx.PullInfo(),
-		Line:            "",
+		Line:            "CLEAR",
 		ClearBuffBefore: true,
 	}
 }
@@ -125,6 +126,11 @@ func (p *DefaultProjectCommandOutputHandler) writeLogLine(pull string, line stri
 		}
 	}
 	p.receiverBuffersLock.Unlock()
+
+	// No need to write to projectOutputBuffers if clear msg.
+	if line == ClearMsg {
+		return
+	}
 
 	p.projectOutputBuffersLock.Lock()
 	if p.projectOutputBuffers[pull] == nil {

@@ -407,6 +407,21 @@ var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
     <script src="https://unpkg.com/xterm-addon-fit@0.4.0/lib/xterm-addon-fit.js"></script>
 
     <script>
+
+    import { Terminal, IDisposable } from 'xterm';
+
+class DataLoggerAddon {
+  private _disposables: IDisposable[] = [];
+
+  activate(terminal: Terminal): void {
+    this._disposables.push(terminal.onData(d => console.log(d)));
+  }
+
+  dispose(): void {
+    this._disposables.forEach(d => d.dispose());
+    this._disposables.length = 0;
+  }
+}
       var term = new Terminal();
       var socket = new WebSocket(
         (document.location.protocol === "http:" ? "ws://" : "wss://") + 
@@ -415,8 +430,9 @@ var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
         "/ws");
       socket.onmessage = function(event) {
         var msg = String.fromCharCode.apply(null,  new Uint8Array(event.data))
-        if (msg.trim() === "Initializing the backend...") {
+        if (msg.trim() === "CLEAR") {
           term.clear()
+          return 
         }
       }
       var attachAddon = new AttachAddon.AttachAddon(socket);
