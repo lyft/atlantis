@@ -506,8 +506,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	applyRequirementHandler := &events.AggregateApplyRequirements{
-		WorkingDir:       workingDir,
-		FeatureAllocator: featureAllocator,
+		WorkingDir: workingDir,
 	}
 
 	projectCommandRunner := &events.DefaultProjectCommandRunner{
