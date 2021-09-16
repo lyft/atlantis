@@ -27,6 +27,8 @@ import (
 	mocks2 "github.com/runatlantis/atlantis/server/events/runtime/mocks"
 	tmocks "github.com/runatlantis/atlantis/server/events/terraform/mocks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	"github.com/runatlantis/atlantis/server/feature"
+	fmocks "github.com/runatlantis/atlantis/server/feature/mocks"
 	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
@@ -175,12 +177,14 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
+	allocator := fmocks.NewMockAllocator()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
+		FeatureAllocator: allocator,
 	}
 	ctx := models.ProjectCommandContext{
 		PullMergeable:     false,
@@ -189,6 +193,7 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
+	When(allocator.ShouldAllocate(feature.ForceApply, ctx.BaseRepo.FullName)).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "Pull request must be mergeable before running apply.", res.Failure)
