@@ -282,6 +282,35 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	Equals(t, "Pull request must be approved by at least one person other than the author before running apply.", res.Failure)
 }
 
+func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
+	RegisterMockTestingT(t)
+	mockWorkingDir := mocks.NewMockWorkingDir()
+	mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
+	allocator := fmocks.NewMockAllocator()
+	mockSender := mocks.NewMockWebhooksSender()
+	runner := &events.DefaultProjectCommandRunner{
+		WorkingDir:       mockWorkingDir,
+		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
+		AggregateApplyRequirements: &events.AggregateApplyRequirements{
+			WorkingDir: mockWorkingDir,
+		},
+		FeatureAllocator: allocator,
+		Webhooks:         mockSender,
+	}
+	ctx := models.ProjectCommandContext{
+		ApplyRequirements: []string{"approved"},
+		Force:             true,
+	}
+	tmp, cleanup := TempDir(t)
+	defer cleanup()
+	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
+	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
+	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(true, nil)
+
+	res := runner.Apply(ctx)
+	Equals(t, "WARNING: this apply run with --force option bypassing the apply requirements. This should only be used in an emergency.", res.ApplySuccess)
+}
+
 // Test that if mergeable is required and the PR isn't mergeable we give an error.
 func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	RegisterMockTestingT(t)
