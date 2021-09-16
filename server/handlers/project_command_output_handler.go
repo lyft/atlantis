@@ -3,6 +3,8 @@ package handlers
 import (
 	"sync"
 
+	stats "github.com/lyft/gostats"
+	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -22,7 +24,8 @@ type AsyncProjectCommandOutputHandler struct {
 	projectStatusUpdater   ProjectStatusUpdater
 	projectJobURLGenerator ProjectJobURLGenerator
 
-	logger logging.SimpleLogging
+	logger     logging.SimpleLogging
+	StatsScope stats.Scope
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobURLGenerator
@@ -73,6 +76,7 @@ func NewAsyncProjectCommandOutputHandler(
 	projectStatusUpdater ProjectStatusUpdater,
 	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
+	statsScope stats.Scope,
 ) ProjectCommandOutputHandler {
 	return &AsyncProjectCommandOutputHandler{
 		projectCmdOutput:       projectCmdOutput,
@@ -81,6 +85,7 @@ func NewAsyncProjectCommandOutputHandler(
 		projectStatusUpdater:   projectStatusUpdater,
 		projectJobURLGenerator: projectJobURLGenerator,
 		projectOutputBuffers:   map[string][]string{},
+		StatsScope:             statsScope.Scope("log-streaming"),
 	}
 }
 
@@ -97,9 +102,15 @@ func (p *AsyncProjectCommandOutputHandler) Receive(projectInfo string, receiver 
 	go p.addChan(receiver, projectInfo)
 	defer p.removeChan(projectInfo, receiver)
 
+	executionSuccess := p.StatsScope.NewCounter(metrics.ExecutionSuccessMetric)
+	executionError := p.StatsScope.NewCounter(metrics.ExecutionErrorMetric)
+
 	for msg := range receiver {
 		if err := callback(msg); err != nil {
+			executionError.Inc()
 			return err
+		} else {
+			executionSuccess.Inc()
 		}
 	}
 
@@ -221,6 +232,7 @@ func NewFeatureAwareOutputHandler(
 	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
 	featureAllocator feature.Allocator,
+	StatsScope stats.Scope,
 ) ProjectCommandOutputHandler {
 	return &FeatureAwareOutputHandler{
 		FeatureAllocator: featureAllocator,
@@ -229,6 +241,7 @@ func NewFeatureAwareOutputHandler(
 			projectStatusUpdater,
 			projectJobURLGenerator,
 			logger,
+			StatsScope,
 		),
 	}
 }
