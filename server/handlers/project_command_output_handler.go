@@ -167,11 +167,6 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(pull string, line string
 	}
 	p.receiverBuffersLock.Unlock()
 
-	// No need to write to projectOutputBuffers if clear msg.
-	if line == models.LogStreamingClearMsg {
-		return
-	}
-
 	p.projectOutputBuffersLock.Lock()
 	if p.projectOutputBuffers[pull] == nil {
 		p.projectOutputBuffers[pull] = []string{}
