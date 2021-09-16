@@ -357,6 +357,7 @@ type LogStreamData struct {
 	AtlantisVersion string
 	PullInfo        string
 	CleanedBasePath string
+	ClearMsg        string
 }
 
 var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
@@ -403,70 +404,10 @@ var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/xterm@4.9.0/lib/xterm.js"></script>
-    // <script src="https://unpkg.com/xterm-addon-attach@0.6.0/lib/xterm-addon-attach.js"></script>
+    <script src="https://unpkg.com/xterm-addon-attach@0.6.0/lib/xterm-addon-attach.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.4.0/lib/xterm-addon-fit.js"></script>
 
     <script>
-    // Custom Addon 
-      var AttachAddon = /** @class */ (function () {
-        function AttachAddon(socket, options) {
-            this._disposables = [];
-            this._socket = socket;
-            // always set binary type to arraybuffer, we do not handle blobs
-            this._socket.binaryType = 'arraybuffer';
-            this._bidirectional = !(options && options.bidirectional === false);
-        }
-        AttachAddon.prototype.activate = function (terminal) {
-            var _this = this;
-            this._disposables.push(addSocketListener(this._socket, 'message', function (ev) {
-                var data = ev.data;
-                terminal.write(typeof data === 'string' ? data : new Uint8Array(data));
-            }));
-            if (this._bidirectional) {
-                this._disposables.push(terminal.onData(function (data) { return _this._sendData(data); }));
-                this._disposables.push(terminal.onBinary(function (data) { return _this._sendBinary(data); }));
-            }
-            this._disposables.push(addSocketListener(this._socket, 'close', function () { return _this.dispose(); }));
-            this._disposables.push(addSocketListener(this._socket, 'error', function () { return _this.dispose(); }));
-        };
-        AttachAddon.prototype.dispose = function () {
-            for (var _i = 0, _a = this._disposables; _i < _a.length; _i++) {
-                var d = _a[_i];
-                d.dispose();
-            }
-        };
-        AttachAddon.prototype._sendData = function (data) {
-            // TODO: do something better than just swallowing
-            // the data if the socket is not in a working condition
-            if (this._socket.readyState !== 1) {
-                return;
-            }
-            this._socket.send(data);
-        };
-        AttachAddon.prototype._sendBinary = function (data) {
-            if (this._socket.readyState !== 1) {
-                return;
-            }
-            var buffer = new Uint8Array(data.length);
-            for (var i = 0; i < data.length; ++i) {
-                buffer[i] = data.charCodeAt(i) & 255;
-            }
-            this._socket.send(buffer);
-        };
-        return AttachAddon;
-    }());
-    function addSocketListener(socket, type, handler) {
-        socket.addEventListener(type, handler);
-        return {
-            dispose: function () {
-                if (!handler) {
-                    // Already disposed
-                    return;
-                }
-                socket.removeEventListener(type, handler);
-            }
-        };
-    }
       var term = new Terminal();
       var socket = new WebSocket(
         (document.location.protocol === "http:" ? "ws://" : "wss://") + 
@@ -475,11 +416,12 @@ var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
         "/ws");
       socket.onmessage = function(event) {
         var msg = String.fromCharCode.apply(null,  new Uint8Array(event.data))
-        if (msg.trim() === "CLEAR") {
+        if (msg.trim() === "-----Starting New Process-----") {
           term.clear()
+          return 
         }
       }
-      var attachAddon = new AttachAddon(socket);
+      var attachAddon = new AttachAddon.AttachAddon(socket);
       var fitAddon = new FitAddon.FitAddon();
       term.loadAddon(attachAddon);
       term.loadAddon(fitAddon);

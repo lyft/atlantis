@@ -101,6 +101,7 @@ func (j *LogStreamingController) GetLogStream(w http.ResponseWriter, r *http.Req
 		AtlantisVersion: j.AtlantisVersion,
 		PullInfo:        pullInfo.String(),
 		CleanedBasePath: j.AtlantisURL.Path,
+		ClearMsg:        models.LogStreamingClearMsg,
 	}
 
 	err = j.LogStreamTemplate.Execute(w, viewData)
