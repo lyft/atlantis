@@ -342,7 +342,8 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.ForceApply, err)
 	}
 
-	if shouldAllocate && !ctx.Force {
+	// If the force feature flag is disabled or the --force is not passed for this apply, proceed as normal.
+	if !shouldAllocate && !ctx.Force {
 		failure, err = p.AggregateApplyRequirements.ValidateProject(repoDir, ctx)
 		if failure != "" || err != nil {
 			return "", failure, err

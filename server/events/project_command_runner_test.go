@@ -154,12 +154,16 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
+	allocator := fmocks.NewMockAllocator()
+	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
+		FeatureAllocator: allocator,
+		Webhooks:         mockSender,
 	}
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"approved"},
@@ -168,6 +172,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
 	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
+	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "Pull request must be approved by at least one person other than the author before running apply.", res.Failure)
@@ -178,6 +183,7 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	allocator := fmocks.NewMockAllocator()
+	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
@@ -185,6 +191,7 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 			WorkingDir: mockWorkingDir,
 		},
 		FeatureAllocator: allocator,
+		Webhooks:         mockSender,
 	}
 	ctx := models.ProjectCommandContext{
 		PullMergeable:     false,
@@ -193,7 +200,7 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(allocator.ShouldAllocate(feature.ForceApply, ctx.BaseRepo.FullName)).ThenReturn(false, nil)
+	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "Pull request must be mergeable before running apply.", res.Failure)
@@ -203,12 +210,16 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
+	allocator := fmocks.NewMockAllocator()
+	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
+		FeatureAllocator: allocator,
+		Webhooks:         mockSender,
 	}
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"undiverged"},
@@ -216,6 +227,7 @@ func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
+	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "Default branch must be rebased onto pull request before running apply.", res.Failure)
@@ -315,6 +327,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			applyReqHandler := &events.AggregateApplyRequirements{
 				WorkingDir: mockWorkingDir,
 			}
+			allocator := fmocks.NewMockAllocator()
 
 			runner := events.DefaultProjectCommandRunner{
 				Locker:                     mockLocker,
@@ -329,6 +342,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 				WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 				AggregateApplyRequirements: applyReqHandler,
 				LogStreamURLGenerator:      mocks.NewMockLogStreamURLGenerator(),
+				FeatureAllocator:           allocator,
 			}
 			repoDir, cleanup := TempDir(t)
 			defer cleanup()
@@ -355,6 +369,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			When(mockRun.Run(ctx, "", repoDir, expEnvs)).ThenReturn("run", nil)
 			When(mockEnv.Run(ctx, "", "value", repoDir, make(map[string]string))).ThenReturn("value", nil)
 			When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(true, nil)
+			When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(false, nil)
 
 			res := runner.Apply(ctx)
 			Equals(t, c.expOut, res.ApplySuccess)
