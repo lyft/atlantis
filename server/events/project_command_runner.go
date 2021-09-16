@@ -134,7 +134,7 @@ type DefaultProjectCommandRunner struct {
 	ProjectCmdOutputLine       models.ProjectCmdOutputLine
 	ProjectCmdOutputHandler    handlers.ProjectCommandOutputHandler
 	LogStreamURLGenerator      LogStreamURLGenerator
-	featureAllocator           feature.Allocator
+	FeatureAllocator           feature.Allocator
 }
 
 // Plan runs terraform plan for the project described by ctx.
@@ -336,7 +336,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 		return "", "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	shouldAllocate, err := p.featureAllocator.ShouldAllocate(feature.ForceApply, ctx.BaseRepo.FullName)
+	shouldAllocate, err := p.FeatureAllocator.ShouldAllocate(feature.ForceApply, ctx.BaseRepo.FullName)
 
 	if err != nil {
 		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.ForceApply, err)
