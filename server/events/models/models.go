@@ -35,6 +35,7 @@ import (
 
 const (
 	planfileSlashReplace = "::"
+	LogStreamingClearMsg = "\n-----Starting New Process-----"
 )
 
 type PullReqStatus struct {
@@ -449,7 +450,11 @@ func (p ProjectCommandContext) GetShowResultFileName() string {
 
 // Gets a unique identifier for the current pull request as a single string
 func (p ProjectCommandContext) PullInfo() string {
-	return fmt.Sprintf("%s/%d/%s", p.BaseRepo.FullName, p.Pull.Num, p.ProjectName)
+	return BuildPullInfo(p.BaseRepo.FullName, p.Pull.Num, p.ProjectName)
+}
+
+func BuildPullInfo(repoName string, pullNum int, projectName string) string {
+	return fmt.Sprintf("%s/%d/%s", repoName, pullNum, projectName)
 }
 
 // SplitRepoFullName splits a repo full name up into its owner and repo

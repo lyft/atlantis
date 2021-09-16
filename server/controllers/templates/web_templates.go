@@ -352,14 +352,15 @@ v{{ .AtlantisVersion }}
 </html>
 `))
 
-// pullStreamData holds the data needed to stream the current PR information
-type LogStreamData struct {
+// ProjectJobData holds the data needed to stream the current PR information
+type ProjectJobData struct {
 	AtlantisVersion string
-	PullInfo        string
+	ProjectPath     string
 	CleanedBasePath string
+	ClearMsg        string
 }
 
-var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
+var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -409,10 +410,17 @@ var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
     <script>
       var term = new Terminal();
       var socket = new WebSocket(
-        (document.location.protocol === "http:" ? "ws://" : "wss://") + 
+        (document.location.protocol === "http:" ? "ws://" : "wss://") +
         document.location.host +
         document.location.pathname +
         "/ws");
+      socket.onmessage = function(event) {
+        var msg = String.fromCharCode.apply(null, new Uint8Array(event.data))
+        if (msg.trim() === "-----Starting New Process-----") {
+          term.clear()
+          return 
+        }
+      }
       var attachAddon = new AttachAddon.AttachAddon(socket);
       var fitAddon = new FitAddon.FitAddon();
       term.loadAddon(attachAddon);
@@ -425,13 +433,13 @@ var LogStreamingTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
 </html>
 `))
 
-type LogStreamError struct {
+type ProjectJobsError struct {
 	AtlantisVersion string
-	PullInfo        string
+	ProjectPath     string
 	CleanedBasePath string
 }
 
-var LogStreamErrorTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
+var ProjectJobsErrorTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
 <!DOCTYPE html>
 <html lang="en">
   <head>
