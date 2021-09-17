@@ -263,7 +263,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		Webhooks:         mockSender,
+		Webhooks: mockSender,
 	}
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"approved"},
@@ -288,11 +288,11 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		Webhooks:         mockSender,
+		Webhooks: mockSender,
 	}
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"approved"},
-		Force:             true,
+		ForceApply:        true,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()

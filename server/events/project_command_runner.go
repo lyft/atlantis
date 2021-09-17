@@ -164,7 +164,7 @@ func (f *FeatureAwareProjectCommandRunner) Apply(ctx models.ProjectCommandContex
 	if err != nil {
 		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.ForceApply, err)
 	}
-	if !shouldAllocate && ctx.Force {
+	if !shouldAllocate && ctx.ForceApply {
 		ctx.Log.Err("force apply feature not enabled in the current environment.")
 
 		return models.ProjectResult{
@@ -394,7 +394,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 		return "", "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	if !ctx.Force {
+	if !ctx.ForceApply {
 		failure, err = p.AggregateApplyRequirements.ValidateProject(repoDir, ctx)
 		if failure != "" || err != nil {
 			return "", failure, err
@@ -422,7 +422,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 		return "", "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
 	}
 
-	if ctx.Force {
+	if ctx.ForceApply {
 		outputs = append(outputs, "WARNING: this apply run with --force option bypassing the apply requirements. This should only be used in an emergency.")
 	}
 	return strings.Join(outputs, "\n"), "", nil

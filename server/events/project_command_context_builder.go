@@ -208,7 +208,7 @@ func newProjectCommandContext(ctx *CommandContext,
 	parallelApplyEnabled bool,
 	parallelPlanEnabled bool,
 	verbose bool,
-	force bool,
+	forceApply bool,
 	scope stats.Scope,
 ) models.ProjectCommandContext {
 
@@ -255,7 +255,7 @@ func newProjectCommandContext(ctx *CommandContext,
 		TerraformVersion:          projCfg.TerraformVersion,
 		User:                      ctx.User,
 		Verbose:                   verbose,
-		Force:                     force,
+		ForceApply:                forceApply,
 		Workspace:                 projCfg.Workspace,
 		PolicySets:                policySets,
 	}

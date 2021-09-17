@@ -411,8 +411,8 @@ type ProjectCommandContext struct {
 	User User
 	// Verbose is true when the user would like verbose output.
 	Verbose bool
-	// Force is true when the apply should ignore apply_requirements.
-	Force bool
+	// ForceApply is true when the apply should ignore apply_requirements.
+	ForceApply bool
 	// Workspace is the Terraform workspace this project is in. It will always
 	// be set.
 	Workspace string
