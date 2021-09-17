@@ -23,7 +23,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -169,7 +168,6 @@ type DefaultProjectCommandRunner struct {
 	Webhooks                   WebhooksSender
 	WorkingDirLocker           WorkingDirLocker
 	AggregateApplyRequirements ApplyRequirement
-	FeatureAllocator           feature.Allocator
 }
 
 // Plan runs terraform plan for the project described by ctx.
@@ -370,14 +368,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 		return "", "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	shouldAllocate, err := p.FeatureAllocator.ShouldAllocate(feature.ForceApply, ctx.BaseRepo.FullName)
-
-	if err != nil {
-		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.ForceApply, err)
-	}
-
-	// If the force feature flag is disabled or the --force is not passed for this apply, proceed as normal.
-	if !shouldAllocate && !ctx.Force {
+	if !ctx.Force {
 		failure, err = p.AggregateApplyRequirements.ValidateProject(repoDir, ctx)
 		if failure != "" || err != nil {
 			return "", failure, err
@@ -405,7 +396,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 		return "", "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
 	}
 
-	if shouldAllocate && ctx.Force {
+	if ctx.Force {
 		outputs = append(outputs, "WARNING: this apply run with --force option bypassing the apply requirements. This should only be used in an emergency.")
 	}
 	return strings.Join(outputs, "\n"), "", nil
