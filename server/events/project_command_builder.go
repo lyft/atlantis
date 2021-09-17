@@ -280,7 +280,14 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 		for _, mp := range matchingProjects {
 			ctx.Log.Debug("determining config for project at dir: %q workspace: %q", mp.Dir, mp.Workspace)
 			mergedCfg := p.GlobalCfg.MergeProjectCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp, repoCfg)
-
+			contextFlags := &ContextFlags{
+				Automerge:                 repoCfg.Automerge,
+				Verbose:                   verbose,
+				ForceApply:                forceApply,
+				ParallelApply:             repoCfg.ParallelApply,
+				ParallelPlan:              repoCfg.ParallelPlan,
+				DeleteSourceBranchOnMerge: mergedCfg.DeleteSourceBranchOnMerge,
+			}
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
 					ctx,
@@ -288,12 +295,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 					mergedCfg,
 					commentFlags,
 					repoDir,
-					repoCfg.Automerge,
-					mergedCfg.DeleteSourceBranchOnMerge,
-					repoCfg.ParallelApply,
-					repoCfg.ParallelPlan,
-					verbose,
-					forceApply,
+					contextFlags,
 				)...)
 		}
 	} else {
@@ -309,6 +311,14 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 			ctx.Log.Debug("determining config for project at dir: %q", mp.Path)
 			pCfg := p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp.Path, DefaultWorkspace)
 
+			contextFlags := &ContextFlags{
+				Automerge:                 DefaultAutomergeEnabled,
+				Verbose:                   verbose,
+				ForceApply:                forceApply,
+				ParallelApply:             DefaultParallelApplyEnabled,
+				ParallelPlan:              DefaultParallelPlanEnabled,
+				DeleteSourceBranchOnMerge: pCfg.DeleteSourceBranchOnMerge,
+			}
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
 					ctx,
@@ -316,12 +326,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 					pCfg,
 					commentFlags,
 					repoDir,
-					DefaultAutomergeEnabled,
-					pCfg.DeleteSourceBranchOnMerge,
-					DefaultParallelApplyEnabled,
-					DefaultParallelPlanEnabled,
-					verbose,
-					forceApply,
+					contextFlags,
 				)...)
 		}
 	}
@@ -529,6 +534,14 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 		for _, mp := range matchingProjects {
 			ctx.Log.Debug("Merging config for project at dir: %q workspace: %q", mp.Dir, mp.Workspace)
 			projCfg = p.GlobalCfg.MergeProjectCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp, *repoCfgPtr)
+			contextFlags := &ContextFlags{
+				Automerge:                 automerge,
+				Verbose:                   verbose,
+				ForceApply:                forceApply,
+				ParallelApply:             parallelApply,
+				ParallelPlan:              parallelPlan,
+				DeleteSourceBranchOnMerge: projCfg.DeleteSourceBranchOnMerge,
+			}
 
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
@@ -537,16 +550,20 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 					projCfg,
 					commentFlags,
 					repoDir,
-					automerge,
-					projCfg.DeleteSourceBranchOnMerge,
-					parallelApply,
-					parallelPlan,
-					verbose,
-					forceApply,
+					contextFlags,
 				)...)
 		}
 	} else {
 		projCfg = p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), repoRelDir, workspace)
+		contextFlags := &ContextFlags{
+			Automerge:                 automerge,
+			Verbose:                   verbose,
+			ForceApply:                forceApply,
+			ParallelApply:             parallelApply,
+			ParallelPlan:              parallelPlan,
+			DeleteSourceBranchOnMerge: projCfg.DeleteSourceBranchOnMerge,
+		}
+
 		projCtxs = append(projCtxs,
 			p.ProjectCommandContextBuilder.BuildProjectContext(
 				ctx,
@@ -554,12 +571,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 				projCfg,
 				commentFlags,
 				repoDir,
-				automerge,
-				projCfg.DeleteSourceBranchOnMerge,
-				parallelApply,
-				parallelPlan,
-				verbose,
-				forceApply,
+				contextFlags,
 			)...)
 	}
 
