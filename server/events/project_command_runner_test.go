@@ -300,7 +300,7 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
-	Equals(t, "WARNING: this apply run with --force option bypassing the apply requirements. This should only be used in an emergency.", res.ApplySuccess)
+	Equals(t, "", res.Failure)
 }
 
 // Test that if mergeable is required and the PR isn't mergeable we give an error.
