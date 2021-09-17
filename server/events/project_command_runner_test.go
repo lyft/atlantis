@@ -29,8 +29,6 @@ import (
 	mocks2 "github.com/runatlantis/atlantis/server/events/runtime/mocks"
 	tmocks "github.com/runatlantis/atlantis/server/events/terraform/mocks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/feature"
-	fmocks "github.com/runatlantis/atlantis/server/feature/mocks"
 	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
@@ -258,7 +256,6 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
-	allocator := fmocks.NewMockAllocator()
 	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
@@ -266,7 +263,6 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		FeatureAllocator: allocator,
 		Webhooks:         mockSender,
 	}
 	ctx := models.ProjectCommandContext{
@@ -276,7 +272,6 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
 	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
-	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "Pull request must be approved by at least one person other than the author before running apply.", res.Failure)
@@ -286,7 +281,6 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
-	allocator := fmocks.NewMockAllocator()
 	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
@@ -294,7 +288,6 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		FeatureAllocator: allocator,
 		Webhooks:         mockSender,
 	}
 	ctx := models.ProjectCommandContext{
@@ -305,7 +298,6 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
 	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
-	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(true, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "WARNING: this apply run with --force option bypassing the apply requirements. This should only be used in an emergency.", res.ApplySuccess)
@@ -315,7 +307,6 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
-	allocator := fmocks.NewMockAllocator()
 	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
@@ -323,7 +314,6 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		FeatureAllocator: allocator,
 		Webhooks:         mockSender,
 	}
 	ctx := models.ProjectCommandContext{
@@ -333,7 +323,6 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "Pull request must be mergeable before running apply.", res.Failure)
@@ -343,7 +332,6 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
-	allocator := fmocks.NewMockAllocator()
 	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
@@ -351,7 +339,6 @@ func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		FeatureAllocator: allocator,
 		Webhooks:         mockSender,
 	}
 	ctx := models.ProjectCommandContext{
@@ -360,7 +347,6 @@ func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "Default branch must be rebased onto pull request before running apply.", res.Failure)
@@ -460,7 +446,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			applyReqHandler := &events.AggregateApplyRequirements{
 				WorkingDir: mockWorkingDir,
 			}
-			allocator := fmocks.NewMockAllocator()
 
 			runner := events.DefaultProjectCommandRunner{
 				Locker:                     mockLocker,
@@ -474,7 +459,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 				Webhooks:                   mockSender,
 				WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 				AggregateApplyRequirements: applyReqHandler,
-				FeatureAllocator:           allocator,
 			}
 			repoDir, cleanup := TempDir(t)
 			defer cleanup()
@@ -501,7 +485,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			When(mockRun.Run(ctx, "", repoDir, expEnvs)).ThenReturn("run", nil)
 			When(mockEnv.Run(ctx, "", "value", repoDir, make(map[string]string))).ThenReturn("value", nil)
 			When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(true, nil)
-			When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(false, nil)
 
 			res := runner.Apply(ctx)
 			Equals(t, c.expOut, res.ApplySuccess)
@@ -537,7 +520,6 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 	applyReqHandler := &events.AggregateApplyRequirements{
 		WorkingDir: mockWorkingDir,
 	}
-	allocator := fmocks.NewMockAllocator()
 
 	runner := events.DefaultProjectCommandRunner{
 		Locker:                     mockLocker,
@@ -547,7 +529,6 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: applyReqHandler,
 		Webhooks:                   mockSender,
-		FeatureAllocator:           allocator,
 	}
 	repoDir, cleanup := TempDir(t)
 	defer cleanup()
@@ -571,7 +552,6 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 	}
 	expEnvs := map[string]string{}
 	When(mockApply.Run(ctx, nil, repoDir, expEnvs)).ThenReturn("apply", fmt.Errorf("something went wrong"))
-	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Assert(t, res.ApplySuccess == "", "exp apply failure")
