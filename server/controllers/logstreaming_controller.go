@@ -95,7 +95,7 @@ func newProjectInfo(r *http.Request) (*projectInfo, error) {
 
 func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) {
 	projectInfo, err := newProjectInfo(r)
-	errorCounter := j.StatsScope.Scope("project_jobs").NewCounter(metrics.ExecutionErrorMetric)
+	errorCounter := j.StatsScope.Scope("get_project_jobs").NewCounter(metrics.ExecutionErrorMetric)
 
 	if err != nil {
 		errorCounter.Inc()
@@ -118,12 +118,11 @@ func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) 
 }
 
 func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request) {
-	jobsMetric := j.StatsScope.Scope("project_jobs_ws")
+	jobsMetric := j.StatsScope.Scope("get_project_jobs_ws")
 	projectInfo, err := newProjectInfo(r)
 	if err != nil {
 		jobsMetric.Scope("project_info").NewCounter(metrics.ExecutionErrorMetric).Inc()
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
-		j.StatsScope.Scope("")
 		return
 	}
 
