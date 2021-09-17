@@ -3,9 +3,7 @@ package decorators_test
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
-	"time"
 
 	. "github.com/runatlantis/atlantis/testing"
 
@@ -62,15 +60,20 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			}
 
 			ctx := models.ProjectCommandContext{
-				Log:       logging.NewNoopLogger(t),
-				Steps:     []valid.Step{},
+				Log:         logging.NewNoopLogger(t),
+				Steps:       []valid.Step{},
+				ProjectName: "test-project",
+				User: models.User{
+					Username: "test-user",
+				},
 				Workspace: "default",
 				PullReqStatus: models.PullReqStatus{
 					Approved: false,
 				},
 				RepoRelDir: ".",
 				Tags: map[string]string{
-					"environment": "production",
+					"environment":  "production",
+					"service_name": "test-service",
 				},
 			}
 
@@ -86,13 +89,12 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			json.Unmarshal(eventPayload[0], eventBefore)
 			json.Unmarshal(eventPayload[1], eventAfter)
 
-			at, _ := time.Parse(time.RFC3339, eventBefore.StartTime)
-			fmt.Printf("%+v\n", at)
-
 			Equals(t, eventBefore.State, decorators.ApplyEventInitiated)
 			Equals(t, eventBefore.EndTime, "")
-			Equals(t, eventBefore.Approved, false)
+			Equals(t, eventBefore.RootName, "test-project")
 			Equals(t, eventBefore.Environment, "production")
+			Equals(t, eventBefore.InitiatingUser, "test-user")
+			Equals(t, eventBefore.Project, "test-service")
 			Assert(t, eventBefore.StartTime != "", "start time must be set")
 
 			if c.Success {
@@ -104,7 +106,6 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			Assert(t, eventBefore.StartTime == eventAfter.StartTime, "start time should not change")
 			Assert(t, eventAfter.EndTime != "", "end time must be set")
 			Assert(t, eventBefore.ID == eventAfter.ID, "id should not change")
-			Equals(t, eventAfter.Approved, false)
 		})
 	}
 }
