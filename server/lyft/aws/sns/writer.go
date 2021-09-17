@@ -16,9 +16,9 @@ type Writer interface {
 
 // NewWriter returns a new instance of Writer that will connect to the specifed
 // sns topic using the specified session
-func NewWriter(session *session.Session, topicArn string) Writer {
+func NewWriter(awsSession *session.Session, topicArn string) Writer {
 	return &writer{
-		client:   awsSns.New(session),
+		client:   awsSns.New(awsSession),
 		topicArn: aws.String(topicArn),
 	}
 }
