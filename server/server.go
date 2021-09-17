@@ -560,8 +560,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ProjectCommandRunner:    projectCommandRunner,
 	}
 
-	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
+	featureAwareProjectCommandRunner := &events.FeatureAwareProjectCommandRunner{
+		FeatureAllocator:     featureAllocator,
 		ProjectCommandRunner: projectOutputWrapper,
+	}
+
+	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
+		ProjectCommandRunner: featureAwareProjectCommandRunner,
 	}
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(

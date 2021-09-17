@@ -155,17 +155,25 @@ func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName models.CommandN
 
 type FeatureAwareProjectCommandRunner struct {
 	ProjectCommandRunner
-	featureAllocator feature.Allocator
+	FeatureAllocator feature.Allocator
 }
 
 func (f *FeatureAwareProjectCommandRunner) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
-	shouldAllocate, err := f.featureAllocator.ShouldAllocate(feature.ForceApply, ctx.Pull.BaseRepo.FullName)
+	shouldAllocate, err := f.FeatureAllocator.ShouldAllocate(feature.ForceApply, ctx.Pull.BaseRepo.FullName)
 
 	if err != nil {
 		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.ForceApply, err)
 	}
 	if !shouldAllocate && ctx.Force {
 		ctx.Log.Err("force apply feature not enabled in the current environment.")
+
+		return models.ProjectResult{
+			Command:     models.ApplyCommand,
+			Failure:     "Force applies not enabled in the current environment. Please remove the -f or --force and rerun the apply. ",
+			RepoRelDir:  ctx.RepoRelDir,
+			Workspace:   ctx.Workspace,
+			ProjectName: ctx.ProjectName,
+		}
 	}
 	return f.ProjectCommandRunner.Apply(ctx)
 }
