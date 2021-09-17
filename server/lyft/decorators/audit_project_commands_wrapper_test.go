@@ -86,8 +86,10 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			eventAfter := &decorators.ApplyEvent{}
 			eventPayload := snsMock.VerifyWasCalled(Twice()).Write(matchers.AnySliceOfByte()).GetAllCapturedArguments()
 
-			json.Unmarshal(eventPayload[0], eventBefore)
-			json.Unmarshal(eventPayload[1], eventAfter)
+			err := json.Unmarshal(eventPayload[0], eventBefore)
+			Ok(t, err)
+			err = json.Unmarshal(eventPayload[1], eventAfter)
+			Ok(t, err)
 
 			Equals(t, eventBefore.State, decorators.ApplyEventInitiated)
 			Equals(t, eventBefore.RootName, "test-project")

@@ -2,7 +2,7 @@ package sns
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/aws/client"
 	awsSns "github.com/aws/aws-sdk-go/service/sns"
 	snsApi "github.com/aws/aws-sdk-go/service/sns/snsiface"
 )
@@ -16,9 +16,9 @@ type Writer interface {
 
 // NewWriter returns a new instance of Writer that will connect to the specifed
 // sns topic using the specified session
-func NewWriter(awsSession *session.Session, topicArn string) Writer {
+func NewWriter(session client.ConfigProvider, topicArn string) Writer {
 	return &writer{
-		client:   awsSns.New(awsSession),
+		client:   awsSns.New(session),
 		topicArn: aws.String(topicArn),
 	}
 }
