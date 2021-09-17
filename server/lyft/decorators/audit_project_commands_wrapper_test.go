@@ -90,11 +90,11 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			json.Unmarshal(eventPayload[1], eventAfter)
 
 			Equals(t, eventBefore.State, decorators.ApplyEventInitiated)
-			Equals(t, eventBefore.EndTime, "")
 			Equals(t, eventBefore.RootName, "test-project")
 			Equals(t, eventBefore.Environment, "production")
 			Equals(t, eventBefore.InitiatingUser, "test-user")
 			Equals(t, eventBefore.Project, "test-service")
+			Assert(t, eventBefore.EndTime == "", "end time must be empty")
 			Assert(t, eventBefore.StartTime != "", "start time must be set")
 
 			if c.Success {
