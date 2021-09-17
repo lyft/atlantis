@@ -23,6 +23,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -150,6 +151,23 @@ func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName models.CommandN
 	}
 
 	return result
+}
+
+type FeatureAwareProjectCommandRunner struct {
+	ProjectCommandRunner
+	featureAllocator feature.Allocator
+}
+
+func (f *FeatureAwareProjectCommandRunner) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
+	shouldAllocate, err := f.featureAllocator.ShouldAllocate(feature.ForceApply, ctx.Pull.BaseRepo.FullName)
+
+	if err != nil {
+		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.ForceApply, err)
+	}
+	if !shouldAllocate && ctx.Force {
+		ctx.Log.Err("trying to use force apply but not allocated: %s, error: %s", feature.ForceApply, err)
+	}
+	return f.ProjectCommandRunner.Apply(ctx)
 }
 
 // DefaultProjectCommandRunner implements ProjectCommandRunner.
