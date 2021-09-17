@@ -307,14 +307,12 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		Webhooks:         mockSender,
 	}
 	ctx := models.ProjectCommandContext{
 		PullMergeable:     false,
@@ -332,14 +330,12 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		Webhooks:         mockSender,
 	}
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"undiverged"},
