@@ -165,7 +165,7 @@ func (f *FeatureAwareProjectCommandRunner) Apply(ctx models.ProjectCommandContex
 		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.ForceApply, err)
 	}
 	if !shouldAllocate && ctx.Force {
-		ctx.Log.Err("trying to use force apply but not allocated: %s, error: %s", feature.ForceApply, err)
+		ctx.Log.Err("force apply feature not enabled in the current environment.")
 	}
 	return f.ProjectCommandRunner.Apply(ctx)
 }
