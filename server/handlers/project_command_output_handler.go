@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	stats "github.com/lyft/gostats"
-	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -24,8 +23,8 @@ type AsyncProjectCommandOutputHandler struct {
 	projectStatusUpdater   ProjectStatusUpdater
 	projectJobURLGenerator ProjectJobURLGenerator
 
-	logger     logging.SimpleLogging
-	StatsScope stats.Scope
+	logger        logging.SimpleLogging
+	numChansGauge stats.Gauge
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobURLGenerator
@@ -85,7 +84,7 @@ func NewAsyncProjectCommandOutputHandler(
 		projectStatusUpdater:   projectStatusUpdater,
 		projectJobURLGenerator: projectJobURLGenerator,
 		projectOutputBuffers:   map[string][]string{},
-		StatsScope:             statsScope.Scope("log-streaming"),
+		numChansGauge:          statsScope.Scope("log-streaming").NewGauge("live_ch"),
 	}
 }
 
@@ -102,15 +101,9 @@ func (p *AsyncProjectCommandOutputHandler) Receive(projectInfo string, receiver 
 	go p.addChan(receiver, projectInfo)
 	defer p.removeChan(projectInfo, receiver)
 
-	executionSuccess := p.StatsScope.NewCounter(metrics.ExecutionSuccessMetric)
-	executionError := p.StatsScope.NewCounter(metrics.ExecutionErrorMetric)
-
 	for msg := range receiver {
 		if err := callback(msg); err != nil {
-			executionError.Inc()
 			return err
-		} else {
-			executionSuccess.Inc()
 		}
 	}
 
@@ -151,6 +144,7 @@ func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, pull string) 
 		p.receiverBuffers[pull] = map[chan string]bool{}
 	}
 	p.receiverBuffers[pull][ch] = true
+	p.numChansGauge.Inc()
 	p.receiverBuffersLock.Unlock()
 
 	p.projectOutputBuffersLock.RLock()
@@ -195,6 +189,7 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(pull string, line string
 func (p *AsyncProjectCommandOutputHandler) removeChan(pull string, ch chan string) {
 	p.receiverBuffersLock.Lock()
 	delete(p.receiverBuffers[pull], ch)
+	p.numChansGauge.Dec()
 	p.receiverBuffersLock.Unlock()
 }
 
