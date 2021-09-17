@@ -84,7 +84,7 @@ func NewAsyncProjectCommandOutputHandler(
 		projectStatusUpdater:   projectStatusUpdater,
 		projectJobURLGenerator: projectJobURLGenerator,
 		projectOutputBuffers:   map[string][]string{},
-		numChansGauge:          statsScope.Scope("log-streaming").NewGauge("live_ch"),
+		numChansGauge:          statsScope.Scope("log_streaming").NewGauge("live_ch"),
 	}
 }
 
