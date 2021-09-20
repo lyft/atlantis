@@ -2,6 +2,7 @@ package decorators
 
 import (
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,7 +24,7 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 	ctx.SetScope("audit_applies")
 
 	id := uuid.New()
-	startTime := time.Now()
+	startTime := strconv.FormatInt(time.Now().Unix(), 10)
 
 	applyEvent := &ApplyEvent{
 		Version:        1,
@@ -36,7 +37,7 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 		InitiatingUser: ctx.User.Username,
 		Project:        ctx.Tags["service_name"],
 		ForceApply:     ctx.ForceApply,
-		StartTime:      startTime.Format(time.RFC3339),
+		StartTime:      startTime,
 		Revision:       ctx.Pull.HeadCommit,
 	}
 
@@ -71,7 +72,7 @@ func (p *AuditProjectCommandWrapper) emit(
 	applyEvent.State = state
 
 	if state == ApplyEventFailure || state == ApplyEventSuccess {
-		applyEvent.EndTime = time.Now().Format(time.RFC3339)
+		applyEvent.EndTime = strconv.FormatInt(time.Now().Unix(), 10)
 	}
 
 	payload, err := applyEvent.Marshal()
