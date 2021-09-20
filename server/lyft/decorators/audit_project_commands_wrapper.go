@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events"
+	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 )
@@ -19,6 +20,8 @@ type AuditProjectCommandWrapper struct {
 }
 
 func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
+	ctx.SetScope("audit_applies")
+
 	id := uuid.New()
 	startTime := time.Now()
 
@@ -37,14 +40,14 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 		Revision:       ctx.Pull.HeadCommit,
 	}
 
-	if err := p.emit(ctx, ApplyEventInitiated, applyEvent); err != nil {
+	if err := p.emit(ctx, ApplyEventRunning, applyEvent); err != nil {
 		ctx.Log.Err("failed to emit apply event", err)
 	}
 
 	result := p.ProjectCommandRunner.Apply(ctx)
 
 	if result.Error != nil || result.Failure != "" {
-		if err := p.emit(ctx, ApplyEventError, applyEvent); err != nil {
+		if err := p.emit(ctx, ApplyEventFailure, applyEvent); err != nil {
 			ctx.Log.Err("failed to emit apply event", err)
 		}
 
@@ -55,8 +58,6 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 		ctx.Log.Err("failed to emit apply event", err)
 	}
 
-	ctx.Log.Info("sns topic has been updated with the apply state")
-
 	return result
 }
 
@@ -65,20 +66,28 @@ func (p *AuditProjectCommandWrapper) emit(
 	state EventState,
 	applyEvent *ApplyEvent,
 ) error {
+	scope := ctx.Scope.Scope(state.String())
+
 	applyEvent.State = state
 
-	if state == ApplyEventError || state == ApplyEventSuccess {
+	if state == ApplyEventFailure || state == ApplyEventSuccess {
 		applyEvent.EndTime = time.Now().Format(time.RFC3339)
 	}
 
 	payload, err := applyEvent.Marshal()
 	if err != nil {
+		scope.NewCounter(metrics.ExecutionErrorMetric)
+
 		return errors.Wrap(err, "marshaling apply event")
 	}
 
 	if err := p.SnsWriter.Write(payload); err != nil {
+		scope.NewCounter(metrics.ExecutionErrorMetric)
+
 		return errors.Wrap(err, "writing to sns topic")
 	}
+
+	scope.NewCounter(metrics.ExecutionSuccessMetric)
 
 	return nil
 }
@@ -121,19 +130,19 @@ func (a *ApplyEvent) Marshal() ([]byte, error) {
 type EventState int
 
 const (
-	ApplyEventInitiated EventState = iota
+	ApplyEventRunning EventState = iota
 	ApplyEventSuccess
-	ApplyEventError
+	ApplyEventFailure
 )
 
 func (a EventState) String() string {
 	switch a {
-	case ApplyEventInitiated:
-		return "initiated"
+	case ApplyEventRunning:
+		return "running"
 	case ApplyEventSuccess:
 		return "success"
-	case ApplyEventError:
-		return "error"
+	case ApplyEventFailure:
+		return "failure"
 	}
 
 	return "unknown"

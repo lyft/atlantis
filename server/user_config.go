@@ -94,7 +94,7 @@ type UserConfig struct {
 	DefaultTFVersion          string          `mapstructure:"default-tf-version"`
 	Webhooks                  []WebhookConfig `mapstructure:"webhooks"`
 	WriteGitCreds             bool            `mapstructure:"write-git-creds"`
-	LyftApplyAuditSnsTopicArn string          `mapstructure:"lyft-apply-audit-sns-topic-arn"`
+	LyftAuditJobsSnsTopicArn string          `mapstructure:"lyft-audit-jobs-sns-topic-arn"`
 }
 
 // ToLogLevel returns the LogLevel object corresponding to the user-passed

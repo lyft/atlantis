@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	stats "github.com/lyft/gostats"
 	. "github.com/runatlantis/atlantis/testing"
 
 	. "github.com/petergtz/pegomock"
@@ -60,6 +61,7 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			}
 
 			ctx := models.ProjectCommandContext{
+				Scope:       stats.NewStore(stats.NewNullSink(), false),
 				Log:         logging.NewNoopLogger(t),
 				Steps:       []valid.Step{},
 				ProjectName: "test-project",
@@ -91,7 +93,7 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			err = json.Unmarshal(eventPayload[1], eventAfter)
 			Ok(t, err)
 
-			Equals(t, eventBefore.State, decorators.ApplyEventInitiated)
+			Equals(t, eventBefore.State, decorators.ApplyEventRunning)
 			Equals(t, eventBefore.RootName, "test-project")
 			Equals(t, eventBefore.Environment, "production")
 			Equals(t, eventBefore.InitiatingUser, "test-user")
@@ -102,7 +104,7 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			if c.Success {
 				Equals(t, eventAfter.State, decorators.ApplyEventSuccess)
 			} else {
-				Equals(t, eventAfter.State, decorators.ApplyEventError)
+				Equals(t, eventAfter.State, decorators.ApplyEventFailure)
 			}
 
 			Assert(t, eventBefore.StartTime == eventAfter.StartTime, "start time should not change")
