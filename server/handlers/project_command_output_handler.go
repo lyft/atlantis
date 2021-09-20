@@ -23,8 +23,7 @@ type AsyncProjectCommandOutputHandler struct {
 	projectStatusUpdater   ProjectStatusUpdater
 	projectJobURLGenerator ProjectJobURLGenerator
 
-	logger        logging.SimpleLogging
-	numChansGauge stats.Gauge
+	logger logging.SimpleLogging
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobURLGenerator
@@ -75,7 +74,6 @@ func NewAsyncProjectCommandOutputHandler(
 	projectStatusUpdater ProjectStatusUpdater,
 	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
-	statsScope stats.Scope,
 ) ProjectCommandOutputHandler {
 	return &AsyncProjectCommandOutputHandler{
 		projectCmdOutput:       projectCmdOutput,
@@ -84,7 +82,6 @@ func NewAsyncProjectCommandOutputHandler(
 		projectStatusUpdater:   projectStatusUpdater,
 		projectJobURLGenerator: projectJobURLGenerator,
 		projectOutputBuffers:   map[string][]string{},
-		numChansGauge:          statsScope.Scope("log_streaming").NewGauge("live_ch"),
 	}
 }
 
@@ -144,7 +141,6 @@ func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, pull string) 
 		p.receiverBuffers[pull] = map[chan string]bool{}
 	}
 	p.receiverBuffers[pull][ch] = true
-	p.numChansGauge.Inc()
 	p.receiverBuffersLock.Unlock()
 
 	p.projectOutputBuffersLock.RLock()
@@ -189,7 +185,6 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(pull string, line string
 func (p *AsyncProjectCommandOutputHandler) removeChan(pull string, ch chan string) {
 	p.receiverBuffersLock.Lock()
 	delete(p.receiverBuffers[pull], ch)
-	p.numChansGauge.Dec()
 	p.receiverBuffersLock.Unlock()
 }
 
@@ -227,17 +222,17 @@ func NewFeatureAwareOutputHandler(
 	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
 	featureAllocator feature.Allocator,
-	StatsScope stats.Scope,
+	scope stats.Scope,
 ) ProjectCommandOutputHandler {
+	prjCmdOutputHandler := NewAsyncProjectCommandOutputHandler(
+		projectCmdOutput,
+		projectStatusUpdater,
+		projectJobURLGenerator,
+		logger,
+	)
 	return &FeatureAwareOutputHandler{
-		FeatureAllocator: featureAllocator,
-		ProjectCommandOutputHandler: NewAsyncProjectCommandOutputHandler(
-			projectCmdOutput,
-			projectStatusUpdater,
-			projectJobURLGenerator,
-			logger,
-			StatsScope,
-		),
+		FeatureAllocator:            featureAllocator,
+		ProjectCommandOutputHandler: NewInstrumentedProjectCommandOutputHandler(prjCmdOutputHandler, scope),
 	}
 }
 
