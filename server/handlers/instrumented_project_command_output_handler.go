@@ -16,7 +16,7 @@ type InstrumentedProjectCommandOutputHandler struct {
 func NewInstrumentedProjectCommandOutputHandler(prjCmdOutputHandler ProjectCommandOutputHandler, statsScope stats.Scope, logger logging.SimpleLogging) ProjectCommandOutputHandler {
 	return &InstrumentedProjectCommandOutputHandler{
 		ProjectCommandOutputHandler: prjCmdOutputHandler,
-		numWSConnnections:           statsScope.Scope("job").Scope("websocket").NewGauge("connections"),
+		numWSConnnections:           statsScope.Scope("getprojectjobs").Scope("websocket").NewGauge("connections"),
 		logger:                      logger,
 	}
 }

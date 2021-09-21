@@ -93,11 +93,11 @@ func newProjectInfo(r *http.Request) (*projectInfo, error) {
 	}, nil
 }
 
-func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) {
+func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) error {
 	projectInfo, err := newProjectInfo(r)
 	if err != nil {
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
-		return
+		return err
 	}
 
 	viewData := templates.ProjectJobData{
@@ -110,24 +110,31 @@ func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) 
 	err = j.ProjectJobsTemplate.Execute(w, viewData)
 	if err != nil {
 		j.Logger.Err(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) {
+	errorCounter := j.StatsScope.Scope("getprojectjobs").NewCounter(metrics.ExecutionErrorMetric)
+	err := j.getProjectJobs(w, r)
+	if err != nil {
+		errorCounter.Inc()
 	}
 }
 
-func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request) {
-	jobsMetric := j.StatsScope.Scope("getprojectjobs")
-	errorCounter := jobsMetric.NewCounter(metrics.ExecutionErrorMetric)
+func (j *JobsController) getProjectJobsWS(w http.ResponseWriter, r *http.Request) error {
 	projectInfo, err := newProjectInfo(r)
 	if err != nil {
-		errorCounter.Inc()
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
-		return
+		return err
 	}
 
 	c, err := j.WebsocketHandler.Upgrade(w, r, nil)
 	if err != nil {
-		errorCounter.Inc()
 		j.Logger.Warn("Failed to upgrade websocket: %s", err)
-		return
+		return err
 	}
 
 	// Buffer size set to 1000 to ensure messages get queued (upto 1000) if the receiverCh is not ready to
@@ -140,8 +147,6 @@ func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request
 
 	pull := projectInfo.String()
 	err = j.ProjectCommandOutputHandler.Receive(pull, receiver, func(msg string) error {
-		executionTime := jobsMetric.Scope("websocket").NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
-		defer executionTime.Complete()
 		if err := c.WriteMessage(websocket.BinaryMessage, []byte("\r"+msg+"\n")); err != nil {
 			j.Logger.Warn("Failed to write ws message: %s", err)
 			return err
@@ -150,10 +155,23 @@ func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request
 	})
 
 	if err != nil {
-		errorCounter.Inc()
 		j.Logger.Warn("Failed to receive message: %s", err)
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
-		return
+		return err
+	}
+
+	return nil
+}
+
+func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request) {
+	jobsMetric := j.StatsScope.Scope("getprojectjobs")
+	errorCounter := jobsMetric.NewCounter(metrics.ExecutionErrorMetric)
+	executionTime := jobsMetric.NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
+	defer executionTime.Complete()
+
+	err := j.getProjectJobsWS(w, r)
+	if err != nil {
+		errorCounter.Inc()
 	}
 }
 
