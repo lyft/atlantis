@@ -46,7 +46,13 @@ func (wh *DefaultWebsocketHandler) SetReadHandler(w WebsocketConnectionWrapper) 
 	for {
 		_, _, err := w.ReadMessage()
 		if err != nil {
-			wh.Logger.Warn("Failed to read WS message: %s", err)
+			// If the client does not close connection properly, the channel will not be closed.
+			// Log error and monitor the dashboard if the numWSConnections is arbitarily high.
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				wh.Logger.Err("error closing connection: %v", err)
+			} else {
+				wh.Logger.Warn("Failed to read WS message: %s", err)
+			}
 			return
 		}
 	}
