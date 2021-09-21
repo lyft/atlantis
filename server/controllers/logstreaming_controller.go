@@ -114,7 +114,8 @@ func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) 
 }
 
 func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request) {
-	errorCounter := j.StatsScope.Scope("getprojectjobs").NewCounter(metrics.ExecutionErrorMetric)
+	jobsMetric := j.StatsScope.Scope("getprojectjobs")
+	errorCounter := jobsMetric.NewCounter(metrics.ExecutionErrorMetric)
 	projectInfo, err := newProjectInfo(r)
 	if err != nil {
 		errorCounter.Inc()
@@ -139,6 +140,8 @@ func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request
 
 	pull := projectInfo.String()
 	err = j.ProjectCommandOutputHandler.Receive(pull, receiver, func(msg string) error {
+		executionTime := jobsMetric.Scope("websocket").NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
+		defer executionTime.Complete()
 		if err := c.WriteMessage(websocket.BinaryMessage, []byte("\r"+msg+"\n")); err != nil {
 			j.Logger.Warn("Failed to write ws message: %s", err)
 			return err
