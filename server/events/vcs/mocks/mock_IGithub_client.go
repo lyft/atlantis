@@ -64,6 +64,25 @@ func (mock *MockIGithubClient) DownloadRepoConfigFile(_param0 models.PullRequest
 	return ret0, ret1, ret2
 }
 
+func (mock *MockIGithubClient) GetApprovalStatus(_param0 models.Repo, _param1 models.PullRequest) (models.ApprovalStatus, error) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockIGithubClient().")
+	}
+	params := []pegomock.Param{_param0, _param1}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("GetApprovalStatus", params, []reflect.Type{reflect.TypeOf((*models.ApprovalStatus)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 models.ApprovalStatus
+	var ret1 error
+	if len(result) != 0 {
+		if result[0] != nil {
+			ret0 = result[0].(models.ApprovalStatus)
+		}
+		if result[1] != nil {
+			ret1 = result[1].(error)
+		}
+	}
+	return ret0, ret1
+}
+
 func (mock *MockIGithubClient) GetContents(_param0 string, _param1 string, _param2 string, _param3 string) ([]byte, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockIGithubClient().")
@@ -412,6 +431,37 @@ func (c *MockIGithubClient_DownloadRepoConfigFile_OngoingVerification) GetAllCap
 		_param0 = make([]models.PullRequest, len(c.methodInvocations))
 		for u, param := range params[0] {
 			_param0[u] = param.(models.PullRequest)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierMockIGithubClient) GetApprovalStatus(_param0 models.Repo, _param1 models.PullRequest) *MockIGithubClient_GetApprovalStatus_OngoingVerification {
+	params := []pegomock.Param{_param0, _param1}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "GetApprovalStatus", params, verifier.timeout)
+	return &MockIGithubClient_GetApprovalStatus_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type MockIGithubClient_GetApprovalStatus_OngoingVerification struct {
+	mock              *MockIGithubClient
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *MockIGithubClient_GetApprovalStatus_OngoingVerification) GetCapturedArguments() (models.Repo, models.PullRequest) {
+	_param0, _param1 := c.GetAllCapturedArguments()
+	return _param0[len(_param0)-1], _param1[len(_param1)-1]
+}
+
+func (c *MockIGithubClient_GetApprovalStatus_OngoingVerification) GetAllCapturedArguments() (_param0 []models.Repo, _param1 []models.PullRequest) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]models.Repo, len(c.methodInvocations))
+		for u, param := range params[0] {
+			_param0[u] = param.(models.Repo)
+		}
+		_param1 = make([]models.PullRequest, len(c.methodInvocations))
+		for u, param := range params[1] {
+			_param1[u] = param.(models.PullRequest)
 		}
 	}
 	return

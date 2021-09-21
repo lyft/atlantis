@@ -53,6 +53,7 @@ type IGithubClient interface {
 	SQPullStatusChecker
 
 	GetContents(owner, repo, branch, path string) ([]byte, error)
+	GetApprovalStatus(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error)
 }
 
 // InstrumentedGithubClient should delegate to the underlying InstrumentedClient for vcs provider-agnostic
@@ -62,6 +63,28 @@ type InstrumentedGithubClient struct {
 	GhClient   *GithubClient
 	StatsScope stats.Scope
 	Logger     logging.SimpleLogging
+}
+
+func (c *InstrumentedGithubClient) GetApprovalStatus(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error) {
+	scope := c.StatsScope.Scope("pull_is_approved")
+	logger := c.Logger.WithHistory(fmtLogSrc(repo, pull.Num)...)
+
+	executionTime := scope.NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
+	defer executionTime.Complete()
+
+	executionSuccess := scope.NewCounter(metrics.ExecutionSuccessMetric)
+	executionError := scope.NewCounter(metrics.ExecutionErrorMetric)
+
+	approved, err := c.GhClient.GetApprovalStatus(repo, pull)
+
+	if err != nil {
+		executionError.Inc()
+		logger.Err("Unable to check pull approval status, error: %s", err.Error())
+	} else {
+		executionSuccess.Inc()
+	}
+
+	return approved, err
 }
 
 func (c *InstrumentedGithubClient) GetContents(owner, repo, branch, path string) ([]byte, error) {
@@ -251,6 +274,7 @@ func (c *InstrumentedClient) HidePrevCommandComments(repo models.Repo, pullNum i
 	return nil
 
 }
+
 func (c *InstrumentedClient) PullIsApproved(repo models.Repo, pull models.PullRequest) (bool, error) {
 	scope := c.StatsScope.Scope("pull_is_approved")
 	logger := c.Logger.WithHistory(fmtLogSrc(repo, pull.Num)...)
@@ -273,6 +297,7 @@ func (c *InstrumentedClient) PullIsApproved(repo models.Repo, pull models.PullRe
 	return approved, err
 
 }
+
 func (c *InstrumentedClient) PullIsMergeable(repo models.Repo, pull models.PullRequest) (bool, error) {
 	scope := c.StatsScope.Scope("pull_is_mergeable")
 	logger := c.Logger.WithHistory(fmtLogSrc(repo, pull.Num)...)

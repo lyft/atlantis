@@ -39,9 +39,15 @@ const (
 )
 
 type PullReqStatus struct {
-	Approved  bool
+	Approved  ApprovalStatus
 	Mergeable bool
 	SQLocked  bool
+}
+
+type ApprovalStatus struct {
+	IsApproved bool
+	ApprovedBy string
+	Date       time.Time
 }
 
 // Repo is a VCS repository.

@@ -253,6 +253,40 @@ func (g *GithubClient) HidePrevCommandComments(repo models.Repo, pullNum int, co
 	return nil
 }
 
+// Replacing PullIsApproved method call with GetApprovalStatus to add approval metadata.
+func (g *GithubClient) GetApprovalStatus(repo models.Repo, pull models.PullRequest) (approvalStatus models.ApprovalStatus, err error) {
+	nextPage := 0
+	for {
+		opts := github.ListOptions{
+			PerPage: 300,
+		}
+		if nextPage != 0 {
+			opts.Page = nextPage
+		}
+		g.logger.Debug("GET /repos/%v/%v/pulls/%d/reviews", repo.Owner, repo.Name, pull.Num)
+		pageReviews, resp, err := g.client.PullRequests.ListReviews(g.ctx, repo.Owner, repo.Name, pull.Num, &opts)
+		if err != nil {
+			return approvalStatus, errors.Wrap(err, "getting reviews")
+		}
+		for _, review := range pageReviews {
+			if review != nil && review.GetState() == "APPROVED" {
+				temp := review.SubmittedAt.Local().String()
+				g.logger.Info(temp)
+				return models.ApprovalStatus{
+					IsApproved: true,
+					ApprovedBy: *review.User.Login,
+					Date:       *review.SubmittedAt,
+				}, nil
+			}
+		}
+		if resp.NextPage == 0 {
+			break
+		}
+		nextPage = resp.NextPage
+	}
+	return approvalStatus, nil
+}
+
 // PullIsApproved returns true if the pull request was approved.
 func (g *GithubClient) PullIsApproved(repo models.Repo, pull models.PullRequest) (bool, error) {
 	nextPage := 0

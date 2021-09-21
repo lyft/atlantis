@@ -19,7 +19,7 @@ func (s SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models.
 		return pullStatus, errors.Wrapf(err, "fetching repo statuses for repo: %s, and pull number: %d", repo.FullName, pull.Num)
 	}
 
-	approved, err := s.GithubClient.PullIsApproved(repo, pull)
+	approvalStatus, err := s.GithubClient.GetApprovalStatus(repo, pull)
 	if err != nil {
 		return pullStatus, errors.Wrapf(err, "fetching pull approval status for repo: %s, and pull number: %d", repo.FullName, pull.Num)
 	}
@@ -35,7 +35,7 @@ func (s SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models.
 	}
 
 	return models.PullReqStatus{
-		Approved:  approved,
+		Approved:  approvalStatus,
 		Mergeable: mergeable,
 		SQLocked:  sqLocked,
 	}, err
