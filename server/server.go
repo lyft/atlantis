@@ -662,6 +662,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	featureAwareCommandRunner := &events.FeatureAwareCommandRunner{
 		CommandRunner:    commandRunner,
 		FeatureAllocator: featureAllocator,
+		VCSClient:        vcsClient,
+		Logger:           logger,
 	}
 
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
