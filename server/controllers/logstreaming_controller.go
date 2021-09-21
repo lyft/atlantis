@@ -132,7 +132,7 @@ func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request
 	// Buffer size set to 1000 to ensure messages get queued (upto 1000) if the receiverCh is not ready to
 	// receive messages before the channel is closed and resources cleaned up.
 	receiver := make(chan string, 1000)
-	j.WebsocketHandler.SetCloseHandler(c, projectInfo.String(), receiver)
+	j.WebsocketHandler.SetCloseHandler(c, receiver)
 
 	// Add a reader goroutine to listen for socket.close() events.
 	go j.WebsocketHandler.SetReadHandler(c)

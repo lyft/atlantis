@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
 	featuremocks "github.com/runatlantis/atlantis/server/feature/mocks"
 	featurematchers "github.com/runatlantis/atlantis/server/feature/mocks/matchers"
@@ -14,7 +15,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/petergtz/pegomock"
 	. "github.com/petergtz/pegomock"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -86,10 +86,10 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		}()
 
 		projectOutputHandler.Send(ctx, Msg)
-		close(ch)
 
 		// Wait for the msg to be read.
 		wg.Wait()
+		close(ch)
 		Equals(t, expectedMsg, Msg)
 	})
 

@@ -24,8 +24,8 @@ func NewInstrumentedProjectCommandOutputHandler(prjCmdOutputHandler ProjectComma
 func (p *InstrumentedProjectCommandOutputHandler) Receive(projectInfo string, receiver chan string, callback func(msg string) error) error {
 	p.numWSConnnections.Inc()
 	defer func() {
-		// Log msg to explore why numWSConnnections does not decrease when the browser is closed.
-		// TODO: Remove after exploration.
+		// Log message to ensure numWSConnnections gauge is being updated properly.
+		// TODO: Remove when removing the feature flag for log streaming.
 		p.logger.Info(fmt.Sprintf("Decreasing num of ws connections for project: %s", projectInfo))
 		p.numWSConnnections.Dec()
 	}()
