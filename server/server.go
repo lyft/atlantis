@@ -327,7 +327,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		router,
 		logger,
 		featureAllocator,
-		statsScope,
+		statsScope.Scope("api"),
 	)
 
 	terraformClient, err := terraform.NewClient(
@@ -681,7 +681,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Db:                          boltdb,
 		WebsocketHandler:            handlers.NewWebsocketHandler(logger),
 		ProjectCommandOutputHandler: projectCmdOutputHandler,
-		StatsScope:                  statsScope.Scope("log_streaming"),
+		StatsScope:                  statsScope.Scope("api"),
 	}
 
 	eventsController := &events_controllers.VCSEventsController{

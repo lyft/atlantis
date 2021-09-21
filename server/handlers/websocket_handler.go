@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -12,7 +13,7 @@ import (
 type WebsocketHandler interface {
 	Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (WebsocketConnectionWrapper, error)
 	SetReadHandler(w WebsocketConnectionWrapper)
-	SetCloseHandler(w WebsocketConnectionWrapper, receiver chan string)
+	SetCloseHandler(w WebsocketConnectionWrapper, projectInfo string, receiver chan string)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_websocket_connection_wrapper.go WebsocketConnectionWrapper
@@ -51,11 +52,15 @@ func (wh *DefaultWebsocketHandler) SetReadHandler(w WebsocketConnectionWrapper) 
 	}
 }
 
-func (wh *DefaultWebsocketHandler) SetCloseHandler(w WebsocketConnectionWrapper, receiver chan string) {
+func (wh *DefaultWebsocketHandler) SetCloseHandler(w WebsocketConnectionWrapper, projectInfo string, receiver chan string) {
 	w.SetCloseHandler(func(code int, text string) error {
 		// Close the channnel after websocket connection closed.
 		// Will gracefully exit the ProjectCommandOutputHandler.Receive() call and cleanup.
 		close(receiver)
+
+		// Log message to ensure closeHandler() being called.
+		// TODO: Remove after exploration.
+		wh.Logger.Info(fmt.Sprintf("Closing channel for: %s", projectInfo))
 		return nil
 	})
 }

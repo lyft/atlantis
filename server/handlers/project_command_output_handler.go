@@ -232,7 +232,7 @@ func NewFeatureAwareOutputHandler(
 	)
 	return &FeatureAwareOutputHandler{
 		FeatureAllocator:            featureAllocator,
-		ProjectCommandOutputHandler: NewInstrumentedProjectCommandOutputHandler(prjCmdOutputHandler, scope),
+		ProjectCommandOutputHandler: NewInstrumentedProjectCommandOutputHandler(prjCmdOutputHandler, scope, logger),
 	}
 }
 

@@ -114,17 +114,17 @@ func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) 
 }
 
 func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request) {
-	jobsMetric := j.StatsScope.Scope("get_project_jobs_ws")
+	errorCounter := j.StatsScope.Scope("getprojectscope").NewCounter(metrics.ExecutionErrorMetric)
 	projectInfo, err := newProjectInfo(r)
 	if err != nil {
-		jobsMetric.Scope("project_info").NewCounter(metrics.ExecutionErrorMetric).Inc()
+		errorCounter.Inc()
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	c, err := j.WebsocketHandler.Upgrade(w, r, nil)
 	if err != nil {
-		jobsMetric.Scope("ws_upgrade").NewCounter(metrics.ExecutionErrorMetric).Inc()
+		errorCounter.Inc()
 		j.Logger.Warn("Failed to upgrade websocket: %s", err)
 		return
 	}
@@ -132,7 +132,7 @@ func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request
 	// Buffer size set to 1000 to ensure messages get queued (upto 1000) if the receiverCh is not ready to
 	// receive messages before the channel is closed and resources cleaned up.
 	receiver := make(chan string, 1000)
-	j.WebsocketHandler.SetCloseHandler(c, receiver)
+	j.WebsocketHandler.SetCloseHandler(c, projectInfo.String(), receiver)
 
 	// Add a reader goroutine to listen for socket.close() events.
 	go j.WebsocketHandler.SetReadHandler(c)
@@ -147,7 +147,7 @@ func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request
 	})
 
 	if err != nil {
-		jobsMetric.Scope("ws_write").NewCounter(metrics.ExecutionErrorMetric).Inc()
+		errorCounter.Inc()
 		j.Logger.Warn("Failed to receive message: %s", err)
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
 		return

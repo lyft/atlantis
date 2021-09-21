@@ -26,11 +26,11 @@ func NewMockWebsocketHandler(options ...pegomock.Option) *MockWebsocketHandler {
 func (mock *MockWebsocketHandler) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockWebsocketHandler) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockWebsocketHandler) SetCloseHandler(_param0 handlers.WebsocketConnectionWrapper, _param1 chan string) {
+func (mock *MockWebsocketHandler) SetCloseHandler(_param0 handlers.WebsocketConnectionWrapper, _param1 string, _param2 chan string) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockWebsocketHandler().")
 	}
-	params := []pegomock.Param{_param0, _param1}
+	params := []pegomock.Param{_param0, _param1, _param2}
 	pegomock.GetGenericMockFrom(mock).Invoke("SetCloseHandler", params, []reflect.Type{})
 }
 
@@ -98,8 +98,8 @@ type VerifierMockWebsocketHandler struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockWebsocketHandler) SetCloseHandler(_param0 handlers.WebsocketConnectionWrapper, _param1 chan string) *MockWebsocketHandler_SetCloseHandler_OngoingVerification {
-	params := []pegomock.Param{_param0, _param1}
+func (verifier *VerifierMockWebsocketHandler) SetCloseHandler(_param0 handlers.WebsocketConnectionWrapper, _param1 string, _param2 chan string) *MockWebsocketHandler_SetCloseHandler_OngoingVerification {
+	params := []pegomock.Param{_param0, _param1, _param2}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "SetCloseHandler", params, verifier.timeout)
 	return &MockWebsocketHandler_SetCloseHandler_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
@@ -109,21 +109,25 @@ type MockWebsocketHandler_SetCloseHandler_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockWebsocketHandler_SetCloseHandler_OngoingVerification) GetCapturedArguments() (handlers.WebsocketConnectionWrapper, chan string) {
-	_param0, _param1 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1], _param1[len(_param1)-1]
+func (c *MockWebsocketHandler_SetCloseHandler_OngoingVerification) GetCapturedArguments() (handlers.WebsocketConnectionWrapper, string, chan string) {
+	_param0, _param1, _param2 := c.GetAllCapturedArguments()
+	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1]
 }
 
-func (c *MockWebsocketHandler_SetCloseHandler_OngoingVerification) GetAllCapturedArguments() (_param0 []handlers.WebsocketConnectionWrapper, _param1 []chan string) {
+func (c *MockWebsocketHandler_SetCloseHandler_OngoingVerification) GetAllCapturedArguments() (_param0 []handlers.WebsocketConnectionWrapper, _param1 []string, _param2 []chan string) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]handlers.WebsocketConnectionWrapper, len(c.methodInvocations))
 		for u, param := range params[0] {
 			_param0[u] = param.(handlers.WebsocketConnectionWrapper)
 		}
-		_param1 = make([]chan string, len(c.methodInvocations))
+		_param1 = make([]string, len(c.methodInvocations))
 		for u, param := range params[1] {
-			_param1[u] = param.(chan string)
+			_param1[u] = param.(string)
+		}
+		_param2 = make([]chan string, len(c.methodInvocations))
+		for u, param := range params[2] {
+			_param2[u] = param.(chan string)
 		}
 	}
 	return
