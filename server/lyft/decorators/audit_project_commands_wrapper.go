@@ -77,8 +77,6 @@ func (p *AuditProjectCommandWrapper) emit(
 
 	payload, err := applyEvent.Marshal()
 	if err != nil {
-		scope.NewCounter(metrics.ExecutionErrorMetric)
-
 		return errors.Wrap(err, "marshaling apply event")
 	}
 
