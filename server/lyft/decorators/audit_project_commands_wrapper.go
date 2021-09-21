@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events"
-	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 )
@@ -21,8 +20,6 @@ type AuditProjectCommandWrapper struct {
 }
 
 func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
-	ctx.SetScope("audit_applies")
-
 	id := uuid.New()
 	startTime := strconv.FormatInt(time.Now().Unix(), 10)
 
@@ -67,8 +64,6 @@ func (p *AuditProjectCommandWrapper) emit(
 	state EventState,
 	applyEvent *ApplyEvent,
 ) error {
-	scope := ctx.Scope.Scope(state.String())
-
 	applyEvent.State = state
 
 	if state == ApplyEventFailure || state == ApplyEventSuccess {
@@ -81,12 +76,8 @@ func (p *AuditProjectCommandWrapper) emit(
 	}
 
 	if err := p.SnsWriter.Write(payload); err != nil {
-		scope.NewCounter(metrics.ExecutionErrorMetric)
-
 		return errors.Wrap(err, "writing to sns topic")
 	}
-
-	scope.NewCounter(metrics.ExecutionSuccessMetric)
 
 	return nil
 }

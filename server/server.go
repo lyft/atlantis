@@ -573,7 +573,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing new aws session")
 	}
 
-	snsWriter := sns.NewWriter(session, userConfig.LyftAuditJobsSnsTopicArn)
+	snsWriter := sns.NewWriterWithStats(
+		session,
+		userConfig.LyftAuditJobsSnsTopicArn,
+		statsScope,
+	)
 
 	auditProjectCmdRunner := &lyftDecorators.AuditProjectCommandWrapper{
 		SnsWriter:            snsWriter,
