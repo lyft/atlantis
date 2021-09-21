@@ -86,10 +86,11 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		}()
 
 		projectOutputHandler.Send(ctx, Msg)
+		close(ch)
 
 		// Wait for the msg to be read.
 		wg.Wait()
-		close(ch)
+
 		Equals(t, expectedMsg, Msg)
 	})
 
