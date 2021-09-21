@@ -3,6 +3,7 @@ package handlers
 import (
 	"sync"
 
+	stats "github.com/lyft/gostats"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -200,10 +201,10 @@ func (p *AsyncProjectCommandOutputHandler) CleanUp(pull string) {
 	delete(p.projectOutputBuffers, pull)
 	p.projectOutputBuffersLock.Unlock()
 
+	// Only delete the pull record from receiver buffers.
+	// WS channel will be closed when the user closes the browser tab
+	// in closeHanlder().
 	p.receiverBuffersLock.Lock()
-	for ch := range p.receiverBuffers[pull] {
-		close(ch)
-	}
 	delete(p.receiverBuffers, pull)
 	p.receiverBuffersLock.Unlock()
 }
@@ -221,15 +222,17 @@ func NewFeatureAwareOutputHandler(
 	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
 	featureAllocator feature.Allocator,
+	scope stats.Scope,
 ) ProjectCommandOutputHandler {
+	prjCmdOutputHandler := NewAsyncProjectCommandOutputHandler(
+		projectCmdOutput,
+		projectStatusUpdater,
+		projectJobURLGenerator,
+		logger,
+	)
 	return &FeatureAwareOutputHandler{
-		FeatureAllocator: featureAllocator,
-		ProjectCommandOutputHandler: NewAsyncProjectCommandOutputHandler(
-			projectCmdOutput,
-			projectStatusUpdater,
-			projectJobURLGenerator,
-			logger,
-		),
+		FeatureAllocator:            featureAllocator,
+		ProjectCommandOutputHandler: NewInstrumentedProjectCommandOutputHandler(prjCmdOutputHandler, scope),
 	}
 }
 
