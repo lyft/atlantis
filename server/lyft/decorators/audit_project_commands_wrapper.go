@@ -39,7 +39,10 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 	}
 
 	if err := p.emit(ctx, ApplyEventRunning, applyEvent); err != nil {
-		ctx.Log.Err("failed to emit apply event", err)
+		// return an error if we are not able to write to sns
+		return models.ProjectResult{
+			Error: errors.Wrap(err, "emitting apply event"),
+		}
 	}
 
 	result := p.ProjectCommandRunner.Apply(ctx)
