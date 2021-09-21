@@ -25,7 +25,7 @@ func (p *InstrumentedProjectCommandOutputHandler) Receive(projectInfo string, re
 	p.numWSConnnections.Inc()
 	defer func() {
 		// Log message to ensure numWSConnnections gauge is being updated properly.
-		// TODO: Remove when removing the feature flag for log streaming.
+		// [ORCA-955] TODO: Remove when removing the feature flag for log streaming.
 		p.logger.Info(fmt.Sprintf("Decreasing num of ws connections for project: %s", projectInfo))
 		p.numWSConnnections.Dec()
 	}()

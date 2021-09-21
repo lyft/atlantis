@@ -114,7 +114,7 @@ func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) 
 }
 
 func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request) {
-	errorCounter := j.StatsScope.Scope("getprojectscope").NewCounter(metrics.ExecutionErrorMetric)
+	errorCounter := j.StatsScope.Scope("getprojectjobs").NewCounter(metrics.ExecutionErrorMetric)
 	projectInfo, err := newProjectInfo(r)
 	if err != nil {
 		errorCounter.Inc()
