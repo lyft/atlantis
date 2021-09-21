@@ -29,6 +29,15 @@ func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder Comm
 	}
 }
 
+type ContextFlags struct {
+	Automerge,
+	DeleteSourceBranchOnMerge,
+	ParallelApply,
+	ParallelPlan,
+	Verbose,
+	ForceApply bool
+}
+
 type ProjectCommandContextBuilder interface {
 	// BuildProjectContext builds project command contexts for atlantis commands
 	BuildProjectContext(
@@ -37,7 +46,7 @@ type ProjectCommandContextBuilder interface {
 		prjCfg valid.MergedProjectCfg,
 		commentFlags []string,
 		repoDir string,
-		automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
+		contextFlags *ContextFlags,
 	) []models.ProjectCommandContext
 }
 
@@ -56,12 +65,12 @@ func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
 	repoDir string,
-	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
+	contextFlags *ContextFlags,
 ) (projectCmds []models.ProjectCommandContext) {
 	cb.ProjectCounter.Inc()
 
 	cmds := cb.ProjectCommandContextBuilder.BuildProjectContext(
-		ctx, cmdName, prjCfg, commentFlags, repoDir, automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose,
+		ctx, cmdName, prjCfg, commentFlags, repoDir, contextFlags,
 	)
 
 	projectCmds = []models.ProjectCommandContext{}
@@ -88,7 +97,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
 	repoDir string,
-	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
+	contextFlags *ContextFlags,
 ) (projectCmds []models.ProjectCommandContext) {
 	ctx.Log.Debug("Building project command context for %s", cmdName)
 
@@ -115,11 +124,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		steps,
 		prjCfg.PolicySets,
 		escapeArgs(commentFlags),
-		automerge,
-		deleteSourceBranchOnMerge,
-		parallelApply,
-		parallelPlan,
-		verbose,
+		contextFlags,
 		ctx.Scope,
 	)
 
@@ -142,7 +147,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
 	repoDir string,
-	automerge, deleteSourceBranchOnMerge, parallelApply, parallelPlan, verbose bool,
+	contextFlags *ContextFlags,
 ) (projectCmds []models.ProjectCommandContext) {
 	ctx.Log.Debug("PolicyChecks are enabled")
 
@@ -158,11 +163,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 		prjCfg,
 		commentFlags,
 		repoDir,
-		automerge,
-		deleteSourceBranchOnMerge,
-		parallelApply,
-		parallelPlan,
-		verbose,
+		contextFlags,
 	)
 
 	if cmdName == models.PlanCommand {
@@ -178,11 +179,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 			steps,
 			prjCfg.PolicySets,
 			escapeArgs(commentFlags),
-			automerge,
-			deleteSourceBranchOnMerge,
-			parallelApply,
-			parallelPlan,
-			verbose,
+			contextFlags,
 			ctx.Scope,
 		))
 	}
@@ -200,11 +197,7 @@ func newProjectCommandContext(ctx *CommandContext,
 	steps []valid.Step,
 	policySets valid.PolicySets,
 	escapedCommentArgs []string,
-	automergeEnabled bool,
-	deleteSourceBranchOnMerge,
-	parallelApplyEnabled bool,
-	parallelPlanEnabled bool,
-	verbose bool,
+	contextFlags *ContextFlags,
 	scope stats.Scope,
 ) models.ProjectCommandContext {
 
@@ -231,10 +224,10 @@ func newProjectCommandContext(ctx *CommandContext,
 		ApplyCmd:                  applyCmd,
 		BaseRepo:                  ctx.Pull.BaseRepo,
 		EscapedCommentArgs:        escapedCommentArgs,
-		AutomergeEnabled:          automergeEnabled,
-		DeleteSourceBranchOnMerge: deleteSourceBranchOnMerge,
-		ParallelApplyEnabled:      parallelApplyEnabled,
-		ParallelPlanEnabled:       parallelPlanEnabled,
+		AutomergeEnabled:          contextFlags.Automerge,
+		DeleteSourceBranchOnMerge: contextFlags.DeleteSourceBranchOnMerge,
+		ParallelApplyEnabled:      contextFlags.ParallelApply,
+		ParallelPlanEnabled:       contextFlags.ParallelPlan,
 		AutoplanEnabled:           projCfg.AutoplanEnabled,
 		Steps:                     steps,
 		HeadRepo:                  ctx.HeadRepo,
@@ -250,7 +243,8 @@ func newProjectCommandContext(ctx *CommandContext,
 		RepoConfigVersion:         projCfg.RepoCfgVersion,
 		TerraformVersion:          projCfg.TerraformVersion,
 		User:                      ctx.User,
-		Verbose:                   verbose,
+		Verbose:                   contextFlags.Verbose,
+		ForceApply:                contextFlags.ForceApply,
 		Workspace:                 projCfg.Workspace,
 		PolicySets:                policySets,
 	}

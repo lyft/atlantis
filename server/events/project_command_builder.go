@@ -165,7 +165,7 @@ type DefaultProjectCommandBuilder struct {
 
 // See ProjectCommandBuilder.BuildAutoplanCommands.
 func (p *DefaultProjectCommandBuilder) BuildAutoplanCommands(ctx *CommandContext) ([]models.ProjectCommandContext, error) {
-	projCtxs, err := p.buildPlanAllCommands(ctx, nil, false)
+	projCtxs, err := p.buildPlanAllCommands(ctx, nil, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (p *DefaultProjectCommandBuilder) BuildAutoplanCommands(ctx *CommandContext
 // See ProjectCommandBuilder.BuildPlanCommands.
 func (p *DefaultProjectCommandBuilder) BuildPlanCommands(ctx *CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	if !cmd.IsForSpecificProject() {
-		return p.buildPlanAllCommands(ctx, cmd.Flags, cmd.Verbose)
+		return p.buildPlanAllCommands(ctx, cmd.Flags, cmd.Verbose, cmd.ForceApply)
 	}
 	pcc, err := p.buildProjectPlanCommand(ctx, cmd)
 	return pcc, err
@@ -204,7 +204,7 @@ func (p *DefaultProjectCommandBuilder) BuildApprovePoliciesCommands(ctx *Command
 
 // buildPlanAllCommands builds plan contexts for all projects we determine were
 // modified in this ctx.
-func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext, commentFlags []string, verbose bool) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext, commentFlags []string, verbose bool, forceApply bool) ([]models.ProjectCommandContext, error) {
 	// We'll need the list of modified files.
 	modifiedFiles, err := p.VCSClient.GetModifiedFiles(ctx.Pull.BaseRepo, ctx.Pull)
 	if err != nil {
@@ -280,7 +280,14 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 		for _, mp := range matchingProjects {
 			ctx.Log.Debug("determining config for project at dir: %q workspace: %q", mp.Dir, mp.Workspace)
 			mergedCfg := p.GlobalCfg.MergeProjectCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp, repoCfg)
-
+			contextFlags := &ContextFlags{
+				Automerge:                 repoCfg.Automerge,
+				Verbose:                   verbose,
+				ForceApply:                forceApply,
+				ParallelApply:             repoCfg.ParallelApply,
+				ParallelPlan:              repoCfg.ParallelPlan,
+				DeleteSourceBranchOnMerge: mergedCfg.DeleteSourceBranchOnMerge,
+			}
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
 					ctx,
@@ -288,11 +295,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 					mergedCfg,
 					commentFlags,
 					repoDir,
-					repoCfg.Automerge,
-					mergedCfg.DeleteSourceBranchOnMerge,
-					repoCfg.ParallelApply,
-					repoCfg.ParallelPlan,
-					verbose,
+					contextFlags,
 				)...)
 		}
 	} else {
@@ -308,6 +311,14 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 			ctx.Log.Debug("determining config for project at dir: %q", mp.Path)
 			pCfg := p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp.Path, DefaultWorkspace)
 
+			contextFlags := &ContextFlags{
+				Automerge:                 DefaultAutomergeEnabled,
+				Verbose:                   verbose,
+				ForceApply:                forceApply,
+				ParallelApply:             DefaultParallelApplyEnabled,
+				ParallelPlan:              DefaultParallelPlanEnabled,
+				DeleteSourceBranchOnMerge: pCfg.DeleteSourceBranchOnMerge,
+			}
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
 					ctx,
@@ -315,11 +326,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 					pCfg,
 					commentFlags,
 					repoDir,
-					DefaultAutomergeEnabled,
-					pCfg.DeleteSourceBranchOnMerge,
-					DefaultParallelApplyEnabled,
-					DefaultParallelPlanEnabled,
-					verbose,
+					contextFlags,
 				)...)
 		}
 	}
@@ -363,6 +370,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *CommandConte
 		repoRelDir,
 		workspace,
 		cmd.Verbose,
+		cmd.ForceApply,
 	)
 }
 
@@ -441,7 +449,7 @@ func (p *DefaultProjectCommandBuilder) buildAllProjectCommands(ctx *CommandConte
 
 	var cmds []models.ProjectCommandContext
 	for _, plan := range plans {
-		commentCmds, err := p.buildProjectCommandCtx(ctx, commentCmd.CommandName(), plan.ProjectName, commentCmd.Flags, plan.RepoDir, plan.RepoRelDir, plan.Workspace, commentCmd.Verbose)
+		commentCmds, err := p.buildProjectCommandCtx(ctx, commentCmd.CommandName(), plan.ProjectName, commentCmd.Flags, plan.RepoDir, plan.RepoRelDir, plan.Workspace, commentCmd.Verbose, commentCmd.ForceApply)
 		if err != nil {
 			return nil, errors.Wrapf(err, "building command for dir %q", plan.RepoRelDir)
 		}
@@ -486,6 +494,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectApplyCommand(ctx *CommandCont
 		repoRelDir,
 		workspace,
 		cmd.Verbose,
+		cmd.ForceApply,
 	)
 }
 
@@ -498,7 +507,8 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 	repoDir string,
 	repoRelDir string,
 	workspace string,
-	verbose bool) ([]models.ProjectCommandContext, error) {
+	verbose bool,
+	forceApply bool) ([]models.ProjectCommandContext, error) {
 
 	matchingProjects, repoCfgPtr, err := p.getCfg(ctx, projectName, repoRelDir, workspace, repoDir)
 	if err != nil {
@@ -524,6 +534,14 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 		for _, mp := range matchingProjects {
 			ctx.Log.Debug("Merging config for project at dir: %q workspace: %q", mp.Dir, mp.Workspace)
 			projCfg = p.GlobalCfg.MergeProjectCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp, *repoCfgPtr)
+			contextFlags := &ContextFlags{
+				Automerge:                 automerge,
+				Verbose:                   verbose,
+				ForceApply:                forceApply,
+				ParallelApply:             parallelApply,
+				ParallelPlan:              parallelPlan,
+				DeleteSourceBranchOnMerge: projCfg.DeleteSourceBranchOnMerge,
+			}
 
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
@@ -532,15 +550,20 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 					projCfg,
 					commentFlags,
 					repoDir,
-					automerge,
-					projCfg.DeleteSourceBranchOnMerge,
-					parallelApply,
-					parallelPlan,
-					verbose,
+					contextFlags,
 				)...)
 		}
 	} else {
 		projCfg = p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), repoRelDir, workspace)
+		contextFlags := &ContextFlags{
+			Automerge:                 automerge,
+			Verbose:                   verbose,
+			ForceApply:                forceApply,
+			ParallelApply:             parallelApply,
+			ParallelPlan:              parallelPlan,
+			DeleteSourceBranchOnMerge: projCfg.DeleteSourceBranchOnMerge,
+		}
+
 		projCtxs = append(projCtxs,
 			p.ProjectCommandContextBuilder.BuildProjectContext(
 				ctx,
@@ -548,11 +571,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *CommandContex
 				projCfg,
 				commentFlags,
 				repoDir,
-				automerge,
-				projCfg.DeleteSourceBranchOnMerge,
-				parallelApply,
-				parallelPlan,
-				verbose,
+				contextFlags,
 			)...)
 	}
 

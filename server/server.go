@@ -560,8 +560,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ProjectCommandRunner:    projectCommandRunner,
 	}
 
-	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
+	featureAwareProjectCommandRunner := &events.FeatureAwareProjectCommandRunner{
+		FeatureAllocator:     featureAllocator,
 		ProjectCommandRunner: projectOutputWrapper,
+	}
+
+	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
+		ProjectCommandRunner: featureAwareProjectCommandRunner,
 	}
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
@@ -653,6 +658,14 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
 	}
+
+	featureAwareCommandRunner := &events.FeatureAwareCommandRunner{
+		CommandRunner:    commandRunner,
+		FeatureAllocator: featureAllocator,
+		VCSClient:        vcsClient,
+		Logger:           logger,
+	}
+
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
 	if err != nil {
 		return nil, err
@@ -684,7 +697,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	eventsController := &events_controllers.VCSEventsController{
-		CommandRunner:                   commandRunner,
+		CommandRunner:                   featureAwareCommandRunner,
 		PullCleaner:                     pullClosedExecutor,
 		Parser:                          eventParser,
 		CommentParser:                   commentParser,
