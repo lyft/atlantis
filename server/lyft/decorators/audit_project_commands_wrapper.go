@@ -12,6 +12,25 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 )
 
+// AtlantisJobState represent current state of the job
+// Job can be in 3 states:
+//   * running - when the job is initiated
+//   * failure - when the job fails the execution
+//   * success - when the job runs successfully
+type AtlantisJobState string
+
+// AtlantisJobType represent the type of the job
+// Currently only apply is supported
+type AtlantisJobType string
+
+const (
+	AtlantisJobStateRunning AtlantisJobState = "running"
+	AtlantisJobStateSuccess AtlantisJobState = "success"
+	AtlantisJobStateFailure AtlantisJobState = "failure"
+
+	AtlantisApplyJob AtlantisJobType = "apply"
+)
+
 // AuditProjectCommandWrapper is a decorator that notifies sns topic
 // about the state of the command. It is used for auditing purposes
 type AuditProjectCommandWrapper struct {
@@ -23,11 +42,11 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 	id := uuid.New()
 	startTime := strconv.FormatInt(time.Now().Unix(), 10)
 
-	applyEvent := &ApplyEvent{
+	atlantisJobEvent := &AtlantisJobEvent{
 		Version:        1,
 		ID:             id.String(),
 		RootName:       ctx.ProjectName,
-		JobType:        models.ApplyCommand,
+		JobType:        AtlantisApplyJob,
 		Respository:    ctx.BaseRepo.FullName,
 		Environment:    ctx.Tags["environment"],
 		PullNumber:     ctx.Pull.Num,
@@ -38,7 +57,7 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 		Revision:       ctx.Pull.HeadCommit,
 	}
 
-	if err := p.emit(ctx, ApplyEventRunning, applyEvent); err != nil {
+	if err := p.emit(ctx, AtlantisJobStateRunning, atlantisJobEvent); err != nil {
 		// return an error if we are not able to write to sns
 		return models.ProjectResult{
 			Error: errors.Wrap(err, "emitting apply event"),
@@ -48,14 +67,14 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 	result := p.ProjectCommandRunner.Apply(ctx)
 
 	if result.Error != nil || result.Failure != "" {
-		if err := p.emit(ctx, ApplyEventFailure, applyEvent); err != nil {
+		if err := p.emit(ctx, AtlantisJobStateFailure, atlantisJobEvent); err != nil {
 			ctx.Log.Err("failed to emit apply event", err)
 		}
 
 		return result
 	}
 
-	if err := p.emit(ctx, ApplyEventSuccess, applyEvent); err != nil {
+	if err := p.emit(ctx, AtlantisJobStateSuccess, atlantisJobEvent); err != nil {
 		ctx.Log.Err("failed to emit apply event", err)
 	}
 
@@ -64,16 +83,16 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 
 func (p *AuditProjectCommandWrapper) emit(
 	ctx models.ProjectCommandContext,
-	state EventState,
-	applyEvent *ApplyEvent,
+	state AtlantisJobState,
+	atlantisJobEvent *AtlantisJobEvent,
 ) error {
-	applyEvent.State = state
+	atlantisJobEvent.State = state
 
-	if state == ApplyEventFailure || state == ApplyEventSuccess {
-		applyEvent.EndTime = strconv.FormatInt(time.Now().Unix(), 10)
+	if state == AtlantisJobStateFailure || state == AtlantisJobStateSuccess {
+		atlantisJobEvent.EndTime = strconv.FormatInt(time.Now().Unix(), 10)
 	}
 
-	payload, err := applyEvent.Marshal()
+	payload, err := atlantisJobEvent.Marshal()
 	if err != nil {
 		return errors.Wrap(err, "marshaling apply event")
 	}
@@ -85,58 +104,37 @@ func (p *AuditProjectCommandWrapper) emit(
 	return nil
 }
 
-// ApplyEvent contains metadata of the state of the apply command
-type ApplyEvent struct {
-	Version        int
-	ID             string
-	State          EventState
-	JobType        models.CommandName
-	Revision       string
-	Respository    string
-	PullNumber     int
-	Environment    string
-	InitiatingUser string
-	StartTime      string
-	EndTime        string
-	ForceApply     bool
+// AtlantisJobEvent contains metadata of the state of the apply command
+type AtlantisJobEvent struct {
+	Version        int              `json:"version"`
+	ID             string           `json:"id"`
+	State          AtlantisJobState `json:"state"`
+	JobType        AtlantisJobType  `json:"job_type"`
+	Revision       string           `json:"revision"`
+	Respository    string           `json:"repository"`
+	PullNumber     int              `json:"pull_number"`
+	Environment    string           `json:"environment"`
+	InitiatingUser string           `json:"initiating_user"`
+	StartTime      string           `json:"start_time"`
+	EndTime        string           `json:"end_time"`
+	ForceApply     bool             `json:"force_apply"`
 
 	// Service name in the manifest.yaml
-	Project string
+	Project string `json:"project"`
 	// ProjectName in the atlantis.yaml
-	RootName string
+	RootName string `json:"root_name"`
 
 	// Currently we do not track approvers metadata.
 	// ORCA-954 will implement this feature
-	ApprovedBy   string
-	ApprovedTime string
+	ApprovedBy   string `json:"approved_by"`
+	ApprovedTime string `json:"approved_time"`
 }
 
-func (a *ApplyEvent) Marshal() ([]byte, error) {
+func (a *AtlantisJobEvent) Marshal() ([]byte, error) {
 	eventPayload, err := json.Marshal(a)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshaling apply event")
 	}
 
 	return eventPayload, nil
-}
-
-type EventState int
-
-const (
-	ApplyEventRunning EventState = iota
-	ApplyEventSuccess
-	ApplyEventFailure
-)
-
-func (a EventState) String() string {
-	switch a {
-	case ApplyEventRunning:
-		return "running"
-	case ApplyEventSuccess:
-		return "success"
-	case ApplyEventFailure:
-		return "failure"
-	}
-
-	return "unknown"
 }

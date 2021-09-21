@@ -84,8 +84,8 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 
 			auditPrjCmds.Apply(ctx)
 
-			eventBefore := &decorators.ApplyEvent{}
-			eventAfter := &decorators.ApplyEvent{}
+			eventBefore := &decorators.AtlantisJobEvent{}
+			eventAfter := &decorators.AtlantisJobEvent{}
 			eventPayload := snsMock.VerifyWasCalled(Twice()).Write(matchers.AnySliceOfByte()).GetAllCapturedArguments()
 
 			err := json.Unmarshal(eventPayload[0], eventBefore)
@@ -93,7 +93,7 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			err = json.Unmarshal(eventPayload[1], eventAfter)
 			Ok(t, err)
 
-			Equals(t, eventBefore.State, decorators.ApplyEventRunning)
+			Equals(t, eventBefore.State, decorators.AtlantisJobStateRunning)
 			Equals(t, eventBefore.RootName, "test-project")
 			Equals(t, eventBefore.Environment, "production")
 			Equals(t, eventBefore.InitiatingUser, "test-user")
@@ -102,9 +102,9 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 			Assert(t, eventBefore.StartTime != "", "start time must be set")
 
 			if c.Success {
-				Equals(t, eventAfter.State, decorators.ApplyEventSuccess)
+				Equals(t, eventAfter.State, decorators.AtlantisJobStateSuccess)
 			} else {
-				Equals(t, eventAfter.State, decorators.ApplyEventFailure)
+				Equals(t, eventAfter.State, decorators.AtlantisJobStateFailure)
 			}
 
 			Assert(t, eventBefore.StartTime == eventAfter.StartTime, "start time should not change")
