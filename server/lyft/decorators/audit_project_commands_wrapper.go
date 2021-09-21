@@ -60,7 +60,7 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 	if err := p.emit(ctx, AtlantisJobStateRunning, atlantisJobEvent); err != nil {
 		// return an error if we are not able to write to sns
 		return models.ProjectResult{
-			Error: errors.Wrap(err, "emitting apply event"),
+			Error: errors.Wrap(err, "emitting atlantis job event"),
 		}
 	}
 
@@ -94,7 +94,7 @@ func (p *AuditProjectCommandWrapper) emit(
 
 	payload, err := atlantisJobEvent.Marshal()
 	if err != nil {
-		return errors.Wrap(err, "marshaling apply event")
+		return errors.Wrap(err, "marshaling atlantis job event")
 	}
 
 	if err := p.SnsWriter.Write(payload); err != nil {
