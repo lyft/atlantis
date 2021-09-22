@@ -36,6 +36,9 @@ import (
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/handlers"
+	"github.com/runatlantis/atlantis/server/lyft/aws"
+	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
+	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
@@ -327,7 +330,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		router,
 		logger,
 		featureAllocator,
-		statsScope,
+		statsScope.Scope("api"),
 	)
 
 	terraformClient, err := terraform.NewClient(
@@ -560,8 +563,29 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ProjectCommandRunner:    projectCommandRunner,
 	}
 
-	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
+	featureAwareProjectCommandRunner := &events.FeatureAwareProjectCommandRunner{
+		FeatureAllocator:     featureAllocator,
 		ProjectCommandRunner: projectOutputWrapper,
+	}
+
+	session, err := aws.NewSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing new aws session")
+	}
+
+	snsWriter := sns.NewWriterWithStats(
+		session,
+		userConfig.LyftAuditJobsSnsTopicArn,
+		statsScope,
+	)
+
+	auditProjectCmdRunner := &lyftDecorators.AuditProjectCommandWrapper{
+		SnsWriter:            snsWriter,
+		ProjectCommandRunner: featureAwareProjectCommandRunner,
+	}
+
+	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
+		ProjectCommandRunner: auditProjectCmdRunner,
 	}
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
@@ -653,6 +677,14 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
 	}
+
+	featureAwareCommandRunner := &events.FeatureAwareCommandRunner{
+		CommandRunner:    commandRunner,
+		FeatureAllocator: featureAllocator,
+		VCSClient:        vcsClient,
+		Logger:           logger,
+	}
+
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
 	if err != nil {
 		return nil, err
@@ -680,11 +712,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Db:                          boltdb,
 		WebsocketHandler:            handlers.NewWebsocketHandler(logger),
 		ProjectCommandOutputHandler: projectCmdOutputHandler,
-		StatsScope:                  statsScope.Scope("log_streaming"),
+		StatsScope:                  statsScope.Scope("api"),
 	}
 
 	eventsController := &events_controllers.VCSEventsController{
-		CommandRunner:                   commandRunner,
+		CommandRunner:                   featureAwareCommandRunner,
 		PullCleaner:                     pullClosedExecutor,
 		Parser:                          eventParser,
 		CommentParser:                   commentParser,
