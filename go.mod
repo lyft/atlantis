@@ -9,6 +9,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
+	github.com/aws/aws-sdk-go v1.40.12
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/briandowns/spinner v0.0.0-20170614154858-48dbb65d7bd5
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
