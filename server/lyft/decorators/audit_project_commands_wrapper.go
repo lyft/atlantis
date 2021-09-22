@@ -68,14 +68,14 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 
 	if result.Error != nil || result.Failure != "" {
 		if err := p.emit(ctx, AtlantisJobStateFailure, atlantisJobEvent); err != nil {
-			ctx.Log.Err("failed to emit apply event", err)
+			ctx.Log.Err("failed to emit atlantis job event", err)
 		}
 
 		return result
 	}
 
 	if err := p.emit(ctx, AtlantisJobStateSuccess, atlantisJobEvent); err != nil {
-		ctx.Log.Err("failed to emit apply event", err)
+		ctx.Log.Err("failed to emit atlantis job event", err)
 	}
 
 	return result
@@ -104,7 +104,7 @@ func (p *AuditProjectCommandWrapper) emit(
 	return nil
 }
 
-// AtlantisJobEvent contains metadata of the state of the apply command
+// AtlantisJobEvent contains metadata of the state of the AtlantisJobType command
 type AtlantisJobEvent struct {
 	Version        int              `json:"version"`
 	ID             string           `json:"id"`
@@ -133,7 +133,7 @@ type AtlantisJobEvent struct {
 func (a *AtlantisJobEvent) Marshal() ([]byte, error) {
 	eventPayload, err := json.Marshal(a)
 	if err != nil {
-		return nil, errors.Wrap(err, "marshaling apply event")
+		return nil, errors.Wrap(err, "marshaling atlantis job event")
 	}
 
 	return eventPayload, nil
