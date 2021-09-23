@@ -59,7 +59,7 @@ func (wh *DefaultWebsocketHandler) SetCloseHandler(w WebsocketConnectionWrapper,
 	w.SetCloseHandler(func(code int, text string) error {
 		// Close the channnel after websocket connection closed.
 		// Will gracefully exit the ProjectCommandOutputHandler.Receive() call and cleanup.
-		wh.Logger.Debug("Close handler called")
+		wh.Logger.Info("Close handler called")
 		close(receiver)
 		return nil
 	})
