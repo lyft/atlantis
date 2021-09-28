@@ -342,8 +342,7 @@ func (g *GithubClient) PullIsLocked(repo models.Repo, pull models.PullRequest, s
 			continue
 		}
 
-		// Submit queue status migth not have tags attached to it, in that case
-		// return false
+		// When Submit queue status does not have tags assume PR is not locked
 		if status.GetDescription() == "" {
 			return false, nil
 		}
