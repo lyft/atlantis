@@ -292,7 +292,7 @@ func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, 
 
 	// if the feature is enabled, we use the async workflow else we default to the original sync workflow
 	// Don't stream terraform show output to outCh
-	if shouldAllocate && isValidCommand(args[0]) {
+	if shouldAllocate && isAsyncEligibleCommand(args[0]) {
 		_, outCh := c.RunCommandAsync(ctx, path, args, customEnvVars, v, workspace)
 		var lines []string
 		var err error
@@ -560,7 +560,7 @@ func generateRCFile(tfeToken string, tfeHostname string, home string) error {
 	return nil
 }
 
-func isValidCommand(cmd string) bool {
+func isAsyncEligibleCommand(cmd string) bool {
 	for _, validCmd := range LogStreamingValidCmds {
 		if validCmd == cmd {
 			return true
