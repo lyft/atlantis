@@ -125,8 +125,8 @@ func (p Project) GetName() string {
 }
 
 type Tags struct {
-	Environment string `json:"environment,omitempty" validate:"required"`
-	ServiceName string `json:"service_name,omitempty" validate:"required"`
+	Environment string `yaml:"environment,omitempty" validate:"required"`
+	ServiceName string `yaml:"service_name,omitempty" validate:"required"`
 }
 type Autoplan struct {
 	WhenModified []string
