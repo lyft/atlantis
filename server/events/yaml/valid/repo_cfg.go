@@ -107,7 +107,7 @@ type Project struct {
 	Autoplan                  Autoplan
 	ApplyRequirements         []string
 	DeleteSourceBranchOnMerge *bool
-	Tags                      map[string]string
+	Tags                      Tags
 }
 
 // GetName returns the name of the project or an empty string if there is no
@@ -124,6 +124,10 @@ func (p Project) GetName() string {
 	return ""
 }
 
+type Tags struct {
+	Environment string
+	ServiceName string
+}
 type Autoplan struct {
 	WhenModified []string
 	Enabled      bool
