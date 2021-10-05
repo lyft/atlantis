@@ -380,9 +380,14 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
     <link rel="icon" type="image/png" href="/static/images/atlantis-icon.png">
     <style>
       #terminal {
-        width: 100%;
-        height: 100%;
-      }
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        overflow: auto;
+        border: 5px solid white;
+        }
     </style>
   </head>
 
