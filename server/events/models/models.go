@@ -412,7 +412,7 @@ type ProjectCommandContext struct {
 	// use the default Atlantis terraform version.
 	TerraformVersion *version.Version
 	// Configuration metadata for a given project.
-	Tags map[string]string
+	Tags valid.Tags
 	// User is the user that triggered this command.
 	User User
 	// Verbose is true when the user would like verbose output.
