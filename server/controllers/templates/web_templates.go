@@ -392,18 +392,7 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
   </head>
 
   <body>
-    <div class="container">
-      <section class="header">
-      <a title="atlantis" href="/"><img class="hero" src="/static/images/atlantis-icon_512.png"/></a>
-      <p class="title-heading">atlantis</p>
-      <p class="title-heading"><strong></strong></p>
-      </section>
-      <div class="spacer"></div>
-      <br>
-      <section>
-        <div id="terminal"></div>
-      </section>
-    </div>
+    <div id="terminal"></div>
     <footer>
     </footer>
 
