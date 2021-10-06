@@ -388,6 +388,10 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
         overflow: auto;
         border: 5px solid white;
         }
+
+      .terminal.xterm {
+        padding: 10px;
+      }
     </style>
   </head>
 
