@@ -67,9 +67,9 @@ func TestRun_UsesGetOrInitForRightVersion(t *testing.T) {
 			Equals(t, "", output)
 
 			// If using init then we specify -input=false but not for get.
-			expArgs := []string{c.expCmd, "-input=false", "-no-color", "-upgrade", "extra", "args"}
+			expArgs := []string{c.expCmd, "-input=false", "-upgrade", "extra", "args"}
 			if c.expCmd == "get" {
-				expArgs = []string{c.expCmd, "-no-color", "-upgrade", "extra", "args"}
+				expArgs = []string{c.expCmd, "-upgrade", "extra", "args"}
 			}
 			terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, "/path", expArgs, map[string]string(nil), tfVersion, "workspace")
 		})
@@ -129,7 +129,7 @@ func TestRun_InitOmitsUpgradeFlagIfLockFilePresent(t *testing.T) {
 	// When there is no error, should not return init output to PR.
 	Equals(t, "", output)
 
-	expectedArgs := []string{"init", "-input=false", "-no-color", "extra", "args"}
+	expectedArgs := []string{"init", "-input=false", "extra", "args"}
 	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, tmpDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
 }
 
@@ -159,7 +159,7 @@ func TestRun_InitKeepsUpgradeFlagIfLockFileNotPresent(t *testing.T) {
 	// When there is no error, should not return init output to PR.
 	Equals(t, "", output)
 
-	expectedArgs := []string{"init", "-input=false", "-no-color", "-upgrade", "extra", "args"}
+	expectedArgs := []string{"init", "-input=false", "-upgrade", "extra", "args"}
 	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, tmpDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
 }
 
@@ -193,7 +193,7 @@ func TestRun_InitKeepUpgradeFlagIfLockFilePresentAndTFLessThanPoint14(t *testing
 	// When there is no error, should not return init output to PR.
 	Equals(t, "", output)
 
-	expectedArgs := []string{"init", "-input=false", "-no-color", "-upgrade", "extra", "args"}
+	expectedArgs := []string{"init", "-input=false", "-upgrade", "extra", "args"}
 	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, tmpDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
 }
 
@@ -207,32 +207,32 @@ func TestRun_InitExtraArgsDeDupe(t *testing.T) {
 		{
 			"No extra args",
 			[]string{},
-			[]string{"init", "-input=false", "-no-color", "-upgrade"},
+			[]string{"init", "-input=false", "-upgrade"},
 		},
 		{
 			"Override -upgrade",
 			[]string{"-upgrade=false"},
-			[]string{"init", "-input=false", "-no-color", "-upgrade=false"},
+			[]string{"init", "-input=false", "-upgrade=false"},
 		},
 		{
 			"Override -input",
 			[]string{"-input=true"},
-			[]string{"init", "-input=true", "-no-color", "-upgrade"},
+			[]string{"init", "-input=true", "-upgrade"},
 		},
 		{
 			"Override -input and -upgrade",
 			[]string{"-input=true", "-upgrade=false"},
-			[]string{"init", "-input=true", "-no-color", "-upgrade=false"},
+			[]string{"init", "-input=true", "-upgrade=false"},
 		},
 		{
 			"Non duplicate extra args",
 			[]string{"extra", "args"},
-			[]string{"init", "-input=false", "-no-color", "-upgrade", "extra", "args"},
+			[]string{"init", "-input=false", "-upgrade", "extra", "args"},
 		},
 		{
 			"Override upgrade with extra args",
 			[]string{"extra", "args", "-upgrade=false"},
-			[]string{"init", "-input=false", "-no-color", "-upgrade=false", "extra", "args"},
+			[]string{"init", "-input=false", "-upgrade=false", "extra", "args"},
 		},
 	}
 

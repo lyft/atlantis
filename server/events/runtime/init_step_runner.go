@@ -31,8 +31,6 @@ func (i *InitStepRunner) Run(ctx models.ProjectCommandContext, extraArgs []strin
 		terraformInitArgs = []string{}
 	}
 
-	terraformInitArgs = append(terraformInitArgs, "-no-color")
-
 	lockfilePath := filepath.Join(path, ".terraform.lock.hcl")
 	if MustConstraint("< 0.14.0").Check(tfVersion) || fileDoesNotExists(lockfilePath) {
 		terraformInitArgs = append(terraformInitArgs, "-upgrade")
