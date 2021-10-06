@@ -381,10 +381,10 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
     <style>
       #terminal {
         position: fixed;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        right: 0;
+        top: 200px;
+        left: 0px;
+        bottom: 0px;
+        right: 0px;
         overflow: auto;
         border: 5px solid white;
         }
@@ -392,9 +392,19 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
   </head>
 
   <body>
-    <div id="terminal"></div>
-    <footer>
-    </footer>
+    <section class="header">
+    <a title="atlantis" href="/"><img class="hero" src="/static/images/atlantis-icon_512.png"/></a>
+    <p class="title-heading">atlantis</p>
+    <p class="title-heading"><strong></strong></p>
+    </section>
+    <div class="spacer"></div>
+    <br>
+    <section>
+      <div id="terminal"></div>
+    </section>
+  </div>
+  <footer>
+  </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/xterm@4.9.0/lib/xterm.js"></script>
