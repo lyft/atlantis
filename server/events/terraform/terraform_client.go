@@ -33,10 +33,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/terraform/ansi"
 	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/events/terraform/ansi"
 )
 
 var LogStreamingValidCmds = [...]string{"init", "plan", "apply"}
@@ -327,11 +327,11 @@ func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, 
 	if err != nil {
 		err = errors.Wrapf(err, "running %q in %q", tfCmd, path)
 		ctx.Log.Err(err.Error())
-		return string(out), err
+		return ansi.Strip(string(out)), err
 	}
 	ctx.Log.Info("successfully ran %q in %q", tfCmd, path)
 
-	return string(out), nil
+	return ansi.Strip(string(out)), nil
 }
 
 // prepCmd builds a ready to execute command based on the version of terraform
