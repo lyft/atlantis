@@ -51,7 +51,7 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 		Environment:    ctx.Tags["environment"],
 		PullNumber:     ctx.Pull.Num,
 		InitiatingUser: ctx.User.Username,
-		Project:        ctx.Tags["environment"],
+		Project:        ctx.Tags["service_name"],
 		ForceApply:     ctx.ForceApply,
 		StartTime:      startTime,
 		Revision:       ctx.Pull.HeadCommit,
