@@ -36,6 +36,7 @@ import (
 	"github.com/runatlantis/atlantis/server/feature"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/events/terraform/ansi"
 )
 
 var LogStreamingValidCmds = [...]string{"init", "plan", "apply"}
@@ -307,6 +308,9 @@ func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, 
 			lines = append(lines, line.Line)
 		}
 		output := strings.Join(lines, "\n")
+
+		// sanitize output by stripping out any ansi characters.
+		output = ansi.Strip(output)
 		return fmt.Sprintf("%s\n", output), err
 	}
 
