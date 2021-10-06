@@ -75,9 +75,9 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 					},
 				},
 				RepoRelDir: ".",
-				Tags: valid.Tags{
-					Environment: "production",
-					ServiceName: "test-service",
+				Tags: map[string]string{
+					"environment":  "production",
+					"service_name": "test-service",
 				},
 			}
 

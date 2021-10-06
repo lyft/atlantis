@@ -107,7 +107,7 @@ type Project struct {
 	Autoplan                  Autoplan
 	ApplyRequirements         []string
 	DeleteSourceBranchOnMerge *bool
-	Tags                      Tags
+	Tags                      map[string]string
 }
 
 // GetName returns the name of the project or an empty string if there is no
@@ -124,10 +124,6 @@ func (p Project) GetName() string {
 	return ""
 }
 
-type Tags struct {
-	Environment string `yaml:"environment,omitempty" validate:"required"`
-	ServiceName string `yaml:"service_name,omitempty" validate:"required"`
-}
 type Autoplan struct {
 	WhenModified []string
 	Enabled      bool

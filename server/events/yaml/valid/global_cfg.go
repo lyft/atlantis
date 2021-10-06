@@ -68,7 +68,7 @@ type MergedProjectCfg struct {
 	RepoCfgVersion            int
 	PolicySets                PolicySets
 	DeleteSourceBranchOnMerge bool
-	Tags                      Tags
+	Tags                      map[string]string
 }
 
 // PreWorkflowHook is a map of custom run commands to run before workflows.
