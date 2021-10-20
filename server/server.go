@@ -73,12 +73,9 @@ const (
 	// route. ex:
 	//   mux.Router.Get(LockViewRouteName).URL(LockViewRouteIDQueryParam, "my id")
 	LockViewRouteIDQueryParam = "id"
-	// ProjectBasedJobsViewRouteName is the named route in mux.Router for projects with a project name in
-	// the log stream view. Can be retrieved by mux.Router.Get(ProjectBasedJobsViewRouteName)
-	ProjectBasedJobsViewRouteName = "project-jobs-detail"
-	// DirWorkspaceBasedJobsViewRouteName is the named route in mux.Router for for projects without a
-	// project name in the log stream view. The relative directory and the workspace is used instead.
-	DirWorkspaceBasedJobsViewRouteName = "directory-workspace-jobs-detail"
+	// ProjectJobsViewRouteName is the named route in mux.Router for projects with a project name in
+	// the log stream view. Can be retrieved by mux.Router.Get(ProjectJobsViewRouteName)
+	ProjectJobsViewRouteName = "project-jobs-detail"
 	// binDirName is the name of the directory inside our data dir where
 	// we download binaries.
 	BinDirName = "bin"
@@ -319,12 +316,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	underlyingRouter := mux.NewRouter()
 	router := &Router{
-		AtlantisURL:                        parsedURL,
-		LockViewRouteIDQueryParam:          LockViewRouteIDQueryParam,
-		LockViewRouteName:                  LockViewRouteName,
-		ProjectBasedJobsViewRouteName:      ProjectBasedJobsViewRouteName,
-		DirWorkspaceBasedJobsViewRouteName: DirWorkspaceBasedJobsViewRouteName,
-		Underlying:                         underlyingRouter,
+		AtlantisURL:               parsedURL,
+		LockViewRouteIDQueryParam: LockViewRouteIDQueryParam,
+		LockViewRouteName:         LockViewRouteName,
+		ProjectJobsViewRouteName:  ProjectJobsViewRouteName,
+		Underlying:                underlyingRouter,
 	}
 
 	projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
@@ -834,10 +830,8 @@ func (s *Server) Start() error {
 	s.Router.HandleFunc("/locks", s.LocksController.DeleteLock).Methods("DELETE").Queries("id", "{id:.*}")
 	s.Router.HandleFunc("/lock", s.LocksController.GetLock).Methods("GET").
 		Queries(LockViewRouteIDQueryParam, fmt.Sprintf("{%s}", LockViewRouteIDQueryParam)).Name(LockViewRouteName)
-	s.Router.HandleFunc("/jobs/{org}/{repo}/{pull}/{project}", s.JobsController.GetProjectJobs).Methods("GET").Name(ProjectBasedJobsViewRouteName)
-	s.Router.HandleFunc("/jobs/{org}/{repo}/{pull}/{project}/ws", s.JobsController.GetProjectJobsWS).Methods("GET")
-	s.Router.HandleFunc("/jobs/{org}/{repo}/{pull}/{directory}/{workspace}", s.JobsController.GetProjectJobs).Methods("GET").Name(DirWorkspaceBasedJobsViewRouteName)
-	s.Router.HandleFunc("/jobs/{org}/{repo}/{pull}/{directory}/{workspace}/ws", s.JobsController.GetProjectJobsWS).Methods("GET")
+	s.Router.HandleFunc("/jobs/{org}/{repo}/{pull}/{project}/{workspace}", s.JobsController.GetProjectJobs).Methods("GET").Name(ProjectJobsViewRouteName)
+	s.Router.HandleFunc("/jobs/{org}/{repo}/{pull}/{project}/{workspace}/ws", s.JobsController.GetProjectJobsWS).Methods("GET")
 
 	n := negroni.New(&negroni.Recovery{
 		Logger:     log.New(os.Stdout, "", log.LstdFlags),

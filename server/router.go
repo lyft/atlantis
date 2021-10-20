@@ -19,11 +19,8 @@ type Router struct {
 	// LockViewRouteName is the named route for the lock view that can be Get'd
 	// from the Underlying router.
 	LockViewRouteName string
-	// ProjectBasedJobsViewRouteName is the named route for the projects active jobs
-	ProjectBasedJobsViewRouteName string
-	// DirWorkspaceBasedJobsViewRouteName is the named route for the projects active jobs
-	// which does not specify the project name. Repo Relative Dir and Workspace is used.
-	DirWorkspaceBasedJobsViewRouteName string
+	// ProjectJobsViewRouteName is the named route for the projects active jobs
+	ProjectJobsViewRouteName string
 	// LockViewRouteIDQueryParam is the query parameter needed to construct the
 	// lock view: underlying.Get(LockViewRouteName).URL(LockViewRouteIDQueryParam, "my id").
 	LockViewRouteIDQueryParam string
@@ -46,30 +43,23 @@ func (r *Router) GenerateLockURL(lockID string) string {
 func (r *Router) GenerateProjectJobURL(ctx models.ProjectCommandContext) (string, error) {
 	pull := ctx.Pull
 
-	var jobURL *url.URL
-	var err error
-	if ctx.ProjectName != "" {
-		jobURL, err = r.Underlying.Get(r.ProjectBasedJobsViewRouteName).URL(
-			"org", pull.BaseRepo.Owner,
-			"repo", pull.BaseRepo.Name,
-			"pull", fmt.Sprintf("%d", pull.Num),
-			"project", ctx.ProjectName,
-		)
-		if err != nil {
-			return "", errors.Wrapf(err, "creating job url for %s/%d/%s", pull.BaseRepo.FullName, pull.Num, ctx.ProjectName)
-		}
+	// Use relative path to create project identifier if project name not set.
+	var projectIdentifier string
+	if ctx.ProjectName == "" {
+		projectIdentifier = strings.ReplaceAll(ctx.RepoRelDir, "/", "-")
 	} else {
-		directory := strings.ReplaceAll(ctx.RepoRelDir, "/", "-")
-		jobURL, err = r.Underlying.Get(r.DirWorkspaceBasedJobsViewRouteName).URL(
-			"org", pull.BaseRepo.Owner,
-			"repo", pull.BaseRepo.Name,
-			"pull", fmt.Sprintf("%d", pull.Num),
-			"directory", directory,
-			"workspace", ctx.Workspace,
-		)
-		if err != nil {
-			return "", errors.Wrapf(err, "creating job url for %s/%d/%s/%s", pull.BaseRepo.FullName, pull.Num, directory, ctx.Workspace)
-		}
+		projectIdentifier = ctx.ProjectName
+	}
+
+	jobURL, err := r.Underlying.Get(r.ProjectJobsViewRouteName).URL(
+		"org", pull.BaseRepo.Owner,
+		"repo", pull.BaseRepo.Name,
+		"pull", fmt.Sprintf("%d", pull.Num),
+		"project", projectIdentifier,
+		"workspace", ctx.Workspace,
+	)
+	if err != nil {
+		return "", errors.Wrapf(err, "creating job url for %s/%d/%s/%s", pull.BaseRepo.FullName, pull.Num, projectIdentifier, ctx.Workspace)
 	}
 
 	return r.AtlantisURL.String() + jobURL.String(), nil

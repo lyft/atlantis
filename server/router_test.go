@@ -62,20 +62,22 @@ func TestRouter_GenerateLockURL(t *testing.T) {
 	}
 }
 
-func TestGenerateProjectJobURL_ShouldGenerateURLWithProjectNameWhenProjectNameSpecified(t *testing.T) {
-
+func setupJobsRouter(t *testing.T) *server.Router {
 	atlantisURL, err := server.ParseAtlantisURL("http://localhost:4141")
 	Ok(t, err)
 
 	underlyingRouter := mux.NewRouter()
-	underlyingRouter.HandleFunc("/jobs/{org}/{repo}/{pull}/{project}", func(_ http.ResponseWriter, _ *http.Request) {}).Methods("GET").Name("project-jobs-detail")
+	underlyingRouter.HandleFunc("/jobs/{org}/{repo}/{pull}/{project}/{workspace}", func(_ http.ResponseWriter, _ *http.Request) {}).Methods("GET").Name("project-jobs-detail")
 
-	router := server.Router{
-		AtlantisURL:                   atlantisURL,
-		Underlying:                    underlyingRouter,
-		ProjectBasedJobsViewRouteName: "project-jobs-detail",
+	return &server.Router{
+		AtlantisURL:              atlantisURL,
+		Underlying:               underlyingRouter,
+		ProjectJobsViewRouteName: "project-jobs-detail",
 	}
+}
 
+func TestGenerateProjectJobURL_ShouldGenerateURLWithProjectNameWhenProjectNameSpecified(t *testing.T) {
+	router := setupJobsRouter(t)
 	ctx := models.ProjectCommandContext{
 		Pull: models.PullRequest{
 			BaseRepo: models.Repo{
@@ -85,8 +87,9 @@ func TestGenerateProjectJobURL_ShouldGenerateURLWithProjectNameWhenProjectNameSp
 			Num: 1,
 		},
 		ProjectName: "test-project",
+		Workspace:   "default",
 	}
-	expectedURL := "http://localhost:4141/jobs/test-owner/test-repo/1/test-project"
+	expectedURL := "http://localhost:4141/jobs/test-owner/test-repo/1/test-project/default"
 	gotURL, err := router.GenerateProjectJobURL(ctx)
 	Ok(t, err)
 
@@ -94,17 +97,7 @@ func TestGenerateProjectJobURL_ShouldGenerateURLWithProjectNameWhenProjectNameSp
 }
 
 func TestGenerateProjectJobURL_ShouldGenerateURLWithDirectoryAndWorkspaceWhenProjectNameNotSpecified(t *testing.T) {
-	atlantisURL, err := server.ParseAtlantisURL("http://localhost:4141")
-	Ok(t, err)
-
-	underlyingRouter := mux.NewRouter()
-	underlyingRouter.HandleFunc("/jobs/{org}/{repo}/{pull}/{directory}/{workspace}", func(_ http.ResponseWriter, _ *http.Request) {}).Methods("GET").Name("directory-workspace-jobs-detail")
-
-	router := server.Router{
-		AtlantisURL:                        atlantisURL,
-		Underlying:                         underlyingRouter,
-		DirWorkspaceBasedJobsViewRouteName: "directory-workspace-jobs-detail",
-	}
+	router := setupJobsRouter(t)
 	ctx := models.ProjectCommandContext{
 		Pull: models.PullRequest{
 			BaseRepo: models.Repo{
@@ -114,9 +107,9 @@ func TestGenerateProjectJobURL_ShouldGenerateURLWithDirectoryAndWorkspaceWhenPro
 			Num: 1,
 		},
 		RepoRelDir: "ops/terraform/test-root",
-		Workspace:  "test-workspace",
+		Workspace:  "default",
 	}
-	expectedURL := "http://localhost:4141/jobs/test-owner/test-repo/1/ops-terraform-test-root/test-workspace"
+	expectedURL := "http://localhost:4141/jobs/test-owner/test-repo/1/ops-terraform-test-root/default"
 	gotURL, err := router.GenerateProjectJobURL(ctx)
 	Ok(t, err)
 
