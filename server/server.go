@@ -73,8 +73,7 @@ const (
 	// route. ex:
 	//   mux.Router.Get(LockViewRouteName).URL(LockViewRouteIDQueryParam, "my id")
 	LockViewRouteIDQueryParam = "id"
-	// ProjectJobsViewRouteName is the named route in mux.Router for projects with a project name in
-	// the log stream view. Can be retrieved by mux.Router.Get(ProjectJobsViewRouteName)
+	// ProjectJobsViewRouteName is the named route in mux.Router for the log stream view.
 	ProjectJobsViewRouteName = "project-jobs-detail"
 	// binDirName is the name of the directory inside our data dir where
 	// we download binaries.
