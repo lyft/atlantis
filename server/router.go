@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -42,15 +41,7 @@ func (r *Router) GenerateLockURL(lockID string) string {
 
 func (r *Router) GenerateProjectJobURL(ctx models.ProjectCommandContext) (string, error) {
 	pull := ctx.Pull
-
-	// Use relative path to create project identifier if project name not set.
-	var projectIdentifier string
-	if ctx.ProjectName == "" {
-		projectIdentifier = strings.ReplaceAll(ctx.RepoRelDir, "/", "-")
-	} else {
-		projectIdentifier = ctx.ProjectName
-	}
-
+	projectIdentifier := models.GetProjectIdentifier(ctx.RepoRelDir, ctx.ProjectName)
 	jobURL, err := r.Underlying.Get(r.ProjectJobsViewRouteName).URL(
 		"org", pull.BaseRepo.Owner,
 		"repo", pull.BaseRepo.Name,

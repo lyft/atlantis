@@ -460,13 +460,15 @@ func (p ProjectCommandContext) PullInfo() string {
 }
 
 func BuildPullInfo(repoName string, pullNum int, projectName string, relDir string, workspace string) string {
-	var projectIdentifier string
-	if projectName == "" {
-		projectIdentifier = strings.ReplaceAll(relDir, "/", "-")
-	} else {
-		projectIdentifier = projectName
-	}
+	projectIdentifier := GetProjectIdentifier(relDir, projectName)
 	return fmt.Sprintf("%s/%d/%s/%s", repoName, pullNum, projectIdentifier, workspace)
+}
+
+func GetProjectIdentifier(relRepoDir string, projectName string) string {
+	if projectName != "" {
+		return projectName
+	}
+	return strings.ReplaceAll(relRepoDir, "/", "-")
 }
 
 // SplitRepoFullName splits a repo full name up into its owner and repo
