@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
