@@ -48,7 +48,7 @@ func (wh DefaultPreWorkflowHookRunner) Run(ctx models.PreWorkflowHookCommandCont
 	err := cmd.Run()
 
 	if err != nil {
-		err = fmt.Errorf("%s: running %q in %q: \n%s", err, command, path, err)
+		err = fmt.Errorf("%s: running %q in %q", err, command, path)
 		ctx.Log.Debug("error: %s", err)
 		return "", err
 	}
