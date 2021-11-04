@@ -133,6 +133,7 @@ func (a *ApplyStepRunner) runRemoteApply(
 	// Start the async command execution.
 	ctx.Log.Debug("starting async tf remote operation")
 	inCh := make(chan string)
+	defer close(inCh)
 	outCh := a.AsyncTFExec.RunCommandAsyncWithInput(ctx, filepath.Clean(path), applyArgs, envs, tfVersion, ctx.Workspace, inCh)
 	var lines []string
 	nextLineIsRunURL := false
@@ -177,8 +178,6 @@ func (a *ApplyStepRunner) runRemoteApply(
 			inCh <- "yes\n"
 		}
 	}
-
-	close(inCh)
 
 	ctx.Log.Debug("async tf remote operation complete")
 	output := strings.Join(lines, "\n")
