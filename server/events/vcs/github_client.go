@@ -438,10 +438,6 @@ func (g *GithubClient) GetPullRequestFromName(repoName string, repoOwner string,
 	if ok && ghErr.Response.StatusCode != 404 {
 		return pull, PullRequestNotFound{err: err}
 	}
-
-
-
-
 	return pull, err
 }
 
