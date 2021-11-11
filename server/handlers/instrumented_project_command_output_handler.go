@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	stats "github.com/lyft/gostats"
+	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
@@ -13,10 +14,20 @@ type InstrumentedProjectCommandOutputHandler struct {
 	logger            logging.SimpleLogging
 }
 
-func NewInstrumentedProjectCommandOutputHandler(prjCmdOutputHandler ProjectCommandOutputHandler, statsScope stats.Scope, logger logging.SimpleLogging) ProjectCommandOutputHandler {
+func NewInstrumentedProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutputLine,
+	projectStatusUpdater ProjectStatusUpdater,
+	projectJobURLGenerator ProjectJobURLGenerator,
+	logger logging.SimpleLogging,
+	scope stats.Scope) ProjectCommandOutputHandler {
+	prjCmdOutputHandler := NewAsyncProjectCommandOutputHandler(
+		projectCmdOutput,
+		projectStatusUpdater,
+		projectJobURLGenerator,
+		logger,
+	)
 	return &InstrumentedProjectCommandOutputHandler{
 		ProjectCommandOutputHandler: prjCmdOutputHandler,
-		numWSConnnections:           statsScope.Scope("getprojectjobs").Scope("websocket").NewGauge("connections"),
+		numWSConnnections:           scope.Scope("getprojectjobs").Scope("websocket").NewGauge("connections"),
 		logger:                      logger,
 	}
 }

@@ -6,10 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
-	featuremocks "github.com/runatlantis/atlantis/server/feature/mocks"
-	featurematchers "github.com/runatlantis/atlantis/server/feature/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/handlers/mocks/matchers"
@@ -250,53 +247,4 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		err := prjCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
 		assert.Error(t, err)
 	})
-}
-
-func TestFeatureAwareOutputHandler(t *testing.T) {
-	ctx := createTestProjectCmdContext(t)
-	RegisterMockTestingT(t)
-	projectOutputHandler := mocks.NewMockProjectCommandOutputHandler()
-
-	featureAllocator := featuremocks.NewMockAllocator()
-	featureAwareOutputHandler := handlers.FeatureAwareOutputHandler{
-		FeatureAllocator:            featureAllocator,
-		ProjectCommandOutputHandler: projectOutputHandler,
-	}
-
-	cases := []struct {
-		Description        string
-		FeatureFlagEnabled bool
-	}{
-		{
-			Description:        "noop when feature is disabled",
-			FeatureFlagEnabled: false,
-		},
-		{
-			Description:        "delegate when feature is enabled",
-			FeatureFlagEnabled: true,
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.Description, func(t *testing.T) {
-			var expectedWasCalled func() *EqMatcher
-
-			if c.FeatureFlagEnabled {
-				expectedWasCalled = Once
-			} else {
-				expectedWasCalled = Never
-			}
-			When(featureAllocator.ShouldAllocate(featurematchers.AnyFeatureName(), pegomock.AnyString())).ThenReturn(c.FeatureFlagEnabled, nil)
-
-			err := featureAwareOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
-			Ok(t, err)
-			projectOutputHandler.VerifyWasCalled(expectedWasCalled()).SetJobURLWithStatus(matchers.AnyModelsProjectCommandContext(), matchers.AnyModelsCommandName(), matchers.AnyModelsCommitStatus())
-
-			featureAwareOutputHandler.Clear(ctx)
-			projectOutputHandler.VerifyWasCalled(expectedWasCalled()).Clear(matchers.AnyModelsProjectCommandContext())
-
-			featureAwareOutputHandler.Send(ctx, "test")
-			projectOutputHandler.VerifyWasCalled(expectedWasCalled()).Send(matchers.AnyModelsProjectCommandContext(), pegomock.AnyString())
-		})
-	}
 }
