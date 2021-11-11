@@ -43,23 +43,13 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 
 	t.Run("pull not found", func(t *testing.T) {
 
-		pullNum := 1
-
-		expectedGithubPull := &github.PullRequest{
-			Number: &pullNum,
-		}
-		expectedInternalPull := models.PullRequest{
-			Num: pullNum,
-		}
-
 		baseDir, _ := ioutil.TempDir("", "atlantis-data")
 
 		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm)
 
 		pullNotFound := &vcs.PullRequestNotFound{Err: errors.New("error")}
 
-		pegomock.When(mockGHClient.GetPullRequestFromName("repo1", "nish", 1)).ThenReturn(expectedGithubPull, pullNotFound)
-		pegomock.When(mockEventParser.ParseGithubPull(expectedGithubPull)).ThenReturn(expectedInternalPull, models.Repo{}, models.Repo{}, nil)
+		pegomock.When(mockGHClient.GetPullRequestFromName("repo1", "nish", 1)).ThenReturn(nil, pullNotFound)
 
 		subject := &events.FileWorkDirIterator{
 			Log:          log,
@@ -71,10 +61,8 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 		pulls, err := subject.ListCurrentWorkingDirPulls()
 
 		assert.NoError(t, err)
-		assert.Len(t, pulls, 1)
-		assert.Contains(t, pulls, expectedInternalPull)
+		assert.Empty(t, pulls)
 	})
-
 
 	t.Run("1 pull returned", func(t *testing.T) {
 
