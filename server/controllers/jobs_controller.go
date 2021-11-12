@@ -15,22 +15,18 @@ import (
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
 type JobsController struct {
-	AtlantisVersion             string
-	AtlantisURL                 *url.URL
-	Logger                      logging.SimpleLogging
-	ProjectJobsTemplate         templates.TemplateWriter
-	ProjectJobsErrorTemplate    templates.TemplateWriter
-	Db                          *db.BoltDB
-	WsMux                       *websocket.Multiplexor
-	
-	websocketWriter             *websocket.Writer
-	ProjectCommandOutputHandler handlers.ProjectCommandOutputHandler
-	StatsScope                  stats.Scope
+	AtlantisVersion          string
+	AtlantisURL              *url.URL
+	Logger                   logging.SimpleLogging
+	ProjectJobsTemplate      templates.TemplateWriter
+	ProjectJobsErrorTemplate templates.TemplateWriter
+	Db                       *db.BoltDB
+	WsMux                    *websocket.Multiplexor
+	StatsScope               stats.Scope
 }
 
 type ProjectInfoKeyGenerator struct{}
@@ -146,7 +142,7 @@ func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) 
 }
 
 func (j *JobsController) getProjectJobsWS(w http.ResponseWriter, r *http.Request) error {
-	err := j.wsMux.Handle(w, r)
+	err := j.WsMux.Handle(w, r)
 
 	if err != nil {
 		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
