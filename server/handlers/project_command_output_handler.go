@@ -130,13 +130,6 @@ func (p *AsyncProjectCommandOutputHandler) clearLogLines(pull string) {
 }
 
 func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, pull string) {
-	p.receiverBuffersLock.Lock()
-	if p.receiverBuffers[pull] == nil {
-		p.receiverBuffers[pull] = map[chan string]bool{}
-	}
-	p.receiverBuffers[pull][ch] = true
-	p.receiverBuffersLock.Unlock()
-
 	p.projectOutputBuffersLock.RLock()
 	buffer := p.projectOutputBuffers[pull]
 	p.projectOutputBuffersLock.RUnlock()
@@ -144,6 +137,15 @@ func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, pull string) 
 	for _, line := range buffer {
 		ch <- line
 	}
+
+	// add the channel to our registry after we backfill the contents of the buffer,
+	// to prevent new messages coming in interleaving with this backfill.
+	p.receiverBuffersLock.Lock()
+	if p.receiverBuffers[pull] == nil {
+		p.receiverBuffers[pull] = map[chan string]bool{}
+	}
+	p.receiverBuffers[pull][ch] = true
+	p.receiverBuffersLock.Unlock()
 }
 
 //Add log line to buffer and send to all current channels
