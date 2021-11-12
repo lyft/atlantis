@@ -32,7 +32,7 @@ func NewInstrumentedProjectCommandOutputHandler(projectCmdOutput chan *models.Pr
 	}
 }
 
-func (p *InstrumentedProjectCommandOutputHandler) Receive(projectInfo string, receiver chan string, callback func(msg string) error) error {
+func (p *InstrumentedProjectCommandOutputHandler) Register(projectInfo string, receiver chan string) {
 	p.numWSConnnections.Inc()
 	defer func() {
 		// Log message to ensure numWSConnnections gauge is being updated properly.
@@ -40,5 +40,16 @@ func (p *InstrumentedProjectCommandOutputHandler) Receive(projectInfo string, re
 		p.logger.Info(fmt.Sprintf("Decreasing num of ws connections for project: %s", projectInfo))
 		p.numWSConnnections.Dec()
 	}()
-	return p.ProjectCommandOutputHandler.Receive(projectInfo, receiver, callback)
+	p.ProjectCommandOutputHandler.Register(projectInfo, receiver)
+}
+
+func (p *InstrumentedProjectCommandOutputHandler) Deregister(projectInfo string, receiver chan string) {
+	p.numWSConnnections.Inc()
+	defer func() {
+		// Log message to ensure numWSConnnections gauge is being updated properly.
+		// [ORCA-955] TODO: Remove when removing the feature flag for log streaming.
+		p.logger.Info(fmt.Sprintf("Decreasing num of ws connections for project: %s", projectInfo))
+		p.numWSConnnections.Dec()
+	}()
+	p.ProjectCommandOutputHandler.Deregister(projectInfo, receiver)
 }
