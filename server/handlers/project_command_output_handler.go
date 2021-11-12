@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"sync"
@@ -100,7 +99,6 @@ func (p *AsyncProjectCommandOutputHandler) Register(projectInfo string, receiver
 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
-		fmt.Println(fmt.Sprintf("Received: %s", msg.Line))
 		if msg.ClearBuffBefore {
 			p.clearLogLines(msg.ProjectInfo)
 		}
@@ -150,15 +148,11 @@ func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, pull string) 
 
 //Add log line to buffer and send to all current channels
 func (p *AsyncProjectCommandOutputHandler) writeLogLine(pull string, line string) {
-	fmt.Println("Capturing receiver lock")
 	p.receiverBuffersLock.Lock()
-	fmt.Println("Captured receiver lock")
 	for ch := range p.receiverBuffers[pull] {
 		select {
 		case ch <- line:
-			fmt.Println("Wrote to channel")
 		default:
-			fmt.Println("Deleting to channel")
 			// Client ws conn could be closed in two ways:
 			// 1. Client closes the conn gracefully -> the closeHandler() is executed which
 			//  	closes the channel and cleans up resources.
@@ -168,7 +162,6 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(pull string, line string
 			delete(p.receiverBuffers[pull], ch)
 		}
 	}
-	fmt.Println("End of loop")
 	p.receiverBuffersLock.Unlock()
 
 	// No need to write to projectOutputBuffers if clear msg.
@@ -186,7 +179,7 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(pull string, line string
 
 //Remove channel, so client no longer receives Terraform output
 func (p *AsyncProjectCommandOutputHandler) Deregister(pull string, ch chan string) {
-	p.logger.Debug(fmt.Sprintf("Removing channel for %s", pull))
+	p.logger.Debug("Removing channel for %s", pull)
 	p.receiverBuffersLock.Lock()
 	delete(p.receiverBuffers[pull], ch)
 	p.receiverBuffersLock.Unlock()
