@@ -154,6 +154,7 @@ func NewClientWithDefaultVersion(
 		downloadBaseURL:  tfDownloadURL,
 		featureAllocator: featureAllocator,
 		AsyncClient:      asyncClient,
+		commandBuilder:   builder,
 	}, nil
 
 }
