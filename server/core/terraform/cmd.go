@@ -11,29 +11,25 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 )
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_command_builder.go commandBuilder
+type commandBuilder interface {
+	Build(v *version.Version, workspace string, path string, args []string) (*exec.Cmd, error)
+}
 
 type CommandBuilder struct {
-	defaultVersion *version.Version
-	overrideTF string
-	versionCache cache.ExecutionVersionCache
+	defaultVersion          *version.Version
+	versionCache            cache.ExecutionVersionCache
 	terraformPluginCacheDir string
 }
 
-func (c *CommandBuilder) Build(v *version.Version, workspace string, path string, args []string) (string, *exec.Cmd, error) {
+func (c *CommandBuilder) Build(v *version.Version, workspace string, path string, args []string) (*exec.Cmd, error) {
 	if v == nil {
 		v = c.defaultVersion
 	}
 
-	var binPath string
-	if c.overrideTF != "" {
-		// This is only set during testing.
-		binPath = c.overrideTF
-	} else {
-		var err error
-		binPath, err = c.versionCache.Get(v)
-		if err != nil {
-			return "", nil, errors.Wrapf(err, "getting version from cache %s", v.String())
-		}
+	binPath, err := c.versionCache.Get(v)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting version from cache %s", v.String())
 	}
 
 	// We add custom variables so that if `extra_args` is specified with env
@@ -57,5 +53,5 @@ func (c *CommandBuilder) Build(v *version.Version, workspace string, path string
 	cmd := exec.Command("sh", "-c", tfCmd)
 	cmd.Dir = path
 	cmd.Env = envVars
-	return tfCmd, cmd, nil
+	return cmd, nil
 }

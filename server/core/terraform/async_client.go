@@ -8,19 +8,16 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/handlers"
 )
 
-type AsyncClient struct {
-	// defaultVersion is the default version of terraform to use if another
-	// version isn't specified.
-	defaultVersion *version.Version
-	versionCache cache.ExecutionVersionCache
-	projectCmdOutputHandler handlers.ProjectCommandOutputHandler
-	commandBuilder *CommandBuilder
+// Setting the buffer size to 10mb
+const BufioScannerBufferSize = 10 * 1024 * 1024
 
+type AsyncClient struct {
+	projectCmdOutputHandler handlers.ProjectCommandOutputHandler
+	commandBuilder          commandBuilder
 }
 
 // RunCommandAsync runs terraform with args. It immediately returns an
@@ -48,7 +45,7 @@ func (c *AsyncClient) RunCommandAsyncWithInput(ctx models.ProjectCommandContext,
 			close(outCh)
 		}()
 
-		tfCmd, cmd, err := c.commandBuilder.Build(v, workspace, path, args)
+		cmd, err := c.commandBuilder.Build(v, workspace, path, args)
 		if err != nil {
 			ctx.Log.Err(err.Error())
 			outCh <- Line{Err: err}
@@ -63,10 +60,10 @@ func (c *AsyncClient) RunCommandAsyncWithInput(ctx models.ProjectCommandContext,
 		}
 		cmd.Env = envVars
 
-		ctx.Log.Debug("starting %q in %q", tfCmd, path)
+		ctx.Log.Debug("starting %q in %q", cmd.String(), path)
 		err = cmd.Start()
 		if err != nil {
-			err = errors.Wrapf(err, "running %q in %q", tfCmd, path)
+			err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
 			ctx.Log.Err(err.Error())
 			outCh <- Line{Err: err}
 			return
@@ -119,11 +116,11 @@ func (c *AsyncClient) RunCommandAsyncWithInput(ctx models.ProjectCommandContext,
 
 		// We're done now. Send an error if there was one.
 		if err != nil {
-			err = errors.Wrapf(err, "running %q in %q", tfCmd, path)
+			err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
 			ctx.Log.Err(err.Error())
 			outCh <- Line{Err: err}
 		} else {
-			ctx.Log.Info("successfully ran %q in %q", tfCmd, path)
+			ctx.Log.Info("successfully ran %q in %q", cmd.String(), path)
 		}
 	}()
 

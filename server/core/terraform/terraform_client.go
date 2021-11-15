@@ -39,9 +39,6 @@ import (
 
 var LogStreamingValidCmds = [...]string{"init", "plan", "apply"}
 
-// Setting the buffer size to 10mb
-const BufioScannerBufferSize = 10 * 1024 * 1024
-
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_terraform_client.go Client
 
 type Client interface {
@@ -58,13 +55,13 @@ type DefaultClient struct {
 	// defaultVersion is the default version of terraform to use if another
 	// version isn't specified.
 	defaultVersion *version.Version
-	binDir                  string
+	binDir         string
 	// downloader downloads terraform versions.
 	downloader      Downloader
 	downloadBaseURL string
 
 	versionCache   cache.ExecutionVersionCache
-	commandBuilder *CommandBuilder
+	commandBuilder commandBuilder
 
 	featureAllocator feature.Allocator
 	*AsyncClient
@@ -136,8 +133,6 @@ func NewClientWithDefaultVersion(
 	}
 
 	asyncClient := &AsyncClient{
-		defaultVersion:          version,
-		versionCache:            versionCache,
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          builder,
 	}
@@ -153,12 +148,12 @@ func NewClientWithDefaultVersion(
 		}
 	}
 	return &DefaultClient{
-		defaultVersion:          version,
-		binDir:                  binDir,
-		downloader:              tfDownloader,
-		downloadBaseURL:         tfDownloadURL,
-		featureAllocator:        featureAllocator,
-		AsyncClient:             asyncClient,
+		defaultVersion:   version,
+		binDir:           binDir,
+		downloader:       tfDownloader,
+		downloadBaseURL:  tfDownloadURL,
+		featureAllocator: featureAllocator,
+		AsyncClient:      asyncClient,
 	}, nil
 
 }
@@ -287,7 +282,7 @@ func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, 
 		return fmt.Sprintf("%s\n", output), err
 	}
 
-	tfCmd, cmd, err := c.commandBuilder.Build(v, workspace, path, args)
+	cmd, err := c.commandBuilder.Build(v, workspace, path, args)
 	if err != nil {
 		return "", err
 	}
@@ -298,11 +293,11 @@ func (c *DefaultClient) RunCommandWithVersion(ctx models.ProjectCommandContext, 
 	cmd.Env = envVars
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		err = errors.Wrapf(err, "running %q in %q", tfCmd, path)
+		err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
 		ctx.Log.Err(err.Error())
 		return ansi.Strip(string(out)), err
 	}
-	ctx.Log.Info("successfully ran %q in %q", tfCmd, path)
+	ctx.Log.Info("successfully ran %q in %q", cmd.String(), path)
 
 	return ansi.Strip(string(out)), nil
 }
