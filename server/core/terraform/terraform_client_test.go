@@ -36,25 +36,6 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
-func TestMustConstraint_PanicsOnBadConstraint(t *testing.T) {
-	t.Log("MustConstraint should panic on a bad constraint")
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("The code did not panic")
-		}
-	}()
-
-	terraform.MustConstraint("invalid constraint")
-}
-
-func TestMustConstraint(t *testing.T) {
-	t.Log("MustConstraint should return the constrain")
-	c := terraform.MustConstraint(">0.1")
-	expectedConstraint, err := version.NewConstraint(">0.1")
-	Ok(t, err)
-	Equals(t, expectedConstraint.String(), c.String())
-}
-
 // Test that if terraform is in path and we're not setting the default-tf flag,
 // that we use that version as our default version.
 func TestNewClient_LocalTFOnly(t *testing.T) {
