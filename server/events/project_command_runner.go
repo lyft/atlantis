@@ -166,12 +166,8 @@ type FeatureAwareProjectCommandRunner struct {
 }
 
 func (f *FeatureAwareProjectCommandRunner) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
-	shouldAllocate, err := f.FeatureAllocator.ShouldAllocate(feature.ForceApply, ctx.Pull.BaseRepo.FullName)
 
-	if err != nil {
-		ctx.Log.Err("unable to allocate for feature: %s, error: %s", feature.ForceApply, err)
-	}
-	if !shouldAllocate && ctx.ForceApply {
+	if ctx.ForceApply {
 		ctx.Log.Err("force apply feature not enabled in the current environment.")
 
 		return models.ProjectResult{
