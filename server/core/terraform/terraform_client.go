@@ -155,6 +155,7 @@ func NewClientWithDefaultVersion(
 		featureAllocator: featureAllocator,
 		AsyncClient:      asyncClient,
 		commandBuilder:   builder,
+		versionCache:     versionCache,
 	}, nil
 
 }
