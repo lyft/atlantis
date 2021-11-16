@@ -25,13 +25,11 @@ func (r *RunStepRunner) Run(ctx models.ProjectCommandContext, command string, pa
 		tfVersion = ctx.TerraformVersion
 	}
 
-	if ctx.TerraformVersion != nil {
-		err := r.TerraformExecutor.EnsureVersion(ctx.Log, tfVersion)
-		if err != nil {
-			err = fmt.Errorf("%s: Downloading terraform Version %s", err, tfVersion.String())
-			ctx.Log.Debug("error: %s", err)
-			return "", err
-		}
+	err := r.TerraformExecutor.EnsureVersion(ctx.Log, tfVersion)
+	if err != nil {
+		err = fmt.Errorf("%s: Downloading terraform Version %s", err, tfVersion.String())
+		ctx.Log.Debug("error: %s", err)
+		return "", err
 	}
 
 	cmd := exec.Command("sh", "-c", command) // #nosec
