@@ -84,7 +84,7 @@ type Downloader interface {
 var versionRegex = regexp.MustCompile("Terraform v(.*?)(\\s.*)?\n")
 
 // NewClientWithDefaultVersion creates a new terraform client and pre-fetches the default version
-func NewClientWithDefaultVersion(
+func NewClientWithVersionCache(
 	log logging.SimpleLogging,
 	binDir string,
 	cacheDir string,
@@ -95,21 +95,10 @@ func NewClientWithDefaultVersion(
 	tfDownloadURL string,
 	tfDownloader Downloader,
 	usePluginCache bool,
-	fetchAsync bool,
 	projectCmdOutputHandler handlers.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
+	versionCache cache.ExecutionVersionCache,
 ) (*DefaultClient, error) {
-	loader := versionLoader{
-		downloader:  tfDownloader,
-		downloadURL: tfDownloadURL,
-	}
-
-	versionCache := cache.NewExecutionVersionLayeredLoadingCache(
-		"terraform",
-		binDir,
-		loader.loadVersion,
-	)
-
 	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 
 	if err != nil {
@@ -160,7 +149,7 @@ func NewClientWithDefaultVersion(
 
 }
 
-func NewTestClient(
+func NewE2ETestClient(
 	log logging.SimpleLogging,
 	binDir string,
 	cacheDir string,
@@ -174,7 +163,8 @@ func NewTestClient(
 	projectCmdOutputHandler handlers.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
 ) (*DefaultClient, error) {
-	return NewClientWithDefaultVersion(
+	versionCache := cache.NewLocalBinaryCache("terraform")
+	return NewClientWithVersionCache(
 		log,
 		binDir,
 		cacheDir,
@@ -185,20 +175,14 @@ func NewTestClient(
 		tfDownloadURL,
 		tfDownloader,
 		usePluginCache,
-		false,
 		projectCmdOutputHandler,
 		featureAllocator,
+		versionCache,
 	)
 }
 
-// NewClient constructs a terraform client.
-// tfeToken is an optional terraform enterprise token.
-// defaultVersionStr is an optional default terraform version to use unless
-// a specific version is set.
-// defaultVersionFlagName is the name of the flag that sets the default terraform
-// version.
-// tfDownloader is used to download terraform versions.
-// Will asynchronously download the required version if it doesn't exist already.
+
+
 func NewClient(
 	log logging.SimpleLogging,
 	binDir string,
@@ -213,7 +197,17 @@ func NewClient(
 	projectCmdOutputHandler handlers.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
 ) (*DefaultClient, error) {
-	return NewClientWithDefaultVersion(
+	loader := VersionLoader{
+		downloader:  tfDownloader,
+		downloadURL: tfDownloadURL,
+	}
+
+	versionCache := cache.NewExecutionVersionLayeredLoadingCache(
+		"terraform",
+		binDir,
+		loader.loadVersion,
+	)
+	return NewClientWithVersionCache(
 		log,
 		binDir,
 		cacheDir,
@@ -224,9 +218,9 @@ func NewClient(
 		tfDownloadURL,
 		tfDownloader,
 		usePluginCache,
-		true,
 		projectCmdOutputHandler,
 		featureAllocator,
+		versionCache,
 	)
 }
 
@@ -312,12 +306,12 @@ type Line struct {
 	Err error
 }
 
-type versionLoader struct {
+type VersionLoader struct {
 	downloader  Downloader
 	downloadURL string
 }
 
-func (l *versionLoader) loadVersion(v *version.Version, destPath string) (runtime_models.FilePath, error) {
+func (l *VersionLoader) loadVersion(v *version.Version, destPath string) (runtime_models.FilePath, error) {
 	urlPrefix := fmt.Sprintf("%s/terraform/%s/terraform_%s", l.downloadURL, v.String(), v.String())
 	binURL := fmt.Sprintf("%s_%s_%s.zip", urlPrefix, runtime.GOOS, runtime.GOARCH)
 	checksumURL := fmt.Sprintf("%s_SHA256SUMS", urlPrefix)
@@ -353,8 +347,8 @@ func getDefaultVersion(overrideVersion string, versionFlagName string) (*version
 
 	// look for the binary directly on disk and query the version
 	// we shouldn't really be doing this, but don't want to break existing clients.
-	// we should be looking for an env var since we wont even be using this binary directly,
-	// we'll be getting the version and downloading it to our cache.
+	// this implementation assumes that versions in the format our cache assumes
+	// and if thats the case we won't be redownloading the version of this binary to our cache
 	localPath, err := exec.LookPath("terraform")
 	if err != nil {
 		return nil, fmt.Errorf("terraform not found in $PATH. Set --%s or download terraform from https://www.terraform.io/downloads.html", versionFlagName)

@@ -13,8 +13,8 @@ import (
 // to generate the contents of a ~/.terraformrc file for authenticating with
 // Terraform Enterprise.
 var rcFileContents = `credentials "%s" {
-	token = %q
-  }`
+  token = %q
+}`
 
 const rcFilename = ".terraformrc"
 
