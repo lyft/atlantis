@@ -38,6 +38,7 @@ func NewMultiplexor(log logging.SimpleLogging, keyGenerator PartitionKeyGenerato
 			log:      log,
 		},
 		keyGenerator: keyGenerator,
+		registry:     registry,
 	}
 }
 
