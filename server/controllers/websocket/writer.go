@@ -33,7 +33,7 @@ func (w *Writer) Write(rw http.ResponseWriter, r *http.Request, input chan strin
 
 	conn.SetCloseHandler(func(code int, text string) error {
 		// Close the channnel after websocket connection closed.
-		// Will gracefully exit the ProjectCommandOutputHandler.Receive() call and cleanup.
+		// Will gracefully exit the ProjectCommandOutputHandler.Register() call and cleanup.
 		// is it good practice to close at the receiver? Probably not, we should figure out a better
 		// way to handle this case
 		close(input)
