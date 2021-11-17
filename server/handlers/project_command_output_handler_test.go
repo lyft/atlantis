@@ -102,7 +102,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 
 		projectOutputHandler := createProjectCommandOutputHandler(t)
 
-		fmt.Println("hello")
+		
 
 		ch := make(chan string)
 
