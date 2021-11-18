@@ -344,14 +344,8 @@ func (g *GithubClient) getSupplementalMergeability(repo models.Repo, pull models
 		return false, nil
 	}
 
-	checkRunsPassed, err := g.allCheckRunsPassed(repo, pull.HeadCommit)
-
-	if err != nil {
-		return false, errors.Wrapf(err, "fetching check runs for repo: %s, and pull number: %d", repo.FullName, pull.Num)
-	}
-
 	// all our status checks are successful by our definition,
-	return checkRunsPassed, nil
+	return true, nil
 }
 
 // PullIsMergeable returns true if the pull request is mergeable.
@@ -390,6 +384,9 @@ func (g *GithubClient) allCheckRunsPassed(repo models.Repo, sha string) (bool, e
 	}
 
 	for _, check := range checks {
+		if check.GetStatus() != "completed" {
+			return false, nil
+		}
 		if check.GetConclusion() != "success" {
 			return false, nil
 		}
@@ -461,9 +458,16 @@ func (g *GithubClient) getSubmitQueueMergeability(repo models.Repo, pull models.
 		return false, nil
 	}
 
+	// TODO nishkrishnan: Move this into shared area for upstreaming purposes.
+	checkRunsPassed, err := g.allCheckRunsPassed(repo, pull.HeadCommit)
+
+	if err != nil {
+		return false, errors.Wrapf(err, "fetching check runs for repo: %s, and pull number: %d", repo.FullName, pull.Num)
+	}
+
 	// all our status checks are successful by our definition,
-	// ensure that owners check has been applied as a check.
-	return ownersCheckApplied, nil
+	// ensure that check runs have all passed and owners check has been applied.
+	return ownersCheckApplied && checkRunsPassed, nil
 }
 
 func (g *GithubClient) GetPullRequestFromName(repoName string, repoOwner string, num int) (*github.PullRequest, error) {
