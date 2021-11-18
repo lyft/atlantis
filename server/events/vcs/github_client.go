@@ -295,6 +295,10 @@ func (g *GithubClient) PullIsApproved(repo models.Repo, pull models.PullRequest)
 	return approvalStatus, nil
 }
 
+type SupplementalMergeabilityStatusFilter interface {
+	
+}
+
 // PullIsMergeable returns true if the pull request is mergeable.
 func (g *GithubClient) PullIsMergeable(repo models.Repo, pull models.PullRequest) (bool, error) {
 	githubPR, err := g.GetPullRequest(repo, pull.Num)
