@@ -337,7 +337,6 @@ func (g *GithubClient) getSupplementalMergeability(repo models.Repo, pull models
 		if g.statusTitleMatcher.MatchesCommand(status.GetContext(), "apply") ||
 			state == "success" {
 			continue
-
 		}
 
 		// we either have a failure or a pending status check
@@ -345,8 +344,14 @@ func (g *GithubClient) getSupplementalMergeability(repo models.Repo, pull models
 		return false, nil
 	}
 
+	checkRunsPassed, err := g.allCheckRunsPassed(repo, pull.HeadCommit)
+
+	if err != nil {
+		return false, errors.Wrapf(err, "fetching check runs for repo: %s, and pull number: %d", repo.FullName, pull.Num)
+	}
+
 	// all our status checks are successful by our definition,
-	return true, nil
+	return checkRunsPassed, nil
 }
 
 // PullIsMergeable returns true if the pull request is mergeable.
@@ -374,6 +379,22 @@ func (g *GithubClient) PullIsSQMergeable(repo models.Repo, pull models.PullReque
 
 		return g.getSubmitQueueMergeability(repo, pull, statuses)
 	}
+	return true, nil
+}
+
+func (g *GithubClient) allCheckRunsPassed(repo models.Repo, sha string) (bool, error) {
+	checks, err := g.getRepoChecks(repo, sha)
+
+	if err != nil {
+		return false, errors.Wrapf(err, "checking failing check runs for %s/ref/%s", repo.FullName, sha)
+	}
+
+	for _, check := range checks {
+		if check.GetConclusion() != "success" {
+			return false, nil
+		}
+	}
+
 	return true, nil
 }
 
@@ -476,6 +497,38 @@ func (g *GithubClient) GetPullRequestFromName(repoName string, repoOwner string,
 // GetPullRequest returns the pull request.
 func (g *GithubClient) GetPullRequest(repo models.Repo, num int) (*github.PullRequest, error) {
 	return g.GetPullRequestFromName(repo.Name, repo.Owner, num)
+}
+
+func (g *GithubClient) getRepoChecks(repo models.Repo, sha string) ([]*github.CheckRun, error) {
+	nextPage := 0
+
+	var results []*github.CheckRun
+
+	for {
+		opts := &github.ListCheckRunsOptions{
+			ListOptions: github.ListOptions{
+				PerPage: 100,
+			},
+		}
+
+		if nextPage != 0 {
+			opts.Page = nextPage
+		}
+
+		result, response, err := g.client.Checks.ListCheckRunsForRef(g.ctx, repo.Owner, repo.Name, sha, opts)
+		results = append(results, result.CheckRuns...)
+
+		if err != nil {
+			return results, errors.Wrapf(err, "getting check runs for page %d", nextPage)
+		}
+
+		if response.NextPage == 0 {
+			break
+		}
+		nextPage = response.NextPage
+	}
+
+	return results, nil
 }
 
 func (g *GithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest) ([]*github.RepoStatus, error) {
