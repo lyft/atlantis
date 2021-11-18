@@ -56,6 +56,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
@@ -646,10 +647,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		boltdb,
 	)
 
-	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		GithubClient: githubClient,
-	}
-
+	pullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(
+		vcs.NewPullReqStatusFetcher(vcsClient),
+		githubClient,
+	)
 	applyCommandRunner := events.NewApplyCommandRunner(
 		vcsClient,
 		userConfig.DisableApplyAll,
@@ -664,7 +665,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceNoProjects,
 		userConfig.SilenceVCSStatusNoProjects,
-		&pullReqStatusFetcher,
+		pullReqStatusFetcher,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(

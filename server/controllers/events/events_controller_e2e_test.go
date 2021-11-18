@@ -32,6 +32,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml"
@@ -743,10 +744,11 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 
 			// Setup test dependencies.
 			w := httptest.NewRecorder()
-			When(githubClient.PullIsSQMergeable(AnyRepo(), matchers.AnyModelsPullRequest(), AnyStatus())).ThenReturn(true, nil)
-			When(githubClient.PullIsApproved(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(models.ApprovalStatus{
+			When(vcsClient.PullIsApproved(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(models.ApprovalStatus{
 				IsApproved: true,
 			}, nil)
+			When(vcsClient.PullIsMergeable(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(true, nil)
+			When(githubClient.PullIsSQMergeable(AnyRepo(), matchers.AnyModelsPullRequest(), AnyStatus())).ThenReturn(true, nil)
 			When(githubGetter.GetPullRequest(AnyRepo(), AnyInt())).ThenReturn(GitHubPullRequestParsed(headSHA), nil)
 			When(vcsClient.GetModifiedFiles(AnyRepo(), matchers.AnyModelsPullRequest())).ThenReturn(c.ModifiedFiles, nil)
 
@@ -1001,9 +1003,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	)
 
 	e2eMockGithubClient := vcsmocks.NewMockIGithubClient()
-	e2ePullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		GithubClient: e2eMockGithubClient,
-	}
+	e2ePullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(vcs.NewPullReqStatusFetcher(e2eVCSClient), e2eMockGithubClient)
 
 	applyCommandRunner := events.NewApplyCommandRunner(
 		e2eVCSClient,
@@ -1019,7 +1019,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		parallelPoolSize,
 		silenceNoProjects,
 		false,
-		&e2ePullReqStatusFetcher,
+		e2ePullReqStatusFetcher,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
