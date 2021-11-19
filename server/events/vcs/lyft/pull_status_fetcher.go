@@ -1,58 +1,112 @@
-package vcs
+package lyft
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/google/go-github/v31/github"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-// Redefining this interface here to ensure we don't have a cyclic dependency with the surrounding package
-type pullRequestStatusFetcher interface {
-	FetchPullStatus(repo models.Repo, pull models.PullRequest) (models.PullReqStatus, error)
-}
+const LockValue = "lock"
 
-type pullClient interface {
+type PullClient interface {
+	GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error)
 	GetRepoStatuses(repo models.Repo, pull models.PullRequest) ([]*github.RepoStatus, error)
-	PullIsSQMergeable(repo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error)
-	PullIsSQLocked(baseRepo models.Repo, pull models.PullRequest, statuses []*github.RepoStatus) (bool, error)
+	GetRepoChecks(repo models.Repo, pull models.PullRequest) ([]*github.CheckRun, error)
+	PullIsApproved(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error)
 }
 
 type SQBasedPullStatusFetcher struct {
-	Delegate pullRequestStatusFetcher
-	Client   pullClient
+	client  PullClient
+	checker MergeabilityChecker
 }
 
-func NewSQBasedPullStatusFetcher(delegate pullRequestStatusFetcher, client pullClient) *SQBasedPullStatusFetcher {
+func NewSQBasedPullStatusFetcher(client PullClient, checker MergeabilityChecker) *SQBasedPullStatusFetcher {
 	return &SQBasedPullStatusFetcher{
-		Delegate: delegate,
-		Client:   client,
+		client:  client,
+		checker: checker,
 	}
 }
 
 func (s *SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models.PullRequest) (models.PullReqStatus, error) {
+	pullStatus := models.PullReqStatus{}
 
-	pullStatus, err := s.Delegate.FetchPullStatus(repo, pull)
+	approvalStatus, err := s.client.PullIsApproved(repo, pull)
 	if err != nil {
-		return pullStatus, err
+		return models.PullReqStatus{}, errors.Wrap(err, "fetching pull approval status")
 	}
 
-	statuses, err := s.Client.GetRepoStatuses(repo, pull)
+	githubPR, err := s.client.GetPullRequest(repo, pull.Num)
 	if err != nil {
-		return pullStatus, errors.Wrapf(err, "fetching repo statuses for repo: %s, and pull number: %d", repo.FullName, pull.Num)
+		return pullStatus, errors.Wrap(err, "fetching pull request")
 	}
 
-	sqLocked, err := s.Client.PullIsSQLocked(repo, pull, statuses)
+	statuses, err := s.client.GetRepoStatuses(repo, pull)
 	if err != nil {
-		return pullStatus, errors.Wrapf(err, "fetching pull locked status for repo: %s, and pull number: %d", repo.FullName, pull.Num)
+		return pullStatus, errors.Wrap(err, "fetching repo statuses")
 	}
 
-	mergeable, err := s.Client.PullIsSQMergeable(repo, pull, statuses)
+	checks, err := s.client.GetRepoChecks(repo, pull)
 	if err != nil {
-		return pullStatus, errors.Wrapf(err, "fetching mergeability status for repo: %s, and pull number: %d", repo.FullName, pull.Num)
+		return pullStatus, errors.Wrap(err, "fetching repo checks")
 	}
 
-	pullStatus.Mergeable = pullStatus.Mergeable || mergeable
-	pullStatus.SQLocked = sqLocked
+	mergeable := s.checker.Check(githubPR, statuses, checks)
+	if err != nil {
+		return pullStatus, errors.Wrapf(err, "checking mergeability")
+	}
 
-	return pullStatus, nil
+	sqLocked, err := s.isPRLocked(statuses)
+	if err != nil {
+		return pullStatus, errors.Wrapf(err, "checking sq lock status")
+	}
+
+	return models.PullReqStatus{
+		ApprovalStatus: approvalStatus,
+		Mergeable:      mergeable,
+		SQLocked:       sqLocked,
+	}, nil
+}
+
+func (s SQBasedPullStatusFetcher) isPRLocked(statuses []*github.RepoStatus) (bool, error) {
+	for _, status := range statuses {
+		if status.GetContext() != SubmitQueueReadinessStatusContext {
+			continue
+		}
+
+		// When Submit queue status does not have tags assume PR is not locked
+		if status.GetDescription() == "" {
+			return false, nil
+		}
+
+		// Not using struct tags because there's no predefined schema for description.
+		description := make(map[string]interface{})
+		err := json.Unmarshal([]byte(status.GetDescription()), &description)
+		if err != nil {
+			return false, errors.Wrapf(err, "parsing status description")
+		}
+
+		waitingList, ok := description["waiting"]
+		if !ok {
+			// No waiting key means no lock.
+			return false, nil
+		}
+
+		typedWaitingList, ok := waitingList.([]interface{})
+		if !ok {
+			return false, fmt.Errorf("cast failed for %v", waitingList)
+		}
+		for _, item := range typedWaitingList {
+			if item == LockValue {
+				return true, nil
+			}
+		}
+
+		// No waiting key means no lock.
+		return false, nil
+	}
+	// No Lock found.
+	return false, nil
 }

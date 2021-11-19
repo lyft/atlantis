@@ -137,7 +137,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		defaultBoltDB,
 	)
 
-	pullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(vcs.NewPullReqStatusFetcher(vcsClient), githubClient)
+	pullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(githubClient, vcs.NewLyftPullMergeabilityChecker("atlantis"))
 
 	applyCommandRunner = events.NewApplyCommandRunner(
 		vcsClient,

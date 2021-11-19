@@ -166,6 +166,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var bitbucketServerClient *bitbucketserver.Client
 	var azuredevopsClient *vcs.AzureDevopsClient
 
+	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(userConfig.VCSStatusName)
+
 	policyChecksEnabled := false
 	if userConfig.EnablePolicyChecksFlag {
 		logger.Info("Policy Checks are enabled")
@@ -202,7 +204,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		}
 
 		var err error
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, userConfig.VCSStatusName)
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker)
 		if err != nil {
 			return nil, err
 		}
@@ -648,8 +650,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	)
 
 	pullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(
-		vcs.NewPullReqStatusFetcher(vcsClient),
 		githubClient,
+		mergeabilityChecker,
 	)
 	applyCommandRunner := events.NewApplyCommandRunner(
 		vcsClient,
