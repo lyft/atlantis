@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"testing"
 
