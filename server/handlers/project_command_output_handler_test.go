@@ -116,7 +116,6 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// read from channel asynchronously
 		go func() {
 			for msg := range ch {
-				fmt.Println(msg)
 				// we are done once we receive the clear message.
 				// prior message doesn't matter for this test.
 				if msg == models.LogStreamingClearMsg {
