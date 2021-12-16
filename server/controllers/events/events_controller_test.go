@@ -259,6 +259,7 @@ func TestPost_GithubCommentNotAllowlisted(t *testing.T) {
 	vcsClient := vcsmocks.NewMockClient()
 	e := events_controllers.VCSEventsController{
 		Logger:                 logging.NewNoopLogger(t),
+		Scope:                  stats.NewStore(stats.NewNullSink(), false).Scope("null"),
 		GithubRequestValidator: &events_controllers.DefaultGithubRequestValidator{},
 		CommentParser:          &events.CommentParser{},
 		Parser:                 &events.EventParser{},
