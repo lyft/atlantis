@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v31/github"
+	stats "github.com/lyft/gostats"
 	. "github.com/petergtz/pegomock"
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/runatlantis/atlantis/server/controllers/events/mocks"
@@ -768,6 +769,7 @@ func setup(t *testing.T) (events_controllers.VCSEventsController, *mocks.MockGit
 	e := events_controllers.VCSEventsController{
 		TestingMode:                  true,
 		Logger:                       logging.NewNoopLogger(t),
+		Scope:                        stats.NewStore(stats.NewNullSink(), false).Scope("null"),
 		GithubRequestValidator:       v,
 		Parser:                       p,
 		CommentParser:                cp,
