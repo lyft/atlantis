@@ -101,7 +101,7 @@ require (
 	github.com/zclconf/go-cty v1.5.1 // indirect
 	go.etcd.io/bbolt v1.3.6
 	go.opencensus.io v0.23.0 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
@@ -130,5 +130,8 @@ require (
 require (
 	github.com/antlr/antlr4 v0.0.0-20201206235148-c87e55b61113 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/cactus/go-statsd-client/statsd v0.0.0-20200623234511-94959e3146b2
 	github.com/nikunjy/rules v0.0.0-20200120082459-0b7c4dc9dc86 // indirect
+	github.com/twmb/murmur3 v1.1.6 // indirect
+	github.com/uber-go/tally v3.4.3+incompatible
 )

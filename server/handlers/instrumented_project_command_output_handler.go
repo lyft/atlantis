@@ -3,14 +3,14 @@ package handlers
 import (
 	"fmt"
 
-	stats "github.com/lyft/gostats"
+	"github.com/uber-go/tally"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
 type InstrumentedProjectCommandOutputHandler struct {
 	ProjectCommandOutputHandler
-	numWSConnnections stats.Gauge
+	numWSConnnections tally.Counter
 	logger            logging.SimpleLogging
 }
 
@@ -18,7 +18,7 @@ func NewInstrumentedProjectCommandOutputHandler(projectCmdOutput chan *models.Pr
 	projectStatusUpdater ProjectStatusUpdater,
 	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
-	scope stats.Scope) ProjectCommandOutputHandler {
+	scope tally.Scope) ProjectCommandOutputHandler {
 	prjCmdOutputHandler := NewAsyncProjectCommandOutputHandler(
 		projectCmdOutput,
 		projectStatusUpdater,
@@ -27,18 +27,18 @@ func NewInstrumentedProjectCommandOutputHandler(projectCmdOutput chan *models.Pr
 	)
 	return &InstrumentedProjectCommandOutputHandler{
 		ProjectCommandOutputHandler: prjCmdOutputHandler,
-		numWSConnnections:           scope.Scope("getprojectjobs").Scope("websocket").NewGauge("connections"),
+		numWSConnnections:           scope.SubScope("getprojectjobs").SubScope("websocket").Gauge("connections"),
 		logger:                      logger,
 	}
 }
 
 func (p *InstrumentedProjectCommandOutputHandler) Register(projectInfo string, receiver chan string) {
-	p.numWSConnnections.Inc()
+	p.numWSConnnections.In(1)
 	defer func() {
 		// Log message to ensure numWSConnnections gauge is being updated properly.
 		// [ORCA-955] TODO: Remove when removing the feature flag for log streaming.
 		p.logger.Info(fmt.Sprintf("Decreasing num of ws connections for project: %s", projectInfo))
-		p.numWSConnnections.Dec()
+		p.numWSConnnections.Update(-1)
 	}()
 	p.ProjectCommandOutputHandler.Register(projectInfo, receiver)
 }

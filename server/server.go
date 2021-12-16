@@ -34,6 +34,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/runatlantis/atlantis/server/core/db"
+	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
@@ -149,8 +150,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, err
 	}
 
-	statsScope := stats.NewDefaultStore().Scope(userConfig.StatsNamespace)
-	statsScope.Store().AddStatGenerator(stats.NewRuntimeStats(statsScope.Scope("go")))
+	// statsScope := stats.NewDefaultStore().Scope(userConfig.StatsNamespace)
+	// statsScope.Store().AddStatGenerator(stats.NewRuntimeStats(statsScope.Scope("go")))
 
 	var supportedVCSHosts []models.VCSHostType
 
@@ -171,6 +172,31 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		logger.Info("Policy Checks are enabled")
 		policyChecksEnabled = true
 	}
+
+	validator := &yaml.ParserValidator{}
+
+	globalCfg := valid.NewGlobalCfgFromArgs(
+		valid.GlobalCfgArgs{
+			AllowRepoCfg:       userConfig.AllowRepoConfig,
+			MergeableReq:       userConfig.RequireMergeable,
+			ApprovedReq:        userConfig.RequireApproval,
+			UnDivergedReq:      userConfig.RequireUnDiverged,
+			SQUnLockedReq:      userConfig.RequireSQUnlocked,
+			PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
+		})
+	if userConfig.RepoConfig != "" {
+		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
+		}
+	} else if userConfig.RepoConfigJSON != "" {
+		globalCfg, err = validator.ParseGlobalCfgJSON(userConfig.RepoConfigJSON, globalCfg)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing --%s", config.RepoConfigJSONFlag)
+		}
+	}
+
+	statsScope, closer, err := metrics.NewScope(globalCfg.Metrics, logger, userConfig.StatsNamespace)
 
 	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
 		supportedVCSHosts = append(supportedVCSHosts, models.Github)
@@ -349,7 +375,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			commitStatusUpdater,
 			router,
 			logger,
-			statsScope.Scope("api"),
+			statsScope.SubScope("api"),
 		)
 	}
 
@@ -421,29 +447,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir:       workingDir,
 		WorkingDirLocker: workingDirLocker,
 		DB:               boltdb,
-	}
-
-	validator := &yaml.ParserValidator{}
-
-	globalCfg := valid.NewGlobalCfgFromArgs(
-		valid.GlobalCfgArgs{
-			AllowRepoCfg:       userConfig.AllowRepoConfig,
-			MergeableReq:       userConfig.RequireMergeable,
-			ApprovedReq:        userConfig.RequireApproval,
-			UnDivergedReq:      userConfig.RequireUnDiverged,
-			SQUnLockedReq:      userConfig.RequireSQUnlocked,
-			PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
-		})
-	if userConfig.RepoConfig != "" {
-		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
-		if err != nil {
-			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
-		}
-	} else if userConfig.RepoConfigJSON != "" {
-		globalCfg, err = validator.ParseGlobalCfgJSON(userConfig.RepoConfigJSON, globalCfg)
-		if err != nil {
-			return nil, errors.Wrapf(err, "parsing --%s", config.RepoConfigJSONFlag)
-		}
 	}
 
 	pullClosedExecutor := events.NewInstrumentedPullClosedExecutor(
