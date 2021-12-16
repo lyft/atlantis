@@ -201,6 +201,7 @@ func TestPost_GitlabCommentNotAllowlisted(t *testing.T) {
 	vcsClient := vcsmocks.NewMockClient()
 	e := events_controllers.VCSEventsController{
 		Logger:                       logging.NewNoopLogger(t),
+		Scope:                        stats.NewStore(stats.NewNullSink(), false).Scope("null"),
 		CommentParser:                &events.CommentParser{},
 		GitlabRequestParserValidator: &events_controllers.DefaultGitlabRequestParserValidator{},
 		Parser:                       &events.EventParser{},
