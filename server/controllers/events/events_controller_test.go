@@ -418,7 +418,7 @@ func TestPost_GithubPullRequestNotAllowlisted(t *testing.T) {
 	When(v.Validate(req, secret)).ThenReturn([]byte(event), nil)
 	w := httptest.NewRecorder()
 	e.Post(w, req)
-	ResponseContains(t, w, http.StatusForbidden, "Ignoring pull request event from non-allowlisted repo")
+	ResponseContains(t, w, http.StatusForbidden, "Pull request event from non-allowlisted repo")
 }
 
 func TestPost_GitlabMergeRequestNotAllowlisted(t *testing.T) {
@@ -437,7 +437,7 @@ func TestPost_GitlabMergeRequestNotAllowlisted(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	e.Post(w, req)
-	ResponseContains(t, w, http.StatusForbidden, "Ignoring pull request event from non-allowlisted repo")
+	ResponseContains(t, w, http.StatusForbidden, "Pull request event from non-allowlisted repo")
 }
 
 func TestPost_GithubPullRequestUnsupportedAction(t *testing.T) {
