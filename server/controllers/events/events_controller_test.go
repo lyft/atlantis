@@ -230,6 +230,7 @@ func TestPost_GitlabCommentNotAllowlistedWithSilenceErrors(t *testing.T) {
 	vcsClient := vcsmocks.NewMockClient()
 	e := events_controllers.VCSEventsController{
 		Logger:                       logging.NewNoopLogger(t),
+		Scope:                        stats.NewStore(stats.NewNullSink(), false).Scope("null"),
 		CommentParser:                &events.CommentParser{},
 		GitlabRequestParserValidator: &events_controllers.DefaultGitlabRequestParserValidator{},
 		Parser:                       &events.EventParser{},
@@ -289,6 +290,7 @@ func TestPost_GithubCommentNotAllowlistedWithSilenceErrors(t *testing.T) {
 	vcsClient := vcsmocks.NewMockClient()
 	e := events_controllers.VCSEventsController{
 		Logger:                 logging.NewNoopLogger(t),
+		Scope:                  stats.NewStore(stats.NewNullSink(), false).Scope("null"),
 		GithubRequestValidator: &events_controllers.DefaultGithubRequestValidator{},
 		CommentParser:          &events.CommentParser{},
 		Parser:                 &events.EventParser{},
@@ -487,6 +489,7 @@ func TestPost_AzureDevopsPullRequestIgnoreEvent(t *testing.T) {
 	e := events_controllers.VCSEventsController{
 		TestingMode:                     true,
 		Logger:                          logging.NewNoopLogger(t),
+		Scope:                           stats.NewStore(stats.NewNullSink(), false).Scope("null"),
 		ApplyDisabled:                   false,
 		AzureDevopsWebhookBasicUser:     user,
 		AzureDevopsWebhookBasicPassword: secret,
@@ -651,6 +654,7 @@ func TestPost_BBServerPullClosed(t *testing.T) {
 				SupportedVCSHosts:    []models.VCSHostType{models.BitbucketServer},
 				VCSClient:            nil,
 				Logger:               logging.NewNoopLogger(t),
+				Scope:                stats.NewStore(stats.NewNullSink(), false).Scope("null"),
 			}
 
 			// Build HTTP request.
