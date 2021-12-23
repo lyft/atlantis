@@ -13,9 +13,9 @@
 package events
 
 import (
-	stats "github.com/lyft/gostats"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/uber-go/tally"
 )
 
 // CommandTrigger represents the how the command was triggered
@@ -41,7 +41,7 @@ type CommandContext struct {
 	// User is the user that triggered this command.
 	User  models.User
 	Log   logging.SimpleLogging
-	Scope stats.Scope
+	Scope tally.Scope
 	// PullMergeable is true if Pull is able to be merged. This is available in
 	// the CommandContext because we want to collect this information before we
 	// set our own build statuses which can affect mergeability if users have

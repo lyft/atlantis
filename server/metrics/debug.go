@@ -14,7 +14,7 @@ func newLoggingReporter(logger logging.SimpleLogging) tally.StatsReporter {
 }
 
 type debugReporter struct {
-	log    logging.SimpleLogging
+	log logging.SimpleLogging
 }
 
 // Capabilities interface.
@@ -61,12 +61,12 @@ func (r *debugReporter) ReportHistogramValueSamples(
 	samples int64,
 ) {
 	log := r.log.With(
-		"name", name, 
-		"buckets", buckets.AsValues(), 
-		"bucketLowerBound", bucketLowerBound, 
-		"bucketUpperBound", bucketUpperBound, 
-		"samples", samples, 
-		"tags", tags, 
+		"name", name,
+		"buckets", buckets.AsValues(),
+		"bucketLowerBound", bucketLowerBound,
+		"bucketUpperBound", bucketUpperBound,
+		"samples", samples,
+		"tags", tags,
 		"type", "valueHistogram",
 	)
 	log.Debug("histogram")
@@ -81,12 +81,12 @@ func (r *debugReporter) ReportHistogramDurationSamples(
 	samples int64,
 ) {
 	log := r.log.With(
-		"name", name, 
-		"buckets", buckets.AsValues(), 
-		"bucketLowerBound", bucketLowerBound, 
-		"bucketUpperBound", bucketUpperBound, 
-		"samples", samples, 
-		"tags", tags, 
+		"name", name,
+		"buckets", buckets.AsValues(),
+		"bucketLowerBound", bucketLowerBound,
+		"bucketUpperBound", bucketUpperBound,
+		"samples", samples,
+		"tags", tags,
 		"type", "durationHistogram",
 	)
 	log.Debug("histogram")

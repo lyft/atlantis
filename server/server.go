@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -34,7 +35,6 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/runatlantis/atlantis/server/core/db"
-	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
@@ -42,10 +42,11 @@ import (
 	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/lyft/scheduled"
+	"github.com/runatlantis/atlantis/server/metrics"
+	"github.com/uber-go/tally"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
-	stats "github.com/lyft/gostats"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers"
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
@@ -96,7 +97,8 @@ type Server struct {
 	PreWorkflowHooksCommandRunner *events.DefaultPreWorkflowHooksCommandRunner
 	CommandRunner                 *events.DefaultCommandRunner
 	Logger                        logging.SimpleLogging
-	StatsScope                    stats.Scope
+	StatsScope                    tally.Scope
+	StatsCloser                   io.Closer
 	Locker                        locking.Locker
 	ApplyLocker                   locking.ApplyLocker
 	VCSEventsController           *events_controllers.VCSEventsController
@@ -196,7 +198,17 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		}
 	}
 
+	// TODO: move this to yaml in a followup
+	globalCfg.Metrics.Statsd = &valid.Statsd{
+		Host: "127.0.0.1",
+		Port: "8125",
+	}
+
 	statsScope, closer, err := metrics.NewScope(globalCfg.Metrics, logger, userConfig.StatsNamespace)
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "instantiating metrics scope")
+	}
 
 	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
 		supportedVCSHosts = append(supportedVCSHosts, models.Github)
@@ -370,12 +382,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectCmdOutputHandler = &handlers.NoopProjectOutputHandler{}
 	} else {
 		projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
-		projectCmdOutputHandler = handlers.NewInstrumentedProjectCommandOutputHandler(
+		projectCmdOutputHandler = handlers.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
 			commitStatusUpdater,
 			router,
 			logger,
-			statsScope.SubScope("api"),
 		)
 	}
 
@@ -711,7 +722,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EventParser:                   eventParser,
 		Logger:                        logger,
 		GlobalCfg:                     globalCfg,
-		StatsScope:                    statsScope.Scope("cmd"),
+		StatsScope:                    statsScope.SubScope("cmd"),
 		AllowForkPRs:                  userConfig.AllowForkPRs,
 		AllowForkPRsFlag:              config.AllowForkPRsFlag,
 		SilenceForkPRErrors:           userConfig.SilenceForkPRErrors,
@@ -761,7 +772,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ProjectJobsErrorTemplate: templates.ProjectJobsErrorTemplate,
 		Db:                       boltdb,
 		WsMux:                    wsMux,
-		StatsScope:               statsScope.Scope("api"),
+		StatsScope:               statsScope.SubScope("api"),
 	}
 
 	eventsController := &events_controllers.VCSEventsController{
@@ -839,6 +850,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		CommandRunner:                 commandRunner,
 		Logger:                        logger,
 		StatsScope:                    statsScope,
+		StatsCloser:                   closer,
 		Locker:                        lockingClient,
 		ApplyLocker:                   applyLockingClient,
 		VCSEventsController:           eventsController,
@@ -919,7 +931,10 @@ func (s *Server) Start() error {
 	s.waitForDrain()
 
 	// flush stats before shutdown
-	s.StatsScope.Store().Flush()
+	err := s.StatsCloser.Close()
+	if err != nil {
+		s.Logger.Err(err.Error())
+	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second) // nolint: vet
 	if err := server.Shutdown(ctx); err != nil {

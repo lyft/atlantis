@@ -13,6 +13,21 @@ import (
 	tallystatsd "github.com/uber-go/tally/statsd"
 )
 
+func NewLoggingScope(logger logging.SimpleLogging, statsNamespace string) (tally.Scope, io.Closer, error) {
+	reporter, err := newReporter(valid.Metrics{}, logger)
+
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "initializing stats reporter")
+	}
+
+	scope, closer := tally.NewRootScope(tally.ScopeOptions{
+		Prefix:   statsNamespace,
+		Reporter: reporter,
+	}, time.Second)
+
+	return scope, closer, nil
+}
+
 func NewScope(cfg valid.Metrics, logger logging.SimpleLogging, statsNamespace string) (tally.Scope, io.Closer, error) {
 	reporter, err := newReporter(cfg, logger)
 
