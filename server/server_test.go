@@ -26,7 +26,6 @@ import (
 	"github.com/gorilla/mux"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server"
-	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	tMocks "github.com/runatlantis/atlantis/server/controllers/templates/mocks"
 	"github.com/runatlantis/atlantis/server/core/locking/mocks"
@@ -34,31 +33,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
-
-func TestNewServer(t *testing.T) {
-	t.Log("Run through NewServer constructor")
-	tmpDir, err := ioutil.TempDir("", "")
-	Ok(t, err)
-	_, err = server.NewServer(config.UserConfig{
-		DataDir:     tmpDir,
-		AtlantisURL: "http://example.com",
-	}, server.Config{})
-	Ok(t, err)
-}
-
-// todo: test what happens if we set different flags. The generated config should be different.
-
-func TestNewServer_InvalidAtlantisURL(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "")
-	Ok(t, err)
-	_, err = server.NewServer(config.UserConfig{
-		DataDir:     tmpDir,
-		AtlantisURL: "example.com",
-	}, server.Config{
-		AtlantisURLFlag: "atlantis-url",
-	})
-	ErrEquals(t, "parsing --atlantis-url flag \"example.com\": http or https must be specified", err)
-}
 
 func TestIndex_LockErr(t *testing.T) {
 	t.Log("index should return a 503 if unable to list locks")

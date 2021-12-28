@@ -18,7 +18,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -320,10 +319,7 @@ func NewServer(userConfig config.UserConfig, config Config) (*Server, error) {
 	underlyingRouter := mux.NewRouter()
 	router := NewRouter(underlyingRouter, parsedURL)
 
-	var projectCmdOutputHandler handlers.ProjectCommandOutputHandler
-	// When TFE is enabled log streaming is not necessary.
-
-	projectCmdOutputHandler = handlers.NewProjectCommandOutputHandler(
+	projectCmdOutputHandler := handlers.NewProjectCommandOutputHandler(
 		userConfig,
 		statsScope.Scope("api"),
 		commitStatusUpdater,
@@ -343,10 +339,8 @@ func NewServer(userConfig config.UserConfig, config Config) (*Server, error) {
 		true,
 		projectCmdOutputHandler,
 		featureAllocator)
-	// The flag.Lookup call is to detect if we're running in a unit test. If we
-	// are, then we don't error out because we don't have/want terraform
-	// installed on our CI system where the unit tests run.
-	if err != nil && flag.Lookup("test.v") == nil {
+
+	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform")
 	}
 	markdownRenderer := &events.MarkdownRenderer{
