@@ -94,3 +94,18 @@ type UserConfig struct {
 	WriteGitCreds            bool            `mapstructure:"write-git-creds"`
 	LyftAuditJobsSnsTopicArn string          `mapstructure:"lyft-audit-jobs-sns-topic-arn"`
 }
+
+// WebhookConfig is nested within UserConfig. It's used to configure webhooks.
+type WebhookConfig struct {
+	// Event is the type of event we should send this webhook for, ex. apply.
+	Event string `mapstructure:"event"`
+	// WorkspaceRegex is a regex that is used to match against the workspace
+	// that is being modified for this event. If the regex matches, we'll
+	// send the webhook, ex. "production.*".
+	WorkspaceRegex string `mapstructure:"workspace-regex"`
+	// Kind is the type of webhook we should send, ex. slack.
+	Kind string `mapstructure:"kind"`
+	// Channel is the channel to send this webhook to. It only applies to
+	// slack webhooks. Should be without '#'.
+	Channel string `mapstructure:"channel"`
+}

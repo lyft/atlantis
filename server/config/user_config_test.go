@@ -1,9 +1,9 @@
-package server_test
+package config_test
 
 import (
 	"testing"
 
-	"github.com/runatlantis/atlantis/server"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -37,10 +37,10 @@ func TestUserConfig_ToLogLevel(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.userLvl, func(t *testing.T) {
-			u := server.UserConfig{
+			u := config.UserConfig{
 				LogLevel: c.userLvl,
 			}
-			Equals(t, c.expLvl, u.ToLogLevel())
+			Equals(t, c.expLvl, logging.ToLogLevel(u.LogLevel))
 		})
 	}
 }

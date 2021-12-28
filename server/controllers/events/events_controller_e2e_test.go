@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/go-version"
 	stats "github.com/lyft/gostats"
 	. "github.com/petergtz/pegomock"
-	"github.com/runatlantis/atlantis/server"
+	"github.com/runatlantis/atlantis/server/config"
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/locking"
@@ -46,7 +46,7 @@ import (
 const ConftestVersion = "0.25.0"
 
 var applyLocker locking.ApplyLocker
-var userConfig server.UserConfig
+var userConfig config.UserConfig
 
 type NoopTFDownloader struct{}
 
@@ -389,7 +389,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			RegisterMockTestingT(t)
 
 			// reset userConfig
-			userConfig = server.UserConfig{}
+			userConfig = config.UserConfig{}
 			userConfig.DisableApply = c.DisableApply
 
 			ctrl, vcsClient, githubGetter, atlantisWorkspace, _ := setupE2E(t, c.RepoDir)
@@ -527,7 +527,7 @@ func TestSimlpleWorkflow_terraformLockFile(t *testing.T) {
 			RegisterMockTestingT(t)
 
 			// reset userConfig
-			userConfig = server.UserConfig{}
+			userConfig = config.UserConfig{}
 			userConfig.DisableApply = true
 
 			ctrl, vcsClient, githubGetter, atlantisWorkspace, _ := setupE2E(t, c.RepoDir)
@@ -732,7 +732,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			RegisterMockTestingT(t)
 
 			// reset userConfig
-			userConfig = server.UserConfig{}
+			userConfig = config.UserConfig{}
 			userConfig.EnablePolicyChecksFlag = true
 
 			ctrl, vcsClient, githubGetter, atlantisWorkspace, githubClient := setupE2E(t, c.RepoDir)
