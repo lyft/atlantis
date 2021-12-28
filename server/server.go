@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/handlers"
@@ -57,9 +58,9 @@ import (
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
-	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
+	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -143,8 +144,8 @@ type WebhookConfig struct {
 // NewServer returns a new server. If there are issues starting the server or
 // its dependencies an error will be returned. This is like the main() function
 // for the server CLI command because it injects all the dependencies.
-func NewServer(userConfig UserConfig, config Config) (*Server, error) {
-	logger, err := logging.NewStructuredLoggerFromLevel(userConfig.ToLogLevel())
+func NewServer(userConfig config.UserConfig, config Config) (*Server, error) {
+	logger, err := logging.NewStructuredLoggerFromConfig(userConfig)
 
 	if err != nil {
 		return nil, err
@@ -332,30 +333,18 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	underlyingRouter := mux.NewRouter()
-	router := &Router{
-		AtlantisURL:               parsedURL,
-		LockViewRouteIDQueryParam: LockViewRouteIDQueryParam,
-		LockViewRouteName:         LockViewRouteName,
-		ProjectJobsViewRouteName:  ProjectJobsViewRouteName,
-		Underlying:                underlyingRouter,
-	}
+	router := NewRouter(underlyingRouter, parsedURL)
 
 	var projectCmdOutputHandler handlers.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
 
-	if userConfig.TFEToken != "" {
-		projectCmdOutputHandler = &handlers.NoopProjectOutputHandler{}
-	} else {
-		projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
-		projectCmdOutputHandler = handlers.NewInstrumentedProjectCommandOutputHandler(
-			projectCmdOutput,
-			commitStatusUpdater,
-			router,
-			logger,
-			statsScope.Scope("api"),
-		)
-	}
-
+	projectCmdOutputHandler = handlers.NewProjectCommandOutputHandler(
+		userConfig,
+		statsScope.Scope("api"),
+		commitStatusUpdater,
+		router,
+		logger,
+	)
 	terraformClient, err := terraform.NewClient(
 		logger,
 		binDir,
@@ -384,20 +373,27 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EnableDiffMarkdownFormat: userConfig.EnableDiffMarkdownFormat,
 	}
 
-	boltdb, err := db.New(userConfig.DataDir)
+	// moved
+	boltdb, err := db.NewBoltdb(userConfig)
 	if err != nil {
 		return nil, err
 	}
 	var lockingClient locking.Locker
 	var applyLockingClient locking.ApplyLocker
+
+	// moved
 	if userConfig.DisableRepoLocking {
 		lockingClient = locking.NewNoOpLocker()
 	} else {
 		lockingClient = locking.NewClient(boltdb)
 	}
+
 	applyLockingClient = locking.NewApplyClient(boltdb, userConfig.DisableApply)
+
+	// moved
 	workingDirLocker := events.NewDefaultWorkingDirLocker()
 
+	// moved
 	var workingDir events.WorkingDir = &events.FileWorkspace{
 		DataDir:       userConfig.DataDir,
 		CheckoutMerge: userConfig.CheckoutStrategy == "merge",
@@ -462,18 +458,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			VCSClient:                vcsClient,
 		},
 	)
-	eventParser := &events.EventParser{
-		GithubUser:         userConfig.GithubUser,
-		GithubToken:        userConfig.GithubToken,
-		GitlabUser:         userConfig.GitlabUser,
-		GitlabToken:        userConfig.GitlabToken,
-		AllowDraftPRs:      userConfig.PlanDrafts,
-		BitbucketUser:      userConfig.BitbucketUser,
-		BitbucketToken:     userConfig.BitbucketToken,
-		BitbucketServerURL: userConfig.BitbucketBaseURL,
-		AzureDevopsUser:    userConfig.AzureDevopsUser,
-		AzureDevopsToken:   userConfig.AzureDevopsToken,
-	}
+	eventParser := events.NewEventParser(userConfig)
+
 	commentParser := &events.CommentParser{
 		GithubUser:      userConfig.GithubUser,
 		GitlabUser:      userConfig.GitlabUser,
@@ -794,42 +780,22 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubStatusName:    userConfig.VCSStatusName,
 	}
 
-	scheduledExecutorService := scheduled.NewExecutorService(
-		events.NewFileWorkDirIterator(
-			githubClient,
-			eventParser,
-			userConfig.DataDir,
-			logger,
-		),
-		statsScope,
-		logger,
-		&events.PullClosedExecutor{
-			VCSClient:                vcsClient,
-			Locker:                   lockingClient,
-			WorkingDir:               workingDir,
-			Logger:                   logger,
-			DB:                       boltdb,
-			LogStreamResourceCleaner: projectCmdOutputHandler,
-
-			// using a specific template to signal that this is from an async process
-			PullClosedTemplate: scheduled.NewGCStaleClosedPull(),
-		},
-
-		// using a pullclosed executor for stale open PRs. Naming is weird, we need to come up with something better.
-		&events.PullClosedExecutor{
-			VCSClient:                vcsClient,
-			Locker:                   lockingClient,
-			WorkingDir:               workingDir,
-			Logger:                   logger,
-			DB:                       boltdb,
-			LogStreamResourceCleaner: projectCmdOutputHandler,
-
-			// using a specific template to signal that this is from an async process
-			PullClosedTemplate: scheduled.NewGCStaleOpenPull(),
-		},
-
+	scheduledExecutorService, err := InitializeScheduledExecutorService(
+		vcsClient,
+		userConfig,
 		rawGithubClient,
+		githubClient,
+		logger,
+		statsScope,
+		projectCmdOutputHandler,
+		lockingClient,
+		boltdb,
+		workingDir,
 	)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &Server{
 		AtlantisVersion:               config.AtlantisVersion,

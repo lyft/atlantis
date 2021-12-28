@@ -12,10 +12,13 @@ import (
 	"time"
 
 	stats "github.com/lyft/gostats"
+	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events"
+	"github.com/runatlantis/atlantis/server/core/locking"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
@@ -31,18 +34,21 @@ func NewExecutorService(
 	workingDirIterator events.WorkDirIterator,
 	statsScope stats.Scope,
 	log logging.SimpleLogging,
-	closedPullCleaner events.PullCleaner,
-	openPullCleaner events.PullCleaner,
+	closedPullCleaner ClosedPullCleaner,
+	openPullCleaner OpenPullClenaer,
 	githubClient *vcs.GithubClient,
 ) *ExecutorService {
+
+	typedClosedPullCleaner := (*events.PullClosedExecutor)(closedPullCleaner)
+	typedOpenPullCleaner := (*events.PullClosedExecutor)(openPullCleaner)
 
 	scheduledScope := statsScope.Scope("scheduled")
 	garbageCollector := &GarbageCollector{
 		workingDirIterator: workingDirIterator,
 		stats:              scheduledScope.Scope("garbagecollector"),
 		log:                log,
-		closedPullCleaner:  closedPullCleaner,
-		openPullCleaner:    openPullCleaner,
+		closedPullCleaner:  typedClosedPullCleaner,
+		openPullCleaner:    typedOpenPullCleaner,
 	}
 
 	garbageCollectorJob := JobDefinition{
@@ -68,6 +74,51 @@ func NewExecutorService(
 		log:                log,
 		garbageCollector:   garbageCollectorJob,
 		rateLimitPublisher: rateLimitPublisherJob,
+	}
+}
+
+type OpenPullClenaer *events.PullClosedExecutor
+type ClosedPullCleaner *events.PullClosedExecutor
+
+func NewStaleClosedPullExecutor(
+	vcsClient vcs.Client, 
+	lockingClient locking.Locker, 
+	workingDir events.WorkingDir,
+	logger logging.SimpleLogging,
+	boltdb *db.BoltDB,
+	resourceCleaner handlers.ResourceCleaner,
+) ClosedPullCleaner {
+	return &events.PullClosedExecutor{
+		VCSClient:                vcsClient,
+		Locker:                   lockingClient,
+		WorkingDir:               workingDir,
+		Logger:                   logger,
+		DB:                       boltdb,
+		LogStreamResourceCleaner: resourceCleaner,
+
+		// using a specific template to signal that this is from an async process
+		PullClosedTemplate: NewGCStaleClosedPull(),
+	}
+}
+
+func NewStaleOpenPullExecutor(
+	vcsClient vcs.Client, 
+	lockingClient locking.Locker, 
+	workingDir events.WorkingDir,
+	logger logging.SimpleLogging,
+	boltdb *db.BoltDB,
+	resourceCleaner handlers.ResourceCleaner,
+) OpenPullClenaer {
+	return &events.PullClosedExecutor{
+		VCSClient:                vcsClient,
+		Locker:                   lockingClient,
+		WorkingDir:               workingDir,
+		Logger:                   logger,
+		DB:                       boltdb,
+		LogStreamResourceCleaner: resourceCleaner,
+
+		// using a specific template to signal that this is from an async process
+		PullClosedTemplate: NewGCStaleClosedPull(),
 	}
 }
 

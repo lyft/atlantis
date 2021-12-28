@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/events/models"
 	bolt "go.etcd.io/bbolt"
 )
@@ -21,6 +22,10 @@ type BoltDB struct {
 	locksBucketName       []byte
 	pullsBucketName       []byte
 	globalLocksBucketName []byte
+}
+
+func NewBoltdb(userConfig config.UserConfig) (*BoltDB, error) {
+	return New(userConfig.DataDir)
 }
 
 const (

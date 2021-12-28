@@ -28,6 +28,16 @@ type Router struct {
 	AtlantisURL *url.URL
 }
 
+func NewRouter(router *mux.Router, atlantisUrl *url.URL) *Router {
+	return &Router{
+		AtlantisURL:               atlantisUrl,
+		LockViewRouteIDQueryParam: LockViewRouteIDQueryParam,
+		LockViewRouteName:         LockViewRouteName,
+		ProjectJobsViewRouteName:  ProjectJobsViewRouteName,
+		Underlying:                router,
+	}
+}
+
 // GenerateLockURL returns a fully qualified URL to view the lock at lockID.
 func (r *Router) GenerateLockURL(lockID string) string {
 	lockURL, _ := r.Underlying.Get(r.LockViewRouteName).URL(r.LockViewRouteIDQueryParam, url.QueryEscape(lockID))

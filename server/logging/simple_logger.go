@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
@@ -71,7 +72,8 @@ type StructuredLogger struct {
 	history bytes.Buffer
 }
 
-func NewStructuredLoggerFromLevel(lvl LogLevel) (SimpleLogging, error) {
+func NewStructuredLoggerFromConfig(userConfig config.UserConfig) (*StructuredLogger, error) {
+	lvl := ToLogLevel(userConfig.LogLevel)
 	cfg := zap.NewProductionConfig()
 
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
@@ -79,7 +81,7 @@ func NewStructuredLoggerFromLevel(lvl LogLevel) (SimpleLogging, error) {
 	return newStructuredLogger(cfg)
 }
 
-func NewStructuredLogger() (SimpleLogging, error) {
+func NewStructuredLogger() (*StructuredLogger, error) {
 	cfg := zap.NewProductionConfig()
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	return newStructuredLogger(cfg)
@@ -213,3 +215,19 @@ var (
 		shortStr: "EROR",
 	}
 )
+
+// ToLogLevel returns the LogLevel object corresponding to the user-passed
+// log level.
+func ToLogLevel(rawLogLevel string) LogLevel {
+	switch rawLogLevel {
+	case "debug":
+		return Debug
+	case "info":
+		return Info
+	case "warn":
+		return Warn
+	case "error":
+		return Error
+	}
+	return Info
+}

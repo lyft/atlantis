@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -66,6 +67,14 @@ type FileWorkspace struct {
 	// TestingOverrideBaseCloneURL can be used during testing to override the
 	// URL of the base repo to be cloned. If it's empty then we clone normally.
 	TestingOverrideBaseCloneURL string
+}
+
+func NewWorkingDir(userConfig config.UserConfig) *FileWorkspace {
+	return  &FileWorkspace{
+		DataDir:       userConfig.DataDir,
+		CheckoutMerge: userConfig.CheckoutStrategy == "merge",
+	}
+
 }
 
 // Clone git clones headRepo, checks out the branch and then returns the absolute

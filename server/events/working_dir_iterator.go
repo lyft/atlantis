@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -27,12 +28,12 @@ type FileWorkDirIterator struct {
 func NewFileWorkDirIterator(
 	githubClient vcs.GithubPullRequestGetter,
 	eventParser EventParsing,
-	dataDir string,
+	userConfig config.UserConfig,
 	log logging.SimpleLogging,
 ) *FileWorkDirIterator {
 	return &FileWorkDirIterator{
 		Log:          log,
-		DataDir:      dataDir,
+		DataDir:      userConfig.DataDir,
 		EventParser:  eventParser,
 		GithubClient: githubClient,
 	}

@@ -19,6 +19,7 @@ import (
 
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	"github.com/runatlantis/atlantis/server/config"
 )
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_commit_status_updater.go CommitStatusUpdater
@@ -41,6 +42,10 @@ type CommitStatusUpdater interface {
 type DefaultCommitStatusUpdater struct {
 	Client       vcs.Client
 	TitleBuilder vcs.StatusTitleBuilder
+}
+
+func NewCommitStatusUpdater(vcsClient vcs.Client, userConfig config.UserConfig) *DefaultCommitStatusUpdater {
+	return &DefaultCommitStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
 }
 
 func (d *DefaultCommitStatusUpdater) UpdateCombined(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName models.CommandName) error {

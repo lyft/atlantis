@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-github/v31/github"
 	"github.com/mcdafydd/go-azuredevops/azuredevops"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
@@ -297,6 +298,21 @@ type EventParser struct {
 	BitbucketServerURL string
 	AzureDevopsToken   string
 	AzureDevopsUser    string
+}
+
+func NewEventParser(userConfig config.UserConfig) *EventParser {
+	return &EventParser{
+		GithubUser:         userConfig.GithubUser,
+		GithubToken:        userConfig.GithubToken,
+		GitlabUser:         userConfig.GitlabUser,
+		GitlabToken:        userConfig.GitlabToken,
+		AllowDraftPRs:      userConfig.PlanDrafts,
+		BitbucketUser:      userConfig.BitbucketUser,
+		BitbucketToken:     userConfig.BitbucketToken,
+		BitbucketServerURL: userConfig.BitbucketBaseURL,
+		AzureDevopsUser:    userConfig.AzureDevopsUser,
+		AzureDevopsToken:   userConfig.AzureDevopsToken,
+	}
 }
 
 // GetBitbucketCloudPullEventType returns the type of the pull request

@@ -24,6 +24,7 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
@@ -34,7 +35,7 @@ import (
 
 // To add a new flag you must:
 // 1. Add a const with the flag name (in alphabetic order).
-// 2. Add a new field to server.UserConfig and set the mapstructure tag equal to the flag name.
+// 2. Add a new field to config.UserConfig and set the mapstructure tag equal to the flag name.
 // 3. Add your flag's description etc. to the stringFlags, intFlags, or boolFlags slices.
 const (
 	// Flag names.
@@ -475,7 +476,7 @@ type ServerCmd struct {
 // ServerCreator creates servers.
 // It's an abstraction to help us test.
 type ServerCreator interface {
-	NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error)
+	NewServer(userConfig config.UserConfig, config server.Config) (ServerStarter, error)
 }
 
 // DefaultServerCreator is the concrete implementation of ServerCreator.
@@ -488,7 +489,7 @@ type ServerStarter interface {
 }
 
 // NewServer returns the real Atlantis server object.
-func (d *DefaultServerCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
+func (d *DefaultServerCreator) NewServer(userConfig config.UserConfig, config server.Config) (ServerStarter, error) {
 	return server.NewServer(userConfig, config)
 }
 
@@ -586,7 +587,7 @@ func (s *ServerCmd) preRun() error {
 }
 
 func (s *ServerCmd) run() error {
-	var userConfig server.UserConfig
+	var userConfig config.UserConfig
 	if err := s.Viper.Unmarshal(&userConfig); err != nil {
 		return err
 	}
@@ -594,7 +595,7 @@ func (s *ServerCmd) run() error {
 
 	// Now that we've parsed the config we can set our local logger to the
 	// right level.
-	s.Logger.SetLevel(userConfig.ToLogLevel())
+	s.Logger.SetLevel(logging.ToLogLevel(userConfig.LogLevel))
 
 	if err := s.validate(userConfig); err != nil {
 		return err
@@ -626,7 +627,7 @@ func (s *ServerCmd) run() error {
 	return server.Start()
 }
 
-func (s *ServerCmd) setDefaults(c *server.UserConfig) {
+func (s *ServerCmd) setDefaults(c *config.UserConfig) {
 	if c.AutoplanFileList == "" {
 		c.AutoplanFileList = DefaultAutoplanFileList
 	}
@@ -671,7 +672,7 @@ func (s *ServerCmd) setDefaults(c *server.UserConfig) {
 	}
 }
 
-func (s *ServerCmd) validate(userConfig server.UserConfig) error {
+func (s *ServerCmd) validate(userConfig config.UserConfig) error {
 	userConfig.LogLevel = strings.ToLower(userConfig.LogLevel)
 	if !isValidLogLevel(userConfig.LogLevel) {
 		return fmt.Errorf("invalid log level: must be one of %v", ValidLogLevels)
@@ -769,7 +770,7 @@ func (s *ServerCmd) validate(userConfig server.UserConfig) error {
 }
 
 // setAtlantisURL sets the externally accessible URL for atlantis.
-func (s *ServerCmd) setAtlantisURL(userConfig *server.UserConfig) error {
+func (s *ServerCmd) setAtlantisURL(userConfig *config.UserConfig) error {
 	if userConfig.AtlantisURL == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -783,7 +784,7 @@ func (s *ServerCmd) setAtlantisURL(userConfig *server.UserConfig) error {
 // setDataDir checks if ~ was used in data-dir and converts it to the actual
 // home directory. If we don't do this, we'll create a directory called "~"
 // instead of actually using home. It also converts relative paths to absolute.
-func (s *ServerCmd) setDataDir(userConfig *server.UserConfig) error {
+func (s *ServerCmd) setDataDir(userConfig *config.UserConfig) error {
 	finalPath := userConfig.DataDir
 
 	// Convert ~ to the actual home dir.
@@ -805,14 +806,14 @@ func (s *ServerCmd) setDataDir(userConfig *server.UserConfig) error {
 }
 
 // trimAtSymbolFromUsers trims @ from the front of the github and gitlab usernames
-func (s *ServerCmd) trimAtSymbolFromUsers(userConfig *server.UserConfig) {
+func (s *ServerCmd) trimAtSymbolFromUsers(userConfig *config.UserConfig) {
 	userConfig.GithubUser = strings.TrimPrefix(userConfig.GithubUser, "@")
 	userConfig.GitlabUser = strings.TrimPrefix(userConfig.GitlabUser, "@")
 	userConfig.BitbucketUser = strings.TrimPrefix(userConfig.BitbucketUser, "@")
 	userConfig.AzureDevopsUser = strings.TrimPrefix(userConfig.AzureDevopsUser, "@")
 }
 
-func (s *ServerCmd) securityWarnings(userConfig *server.UserConfig) {
+func (s *ServerCmd) securityWarnings(userConfig *config.UserConfig) {
 	if userConfig.GithubUser != "" && userConfig.GithubWebhookSecret == "" && !s.SilenceOutput {
 		s.Logger.Warn("no GitHub webhook secret set. This could allow attackers to spoof requests from GitHub")
 	}
@@ -833,7 +834,7 @@ func (s *ServerCmd) securityWarnings(userConfig *server.UserConfig) {
 // deprecationWarnings prints a warning if flags that are deprecated are
 // being used. Right now this only applies to flags that have been made obsolete
 // due to server-side config.
-func (s *ServerCmd) deprecationWarnings(userConfig *server.UserConfig) error {
+func (s *ServerCmd) deprecationWarnings(userConfig *config.UserConfig) error {
 	var applyReqs []string
 	var deprecatedFlags []string
 	if userConfig.RequireApproval {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	stats "github.com/lyft/gostats"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -14,11 +15,20 @@ type InstrumentedProjectCommandOutputHandler struct {
 	logger            logging.SimpleLogging
 }
 
-func NewInstrumentedProjectCommandOutputHandler(projectCmdOutput chan *models.ProjectCmdOutputLine,
+func NewProjectCommandOutputHandler(
+	userConfig config.UserConfig,
+	statsScope stats.Scope,
 	projectStatusUpdater ProjectStatusUpdater,
 	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
-	scope stats.Scope) ProjectCommandOutputHandler {
+) ProjectCommandOutputHandler {
+	if userConfig.TFEToken != "" {
+		return &NoopProjectOutputHandler{}
+	}
+
+	projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
+	scope := statsScope.Scope("api")
+
 	prjCmdOutputHandler := NewAsyncProjectCommandOutputHandler(
 		projectCmdOutput,
 		projectStatusUpdater,

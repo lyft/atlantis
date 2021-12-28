@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -63,7 +64,18 @@ type Locker interface {
 	GetLock(key string) (*models.ProjectLock, error)
 }
 
-// NewClient returns a new locking client.
+func NewLockingClient(userConfig config.UserConfig, backend Backend) Locker {
+	var lockingClient Locker
+	if userConfig.DisableRepoLocking {
+		lockingClient = NewNoOpLocker()
+	} else {
+		lockingClient = NewClient(backend)
+	}
+
+	return lockingClient
+}
+
+// newClient returns a new locking client.
 func NewClient(backend Backend) *Client {
 	return &Client{
 		backend: backend,

@@ -24,6 +24,7 @@ import (
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/runatlantis/atlantis/server"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
@@ -34,11 +35,11 @@ import (
 
 // passedConfig is set to whatever config ended up being passed to NewServer.
 // Used for testing.
-var passedConfig server.UserConfig
+var passedConfig config.UserConfig
 
 type ServerCreatorMock struct{}
 
-func (s *ServerCreatorMock) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
+func (s *ServerCreatorMock) NewServer(userConfig config.UserConfig, config server.Config) (ServerStarter, error) {
 	passedConfig = userConfig
 	return &ServerStarterMock{}, nil
 }
@@ -847,7 +848,7 @@ func tempFile(t *testing.T, contents string) string {
 	return newName
 }
 
-func configVal(t *testing.T, u server.UserConfig, tag string) interface{} {
+func configVal(t *testing.T, u config.UserConfig, tag string) interface{} {
 	t.Helper()
 	v := reflect.ValueOf(u)
 	typeOfS := v.Type()

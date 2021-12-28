@@ -26,6 +26,7 @@ import (
 	"github.com/gorilla/mux"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server"
+	"github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	tMocks "github.com/runatlantis/atlantis/server/controllers/templates/mocks"
 	"github.com/runatlantis/atlantis/server/core/locking/mocks"
@@ -38,7 +39,7 @@ func TestNewServer(t *testing.T) {
 	t.Log("Run through NewServer constructor")
 	tmpDir, err := ioutil.TempDir("", "")
 	Ok(t, err)
-	_, err = server.NewServer(server.UserConfig{
+	_, err = server.NewServer(config.UserConfig{
 		DataDir:     tmpDir,
 		AtlantisURL: "http://example.com",
 	}, server.Config{})
@@ -50,7 +51,7 @@ func TestNewServer(t *testing.T) {
 func TestNewServer_InvalidAtlantisURL(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "")
 	Ok(t, err)
-	_, err = server.NewServer(server.UserConfig{
+	_, err = server.NewServer(config.UserConfig{
 		DataDir:     tmpDir,
 		AtlantisURL: "example.com",
 	}, server.Config{
