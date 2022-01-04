@@ -28,6 +28,7 @@ type Repo struct {
 	AllowedOverrides          []string          `yaml:"allowed_overrides" json:"allowed_overrides"`
 	AllowCustomWorkflows      *bool             `yaml:"allow_custom_workflows,omitempty" json:"allow_custom_workflows,omitempty"`
 	DeleteSourceBranchOnMerge *bool             `yaml:"delete_source_branch_on_merge,omitempty" json:"delete_source_branch_on_merge,omitempty"`
+	TemplateOverrides         map[string]string `yaml:"template_overrides,omitempty" json:"template_overrides,omitempty"`
 }
 
 func (g GlobalCfg) Validate() error {
@@ -251,5 +252,6 @@ OUTER:
 		AllowedOverrides:          r.AllowedOverrides,
 		AllowCustomWorkflows:      r.AllowCustomWorkflows,
 		DeleteSourceBranchOnMerge: r.DeleteSourceBranchOnMerge,
+		TemplateOverrides:         r.TemplateOverrides,
 	}
 }

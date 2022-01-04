@@ -19,6 +19,8 @@ import (
 	"strings"
 	"text/template"
 
+	_ "embed"
+
 	"github.com/Masterminds/sprig/v3"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
@@ -99,7 +101,7 @@ type projectResultTmplData struct {
 
 // Render formats the data into a markdown string.
 // nolint: interfacer
-func (m *MarkdownRenderer) Render(res CommandResult, cmdName models.CommandName, log string, verbose bool, vcsHost models.VCSHostType) string {
+func (m *MarkdownRenderer) Render(res CommandResult, cmdName models.CommandName, log string, verbose bool, vcsHost models.VCSHostType, templateOverrides map[string]string) string {
 	commandStr := strings.Title(strings.Replace(cmdName.String(), "_", " ", -1))
 	common := commonData{
 		Command:                  commandStr,
@@ -117,10 +119,10 @@ func (m *MarkdownRenderer) Render(res CommandResult, cmdName models.CommandName,
 	if res.Failure != "" {
 		return m.renderTemplate(failureWithLogTmpl, failureData{res.Failure, common})
 	}
-	return m.renderProjectResults(res.ProjectResults, common, vcsHost)
+	return m.renderProjectResults(res.ProjectResults, common, vcsHost, templateOverrides)
 }
 
-func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, common commonData, vcsHost models.VCSHostType) string {
+func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, common commonData, vcsHost models.VCSHostType, templateOverrides map[string]string) string {
 	var resultsTmplData []projectResultTmplData
 	numPlanSuccesses := 0
 	numPolicyCheckSuccesses := 0
@@ -154,9 +156,9 @@ func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, 
 			})
 		} else if result.PlanSuccess != nil {
 			if m.shouldUseWrappedTmpl(vcsHost, result.PlanSuccess.TerraformOutput) {
-				resultData.Rendered = m.renderTemplate(planSuccessWrappedTmpl, planSuccessData{PlanSuccess: *result.PlanSuccess, PlanSummary: result.PlanSuccess.Summary(), PlanWasDeleted: common.PlansDeleted, DisableApply: common.DisableApply, DisableRepoLocking: common.DisableRepoLocking, EnableDiffMarkdownFormat: common.EnableDiffMarkdownFormat})
+				resultData.Rendered = m.renderTemplate(getPlanSuccessWrappedTmpl(templateOverrides), planSuccessData{PlanSuccess: *result.PlanSuccess, PlanSummary: result.PlanSuccess.Summary(), PlanWasDeleted: common.PlansDeleted, DisableApply: common.DisableApply, DisableRepoLocking: common.DisableRepoLocking, EnableDiffMarkdownFormat: common.EnableDiffMarkdownFormat})
 			} else {
-				resultData.Rendered = m.renderTemplate(planSuccessUnwrappedTmpl, planSuccessData{PlanSuccess: *result.PlanSuccess, PlanWasDeleted: common.PlansDeleted, DisableApply: common.DisableApply, DisableRepoLocking: common.DisableRepoLocking, EnableDiffMarkdownFormat: common.EnableDiffMarkdownFormat})
+				resultData.Rendered = m.renderTemplate(getPlanSuccessUnwrappedTmpl(templateOverrides), planSuccessData{PlanSuccess: *result.PlanSuccess, PlanWasDeleted: common.PlansDeleted, DisableApply: common.DisableApply, DisableRepoLocking: common.DisableRepoLocking, EnableDiffMarkdownFormat: common.EnableDiffMarkdownFormat})
 			}
 			numPlanSuccesses++
 		} else if result.PolicyCheckSuccess != nil {
@@ -243,6 +245,20 @@ func (m *MarkdownRenderer) renderTemplate(tmpl *template.Template, data interfac
 		return fmt.Sprintf("Failed to render template, this is a bug: %v", err)
 	}
 	return buf.String()
+}
+
+func getPlanSuccessWrappedTmpl(templateOverrides map[string]string) *template.Template {
+	if val, ok := templateOverrides["planSuccessWrappedTmpl"]; ok {
+		return template.Must(template.ParseFiles(val))
+	}
+	return planSuccessWrappedTmpl
+}
+
+func getPlanSuccessUnwrappedTmpl(templateOverrides map[string]string) *template.Template {
+	if val, ok := templateOverrides["planSuccessUnwrappedTmpl"]; ok {
+		return template.Must(template.ParseFiles(val))
+	}
+	return planSuccessUnwrappedTmpl
 }
 
 // todo: refactor to remove duplication #refactor
