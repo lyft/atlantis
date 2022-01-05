@@ -166,18 +166,6 @@ type FeatureAwareProjectCommandRunner struct {
 }
 
 func (f *FeatureAwareProjectCommandRunner) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
-
-	if ctx.ForceApply {
-		ctx.Log.Err("force apply feature not enabled in the current environment.")
-
-		return models.ProjectResult{
-			Command:     models.ApplyCommand,
-			Failure:     "Force applies not enabled in the current environment. Please remove the -f or --force and rerun the apply. ",
-			RepoRelDir:  ctx.RepoRelDir,
-			Workspace:   ctx.Workspace,
-			ProjectName: ctx.ProjectName,
-		}
-	}
 	return f.ProjectCommandRunner.Apply(ctx)
 }
 

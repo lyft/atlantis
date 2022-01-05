@@ -29,8 +29,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/feature"
-	fmocks "github.com/runatlantis/atlantis/server/feature/mocks"
 	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
@@ -306,45 +304,11 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	Equals(t, "", res.Failure)
 }
 
-func TestFeatureAwareProjectCommandRunner_NoForceOverrideWhenDisabled(t *testing.T) {
-	RegisterMockTestingT(t)
-	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
-	mockSender := mocks.NewMockWebhooksSender()
-	allocator := fmocks.NewMockAllocator()
-	runner := &events.DefaultProjectCommandRunner{
-		WorkingDir:       mockWorkingDir,
-		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
-		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			WorkingDir: mockWorkingDir,
-		},
-		Webhooks: mockSender,
-	}
-	featureAwareRunner := &events.FeatureAwareProjectCommandRunner{
-		ProjectCommandRunner: runner,
-		FeatureAllocator:     allocator,
-	}
-	ctx := models.ProjectCommandContext{
-		ApplyRequirements: []string{"approved"},
-		ForceApply:        true,
-		Log:               logging.NewNoopLogger(t),
-	}
-	tmp, cleanup := TempDir(t)
-	defer cleanup()
-	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
-	When(allocator.ShouldAllocate(feature.LogStreaming, "owner/repo")).ThenReturn(false, nil)
-
-	res := featureAwareRunner.Apply(ctx)
-	Equals(t, "Force applies not enabled in the current environment. Please remove the -f or --force and rerun the apply. ", res.Failure)
-}
-
 func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
 	mockSender := mocks.NewMockWebhooksSender()
-	allocator := fmocks.NewMockAllocator()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
@@ -355,7 +319,6 @@ func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T)
 	}
 	featureAwareRunner := &events.FeatureAwareProjectCommandRunner{
 		ProjectCommandRunner: runner,
-		FeatureAllocator:     allocator,
 	}
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"approved"},
@@ -366,7 +329,6 @@ func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
 	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
-	When(allocator.ShouldAllocate(feature.ForceApply, "")).ThenReturn(true, nil)
 
 	res := featureAwareRunner.Apply(ctx)
 	Equals(t, "", res.Failure)
