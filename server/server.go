@@ -18,7 +18,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -59,6 +58,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
@@ -169,6 +169,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var bitbucketServerClient *bitbucketserver.Client
 	var azuredevopsClient *vcs.AzureDevopsClient
 
+	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(userConfig.VCSStatusName)
+
 	policyChecksEnabled := false
 	if userConfig.EnablePolicyChecksFlag {
 		logger.Info("Policy Checks are enabled")
@@ -240,7 +242,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		}
 
 		var err error
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, userConfig.VCSStatusName)
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker)
 		if err != nil {
 			return nil, err
 		}
@@ -403,10 +405,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		true,
 		projectCmdOutputHandler,
 		featureAllocator)
-	// The flag.Lookup call is to detect if we're running in a unit test. If we
-	// are, then we don't error out because we don't have/want terraform
-	// installed on our CI system where the unit tests run.
-	if err != nil && flag.Lookup("test.v") == nil {
+
+	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform")
 	}
 	markdownRenderer := &events.MarkdownRenderer{
@@ -660,10 +660,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		boltdb,
 	)
 
-	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		GithubClient: githubClient,
-	}
-
+	pullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(
+		githubClient,
+		mergeabilityChecker,
+	)
 	applyCommandRunner := events.NewApplyCommandRunner(
 		vcsClient,
 		userConfig.DisableApplyAll,
@@ -678,7 +678,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceNoProjects,
 		userConfig.SilenceVCSStatusNoProjects,
-		&pullReqStatusFetcher,
+		pullReqStatusFetcher,
 	)
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
@@ -781,6 +781,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Parser:                          eventParser,
 		CommentParser:                   commentParser,
 		Logger:                          logger,
+		Scope:                           statsScope,
 		ApplyDisabled:                   userConfig.DisableApply,
 		GithubWebhookSecret:             []byte(userConfig.GithubWebhookSecret),
 		GithubRequestValidator:          &events_controllers.DefaultGithubRequestValidator{},

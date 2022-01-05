@@ -74,7 +74,7 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 				},
 				Workspace: "default",
 				PullReqStatus: models.PullReqStatus{
-					Approved: models.ApprovalStatus{
+					ApprovalStatus: models.ApprovalStatus{
 						IsApproved: true,
 					},
 				},
