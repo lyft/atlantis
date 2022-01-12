@@ -2,8 +2,6 @@ package terraform
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -18,7 +16,6 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	fmocks "github.com/runatlantis/atlantis/server/lyft/feature/mocks"
 	. "github.com/runatlantis/atlantis/testing"
-	"github.com/stretchr/testify/assert"
 )
 
 // Test that it executes successfully
