@@ -2,6 +2,8 @@ package terraform
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -16,6 +18,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	fmocks "github.com/runatlantis/atlantis/server/lyft/feature/mocks"
 	. "github.com/runatlantis/atlantis/testing"
+	"github.com/stretchr/testify/assert"
 )
 
 // Test that it executes successfully
@@ -58,7 +61,7 @@ func TestDefaultClient_Synchronous_RunCommandWithVersion(t *testing.T) {
 	Equals(t, "hello\n", out)
 }
 
-func TestVersionLoader(t *testing.T) {
+func TestVersionLoader_buildsURL(t *testing.T) {
 	v, _ := version.NewVersion("0.15.0")
 
 	destPath := "some/path"
@@ -74,7 +77,7 @@ func TestVersionLoader(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		When(mockDownloader.GetFile(EqString(destPath), EqString(fullURL))).ThenReturn(nil)
+		When(mockDownloader.GetAny(EqString(destPath), EqString(fullURL))).ThenReturn(nil)
 		binPath, err := subject.loadVersion(v, destPath)
 
 		mockDownloader.VerifyWasCalledOnce().GetFile(EqString(destPath), EqString(fullURL))
@@ -86,7 +89,7 @@ func TestVersionLoader(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 
-		When(mockDownloader.GetFile(EqString(destPath), EqString(fullURL))).ThenReturn(fmt.Errorf("err"))
+		When(mockDownloader.GetAny(EqString(destPath), EqString(fullURL))).ThenReturn(fmt.Errorf("err"))
 		_, err := subject.loadVersion(v, destPath)
 
 		Assert(t, err != nil, "err is expected")
