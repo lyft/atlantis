@@ -77,7 +77,7 @@ func TestVersionLoader_buildsURL(t *testing.T) {
 		When(mockDownloader.GetAny(EqString(destPath), EqString(fullURL))).ThenReturn(nil)
 		binPath, err := subject.loadVersion(v, destPath)
 
-		mockDownloader.VerifyWasCalledOnce().GetFile(EqString(destPath), EqString(fullURL))
+		mockDownloader.VerifyWasCalledOnce().GetAny(EqString(destPath), EqString(fullURL))
 
 		Ok(t, err)
 
