@@ -152,9 +152,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, err
 	}
 
-	// statsScope := stats.NewDefaultStore().Scope(userConfig.StatsNamespace)
-	// statsScope.Store().AddStatGenerator(stats.NewRuntimeStats(statsScope.Scope("go")))
-
 	var supportedVCSHosts []models.VCSHostType
 
 	// not to be used directly, currently this is just used
