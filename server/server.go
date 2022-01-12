@@ -321,7 +321,7 @@ func NewServer(userConfig config.UserConfig, config Config) (*Server, error) {
 
 	projectCmdOutputHandler := handlers.NewProjectCommandOutputHandler(
 		userConfig,
-		statsScope.Scope("api"),
+		statsScope,
 		commitStatusUpdater,
 		router,
 		logger,
