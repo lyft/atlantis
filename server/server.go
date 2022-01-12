@@ -929,8 +929,7 @@ func (s *Server) Start() error {
 	s.waitForDrain()
 
 	// flush stats before shutdown
-	err := s.StatsCloser.Close()
-	if err != nil {
+	if err := s.StatsCloser.Close(); err != nil {
 		s.Logger.Err(err.Error())
 	}
 
