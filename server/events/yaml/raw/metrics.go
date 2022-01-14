@@ -17,13 +17,15 @@ type Statsd struct {
 
 func (s *Statsd) Validate() error {
 	return validation.ValidateStruct(s,
+		validation.Field(&s.Host, validation.Required),
+		validation.Field(&s.Port, validation.Required),
 		validation.Field(&s.Host, is.IP),
 		validation.Field(&s.Port, is.Int))
 }
 
 func (m Metrics) Validate() error {
 	return validation.ValidateStruct(&m,
-		validation.Field(&m.Statsd, validation.Required),
+		validation.Field(&m.Statsd),
 	)
 }
 
@@ -38,6 +40,5 @@ func (m Metrics) ToValid() valid.Metrics {
 		}
 	}
 
-	// theoretically should never hit this.
 	return valid.Metrics{}
 }

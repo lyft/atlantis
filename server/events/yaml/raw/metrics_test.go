@@ -40,22 +40,54 @@ statsd:
 		assert.NoError(t, err)
 	})
 }
-func TestMetrics_Validate(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		subject := raw.Metrics{
-			Statsd: &raw.Statsd{
-				Host: "127.0.0.1",
-				Port: "8125",
-			},
-		}
+func TestMetrics_Validate_Success(t *testing.T) {
 
-		assert.NoError(t, subject.Validate())
-	})
-
-	errorCases := []struct {
+	cases := []struct {
 		description string
 		subject     raw.Metrics
 	}{
+		{
+			description: "success",
+			subject: raw.Metrics{
+				Statsd: &raw.Statsd{
+					Host: "127.0.0.1",
+					Port: "8125",
+				},
+			},
+		},
+		{
+			description: "missing stats",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.description, func(t *testing.T) {
+			assert.NoError(t, c.subject.Validate())
+		})
+	}
+
+}
+func TestMetrics_Validate_Error(t *testing.T) {
+	cases := []struct {
+		description string
+		subject     raw.Metrics
+	}{
+		{
+			description: "missing host",
+			subject: raw.Metrics{
+				Statsd: &raw.Statsd{
+					Port: "8125",
+				},
+			},
+		},
+		{
+			description: "missing port",
+			subject: raw.Metrics{
+				Statsd: &raw.Statsd{
+					Host: "127.0.0.1",
+				},
+			},
+		},
 		{
 			description: "invalid port",
 			subject: raw.Metrics{
@@ -76,7 +108,7 @@ func TestMetrics_Validate(t *testing.T) {
 		},
 	}
 
-	for _, c := range errorCases {
+	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
 			assert.Error(t, c.subject.Validate())
 		})
