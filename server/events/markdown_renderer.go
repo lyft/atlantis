@@ -272,14 +272,14 @@ func getPlanSuccessWrappedTmpl(templateOverrides map[string]string) *template.Te
 	if val, ok := templateOverrides["planSuccessWrappedTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return planSuccessWrappedTmpl
+	return template.Must(template.New("").Parse(planSuccessWrappedTmpl))
 }
 
 func getPlanSuccessUnwrappedTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["planSuccessUnwrappedTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return planSuccessUnwrappedTmpl
+	return template.Must(template.New("").Parse(planSuccessUnwrappedTmpl))
 }
 
 func getPolicyCheckSuccessWrappedTmpl(templateOverrides map[string]string) *template.Template {
@@ -376,14 +376,14 @@ func getMultiProjectApplyTmpl(templateOverrides map[string]string) *template.Tem
 	if val, ok := templateOverrides["multiProjectApplyTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return multiProjectApplyTmpl
+	return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(multiProjectApplyTmpl))
 }
 
 func getMultiProjectVersionTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["multiProjectVersionTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return multiProjectVersionTmpl
+	return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(multiProjectVersionTmpl))
 }
 
 //go:embed templates/singleProjectApply.tmpl
@@ -407,41 +407,17 @@ var approveAllProjectsTmpl string
 //go:embed templates/multiProjectPlan.tmpl
 var multiProjectPlanTmpl string
 
-var multiProjectApplyTmpl = template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(
-	"Ran {{.Command}} for {{ len .Results }} projects:\n\n" +
-		"{{ range $result := .Results }}" +
-		"1. {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n" +
-		"{{end}}\n" +
-		"{{ range $i, $result := .Results }}" +
-		"### {{add $i 1}}. {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n" +
-		"{{$result.Rendered}}\n\n" +
-		"---\n{{end}}" +
-		logTmpl))
-var multiProjectVersionTmpl = template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(
-	"Ran {{.Command}} for {{ len .Results }} projects:\n\n" +
-		"{{ range $result := .Results }}" +
-		"1. {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n" +
-		"{{end}}\n" +
-		"{{ range $i, $result := .Results }}" +
-		"### {{add $i 1}}. {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n" +
-		"{{$result.Rendered}}\n\n" +
-		"---\n{{end}}" +
-		logTmpl))
-var planSuccessUnwrappedTmpl = template.Must(template.New("").Parse(
-	"```diff\n" +
-		"{{ if .EnableDiffMarkdownFormat }}{{.DiffMarkdownFormattedTerraformOutput}}{{else}}{{.TerraformOutput}}{{end}}\n" +
-		"```\n\n" + planNextSteps +
-		"{{ if .HasDiverged }}\n\n:warning: The branch we're merging into is ahead, it is recommended to pull new commits first.{{end}}"))
+//go:embed templates/multiProjectApply.tmpl
+var multiProjectApplyTmpl string
 
-var planSuccessWrappedTmpl = template.Must(template.New("").Parse(
-	"<details><summary>Show Output</summary>\n\n" +
-		"```diff\n" +
-		"{{ if .EnableDiffMarkdownFormat }}{{.DiffMarkdownFormattedTerraformOutput}}{{else}}{{.TerraformOutput}}{{end}}\n" +
-		"```\n\n" +
-		planNextSteps + "\n" +
-		"</details>" + "\n" +
-		"{{.PlanSummary}}" +
-		"{{ if .HasDiverged }}\n\n:warning: The branch we're merging into is ahead, it is recommended to pull new commits first.{{end}}"))
+//go:embed templates/multiProjectApply.tmpl
+var multiProjectVersionTmpl string
+
+//go:embed templates/planSuccessUnwrapped.tmpl
+var planSuccessUnwrappedTmpl string
+
+//go:embed templates/planSuccessWrapped.tmpl
+var planSuccessWrappedTmpl string
 
 var policyCheckSuccessUnwrappedTmpl = template.Must(template.New("").Parse(
 	"```diff\n" +
