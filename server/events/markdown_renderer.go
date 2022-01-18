@@ -327,49 +327,49 @@ func getSingleProjectPlanSuccessTmpl(templateOverrides map[string]string) *templ
 	if val, ok := templateOverrides["singleProjectPlanSuccessTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return singleProjectPlanSuccessTmpl
+	return template.Must(template.New("").Parse(singleProjectPlanSuccessTmpl))
 }
 
 func getSingleProjectPlanUnsuccessfulTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["singleProjectPlanUnsuccessfulTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return singleProjectPlanUnsuccessfulTmpl
+	return template.Must(template.New("").Parse(singleProjectPlanUnsuccessfulTmpl))
 }
 
 func getSingleProjectVersionSuccessTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["singleProjectVersionSuccessTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return singleProjectVersionSuccessTmpl
+	return template.Must(template.New("").Parse(singleProjectVersionSuccessTmpl))
 }
 
 func getSingleProjectVersionUnsuccessfulTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["singleProjectVersionUnsuccessfulTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return singleProjectVersionUnsuccessfulTmpl
+	return template.Must(template.New("").Parse(singleProjectVersionUnsuccessfulTmpl))
 }
 
 func getSingleProjectApplyTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["singleProjectApplyTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return singleProjectApplyTmpl
+	return template.Must(template.New("").Parse(singleProjectApplyTmpl))
 }
 
 func getMultiProjectPlanTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["multiProjectPlanTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return multiProjectPlanTmpl
+	return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(multiProjectPlanTmpl))
 }
 
 func getApproveAllProjectsTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["approveAllProjectsTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return approveAllProjectsTmpl
+	return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(approveAllProjectsTmpl))
 }
 
 func getMultiProjectApplyTmpl(templateOverrides map[string]string) *template.Template {
@@ -386,43 +386,27 @@ func getMultiProjectVersionTmpl(templateOverrides map[string]string) *template.T
 	return multiProjectVersionTmpl
 }
 
-// todo: refactor to remove duplication #refactor
-var singleProjectApplyTmpl = template.Must(template.New("").Parse(
-	"{{$result := index .Results 0}}Ran {{.Command}} for {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n\n{{$result.Rendered}}\n" + logTmpl))
-var singleProjectPlanSuccessTmpl = template.Must(template.New("").Parse(
-	"{{$result := index .Results 0}}Ran {{.Command}} for {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n\n{{$result.Rendered}}\n" +
-		"\n" +
-		"{{ if ne .DisableApplyAll true  }}---\n" +
-		"* :fast_forward: To **apply** all unapplied plans from this pull request, comment:\n" +
-		"    * `atlantis apply`\n" +
-		"* :put_litter_in_its_place: To delete all plans and locks for the PR, comment:\n" +
-		"    * `atlantis unlock`{{ end }}" + logTmpl))
-var singleProjectPlanUnsuccessfulTmpl = template.Must(template.New("").Parse(
-	"{{$result := index .Results 0}}Ran {{.Command}} for dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n\n" +
-		"{{$result.Rendered}}\n" + logTmpl))
-var singleProjectVersionSuccessTmpl = template.Must(template.New("").Parse(
-	"{{$result := index .Results 0}}Ran {{.Command}} for {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n\n{{$result.Rendered}}\n" + logTmpl))
-var singleProjectVersionUnsuccessfulTmpl = template.Must(template.New("").Parse(
-	"{{$result := index .Results 0}}Ran {{.Command}} for dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n\n{{$result.Rendered}}\n" + logTmpl))
-var approveAllProjectsTmpl = template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(
-	"Approved Policies for {{ len .Results }} projects:\n\n" +
-		"{{ range $result := .Results }}" +
-		"1. {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n" +
-		"{{end}}\n" + logTmpl))
-var multiProjectPlanTmpl = template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(
-	"Ran {{.Command}} for {{ len .Results }} projects:\n\n" +
-		"{{ range $result := .Results }}" +
-		"1. {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n" +
-		"{{end}}\n" +
-		"{{ $disableApplyAll := .DisableApplyAll }}{{ range $i, $result := .Results }}" +
-		"### {{add $i 1}}. {{ if $result.ProjectName }}project: `{{$result.ProjectName}}` {{ end }}dir: `{{$result.RepoRelDir}}` workspace: `{{$result.Workspace}}`\n" +
-		"{{$result.Rendered}}\n\n" +
-		"{{ if ne $disableApplyAll true }}---\n{{end}}{{end}}{{ if ne .DisableApplyAll true }}{{ if and (gt (len .Results) 0) (not .PlansDeleted) }}* :fast_forward: To **apply** all unapplied plans from this pull request, comment:\n" +
-		"    * `atlantis apply`\n" +
-		"* :put_litter_in_its_place: To delete all plans and locks for the PR, comment:\n" +
-		"    * `atlantis unlock`" +
-		"{{end}}{{end}}" +
-		logTmpl))
+//go:embed templates/singleProjectApply.tmpl
+var singleProjectApplyTmpl string
+
+//go:embed templates/singleProjectPlanSuccess.tmpl
+var singleProjectPlanSuccessTmpl string
+
+//go:embed templates/singleProjectPlanUnsuccessful.tmpl
+var singleProjectPlanUnsuccessfulTmpl string
+
+//go:embed templates/singleProjectVersionSuccess.tmpl
+var singleProjectVersionSuccessTmpl string
+
+//go:embed templates/singleProjectVersionUnsuccessful.tmpl
+var singleProjectVersionUnsuccessfulTmpl string
+
+//go:embed templates/singleProjectVersionUnsuccessful.tmpl
+var approveAllProjectsTmpl string
+
+//go:embed templates/multiProjectPlan.tmpl
+var multiProjectPlanTmpl string
+
 var multiProjectApplyTmpl = template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(
 	"Ran {{.Command}} for {{ len .Results }} projects:\n\n" +
 		"{{ range $result := .Results }}" +
