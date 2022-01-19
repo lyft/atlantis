@@ -114,10 +114,10 @@ func (m *MarkdownRenderer) Render(res CommandResult, cmdName models.CommandName,
 		EnableDiffMarkdownFormat: m.EnableDiffMarkdownFormat,
 	}
 	if res.Error != nil {
-		return m.renderTemplate(unwrappedErrWithLogTmpl, errData{res.Error.Error(), common})
+		return m.renderTemplate(getUnwrappedErrWithLogTmpl(templateOverrides), errData{res.Error.Error(), common})
 	}
 	if res.Failure != "" {
-		return m.renderTemplate(failureWithLogTmpl, failureData{res.Failure, common})
+		return m.renderTemplate(getFailureWithLogTmpl(templateOverrides), failureData{res.Failure, common})
 	}
 	return m.renderProjectResults(res.ProjectResults, common, vcsHost, templateOverrides)
 }
@@ -251,21 +251,34 @@ func getUnwrappedErrTmpl(templateOverrides map[string]string) *template.Template
 	if val, ok := templateOverrides["unwrappedErrTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return unwrappedErrTmpl
+	return template.Must(template.New("").Parse(unwrappedErrTmpl))
+}
+
+func getUnwrappedErrWithLogTmpl(templateOverrides map[string]string) *template.Template {
+	if val, ok := templateOverrides["unwrappedErrWithLogTmpl"]; ok {
+		return template.Must(template.ParseFiles(val))
+	}
+	return template.Must(template.New("").Parse(unwrappedErrWithLogTmpl))
 }
 
 func getWrappedErrTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["wrappedErrTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return wrappedErrTmpl
+	return template.Must(template.New("").Parse(wrappedErrTmpl))
 }
 
 func getFailureTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["failureTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return failureTmpl
+	return template.Must(template.New("").Parse(failureTmpl))
+}
+func getFailureWithLogTmpl(templateOverrides map[string]string) *template.Template {
+	if val, ok := templateOverrides["failureWithLogTmpl"]; ok {
+		return template.Must(template.ParseFiles(val))
+	}
+	return template.Must(template.New("").Parse(failureWithLogTmpl))
 }
 
 func getPlanSuccessWrappedTmpl(templateOverrides map[string]string) *template.Template {
@@ -286,41 +299,41 @@ func getPolicyCheckSuccessWrappedTmpl(templateOverrides map[string]string) *temp
 	if val, ok := templateOverrides["policyCheckSuccessWrappedTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return policyCheckSuccessWrappedTmpl
+	return template.Must(template.New("").Parse(policyCheckSuccessWrappedTmpl))
 }
 
 func getPolicyCheckSuccessUnwrappedTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["policyCheckSuccessUnwrappedTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return policyCheckSuccessUnwrappedTmpl
+	return template.Must(template.New("").Parse(policyCheckSuccessUnwrappedTmpl))
 }
 
 func getApplyWrappedSuccessTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["applyWrappedSuccessTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return applyWrappedSuccessTmpl
+	return template.Must(template.New("").Parse(applyWrappedSuccessTmpl))
 }
 func getApplyUnwrappedSuccessTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["applyUnwrappedSuccessTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return applyUnwrappedSuccessTmpl
+	return template.Must(template.New("").Parse(applyUnwrappedSuccessTmpl))
 }
 
 func getVersionWrappedSuccessTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["versionWrappedSuccessTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return versionWrappedSuccessTmpl
+	return template.Must(template.New("").Parse(versionWrappedSuccessTmpl))
 }
 
 func getVersionUnwrappedSuccessTmpl(templateOverrides map[string]string) *template.Template {
 	if val, ok := templateOverrides["versionUnwrappedSuccessTmpl"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return versionUnwrappedSuccessTmpl
+	return template.Must(template.New("").Parse(versionUnwrappedSuccessTmpl))
 }
 
 func getSingleProjectPlanSuccessTmpl(templateOverrides map[string]string) *template.Template {
@@ -419,70 +432,35 @@ var planSuccessUnwrappedTmpl string
 //go:embed templates/planSuccessWrapped.tmpl
 var planSuccessWrappedTmpl string
 
-var policyCheckSuccessUnwrappedTmpl = template.Must(template.New("").Parse(
-	"```diff\n" +
-		"{{.PolicyCheckOutput}}\n" +
-		"```\n\n" + policyCheckNextSteps +
-		"{{ if .HasDiverged }}\n\n:warning: The branch we're merging into is ahead, it is recommended to pull new commits first.{{end}}"))
+//go:embed templates/policyCheckSuccessUnwrapped.tmpl
+var policyCheckSuccessUnwrappedTmpl string
 
-var policyCheckSuccessWrappedTmpl = template.Must(template.New("").Parse(
-	"<details><summary>Show Output</summary>\n\n" +
-		"```diff\n" +
-		"{{.PolicyCheckOutput}}\n" +
-		"```\n\n" +
-		policyCheckNextSteps + "\n" +
-		"</details>" +
-		"{{ if .HasDiverged }}\n\n:warning: The branch we're merging into is ahead, it is recommended to pull new commits first.{{end}}"))
+//go:embed templates/policyCheckSuccessWrapped.tmpl
+var policyCheckSuccessWrappedTmpl string
 
-// policyCheckNextSteps are instructions appended after successful plans as to what
-// to do next.
-var policyCheckNextSteps = "* :arrow_forward: To **apply** this plan, comment:\n" +
-	"    * `{{.ApplyCmd}}`\n" +
-	"* :put_litter_in_its_place: To **delete** this plan click [here]({{.LockURL}})\n" +
-	"* :repeat: To re-run policies **plan** this project again by commenting:\n" +
-	"    * `{{.RePlanCmd}}`"
+//go:embed templates/applyUnwrappedSuccess.tmpl
+var applyUnwrappedSuccessTmpl string
 
-// planNextSteps are instructions appended after successful plans as to what
-// to do next.
-var planNextSteps = "{{ if .PlanWasDeleted }}This plan was not saved because one or more projects failed and automerge requires all plans pass.{{ else }}" +
-	"{{ if not .DisableApply }}* :arrow_forward: To **apply** this plan, comment:\n" +
-	"    * `{{.ApplyCmd}}`\n{{end}}" +
-	"{{ if not .DisableRepoLocking }}* :put_litter_in_its_place: To **delete** this plan click [here]({{.LockURL}})\n{{end}}" +
-	"* :repeat: To **plan** this project again, comment:\n" +
-	"    * `{{.RePlanCmd}}`{{end}}"
-var applyUnwrappedSuccessTmpl = template.Must(template.New("").Parse(
-	"```diff\n" +
-		"{{.Output}}\n" +
-		"```"))
-var applyWrappedSuccessTmpl = template.Must(template.New("").Parse(
-	"<details><summary>Show Output</summary>\n\n" +
-		"```diff\n" +
-		"{{.Output}}\n" +
-		"```\n" +
-		"</details>"))
-var versionUnwrappedSuccessTmpl = template.Must(template.New("").Parse("```\n{{.Output}}```"))
-var versionWrappedSuccessTmpl = template.Must(template.New("").Parse(
-	"<details><summary>Show Output</summary>\n\n" +
-		"```\n" +
-		"{{.Output}}" +
-		"```\n" +
-		"</details>"))
-var unwrappedErrTmplText = "**{{.Command}} Error**\n" +
-	"```\n" +
-	"{{.Error}}\n" +
-	"```" +
-	"{{ if eq .Command \"Policy Check\" }}" +
-	"\n* :heavy_check_mark: To **approve** failing policies either request an approval from approvers or address the failure by modifying the codebase.\n" +
-	"{{ end }}"
-var wrappedErrTmplText = "**{{.Command}} Error**\n" +
-	"<details><summary>Show Output</summary>\n\n" +
-	"```\n" +
-	"{{.Error}}\n" +
-	"```\n</details>"
-var unwrappedErrTmpl = template.Must(template.New("").Parse(unwrappedErrTmplText))
-var unwrappedErrWithLogTmpl = template.Must(template.New("").Parse(unwrappedErrTmplText + logTmpl))
-var wrappedErrTmpl = template.Must(template.New("").Parse(wrappedErrTmplText))
-var failureTmplText = "**{{.Command}} Failed**: {{.Failure}}"
-var failureTmpl = template.Must(template.New("").Parse(failureTmplText))
-var failureWithLogTmpl = template.Must(template.New("").Parse(failureTmplText + logTmpl))
-var logTmpl = "{{if .Verbose}}\n<details><summary>Log</summary>\n  <p>\n\n```\n{{.Log}}```\n</p></details>{{end}}\n"
+//go:embed templates/applyWrappedSuccess.tmpl
+var applyWrappedSuccessTmpl string
+
+//go:embed templates/versionUnwrappedSuccess.tmpl
+var versionUnwrappedSuccessTmpl string
+
+//go:embed templates/versionWrappedSuccess.tmpl
+var versionWrappedSuccessTmpl string
+
+//go:embed templates/unwrappedErr.tmpl
+var unwrappedErrTmpl string
+
+//go:embed templates/unwrappedErrWithLog.tmpl
+var unwrappedErrWithLogTmpl string
+
+//go:embed templates/wrappedErr.tmpl
+var wrappedErrTmpl string
+
+//go:embed templates/failure.tmpl
+var failureTmpl string
+
+//go:embed templates/failureWithLog.tmpl
+var failureWithLogTmpl string
