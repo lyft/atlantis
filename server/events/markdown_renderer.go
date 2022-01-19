@@ -114,10 +114,10 @@ func (m *MarkdownRenderer) Render(res CommandResult, cmdName models.CommandName,
 		EnableDiffMarkdownFormat: m.EnableDiffMarkdownFormat,
 	}
 	if res.Error != nil {
-		return m.renderTemplate(getUnwrappedErrWithLogTmpl(templateOverrides), errData{res.Error.Error(), common})
+		return m.renderTemplate(template.Must(template.New("").Parse(unwrappedErrWithLogTmpl)), errData{res.Error.Error(), common})
 	}
 	if res.Failure != "" {
-		return m.renderTemplate(getFailureWithLogTmpl(templateOverrides), failureData{res.Failure, common})
+		return m.renderTemplate(template.Must(template.New("").Parse(failureWithLogTmpl)), failureData{res.Failure, common})
 	}
 	return m.renderProjectResults(res.ProjectResults, common, vcsHost, templateOverrides)
 }
@@ -135,10 +135,7 @@ func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, 
 			ProjectName: result.ProjectName,
 		}
 		if result.Error != nil {
-			tmpl := getUnwrappedErrTmpl(templateOverrides)
-			if m.shouldUseWrappedTmpl(vcsHost, result.Error.Error()) {
-				tmpl = getWrappedErrTmpl(templateOverrides)
-			}
+			tmpl := m.getErrTmpl(templateOverrides, vcsHost, result.Error.Error())
 			resultData.Rendered = m.renderTemplate(tmpl, struct {
 				Command string
 				Error   string
@@ -147,7 +144,7 @@ func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, 
 				Error:   result.Error.Error(),
 			})
 		} else if result.Failure != "" {
-			resultData.Rendered = m.renderTemplate(getFailureTmpl(templateOverrides), struct {
+			resultData.Rendered = m.renderTemplate(m.getFailureTmpl(templateOverrides), struct {
 				Command string
 				Failure string
 			}{
@@ -155,31 +152,15 @@ func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, 
 				Failure: result.Failure,
 			})
 		} else if result.PlanSuccess != nil {
-			if m.shouldUseWrappedTmpl(vcsHost, result.PlanSuccess.TerraformOutput) {
-				resultData.Rendered = m.renderTemplate(getPlanSuccessWrappedTmpl(templateOverrides), planSuccessData{PlanSuccess: *result.PlanSuccess, PlanSummary: result.PlanSuccess.Summary(), PlanWasDeleted: common.PlansDeleted, DisableApply: common.DisableApply, DisableRepoLocking: common.DisableRepoLocking, EnableDiffMarkdownFormat: common.EnableDiffMarkdownFormat})
-			} else {
-				resultData.Rendered = m.renderTemplate(getPlanSuccessUnwrappedTmpl(templateOverrides), planSuccessData{PlanSuccess: *result.PlanSuccess, PlanWasDeleted: common.PlansDeleted, DisableApply: common.DisableApply, DisableRepoLocking: common.DisableRepoLocking, EnableDiffMarkdownFormat: common.EnableDiffMarkdownFormat})
-			}
+			resultData.Rendered = m.renderTemplate(m.getPlanSuccessTmpl(templateOverrides, vcsHost, result.PlanSuccess.TerraformOutput), planSuccessData{PlanSuccess: *result.PlanSuccess, PlanSummary: result.PlanSuccess.Summary(), PlanWasDeleted: common.PlansDeleted, DisableApply: common.DisableApply, DisableRepoLocking: common.DisableRepoLocking, EnableDiffMarkdownFormat: common.EnableDiffMarkdownFormat})
 			numPlanSuccesses++
 		} else if result.PolicyCheckSuccess != nil {
-			if m.shouldUseWrappedTmpl(vcsHost, result.PolicyCheckSuccess.PolicyCheckOutput) {
-				resultData.Rendered = m.renderTemplate(getPolicyCheckSuccessWrappedTmpl(templateOverrides), policyCheckSuccessData{PolicyCheckSuccess: *result.PolicyCheckSuccess})
-			} else {
-				resultData.Rendered = m.renderTemplate(getPolicyCheckSuccessUnwrappedTmpl(templateOverrides), policyCheckSuccessData{PolicyCheckSuccess: *result.PolicyCheckSuccess})
-			}
+			resultData.Rendered = m.renderTemplate(m.getPolicyCheckSuccessTmpl(templateOverrides, vcsHost, result.PolicyCheckSuccess.PolicyCheckOutput), policyCheckSuccessData{PolicyCheckSuccess: *result.PolicyCheckSuccess})
 			numPolicyCheckSuccesses++
 		} else if result.ApplySuccess != "" {
-			if m.shouldUseWrappedTmpl(vcsHost, result.ApplySuccess) {
-				resultData.Rendered = m.renderTemplate(getApplyWrappedSuccessTmpl(templateOverrides), struct{ Output string }{result.ApplySuccess})
-			} else {
-				resultData.Rendered = m.renderTemplate(getApplyUnwrappedSuccessTmpl(templateOverrides), struct{ Output string }{result.ApplySuccess})
-			}
+			resultData.Rendered = m.renderTemplate(m.getApplySuccessTmpl(templateOverrides, vcsHost, result.ApplySuccess), struct{ Output string }{result.ApplySuccess})
 		} else if result.VersionSuccess != "" {
-			if m.shouldUseWrappedTmpl(vcsHost, result.VersionSuccess) {
-				resultData.Rendered = m.renderTemplate(getVersionWrappedSuccessTmpl(templateOverrides), struct{ Output string }{result.VersionSuccess})
-			} else {
-				resultData.Rendered = m.renderTemplate(getVersionUnwrappedSuccessTmpl(templateOverrides), struct{ Output string }{result.VersionSuccess})
-			}
+			resultData.Rendered = m.renderTemplate(m.getVersionSuccessTmpl(templateOverrides, vcsHost, result.VersionSuccess), struct{ Output string }{result.VersionSuccess})
 			numVersionSuccesses++
 		} else {
 			resultData.Rendered = "Found no template. This is a bug!"
@@ -189,14 +170,6 @@ func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, 
 
 	var tmpl *template.Template
 	switch {
-	case len(resultsTmplData) == 1 && common.Command == planCommandTitle && numPlanSuccesses > 0:
-		tmpl = getSingleProjectPlanSuccessTmpl(templateOverrides)
-	case len(resultsTmplData) == 1 && common.Command == planCommandTitle && numPlanSuccesses == 0:
-		tmpl = getSingleProjectPlanUnsuccessfulTmpl(templateOverrides)
-	case len(resultsTmplData) == 1 && common.Command == policyCheckCommandTitle && numPolicyCheckSuccesses > 0:
-		tmpl = getSingleProjectPlanSuccessTmpl(templateOverrides)
-	case len(resultsTmplData) == 1 && common.Command == policyCheckCommandTitle && numPolicyCheckSuccesses == 0:
-		tmpl = getSingleProjectPlanUnsuccessfulTmpl(templateOverrides)
 	case len(resultsTmplData) == 1 && common.Command == versionCommandTitle && numVersionSuccesses > 0:
 		tmpl = getSingleProjectVersionSuccessTmpl(templateOverrides)
 	case len(resultsTmplData) == 1 && common.Command == versionCommandTitle && numVersionSuccesses == 0:
@@ -205,9 +178,9 @@ func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, 
 		tmpl = getSingleProjectApplyTmpl(templateOverrides)
 	case common.Command == planCommandTitle,
 		common.Command == policyCheckCommandTitle:
-		tmpl = getMultiProjectPlanTmpl(templateOverrides)
+		tmpl = m.getProjectPlanTmpl(templateOverrides, resultsTmplData, common, numPlanSuccesses, numPolicyCheckSuccesses)
 	case common.Command == approvePoliciesCommandTitle:
-		tmpl = getApproveAllProjectsTmpl(templateOverrides)
+		tmpl = template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(approveAllProjectsTmpl))
 	case common.Command == applyCommandTitle:
 		tmpl = getMultiProjectApplyTmpl(templateOverrides)
 	case common.Command == versionCommandTitle:
@@ -247,93 +220,61 @@ func (m *MarkdownRenderer) renderTemplate(tmpl *template.Template, data interfac
 	return buf.String()
 }
 
-func getUnwrappedErrTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["unwrappedErrTmpl"]; ok {
+func (m *MarkdownRenderer) getErrTmpl(templateOverrides map[string]string, vcsHost models.VCSHostType, output string) *template.Template {
+	if val, ok := templateOverrides["err"]; ok {
 		return template.Must(template.ParseFiles(val))
+	} else if m.shouldUseWrappedTmpl(vcsHost, output) {
+		return template.Must(template.New("").Parse(wrappedErrTmpl))
+	} else {
+		return template.Must(template.New("").Parse(unwrappedErrTmpl))
 	}
-	return template.Must(template.New("").Parse(unwrappedErrTmpl))
 }
 
-func getUnwrappedErrWithLogTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["unwrappedErrWithLogTmpl"]; ok {
-		return template.Must(template.ParseFiles(val))
-	}
-	return template.Must(template.New("").Parse(unwrappedErrWithLogTmpl))
-}
-
-func getWrappedErrTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["wrappedErrTmpl"]; ok {
-		return template.Must(template.ParseFiles(val))
-	}
-	return template.Must(template.New("").Parse(wrappedErrTmpl))
-}
-
-func getFailureTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["failureTmpl"]; ok {
+func (m *MarkdownRenderer) getFailureTmpl(templateOverrides map[string]string) *template.Template {
+	if val, ok := templateOverrides["failure"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
 	return template.Must(template.New("").Parse(failureTmpl))
 }
-func getFailureWithLogTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["failureWithLogTmpl"]; ok {
+
+func (m *MarkdownRenderer) getPlanSuccessTmpl(templateOverrides map[string]string, vcsHost models.VCSHostType, output string) *template.Template {
+	if val, ok := templateOverrides["plan_success"]; ok {
 		return template.Must(template.ParseFiles(val))
+	} else if m.shouldUseWrappedTmpl(vcsHost, output) {
+		return template.Must(template.New("").Parse(planSuccessWrappedTmpl))
+	} else {
+		return template.Must(template.New("").Parse(planSuccessUnwrappedTmpl))
 	}
-	return template.Must(template.New("").Parse(failureWithLogTmpl))
 }
 
-func getPlanSuccessWrappedTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["planSuccessWrappedTmpl"]; ok {
+func (m *MarkdownRenderer) getPolicyCheckSuccessTmpl(templateOverrides map[string]string, vcsHost models.VCSHostType, output string) *template.Template {
+	if val, ok := templateOverrides["policy_check_success"]; ok {
 		return template.Must(template.ParseFiles(val))
+	} else if m.shouldUseWrappedTmpl(vcsHost, output) {
+		return template.Must(template.New("").Parse(policyCheckSuccessWrappedTmpl))
+	} else {
+		return template.Must(template.New("").Parse(policyCheckSuccessUnwrappedTmpl))
 	}
-	return template.Must(template.New("").Parse(planSuccessWrappedTmpl))
 }
 
-func getPlanSuccessUnwrappedTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["planSuccessUnwrappedTmpl"]; ok {
+func (m *MarkdownRenderer) getApplySuccessTmpl(templateOverrides map[string]string, vcsHost models.VCSHostType, output string) *template.Template {
+	if val, ok := templateOverrides["apply_success"]; ok {
 		return template.Must(template.ParseFiles(val))
+	} else if m.shouldUseWrappedTmpl(vcsHost, output) {
+		return template.Must(template.New("").Parse(applyWrappedSuccessTmpl))
+	} else {
+		return template.Must(template.New("").Parse(applyUnwrappedSuccessTmpl))
 	}
-	return template.Must(template.New("").Parse(planSuccessUnwrappedTmpl))
 }
 
-func getPolicyCheckSuccessWrappedTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["policyCheckSuccessWrappedTmpl"]; ok {
+func (m *MarkdownRenderer) getVersionSuccessTmpl(templateOverrides map[string]string, vcsHost models.VCSHostType, output string) *template.Template {
+	if val, ok := templateOverrides["version_success"]; ok {
 		return template.Must(template.ParseFiles(val))
+	} else if m.shouldUseWrappedTmpl(vcsHost, output) {
+		return template.Must(template.New("").Parse(versionWrappedSuccessTmpl))
+	} else {
+		return template.Must(template.New("").Parse(versionUnwrappedSuccessTmpl))
 	}
-	return template.Must(template.New("").Parse(policyCheckSuccessWrappedTmpl))
-}
-
-func getPolicyCheckSuccessUnwrappedTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["policyCheckSuccessUnwrappedTmpl"]; ok {
-		return template.Must(template.ParseFiles(val))
-	}
-	return template.Must(template.New("").Parse(policyCheckSuccessUnwrappedTmpl))
-}
-
-func getApplyWrappedSuccessTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["applyWrappedSuccessTmpl"]; ok {
-		return template.Must(template.ParseFiles(val))
-	}
-	return template.Must(template.New("").Parse(applyWrappedSuccessTmpl))
-}
-func getApplyUnwrappedSuccessTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["applyUnwrappedSuccessTmpl"]; ok {
-		return template.Must(template.ParseFiles(val))
-	}
-	return template.Must(template.New("").Parse(applyUnwrappedSuccessTmpl))
-}
-
-func getVersionWrappedSuccessTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["versionWrappedSuccessTmpl"]; ok {
-		return template.Must(template.ParseFiles(val))
-	}
-	return template.Must(template.New("").Parse(versionWrappedSuccessTmpl))
-}
-
-func getVersionUnwrappedSuccessTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["versionUnwrappedSuccessTmpl"]; ok {
-		return template.Must(template.ParseFiles(val))
-	}
-	return template.Must(template.New("").Parse(versionUnwrappedSuccessTmpl))
 }
 
 func getSingleProjectPlanSuccessTmpl(templateOverrides map[string]string) *template.Template {
@@ -371,18 +312,22 @@ func getSingleProjectApplyTmpl(templateOverrides map[string]string) *template.Te
 	return template.Must(template.New("").Parse(singleProjectApplyTmpl))
 }
 
-func getMultiProjectPlanTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["multiProjectPlanTmpl"]; ok {
+func (m *MarkdownRenderer) getProjectPlanTmpl(templateOverrides map[string]string, resultsTmplData []projectResultTmplData, common commonData, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
+	if val, ok := templateOverrides["project_plan"]; ok {
 		return template.Must(template.ParseFiles(val))
 	}
-	return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(multiProjectPlanTmpl))
-}
-
-func getApproveAllProjectsTmpl(templateOverrides map[string]string) *template.Template {
-	if val, ok := templateOverrides["approveAllProjectsTmpl"]; ok {
-		return template.Must(template.ParseFiles(val))
+	switch {
+	case len(resultsTmplData) == 1 && common.Command == planCommandTitle && numPlanSuccesses > 0:
+		return template.Must(template.New("").Parse(singleProjectPlanSuccessTmpl))
+	case len(resultsTmplData) == 1 && common.Command == planCommandTitle && numPlanSuccesses == 0:
+		return template.Must(template.New("").Parse(singleProjectPlanUnsuccessfulTmpl))
+	case len(resultsTmplData) == 1 && common.Command == policyCheckCommandTitle && numPolicyCheckSuccesses > 0:
+		return template.Must(template.New("").Parse(singleProjectPlanSuccessTmpl))
+	case len(resultsTmplData) == 1 && common.Command == policyCheckCommandTitle && numPolicyCheckSuccesses == 0:
+		return template.Must(template.New("").Parse(singleProjectPlanUnsuccessfulTmpl))
+	default:
+		return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(multiProjectPlanTmpl))
 	}
-	return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(approveAllProjectsTmpl))
 }
 
 func getMultiProjectApplyTmpl(templateOverrides map[string]string) *template.Template {
