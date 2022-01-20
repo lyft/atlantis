@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/go-version"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server"
+	"github.com/runatlantis/atlantis/server/controllers"
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/locking"
@@ -912,6 +913,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		statsScope,
 		logger,
+		controllers.JobIDGenerator{},
 	)
 
 	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTFVersion)

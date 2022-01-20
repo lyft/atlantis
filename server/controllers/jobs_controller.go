@@ -7,6 +7,7 @@ import (
 
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
@@ -27,6 +28,12 @@ type JobsController struct {
 	Db                       *db.BoltDB
 	WsMux                    *websocket.Multiplexor
 	StatsScope               tally.Scope
+}
+
+type JobIDGenerator struct{}
+
+func (j JobIDGenerator) GenerateJobID() string {
+	return uuid.New().String()
 }
 
 type ProjectInfoKeyGenerator struct{}
@@ -111,20 +118,25 @@ func newProjectInfo(r *http.Request) (*projectInfo, error) {
 }
 
 func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) error {
-	projectInfo, err := newProjectInfo(r)
-	if err != nil {
-		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
-		return err
+	// projectInfo, err := newProjectInfo(r)
+	// if err != nil {
+	// 	j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
+	// 	return err
+	// }
+
+	jobID, ok := mux.Vars(r)["job-id"]
+	if !ok {
+		return fmt.Errorf("internal error: no job ID in route")
 	}
 
 	viewData := templates.ProjectJobData{
 		AtlantisVersion: j.AtlantisVersion,
-		ProjectPath:     projectInfo.String(),
+		ProjectPath:     jobID,
 		CleanedBasePath: j.AtlantisURL.Path,
 		ClearMsg:        models.LogStreamingClearMsg,
 	}
 
-	err = j.ProjectJobsTemplate.Execute(w, viewData)
+	err := j.ProjectJobsTemplate.Execute(w, viewData)
 	if err != nil {
 		j.Logger.Err(err.Error())
 		return err

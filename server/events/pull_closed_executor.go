@@ -41,6 +41,8 @@ type PullCleaner interface {
 	CleanUpPull(repo models.Repo, pull models.PullRequest) error
 }
 
+// TODO: Retrieve job ID from the github checks
+
 // PullClosedExecutor executes the tasks required to clean up a closed pull
 // request.
 type PullClosedExecutor struct {

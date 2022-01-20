@@ -1,8 +1,10 @@
 package websocket
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -45,10 +47,11 @@ func NewMultiplexor(log logging.SimpleLogging, keyGenerator PartitionKeyGenerato
 // Handle should be called for a given websocket request. It blocks
 // while writing to the websocket until the buffer is closed.
 func (m *Multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
-	key, err := m.keyGenerator.Generate(r)
+	// key, err := m.keyGenerator.Generate(r)
 
-	if err != nil {
-		return errors.Wrapf(err, "generating partition key")
+	jobID, ok := mux.Vars(r)["job-id"]
+	if !ok {
+		return fmt.Errorf("internal error: no job ID in route")
 	}
 
 	// Buffer size set to 1000 to ensure messages get queued.
@@ -56,8 +59,8 @@ func (m *Multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
 	buffer := make(chan string, 1000)
 
 	// spinning up a goroutine for this since we are attempting to block on the read side.
-	go m.registry.Register(key, buffer)
-	defer m.registry.Deregister(key, buffer)
+	go m.registry.Register(jobID, buffer)
+	defer m.registry.Deregister(jobID, buffer)
 
-	return errors.Wrapf(m.writer.Write(w, r, buffer), "writing to ws %s", key)
+	return errors.Wrapf(m.writer.Write(w, r, buffer), "writing to ws %s", jobID)
 }

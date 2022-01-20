@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	. "github.com/petergtz/pegomock"
+	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/mocks"
@@ -160,14 +161,15 @@ projects:
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				scope,
 				logger,
+				controllers.JobIDGenerator{},
 			)
 
 			ctxs, err := builder.BuildAutoplanCommands(&events.CommandContext{
 				PullRequestStatus: models.PullReqStatus{
 					Mergeable: true,
 				},
-				Log:           logger,
-				Scope:         scope,
+				Log:   logger,
+				Scope: scope,
 			})
 			Ok(t, err)
 			Equals(t, len(c.exp), len(ctxs))
@@ -428,6 +430,7 @@ projects:
 					"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 					scope,
 					logger,
+					controllers.JobIDGenerator{},
 				)
 
 				var actCtxs []models.ProjectCommandContext
@@ -583,6 +586,7 @@ projects:
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				scope,
 				logger,
+				controllers.JobIDGenerator{},
 			)
 
 			ctxs, err := builder.BuildPlanCommands(
@@ -674,6 +678,7 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
+		controllers.JobIDGenerator{},
 	)
 
 	ctxs, err := builder.BuildApplyCommands(
@@ -759,6 +764,7 @@ projects:
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
+		controllers.JobIDGenerator{},
 	)
 
 	ctx := &events.CommandContext{
@@ -838,6 +844,7 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				scope,
 				logger,
+				controllers.JobIDGenerator{},
 			)
 
 			var actCtxs []models.ProjectCommandContext
@@ -1021,6 +1028,7 @@ projects:
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				scope,
 				logger,
+				controllers.JobIDGenerator{},
 			)
 
 			actCtxs, err := builder.BuildPlanCommands(
@@ -1088,19 +1096,20 @@ projects:
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
+		controllers.JobIDGenerator{},
 	)
 
 	var actCtxs []models.ProjectCommandContext
 	var err error
 	actCtxs, err = builder.BuildAutoplanCommands(&events.CommandContext{
-		HeadRepo:      models.Repo{},
-		Pull:          models.PullRequest{},
-		User:          models.User{},
-		Log:           logger,
+		HeadRepo: models.Repo{},
+		Pull:     models.PullRequest{},
+		User:     models.User{},
+		Log:      logger,
 		PullRequestStatus: models.PullReqStatus{
 			Mergeable: true,
 		},
-		Scope:         scope,
+		Scope: scope,
 	})
 	Ok(t, err)
 	Equals(t, 0, len(actCtxs))
@@ -1146,14 +1155,15 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
+		controllers.JobIDGenerator{},
 	)
 
 	ctxs, err := builder.BuildAutoplanCommands(&events.CommandContext{
 		PullRequestStatus: models.PullReqStatus{
 			Mergeable: true,
 		},
-		Log:           logger,
-		Scope:         scope,
+		Log:   logger,
+		Scope: scope,
 	})
 
 	Ok(t, err)
@@ -1228,6 +1238,7 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
+		controllers.JobIDGenerator{},
 	)
 
 	ctxs, err := builder.BuildVersionCommands(

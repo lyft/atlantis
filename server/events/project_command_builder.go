@@ -34,6 +34,11 @@ const (
 	InfiniteProjectsPerPR = -1
 )
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_id_generator.go JobIDGenerator
+type JobIDGenerator interface {
+	GenerateJobID() string
+}
+
 func NewProjectCommandBuilder(
 	policyChecksSupported bool,
 	parserValidator *yaml.ParserValidator,
@@ -49,6 +54,7 @@ func NewProjectCommandBuilder(
 	AutoplanFileList string,
 	scope tally.Scope,
 	logger logging.SimpleLogging,
+	jobIDGenerator JobIDGenerator,
 ) ProjectCommandBuilder {
 	return NewProjectCommandBuilderWithLimit(
 		policyChecksSupported,
@@ -66,6 +72,7 @@ func NewProjectCommandBuilder(
 		scope,
 		logger,
 		InfiniteProjectsPerPR,
+		jobIDGenerator,
 	)
 }
 
@@ -85,6 +92,7 @@ func NewProjectCommandBuilderWithLimit(
 	scope tally.Scope,
 	logger logging.SimpleLogging,
 	limit int,
+	jobIDGenerator JobIDGenerator,
 ) ProjectCommandBuilder {
 	var projectCommandBuilder ProjectCommandBuilder = &DefaultProjectCommandBuilder{
 		ParserValidator:    parserValidator,
@@ -97,10 +105,11 @@ func NewProjectCommandBuilderWithLimit(
 		SkipCloneNoChanges: skipCloneNoChanges,
 		EnableRegExpCmd:    EnableRegExpCmd,
 		AutoplanFileList:   AutoplanFileList,
-		ProjectCommandContextBuilder: NewProjectCommandContextBulder(
+		ProjectCommandContextBuilder: NewProjectCommandContextBuilder(
 			policyChecksSupported,
 			commentBuilder,
 			scope,
+			jobIDGenerator,
 		),
 	}
 

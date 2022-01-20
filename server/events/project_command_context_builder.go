@@ -6,14 +6,15 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
-	"github.com/uber-go/tally"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	"github.com/uber-go/tally"
 )
 
-func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope tally.Scope) ProjectCommandContextBuilder {
+func NewProjectCommandContextBuilder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope tally.Scope, jobIDGenerator JobIDGenerator) ProjectCommandContextBuilder {
 	projectCommandContextBuilder := &DefaultProjectCommandContextBuilder{
 		CommentBuilder: commentBuilder,
+		JobIDGenerator: jobIDGenerator,
 	}
 
 	contextBuilderWithStats := &CommandScopedStatsProjectCommandContextBuilder{
@@ -91,6 +92,7 @@ func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 
 type DefaultProjectCommandContextBuilder struct {
 	CommentBuilder CommentBuilder
+	JobIDGenerator JobIDGenerator
 }
 
 func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
@@ -135,6 +137,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		contextFlags,
 		ctx.Scope,
 		ctx.PullRequestStatus,
+		cb.JobIDGenerator.GenerateJobID(),
 	)
 
 	projectCmds = append(projectCmds, projectCmdContext)
@@ -189,6 +192,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 			contextFlags,
 			ctx.Scope,
 			ctx.PullRequestStatus,
+			"", // No Job ID for policy check commands
 		))
 	}
 
@@ -209,6 +213,7 @@ func newProjectCommandContext(ctx *CommandContext,
 	contextFlags *ContextFlags,
 	scope tally.Scope,
 	pullStatus models.PullReqStatus,
+	jobID string,
 ) models.ProjectCommandContext {
 
 	var projectPlanStatus models.ProjectPlanStatus
@@ -257,7 +262,8 @@ func newProjectCommandContext(ctx *CommandContext,
 		Workspace:                 projCfg.Workspace,
 		PolicySets:                policySets,
 		Tags:                      projCfg.Tags,
-		PullReqStatus:              pullStatus,
+		PullReqStatus:             pullStatus,
+		JobID:                     jobID,
 	}
 }
 

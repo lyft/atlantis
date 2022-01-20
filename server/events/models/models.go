@@ -425,6 +425,8 @@ type ProjectCommandContext struct {
 	PolicySets valid.PolicySets
 	// DeleteSourceBranchOnMerge will attempt to allow a branch to be deleted when merged (AzureDevOps & GitLab Support Only)
 	DeleteSourceBranchOnMerge bool
+	// JobID
+	JobID string
 }
 
 // ProjectCloneDir creates relative path to clone the repo to. If we are running
@@ -713,7 +715,7 @@ func (c CommandName) TitleString() string {
 }
 
 type ProjectCmdOutputLine struct {
-	ProjectInfo string
+	JobID string
 
 	Line string
 

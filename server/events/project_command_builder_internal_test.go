@@ -17,6 +17,12 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
+type MockJobIDGenerator struct{}
+
+func (j MockJobIDGenerator) GenerateJobID() string {
+	return ""
+}
+
 // Test different permutations of global and repo config.
 func TestBuildProjectCmdCtx(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
@@ -613,6 +619,7 @@ projects:
 				SkipCloneNoChanges: false,
 				ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
+					JobIDGenerator: MockJobIDGenerator{},
 				},
 				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				EnableRegExpCmd:  false,
@@ -805,6 +812,7 @@ projects:
 				SkipCloneNoChanges: true,
 				ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
+					JobIDGenerator: MockJobIDGenerator{},
 				},
 				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				EnableRegExpCmd:  true,
@@ -1026,6 +1034,7 @@ workflows:
 				ProjectCommandContextBuilder: &PolicyCheckProjectCommandContextBuilder{
 					ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
 						CommentBuilder: &CommentParser{},
+						JobIDGenerator: MockJobIDGenerator{},
 					},
 					CommentBuilder: &CommentParser{},
 				},

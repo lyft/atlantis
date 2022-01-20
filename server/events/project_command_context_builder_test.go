@@ -17,6 +17,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 	mockCommentBuilder := mocks.NewMockCommentBuilder()
 	subject := events.DefaultProjectCommandContextBuilder{
 		CommentBuilder: mockCommentBuilder,
+		JobIDGenerator: mocks.NewMockJobIDGenerator(),
 	}
 
 	projRepoRelDir := "dir1"

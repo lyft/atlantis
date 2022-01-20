@@ -40,6 +40,7 @@ func createTestProjectCmdContext(t *testing.T) models.ProjectCommandContext {
 		Workspace:   "myworkspace",
 		RepoRelDir:  "test-dir",
 		ProjectName: "test-project",
+		JobID:       "1234",
 	}
 }
 
@@ -77,7 +78,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// Note: We call this synchronously because otherwise
 		// there could be a race where we are unable to register the channel
 		// before sending messages due to the way we lock our buffer memory cache
-		projectOutputHandler.Register(ctx.PullInfo(), ch)
+		projectOutputHandler.Register(ctx.JobID, ch)
 
 		wg.Add(1)
 
@@ -101,15 +102,13 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 
 		projectOutputHandler := createProjectCommandOutputHandler(t)
 
-		
-
 		ch := make(chan string)
 
 		// register channel and backfill from buffer
 		// Note: We call this synchronously because otherwise
 		// there could be a race where we are unable to register the channel
 		// before sending messages due to the way we lock our buffer memory cache
-		projectOutputHandler.Register(ctx.PullInfo(), ch)
+		projectOutputHandler.Register(ctx.JobID, ch)
 
 		wg.Add(1)
 		// read from channel asynchronously
@@ -132,7 +131,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.AsyncProjectCommandOutputHandler)
 		assert.True(t, ok)
 
-		assert.Empty(t, dfProjectOutputHandler.GetProjectOutputBuffer(ctx.PullInfo()))
+		assert.Empty(t, dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID))
 	})
 
 	t.Run("copies buffer to new channels", func(t *testing.T) {
@@ -163,7 +162,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// Note: We call this synchronously because otherwise
 		// there could be a race where we are unable to register the channel
 		// before sending messages due to the way we lock our buffer memory cache
-		projectOutputHandler.Register(ctx.PullInfo(), ch)
+		projectOutputHandler.Register(ctx.JobID, ch)
 
 		projectOutputHandler.Send(ctx, Msg)
 		wg.Wait()
