@@ -139,20 +139,18 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 	if err != nil {
 		log.Err("Unable to fetch pull status, this is likely a bug.", err)
 	}
-	repoCfg := c.GlobalCfg.MatchingRepo(pull.BaseRepo.ID())
 	scope := c.StatsScope.Scope("autoplan")
 	timer := scope.NewTimer(metrics.ExecutionTimeMetric).AllocateSpan()
 	defer timer.Complete()
 
 	ctx := &CommandContext{
-		User:              user,
-		Log:               log,
-		Scope:             scope,
-		Pull:              pull,
-		HeadRepo:          headRepo,
-		PullStatus:        status,
-		Trigger:           Auto,
-		TemplateOverrides: repoCfg.TemplateOverrides,
+		User:       user,
+		Log:        log,
+		Scope:      scope,
+		Pull:       pull,
+		HeadRepo:   headRepo,
+		PullStatus: status,
+		Trigger:    Auto,
 	}
 	if !c.validateCtxAndComment(ctx) {
 		return
@@ -203,21 +201,19 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 	}
 
 	status, err := c.PullStatusFetcher.GetPullStatus(pull)
-	repoCfg := c.GlobalCfg.MatchingRepo(pull.BaseRepo.ID())
 
 	if err != nil {
 		log.Err("Unable to fetch pull status, this is likely a bug.", err)
 	}
 
 	ctx := &CommandContext{
-		User:              user,
-		Log:               log,
-		Pull:              pull,
-		PullStatus:        status,
-		HeadRepo:          headRepo,
-		Trigger:           Comment,
-		Scope:             scope,
-		TemplateOverrides: repoCfg.TemplateOverrides,
+		User:       user,
+		Log:        log,
+		Pull:       pull,
+		PullStatus: status,
+		HeadRepo:   headRepo,
+		Trigger:    Comment,
+		Scope:      scope,
 	}
 
 	if !c.validateCtxAndComment(ctx) {

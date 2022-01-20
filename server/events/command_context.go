@@ -49,6 +49,4 @@ type CommandContext struct {
 	PullStatus *models.PullStatus
 
 	Trigger CommandTrigger
-
-	TemplateOverrides map[string]string
 }
