@@ -16,6 +16,7 @@ package events
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"text/template"
 
@@ -272,8 +273,10 @@ func (m *MarkdownRenderer) getProjectVersionSuccessTmpl(templateOverrides map[st
 }
 
 func (m *MarkdownRenderer) getPlanTmpl(templateOverrides map[string]string, resultsTmplData []projectResultTmplData, common commonData, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
-	if val, ok := templateOverrides["plan"]; ok {
-		return template.Must(template.ParseFiles(val))
+	if file_name, ok := templateOverrides["plan"]; ok {
+		if content, err := ioutil.ReadFile(file_name); err == nil {
+			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
+		}
 	}
 	switch {
 	case len(resultsTmplData) == 1 && common.Command == planCommandTitle && numPlanSuccesses > 0:
@@ -290,9 +293,12 @@ func (m *MarkdownRenderer) getPlanTmpl(templateOverrides map[string]string, resu
 }
 
 func (m *MarkdownRenderer) getApplyTmpl(templateOverrides map[string]string, resultsTmplData []projectResultTmplData) *template.Template {
-	if val, ok := templateOverrides["apply"]; ok {
-		return template.Must(template.ParseFiles(val))
-	} else if len(resultsTmplData) == 1 {
+	if file_name, ok := templateOverrides["apply"]; ok {
+		if content, err := ioutil.ReadFile(file_name); err == nil {
+			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
+		}
+	}
+	if len(resultsTmplData) == 1 {
 		return template.Must(template.New("").Parse(singleProjectApplyTmpl))
 	} else {
 		return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(multiProjectApplyTmpl))
@@ -300,8 +306,10 @@ func (m *MarkdownRenderer) getApplyTmpl(templateOverrides map[string]string, res
 }
 
 func (m *MarkdownRenderer) getVersionTmpl(templateOverrides map[string]string, resultsTmplData []projectResultTmplData, common commonData, numVersionSuccesses int) *template.Template {
-	if val, ok := templateOverrides["version"]; ok {
-		return template.Must(template.ParseFiles(val))
+	if file_name, ok := templateOverrides["version"]; ok {
+		if content, err := ioutil.ReadFile(file_name); err == nil {
+			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
+		}
 	}
 	switch {
 	case len(resultsTmplData) == 1 && common.Command == versionCommandTitle && numVersionSuccesses > 0:

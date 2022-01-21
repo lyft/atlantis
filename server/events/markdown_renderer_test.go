@@ -24,6 +24,157 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
+func TestCustomTemplates(t *testing.T) {
+	cases := []struct {
+		Description       string
+		Command           models.CommandName
+		ProjectResults    []models.ProjectResult
+		VCSHost           models.VCSHostType
+		Expected          string
+		TemplateOverrides map[string]string
+	}{
+		{
+			"Plan Override",
+			models.PlanCommand,
+			[]models.ProjectResult{},
+			models.Github,
+			"Custom Template",
+			map[string]string{"plan": "testdata/custom_template.tmpl"},
+		},
+		{
+			"Default Plan",
+			models.PlanCommand,
+			[]models.ProjectResult{},
+			models.Github,
+			"Ran Plan for 0 projects:\n\n\n\n",
+			map[string]string{"apply": "testdata/custom_template.tmpl"},
+		},
+		{
+			"Apply Override",
+			models.ApplyCommand,
+			[]models.ProjectResult{},
+			models.Github,
+			"Custom Template",
+			map[string]string{"apply": "testdata/custom_template.tmpl"},
+		},
+		{
+			"Project Plan Successful Custom Template",
+			models.PlanCommand,
+			[]models.ProjectResult{
+				{
+					Workspace:   "workspace",
+					RepoRelDir:  "path1",
+					ProjectName: "projectname1",
+					PlanSuccess: &models.PlanSuccess{
+						TerraformOutput: "terraform-output",
+						LockURL:         "lock-url",
+						ApplyCmd:        "atlantis apply -d path -w workspace",
+						RePlanCmd:       "atlantis plan -d path -w workspace",
+					},
+				},
+				{
+					Workspace:   "workspace",
+					RepoRelDir:  "path2",
+					ProjectName: "projectname2",
+					PlanSuccess: &models.PlanSuccess{
+						TerraformOutput: "terraform-output2",
+						LockURL:         "lock-url2",
+						ApplyCmd:        "atlantis apply -d path2 -w workspace",
+						RePlanCmd:       "atlantis plan -d path2 -w workspace",
+					},
+				},
+			},
+			models.Github,
+			`Ran Plan for 2 projects:
+
+1. project: $projectname1$ dir: $path1$ workspace: $workspace$
+1. project: $projectname2$ dir: $path2$ workspace: $workspace$
+
+### 1. project: $projectname1$ dir: $path1$ workspace: $workspace$
+Custom Template
+
+---
+### 2. project: $projectname2$ dir: $path2$ workspace: $workspace$
+Custom Template
+
+---
+* :fast_forward: To **apply** all unapplied plans from this pull request, comment:
+    * $atlantis apply$
+* :put_litter_in_its_place: To delete all plans and locks for the PR, comment:
+    * $atlantis unlock$
+`,
+			map[string]string{"project_plan_success": "testdata/custom_template.tmpl"},
+		},
+		{
+			"Only Use Plan Success Override with failed, and errored plan",
+			models.PlanCommand,
+			[]models.ProjectResult{
+				{
+					Workspace:  "workspace",
+					RepoRelDir: "path",
+					PlanSuccess: &models.PlanSuccess{
+						TerraformOutput: "terraform-output",
+						LockURL:         "lock-url",
+						ApplyCmd:        "atlantis apply -d path -w workspace",
+						RePlanCmd:       "atlantis plan -d path -w workspace",
+					},
+				},
+				{
+					Workspace:  "workspace",
+					RepoRelDir: "path2",
+					Failure:    "failure",
+				},
+				{
+					Workspace:   "workspace",
+					RepoRelDir:  "path3",
+					ProjectName: "projectname",
+					Error:       errors.New("error"),
+				},
+			},
+			models.Github,
+			`Ran Plan for 3 projects:
+
+1. dir: $path$ workspace: $workspace$
+1. dir: $path2$ workspace: $workspace$
+1. project: $projectname$ dir: $path3$ workspace: $workspace$
+
+### 1. dir: $path$ workspace: $workspace$
+Custom Template
+
+---
+### 2. dir: $path2$ workspace: $workspace$
+**Plan Failed**: failure
+
+---
+### 3. project: $projectname$ dir: $path3$ workspace: $workspace$
+**Plan Error**
+$$$
+error
+$$$
+
+---
+* :fast_forward: To **apply** all unapplied plans from this pull request, comment:
+    * $atlantis apply$
+* :put_litter_in_its_place: To delete all plans and locks for the PR, comment:
+    * $atlantis unlock$
+`,
+			map[string]string{"project_plan_success": "testdata/custom_template.tmpl"},
+		},
+	}
+	r := events.MarkdownRenderer{}
+	for _, c := range cases {
+		res := events.CommandResult{
+			ProjectResults: c.ProjectResults,
+		}
+		expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
+		t.Run(fmt.Sprintf("%s_%t", c.Description, false), func(t *testing.T) {
+			s := r.Render(res, c.Command, "log", false, models.Github, c.TemplateOverrides)
+			Equals(t, expWithBackticks, s)
+		})
+	}
+
+}
+
 func TestRenderErr(t *testing.T) {
 	err := errors.New("err")
 	cases := []struct {
