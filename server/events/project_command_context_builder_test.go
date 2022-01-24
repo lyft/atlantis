@@ -58,6 +58,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 		}
 		contextFlags := &events.ContextFlags{
 			Automerge:                 false,
+			DestroyPlan:               false,
 			DeleteSourceBranchOnMerge: false,
 			ParallelApply:             false,
 			ParallelPlan:              false,
@@ -85,6 +86,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 		}
 		contextFlags := &events.ContextFlags{
 			Automerge:                 false,
+			DestroyPlan:               false,
 			DeleteSourceBranchOnMerge: false,
 			ParallelApply:             false,
 			ParallelPlan:              false,
@@ -95,6 +97,32 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 		result := subject.BuildProjectContext(commandCtx, models.PlanCommand, projCfg, []string{}, "some/dir", contextFlags)
 
 		assert.Equal(t, models.ErroredPolicyCheckStatus, result[0].ProjectPlanStatus)
+	})
+
+	t.Run("when DestroyPlan is set to true", func(t *testing.T) {
+		When(mockCommentBuilder.BuildPlanComment(projRepoRelDir, projWorkspace, projName, []string{})).ThenReturn(expectedPlanCmt)
+		When(mockCommentBuilder.BuildApplyComment(projRepoRelDir, projWorkspace, projName, false)).ThenReturn(expectedApplyCmt)
+
+		pullStatus.Projects = []models.ProjectStatus{
+			{
+				Status:      models.PlannedPlanStatus,
+				ProjectName: "project1",
+				RepoRelDir:  "dir1",
+			},
+		}
+		contextFlags := &events.ContextFlags{
+			Automerge:                 false,
+			DestroyPlan:               true,
+			DeleteSourceBranchOnMerge: false,
+			ParallelApply:             false,
+			ParallelPlan:              false,
+			Verbose:                   false,
+			ForceApply:                false,
+		}
+		result := subject.BuildProjectContext(commandCtx, models.PlanCommand, projCfg, []string{}, "some/dir", contextFlags)
+
+		assert.True(t, result[0].DestroyPlan)
+		assert.Equal(t, models.PlannedPlanStatus, result[0].ProjectPlanStatus)
 	})
 
 	t.Run("when ParallelApply is set to true", func(t *testing.T) {
@@ -113,6 +141,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 		}
 		contextFlags := &events.ContextFlags{
 			Automerge:                 false,
+			DestroyPlan:               false,
 			DeleteSourceBranchOnMerge: false,
 			ParallelApply:             true,
 			ParallelPlan:              false,

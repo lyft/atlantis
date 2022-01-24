@@ -6,9 +6,9 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
-	"github.com/uber-go/tally"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	"github.com/uber-go/tally"
 )
 
 func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope tally.Scope) ProjectCommandContextBuilder {
@@ -33,6 +33,7 @@ func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder Comm
 
 type ContextFlags struct {
 	Automerge,
+	DestroyPlan,
 	DeleteSourceBranchOnMerge,
 	ParallelApply,
 	ParallelPlan,
@@ -235,6 +236,7 @@ func newProjectCommandContext(ctx *CommandContext,
 		BaseRepo:                  ctx.Pull.BaseRepo,
 		EscapedCommentArgs:        escapedCommentArgs,
 		AutomergeEnabled:          contextFlags.Automerge,
+		DestroyPlan:               contextFlags.DestroyPlan,
 		DeleteSourceBranchOnMerge: contextFlags.DeleteSourceBranchOnMerge,
 		ParallelApplyEnabled:      contextFlags.ParallelApply,
 		ParallelPlanEnabled:       contextFlags.ParallelPlan,
@@ -257,7 +259,7 @@ func newProjectCommandContext(ctx *CommandContext,
 		Workspace:                 projCfg.Workspace,
 		PolicySets:                policySets,
 		Tags:                      projCfg.Tags,
-		PullReqStatus:              pullStatus,
+		PullReqStatus:             pullStatus,
 	}
 }
 

@@ -288,6 +288,34 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *CommandContext,
 			return nil, errors.Wrapf(err, "parsing %s", yaml.AtlantisYAMLFilename)
 		}
 		ctx.Log.Info("successfully parsed %s file", yaml.AtlantisYAMLFilename)
+
+		// Construct deletion plans if flag is enabled
+		if repoCfg.DeleteAllProjects {
+			for _, project := range repoCfg.Projects {
+				mergedCfg := p.GlobalCfg.MergeProjectCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), project, repoCfg)
+				contextFlags := &ContextFlags{
+					Automerge:                 repoCfg.Automerge,
+					Verbose:                   verbose,
+					ForceApply:                forceApply,
+					ParallelApply:             repoCfg.ParallelApply,
+					ParallelPlan:              repoCfg.ParallelPlan,
+					DestroyPlan:               repoCfg.DeleteAllProjects,
+					DeleteSourceBranchOnMerge: mergedCfg.DeleteSourceBranchOnMerge,
+				}
+				projCtxs = append(projCtxs,
+					p.ProjectCommandContextBuilder.BuildProjectContext(
+						ctx,
+						models.PlanCommand,
+						mergedCfg,
+						commentFlags,
+						repoDir,
+						contextFlags,
+					)...)
+			}
+			ctx.Log.Info("All projects are to be planned based on the repo config delete_all_projects config")
+			return projCtxs, nil
+		}
+
 		matchingProjects, err := p.ProjectFinder.DetermineProjectsViaConfig(ctx.Log, modifiedFiles, repoCfg, repoDir)
 		if err != nil {
 			return nil, err

@@ -425,6 +425,8 @@ type ProjectCommandContext struct {
 	PolicySets valid.PolicySets
 	// DeleteSourceBranchOnMerge will attempt to allow a branch to be deleted when merged (AzureDevOps & GitLab Support Only)
 	DeleteSourceBranchOnMerge bool
+	// DestroyPlan is true when the Terraform client should construct a destroy plan given a repo config.
+	DestroyPlan bool
 }
 
 // ProjectCloneDir creates relative path to clone the repo to. If we are running
