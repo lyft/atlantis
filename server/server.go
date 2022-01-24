@@ -752,7 +752,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	wsMux := websocket.NewMultiplexor(
 		logger,
-		controllers.ProjectInfoKeyGenerator{},
 		projectCmdOutputHandler,
 	)
 

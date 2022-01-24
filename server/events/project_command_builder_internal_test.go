@@ -19,12 +19,6 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
-type MockJobIDGenerator struct{}
-
-func (j MockJobIDGenerator) GenerateJobID() string {
-	return ""
-}
-
 // Test different permutations of global and repo config.
 func TestBuildProjectCmdCtx(t *testing.T) {
 	logger := logging.NewNoopLogger(t)

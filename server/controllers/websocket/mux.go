@@ -10,11 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
-// PartitionKeyGenerator generates partition keys for the multiplexor
-type PartitionKeyGenerator interface {
-	Generate(r *http.Request) (string, error)
-}
-
 // PartitionRegistry is the registry holding each partition
 // and is responsible for registering/deregistering new buffers
 type PartitionRegistry interface {
@@ -26,12 +21,11 @@ type PartitionRegistry interface {
 // and the registry. Note this is still a WIP as right now the registry is assumed to handle
 // everything.
 type Multiplexor struct {
-	writer       *Writer
-	keyGenerator PartitionKeyGenerator
-	registry     PartitionRegistry
+	writer   *Writer
+	registry PartitionRegistry
 }
 
-func NewMultiplexor(log logging.SimpleLogging, keyGenerator PartitionKeyGenerator, registry PartitionRegistry) *Multiplexor {
+func NewMultiplexor(log logging.SimpleLogging, registry PartitionRegistry) *Multiplexor {
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	return &Multiplexor{
@@ -39,16 +33,13 @@ func NewMultiplexor(log logging.SimpleLogging, keyGenerator PartitionKeyGenerato
 			upgrader: upgrader,
 			log:      log,
 		},
-		keyGenerator: keyGenerator,
-		registry:     registry,
+		registry: registry,
 	}
 }
 
 // Handle should be called for a given websocket request. It blocks
 // while writing to the websocket until the buffer is closed.
 func (m *Multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
-	// key, err := m.keyGenerator.Generate(r)
-
 	jobID, ok := mux.Vars(r)["job-id"]
 	if !ok {
 		return fmt.Errorf("internal error: no job ID in route")
