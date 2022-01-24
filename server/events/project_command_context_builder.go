@@ -8,10 +8,11 @@ import (
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/uber-go/tally"
 )
 
-func NewProjectCommandContextBuilder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope tally.Scope, jobIDGenerator JobIDGenerator) ProjectCommandContextBuilder {
+func NewProjectCommandContextBuilder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope tally.Scope, jobIDGenerator handlers.JobIDGenerator) ProjectCommandContextBuilder {
 	projectCommandContextBuilder := &DefaultProjectCommandContextBuilder{
 		CommentBuilder: commentBuilder,
 		JobIDGenerator: jobIDGenerator,
@@ -92,7 +93,7 @@ func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 
 type DefaultProjectCommandContextBuilder struct {
 	CommentBuilder CommentBuilder
-	JobIDGenerator JobIDGenerator
+	JobIDGenerator handlers.JobIDGenerator
 }
 
 func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
@@ -137,7 +138,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		contextFlags,
 		ctx.Scope,
 		ctx.PullRequestStatus,
-		cb.JobIDGenerator.GenerateJobID(),
+		cb.JobIDGenerator.GenerateJobID(ctx.Pull, prjCfg.Name, prjCfg.Workspace),
 	)
 
 	projectCmds = append(projectCmds, projectCmdContext)

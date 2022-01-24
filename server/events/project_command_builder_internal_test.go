@@ -10,6 +10,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
+	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
+
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -619,7 +621,7 @@ projects:
 				SkipCloneNoChanges: false,
 				ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
-					JobIDGenerator: MockJobIDGenerator{},
+					JobIDGenerator: handlermocks.NewMockJobIDGenerator(),
 				},
 				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				EnableRegExpCmd:  false,
@@ -812,7 +814,7 @@ projects:
 				SkipCloneNoChanges: true,
 				ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
-					JobIDGenerator: MockJobIDGenerator{},
+					JobIDGenerator: handlermocks.NewMockJobIDGenerator(),
 				},
 				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				EnableRegExpCmd:  true,
@@ -1034,7 +1036,7 @@ workflows:
 				ProjectCommandContextBuilder: &PolicyCheckProjectCommandContextBuilder{
 					ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
 						CommentBuilder: &CommentParser{},
-						JobIDGenerator: MockJobIDGenerator{},
+						JobIDGenerator: handlermocks.NewMockJobIDGenerator(),
 					},
 					CommentBuilder: &CommentParser{},
 				},

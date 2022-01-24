@@ -3,6 +3,7 @@ package handlers
 import (
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -22,6 +23,13 @@ type AsyncProjectCommandOutputHandler struct {
 	projectJobURLGenerator ProjectJobURLGenerator
 
 	logger logging.SimpleLogging
+
+	pullToJobMapping map[models.JobContext]string
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_id_generator.go JobIDGenerator
+type JobIDGenerator interface {
+	GenerateJobID(pull models.PullRequest, projectName string, workspace string) string
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobURLGenerator
@@ -63,12 +71,14 @@ type ProjectCommandOutputHandler interface {
 	SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error
 
 	ResourceCleaner
+
+	JobIDGenerator
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_resource_cleaner.go ResourceCleaner
 
 type ResourceCleaner interface {
-	CleanUp(jobID string)
+	CleanUp(jobContext models.JobContext)
 }
 
 func NewAsyncProjectCommandOutputHandler(
@@ -84,6 +94,7 @@ func NewAsyncProjectCommandOutputHandler(
 		projectStatusUpdater:   projectStatusUpdater,
 		projectJobURLGenerator: projectJobURLGenerator,
 		projectOutputBuffers:   map[string][]string{},
+		pullToJobMapping:       map[models.JobContext]string{},
 	}
 }
 
@@ -196,17 +207,42 @@ func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) 
 	return p.projectOutputBuffers[jobID]
 }
 
-func (p *AsyncProjectCommandOutputHandler) CleanUp(jobID string) {
-	p.projectOutputBuffersLock.Lock()
-	delete(p.projectOutputBuffers, jobID)
-	p.projectOutputBuffersLock.Unlock()
+func (p *AsyncProjectCommandOutputHandler) CleanUp(jobContext models.JobContext) {
 
-	// Only delete the pull record from receiver buffers.
-	// WS channel will be closed when the user closes the browser tab
-	// in closeHanlder().
-	p.receiverBuffersLock.Lock()
-	delete(p.receiverBuffers, jobID)
-	p.receiverBuffersLock.Unlock()
+	// Retrieve the jobID from the pullToJobMapping
+	if jobID, ok := p.pullToJobMapping[jobContext]; ok {
+		p.projectOutputBuffersLock.Lock()
+		delete(p.projectOutputBuffers, jobID)
+		p.projectOutputBuffersLock.Unlock()
+
+		// Only delete the pull record from receiver buffers.
+		// WS channel will be closed when the user closes the browser tab
+		// in closeHanlder().
+		p.receiverBuffersLock.Lock()
+		delete(p.receiverBuffers, jobID)
+		p.receiverBuffersLock.Unlock()
+	}
+}
+
+func (p *AsyncProjectCommandOutputHandler) GenerateJobID(pull models.PullRequest, projectName string, workspace string) string {
+	// Check if the job context exists in the pullToJobMapping
+
+	jobContext := models.JobContext{
+		PullNum:     pull.Num,
+		Repo:        pull.BaseRepo.Name,
+		ProjectName: projectName,
+		Workspace:   workspace,
+		HeadCommit:  pull.HeadCommit,
+	}
+
+	var jobID string
+	if val, ok := p.pullToJobMapping[jobContext]; ok {
+		jobID = val
+	} else {
+		jobID = uuid.New().String()
+		p.pullToJobMapping[jobContext] = jobID
+	}
+	return jobID
 }
 
 // NoopProjectOutputHandler is a mock that doesn't do anything
@@ -228,5 +264,9 @@ func (p *NoopProjectOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommand
 	return nil
 }
 
-func (p *NoopProjectOutputHandler) CleanUp(jobID string) {
+func (p *NoopProjectOutputHandler) CleanUp(jobContext models.JobContext) {
+}
+
+func (p *NoopProjectOutputHandler) GenerateJobID(pull models.PullRequest, projectName string, workspace string) string {
+	return ""
 }

@@ -90,8 +90,16 @@ func (p *PullClosedExecutor) CleanUpPull(repo models.Repo, pull models.PullReque
 			// with same dir and workspace. If a project name has not been set, we'll use the dir and
 			// workspace to build project key.
 			// Source: https://www.runatlantis.io/docs/repo-level-atlantis-yaml.html#reference
-			projectKey := models.BuildPullInfo(pullStatus.Pull.BaseRepo.FullName, pull.Num, project.ProjectName, project.RepoRelDir, project.Workspace)
-			p.LogStreamResourceCleaner.CleanUp(projectKey)
+			// projectKey := models.BuildPullInfo(pullStatus.Pull.BaseRepo.FullName, pull.Num, project.ProjectName, project.RepoRelDir, project.Workspace)
+
+			jobContext := models.JobContext{
+				PullNum:     pull.Num,
+				Repo:        pull.BaseRepo.Name,
+				Workspace:   project.Workspace,
+				ProjectName: project.ProjectName,
+				HeadCommit:  pull.HeadCommit,
+			}
+			p.LogStreamResourceCleaner.CleanUp(jobContext)
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
+	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,7 +18,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 	mockCommentBuilder := mocks.NewMockCommentBuilder()
 	subject := events.DefaultProjectCommandContextBuilder{
 		CommentBuilder: mockCommentBuilder,
-		JobIDGenerator: mocks.NewMockJobIDGenerator(),
+		JobIDGenerator: handlermocks.NewMockJobIDGenerator(),
 	}
 
 	projRepoRelDir := "dir1"
