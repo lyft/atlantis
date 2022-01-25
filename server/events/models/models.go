@@ -425,7 +425,7 @@ type ProjectCommandContext struct {
 	PolicySets valid.PolicySets
 	// DeleteSourceBranchOnMerge will attempt to allow a branch to be deleted when merged (AzureDevOps & GitLab Support Only)
 	DeleteSourceBranchOnMerge bool
-	// JobID
+	// UUID for atlantis logs
 	JobID string
 }
 

@@ -104,8 +104,8 @@ func TestGenerateProjectJobURL_ShouldReturnErrorWhenJobIDNotSpecified(t *testing
 		},
 		RepoRelDir: "ops/terraform/",
 	}
-
+	expectedErrString := "no job id in ctx"
 	gotURL, err := router.GenerateProjectJobURL(ctx)
-	assert.Error(t, err)
+	assert.EqualError(t, err, expectedErrString)
 	Equals(t, "", gotURL)
 }

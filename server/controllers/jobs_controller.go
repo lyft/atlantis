@@ -29,7 +29,9 @@ type JobsController struct {
 func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) error {
 	jobID, ok := mux.Vars(r)["job-id"]
 	if !ok {
-		return fmt.Errorf("internal error: no job ID in route")
+		err := fmt.Errorf("internal error: no job ID in route")
+		j.respond(w, logging.Error, http.StatusBadRequest, err.Error())
+		return err
 	}
 
 	viewData := templates.ProjectJobData{

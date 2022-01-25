@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/gorilla/mux"
@@ -39,6 +40,9 @@ func (r *Router) GenerateLockURL(lockID string) string {
 }
 
 func (r *Router) GenerateProjectJobURL(ctx models.ProjectCommandContext) (string, error) {
+	if ctx.JobID == "" {
+		return "", fmt.Errorf("no job id in ctx")
+	}
 	jobURL, err := r.Underlying.Get((r.ProjectJobsViewRouteName)).URL(
 		"job-id", ctx.JobID,
 	)

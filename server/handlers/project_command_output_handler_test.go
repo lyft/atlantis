@@ -212,4 +212,35 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		err := prjCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
 		assert.Error(t, err)
 	})
+
+	t.Run("return same Job ID when follow up operation", func(t *testing.T) {
+		RegisterMockTestingT(t)
+		logger := logging.NewNoopLogger(t)
+		prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
+		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
+		projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
+		prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
+			prjCmdOutputChan,
+			projectStatusUpdater,
+			projectJobURLGenerator,
+			logger,
+		)
+
+		// Job ID generation during plan
+		pull := models.PullRequest{
+			Num: 1,
+			BaseRepo: models.Repo{
+				Name: "test-repo",
+			},
+			HeadCommit: "head-sha",
+		}
+		projectName := "test-project"
+		workspaceName := "test-workspace"
+		jobID := prjCmdOutputHandler.GenerateJobID(pull, projectName, workspaceName)
+
+		// Job ID generation during apply
+		newJobID := prjCmdOutputHandler.GenerateJobID(pull, projectName, workspaceName)
+
+		assert.Equal(t, jobID, newJobID)
+	})
 }
