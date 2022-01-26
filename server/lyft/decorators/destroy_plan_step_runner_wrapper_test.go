@@ -56,7 +56,7 @@ func TestRun_DestroyPlan(t *testing.T) {
 				"args",
 			},
 			tags: map[string]string{
-				decorators.PlanMode: decorators.Destroy,
+				decorators.Deprecated: decorators.Destroy,
 			},
 		},
 		{
