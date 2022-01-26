@@ -119,33 +119,6 @@ var DefaultPlanStage = Stage{
 	},
 }
 
-// Deprecated: use NewGlobalCfgFromArgs
-func NewGlobalCfgWithHooks(allowRepoCfg bool, mergeableReq bool, approvedReq bool, unDivergedReq bool, sqUnLockedReq bool, preWorkflowHooks []*PreWorkflowHook) GlobalCfg {
-	return NewGlobalCfgFromArgs(GlobalCfgArgs{
-		AllowRepoCfg:     allowRepoCfg,
-		MergeableReq:     mergeableReq,
-		ApprovedReq:      approvedReq,
-		UnDivergedReq:    unDivergedReq,
-		SQUnLockedReq:    sqUnLockedReq,
-		PreWorkflowHooks: preWorkflowHooks,
-	})
-}
-
-// NewGlobalCfg returns a global config that respects the parameters.
-// allowRepoCfg is true if users want to allow repos full config functionality.
-// mergeableReq is true if users want to set the mergeable apply requirement
-// for all repos.
-// approvedReq is true if users want to set the approved apply requirement
-// for all repos.
-// Deprecated: use NewGlobalCfgFromArgs
-func NewGlobalCfg(allowRepoCfg bool, mergeableReq bool, approvedReq bool) GlobalCfg {
-	return NewGlobalCfgFromArgs(GlobalCfgArgs{
-		AllowRepoCfg: allowRepoCfg,
-		MergeableReq: mergeableReq,
-		ApprovedReq:  approvedReq,
-	})
-}
-
 type GlobalCfgArgs struct {
 	AllowRepoCfg       bool
 	MergeableReq       bool
