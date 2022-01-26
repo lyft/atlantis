@@ -30,8 +30,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
-	fmocks "github.com/runatlantis/atlantis/server/lyft/feature/mocks"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -311,7 +309,6 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	Equals(t, "", res.Failure)
 }
 
-
 func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
@@ -335,12 +332,11 @@ func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T)
 				IsApproved: false,
 			},
 		},
-		Log:               logging.NewNoopLogger(t),
+		Log: logging.NewNoopLogger(t),
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
 
 	res := featureAwareRunner.Apply(ctx)
 	Equals(t, "", res.Failure)
