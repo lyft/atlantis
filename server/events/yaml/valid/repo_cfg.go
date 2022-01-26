@@ -21,7 +21,6 @@ type RepoCfg struct {
 	ParallelApply             bool
 	ParallelPlan              bool
 	ParallelPolicyCheck       bool
-	DeleteAllProjects         bool
 	DeleteSourceBranchOnMerge *bool
 }
 
