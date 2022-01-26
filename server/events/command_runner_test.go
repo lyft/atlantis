@@ -20,11 +20,12 @@ import (
 	"strings"
 	"testing"
 
-	stats "github.com/lyft/gostats"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/metrics"
 
 	"github.com/google/go-github/v31/github"
 	. "github.com/petergtz/pegomock"
@@ -36,8 +37,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
-	"github.com/runatlantis/atlantis/server/feature"
-	fmocks "github.com/runatlantis/atlantis/server/feature/mocks"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
+	fmocks "github.com/runatlantis/atlantis/server/lyft/feature/mocks"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -136,9 +137,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		defaultBoltDB,
 	)
 
-	pullReqStatusFetcher := vcs.SQBasedPullStatusFetcher{
-		GithubClient: githubClient,
-	}
+	pullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(githubClient, vcs.NewLyftPullMergeabilityChecker("atlantis"))
 
 	applyCommandRunner = events.NewApplyCommandRunner(
 		vcsClient,
@@ -154,7 +153,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		parallelPoolSize,
 		SilenceNoProjects,
 		false,
-		&pullReqStatusFetcher,
+		pullReqStatusFetcher,
 	)
 
 	approvePoliciesCommandRunner = events.NewApprovePoliciesCommandRunner(
@@ -194,7 +193,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	When(preWorkflowHooksCommandRunner.RunPreHooks(matchers.AnyPtrToEventsCommandContext())).ThenReturn(nil)
 
 	globalCfg := valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{})
-	scope := stats.NewDefaultStore()
+	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
 	ch = events.DefaultCommandRunner{
 		VCSClient:                     vcsClient,

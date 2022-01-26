@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/go-version"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/core/runtime"
-	mocks2 "github.com/runatlantis/atlantis/server/core/runtime/mocks"
 	tmocks "github.com/runatlantis/atlantis/server/core/terraform/mocks"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/mocks"
@@ -31,6 +30,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
+	fmocks "github.com/runatlantis/atlantis/server/lyft/feature/mocks"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -256,7 +257,6 @@ func TestDefaultProjectCommandRunner_ApplyNotCloned(t *testing.T) {
 func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
 	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
@@ -268,11 +268,15 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 	}
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"approved"},
+		PullReqStatus: models.PullReqStatus{
+			ApprovalStatus: models.ApprovalStatus{
+				IsApproved: false,
+			},
+		},
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "Pull request must be approved by at least one person other than the author before running apply.", res.Failure)
@@ -281,7 +285,6 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
 	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
@@ -292,22 +295,26 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 		Webhooks: mockSender,
 	}
 	ctx := models.ProjectCommandContext{
+		PullReqStatus: models.PullReqStatus{
+			ApprovalStatus: models.ApprovalStatus{
+				IsApproved: false,
+			},
+		},
 		ApplyRequirements: []string{"approved"},
 		ForceApply:        true,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(false, nil)
 
 	res := runner.Apply(ctx)
 	Equals(t, "", res.Failure)
 }
 
+
 func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
 	mockSender := mocks.NewMockWebhooksSender()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
@@ -323,6 +330,11 @@ func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T)
 	ctx := models.ProjectCommandContext{
 		ApplyRequirements: []string{"approved"},
 		ForceApply:        true,
+		PullReqStatus: models.PullReqStatus{
+			ApprovalStatus: models.ApprovalStatus{
+				IsApproved: false,
+			},
+		},
 		Log:               logging.NewNoopLogger(t),
 	}
 	tmp, cleanup := TempDir(t)
@@ -346,7 +358,9 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 		},
 	}
 	ctx := models.ProjectCommandContext{
-		PullMergeable:     false,
+		PullReqStatus: models.PullReqStatus{
+			Mergeable: false,
+		},
 		ApplyRequirements: []string{"mergeable"},
 	}
 	tmp, cleanup := TempDir(t)
@@ -466,7 +480,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			mockApply := mocks.NewMockStepRunner()
 			mockRun := mocks.NewMockCustomStepRunner()
 			mockEnv := mocks.NewMockEnvStepRunner()
-			mockPullReqStatusChecker := mocks2.NewMockPullStatusChecker()
 			mockWorkingDir := mocks.NewMockWorkingDir()
 			mockLocker := mocks.NewMockProjectLocker()
 			mockSender := mocks.NewMockWebhooksSender()
@@ -501,7 +514,12 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 				Workspace:         "default",
 				ApplyRequirements: c.applyReqs,
 				RepoRelDir:        ".",
-				PullMergeable:     c.pullMergeable,
+				PullReqStatus: models.PullReqStatus{
+					ApprovalStatus: models.ApprovalStatus{
+						IsApproved: true,
+					},
+					Mergeable: true,
+				},
 			}
 			expEnvs := map[string]string{
 				"key": "value",
@@ -511,7 +529,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			When(mockApply.Run(ctx, nil, repoDir, expEnvs)).ThenReturn("apply", nil)
 			When(mockRun.Run(ctx, "", repoDir, expEnvs)).ThenReturn("run", nil)
 			When(mockEnv.Run(ctx, "", "value", repoDir, make(map[string]string))).ThenReturn("value", nil)
-			When(mockPullReqStatusChecker.PullIsApproved(ctx.BaseRepo, ctx.Pull)).ThenReturn(true, nil)
 
 			res := runner.Apply(ctx)
 			Equals(t, c.expOut, res.ApplySuccess)
@@ -519,8 +536,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 
 			for _, step := range c.expSteps {
 				switch step {
-				case "approved":
-					mockPullReqStatusChecker.VerifyWasCalledOnce().PullIsApproved(ctx.BaseRepo, ctx.Pull)
 				case "init":
 					mockInit.VerifyWasCalledOnce().Run(ctx, nil, repoDir, expEnvs)
 				case "plan":
@@ -575,7 +590,9 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 		Workspace:         "default",
 		ApplyRequirements: []string{},
 		RepoRelDir:        ".",
-		PullMergeable:     true,
+		PullReqStatus: models.PullReqStatus{
+			Mergeable: true,
+		},
 	}
 	expEnvs := map[string]string{}
 	When(mockApply.Run(ctx, nil, repoDir, expEnvs)).ThenReturn("apply", fmt.Errorf("something went wrong"))
