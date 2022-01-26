@@ -1,14 +1,17 @@
 package websocket
 
 import (
-	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
 )
+
+// PartitionKeyGenerator generates partition keys for the multiplexor
+type PartitionKeyGenerator interface {
+	Generate(r *http.Request) (string, error)
+}
 
 // PartitionRegistry is the registry holding each partition
 // and is responsible for registering/deregistering new buffers
@@ -21,11 +24,12 @@ type PartitionRegistry interface {
 // and the registry. Note this is still a WIP as right now the registry is assumed to handle
 // everything.
 type Multiplexor struct {
-	writer   *Writer
-	registry PartitionRegistry
+	writer       *Writer
+	keyGenerator PartitionKeyGenerator
+	registry     PartitionRegistry
 }
 
-func NewMultiplexor(log logging.SimpleLogging, registry PartitionRegistry) *Multiplexor {
+func NewMultiplexor(log logging.SimpleLogging, keyGenerator PartitionKeyGenerator, registry PartitionRegistry) *Multiplexor {
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	return &Multiplexor{
@@ -33,16 +37,18 @@ func NewMultiplexor(log logging.SimpleLogging, registry PartitionRegistry) *Mult
 			upgrader: upgrader,
 			log:      log,
 		},
-		registry: registry,
+		keyGenerator: keyGenerator,
+		registry:     registry,
 	}
 }
 
 // Handle should be called for a given websocket request. It blocks
 // while writing to the websocket until the buffer is closed.
 func (m *Multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
-	jobID, ok := mux.Vars(r)["job-id"]
-	if !ok {
-		return fmt.Errorf("internal error: no job ID in route")
+	key, err := m.keyGenerator.Generate(r)
+
+	if err != nil {
+		return errors.Wrapf(err, "generating partition key")
 	}
 
 	// Buffer size set to 1000 to ensure messages get queued.
@@ -50,8 +56,8 @@ func (m *Multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
 	buffer := make(chan string, 1000)
 
 	// spinning up a goroutine for this since we are attempting to block on the read side.
-	go m.registry.Register(jobID, buffer)
-	defer m.registry.Deregister(jobID, buffer)
+	go m.registry.Register(key, buffer)
+	defer m.registry.Deregister(key, buffer)
 
-	return errors.Wrapf(m.writer.Write(w, r, buffer), "writing to ws %s", jobID)
+	return errors.Wrapf(m.writer.Write(w, r, buffer), "writing to ws %s", key)
 }

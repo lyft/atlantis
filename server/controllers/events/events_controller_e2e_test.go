@@ -912,7 +912,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		statsScope,
 		logger,
-		projectCmdOutputHandler,
+		events.UUIDJobIdGenerator{},
 	)
 
 	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTFVersion)

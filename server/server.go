@@ -518,7 +518,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		statsScope,
 		logger,
 		userConfig.MaxProjectsPerPR,
-		projectCmdOutputHandler,
+		events.UUIDJobIdGenerator{},
 	)
 
 	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTfVersion)
@@ -752,6 +752,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	wsMux := websocket.NewMultiplexor(
 		logger,
+		controllers.JobIDKeyGenerator{},
 		projectCmdOutputHandler,
 	)
 

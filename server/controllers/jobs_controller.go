@@ -15,6 +15,17 @@ import (
 	"github.com/uber-go/tally"
 )
 
+type JobIDKeyGenerator struct{}
+
+func (g JobIDKeyGenerator) Generate(r *http.Request) (string, error) {
+	jobID, ok := mux.Vars(r)["job-id"]
+	if !ok {
+		return "", fmt.Errorf("internal error: no job-id in route")
+	}
+
+	return jobID, nil
+}
+
 type JobsController struct {
 	AtlantisVersion          string
 	AtlantisURL              *url.URL

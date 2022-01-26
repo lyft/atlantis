@@ -714,16 +714,22 @@ func (c CommandName) TitleString() string {
 	return strings.Title(strings.ReplaceAll(strings.ToLower(c.String()), "_", " "))
 }
 
-type JobContext struct {
+type PullContext struct {
 	PullNum     int
 	Repo        string
 	ProjectName string
 	Workspace   string
-	HeadCommit  string
+}
+
+type JobContext struct {
+	PullContext
+	HeadCommit string
 }
 
 type ProjectCmdOutputLine struct {
 	JobID string
+
+	JobContext JobContext
 
 	Line string
 

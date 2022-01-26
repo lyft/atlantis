@@ -5,7 +5,6 @@ package mocks
 
 import (
 	pegomock "github.com/petergtz/pegomock"
-	models "github.com/runatlantis/atlantis/server/events/models"
 	"reflect"
 	"time"
 )
@@ -25,11 +24,11 @@ func NewMockJobIDGenerator(options ...pegomock.Option) *MockJobIDGenerator {
 func (mock *MockJobIDGenerator) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockJobIDGenerator) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockJobIDGenerator) GenerateJobID(_param0 models.PullRequest, _param1 string, _param2 string) string {
+func (mock *MockJobIDGenerator) GenerateJobID() string {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockJobIDGenerator().")
 	}
-	params := []pegomock.Param{_param0, _param1, _param2}
+	params := []pegomock.Param{}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("GenerateJobID", params, []reflect.Type{reflect.TypeOf((*string)(nil)).Elem()})
 	var ret0 string
 	if len(result) != 0 {
@@ -77,8 +76,8 @@ type VerifierMockJobIDGenerator struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockJobIDGenerator) GenerateJobID(_param0 models.PullRequest, _param1 string, _param2 string) *MockJobIDGenerator_GenerateJobID_OngoingVerification {
-	params := []pegomock.Param{_param0, _param1, _param2}
+func (verifier *VerifierMockJobIDGenerator) GenerateJobID() *MockJobIDGenerator_GenerateJobID_OngoingVerification {
+	params := []pegomock.Param{}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "GenerateJobID", params, verifier.timeout)
 	return &MockJobIDGenerator_GenerateJobID_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
@@ -88,26 +87,8 @@ type MockJobIDGenerator_GenerateJobID_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockJobIDGenerator_GenerateJobID_OngoingVerification) GetCapturedArguments() (models.PullRequest, string, string) {
-	_param0, _param1, _param2 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1]
+func (c *MockJobIDGenerator_GenerateJobID_OngoingVerification) GetCapturedArguments() {
 }
 
-func (c *MockJobIDGenerator_GenerateJobID_OngoingVerification) GetAllCapturedArguments() (_param0 []models.PullRequest, _param1 []string, _param2 []string) {
-	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
-	if len(params) > 0 {
-		_param0 = make([]models.PullRequest, len(c.methodInvocations))
-		for u, param := range params[0] {
-			_param0[u] = param.(models.PullRequest)
-		}
-		_param1 = make([]string, len(c.methodInvocations))
-		for u, param := range params[1] {
-			_param1[u] = param.(string)
-		}
-		_param2 = make([]string, len(c.methodInvocations))
-		for u, param := range params[2] {
-			_param2[u] = param.(string)
-		}
-	}
-	return
+func (c *MockJobIDGenerator_GenerateJobID_OngoingVerification) GetAllCapturedArguments() {
 }

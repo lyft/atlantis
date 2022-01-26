@@ -83,12 +83,11 @@ func (p *PullClosedExecutor) CleanUpPull(repo models.Repo, pull models.PullReque
 
 	if pullStatus != nil {
 		for _, project := range pullStatus.Projects {
-			jobContext := models.JobContext{
+			jobContext := models.PullContext{
 				PullNum:     pull.Num,
 				Repo:        pull.BaseRepo.Name,
 				Workspace:   project.Workspace,
 				ProjectName: project.ProjectName,
-				HeadCommit:  pull.HeadCommit,
 			}
 			p.LogStreamResourceCleaner.CleanUp(jobContext)
 		}

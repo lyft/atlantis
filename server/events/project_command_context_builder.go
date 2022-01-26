@@ -138,7 +138,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		contextFlags,
 		ctx.Scope,
 		ctx.PullRequestStatus,
-		cb.JobIDGenerator.GenerateJobID(ctx.Pull, prjCfg.Name, prjCfg.Workspace),
+		cb.JobIDGenerator.GenerateJobID(),
 	)
 
 	projectCmds = append(projectCmds, projectCmdContext)
