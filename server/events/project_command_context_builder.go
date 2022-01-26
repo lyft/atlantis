@@ -33,7 +33,6 @@ func NewProjectCommandContextBulder(policyCheckEnabled bool, commentBuilder Comm
 
 type ContextFlags struct {
 	Automerge,
-	DestroyPlan,
 	DeleteSourceBranchOnMerge,
 	ParallelApply,
 	ParallelPlan,
@@ -236,7 +235,6 @@ func newProjectCommandContext(ctx *CommandContext,
 		BaseRepo:                  ctx.Pull.BaseRepo,
 		EscapedCommentArgs:        escapedCommentArgs,
 		AutomergeEnabled:          contextFlags.Automerge,
-		DestroyPlan:               contextFlags.DestroyPlan,
 		DeleteSourceBranchOnMerge: contextFlags.DeleteSourceBranchOnMerge,
 		ParallelApplyEnabled:      contextFlags.ParallelApply,
 		ParallelPlanEnabled:       contextFlags.ParallelPlan,

@@ -22,9 +22,6 @@ const DefaultParallelPolicyCheck = false
 // DefaultDeleteSourceBranchOnMerge being false is the default setting whether or not to remove a source branch on merge
 const DefaultDeleteSourceBranchOnMerge = false
 
-// DeleteAllProjects is the default setting for initiating a destroy plan against all projects within a repo
-const DeleteAllProjects = false
-
 // RepoCfg is the raw schema for repo-level atlantis.yaml config.
 type RepoCfg struct {
 	Version                   *int                `yaml:"version,omitempty"`
@@ -34,7 +31,6 @@ type RepoCfg struct {
 	Automerge                 *bool               `yaml:"automerge,omitempty"`
 	ParallelApply             *bool               `yaml:"parallel_apply,omitempty"`
 	ParallelPlan              *bool               `yaml:"parallel_plan,omitempty"`
-	DeleteAllProjects         *bool               `yaml:"delete_all_projects,omitempty"`
 	DeleteSourceBranchOnMerge *bool               `yaml:"delete_source_branch_on_merge,omitempty"`
 }
 
@@ -82,11 +78,6 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 		parallelPlan = *r.ParallelPlan
 	}
 
-	deleteAllProjects := DeleteAllProjects
-	if r.DeleteAllProjects != nil {
-		deleteAllProjects = *r.DeleteAllProjects
-	}
-
 	return valid.RepoCfg{
 		Version:                   *r.Version,
 		Projects:                  validProjects,
@@ -95,7 +86,6 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 		ParallelApply:             parallelApply,
 		ParallelPlan:              parallelPlan,
 		ParallelPolicyCheck:       parallelPlan,
-		DeleteAllProjects:         deleteAllProjects,
 		DeleteSourceBranchOnMerge: r.DeleteSourceBranchOnMerge,
 	}
 }

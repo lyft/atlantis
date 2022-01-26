@@ -165,14 +165,10 @@ func (p *PlanStepRunner) buildPlanCmd(ctx models.ProjectCommandContext, extraArg
 		envFileArgs = []string{"-var-file", envFile}
 	}
 
-	planMode := "-refresh"
-	if ctx.DestroyPlan {
-		planMode = "-destroy"
-	}
 	argList := [][]string{
 		// NOTE: we need to quote the plan filename because Bitbucket Server can
 		// have spaces in its repo owner names.
-		{"plan", "-input=false", planMode, "-out", fmt.Sprintf("%q", planFile)},
+		{"plan", "-input=false", "-refresh", "-out", fmt.Sprintf("%q", planFile)},
 		tfVars,
 		extraArgs,
 		ctx.EscapedCommentArgs,
