@@ -502,13 +502,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir:            workingDir,
 		PreWorkflowHookRunner: runtime.DefaultPreWorkflowHookRunner{},
 	}
-	destroyPlanProjectFinderWrapper := &lyftDecorators.DestroyPlanProjectFinderWrapper{
-		ProjectFinder: &events.DefaultProjectFinder{},
-	}
 	projectCommandBuilder := events.NewProjectCommandBuilderWithLimit(
 		policyChecksEnabled,
 		validator,
-		destroyPlanProjectFinderWrapper,
+		&events.DefaultProjectFinder{},
 		vcsClient,
 		workingDir,
 		workingDirLocker,
