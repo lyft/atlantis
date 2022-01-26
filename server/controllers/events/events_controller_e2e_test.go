@@ -16,7 +16,6 @@ import (
 	"github.com/google/go-github/v31/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-version"
-	stats "github.com/lyft/gostats"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server"
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
@@ -40,6 +39,7 @@ import (
 	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/metrics"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -845,7 +845,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	}
 	featureAllocator, _ := feature.NewStringSourcedAllocator(logger)
 
-	terraformClient, err := terraform.NewClient(logger, binDir, cacheDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", &NoopTFDownloader{}, false, projectCmdOutputHandler, featureAllocator)
+	terraformClient, err := terraform.NewE2ETestClient(logger, binDir, cacheDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", &NoopTFDownloader{}, false, projectCmdOutputHandler, featureAllocator)
 	Ok(t, err)
 	boltdb, err := db.New(dataDir)
 	Ok(t, err)
@@ -895,7 +895,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		WorkingDir:            workingDir,
 		PreWorkflowHookRunner: mockPreWorkflowHookRunner,
 	}
-	statsScope := stats.NewStore(stats.NewNullSink(), false)
+	statsScope, _, err := metrics.NewLoggingScope(logger, "atlantis")
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
 		userConfig.EnablePolicyChecksFlag,

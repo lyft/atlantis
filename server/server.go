@@ -18,8 +18,8 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -41,10 +41,11 @@ import (
 	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/lyft/scheduled"
+	"github.com/runatlantis/atlantis/server/metrics"
+	"github.com/uber-go/tally"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
-	stats "github.com/lyft/gostats"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers"
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
@@ -96,7 +97,8 @@ type Server struct {
 	PreWorkflowHooksCommandRunner *events.DefaultPreWorkflowHooksCommandRunner
 	CommandRunner                 *events.DefaultCommandRunner
 	Logger                        logging.SimpleLogging
-	StatsScope                    stats.Scope
+	StatsScope                    tally.Scope
+	StatsCloser                   io.Closer
 	Locker                        locking.Locker
 	ApplyLocker                   locking.ApplyLocker
 	VCSEventsController           *events_controllers.VCSEventsController
@@ -150,9 +152,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, err
 	}
 
-	statsScope := stats.NewDefaultStore().Scope(userConfig.StatsNamespace)
-	statsScope.Store().AddStatGenerator(stats.NewRuntimeStats(statsScope.Scope("go")))
-
 	var supportedVCSHosts []models.VCSHostType
 
 	// not to be used directly, currently this is just used
@@ -173,6 +172,35 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	if userConfig.EnablePolicyChecksFlag {
 		logger.Info("Policy Checks are enabled")
 		policyChecksEnabled = true
+	}
+
+	validator := &yaml.ParserValidator{}
+
+	globalCfg := valid.NewGlobalCfgFromArgs(
+		valid.GlobalCfgArgs{
+			AllowRepoCfg:       userConfig.AllowRepoConfig,
+			MergeableReq:       userConfig.RequireMergeable,
+			ApprovedReq:        userConfig.RequireApproval,
+			UnDivergedReq:      userConfig.RequireUnDiverged,
+			SQUnLockedReq:      userConfig.RequireSQUnlocked,
+			PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
+		})
+	if userConfig.RepoConfig != "" {
+		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
+		}
+	} else if userConfig.RepoConfigJSON != "" {
+		globalCfg, err = validator.ParseGlobalCfgJSON(userConfig.RepoConfigJSON, globalCfg)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing --%s", config.RepoConfigJSONFlag)
+		}
+	}
+
+	statsScope, closer, err := metrics.NewScope(globalCfg.Metrics, logger, userConfig.StatsNamespace)
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "instantiating metrics scope")
 	}
 
 	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
@@ -347,12 +375,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectCmdOutputHandler = &handlers.NoopProjectOutputHandler{}
 	} else {
 		projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
-		projectCmdOutputHandler = handlers.NewInstrumentedProjectCommandOutputHandler(
+		projectCmdOutputHandler = handlers.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
 			commitStatusUpdater,
 			router,
 			logger,
-			statsScope.Scope("api"),
 		)
 	}
 
@@ -369,10 +396,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		true,
 		projectCmdOutputHandler,
 		featureAllocator)
-	// The flag.Lookup call is to detect if we're running in a unit test. If we
-	// are, then we don't error out because we don't have/want terraform
-	// installed on our CI system where the unit tests run.
-	if err != nil && flag.Lookup("test.v") == nil {
+
+	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform")
 	}
 	markdownRenderer := &events.MarkdownRenderer{
@@ -424,29 +449,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir:       workingDir,
 		WorkingDirLocker: workingDirLocker,
 		DB:               boltdb,
-	}
-
-	validator := &yaml.ParserValidator{}
-
-	globalCfg := valid.NewGlobalCfgFromArgs(
-		valid.GlobalCfgArgs{
-			AllowRepoCfg:       userConfig.AllowRepoConfig,
-			MergeableReq:       userConfig.RequireMergeable,
-			ApprovedReq:        userConfig.RequireApproval,
-			UnDivergedReq:      userConfig.RequireUnDiverged,
-			SQUnLockedReq:      userConfig.RequireSQUnlocked,
-			PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
-		})
-	if userConfig.RepoConfig != "" {
-		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
-		if err != nil {
-			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
-		}
-	} else if userConfig.RepoConfigJSON != "" {
-		globalCfg, err = validator.ParseGlobalCfgJSON(userConfig.RepoConfigJSON, globalCfg)
-		if err != nil {
-			return nil, errors.Wrapf(err, "parsing --%s", config.RepoConfigJSONFlag)
-		}
 	}
 
 	pullClosedExecutor := events.NewInstrumentedPullClosedExecutor(
@@ -712,7 +714,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EventParser:                   eventParser,
 		Logger:                        logger,
 		GlobalCfg:                     globalCfg,
-		StatsScope:                    statsScope.Scope("cmd"),
+		StatsScope:                    statsScope.SubScope("cmd"),
 		AllowForkPRs:                  userConfig.AllowForkPRs,
 		AllowForkPRsFlag:              config.AllowForkPRsFlag,
 		SilenceForkPRErrors:           userConfig.SilenceForkPRErrors,
@@ -762,7 +764,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ProjectJobsErrorTemplate: templates.ProjectJobsErrorTemplate,
 		Db:                       boltdb,
 		WsMux:                    wsMux,
-		StatsScope:               statsScope.Scope("api"),
+		StatsScope:               statsScope.SubScope("api"),
 	}
 
 	eventsController := &events_controllers.VCSEventsController{
@@ -841,6 +843,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		CommandRunner:                 commandRunner,
 		Logger:                        logger,
 		StatsScope:                    statsScope,
+		StatsCloser:                   closer,
 		Locker:                        lockingClient,
 		ApplyLocker:                   applyLockingClient,
 		VCSEventsController:           eventsController,
@@ -921,7 +924,9 @@ func (s *Server) Start() error {
 	s.waitForDrain()
 
 	// flush stats before shutdown
-	s.StatsScope.Store().Flush()
+	if err := s.StatsCloser.Close(); err != nil {
+		s.Logger.Err(err.Error())
+	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second) // nolint: vet
 	if err := server.Shutdown(ctx); err != nil {
