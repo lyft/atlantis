@@ -166,7 +166,6 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 	// Must construct slices here instead of using a `var` declaration because
 	// we treat nil slices differently.
 	applyReqs := []string{}
-	allowedOverrides := []string{}
 	if args.MergeableReq {
 		applyReqs = append(applyReqs, MergeableApplyReq)
 	}
@@ -183,8 +182,8 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 		applyReqs = append(applyReqs, PoliciesPassedApplyReq)
 	}
 
-	allowCustomWorkflows := false
-	deleteSourceBranchOnMerge := false
+	var deleteSourceBranchOnMerge, allowCustomWorkflows bool
+	allowedOverrides := []string{}
 	if args.AllowRepoCfg {
 		allowedOverrides = []string{ApplyRequirementsKey, WorkflowKey, DeleteSourceBranchOnMergeKey}
 		allowCustomWorkflows = true
@@ -197,7 +196,6 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 		PreWorkflowHooks:          args.PreWorkflowHooks,
 		Workflow:                  &defaultWorkflow,
 		AllowedWorkflows:          []string{},
-		AllowedOverrides:          allowedOverrides,
 		AllowCustomWorkflows:      &allowCustomWorkflows,
 		DeleteSourceBranchOnMerge: &deleteSourceBranchOnMerge,
 	}
@@ -221,7 +219,9 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 			Plan:  DefaultPlanStage,
 		}
 
-		allowedOverrides = append(allowedOverrides, PullRequestWorkflowKey, DeploymentWorkflowKey)
+		if args.AllowRepoCfg {
+			allowedOverrides = append(allowedOverrides, PullRequestWorkflowKey, DeploymentWorkflowKey)
+		}
 
 		workflows[DefaultPullRequestWorkflowName] = pullRequestWorkflow
 		workflows[DefaultDeploymentWorkflowName] = deploymentWorkflow
@@ -229,6 +229,8 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 		repo.DeploymentWorkflow = &deploymentWorkflow
 		repo.PullRequestWorkflow = &pullRequestWorkflow
 	}
+
+	repo.AllowedOverrides = allowedOverrides
 
 	return GlobalCfg{
 		Repos:     []Repo{repo},
