@@ -264,7 +264,3 @@ func (p *NoopProjectOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommand
 
 func (p *NoopProjectOutputHandler) CleanUp(pullContext models.PullContext) {
 }
-
-func (p *NoopProjectOutputHandler) GenerateJobID(pull models.PullRequest, projectName string, workspace string) string {
-	return ""
-}
