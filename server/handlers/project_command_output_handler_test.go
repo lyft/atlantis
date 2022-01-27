@@ -97,43 +97,6 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		Equals(t, expectedMsg, Msg)
 	})
 
-	t.Run("clear buffer", func(t *testing.T) {
-		var wg sync.WaitGroup
-
-		projectOutputHandler := createProjectCommandOutputHandler(t)
-
-		ch := make(chan string)
-
-		// register channel and backfill from buffer
-		// Note: We call this synchronously because otherwise
-		// there could be a race where we are unable to register the channel
-		// before sending messages due to the way we lock our buffer memory cache
-		projectOutputHandler.Register(ctx.JobID, ch)
-
-		wg.Add(1)
-		// read from channel asynchronously
-		go func() {
-			for msg := range ch {
-				// we are done once we receive the clear message.
-				// prior message doesn't matter for this test.
-				if msg == models.LogStreamingClearMsg {
-					wg.Done()
-				}
-			}
-		}()
-
-		// send regular message followed by clear message
-		projectOutputHandler.Send(ctx, Msg)
-		projectOutputHandler.Clear(ctx)
-		wg.Wait()
-		close(ch)
-
-		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.AsyncProjectCommandOutputHandler)
-		assert.True(t, ok)
-
-		assert.Empty(t, dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID))
-	})
-
 	t.Run("copies buffer to new channels", func(t *testing.T) {
 		var wg sync.WaitGroup
 

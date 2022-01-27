@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/controllers/websocket"
 	"github.com/runatlantis/atlantis/server/core/db"
@@ -35,14 +36,14 @@ type JobsController struct {
 	Db                       *db.BoltDB
 	WsMux                    *websocket.Multiplexor
 	StatsScope               tally.Scope
+	KeyGenerator             websocket.PartitionKeyGenerator
 }
 
 func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) error {
-	jobID, ok := mux.Vars(r)["job-id"]
-	if !ok {
-		err := fmt.Errorf("internal error: no job ID in route")
-		j.respond(w, logging.Error, http.StatusBadRequest, err.Error())
-		return err
+	jobID, err := j.KeyGenerator.Generate(r)
+
+	if err != nil {
+		return errors.Wrapf(err, "generating partition key")
 	}
 
 	viewData := templates.ProjectJobData{
@@ -52,8 +53,7 @@ func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) 
 		ClearMsg:        models.LogStreamingClearMsg,
 	}
 
-	err := j.ProjectJobsTemplate.Execute(w, viewData)
-	if err != nil {
+	if err = j.ProjectJobsTemplate.Execute(w, viewData); err != nil {
 		j.Logger.Err(err.Error())
 		return err
 	}

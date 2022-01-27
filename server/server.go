@@ -765,6 +765,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Db:                       boltdb,
 		WsMux:                    wsMux,
 		StatsScope:               statsScope.SubScope("api"),
+		KeyGenerator:             controllers.JobIDKeyGenerator{},
 	}
 
 	eventsController := &events_controllers.VCSEventsController{

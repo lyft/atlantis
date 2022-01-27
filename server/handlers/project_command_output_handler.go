@@ -119,9 +119,7 @@ func (p *AsyncProjectCommandOutputHandler) Register(jobID string, receiver chan 
 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
-		if msg.ClearBuffBefore {
-			p.clearLogLines(msg.JobID)
-		} else {
+		if !msg.ClearBuffBefore {
 			if p.pullToJobMapping[msg.JobContext.PullContext] == nil {
 				p.pullToJobMapping[msg.JobContext.PullContext] = map[string]bool{}
 			}
@@ -146,12 +144,6 @@ func (p *AsyncProjectCommandOutputHandler) SetJobURLWithStatus(ctx models.Projec
 		return err
 	}
 	return p.projectStatusUpdater.UpdateProject(ctx, cmdName, status, url)
-}
-
-func (p *AsyncProjectCommandOutputHandler) clearLogLines(jobID string) {
-	p.projectOutputBuffersLock.Lock()
-	delete(p.projectOutputBuffers, jobID)
-	p.projectOutputBuffersLock.Unlock()
 }
 
 func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, jobID string) {
