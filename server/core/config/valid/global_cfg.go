@@ -18,7 +18,10 @@ const ApplyRequirementsKey = "apply_requirements"
 const WorkflowKey = "workflow"
 const AllowedOverridesKey = "allowed_overrides"
 const AllowCustomWorkflowsKey = "allow_custom_workflows"
+
 const DefaultWorkflowName = "default"
+const DefaultPRWorkflowName = "default_pull_request"
+const DefaultDeploymentWorkflowName = "default_deployment"
 const DeleteSourceBranchOnMergeKey = "delete_source_branch_on_merge"
 
 // NonOverrideableApplyReqs will get applied across all "repos" in the server side config.
@@ -57,6 +60,8 @@ type Repo struct {
 	ApplyRequirements         []string
 	PreWorkflowHooks          []*PreWorkflowHook
 	Workflow                  *Workflow
+	PRWorkflow                *Workflow
+	DeploymentWorkflow        *Workflow
 	AllowedWorkflows          []string
 	AllowedOverrides          []string
 	AllowCustomWorkflows      *bool
@@ -119,14 +124,30 @@ var DefaultPlanStage = Stage{
 	},
 }
 
+// DefaultPRPlanStage is the Atlantis default plan stage for PR workflows in
+// platform mode.
+var DefaultPRPlanStage = Stage{
+	Steps: []Step{
+		{
+			StepName:  "init",
+			ExtraArgs: []string{"-lock=false"},
+		},
+		{
+			StepName:  "plan",
+			ExtraArgs: []string{"-lock=false"},
+		},
+	},
+}
+
 type GlobalCfgArgs struct {
-	AllowRepoCfg       bool
-	MergeableReq       bool
-	ApprovedReq        bool
-	UnDivergedReq      bool
-	SQUnLockedReq      bool
-	PolicyCheckEnabled bool
-	PreWorkflowHooks   []*PreWorkflowHook
+	AllowRepoCfg        bool
+	MergeableReq        bool
+	ApprovedReq         bool
+	UnDivergedReq       bool
+	SQUnLockedReq       bool
+	PolicyCheckEnabled  bool
+	PlatformModeEnabled bool
+	PreWorkflowHooks    []*PreWorkflowHook
 }
 
 func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
@@ -140,7 +161,6 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 	// we treat nil slices differently.
 	applyReqs := []string{}
 	allowedOverrides := []string{}
-	allowedWorkflows := []string{}
 	if args.MergeableReq {
 		applyReqs = append(applyReqs, MergeableApplyReq)
 	}
@@ -164,23 +184,47 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 		allowCustomWorkflows = true
 	}
 
+	repo := Repo{
+		IDRegex:                   regexp.MustCompile(".*"),
+		BranchRegex:               regexp.MustCompile(".*"),
+		ApplyRequirements:         applyReqs,
+		PreWorkflowHooks:          args.PreWorkflowHooks,
+		Workflow:                  &defaultWorkflow,
+		AllowedWorkflows:          []string{},
+		AllowedOverrides:          allowedOverrides,
+		AllowCustomWorkflows:      &allowCustomWorkflows,
+		DeleteSourceBranchOnMerge: &deleteSourceBranchOnMerge,
+	}
+
+	workflows := map[string]Workflow{
+		DefaultWorkflowName: defaultWorkflow,
+	}
+
+	if args.PlatformModeEnabled {
+		// defaultPRWorkflow is only used in platform mode. By default it does not
+		// support apply stage, and plan stage run with -lock=false flag
+		prWorkflow := Workflow{
+			Name:        DefaultPRWorkflowName,
+			Plan:        DefaultPRPlanStage,
+			PolicyCheck: DefaultPolicyCheckStage,
+		}
+
+		deploymentWorkflow := Workflow{
+			Name:  DefaultDeploymentWorkflowName,
+			Apply: DefaultApplyStage,
+			Plan:  DefaultPlanStage,
+		}
+
+		workflows[DefaultPRWorkflowName] = prWorkflow
+		workflows[DefaultDeploymentWorkflowName] = deploymentWorkflow
+
+		repo.DeploymentWorkflow = &deploymentWorkflow
+		repo.PRWorkflow = &prWorkflow
+	}
+
 	return GlobalCfg{
-		Repos: []Repo{
-			{
-				IDRegex:                   regexp.MustCompile(".*"),
-				BranchRegex:               regexp.MustCompile(".*"),
-				ApplyRequirements:         applyReqs,
-				PreWorkflowHooks:          args.PreWorkflowHooks,
-				Workflow:                  &defaultWorkflow,
-				AllowedWorkflows:          allowedWorkflows,
-				AllowedOverrides:          allowedOverrides,
-				AllowCustomWorkflows:      &allowCustomWorkflows,
-				DeleteSourceBranchOnMerge: &deleteSourceBranchOnMerge,
-			},
-		},
-		Workflows: map[string]Workflow{
-			DefaultWorkflowName: defaultWorkflow,
-		},
+		Repos:     []Repo{repo},
+		Workflows: workflows,
 	}
 }
 
