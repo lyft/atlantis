@@ -119,7 +119,7 @@ func TestNewGlobalCfg(t *testing.T) {
 				BranchRegex:               regexp.MustCompile(".*"),
 				ApplyRequirements:         []string{},
 				Workflow:                  &expDefaultWorkflow,
-				PRWorkflow:                &expDefaultPRWorkflow,
+				PullRequestWorkflow:       &expDefaultPRWorkflow,
 				DeploymentWorkflow:        &expDefaultDeploymentWorkflow,
 				AllowedWorkflows:          []string{},
 				AllowedOverrides:          []string{},

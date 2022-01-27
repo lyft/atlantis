@@ -16,11 +16,13 @@ const SQUnlockedApplyReq = "unlocked"
 const PoliciesPassedApplyReq = "policies_passed"
 const ApplyRequirementsKey = "apply_requirements"
 const WorkflowKey = "workflow"
+const PullRequestWorkflowKey = "pull_request_workflow"
+const DeploymentWorkflowKey = "deployment_workflow"
 const AllowedOverridesKey = "allowed_overrides"
 const AllowCustomWorkflowsKey = "allow_custom_workflows"
 
 const DefaultWorkflowName = "default"
-const DefaultPRWorkflowName = "default_pull_request"
+const DefaultPullRequestWorkflowName = "default_pull_request"
 const DefaultDeploymentWorkflowName = "default_deployment"
 const DeleteSourceBranchOnMergeKey = "delete_source_branch_on_merge"
 
@@ -33,10 +35,12 @@ var NonOverrideableApplyReqs []string = []string{PoliciesPassedApplyReq}
 
 // GlobalCfg is the final parsed version of server-side repo config.
 type GlobalCfg struct {
-	Repos      []Repo
-	Workflows  map[string]Workflow
-	PolicySets PolicySets
-	Metrics    Metrics
+	Repos                []Repo
+	Workflows            map[string]Workflow
+	PullRequestWorkflows map[string]Workflow
+	DeploymentWorkflows  map[string]Workflow
+	PolicySets           PolicySets
+	Metrics              Metrics
 }
 
 type Metrics struct {
@@ -55,18 +59,20 @@ type Repo struct {
 	ID string
 	// IDRegex is the regex match for this config.
 	// If ID is set then this will be nil.
-	IDRegex                   *regexp.Regexp
-	BranchRegex               *regexp.Regexp
-	ApplyRequirements         []string
-	PreWorkflowHooks          []*PreWorkflowHook
-	Workflow                  *Workflow
-	PRWorkflow                *Workflow
-	DeploymentWorkflow        *Workflow
-	AllowedWorkflows          []string
-	AllowedOverrides          []string
-	AllowCustomWorkflows      *bool
-	DeleteSourceBranchOnMerge *bool
-	TemplateOverrides         map[string]string
+	IDRegex                     *regexp.Regexp
+	BranchRegex                 *regexp.Regexp
+	ApplyRequirements           []string
+	PreWorkflowHooks            []*PreWorkflowHook
+	Workflow                    *Workflow
+	PullRequestWorkflow         *Workflow
+	DeploymentWorkflow          *Workflow
+	AllowedWorkflows            []string
+	AllowedPullRequestWorkflows []string
+	AllowedDeploymentWorkflows  []string
+	AllowedOverrides            []string
+	AllowCustomWorkflows        *bool
+	DeleteSourceBranchOnMerge   *bool
+	TemplateOverrides           map[string]string
 }
 
 type MergedProjectCfg struct {
@@ -124,9 +130,9 @@ var DefaultPlanStage = Stage{
 	},
 }
 
-// DefaultPRPlanStage is the Atlantis default plan stage for PR workflows in
+// DefaultLocklessPlanStage is the Atlantis default plan stage for PR workflows in
 // platform mode.
-var DefaultPRPlanStage = Stage{
+var DefaultLocklessPlanStage = Stage{
 	Steps: []Step{
 		{
 			StepName:  "init",
@@ -201,11 +207,11 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 	}
 
 	if args.PlatformModeEnabled {
-		// defaultPRWorkflow is only used in platform mode. By default it does not
+		// defaultPullRequstWorkflow is only used in platform mode. By default it does not
 		// support apply stage, and plan stage run with -lock=false flag
-		prWorkflow := Workflow{
-			Name:        DefaultPRWorkflowName,
-			Plan:        DefaultPRPlanStage,
+		pullRequestWorkflow := Workflow{
+			Name:        DefaultPullRequestWorkflowName,
+			Plan:        DefaultLocklessPlanStage,
 			PolicyCheck: DefaultPolicyCheckStage,
 		}
 
@@ -215,11 +221,13 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 			Plan:  DefaultPlanStage,
 		}
 
-		workflows[DefaultPRWorkflowName] = prWorkflow
+		allowedOverrides = append(allowedOverrides, PullRequestWorkflowKey, DeploymentWorkflowKey)
+
+		workflows[DefaultPullRequestWorkflowName] = pullRequestWorkflow
 		workflows[DefaultDeploymentWorkflowName] = deploymentWorkflow
 
 		repo.DeploymentWorkflow = &deploymentWorkflow
-		repo.PRWorkflow = &prWorkflow
+		repo.PullRequestWorkflow = &pullRequestWorkflow
 	}
 
 	return GlobalCfg{
