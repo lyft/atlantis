@@ -28,6 +28,17 @@ type AsyncProjectCommandOutputHandler struct {
 	pullToJobMapping map[models.PullContext]map[string]bool
 }
 
+type LockedJobMap struct {
+	sync.RWMutex
+	internal map[string]bool
+}
+
+func NewLockedJobMap() *LockedJobMap {
+	return &LockedJobMap{
+		internal: map[string]bool{},
+	}
+}
+
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_id_generator.go JobIDGenerator
 type JobIDGenerator interface {
 	GenerateJobID() string
@@ -123,17 +134,18 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 			if p.pullToJobMapping[msg.JobContext.PullContext] == nil {
 				p.pullToJobMapping[msg.JobContext.PullContext] = map[string]bool{}
 			}
-			p.pullToJobMapping[msg.JobContext.PullContext][msg.JobID] = true
-		}
+		jobMapping, _ := p.pullToJobMapping.Load(msg.JobContext.PullContext)
+		jobMapping = jobMapping.(map[string]bool)
+
+		p.pullToJobMapping[msg.JobContext.PullContext][msg.JobID] = true
 		p.writeLogLine(msg.JobID, msg.Line)
 	}
 }
 
 func (p *AsyncProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext) {
 	p.projectCmdOutput <- &models.ProjectCmdOutputLine{
-		JobID:           ctx.JobID,
-		Line:            models.LogStreamingClearMsg,
-		ClearBuffBefore: true,
+		JobID: ctx.JobID,
+		Line:  models.LogStreamingClearMsg,
 	}
 }
 

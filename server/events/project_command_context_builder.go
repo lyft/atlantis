@@ -4,18 +4,17 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/uber-go/tally"
 )
 
-func NewProjectCommandContextBuilder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope tally.Scope, jobIDGenerator handlers.JobIDGenerator) ProjectCommandContextBuilder {
+func NewProjectCommandContextBuilder(policyCheckEnabled bool, commentBuilder CommentBuilder, scope tally.Scope) ProjectCommandContextBuilder {
 	projectCommandContextBuilder := &DefaultProjectCommandContextBuilder{
 		CommentBuilder: commentBuilder,
-		JobIDGenerator: jobIDGenerator,
 	}
 
 	contextBuilderWithStats := &CommandScopedStatsProjectCommandContextBuilder{
@@ -93,7 +92,6 @@ func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 
 type DefaultProjectCommandContextBuilder struct {
 	CommentBuilder CommentBuilder
-	JobIDGenerator handlers.JobIDGenerator
 }
 
 func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
@@ -138,7 +136,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		contextFlags,
 		ctx.Scope,
 		ctx.PullRequestStatus,
-		cb.JobIDGenerator.GenerateJobID(),
+		uuid.New().String(),
 	)
 
 	projectCmds = append(projectCmds, projectCmdContext)

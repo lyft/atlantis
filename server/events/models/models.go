@@ -732,8 +732,6 @@ type ProjectCmdOutputLine struct {
 	JobContext JobContext
 
 	Line string
-
-	ClearBuffBefore bool
 }
 
 // String returns the string representation of c.

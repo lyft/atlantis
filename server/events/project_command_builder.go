@@ -112,7 +112,6 @@ func NewProjectCommandBuilderWithLimit(
 			policyChecksSupported,
 			commentBuilder,
 			scope,
-			jobIDGenerator,
 		),
 	}
 

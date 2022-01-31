@@ -36,7 +36,7 @@ type JobsController struct {
 	Db                       *db.BoltDB
 	WsMux                    *websocket.Multiplexor
 	StatsScope               tally.Scope
-	KeyGenerator             websocket.PartitionKeyGenerator
+	KeyGenerator             JobIDKeyGenerator
 }
 
 func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) error {
