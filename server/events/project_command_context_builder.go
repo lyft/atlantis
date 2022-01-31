@@ -136,7 +136,6 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		contextFlags,
 		ctx.Scope,
 		ctx.PullRequestStatus,
-		uuid.New().String(),
 	)
 
 	projectCmds = append(projectCmds, projectCmdContext)
@@ -191,7 +190,6 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 			contextFlags,
 			ctx.Scope,
 			ctx.PullRequestStatus,
-			"", // No Job ID for policy check commands
 		))
 	}
 
@@ -212,7 +210,6 @@ func newProjectCommandContext(ctx *CommandContext,
 	contextFlags *ContextFlags,
 	scope tally.Scope,
 	pullStatus models.PullReqStatus,
-	jobID string,
 ) models.ProjectCommandContext {
 
 	var projectPlanStatus models.ProjectPlanStatus
@@ -262,7 +259,7 @@ func newProjectCommandContext(ctx *CommandContext,
 		PolicySets:                policySets,
 		Tags:                      projCfg.Tags,
 		PullReqStatus:             pullStatus,
-		JobID:                     jobID,
+		JobID:                     uuid.New().String(),
 	}
 }
 

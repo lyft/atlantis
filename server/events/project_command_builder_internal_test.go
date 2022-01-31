@@ -10,7 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
-
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -660,6 +659,9 @@ projects:
 					c.expCtx.Steps = expSteps
 					ctx.PolicySets = emptyPolicySets
 
+					// Job ID cannot be compared since its generated at random
+					ctx.JobID = ""
+
 					Equals(t, c.expCtx, ctx)
 					// Equals() doesn't compare TF version properly so have to
 					// use .String().
@@ -852,6 +854,10 @@ projects:
 					// Init fields we couldn't in our cases map.
 					c.expCtx.Steps = expSteps
 					ctx.PolicySets = emptyPolicySets
+
+					// Job ID cannot be compared since its generated at random
+					ctx.JobID = ""
+
 					Equals(t, c.expCtx, ctx)
 					// Equals() doesn't compare TF version properly so have to
 					// use .String().
@@ -1069,6 +1075,9 @@ workflows:
 				// Init fields we couldn't in our cases map.
 				c.expCtx.Steps = expSteps
 				ctx.PolicySets = emptyPolicySets
+
+				// Job ID cannot be compared since its generated at random
+				ctx.JobID = ""
 
 				Equals(t, c.expCtx, ctx)
 				// Equals() doesn't compare TF version properly so have to

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
@@ -34,12 +33,6 @@ const (
 	// this is set to -1 to signify no limit.
 	InfiniteProjectsPerPR = -1
 )
-
-type UUIDJobIdGenerator struct{}
-
-func (u UUIDJobIdGenerator) GenerateJobID() string {
-	return uuid.New().String()
-}
 
 func NewProjectCommandBuilder(
 	policyChecksSupported bool,
