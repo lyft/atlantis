@@ -11,7 +11,6 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers/websocket"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/metrics"
-	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
 )
@@ -50,7 +49,6 @@ func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) 
 		AtlantisVersion: j.AtlantisVersion,
 		ProjectPath:     jobID,
 		CleanedBasePath: j.AtlantisURL.Path,
-		ClearMsg:        models.LogStreamingClearMsg,
 	}
 
 	if err = j.ProjectJobsTemplate.Execute(w, viewData); err != nil {

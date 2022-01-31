@@ -35,7 +35,6 @@ import (
 
 const (
 	planfileSlashReplace = "::"
-	LogStreamingClearMsg = "\n-----Starting New Process-----"
 )
 
 type PullReqStatus struct {

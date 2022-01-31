@@ -23,20 +23,8 @@ type AsyncProjectCommandOutputHandler struct {
 
 	logger logging.SimpleLogging
 
-	// Tracks all the jobs for a pull request
-	// Used for clean up after a pull request is closed.
-	pullToJobMapping map[models.PullContext]map[string]bool
-}
-
-type LockedJobMap struct {
-	sync.RWMutex
-	internal map[string]bool
-}
-
-func NewLockedJobMap() *LockedJobMap {
-	return &LockedJobMap{
-		internal: map[string]bool{},
-	}
+	// Tracks all the jobs for a pull request which is used for clean up after a pull request is closed.
+	pullToJobMapping sync.Map
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_id_generator.go JobIDGenerator
@@ -62,9 +50,6 @@ type ProjectStatusUpdater interface {
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_output_handler.go ProjectCommandOutputHandler
 
 type ProjectCommandOutputHandler interface {
-	// Clear clears the buffer from previous terraform output lines
-	Clear(ctx models.ProjectCommandContext)
-
 	// Send will enqueue the msg and wait for Handle() to receive the message.
 	Send(ctx models.ProjectCommandContext, msg string)
 
@@ -104,7 +89,7 @@ func NewAsyncProjectCommandOutputHandler(
 		projectStatusUpdater:   projectStatusUpdater,
 		projectJobURLGenerator: projectJobURLGenerator,
 		projectOutputBuffers:   map[string][]string{},
-		pullToJobMapping:       map[models.PullContext]map[string]bool{},
+		pullToJobMapping:       sync.Map{},
 	}
 }
 
@@ -130,22 +115,15 @@ func (p *AsyncProjectCommandOutputHandler) Register(jobID string, receiver chan 
 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
-		if !msg.ClearBuffBefore {
-			if p.pullToJobMapping[msg.JobContext.PullContext] == nil {
-				p.pullToJobMapping[msg.JobContext.PullContext] = map[string]bool{}
-			}
-		jobMapping, _ := p.pullToJobMapping.Load(msg.JobContext.PullContext)
-		jobMapping = jobMapping.(map[string]bool)
+		// Add job to pullToJob mapping
+		if _, ok := p.pullToJobMapping.Load(msg.JobContext.PullContext); !ok {
+			p.pullToJobMapping.Store(msg.JobContext.PullContext, map[string]bool{})
+		}
+		value, _ := p.pullToJobMapping.Load(msg.JobContext.PullContext)
+		jobMapping := value.(map[string]bool)
+		jobMapping[msg.JobID] = true
 
-		p.pullToJobMapping[msg.JobContext.PullContext][msg.JobID] = true
 		p.writeLogLine(msg.JobID, msg.Line)
-	}
-}
-
-func (p *AsyncProjectCommandOutputHandler) Clear(ctx models.ProjectCommandContext) {
-	p.projectCmdOutput <- &models.ProjectCmdOutputLine{
-		JobID: ctx.JobID,
-		Line:  models.LogStreamingClearMsg,
 	}
 }
 
@@ -195,11 +173,6 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line strin
 	}
 	p.receiverBuffersLock.Unlock()
 
-	// No need to write to projectOutputBuffers if clear msg.
-	if line == models.LogStreamingClearMsg {
-		return
-	}
-
 	p.projectOutputBuffersLock.Lock()
 	if p.projectOutputBuffers[jobID] == nil {
 		p.projectOutputBuffers[jobID] = []string{}
@@ -225,12 +198,16 @@ func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) 
 }
 
 func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPullContext(pullContext models.PullContext) map[string]bool {
-	return p.pullToJobMapping[pullContext]
+	if value, ok := p.pullToJobMapping.Load(pullContext); ok {
+		return value.(map[string]bool)
+	}
+	return nil
 }
 
 func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext models.PullContext) {
-	if jobIdMap, ok := p.pullToJobMapping[pullContext]; ok {
-		for jobID := range jobIdMap {
+	if value, ok := p.pullToJobMapping.Load(pullContext); ok {
+		jobMapping := value.(map[string]bool)
+		for jobID := range jobMapping {
 			p.projectOutputBuffersLock.Lock()
 			delete(p.projectOutputBuffers, jobID)
 			p.projectOutputBuffersLock.Unlock()
@@ -243,7 +220,8 @@ func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext models.PullContex
 			p.receiverBuffersLock.Unlock()
 		}
 
-		delete(p.pullToJobMapping, pullContext)
+		// Remove job mapping
+		p.pullToJobMapping.Delete(pullContext)
 	}
 }
 
@@ -257,9 +235,6 @@ func (p *NoopProjectOutputHandler) Register(jobID string, receiver chan string) 
 func (p *NoopProjectOutputHandler) Deregister(jobID string, receiver chan string) {}
 
 func (p *NoopProjectOutputHandler) Handle() {
-}
-
-func (p *NoopProjectOutputHandler) Clear(ctx models.ProjectCommandContext) {
 }
 
 func (p *NoopProjectOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {

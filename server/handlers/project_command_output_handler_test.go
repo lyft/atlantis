@@ -194,14 +194,14 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// read from channel
 		go func() {
 			for msg := range ch {
-				if msg == models.LogStreamingClearMsg {
+				if msg == "Complete" {
 					wg.Done()
 				}
 			}
 		}()
 
 		projectOutputHandler.Send(ctx, Msg)
-		projectOutputHandler.Send(ctx, models.LogStreamingClearMsg)
+		projectOutputHandler.Send(ctx, "Complete")
 
 		pullContext := models.PullContext{
 			PullNum:     ctx.Pull.Num,
