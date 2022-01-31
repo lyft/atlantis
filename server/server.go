@@ -518,7 +518,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		statsScope,
 		logger,
 		userConfig.MaxProjectsPerPR,
-		events.UUIDJobIdGenerator{},
 	)
 
 	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTfVersion)

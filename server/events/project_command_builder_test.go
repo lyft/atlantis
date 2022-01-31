@@ -15,7 +15,6 @@ import (
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
 	. "github.com/runatlantis/atlantis/testing"
@@ -161,7 +160,6 @@ projects:
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				scope,
 				logger,
-				handlermocks.NewMockJobIDGenerator(),
 			)
 
 			ctxs, err := builder.BuildAutoplanCommands(&events.CommandContext{
@@ -430,7 +428,6 @@ projects:
 					"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 					scope,
 					logger,
-					handlermocks.NewMockJobIDGenerator(),
 				)
 
 				var actCtxs []models.ProjectCommandContext
@@ -586,7 +583,6 @@ projects:
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				scope,
 				logger,
-				handlermocks.NewMockJobIDGenerator(),
 			)
 
 			ctxs, err := builder.BuildPlanCommands(
@@ -678,7 +674,6 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
-		handlermocks.NewMockJobIDGenerator(),
 	)
 
 	ctxs, err := builder.BuildApplyCommands(
@@ -764,7 +759,6 @@ projects:
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
-		handlermocks.NewMockJobIDGenerator(),
 	)
 
 	ctx := &events.CommandContext{
@@ -844,7 +838,6 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				scope,
 				logger,
-				handlermocks.NewMockJobIDGenerator(),
 			)
 
 			var actCtxs []models.ProjectCommandContext
@@ -1028,7 +1021,6 @@ projects:
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				scope,
 				logger,
-				handlermocks.NewMockJobIDGenerator(),
 			)
 
 			actCtxs, err := builder.BuildPlanCommands(
@@ -1096,7 +1088,6 @@ projects:
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
-		handlermocks.NewMockJobIDGenerator(),
 	)
 
 	var actCtxs []models.ProjectCommandContext
@@ -1155,7 +1146,6 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
-		handlermocks.NewMockJobIDGenerator(),
 	)
 
 	ctxs, err := builder.BuildAutoplanCommands(&events.CommandContext{
@@ -1238,7 +1228,6 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		scope,
 		logger,
-		handlermocks.NewMockJobIDGenerator(),
 	)
 
 	ctxs, err := builder.BuildVersionCommands(

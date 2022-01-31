@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
 
@@ -57,7 +56,6 @@ func NewProjectCommandBuilder(
 	AutoplanFileList string,
 	scope tally.Scope,
 	logger logging.SimpleLogging,
-	jobIDGenerator handlers.JobIDGenerator,
 ) ProjectCommandBuilder {
 	return NewProjectCommandBuilderWithLimit(
 		policyChecksSupported,
@@ -75,7 +73,6 @@ func NewProjectCommandBuilder(
 		scope,
 		logger,
 		InfiniteProjectsPerPR,
-		jobIDGenerator,
 	)
 }
 
@@ -95,7 +92,6 @@ func NewProjectCommandBuilderWithLimit(
 	scope tally.Scope,
 	logger logging.SimpleLogging,
 	limit int,
-	jobIDGenerator handlers.JobIDGenerator,
 ) ProjectCommandBuilder {
 	var projectCommandBuilder ProjectCommandBuilder = &DefaultProjectCommandBuilder{
 		ParserValidator:    parserValidator,
