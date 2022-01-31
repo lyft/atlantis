@@ -22,8 +22,6 @@ const AllowedOverridesKey = "allowed_overrides"
 const AllowCustomWorkflowsKey = "allow_custom_workflows"
 
 const DefaultWorkflowName = "default"
-const DefaultPullRequestWorkflowName = "default_pull_request"
-const DefaultDeploymentWorkflowName = "default_deployment"
 const DeleteSourceBranchOnMergeKey = "delete_source_branch_on_merge"
 
 // NonOverrideableApplyReqs will get applied across all "repos" in the server side config.
@@ -142,6 +140,7 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 		Plan:        DefaultPlanStage,
 		PolicyCheck: DefaultPolicyCheckStage,
 	}
+
 	// Must construct slices here instead of using a `var` declaration because
 	// we treat nil slices differently.
 	applyReqs := []string{}
@@ -176,45 +175,49 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 		Workflow:                  &defaultWorkflow,
 		AllowedWorkflows:          []string{},
 		AllowCustomWorkflows:      &allowCustomWorkflows,
+		AllowedOverrides:          allowedOverrides,
 		DeleteSourceBranchOnMerge: &deleteSourceBranchOnMerge,
 	}
 
-	workflows := map[string]Workflow{
-		DefaultWorkflowName: defaultWorkflow,
+	globalCfg := GlobalCfg{
+		Workflows: map[string]Workflow{
+			DefaultWorkflowName: defaultWorkflow,
+		},
 	}
 
 	if args.PlatformModeEnabled {
 		// defaultPullRequstWorkflow is only used in platform mode. By default it does not
 		// support apply stage, and plan stage run with -lock=false flag
 		pullRequestWorkflow := Workflow{
-			Name:        DefaultPullRequestWorkflowName,
+			Name:        DefaultWorkflowName,
 			Plan:        DefaultLocklessPlanStage,
 			PolicyCheck: DefaultPolicyCheckStage,
 		}
 
 		deploymentWorkflow := Workflow{
-			Name:  DefaultDeploymentWorkflowName,
+			Name:  DefaultWorkflowName,
 			Apply: DefaultApplyStage,
 			Plan:  DefaultPlanStage,
 		}
 
 		if args.AllowRepoCfg {
-			allowedOverrides = append(allowedOverrides, PullRequestWorkflowKey, DeploymentWorkflowKey)
+			repo.AllowedOverrides = append(repo.AllowedOverrides, PullRequestWorkflowKey, DeploymentWorkflowKey)
 		}
 
-		workflows[DefaultPullRequestWorkflowName] = pullRequestWorkflow
-		workflows[DefaultDeploymentWorkflowName] = deploymentWorkflow
+		globalCfg.PullRequestWorkflows = map[string]Workflow{
+			DefaultWorkflowName: pullRequestWorkflow,
+		}
+		globalCfg.DeploymentWorkflows = map[string]Workflow{
+			DefaultWorkflowName: deploymentWorkflow,
+		}
 
 		repo.DeploymentWorkflow = &deploymentWorkflow
 		repo.PullRequestWorkflow = &pullRequestWorkflow
 	}
 
-	repo.AllowedOverrides = allowedOverrides
+	globalCfg.Repos = []Repo{repo}
 
-	return GlobalCfg{
-		Repos:     []Repo{repo},
-		Workflows: workflows,
-	}
+	return globalCfg
 }
 
 // MergeProjectCfg merges proj and rCfg with the global config to return a

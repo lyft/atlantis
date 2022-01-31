@@ -227,8 +227,7 @@ func TestPlatformModeNewGlobalCfg(t *testing.T) {
 	}
 
 	expDefaultPRWorkflow := valid.Workflow{
-		Name:  "default_pull_request",
-		Apply: valid.Stage{},
+		Name: "default",
 		PolicyCheck: valid.Stage{
 			Steps: []valid.Step{
 				{
@@ -253,7 +252,7 @@ func TestPlatformModeNewGlobalCfg(t *testing.T) {
 		},
 	}
 	expDefaultDeploymentWorkflow := valid.Workflow{
-		Name: "default_deployment",
+		Name: "default",
 		Apply: valid.Stage{
 			Steps: []valid.Step{
 				{
@@ -262,7 +261,6 @@ func TestPlatformModeNewGlobalCfg(t *testing.T) {
 				},
 			},
 		},
-		PolicyCheck: valid.Stage{},
 		Plan: valid.Stage{
 			Steps: []valid.Step{
 				{
@@ -290,9 +288,13 @@ func TestPlatformModeNewGlobalCfg(t *testing.T) {
 			},
 		},
 		Workflows: map[string]valid.Workflow{
-			"default":              expDefaultWorkflow,
-			"default_deployment":   expDefaultDeploymentWorkflow,
-			"default_pull_request": expDefaultPRWorkflow,
+			"default": expDefaultWorkflow,
+		},
+		PullRequestWorkflows: map[string]valid.Workflow{
+			"default": expDefaultPRWorkflow,
+		},
+		DeploymentWorkflows: map[string]valid.Workflow{
+			"default": expDefaultDeploymentWorkflow,
 		},
 	}
 
@@ -316,6 +318,7 @@ func TestPlatformModeNewGlobalCfg(t *testing.T) {
 				PlatformModeEnabled: true,
 			}
 			act := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+
 			// For each test, we change our expected cfg based on the parameters.
 			exp := deepcopy.Copy(baseCfg).(valid.GlobalCfg)
 			exp.Repos[0].IDRegex = regexp.MustCompile(".*") // deepcopy doesn't copy the regex.
@@ -998,16 +1001,14 @@ repos:
 					Plan:        valid.DefaultPlanStage,
 				},
 				PullRequestWorkflow: valid.Workflow{
-					Name:        "default_pull_request",
-					Apply:       valid.Stage{},
+					Name:        "default",
 					PolicyCheck: valid.DefaultPolicyCheckStage,
 					Plan:        valid.DefaultLocklessPlanStage,
 				},
 				DeploymentWorkflow: valid.Workflow{
-					Name:        "default_deployment",
-					Apply:       valid.DefaultApplyStage,
-					PolicyCheck: valid.Stage{},
-					Plan:        valid.DefaultPlanStage,
+					Name:  "default",
+					Apply: valid.DefaultApplyStage,
+					Plan:  valid.DefaultPlanStage,
 				},
 				RepoRelDir:      "mydir",
 				Workspace:       "myworkspace",
