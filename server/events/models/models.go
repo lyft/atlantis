@@ -713,26 +713,6 @@ func (c CommandName) TitleString() string {
 	return strings.Title(strings.ReplaceAll(strings.ToLower(c.String()), "_", " "))
 }
 
-type PullContext struct {
-	PullNum     int
-	Repo        string
-	ProjectName string
-	Workspace   string
-}
-
-type JobContext struct {
-	PullContext
-	HeadCommit string
-}
-
-type ProjectCmdOutputLine struct {
-	JobID string
-
-	JobContext JobContext
-
-	Line string
-}
-
 // String returns the string representation of c.
 func (c CommandName) String() string {
 	switch c {

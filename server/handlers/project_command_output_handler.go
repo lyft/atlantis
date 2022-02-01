@@ -7,10 +7,30 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+type PullContext struct {
+	PullNum     int
+	Repo        string
+	ProjectName string
+	Workspace   string
+}
+
+type JobContext struct {
+	PullContext
+	HeadCommit string
+}
+
+type ProjectCmdOutputLine struct {
+	JobID string
+
+	JobContext JobContext
+
+	Line string
+}
+
 // AsyncProjectCommandOutputHandler is a handler to transport terraform client
 // outputs to the front end.
 type AsyncProjectCommandOutputHandler struct {
-	projectCmdOutput chan *models.ProjectCmdOutputLine
+	projectCmdOutput chan *ProjectCmdOutputLine
 
 	projectOutputBuffers     map[string][]string
 	projectOutputBuffersLock sync.RWMutex
@@ -68,11 +88,11 @@ type ProjectCommandOutputHandler interface {
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_resource_cleaner.go ResourceCleaner
 
 type ResourceCleaner interface {
-	CleanUp(pullContext models.PullContext)
+	CleanUp(pullContext PullContext)
 }
 
 func NewAsyncProjectCommandOutputHandler(
-	projectCmdOutput chan *models.ProjectCmdOutputLine,
+	projectCmdOutput chan *ProjectCmdOutputLine,
 	projectStatusUpdater ProjectStatusUpdater,
 	projectJobURLGenerator ProjectJobURLGenerator,
 	logger logging.SimpleLogging,
@@ -89,11 +109,11 @@ func NewAsyncProjectCommandOutputHandler(
 }
 
 func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
-	p.projectCmdOutput <- &models.ProjectCmdOutputLine{
+	p.projectCmdOutput <- &ProjectCmdOutputLine{
 		JobID: ctx.JobID,
-		JobContext: models.JobContext{
+		JobContext: JobContext{
 			HeadCommit: ctx.Pull.HeadCommit,
-			PullContext: models.PullContext{
+			PullContext: PullContext{
 				PullNum:     ctx.Pull.Num,
 				Repo:        ctx.BaseRepo.Name,
 				ProjectName: ctx.ProjectName,
@@ -192,14 +212,14 @@ func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) 
 	return p.projectOutputBuffers[jobID]
 }
 
-func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPullContext(pullContext models.PullContext) map[string]bool {
+func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPullContext(pullContext PullContext) map[string]bool {
 	if value, ok := p.pullToJobMapping.Load(pullContext); ok {
 		return value.(map[string]bool)
 	}
 	return nil
 }
 
-func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext models.PullContext) {
+func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext PullContext) {
 	if value, ok := p.pullToJobMapping.Load(pullContext); ok {
 		jobMapping := value.(map[string]bool)
 		for jobID := range jobMapping {
@@ -236,5 +256,5 @@ func (p *NoopProjectOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommand
 	return nil
 }
 
-func (p *NoopProjectOutputHandler) CleanUp(pullContext models.PullContext) {
+func (p *NoopProjectOutputHandler) CleanUp(pullContext PullContext) {
 }
