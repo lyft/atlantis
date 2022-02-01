@@ -247,7 +247,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		assert.True(t, ok)
 
 		outputBuffer := dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID)
-		assert.True(t, outputBuffer.IsOperationComplete)
+		assert.True(t, outputBuffer.OperationComplete)
 
 		_, ok = (<-ch)
 		assert.False(t, ok)

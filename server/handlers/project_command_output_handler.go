@@ -8,8 +8,8 @@ import (
 )
 
 type OutputBuffer struct {
-	IsOperationComplete bool
-	Buffer              []string
+	OperationComplete bool
+	Buffer            []string
 }
 
 type PullContext struct {
@@ -72,7 +72,7 @@ type ProjectStatusUpdater interface {
 
 type ProjectCommandOutputHandler interface {
 	// Send will enqueue the msg and wait for Handle() to receive the message.
-	Send(ctx models.ProjectCommandContext, msg string, isOperationComplete bool)
+	Send(ctx models.ProjectCommandContext, msg string, operationComplete bool)
 
 	// Register registers a channel and blocks until it is caught up. Callers should call this asynchronously when attempting
 	// to read the channel in the same goroutine
@@ -114,7 +114,7 @@ func NewAsyncProjectCommandOutputHandler(
 	}
 }
 
-func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string, isOperationComplete bool) {
+func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string, operationComplete bool) {
 	p.projectCmdOutput <- &ProjectCmdOutputLine{
 		JobID: ctx.JobID,
 		JobContext: JobContext{
@@ -127,7 +127,7 @@ func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext
 			},
 		},
 		Line:              msg,
-		OperationComplete: isOperationComplete,
+		OperationComplete: operationComplete,
 	}
 }
 
@@ -138,17 +138,11 @@ func (p *AsyncProjectCommandOutputHandler) Register(jobID string, receiver chan 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
 		if msg.OperationComplete {
-			p.projectOutputBuffersLock.Lock()
-			if outputBuffer, ok := p.projectOutputBuffers[msg.JobID]; ok {
-				outputBuffer.IsOperationComplete = true
-				p.projectOutputBuffers[msg.JobID] = outputBuffer
-			}
-			p.projectOutputBuffersLock.Unlock()
-
-			// Close all channels for this job
+			p.updateOutputBufferOperationStatus(msg.JobID)
 			p.closeChannelsForJob(msg.JobID)
 			continue
 		}
+
 		// Add job to pullToJob mapping
 		if _, ok := p.pullToJobMapping.Load(msg.JobContext.PullContext); !ok {
 			p.pullToJobMapping.Store(msg.JobContext.PullContext, map[string]bool{})
@@ -161,6 +155,20 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 	}
 }
 
+// Sets the OperationComplete to true for the job
+func (p *AsyncProjectCommandOutputHandler) updateOutputBufferOperationStatus(jobID string) {
+	p.projectOutputBuffersLock.Lock()
+	defer func() {
+		p.projectOutputBuffersLock.Unlock()
+	}()
+
+	if outputBuffer, ok := p.projectOutputBuffers[jobID]; ok {
+		outputBuffer.OperationComplete = true
+		p.projectOutputBuffers[jobID] = outputBuffer
+	}
+}
+
+// Closes all the buffered channels for the job
 func (p *AsyncProjectCommandOutputHandler) closeChannelsForJob(jobID string) {
 	p.receiverBuffersLock.Lock()
 	defer func() {
@@ -192,7 +200,7 @@ func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, jobID string)
 	}
 
 	// No need register receiver since all the logs have been streamed
-	if outputBuffer.IsOperationComplete {
+	if outputBuffer.OperationComplete {
 		close(ch)
 		return
 	}
@@ -228,8 +236,8 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line strin
 	p.projectOutputBuffersLock.Lock()
 	if _, ok := p.projectOutputBuffers[jobID]; !ok {
 		p.projectOutputBuffers[jobID] = OutputBuffer{
-			IsOperationComplete: false,
-			Buffer:              []string{},
+			OperationComplete: false,
+			Buffer:            []string{},
 		}
 	}
 	outputBuffer := p.projectOutputBuffers[jobID]

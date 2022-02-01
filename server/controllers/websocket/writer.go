@@ -39,5 +39,9 @@ func (w *Writer) Write(rw http.ResponseWriter, r *http.Request, input chan strin
 		}
 	}
 
+	// close ws conn after input channel is closed
+	if err = conn.Close(); err != nil {
+		w.log.Warn("Failed to close ws connection: %s", err)
+	}
 	return nil
 }

@@ -127,20 +127,21 @@ func (p *ProjectOutputWrapper) Plan(ctx models.ProjectCommandContext) models.Pro
 	// Reset the buffer when running the plan. We only need to do this for plan,
 	// apply is a continuation of the same workflow
 	result := p.updateProjectPRStatus(models.PlanCommand, ctx, p.ProjectCommandRunner.Plan)
-
-	if result.Error == nil && result.Failure == "" {
-		p.ProjectCmdOutputHandler.Send(ctx, "", true)
-	}
+	p.updateOperationStatus(ctx, result)
 	return result
 }
 
 func (p *ProjectOutputWrapper) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
 	result := p.updateProjectPRStatus(models.ApplyCommand, ctx, p.ProjectCommandRunner.Apply)
+	p.updateOperationStatus(ctx, result)
+	return result
+}
 
-	if result.Error == nil && result.Failure == "" {
+func (p *ProjectOutputWrapper) updateOperationStatus(ctx models.ProjectCommandContext, result models.ProjectResult) {
+	// No need to mark operation complete if failed operation.
+	if result.Failure == "" {
 		p.ProjectCmdOutputHandler.Send(ctx, "", true)
 	}
-	return result
 }
 
 func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName models.CommandName, ctx models.ProjectCommandContext, execute func(ctx models.ProjectCommandContext) models.ProjectResult) models.ProjectResult {
