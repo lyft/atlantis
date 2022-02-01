@@ -6,7 +6,6 @@ import (
 	"net/url"
 
 	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/controllers/websocket"
 	"github.com/runatlantis/atlantis/server/core/db"
@@ -42,7 +41,8 @@ func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) 
 	jobID, err := j.KeyGenerator.Generate(r)
 
 	if err != nil {
-		return errors.Wrapf(err, "generating partition key")
+		j.respond(w, logging.Error, http.StatusBadRequest, err.Error())
+		return err
 	}
 
 	viewData := templates.ProjectJobData{
@@ -71,7 +71,7 @@ func (j *JobsController) getProjectJobsWS(w http.ResponseWriter, r *http.Request
 	err := j.WsMux.Handle(w, r)
 
 	if err != nil {
-		j.respond(w, logging.Error, http.StatusInternalServerError, err.Error())
+		j.respond(w, logging.Error, http.StatusBadRequest, err.Error())
 		return err
 	}
 

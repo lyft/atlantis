@@ -27,11 +27,6 @@ type AsyncProjectCommandOutputHandler struct {
 	pullToJobMapping sync.Map
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_id_generator.go JobIDGenerator
-type JobIDGenerator interface {
-	GenerateJobID() string
-}
-
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobURLGenerator
 
 // ProjectJobURLGenerator generates urls to view project's progress.
@@ -73,7 +68,7 @@ type ProjectCommandOutputHandler interface {
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_resource_cleaner.go ResourceCleaner
 
 type ResourceCleaner interface {
-	CleanUp(jobContext models.PullContext)
+	CleanUp(pullContext models.PullContext)
 }
 
 func NewAsyncProjectCommandOutputHandler(
