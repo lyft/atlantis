@@ -539,6 +539,16 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir: workingDir,
 	}
 
+	planStepRunner := &runtime.PlanStepRunner{
+		TerraformExecutor:   terraformClient,
+		DefaultTFVersion:    defaultTfVersion,
+		CommitStatusUpdater: commitStatusUpdater,
+		AsyncTFExec:         terraformClient,
+	}
+	destroyPlanStepRunnerWrapper := &lyftDecorators.DestroyPlanStepRunnerWrapper{
+		StepRunner: planStepRunner,
+	}
+
 	projectCommandRunner := &events.DefaultProjectCommandRunner{
 		Locker:           projectLocker,
 		LockURLGenerator: router,
@@ -546,12 +556,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			TerraformExecutor: terraformClient,
 			DefaultTFVersion:  defaultTfVersion,
 		},
-		PlanStepRunner: &runtime.PlanStepRunner{
-			TerraformExecutor:   terraformClient,
-			DefaultTFVersion:    defaultTfVersion,
-			CommitStatusUpdater: commitStatusUpdater,
-			AsyncTFExec:         terraformClient,
-		},
+		PlanStepRunner:        destroyPlanStepRunnerWrapper,
 		ShowStepRunner:        showStepRunner,
 		PolicyCheckStepRunner: policyCheckRunner,
 		ApplyStepRunner: &runtime.ApplyStepRunner{
@@ -581,6 +586,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		HidePrevPlanComments: userConfig.HidePrevPlanComments,
 		VCSClient:            vcsClient,
 		MarkdownRenderer:     markdownRenderer,
+		GlobalCfg:            globalCfg,
 	}
 
 	autoMerger := &events.AutoMerger{
