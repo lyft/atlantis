@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -176,7 +177,6 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	// Close all jobs for a PR when clean up
 	t.Run("clean up all jobs when PR is closed", func(t *testing.T) {
 		var wg sync.WaitGroup
 		projectOutputHandler := createProjectCommandOutputHandler(t)
@@ -218,5 +218,77 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		assert.Empty(t, dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID))
 		assert.Empty(t, dfProjectOutputHandler.GetReceiverBufferForPull(ctx.JobID))
 		assert.Empty(t, dfProjectOutputHandler.GetJobIdMapForPullContext(pullContext))
+	})
+
+	t.Run("mark operation status complete and close conn buffers for the job", func(t *testing.T) {
+		projectOutputHandler := createProjectCommandOutputHandler(t)
+
+		ch := make(chan string)
+
+		// register channel and backfill from buffer
+		// Note: We call this synchronously because otherwise
+		// there could be a race where we are unable to register the channel
+		// before sending messages due to the way we lock our buffer memory cache
+		projectOutputHandler.Register(ctx.JobID, ch)
+
+		// read from channel
+		go func() {
+			for _ = range ch {
+			}
+		}()
+
+		projectOutputHandler.Send(ctx, Msg, false)
+		projectOutputHandler.Send(ctx, "", true)
+
+		// Wait for the handler to process the message
+		time.Sleep(10 * time.Millisecond)
+
+		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.AsyncProjectCommandOutputHandler)
+		assert.True(t, ok)
+
+		outputBuffer := dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID)
+		assert.True(t, outputBuffer.IsOperationComplete)
+
+		_, ok = (<-ch)
+		assert.False(t, ok)
+
+	})
+
+	t.Run("close conn buffer after streaming logs for completed operation", func(t *testing.T) {
+		projectOutputHandler := createProjectCommandOutputHandler(t)
+
+		ch := make(chan string)
+
+		// register channel and backfill from buffer
+		// Note: We call this synchronously because otherwise
+		// there could be a race where we are unable to register the channel
+		// before sending messages due to the way we lock our buffer memory cache
+		projectOutputHandler.Register(ctx.JobID, ch)
+
+		// read from channel
+		go func() {
+			for _ = range ch {
+			}
+		}()
+
+		projectOutputHandler.Send(ctx, Msg, false)
+		projectOutputHandler.Send(ctx, "", true)
+
+		// Wait for the handler to process the message
+		time.Sleep(10 * time.Millisecond)
+
+		ch_2 := make(chan string)
+		opComplete := make(chan bool)
+
+		// buffer channel will be closed immediately after logs are streamed
+		go func() {
+			for _ = range ch_2 {
+			}
+			opComplete <- true
+		}()
+
+		projectOutputHandler.Register(ctx.JobID, ch_2)
+
+		assert.True(t, <-opComplete)
 	})
 }

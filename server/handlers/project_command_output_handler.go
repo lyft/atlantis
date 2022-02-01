@@ -8,8 +8,8 @@ import (
 )
 
 type OutputBuffer struct {
-	isOperationComplete bool
-	buffer              []string
+	IsOperationComplete bool
+	Buffer              []string
 }
 
 type PullContext struct {
@@ -140,7 +140,7 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 		if msg.OperationComplete {
 			p.projectOutputBuffersLock.Lock()
 			if outputBuffer, ok := p.projectOutputBuffers[msg.JobID]; ok {
-				outputBuffer.isOperationComplete = true
+				outputBuffer.IsOperationComplete = true
 				p.projectOutputBuffers[msg.JobID] = outputBuffer
 			}
 			p.projectOutputBuffersLock.Unlock()
@@ -187,12 +187,12 @@ func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, jobID string)
 	outputBuffer := p.projectOutputBuffers[jobID]
 	p.projectOutputBuffersLock.RUnlock()
 
-	for _, line := range outputBuffer.buffer {
+	for _, line := range outputBuffer.Buffer {
 		ch <- line
 	}
 
 	// No need register receiver since all the logs have been streamed
-	if outputBuffer.isOperationComplete {
+	if outputBuffer.IsOperationComplete {
 		close(ch)
 		return
 	}
@@ -228,12 +228,12 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line strin
 	p.projectOutputBuffersLock.Lock()
 	if _, ok := p.projectOutputBuffers[jobID]; !ok {
 		p.projectOutputBuffers[jobID] = OutputBuffer{
-			isOperationComplete: false,
-			buffer:              []string{},
+			IsOperationComplete: false,
+			Buffer:              []string{},
 		}
 	}
 	outputBuffer := p.projectOutputBuffers[jobID]
-	outputBuffer.buffer = append(outputBuffer.buffer, line)
+	outputBuffer.Buffer = append(outputBuffer.Buffer, line)
 	p.projectOutputBuffers[jobID] = outputBuffer
 
 	p.projectOutputBuffersLock.Unlock()
@@ -251,8 +251,8 @@ func (p *AsyncProjectCommandOutputHandler) GetReceiverBufferForPull(jobID string
 	return p.receiverBuffers[jobID]
 }
 
-func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) []string {
-	return p.projectOutputBuffers[jobID].buffer
+func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) OutputBuffer {
+	return p.projectOutputBuffers[jobID]
 }
 
 func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPullContext(pullContext PullContext) map[string]bool {
