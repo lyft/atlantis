@@ -374,7 +374,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	if userConfig.TFEToken != "" {
 		projectCmdOutputHandler = &handlers.NoopProjectOutputHandler{}
 	} else {
-		projectCmdOutput := make(chan *models.ProjectCmdOutputLine)
+		projectCmdOutput := make(chan *handlers.ProjectCmdOutputLine)
 		projectCmdOutputHandler = handlers.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
 			commitStatusUpdater,

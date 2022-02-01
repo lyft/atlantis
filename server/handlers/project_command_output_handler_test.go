@@ -46,7 +46,7 @@ func createTestProjectCmdContext(t *testing.T) models.ProjectCommandContext {
 
 func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutputHandler {
 	logger := logging.NewNoopLogger(t)
-	prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
+	prjCmdOutputChan := make(chan *handlers.ProjectCmdOutputLine)
 	projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
 	projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
 	prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
@@ -141,7 +141,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 	t.Run("update project status with project jobs url", func(t *testing.T) {
 		RegisterMockTestingT(t)
 		logger := logging.NewNoopLogger(t)
-		prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
+		prjCmdOutputChan := make(chan *handlers.ProjectCmdOutputLine)
 		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
 		projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
 		prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
@@ -161,7 +161,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 	t.Run("update project status with project jobs url error", func(t *testing.T) {
 		RegisterMockTestingT(t)
 		logger := logging.NewNoopLogger(t)
-		prjCmdOutputChan := make(chan *models.ProjectCmdOutputLine)
+		prjCmdOutputChan := make(chan *handlers.ProjectCmdOutputLine)
 		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
 		projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
 		prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
@@ -203,7 +203,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		projectOutputHandler.Send(ctx, Msg, false)
 		projectOutputHandler.Send(ctx, "Complete", false)
 
-		pullContext := models.PullContext{
+		pullContext := handlers.PullContext{
 			PullNum:     ctx.Pull.Num,
 			Repo:        ctx.BaseRepo.Name,
 			ProjectName: ctx.ProjectName,
