@@ -731,6 +731,8 @@ type ProjectCmdOutputLine struct {
 	JobContext JobContext
 
 	Line string
+
+	OperationComplete bool
 }
 
 // String returns the string representation of c.

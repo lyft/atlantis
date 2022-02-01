@@ -7,12 +7,17 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+type OutputBuffer struct {
+	isOperationComplete bool
+	buffer              []string
+}
+
 // AsyncProjectCommandOutputHandler is a handler to transport terraform client
 // outputs to the front end.
 type AsyncProjectCommandOutputHandler struct {
 	projectCmdOutput chan *models.ProjectCmdOutputLine
 
-	projectOutputBuffers     map[string][]string
+	projectOutputBuffers     map[string]OutputBuffer
 	projectOutputBuffersLock sync.RWMutex
 
 	receiverBuffers     map[string]map[chan string]bool
@@ -46,7 +51,7 @@ type ProjectStatusUpdater interface {
 
 type ProjectCommandOutputHandler interface {
 	// Send will enqueue the msg and wait for Handle() to receive the message.
-	Send(ctx models.ProjectCommandContext, msg string)
+	Send(ctx models.ProjectCommandContext, msg string, isOperationComplete bool)
 
 	// Register registers a channel and blocks until it is caught up. Callers should call this asynchronously when attempting
 	// to read the channel in the same goroutine
@@ -83,12 +88,12 @@ func NewAsyncProjectCommandOutputHandler(
 		receiverBuffers:        map[string]map[chan string]bool{},
 		projectStatusUpdater:   projectStatusUpdater,
 		projectJobURLGenerator: projectJobURLGenerator,
-		projectOutputBuffers:   map[string][]string{},
+		projectOutputBuffers:   map[string]OutputBuffer{},
 		pullToJobMapping:       sync.Map{},
 	}
 }
 
-func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
+func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string, isOperationComplete bool) {
 	p.projectCmdOutput <- &models.ProjectCmdOutputLine{
 		JobID: ctx.JobID,
 		JobContext: models.JobContext{
@@ -100,7 +105,8 @@ func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext
 				Workspace:   ctx.Workspace,
 			},
 		},
-		Line: msg,
+		Line:              msg,
+		OperationComplete: isOperationComplete,
 	}
 }
 
@@ -110,6 +116,18 @@ func (p *AsyncProjectCommandOutputHandler) Register(jobID string, receiver chan 
 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
+		if msg.OperationComplete {
+			p.projectOutputBuffersLock.Lock()
+			if outputBuffer, ok := p.projectOutputBuffers[msg.JobID]; ok {
+				outputBuffer.isOperationComplete = true
+				p.projectOutputBuffers[msg.JobID] = outputBuffer
+			}
+			p.projectOutputBuffersLock.Unlock()
+
+			// Close all channels for this job
+			p.closeChannelsForJob(msg.JobID)
+			continue
+		}
 		// Add job to pullToJob mapping
 		if _, ok := p.pullToJobMapping.Load(msg.JobContext.PullContext); !ok {
 			p.pullToJobMapping.Store(msg.JobContext.PullContext, map[string]bool{})
@@ -119,6 +137,18 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 		jobMapping[msg.JobID] = true
 
 		p.writeLogLine(msg.JobID, msg.Line)
+	}
+}
+
+func (p *AsyncProjectCommandOutputHandler) closeChannelsForJob(jobID string) {
+	p.receiverBuffersLock.Lock()
+	defer func() {
+		p.receiverBuffersLock.Unlock()
+	}()
+	if openChannels, ok := p.receiverBuffers[jobID]; ok {
+		for ch := range openChannels {
+			close(ch)
+		}
 	}
 }
 
@@ -133,11 +163,17 @@ func (p *AsyncProjectCommandOutputHandler) SetJobURLWithStatus(ctx models.Projec
 
 func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, jobID string) {
 	p.projectOutputBuffersLock.RLock()
-	buffer := p.projectOutputBuffers[jobID]
+	outputBuffer := p.projectOutputBuffers[jobID]
 	p.projectOutputBuffersLock.RUnlock()
 
-	for _, line := range buffer {
+	for _, line := range outputBuffer.buffer {
 		ch <- line
+	}
+
+	// No need register receiver since all the logs have been streamed
+	if outputBuffer.isOperationComplete {
+		close(ch)
+		return
 	}
 
 	// add the channel to our registry after we backfill the contents of the buffer,
@@ -169,10 +205,16 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line strin
 	p.receiverBuffersLock.Unlock()
 
 	p.projectOutputBuffersLock.Lock()
-	if p.projectOutputBuffers[jobID] == nil {
-		p.projectOutputBuffers[jobID] = []string{}
+	if _, ok := p.projectOutputBuffers[jobID]; !ok {
+		p.projectOutputBuffers[jobID] = OutputBuffer{
+			isOperationComplete: false,
+			buffer:              []string{},
+		}
 	}
-	p.projectOutputBuffers[jobID] = append(p.projectOutputBuffers[jobID], line)
+	outputBuffer := p.projectOutputBuffers[jobID]
+	outputBuffer.buffer = append(outputBuffer.buffer, line)
+	p.projectOutputBuffers[jobID] = outputBuffer
+
 	p.projectOutputBuffersLock.Unlock()
 }
 
@@ -189,7 +231,7 @@ func (p *AsyncProjectCommandOutputHandler) GetReceiverBufferForPull(jobID string
 }
 
 func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) []string {
-	return p.projectOutputBuffers[jobID]
+	return p.projectOutputBuffers[jobID].buffer
 }
 
 func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPullContext(pullContext models.PullContext) map[string]bool {
@@ -223,7 +265,7 @@ func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext models.PullContex
 // NoopProjectOutputHandler is a mock that doesn't do anything
 type NoopProjectOutputHandler struct{}
 
-func (p *NoopProjectOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
+func (p *NoopProjectOutputHandler) Send(ctx models.ProjectCommandContext, msg string, isOperationComplete bool) {
 }
 
 func (p *NoopProjectOutputHandler) Register(jobID string, receiver chan string)   {}
