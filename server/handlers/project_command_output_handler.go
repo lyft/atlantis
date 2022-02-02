@@ -138,8 +138,7 @@ func (p *AsyncProjectCommandOutputHandler) Register(jobID string, receiver chan 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
 		if msg.OperationComplete {
-			p.updateOutputBufferOperationStatus(msg.JobID)
-			p.closeChannelsForJob(msg.JobID)
+			p.completeJob(msg.JobID)
 			continue
 		}
 
@@ -151,34 +150,32 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 		jobMapping := value.(map[string]bool)
 		jobMapping[msg.JobID] = true
 
+		// Forward new message to all receiver channels and output buffer
 		p.writeLogLine(msg.JobID, msg.Line)
 	}
 }
 
-// Sets the OperationComplete to true for the job
-func (p *AsyncProjectCommandOutputHandler) updateOutputBufferOperationStatus(jobID string) {
+func (p *AsyncProjectCommandOutputHandler) completeJob(jobID string) {
 	p.projectOutputBuffersLock.Lock()
+	p.receiverBuffersLock.Lock()
 	defer func() {
 		p.projectOutputBuffersLock.Unlock()
+		p.receiverBuffersLock.Unlock()
 	}()
 
+	// Update operation status to complete
 	if outputBuffer, ok := p.projectOutputBuffers[jobID]; ok {
 		outputBuffer.OperationComplete = true
 		p.projectOutputBuffers[jobID] = outputBuffer
 	}
-}
 
-// Closes all the buffered channels for the job
-func (p *AsyncProjectCommandOutputHandler) closeChannelsForJob(jobID string) {
-	p.receiverBuffersLock.Lock()
-	defer func() {
-		p.receiverBuffersLock.Unlock()
-	}()
+	// Close active receiver channels
 	if openChannels, ok := p.receiverBuffers[jobID]; ok {
 		for ch := range openChannels {
 			close(ch)
 		}
 	}
+
 }
 
 func (p *AsyncProjectCommandOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
@@ -236,8 +233,7 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line strin
 	p.projectOutputBuffersLock.Lock()
 	if _, ok := p.projectOutputBuffers[jobID]; !ok {
 		p.projectOutputBuffers[jobID] = OutputBuffer{
-			OperationComplete: false,
-			Buffer:            []string{},
+			Buffer: []string{},
 		}
 	}
 	outputBuffer := p.projectOutputBuffers[jobID]
