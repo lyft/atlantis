@@ -81,6 +81,8 @@ type ProjectCommandOutputHandler interface {
 	// Deregister removes a channel from successive updates and closes it.
 	Deregister(jobID string, receiver chan string)
 
+	IsKeyExists(key string) bool
+
 	// Listens for msg from channel
 	Handle()
 
@@ -112,6 +114,15 @@ func NewAsyncProjectCommandOutputHandler(
 		projectOutputBuffers:   map[string]OutputBuffer{},
 		pullToJobMapping:       sync.Map{},
 	}
+}
+
+func (p *AsyncProjectCommandOutputHandler) IsKeyExists(key string) bool {
+	p.receiverBuffersLock.RLock()
+	defer func() {
+		p.receiverBuffersLock.RUnlock()
+	}()
+	_, ok := p.receiverBuffers[key]
+	return ok
 }
 
 func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string, operationComplete bool) {
@@ -304,4 +315,8 @@ func (p *NoopProjectOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommand
 }
 
 func (p *NoopProjectOutputHandler) CleanUp(pullContext PullContext) {
+}
+
+func (p *NoopProjectOutputHandler) IsKeyExists(key string) bool {
+	return false
 }
