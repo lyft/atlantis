@@ -21,7 +21,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/db"
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/runatlantis/atlantis/server/handlers"
+	"github.com/runatlantis/atlantis/server/jobs/handlers"
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/petergtz/pegomock"
@@ -32,7 +32,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
-	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
+	jobmodels "github.com/runatlantis/atlantis/server/jobs/models"
 	loggermocks "github.com/runatlantis/atlantis/server/logging/mocks"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -196,12 +196,10 @@ func TestCleanUpLogStreaming(t *testing.T) {
 	RegisterMockTestingT(t)
 
 	t.Run("Should Clean Up Log Streaming Resources When PR is closed", func(t *testing.T) {
-		prjStatusUpdater := handlermocks.NewMockProjectStatusUpdater()
-		prjJobURLGenerator := handlermocks.NewMockProjectJobURLGenerator()
 
 		// Create Log streaming resources
-		prjCmdOutput := make(chan *handlers.ProjectCmdOutputLine)
-		prjCmdOutHandler := handlers.NewAsyncProjectCommandOutputHandler(prjCmdOutput, prjStatusUpdater, prjJobURLGenerator, logger)
+		prjCmdOutput := make(chan *jobmodels.ProjectCmdOutputLine)
+		prjCmdOutHandler := handlers.NewAsyncProjectCommandOutputHandler(prjCmdOutput, logger)
 		ctx := models.ProjectCommandContext{
 			BaseRepo:    fixtures.GithubRepo,
 			Pull:        fixtures.Pull,

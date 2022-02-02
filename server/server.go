@@ -35,7 +35,9 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/handlers"
+	"github.com/runatlantis/atlantis/server/jobs"
+	"github.com/runatlantis/atlantis/server/jobs/handlers"
+	jobmodels "github.com/runatlantis/atlantis/server/jobs/models"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
@@ -374,11 +376,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	if userConfig.TFEToken != "" {
 		projectCmdOutputHandler = &handlers.NoopProjectOutputHandler{}
 	} else {
-		projectCmdOutput := make(chan *handlers.ProjectCmdOutputLine)
+		projectCmdOutput := make(chan *jobmodels.ProjectCmdOutputLine)
 		projectCmdOutputHandler = handlers.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
-			commitStatusUpdater,
-			router,
 			logger,
 		)
 	}
@@ -597,6 +597,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	projectOutputWrapper := &events.ProjectOutputWrapper{
 		ProjectCmdOutputHandler: projectCmdOutputHandler,
 		ProjectCommandRunner:    projectCommandRunner,
+		JobURLSetter:            jobs.NewJobURLSetter(router, commitStatusUpdater),
 	}
 
 	featureAwareProjectCommandRunner := &events.FeatureAwareProjectCommandRunner{

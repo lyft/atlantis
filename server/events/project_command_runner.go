@@ -24,7 +24,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/handlers"
+	"github.com/runatlantis/atlantis/server/jobs"
+	"github.com/runatlantis/atlantis/server/jobs/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
@@ -123,6 +124,7 @@ type ProjectCommandRunner interface {
 type ProjectOutputWrapper struct {
 	ProjectCommandRunner
 	ProjectCmdOutputHandler handlers.ProjectCommandOutputHandler
+	JobURLSetter            jobs.JobURLSetter
 }
 
 func (p *ProjectOutputWrapper) Plan(ctx models.ProjectCommandContext) models.ProjectResult {
@@ -141,7 +143,7 @@ func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName models.CommandN
 	// Create a PR status to track project's plan status. The status will
 	// include a link to view the progress of atlantis plan command in real
 	// time
-	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, commandName, models.PendingCommitStatus); err != nil {
+	if err := p.JobURLSetter.SetJobURLWithStatus(ctx, commandName, models.PendingCommitStatus); err != nil {
 		ctx.Log.Err("updating project PR status", err)
 	}
 
@@ -149,14 +151,14 @@ func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName models.CommandN
 	result := execute(ctx)
 
 	if result.Error != nil || result.Failure != "" {
-		if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, commandName, models.FailedCommitStatus); err != nil {
+		if err := p.JobURLSetter.SetJobURLWithStatus(ctx, commandName, models.FailedCommitStatus); err != nil {
 			ctx.Log.Err("updating project PR status", err)
 		}
 
 		return result
 	}
 
-	if err := p.ProjectCmdOutputHandler.SetJobURLWithStatus(ctx, commandName, models.SuccessCommitStatus); err != nil {
+	if err := p.JobURLSetter.SetJobURLWithStatus(ctx, commandName, models.SuccessCommitStatus); err != nil {
 		ctx.Log.Err("updating project PR status", err)
 	}
 

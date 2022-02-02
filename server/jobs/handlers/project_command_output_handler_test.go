@@ -1,16 +1,13 @@
 package handlers_test
 
 import (
-	"errors"
 	"sync"
 	"testing"
 	"time"
 
-	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/handlers"
-	"github.com/runatlantis/atlantis/server/handlers/mocks"
-	"github.com/runatlantis/atlantis/server/handlers/mocks/matchers"
+	"github.com/runatlantis/atlantis/server/jobs/handlers"
+	jobmodels "github.com/runatlantis/atlantis/server/jobs/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/stretchr/testify/assert"
@@ -47,13 +44,9 @@ func createTestProjectCmdContext(t *testing.T) models.ProjectCommandContext {
 
 func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutputHandler {
 	logger := logging.NewNoopLogger(t)
-	prjCmdOutputChan := make(chan *handlers.ProjectCmdOutputLine)
-	projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
-	projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
+	prjCmdOutputChan := make(chan *jobmodels.ProjectCmdOutputLine)
 	prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
 		prjCmdOutputChan,
-		projectStatusUpdater,
-		projectJobURLGenerator,
 		logger,
 	)
 
@@ -139,44 +132,6 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("update project status with project jobs url", func(t *testing.T) {
-		RegisterMockTestingT(t)
-		logger := logging.NewNoopLogger(t)
-		prjCmdOutputChan := make(chan *handlers.ProjectCmdOutputLine)
-		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
-		projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
-		prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
-			prjCmdOutputChan,
-			projectStatusUpdater,
-			projectJobURLGenerator,
-			logger,
-		)
-
-		When(projectJobURLGenerator.GenerateProjectJobURL(matchers.EqModelsProjectCommandContext(ctx))).ThenReturn("url-to-project-jobs", nil)
-		err := prjCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
-		Ok(t, err)
-
-		projectStatusUpdater.VerifyWasCalledOnce().UpdateProject(ctx, models.PlanCommand, models.PendingCommitStatus, "url-to-project-jobs")
-	})
-
-	t.Run("update project status with project jobs url error", func(t *testing.T) {
-		RegisterMockTestingT(t)
-		logger := logging.NewNoopLogger(t)
-		prjCmdOutputChan := make(chan *handlers.ProjectCmdOutputLine)
-		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
-		projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
-		prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
-			prjCmdOutputChan,
-			projectStatusUpdater,
-			projectJobURLGenerator,
-			logger,
-		)
-
-		When(projectJobURLGenerator.GenerateProjectJobURL(matchers.EqModelsProjectCommandContext(ctx))).ThenReturn("url-to-project-jobs", errors.New("some error"))
-		err := prjCmdOutputHandler.SetJobURLWithStatus(ctx, models.PlanCommand, models.PendingCommitStatus)
-		assert.Error(t, err)
-	})
-
 	t.Run("clean up all jobs when PR is closed", func(t *testing.T) {
 		var wg sync.WaitGroup
 		projectOutputHandler := createProjectCommandOutputHandler(t)
@@ -203,7 +158,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		projectOutputHandler.Send(ctx, Msg, false)
 		projectOutputHandler.Send(ctx, "Complete", false)
 
-		pullContext := handlers.PullContext{
+		pullContext := jobmodels.PullContext{
 			PullNum:     ctx.Pull.Num,
 			Repo:        ctx.BaseRepo.Name,
 			ProjectName: ctx.ProjectName,

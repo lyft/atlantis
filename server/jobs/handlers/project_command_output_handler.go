@@ -4,48 +4,20 @@ import (
 	"sync"
 
 	"github.com/runatlantis/atlantis/server/events/models"
+	jobmodels "github.com/runatlantis/atlantis/server/jobs/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
-
-type OutputBuffer struct {
-	OperationComplete bool
-	Buffer            []string
-}
-
-type PullContext struct {
-	PullNum     int
-	Repo        string
-	ProjectName string
-	Workspace   string
-}
-
-type JobContext struct {
-	PullContext
-	HeadCommit string
-}
-
-type ProjectCmdOutputLine struct {
-	JobID string
-
-	JobContext JobContext
-
-	Line              string
-	OperationComplete bool
-}
 
 // AsyncProjectCommandOutputHandler is a handler to transport terraform client
 // outputs to the front end.
 type AsyncProjectCommandOutputHandler struct {
-	projectCmdOutput chan *ProjectCmdOutputLine
+	projectCmdOutput chan *jobmodels.ProjectCmdOutputLine
 
-	projectOutputBuffers     map[string]OutputBuffer
+	projectOutputBuffers     map[string]jobmodels.OutputBuffer
 	projectOutputBuffersLock sync.RWMutex
 
 	receiverBuffers     map[string]map[chan string]bool
 	receiverBuffersLock sync.RWMutex
-
-	projectStatusUpdater   ProjectStatusUpdater
-	projectJobURLGenerator ProjectJobURLGenerator
 
 	logger logging.SimpleLogging
 
@@ -53,22 +25,7 @@ type AsyncProjectCommandOutputHandler struct {
 	pullToJobMapping sync.Map
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_job_url_generator.go ProjectJobURLGenerator
-
-// ProjectJobURLGenerator generates urls to view project's progress.
-type ProjectJobURLGenerator interface {
-	GenerateProjectJobURL(p models.ProjectCommandContext) (string, error)
-}
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_status_updater.go ProjectStatusUpdater
-
-type ProjectStatusUpdater interface {
-	// UpdateProject sets the commit status for the project represented by
-	// ctx.
-	UpdateProject(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus, url string) error
-}
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_output_handler.go ProjectCommandOutputHandler
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o ../mocks/mock_project_command_output_handler.go ProjectCommandOutputHandler
 
 type ProjectCommandOutputHandler interface {
 	// Send will enqueue the msg and wait for Handle() to receive the message.
@@ -84,42 +41,34 @@ type ProjectCommandOutputHandler interface {
 	// Listens for msg from channel
 	Handle()
 
-	// SetJobURLWithStatus sets the commit status for the project represented by
-	// ctx and updates the status with and url to a job.
-	SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error
-
 	ResourceCleaner
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_resource_cleaner.go ResourceCleaner
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o ../mocks/mock_resource_cleaner.go ResourceCleaner
 
 type ResourceCleaner interface {
-	CleanUp(pullContext PullContext)
+	CleanUp(pullContext jobmodels.PullContext)
 }
 
 func NewAsyncProjectCommandOutputHandler(
-	projectCmdOutput chan *ProjectCmdOutputLine,
-	projectStatusUpdater ProjectStatusUpdater,
-	projectJobURLGenerator ProjectJobURLGenerator,
+	projectCmdOutput chan *jobmodels.ProjectCmdOutputLine,
 	logger logging.SimpleLogging,
 ) ProjectCommandOutputHandler {
 	return &AsyncProjectCommandOutputHandler{
-		projectCmdOutput:       projectCmdOutput,
-		logger:                 logger,
-		receiverBuffers:        map[string]map[chan string]bool{},
-		projectStatusUpdater:   projectStatusUpdater,
-		projectJobURLGenerator: projectJobURLGenerator,
-		projectOutputBuffers:   map[string]OutputBuffer{},
-		pullToJobMapping:       sync.Map{},
+		projectCmdOutput:     projectCmdOutput,
+		logger:               logger,
+		receiverBuffers:      map[string]map[chan string]bool{},
+		projectOutputBuffers: map[string]jobmodels.OutputBuffer{},
+		pullToJobMapping:     sync.Map{},
 	}
 }
 
 func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string, operationComplete bool) {
-	p.projectCmdOutput <- &ProjectCmdOutputLine{
+	p.projectCmdOutput <- &jobmodels.ProjectCmdOutputLine{
 		JobID: ctx.JobID,
-		JobContext: JobContext{
+		JobContext: jobmodels.JobContext{
 			HeadCommit: ctx.Pull.HeadCommit,
-			PullContext: PullContext{
+			PullContext: jobmodels.PullContext{
 				PullNum:     ctx.Pull.Num,
 				Repo:        ctx.BaseRepo.Name,
 				ProjectName: ctx.ProjectName,
@@ -178,15 +127,6 @@ func (p *AsyncProjectCommandOutputHandler) completeJob(jobID string) {
 
 }
 
-func (p *AsyncProjectCommandOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
-	url, err := p.projectJobURLGenerator.GenerateProjectJobURL(ctx)
-
-	if err != nil {
-		return err
-	}
-	return p.projectStatusUpdater.UpdateProject(ctx, cmdName, status, url)
-}
-
 func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, jobID string) {
 	p.projectOutputBuffersLock.RLock()
 	outputBuffer := p.projectOutputBuffers[jobID]
@@ -232,7 +172,7 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line strin
 
 	p.projectOutputBuffersLock.Lock()
 	if _, ok := p.projectOutputBuffers[jobID]; !ok {
-		p.projectOutputBuffers[jobID] = OutputBuffer{
+		p.projectOutputBuffers[jobID] = jobmodels.OutputBuffer{
 			Buffer: []string{},
 		}
 	}
@@ -255,18 +195,18 @@ func (p *AsyncProjectCommandOutputHandler) GetReceiverBufferForPull(jobID string
 	return p.receiverBuffers[jobID]
 }
 
-func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) OutputBuffer {
+func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) jobmodels.OutputBuffer {
 	return p.projectOutputBuffers[jobID]
 }
 
-func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPullContext(pullContext PullContext) map[string]bool {
+func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPullContext(pullContext jobmodels.PullContext) map[string]bool {
 	if value, ok := p.pullToJobMapping.Load(pullContext); ok {
 		return value.(map[string]bool)
 	}
 	return nil
 }
 
-func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext PullContext) {
+func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext jobmodels.PullContext) {
 	if value, ok := p.pullToJobMapping.Load(pullContext); ok {
 		jobMapping := value.(map[string]bool)
 		for jobID := range jobMapping {
@@ -299,9 +239,5 @@ func (p *NoopProjectOutputHandler) Deregister(jobID string, receiver chan string
 func (p *NoopProjectOutputHandler) Handle() {
 }
 
-func (p *NoopProjectOutputHandler) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
-	return nil
-}
-
-func (p *NoopProjectOutputHandler) CleanUp(pullContext PullContext) {
+func (p *NoopProjectOutputHandler) CleanUp(pullContext jobmodels.PullContext) {
 }

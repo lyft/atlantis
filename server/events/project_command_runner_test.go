@@ -28,7 +28,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	handlermocks "github.com/runatlantis/atlantis/server/handlers/mocks"
+	jobmocks "github.com/runatlantis/atlantis/server/jobs/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -188,10 +188,12 @@ func TestProjectOutputWrapper(t *testing.T) {
 			var prjResult models.ProjectResult
 			var expCommitStatus models.CommitStatus
 
-			mockProjectCommandOutputHandler := handlermocks.NewMockProjectCommandOutputHandler()
+			mockJobURLSetter := jobmocks.NewMockJobURLSetter()
+			mockProjectCommandOutputHandler := jobmocks.NewMockProjectCommandOutputHandler()
 			mockProjectCommandRunner := mocks.NewMockProjectCommandRunner()
 
 			runner := &events.ProjectOutputWrapper{
+				JobURLSetter:            mockJobURLSetter,
 				ProjectCmdOutputHandler: mockProjectCommandOutputHandler,
 				ProjectCommandRunner:    mockProjectCommandRunner,
 			}
@@ -224,8 +226,8 @@ func TestProjectOutputWrapper(t *testing.T) {
 				runner.Apply(ctx)
 			}
 
-			mockProjectCommandOutputHandler.VerifyWasCalled(Once()).SetJobURLWithStatus(ctx, c.CommandName, models.PendingCommitStatus)
-			mockProjectCommandOutputHandler.VerifyWasCalled(Once()).SetJobURLWithStatus(ctx, c.CommandName, expCommitStatus)
+			mockJobURLSetter.VerifyWasCalled(Once()).SetJobURLWithStatus(ctx, c.CommandName, models.PendingCommitStatus)
+			mockJobURLSetter.VerifyWasCalled(Once()).SetJobURLWithStatus(ctx, c.CommandName, expCommitStatus)
 
 			switch c.CommandName {
 			case models.PlanCommand:
