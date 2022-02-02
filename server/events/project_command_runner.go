@@ -29,6 +29,8 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
+const OperationComplete = true
+
 // DirNotExistErr is an error caused by the directory not existing.
 type DirNotExistErr struct {
 	RepoRelDir string
@@ -124,24 +126,15 @@ type ProjectOutputWrapper struct {
 }
 
 func (p *ProjectOutputWrapper) Plan(ctx models.ProjectCommandContext) models.ProjectResult {
-	// Reset the buffer when running the plan. We only need to do this for plan,
-	// apply is a continuation of the same workflow
 	result := p.updateProjectPRStatus(models.PlanCommand, ctx, p.ProjectCommandRunner.Plan)
-	p.updateOperationStatus(ctx, result)
+	p.ProjectCmdOutputHandler.Send(ctx, "", OperationComplete)
 	return result
 }
 
 func (p *ProjectOutputWrapper) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
 	result := p.updateProjectPRStatus(models.ApplyCommand, ctx, p.ProjectCommandRunner.Apply)
-	p.updateOperationStatus(ctx, result)
+	p.ProjectCmdOutputHandler.Send(ctx, "", OperationComplete)
 	return result
-}
-
-func (p *ProjectOutputWrapper) updateOperationStatus(ctx models.ProjectCommandContext, result models.ProjectResult) {
-	// No need to mark operation complete if failed operation.
-	if result.Failure == "" {
-		p.ProjectCmdOutputHandler.Send(ctx, "", true)
-	}
 }
 
 func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName models.CommandName, ctx models.ProjectCommandContext, execute func(ctx models.ProjectCommandContext) models.ProjectResult) models.ProjectResult {
