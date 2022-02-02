@@ -33,8 +33,8 @@ import (
 	"time"
 
 	"github.com/mitchellh/go-homedir"
-	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/handlers"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
@@ -51,6 +51,7 @@ import (
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/controllers/websocket"
+	"github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/locking"
 	"github.com/runatlantis/atlantis/server/core/runtime"
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
@@ -62,7 +63,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
-	"github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/static"
 	"github.com/urfave/cli"
@@ -178,12 +178,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	globalCfg := valid.NewGlobalCfgFromArgs(
 		valid.GlobalCfgArgs{
-			AllowRepoCfg:       userConfig.AllowRepoConfig,
-			MergeableReq:       userConfig.RequireMergeable,
-			ApprovedReq:        userConfig.RequireApproval,
-			UnDivergedReq:      userConfig.RequireUnDiverged,
-			SQUnLockedReq:      userConfig.RequireSQUnlocked,
-			PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
+			AllowRepoCfg:        userConfig.AllowRepoConfig,
+			MergeableReq:        userConfig.RequireMergeable,
+			ApprovedReq:         userConfig.RequireApproval,
+			UnDivergedReq:       userConfig.RequireUnDiverged,
+			SQUnLockedReq:       userConfig.RequireSQUnlocked,
+			PolicyCheckEnabled:  userConfig.EnablePolicyChecksFlag,
+			PlatformModeEnabled: userConfig.EnablePlatformMode,
 		})
 	if userConfig.RepoConfig != "" {
 		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
