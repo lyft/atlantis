@@ -118,9 +118,7 @@ func NewAsyncProjectCommandOutputHandler(
 
 func (p *AsyncProjectCommandOutputHandler) IsKeyExists(key string) bool {
 	p.receiverBuffersLock.RLock()
-	defer func() {
-		p.receiverBuffersLock.RUnlock()
-	}()
+	defer p.receiverBuffersLock.RUnlock()
 	_, ok := p.receiverBuffers[key]
 	return ok
 }
