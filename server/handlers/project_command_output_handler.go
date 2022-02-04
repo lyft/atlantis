@@ -228,12 +228,7 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line strin
 		select {
 		case ch <- line:
 		default:
-			// Client ws conn could be closed in two ways:
-			// 1. Client closes the conn gracefully -> the closeHandler() is executed which
-			//  	closes the channel and cleans up resources.
-			// 2. Client does not close the conn and the closeHandler() is not executed -> the
-			// 		receiverChan will be blocking for N number of messages (equal to buffer size)
-			// 		before we delete the channel and clean up the resources.
+			// Delete buffered channel if it's blocking.
 			delete(p.receiverBuffers[jobID], ch)
 		}
 	}
@@ -283,9 +278,6 @@ func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext PullContext) {
 			delete(p.projectOutputBuffers, jobID)
 			p.projectOutputBuffersLock.Unlock()
 
-			// Only delete the pull record from receiver buffers.
-			// WS channel will be closed when the user closes the browser tab
-			// in closeHanlder().
 			p.receiverBuffersLock.Lock()
 			delete(p.receiverBuffers, jobID)
 			p.receiverBuffersLock.Unlock()
