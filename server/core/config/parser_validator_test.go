@@ -1790,7 +1790,7 @@ deployment_workflows:
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			r := yaml.ParserValidator{}
+			r := &config.ParserValidator{}
 			tmp, cleanup := TempDir(t)
 			defer cleanup()
 			path := filepath.Join(tmp, "conf.yaml")
@@ -2181,7 +2181,7 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			pv := &yaml.ParserValidator{}
+			pv := &config.ParserValidator{}
 
 			cfg, err := pv.ParseGlobalCfgJSON(c.json, globalCfg)
 			if c.expErr != "" {
