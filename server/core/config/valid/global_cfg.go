@@ -239,10 +239,30 @@ func (g GlobalCfg) PlatformModeEnabled() bool {
 // final config. It assumes that all configs have been validated.
 func (g GlobalCfg) MergeProjectCfg(log logging.SimpleLogging, repoID string, proj Project, rCfg RepoCfg) MergedProjectCfg {
 	log.Debug("MergeProjectCfg started")
-	applyReqs, workflow, pullRequestWorkflow, deploymentWorkflow, allowedOverrides, allowCustomWorkflows, deleteSourceBranchOnMerge := g.getMatchingCfg(log, repoID)
+	var applyReqs []string
+	var workflow Workflow
+	var pullRequestWorkflow Workflow
+	var deploymentWorkflow Workflow
+	var allowCustomWorkflows bool
+	var deleteSourceBranchOnMerge bool
+
+	prjRepo := g.foldMatchingRepos(repoID)
+
+	applyReqs = prjRepo.ApplyRequirements
+	allowCustomWorkflows = *prjRepo.AllowCustomWorkflows
+	deleteSourceBranchOnMerge = *prjRepo.DeleteSourceBranchOnMerge
+	workflow = *prjRepo.Workflow
+
+	// PullRequestWorkflow and DeploymentWorkflow can only be defined when
+	// platform mode is enabled, otherwise it will be nil. We don't set default
+	// workflow in this case
+	if prjRepo.PullRequestWorkflow != nil && prjRepo.DeploymentWorkflow != nil {
+		pullRequestWorkflow = *prjRepo.PullRequestWorkflow
+		deploymentWorkflow = *prjRepo.DeploymentWorkflow
+	}
 
 	// If repos are allowed to override certain keys then override them.
-	for _, key := range allowedOverrides {
+	for _, key := range prjRepo.AllowedOverrides {
 		switch key {
 		case ApplyRequirementsKey:
 			if proj.ApplyRequirements != nil {
@@ -257,20 +277,33 @@ func (g GlobalCfg) MergeProjectCfg(log logging.SimpleLogging, repoID string, pro
 				// define its own workflow. We also know that a workflow will
 				// exist with this name due to earlier validation.
 				name := *proj.WorkflowName
-				for k, v := range g.Workflows {
-					if k == name {
-						workflow = v
-					}
+				if w, ok := g.Workflows[name]; ok {
+					workflow = w
 				}
-				if allowCustomWorkflows {
-					for k, v := range rCfg.Workflows {
-						if k == name {
-							workflow = v
-						}
-					}
+
+				if w, ok := rCfg.Workflows[name]; allowCustomWorkflows && ok {
+					workflow = w
 				}
 				log.Debug("overriding server-defined %s with repo-specified workflow: %q", WorkflowKey, workflow.Name)
 			}
+		case PullRequestWorkflowKey:
+			if proj.PullRequestWorkflowName != nil {
+				name := *proj.PullRequestWorkflowName
+				if w, ok := g.PullRequestWorkflows[name]; ok {
+					pullRequestWorkflow = w
+				}
+			}
+
+			log.Debug("overriding server-defined %s with repo-specified pull_request_workflow: %q", PullRequestWorkflowKey, workflow.Name)
+		case DeploymentWorkflowKey:
+			if proj.DeploymentWorkflowName != nil {
+				name := *proj.DeploymentWorkflowName
+				if w, ok := g.DeploymentWorkflows[name]; ok {
+					deploymentWorkflow = w
+				}
+			}
+
+			log.Debug("overriding server-defined %s with repo-specified deployment_workflow: %q", DeploymentWorkflowKey, workflow.Name)
 		case DeleteSourceBranchOnMergeKey:
 			//We check whether the server configured value and repo-root level
 			//config is different. If it is then we change to the more granular.
@@ -289,8 +322,14 @@ func (g GlobalCfg) MergeProjectCfg(log logging.SimpleLogging, repoID string, pro
 		log.Debug("MergeProjectCfg completed")
 	}
 
-	log.Debug("final settings: %s: [%s], %s: %s",
-		ApplyRequirementsKey, strings.Join(applyReqs, ","), WorkflowKey, workflow.Name)
+	if g.PlatformModeEnabled() {
+		log.Debug("final settings: %s: %s, %s: %s, %s: %s",
+			WorkflowKey, workflow.Name, DeploymentWorkflowKey, deploymentWorkflow.Name, PullRequestWorkflowKey, pullRequestWorkflow.Name)
+
+	} else {
+		log.Debug("final settings: %s: [%s], %s: %s",
+			ApplyRequirementsKey, strings.Join(applyReqs, ","), WorkflowKey, workflow.Name)
+	}
 
 	return MergedProjectCfg{
 		ApplyRequirements:         applyReqs,
@@ -313,186 +352,108 @@ func (g GlobalCfg) MergeProjectCfg(log logging.SimpleLogging, repoID string, pro
 // repo with id repoID. It is used when there is no repo config.
 func (g GlobalCfg) DefaultProjCfg(log logging.SimpleLogging, repoID string, repoRelDir string, workspace string) MergedProjectCfg {
 	log.Debug("building config based on server-side config")
-	applyReqs, workflow, pullRequestWorkflow, deploymentWorkflow, _, _, deleteSourceBranchOnMerge := g.getMatchingCfg(log, repoID)
+	repo := g.foldMatchingRepos(repoID)
 	return MergedProjectCfg{
-		ApplyRequirements:         applyReqs,
-		Workflow:                  workflow,
-		PullRequestWorkflow:       pullRequestWorkflow,
-		DeploymentWorkflow:        deploymentWorkflow,
+		ApplyRequirements:         repo.ApplyRequirements,
+		Workflow:                  *repo.Workflow,
+		PullRequestWorkflow:       *repo.PullRequestWorkflow,
+		DeploymentWorkflow:        *repo.DeploymentWorkflow,
 		RepoRelDir:                repoRelDir,
 		Workspace:                 workspace,
 		Name:                      "",
 		AutoplanEnabled:           DefaultAutoPlanEnabled,
 		TerraformVersion:          nil,
 		PolicySets:                g.PolicySets,
-		DeleteSourceBranchOnMerge: deleteSourceBranchOnMerge,
+		DeleteSourceBranchOnMerge: *repo.DeleteSourceBranchOnMerge,
 	}
+}
+
+// foldMatchingRepos will return a pseudo repo instance that will iterate over
+// the matching repositories and assign relevant fields if they're defined.
+// This means returned object will contain the last matching repo's value as a it's fields
+func (g GlobalCfg) foldMatchingRepos(repoID string) Repo {
+	foldedRepo := Repo{
+		AllowedWorkflows:            make([]string, 0),
+		AllowedPullRequestWorkflows: make([]string, 0),
+		AllowedDeploymentWorkflows:  make([]string, 0),
+		AllowedOverrides:            make([]string, 0),
+		ApplyRequirements:           make([]string, 0),
+	}
+
+	for _, repo := range g.Repos {
+		if repo.IDMatches(repoID) {
+			if repo.ApplyRequirements != nil {
+				foldedRepo.ApplyRequirements = repo.ApplyRequirements
+			}
+			if repo.Workflow != nil {
+				foldedRepo.Workflow = repo.Workflow
+			}
+			if repo.PullRequestWorkflow != nil {
+				foldedRepo.PullRequestWorkflow = repo.PullRequestWorkflow
+			}
+			if repo.DeploymentWorkflow != nil {
+				foldedRepo.DeploymentWorkflow = repo.DeploymentWorkflow
+			}
+			if repo.AllowedWorkflows != nil {
+				foldedRepo.AllowedWorkflows = repo.AllowedWorkflows
+			}
+			if repo.AllowedPullRequestWorkflows != nil {
+				foldedRepo.AllowedPullRequestWorkflows = repo.AllowedPullRequestWorkflows
+			}
+			if repo.AllowedDeploymentWorkflows != nil {
+				foldedRepo.AllowedDeploymentWorkflows = repo.AllowedDeploymentWorkflows
+			}
+			if repo.AllowedOverrides != nil {
+				foldedRepo.AllowedOverrides = repo.AllowedOverrides
+			}
+			if repo.AllowCustomWorkflows != nil {
+				foldedRepo.AllowCustomWorkflows = repo.AllowCustomWorkflows
+			}
+			if repo.DeleteSourceBranchOnMerge != nil {
+				foldedRepo.DeleteSourceBranchOnMerge = repo.DeleteSourceBranchOnMerge
+			}
+		}
+	}
+
+	return foldedRepo
 }
 
 // ValidateRepoCfg validates that rCfg for repo with id repoID is valid based
 // on our global config.
 func (g GlobalCfg) ValidateRepoCfg(rCfg RepoCfg, repoID string) error {
-
-	sliceContainsF := func(slc []string, str string) bool {
-		for _, s := range slc {
-			if s == str {
-				return true
-			}
-		}
-		return false
-	}
-	mapContainsF := func(m map[string]Workflow, key string) bool {
-		for k := range m {
-			if k == key {
-				return true
-			}
-		}
-		return false
-	}
+	repo := g.foldMatchingRepos(repoID)
 
 	// Check allowed overrides.
-	var allowedOverrides []string
-	for _, repo := range g.Repos {
-		if repo.IDMatches(repoID) {
-			if repo.AllowedOverrides != nil {
-				allowedOverrides = repo.AllowedOverrides
-			}
-		}
-	}
+	allowedOverrides := repo.AllowedOverrides
+
 	for _, p := range rCfg.Projects {
-		if p.WorkflowName != nil && !sliceContainsF(allowedOverrides, WorkflowKey) {
-			return fmt.Errorf("repo config not allowed to set '%s' key: server-side config needs '%s: [%s]'", WorkflowKey, AllowedOverridesKey, WorkflowKey)
-		}
-		if p.ApplyRequirements != nil && !sliceContainsF(allowedOverrides, ApplyRequirementsKey) {
-			return fmt.Errorf("repo config not allowed to set '%s' key: server-side config needs '%s: [%s]'", ApplyRequirementsKey, AllowedOverridesKey, ApplyRequirementsKey)
-		}
-		if p.DeleteSourceBranchOnMerge != nil && !sliceContainsF(allowedOverrides, DeleteSourceBranchOnMergeKey) {
-			return fmt.Errorf("repo config not allowed to set '%s' key: server-side config needs '%s: [%s]'", DeleteSourceBranchOnMergeKey, AllowedOverridesKey, DeleteSourceBranchOnMergeKey)
+		if err := p.CheckAllowedOverrides(allowedOverrides); err != nil {
+			return err
 		}
 	}
 
+	allowCustomWorkflows := *repo.AllowCustomWorkflows
 	// Check custom workflows.
-	var allowCustomWorkflows bool
-	for _, repo := range g.Repos {
-		if repo.IDMatches(repoID) {
-			if repo.AllowCustomWorkflows != nil {
-				allowCustomWorkflows = *repo.AllowCustomWorkflows
-			}
-		}
-	}
-
 	if len(rCfg.Workflows) > 0 && !allowCustomWorkflows {
 		return fmt.Errorf("repo config not allowed to define custom workflows: server-side config needs '%s: true'", AllowCustomWorkflowsKey)
 	}
 
-	// Check if the repo has set a workflow name that doesn't exist.
-	for _, p := range rCfg.Projects {
-		if p.WorkflowName != nil {
-			name := *p.WorkflowName
-			if !mapContainsF(rCfg.Workflows, name) && !mapContainsF(g.Workflows, name) {
-				return fmt.Errorf("workflow %q is not defined anywhere", name)
-			}
-		}
+	// Check if the repo has set a workflow name that doesn't exist and if workflow is allowed
+	if err := rCfg.ValidateWorkflows(g.Workflows, repo.AllowedWorkflows, allowCustomWorkflows); err != nil {
+		return err
 	}
 
-	// Check workflow is allowed
-	var allowedWorkflows []string
-	for _, repo := range g.Repos {
-		if repo.IDMatches(repoID) {
-
-			if repo.AllowedWorkflows != nil {
-				allowedWorkflows = repo.AllowedWorkflows
-			}
-		}
+	// Check if the repo has set a pull_request workflow name that doesn't exist and if workflow is allowed
+	if err := rCfg.ValidatePRWorkflows(g.PullRequestWorkflows, repo.AllowedPullRequestWorkflows); err != nil {
+		return err
 	}
 
-	for _, p := range rCfg.Projects {
-		// default is always allowed
-		if p.WorkflowName != nil && len(allowedWorkflows) != 0 {
-			name := *p.WorkflowName
-			if allowCustomWorkflows {
-				// If we allow CustomWorkflows we need to check that workflow name is defined inside repo and not global.
-				if mapContainsF(rCfg.Workflows, name) {
-					break
-				}
-			}
-
-			if !sliceContainsF(allowedWorkflows, name) {
-				return fmt.Errorf("workflow '%s' is not allowed for this repo", name)
-			}
-		}
+	// Check if the repo has set a deployment workflow name that doesn't exist and if workflow is allowed
+	if err := rCfg.ValidateDeploymentWorkflows(g.DeploymentWorkflows, repo.AllowedDeploymentWorkflows); err != nil {
+		return err
 	}
 
 	return nil
-}
-
-// getMatchingCfg returns the key settings for repoID.
-func (g GlobalCfg) getMatchingCfg(log logging.SimpleLogging, repoID string) (
-	applyReqs []string,
-	workflow Workflow,
-	pullRequestWorkflow Workflow,
-	deploymentWorkflow Workflow,
-	allowedOverrides []string,
-	allowCustomWorkflows bool,
-	deleteSourceBranchOnMerge bool,
-) {
-	toLog := make(map[string]string)
-	traceF := func(repoIdx int, repoID string, key string, val interface{}) string {
-		from := "default server config"
-		if repoIdx > 0 {
-			from = fmt.Sprintf("repos[%d], id: %s", repoIdx, repoID)
-		}
-		var valStr string
-		switch v := val.(type) {
-		case string:
-			valStr = fmt.Sprintf("%q", v)
-		case []string:
-			valStr = fmt.Sprintf("[%s]", strings.Join(v, ","))
-		case bool:
-			valStr = fmt.Sprintf("%t", v)
-		default:
-			valStr = "this is a bug"
-		}
-
-		return fmt.Sprintf("setting %s: %s from %s", key, valStr, from)
-	}
-
-	for i, repo := range g.Repos {
-		if repo.IDMatches(repoID) {
-			if repo.ApplyRequirements != nil {
-				toLog[ApplyRequirementsKey] = traceF(i, repo.IDString(), ApplyRequirementsKey, repo.ApplyRequirements)
-				applyReqs = repo.ApplyRequirements
-			}
-			if repo.Workflow != nil {
-				toLog[WorkflowKey] = traceF(i, repo.IDString(), WorkflowKey, repo.Workflow.Name)
-				workflow = *repo.Workflow
-			}
-			if repo.PullRequestWorkflow != nil {
-				toLog[PullRequestWorkflowKey] = traceF(i, repo.IDString(), PullRequestWorkflowKey, repo.PullRequestWorkflow.Name)
-				pullRequestWorkflow = *repo.PullRequestWorkflow
-			}
-			if repo.DeploymentWorkflow != nil {
-				toLog[DeploymentWorkflowKey] = traceF(i, repo.IDString(), DeploymentWorkflowKey, repo.DeploymentWorkflow.Name)
-				deploymentWorkflow = *repo.DeploymentWorkflow
-			}
-			if repo.AllowedOverrides != nil {
-				toLog[AllowedOverridesKey] = traceF(i, repo.IDString(), AllowedOverridesKey, repo.AllowedOverrides)
-				allowedOverrides = repo.AllowedOverrides
-			}
-			if repo.AllowCustomWorkflows != nil {
-				toLog[AllowCustomWorkflowsKey] = traceF(i, repo.IDString(), AllowCustomWorkflowsKey, *repo.AllowCustomWorkflows)
-				allowCustomWorkflows = *repo.AllowCustomWorkflows
-			}
-			if repo.DeleteSourceBranchOnMerge != nil {
-				toLog[DeleteSourceBranchOnMergeKey] = traceF(i, repo.IDString(), DeleteSourceBranchOnMergeKey, *repo.DeleteSourceBranchOnMerge)
-				deleteSourceBranchOnMerge = *repo.DeleteSourceBranchOnMerge
-			}
-		}
-	}
-	for _, l := range toLog {
-		log.Debug(l)
-	}
-	return
 }
 
 // MatchingRepo returns an instance of Repo which matches a given repoID.
