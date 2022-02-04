@@ -593,9 +593,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	projectOutputWrapper := &events.ProjectOutputWrapper{
-		ProjectCmdOutputHandler: projectCmdOutputHandler,
-		ProjectCommandRunner:    projectCommandRunner,
-		JobURLSetter:            jobs.NewJobURLSetter(router, commitStatusUpdater),
+		JobMessageSender:     projectCmdOutputHandler,
+		ProjectCommandRunner: projectCommandRunner,
+		JobURLSetter:         jobs.NewJobURLSetter(router, commitStatusUpdater),
 	}
 
 	featureAwareProjectCommandRunner := &events.FeatureAwareProjectCommandRunner{

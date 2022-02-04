@@ -24,7 +24,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
@@ -126,23 +125,29 @@ type JobURLSetter interface {
 	SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_message_sender.go JobMessageSender
+
+type JobMessageSender interface {
+	Send(ctx models.ProjectCommandContext, msg string, operationComplete bool)
+}
+
 // ProjectOutputWrapper is a decorator that creates a new PR status check per project.
 // The status contains a url that outputs current progress of the terraform plan/apply command.
 type ProjectOutputWrapper struct {
 	ProjectCommandRunner
-	ProjectCmdOutputHandler jobs.ProjectCommandOutputHandler
-	JobURLSetter            JobURLSetter
+	JobMessageSender JobMessageSender
+	JobURLSetter     JobURLSetter
 }
 
 func (p *ProjectOutputWrapper) Plan(ctx models.ProjectCommandContext) models.ProjectResult {
 	result := p.updateProjectPRStatus(models.PlanCommand, ctx, p.ProjectCommandRunner.Plan)
-	p.ProjectCmdOutputHandler.Send(ctx, "", OperationComplete)
+	p.JobMessageSender.Send(ctx, "", OperationComplete)
 	return result
 }
 
 func (p *ProjectOutputWrapper) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
 	result := p.updateProjectPRStatus(models.ApplyCommand, ctx, p.ProjectCommandRunner.Apply)
-	p.ProjectCmdOutputHandler.Send(ctx, "", OperationComplete)
+	p.JobMessageSender.Send(ctx, "", OperationComplete)
 	return result
 }
 

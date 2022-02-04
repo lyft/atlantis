@@ -29,7 +29,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	jobmocks "github.com/runatlantis/atlantis/server/jobs/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -190,13 +189,13 @@ func TestProjectOutputWrapper(t *testing.T) {
 			var expCommitStatus models.CommitStatus
 
 			mockJobURLSetter := eventmocks.NewMockJobURLSetter()
-			mockProjectCommandOutputHandler := jobmocks.NewMockProjectCommandOutputHandler()
+			mockJobMessageSender := eventmocks.NewMockJobMessageSender()
 			mockProjectCommandRunner := mocks.NewMockProjectCommandRunner()
 
 			runner := &events.ProjectOutputWrapper{
-				JobURLSetter:            mockJobURLSetter,
-				ProjectCmdOutputHandler: mockProjectCommandOutputHandler,
-				ProjectCommandRunner:    mockProjectCommandRunner,
+				JobURLSetter:         mockJobURLSetter,
+				JobMessageSender:     mockJobMessageSender,
+				ProjectCommandRunner: mockProjectCommandRunner,
 			}
 
 			if c.Success {
