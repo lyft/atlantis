@@ -353,11 +353,10 @@ func (g GlobalCfg) MergeProjectCfg(log logging.SimpleLogging, repoID string, pro
 func (g GlobalCfg) DefaultProjCfg(log logging.SimpleLogging, repoID string, repoRelDir string, workspace string) MergedProjectCfg {
 	log.Debug("building config based on server-side config")
 	repo := g.foldMatchingRepos(repoID)
-	return MergedProjectCfg{
+
+	mrgPrj := MergedProjectCfg{
 		ApplyRequirements:         repo.ApplyRequirements,
 		Workflow:                  *repo.Workflow,
-		PullRequestWorkflow:       *repo.PullRequestWorkflow,
-		DeploymentWorkflow:        *repo.DeploymentWorkflow,
 		RepoRelDir:                repoRelDir,
 		Workspace:                 workspace,
 		Name:                      "",
@@ -366,6 +365,12 @@ func (g GlobalCfg) DefaultProjCfg(log logging.SimpleLogging, repoID string, repo
 		PolicySets:                g.PolicySets,
 		DeleteSourceBranchOnMerge: *repo.DeleteSourceBranchOnMerge,
 	}
+
+	if g.PlatformModeEnabled() {
+		mrgPrj.PullRequestWorkflow = *repo.PullRequestWorkflow
+		mrgPrj.DeploymentWorkflow = *repo.DeploymentWorkflow
+	}
+	return mrgPrj
 }
 
 // foldMatchingRepos will return a pseudo repo instance that will iterate over
