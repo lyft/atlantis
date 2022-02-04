@@ -6,10 +6,12 @@ import (
 	version "github.com/hashicorp/go-version"
 )
 
+type workflowType string
+
 const (
-	DefaultWorkflowType     = "default"
-	PullRequestWorkflowType = "pull_request"
-	DeploymentWorkflowType  = "deployment"
+	DefaultWorkflowType     workflowType = "workflow"
+	PullRequestWorkflowType workflowType = "pull_request_workflow"
+	DeploymentWorkflowType  workflowType = "deployment_workflow"
 )
 
 type Project struct {
@@ -60,72 +62,68 @@ func (p Project) ValidateAllowedOverrides(allowedOverrides []string) error {
 	return nil
 }
 
-func (p Project) ValidateWorkflow(repoWorkflows map[string]Workflow, globalWorkflows map[string]Workflow) error {
-	if p.WorkflowName != nil {
-		name := *p.WorkflowName
-
-		if !mapContains(repoWorkflows, name) && !mapContains(globalWorkflows, name) {
-			return fmt.Errorf("workflow %q is not defined anywhere", name)
-		}
+func (p Project) getWorkflowName(workflowType workflowType) *string {
+	var name *string
+	switch workflowType {
+	case DefaultWorkflowType:
+		name = p.WorkflowName
+	case PullRequestWorkflowType:
+		name = p.PullRequestWorkflowName
+	case DeploymentWorkflowType:
+		name = p.DeploymentWorkflowName
 	}
+	return name
+}
 
-	return nil
+func (p Project) ValidateWorkflow(repoWorkflows map[string]Workflow, globalWorkflows map[string]Workflow) error {
+	return p.validateWorkflowForType(DefaultWorkflowType, repoWorkflows, globalWorkflows)
 }
 
 func (p Project) ValidatePRWorkflow(globalWorkflows map[string]Workflow) error {
-	if p.PullRequestWorkflowName != nil {
-		name := *p.PullRequestWorkflowName
-
-		if !mapContains(globalWorkflows, name) {
-			return fmt.Errorf("pull_request_workflow %q is not defined anywhere", name)
-		}
-	}
-
-	return nil
+	return p.validateWorkflowForType(PullRequestWorkflowType, map[string]Workflow{}, globalWorkflows)
 }
 
 func (p Project) ValidateDeploymentWorkflow(globalWorkflows map[string]Workflow) error {
-	if p.DeploymentWorkflowName != nil {
-		name := *p.DeploymentWorkflowName
-
-		if !mapContains(globalWorkflows, name) {
-			return fmt.Errorf("deployment_workflow %q is not defined anywhere", name)
-		}
-	}
-
-	return nil
+	return p.validateWorkflowForType(DeploymentWorkflowType, map[string]Workflow{}, globalWorkflows)
 }
 
 func (p Project) ValidateWorkflowAllowed(allowedWorkflows []string) error {
-	if p.WorkflowName != nil {
-		name := *p.WorkflowName
-
-		if !sliceContains(allowedWorkflows, name) {
-			return fmt.Errorf("workflow %q is not allowed for this repo", name)
-		}
-	}
-
-	return nil
+	return p.validateWorkflowAllowedForType(DefaultWorkflowType, allowedWorkflows)
 }
 
 func (p Project) ValidatePRWorkflowAllowed(allowedWorkflows []string) error {
-	if p.PullRequestWorkflowName != nil {
-		name := *p.PullRequestWorkflowName
+	return p.validateWorkflowAllowedForType(PullRequestWorkflowType, allowedWorkflows)
+}
 
-		if !sliceContains(allowedWorkflows, name) {
-			return fmt.Errorf("pull_request_workflow %q is not allowed for this repo", name)
+func (p Project) ValidateDeploymentWorkflowAllowed(allowedWorkflows []string) error {
+	return p.validateWorkflowAllowedForType(DeploymentWorkflowType, allowedWorkflows)
+}
+
+func (p Project) validateWorkflowForType(
+	workflowType workflowType,
+	repoWorkflows map[string]Workflow,
+	globalWorkflows map[string]Workflow,
+) error {
+	name := p.getWorkflowName(workflowType)
+
+	if name != nil {
+		if !mapContains(repoWorkflows, *name) && !mapContains(globalWorkflows, *name) {
+			return fmt.Errorf("%s %q is not defined anywhere", workflowType, *name)
 		}
 	}
 
 	return nil
 }
 
-func (p Project) ValidateDeploymentWorkflowAllowed(allowedWorkflows []string) error {
-	if p.DeploymentWorkflowName != nil {
-		name := *p.DeploymentWorkflowName
+func (p Project) validateWorkflowAllowedForType(
+	workflowType workflowType,
+	allowedWorkflows []string,
+) error {
+	name := p.getWorkflowName(workflowType)
 
-		if !sliceContains(allowedWorkflows, name) {
-			return fmt.Errorf("deployment_workflow %q is not allowed for this repo", name)
+	if name != nil {
+		if !sliceContains(allowedWorkflows, *name) {
+			return fmt.Errorf("%s %q is not allowed for this repo", workflowType, *name)
 		}
 	}
 
