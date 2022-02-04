@@ -17,27 +17,19 @@ type ProjectStatusUpdater interface {
 	UpdateProject(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus, url string) error
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_url_setter.go JobURLSetter
-
-type JobURLSetter interface {
-	// SetJobURLWithStatus sets the commit status for the project represented by
-	// ctx and updates the status with and url to a job.
-	SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error
-}
-
-type DefaultJobURLSetter struct {
+type JobURLSetter struct {
 	projectJobURLGenerator ProjectJobURLGenerator
 	projectStatusUpdater   ProjectStatusUpdater
 }
 
-func NewJobURLSetter(projectJobURLGenerator ProjectJobURLGenerator, projectStatusUpdater ProjectStatusUpdater) JobURLSetter {
-	return &DefaultJobURLSetter{
+func NewJobURLSetter(projectJobURLGenerator ProjectJobURLGenerator, projectStatusUpdater ProjectStatusUpdater) *JobURLSetter {
+	return &JobURLSetter{
 		projectJobURLGenerator: projectJobURLGenerator,
 		projectStatusUpdater:   projectStatusUpdater,
 	}
 }
 
-func (j *DefaultJobURLSetter) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
+func (j *JobURLSetter) SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error {
 	url, err := j.projectJobURLGenerator.GenerateProjectJobURL(ctx)
 
 	if err != nil {

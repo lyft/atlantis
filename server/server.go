@@ -36,8 +36,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/jobs"
-	"github.com/runatlantis/atlantis/server/jobs/handlers"
-	jobmodels "github.com/runatlantis/atlantis/server/jobs/models"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
@@ -116,7 +114,7 @@ type Server struct {
 	SSLKeyFile                    string
 	Drainer                       *events.Drainer
 	ScheduledExecutorService      *scheduled.ExecutorService
-	ProjectCmdOutputHandler       handlers.ProjectCommandOutputHandler
+	ProjectCmdOutputHandler       jobs.ProjectCommandOutputHandler
 }
 
 // Config holds config for server that isn't passed in by the user.
@@ -370,14 +368,14 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
-	var projectCmdOutputHandler handlers.ProjectCommandOutputHandler
+	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
 
 	if userConfig.TFEToken != "" {
-		projectCmdOutputHandler = &handlers.NoopProjectOutputHandler{}
+		projectCmdOutputHandler = &jobs.NoopProjectOutputHandler{}
 	} else {
-		projectCmdOutput := make(chan *jobmodels.ProjectCmdOutputLine)
-		projectCmdOutputHandler = handlers.NewAsyncProjectCommandOutputHandler(
+		projectCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
+		projectCmdOutputHandler = jobs.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
 			logger,
 		)

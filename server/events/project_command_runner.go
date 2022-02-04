@@ -25,7 +25,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
 	"github.com/runatlantis/atlantis/server/jobs"
-	"github.com/runatlantis/atlantis/server/jobs/handlers"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
@@ -119,12 +118,20 @@ type ProjectCommandRunner interface {
 	ProjectVersionCommandRunner
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_url_setter.go JobURLSetter
+
+type JobURLSetter interface {
+	// SetJobURLWithStatus sets the commit status for the project represented by
+	// ctx and updates the status with and url to a job.
+	SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error
+}
+
 // ProjectOutputWrapper is a decorator that creates a new PR status check per project.
 // The status contains a url that outputs current progress of the terraform plan/apply command.
 type ProjectOutputWrapper struct {
 	ProjectCommandRunner
-	ProjectCmdOutputHandler handlers.ProjectCommandOutputHandler
-	JobURLSetter            jobs.JobURLSetter
+	ProjectCmdOutputHandler jobs.ProjectCommandOutputHandler
+	JobURLSetter            JobURLSetter
 }
 
 func (p *ProjectOutputWrapper) Plan(ctx models.ProjectCommandContext) models.ProjectResult {

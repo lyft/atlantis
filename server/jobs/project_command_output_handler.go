@@ -1,19 +1,42 @@
-package handlers
+package jobs
 
 import (
 	"sync"
 
 	"github.com/runatlantis/atlantis/server/events/models"
-	jobmodels "github.com/runatlantis/atlantis/server/jobs/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
+
+type OutputBuffer struct {
+	OperationComplete bool
+	Buffer            []string
+}
+
+type PullInfo struct {
+	PullNum     int
+	Repo        string
+	ProjectName string
+	Workspace   string
+}
+
+type JobInfo struct {
+	PullInfo
+	HeadCommit string
+}
+
+type ProjectCmdOutputLine struct {
+	JobID             string
+	JobInfo           JobInfo
+	Line              string
+	OperationComplete bool
+}
 
 // AsyncProjectCommandOutputHandler is a handler to transport terraform client
 // outputs to the front end.
 type AsyncProjectCommandOutputHandler struct {
-	projectCmdOutput chan *jobmodels.ProjectCmdOutputLine
+	projectCmdOutput chan *ProjectCmdOutputLine
 
-	projectOutputBuffers     map[string]jobmodels.OutputBuffer
+	projectOutputBuffers     map[string]OutputBuffer
 	projectOutputBuffersLock sync.RWMutex
 
 	receiverBuffers     map[string]map[chan string]bool
@@ -25,7 +48,7 @@ type AsyncProjectCommandOutputHandler struct {
 	pullToJobMapping sync.Map
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o ../mocks/mock_project_command_output_handler.go ProjectCommandOutputHandler
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_output_handler.go ProjectCommandOutputHandler
 
 type ProjectCommandOutputHandler interface {
 	// Send will enqueue the msg and wait for Handle() to receive the message.
@@ -41,34 +64,29 @@ type ProjectCommandOutputHandler interface {
 	// Listens for msg from channel
 	Handle()
 
-	ResourceCleaner
-}
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o ../mocks/mock_resource_cleaner.go ResourceCleaner
-
-type ResourceCleaner interface {
-	CleanUp(pullContext jobmodels.PullContext)
+	// Cleans up resources for a pull
+	CleanUp(pullInfo PullInfo)
 }
 
 func NewAsyncProjectCommandOutputHandler(
-	projectCmdOutput chan *jobmodels.ProjectCmdOutputLine,
+	projectCmdOutput chan *ProjectCmdOutputLine,
 	logger logging.SimpleLogging,
 ) ProjectCommandOutputHandler {
 	return &AsyncProjectCommandOutputHandler{
 		projectCmdOutput:     projectCmdOutput,
 		logger:               logger,
 		receiverBuffers:      map[string]map[chan string]bool{},
-		projectOutputBuffers: map[string]jobmodels.OutputBuffer{},
+		projectOutputBuffers: map[string]OutputBuffer{},
 		pullToJobMapping:     sync.Map{},
 	}
 }
 
 func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string, operationComplete bool) {
-	p.projectCmdOutput <- &jobmodels.ProjectCmdOutputLine{
+	p.projectCmdOutput <- &ProjectCmdOutputLine{
 		JobID: ctx.JobID,
-		JobContext: jobmodels.JobContext{
+		JobInfo: JobInfo{
 			HeadCommit: ctx.Pull.HeadCommit,
-			PullContext: jobmodels.PullContext{
+			PullInfo: PullInfo{
 				PullNum:     ctx.Pull.Num,
 				Repo:        ctx.BaseRepo.Name,
 				ProjectName: ctx.ProjectName,
@@ -92,10 +110,10 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 		}
 
 		// Add job to pullToJob mapping
-		if _, ok := p.pullToJobMapping.Load(msg.JobContext.PullContext); !ok {
-			p.pullToJobMapping.Store(msg.JobContext.PullContext, map[string]bool{})
+		if _, ok := p.pullToJobMapping.Load(msg.JobInfo.PullInfo); !ok {
+			p.pullToJobMapping.Store(msg.JobInfo.PullInfo, map[string]bool{})
 		}
-		value, _ := p.pullToJobMapping.Load(msg.JobContext.PullContext)
+		value, _ := p.pullToJobMapping.Load(msg.JobInfo.PullInfo)
 		jobMapping := value.(map[string]bool)
 		jobMapping[msg.JobID] = true
 
@@ -172,7 +190,7 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line strin
 
 	p.projectOutputBuffersLock.Lock()
 	if _, ok := p.projectOutputBuffers[jobID]; !ok {
-		p.projectOutputBuffers[jobID] = jobmodels.OutputBuffer{
+		p.projectOutputBuffers[jobID] = OutputBuffer{
 			Buffer: []string{},
 		}
 	}
@@ -195,19 +213,19 @@ func (p *AsyncProjectCommandOutputHandler) GetReceiverBufferForPull(jobID string
 	return p.receiverBuffers[jobID]
 }
 
-func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) jobmodels.OutputBuffer {
+func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) OutputBuffer {
 	return p.projectOutputBuffers[jobID]
 }
 
-func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPullContext(pullContext jobmodels.PullContext) map[string]bool {
-	if value, ok := p.pullToJobMapping.Load(pullContext); ok {
+func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPull(pullInfo PullInfo) map[string]bool {
+	if value, ok := p.pullToJobMapping.Load(pullInfo); ok {
 		return value.(map[string]bool)
 	}
 	return nil
 }
 
-func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext jobmodels.PullContext) {
-	if value, ok := p.pullToJobMapping.Load(pullContext); ok {
+func (p *AsyncProjectCommandOutputHandler) CleanUp(pullInfo PullInfo) {
+	if value, ok := p.pullToJobMapping.Load(pullInfo); ok {
 		jobMapping := value.(map[string]bool)
 		for jobID := range jobMapping {
 			p.projectOutputBuffersLock.Lock()
@@ -223,7 +241,7 @@ func (p *AsyncProjectCommandOutputHandler) CleanUp(pullContext jobmodels.PullCon
 		}
 
 		// Remove job mapping
-		p.pullToJobMapping.Delete(pullContext)
+		p.pullToJobMapping.Delete(pullInfo)
 	}
 }
 
@@ -239,5 +257,5 @@ func (p *NoopProjectOutputHandler) Deregister(jobID string, receiver chan string
 func (p *NoopProjectOutputHandler) Handle() {
 }
 
-func (p *NoopProjectOutputHandler) CleanUp(pullContext jobmodels.PullContext) {
+func (p *NoopProjectOutputHandler) CleanUp(pullInfo PullInfo) {
 }

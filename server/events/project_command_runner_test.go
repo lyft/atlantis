@@ -25,6 +25,7 @@ import (
 	tmocks "github.com/runatlantis/atlantis/server/core/terraform/mocks"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/mocks"
+	eventmocks "github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/yaml/valid"
@@ -188,7 +189,7 @@ func TestProjectOutputWrapper(t *testing.T) {
 			var prjResult models.ProjectResult
 			var expCommitStatus models.CommitStatus
 
-			mockJobURLSetter := jobmocks.NewMockJobURLSetter()
+			mockJobURLSetter := eventmocks.NewMockJobURLSetter()
 			mockProjectCommandOutputHandler := jobmocks.NewMockProjectCommandOutputHandler()
 			mockProjectCommandRunner := mocks.NewMockProjectCommandRunner()
 

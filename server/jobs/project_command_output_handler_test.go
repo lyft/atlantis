@@ -1,4 +1,4 @@
-package handlers_test
+package jobs_test
 
 import (
 	"sync"
@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/jobs/handlers"
-	jobmodels "github.com/runatlantis/atlantis/server/jobs/models"
+	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/stretchr/testify/assert"
@@ -42,10 +41,10 @@ func createTestProjectCmdContext(t *testing.T) models.ProjectCommandContext {
 	}
 }
 
-func createProjectCommandOutputHandler(t *testing.T) handlers.ProjectCommandOutputHandler {
+func createProjectCommandOutputHandler(t *testing.T) jobs.ProjectCommandOutputHandler {
 	logger := logging.NewNoopLogger(t)
-	prjCmdOutputChan := make(chan *jobmodels.ProjectCmdOutputLine)
-	prjCmdOutputHandler := handlers.NewAsyncProjectCommandOutputHandler(
+	prjCmdOutputChan := make(chan *jobs.ProjectCmdOutputLine)
+	prjCmdOutputHandler := jobs.NewAsyncProjectCommandOutputHandler(
 		prjCmdOutputChan,
 		logger,
 	)
@@ -158,7 +157,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		projectOutputHandler.Send(ctx, Msg, false)
 		projectOutputHandler.Send(ctx, "Complete", false)
 
-		pullContext := jobmodels.PullContext{
+		pullContext := jobs.PullInfo{
 			PullNum:     ctx.Pull.Num,
 			Repo:        ctx.BaseRepo.Name,
 			ProjectName: ctx.ProjectName,
@@ -167,12 +166,12 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		projectOutputHandler.CleanUp(pullContext)
 
 		// Check all the resources are cleaned up.
-		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.AsyncProjectCommandOutputHandler)
+		dfProjectOutputHandler, ok := projectOutputHandler.(*jobs.AsyncProjectCommandOutputHandler)
 		assert.True(t, ok)
 
 		assert.Empty(t, dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID))
 		assert.Empty(t, dfProjectOutputHandler.GetReceiverBufferForPull(ctx.JobID))
-		assert.Empty(t, dfProjectOutputHandler.GetJobIdMapForPullContext(pullContext))
+		assert.Empty(t, dfProjectOutputHandler.GetJobIdMapForPull(pullContext))
 	})
 
 	t.Run("mark operation status complete and close conn buffers for the job", func(t *testing.T) {
@@ -198,7 +197,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// Wait for the handler to process the message
 		time.Sleep(10 * time.Millisecond)
 
-		dfProjectOutputHandler, ok := projectOutputHandler.(*handlers.AsyncProjectCommandOutputHandler)
+		dfProjectOutputHandler, ok := projectOutputHandler.(*jobs.AsyncProjectCommandOutputHandler)
 		assert.True(t, ok)
 
 		outputBuffer := dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID)
