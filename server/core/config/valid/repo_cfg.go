@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	version "github.com/hashicorp/go-version"
 )
 
 // RepoCfg is the atlantis.yaml config after it's been parsed and validated.
@@ -16,8 +14,6 @@ type RepoCfg struct {
 	Version                   int
 	Projects                  []Project
 	Workflows                 map[string]Workflow
-	PullRequestWorkflows      map[string]Workflow
-	DeploymentWorkflows       map[string]Workflow
 	PolicySets                PolicySets
 	Automerge                 bool
 	ParallelApply             bool
@@ -100,30 +96,82 @@ func (r RepoCfg) ValidateWorkspaceAllowed(repoRelDir string, workspace string) e
 	)
 }
 
-type Project struct {
-	Dir                       string
-	Workspace                 string
-	Name                      *string
-	WorkflowName              *string
-	TerraformVersion          *version.Version
-	Autoplan                  Autoplan
-	ApplyRequirements         []string
-	DeleteSourceBranchOnMerge *bool
-	Tags                      map[string]string
+// ValidateWorkflows ensures that all projects with custom workflow
+// names exists either on repo level config or server level config
+// Additionally it validates that workflow is allowed to be defined
+func (r RepoCfg) ValidateWorkflows(
+	globalWorkflows map[string]Workflow,
+	allowedWorkflows []string,
+	allowCustomWorkflows bool,
+) error {
+	// Check if the repo has set a workflow name that doesn't exist.
+	for _, p := range r.Projects {
+		if err := p.ValidateWorkflow(r.Workflows, globalWorkflows); err != nil {
+			return err
+		}
+	}
+
+	if len(allowedWorkflows) == 0 {
+		return nil
+	}
+
+	// Check workflow is allowed
+	for _, p := range r.Projects {
+		if allowCustomWorkflows {
+			if err := p.ValidateWorkflow(r.Workflows, map[string]Workflow{}); err == nil {
+				break
+			}
+		}
+
+		if err := p.ValidateWorkflowAllowed(allowedWorkflows); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-// GetName returns the name of the project or an empty string if there is no
-// project name.
-func (p Project) GetName() string {
-	if p.Name != nil {
-		return *p.Name
+// ValidatePRWorkflows ensures that all projects with custom
+// pull_request workflow names exists either on server level config
+// Additionally it validates that workflow is allowed to be defined
+func (r RepoCfg) ValidatePRWorkflows(workflows map[string]Workflow, allowedWorkflows []string) error {
+	for _, p := range r.Projects {
+		if err := p.ValidatePRWorkflow(workflows); err != nil {
+			return err
+		}
 	}
-	// TODO
-	// Upstream atlantis only requires project name to be set if there's more than one project
-	// with same dir and workspace. If a project name has not been set, we'll use the dir and
-	// workspace to build project key.
-	// Source: https://www.runatlantis.io/docs/repo-level-atlantis-yaml.html#reference
-	return ""
+	if len(allowedWorkflows) == 0 {
+		return nil
+	}
+
+	for _, p := range r.Projects {
+		if err := p.ValidatePRWorkflowAllowed(allowedWorkflows); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ValidateDeploymentWorkflows ensures that all projects with custom
+// deployment workflow names exists either on server level config
+// Additionally it validates that workflow is allowed to be defined
+func (r RepoCfg) ValidateDeploymentWorkflows(workflows map[string]Workflow, allowedWorkflows []string) error {
+	for _, p := range r.Projects {
+		if err := p.ValidateDeploymentWorkflow(workflows); err != nil {
+			return err
+		}
+	}
+
+	if len(allowedWorkflows) == 0 {
+		return nil
+	}
+
+	for _, p := range r.Projects {
+		if err := p.ValidateDeploymentWorkflowAllowed(allowedWorkflows); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type Autoplan struct {
