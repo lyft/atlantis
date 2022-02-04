@@ -314,7 +314,7 @@ func TestProject_ValidateDeploymentWorkflowAllowed(t *testing.T) {
 	}
 }
 
-func TestProject_CheckAllowedOverrides(t *testing.T) {
+func TestProject_ValidateAllowedOverrides(t *testing.T) {
 	workflowName := "custom"
 	deleteSourceBranch := true
 	cases := map[string]struct {
@@ -382,7 +382,7 @@ func TestProject_CheckAllowedOverrides(t *testing.T) {
 
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			actErr := c.project.CheckAllowedOverrides(c.allowedOverrides)
+			actErr := c.project.ValidateAllowedOverrides(c.allowedOverrides)
 			if c.expErr == "" {
 				Ok(t, actErr)
 			} else {

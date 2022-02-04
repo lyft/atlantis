@@ -66,6 +66,18 @@ func (r RepoCfg) FindProjectsByName(name string) []Project {
 	return ps
 }
 
+// ValidateAllowedOverrides iterates over projects and checks that each project
+// is only using allowed overrides defined in global config
+func (r RepoCfg) ValidateAllowedOverrides(allowedOverrides []string) error {
+	for _, p := range r.Projects {
+		if err := p.ValidateAllowedOverrides(allowedOverrides); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // validateWorkspaceAllowed returns an error if repoCfg defines projects in
 // repoRelDir but none of them use workspace. We want this to be an error
 // because if users have gone to the trouble of defining projects in repoRelDir

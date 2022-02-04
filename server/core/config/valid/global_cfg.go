@@ -246,23 +246,22 @@ func (g GlobalCfg) MergeProjectCfg(log logging.SimpleLogging, repoID string, pro
 	var allowCustomWorkflows bool
 	var deleteSourceBranchOnMerge bool
 
-	prjRepo := g.foldMatchingRepos(repoID)
+	repo := g.foldMatchingRepos(repoID)
 
-	applyReqs = prjRepo.ApplyRequirements
-	allowCustomWorkflows = *prjRepo.AllowCustomWorkflows
-	deleteSourceBranchOnMerge = *prjRepo.DeleteSourceBranchOnMerge
-	workflow = *prjRepo.Workflow
+	applyReqs = repo.ApplyRequirements
+	allowCustomWorkflows = *repo.AllowCustomWorkflows
+	deleteSourceBranchOnMerge = *repo.DeleteSourceBranchOnMerge
+	workflow = *repo.Workflow
 
-	// PullRequestWorkflow and DeploymentWorkflow can only be defined when
-	// platform mode is enabled, otherwise it will be nil. We don't set default
-	// workflow in this case
-	if prjRepo.PullRequestWorkflow != nil && prjRepo.DeploymentWorkflow != nil {
-		pullRequestWorkflow = *prjRepo.PullRequestWorkflow
-		deploymentWorkflow = *prjRepo.DeploymentWorkflow
+	// If platform mode is enabled there will be at least default workflows,
+	// otherwise values will be nil
+	if g.PlatformModeEnabled() {
+		pullRequestWorkflow = *repo.PullRequestWorkflow
+		deploymentWorkflow = *repo.DeploymentWorkflow
 	}
 
 	// If repos are allowed to override certain keys then override them.
-	for _, key := range prjRepo.AllowedOverrides {
+	for _, key := range repo.AllowedOverrides {
 		switch key {
 		case ApplyRequirementsKey:
 			if proj.ApplyRequirements != nil {
@@ -431,10 +430,8 @@ func (g GlobalCfg) ValidateRepoCfg(rCfg RepoCfg, repoID string) error {
 	// Check allowed overrides.
 	allowedOverrides := repo.AllowedOverrides
 
-	for _, p := range rCfg.Projects {
-		if err := p.CheckAllowedOverrides(allowedOverrides); err != nil {
-			return err
-		}
+	if err := rCfg.ValidateAllowedOverrides(allowedOverrides); err != nil {
+		return err
 	}
 
 	allowCustomWorkflows := *repo.AllowCustomWorkflows

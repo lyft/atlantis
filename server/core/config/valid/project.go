@@ -40,7 +40,7 @@ func (p Project) GetName() string {
 	return ""
 }
 
-func (p Project) CheckAllowedOverrides(allowedOverrides []string) error {
+func (p Project) ValidateAllowedOverrides(allowedOverrides []string) error {
 	if p.WorkflowName != nil && !sliceContains(allowedOverrides, WorkflowKey) {
 		return fmt.Errorf("repo config not allowed to set '%s' key: server-side config needs '%s: [%s]'", WorkflowKey, AllowedOverridesKey, WorkflowKey)
 	}
