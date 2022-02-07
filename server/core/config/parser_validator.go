@@ -126,11 +126,8 @@ func (p *ParserValidator) validateRawGlobalCfg(rawCfg raw.GlobalCfg, defaultCfg 
 	// Setting ErrorTag means our errors will use the field names defined in
 	// the struct tags for yaml/json.
 	validation.ErrorTag = errTag
-	fmt.Println("YOLOD")
 	if err := rawCfg.Validate(); err != nil {
 		return valid.GlobalCfg{}, err
-	} else {
-		fmt.Println("NJHKFLJE")
 	}
 
 	validCfg := rawCfg.ToValid(defaultCfg)
