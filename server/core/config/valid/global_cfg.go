@@ -348,11 +348,6 @@ func (g GlobalCfg) DefaultProjCfg(log logging.SimpleLogging, repoID string, repo
 		DeleteSourceBranchOnMerge: *repo.DeleteSourceBranchOnMerge,
 	}
 
-	if g.PlatformModeEnabled() {
-		mrgPrj.PullRequestWorkflow = *repo.PullRequestWorkflow
-		mrgPrj.DeploymentWorkflow = *repo.DeploymentWorkflow
-
-	}
 	return mrgPrj
 }
 
