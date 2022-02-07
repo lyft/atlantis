@@ -22,5 +22,5 @@ func (c *DBUpdater) updateDB(ctx *CommandContext, pull models.PullRequest, resul
 		filtered = append(filtered, r)
 	}
 	ctx.Log.Debug("updating DB with pull results")
-	return c.DB.UpdatePullWithResults(pull, filtered)
+	return c.DB.UpdatePullWithResults(pull, filtered, ctx.EventTimestamp)
 }

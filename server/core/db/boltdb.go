@@ -312,7 +312,7 @@ func (b *BoltDB) GetLock(p models.Project, workspace string) (*models.ProjectLoc
 
 // UpdatePullWithResults updates pull's status with the latest project results.
 // It returns the new PullStatus object.
-func (b *BoltDB) UpdatePullWithResults(pull models.PullRequest, newResults []models.ProjectResult) (models.PullStatus, error) {
+func (b *BoltDB) UpdatePullWithResults(pull models.PullRequest, newResults []models.ProjectResult, eventTimeStamp time.Time) (models.PullStatus, error) {
 	key, err := b.pullKey(pull)
 	if err != nil {
 		return models.PullStatus{}, err
@@ -334,8 +334,9 @@ func (b *BoltDB) UpdatePullWithResults(pull models.PullRequest, newResults []mod
 				statuses = append(statuses, b.projectResultToProject(r))
 			}
 			newStatus = models.PullStatus{
-				Pull:     pull,
-				Projects: statuses,
+				Pull:      pull,
+				Projects:  statuses,
+				Timestamp: eventTimeStamp,
 			}
 		} else {
 			// If there's an existing pull at the right commit then we have to
@@ -344,6 +345,7 @@ func (b *BoltDB) UpdatePullWithResults(pull models.PullRequest, newResults []mod
 			// in this command and so we don't want to delete our data about
 			// other projects that aren't affected by this command.
 			newStatus = *currStatus
+			newStatus.Timestamp = eventTimeStamp
 			for _, res := range newResults {
 				// First, check if we should update any existing projects.
 				updatedExisting := false

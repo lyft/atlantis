@@ -464,7 +464,7 @@ func TestPullStatus_UpdateGet(t *testing.T) {
 				Workspace:  "default",
 				Failure:    "failure",
 			},
-		})
+		}, time.Now())
 	Ok(t, err)
 
 	maybeStatus, err := b.GetPullStatus(pull)
@@ -514,7 +514,7 @@ func TestPullStatus_UpdateDeleteGet(t *testing.T) {
 				Workspace:  "default",
 				Failure:    "failure",
 			},
-		})
+		}, time.Now())
 	Ok(t, err)
 
 	err = b.DeletePullStatus(pull)
@@ -565,7 +565,7 @@ func TestPullStatus_UpdateProject(t *testing.T) {
 				Workspace:    "staging",
 				ApplySuccess: "success!",
 			},
-		})
+		}, time.Now())
 	Ok(t, err)
 
 	err = b.UpdateProjectStatus(pull, "default", ".", models.DiscardedPlanStatus)
@@ -624,7 +624,7 @@ func TestPullStatus_UpdateNewCommit(t *testing.T) {
 				Workspace:  "default",
 				Failure:    "failure",
 			},
-		})
+		}, time.Now())
 	Ok(t, err)
 
 	pull.HeadCommit = "newsha"
@@ -635,7 +635,7 @@ func TestPullStatus_UpdateNewCommit(t *testing.T) {
 				Workspace:    "staging",
 				ApplySuccess: "success!",
 			},
-		})
+		}, time.Now())
 
 	Ok(t, err)
 	Equals(t, 1, len(status.Projects))
@@ -706,7 +706,7 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 					ApplyCmd:        "apply command",
 				},
 			},
-		})
+		}, time.Now())
 	Ok(t, err)
 
 	updateStatus, err := b.UpdatePullWithResults(pull,
@@ -730,7 +730,7 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 				Workspace:    "default",
 				ApplySuccess: "success!",
 			},
-		})
+		}, time.Now())
 	Ok(t, err)
 
 	getStatus, err := b.GetPullStatus(pull)

@@ -16,6 +16,7 @@ package events
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mcdafydd/go-azuredevops/azuredevops"
@@ -42,8 +43,8 @@ type CommandRunner interface {
 	// RunCommentCommand is the first step after a command request has been parsed.
 	// It handles gathering additional information needed to execute the command
 	// and then calling the appropriate services to finish executing the command.
-	RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand)
-	RunAutoplanCommand(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User)
+	RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand, timestamp time.Time)
+	RunAutoplanCommand(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_getter.go GithubPullGetter
@@ -123,7 +124,7 @@ type DefaultCommandRunner struct {
 }
 
 // RunAutoplanCommand runs plan and policy_checks when a pull request is opened or updated.
-func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) {
+func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time) {
 	if opStarted := c.Drainer.StartOp(); !opStarted {
 		if commentErr := c.VCSClient.CreateComment(baseRepo, pull.Num, ShutdownComment, models.PlanCommand.String()); commentErr != nil {
 			c.Logger.Log(logging.Error, "unable to comment that Atlantis is shutting down: %s", commentErr)
@@ -145,13 +146,14 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 	defer timer.Stop()
 
 	ctx := &CommandContext{
-		User:       user,
-		Log:        log,
-		Scope:      scope,
-		Pull:       pull,
-		HeadRepo:   headRepo,
-		PullStatus: status,
-		Trigger:    Auto,
+		User:           user,
+		Log:            log,
+		Scope:          scope,
+		Pull:           pull,
+		HeadRepo:       headRepo,
+		PullStatus:     status,
+		Trigger:        Auto,
+		EventTimestamp: timestamp,
 	}
 	if !c.validateCtxAndComment(ctx) {
 		return
@@ -176,7 +178,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 // enough data to construct the Repo model and callers might want to wait until
 // the event is further validated before making an additional (potentially
 // wasteful) call to get the necessary data.
-func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand) {
+func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand, timestamp time.Time) {
 	if opStarted := c.Drainer.StartOp(); !opStarted {
 		if commentErr := c.VCSClient.CreateComment(baseRepo, pullNum, ShutdownComment, ""); commentErr != nil {
 			c.Logger.Log(logging.Error, "unable to comment that Atlantis is shutting down: %s", commentErr)
@@ -208,13 +210,14 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 	}
 
 	ctx := &CommandContext{
-		User:       user,
-		Log:        log,
-		Pull:       pull,
-		PullStatus: status,
-		HeadRepo:   headRepo,
-		Trigger:    Comment,
-		Scope:      scope,
+		User:           user,
+		Log:            log,
+		Pull:           pull,
+		PullStatus:     status,
+		HeadRepo:       headRepo,
+		Trigger:        Comment,
+		Scope:          scope,
+		EventTimestamp: timestamp,
 	}
 
 	if !c.validateCtxAndComment(ctx) {
@@ -376,7 +379,7 @@ type FeatureAwareCommandRunner struct {
 	VCSClient        vcs.Client
 }
 
-func (f *FeatureAwareCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand) {
+func (f *FeatureAwareCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand, timestamp time.Time) {
 
 	if cmd.ForceApply {
 		warningMessage := "⚠️ WARNING ⚠️\n\n You have bypassed all apply requirements for this PR 🚀 . This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘 .\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
@@ -384,5 +387,5 @@ func (f *FeatureAwareCommandRunner) RunCommentCommand(baseRepo models.Repo, mayb
 			f.Logger.Log(logging.Error, "unable to comment: %s", commentErr)
 		}
 	}
-	f.CommandRunner.RunCommentCommand(baseRepo, maybeHeadRepo, maybePull, user, pullNum, cmd)
+	f.CommandRunner.RunCommentCommand(baseRepo, maybeHeadRepo, maybePull, user, pullNum, cmd, timestamp)
 }

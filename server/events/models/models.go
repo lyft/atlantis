@@ -614,6 +614,8 @@ type PullStatus struct {
 	Projects []ProjectStatus
 	// Pull is the original pull request model.
 	Pull PullRequest
+	// Timestamp
+	Timestamp time.Time
 }
 
 // StatusCount returns the number of projects that have status.

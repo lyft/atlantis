@@ -312,7 +312,7 @@ func TestDeleteLock_UpdateProjectStatus(t *testing.T) {
 				LockURL:         "lock-url",
 			},
 		},
-	})
+	}, time.Now())
 	Ok(t, err)
 	lc := controllers.LocksController{
 		DeleteLockCommand: l,

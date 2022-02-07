@@ -16,6 +16,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
+	"time"
 )
 
 // CommandTrigger represents the how the command was triggered
@@ -49,4 +50,6 @@ type CommandContext struct {
 	PullStatus *models.PullStatus
 
 	Trigger CommandTrigger
+
+	EventTimestamp time.Time
 }
