@@ -61,6 +61,8 @@ type ProjectCommandOutputHandler interface {
 	// Deregister removes a channel from successive updates and closes it.
 	Deregister(jobID string, receiver chan string)
 
+	IsKeyExists(key string) bool
+
 	// Listens for msg from channel
 	Handle()
 
@@ -79,6 +81,13 @@ func NewAsyncProjectCommandOutputHandler(
 		projectOutputBuffers: map[string]OutputBuffer{},
 		pullToJobMapping:     sync.Map{},
 	}
+}
+
+func (p *AsyncProjectCommandOutputHandler) IsKeyExists(key string) bool {
+	p.projectOutputBuffersLock.RLock()
+	defer p.projectOutputBuffersLock.RUnlock()
+	_, ok := p.projectOutputBuffers[key]
+	return ok
 }
 
 func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string, operationComplete bool) {
@@ -177,12 +186,7 @@ func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line strin
 		select {
 		case ch <- line:
 		default:
-			// Client ws conn could be closed in two ways:
-			// 1. Client closes the conn gracefully -> the closeHandler() is executed which
-			//  	closes the channel and cleans up resources.
-			// 2. Client does not close the conn and the closeHandler() is not executed -> the
-			// 		receiverChan will be blocking for N number of messages (equal to buffer size)
-			// 		before we delete the channel and clean up the resources.
+			// Delete buffered channel if it's blocking.
 			delete(p.receiverBuffers[jobID], ch)
 		}
 	}
@@ -232,9 +236,6 @@ func (p *AsyncProjectCommandOutputHandler) CleanUp(pullInfo PullInfo) {
 			delete(p.projectOutputBuffers, jobID)
 			p.projectOutputBuffersLock.Unlock()
 
-			// Only delete the pull record from receiver buffers.
-			// WS channel will be closed when the user closes the browser tab
-			// in closeHanlder().
 			p.receiverBuffersLock.Lock()
 			delete(p.receiverBuffers, jobID)
 			p.receiverBuffersLock.Unlock()
@@ -258,4 +259,8 @@ func (p *NoopProjectOutputHandler) Handle() {
 }
 
 func (p *NoopProjectOutputHandler) CleanUp(pullInfo PullInfo) {
+}
+
+func (p *NoopProjectOutputHandler) IsKeyExists(key string) bool {
+	return false
 }
