@@ -285,24 +285,7 @@ func (g GlobalCfg) MergeProjectCfg(log logging.SimpleLogging, repoID string, pro
 				}
 				log.Debug("overriding server-defined %s with repo-specified workflow: %q", WorkflowKey, workflow.Name)
 			}
-		case PullRequestWorkflowKey:
-			if proj.PullRequestWorkflowName != nil {
-				name := *proj.PullRequestWorkflowName
-				if w, ok := g.PullRequestWorkflows[name]; ok {
-					pullRequestWorkflow = w
-				}
-			}
 
-			log.Debug("overriding server-defined %s with repo-specified pull_request_workflow: %q", PullRequestWorkflowKey, workflow.Name)
-		case DeploymentWorkflowKey:
-			if proj.DeploymentWorkflowName != nil {
-				name := *proj.DeploymentWorkflowName
-				if w, ok := g.DeploymentWorkflows[name]; ok {
-					deploymentWorkflow = w
-				}
-			}
-
-			log.Debug("overriding server-defined %s with repo-specified deployment_workflow: %q", DeploymentWorkflowKey, workflow.Name)
 		case DeleteSourceBranchOnMergeKey:
 			//We check whether the server configured value and repo-root level
 			//config is different. If it is then we change to the more granular.
@@ -368,6 +351,7 @@ func (g GlobalCfg) DefaultProjCfg(log logging.SimpleLogging, repoID string, repo
 	if g.PlatformModeEnabled() {
 		mrgPrj.PullRequestWorkflow = *repo.PullRequestWorkflow
 		mrgPrj.DeploymentWorkflow = *repo.DeploymentWorkflow
+
 	}
 	return mrgPrj
 }
@@ -377,11 +361,9 @@ func (g GlobalCfg) DefaultProjCfg(log logging.SimpleLogging, repoID string, repo
 // This means returned object will contain the last matching repo's value as a it's fields
 func (g GlobalCfg) foldMatchingRepos(repoID string) Repo {
 	foldedRepo := Repo{
-		AllowedWorkflows:            make([]string, 0),
-		AllowedPullRequestWorkflows: make([]string, 0),
-		AllowedDeploymentWorkflows:  make([]string, 0),
-		AllowedOverrides:            make([]string, 0),
-		ApplyRequirements:           make([]string, 0),
+		AllowedWorkflows:  make([]string, 0),
+		AllowedOverrides:  make([]string, 0),
+		ApplyRequirements: make([]string, 0),
 	}
 
 	for _, repo := range g.Repos {
@@ -400,12 +382,6 @@ func (g GlobalCfg) foldMatchingRepos(repoID string) Repo {
 			}
 			if repo.AllowedWorkflows != nil {
 				foldedRepo.AllowedWorkflows = repo.AllowedWorkflows
-			}
-			if repo.AllowedPullRequestWorkflows != nil {
-				foldedRepo.AllowedPullRequestWorkflows = repo.AllowedPullRequestWorkflows
-			}
-			if repo.AllowedDeploymentWorkflows != nil {
-				foldedRepo.AllowedDeploymentWorkflows = repo.AllowedDeploymentWorkflows
 			}
 			if repo.AllowedOverrides != nil {
 				foldedRepo.AllowedOverrides = repo.AllowedOverrides
@@ -442,16 +418,6 @@ func (g GlobalCfg) ValidateRepoCfg(rCfg RepoCfg, repoID string) error {
 
 	// Check if the repo has set a workflow name that doesn't exist and if workflow is allowed
 	if err := rCfg.ValidateWorkflows(g.Workflows, repo.AllowedWorkflows, allowCustomWorkflows); err != nil {
-		return err
-	}
-
-	// Check if the repo has set a pull_request workflow name that doesn't exist and if workflow is allowed
-	if err := rCfg.ValidatePRWorkflows(g.PullRequestWorkflows, repo.AllowedPullRequestWorkflows); err != nil {
-		return err
-	}
-
-	// Check if the repo has set a deployment workflow name that doesn't exist and if workflow is allowed
-	if err := rCfg.ValidateDeploymentWorkflows(g.DeploymentWorkflows, repo.AllowedDeploymentWorkflows); err != nil {
 		return err
 	}
 
