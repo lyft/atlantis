@@ -103,26 +103,6 @@ func TestJobs_ValidateError(t *testing.T) {
 			},
 		},
 		{
-			description: "starts with a non-letter and non-number",
-			subject: raw.Jobs{
-				StorageBackend: &raw.StorageBackend{
-					S3: &raw.S3{
-						BucketName: "-bucket-name",
-					},
-				},
-			},
-		},
-		{
-			description: "ends with a non-letter and non-number",
-			subject: raw.Jobs{
-				StorageBackend: &raw.StorageBackend{
-					S3: &raw.S3{
-						BucketName: "bucket-name-",
-					},
-				},
-			},
-		},
-		{
 			description: "uppercase letters",
 			subject: raw.Jobs{
 				StorageBackend: &raw.StorageBackend{
