@@ -16,8 +16,8 @@ S3 bucket naming rules:
 3. Must begin and end with a letter or number.
 */
 const ValidBucketNameRegEx = `^[a-z0-9-.]*$`
-const ValidStartCharacter = `^[a-z0-9][a-z0-9-.]*$`
-const ValidEndCharacter = `^[a-z0-9-.]*[a-z0-9]$`
+const ValidStartCharacterRegEx = `^[a-z0-9][a-z0-9-.]*$`
+const ValidEndCharacterRegEx = `^[a-z0-9-.]*[a-z0-9]$`
 
 type Jobs struct {
 	StorageBackend *StorageBackend `yaml:"storage-backend" json:"storage-backend"`
@@ -60,13 +60,13 @@ func (s *S3) validateBucketName(value interface{}) error {
 	}
 
 	// Check for valid start character
-	re = regexp.MustCompile(ValidStartCharacter)
+	re = regexp.MustCompile(ValidStartCharacterRegEx)
 	if !re.MatchString(bucketName) {
 		return errors.New("s3 bucket name can only start with lower case letters or numbers")
 	}
 
 	// Check for valid end character
-	re = regexp.MustCompile(ValidEndCharacter)
+	re = regexp.MustCompile(ValidEndCharacterRegEx)
 	if !re.MatchString(bucketName) {
 		return errors.New("s3 bucket name can only end with lower case letters or numbers")
 	}

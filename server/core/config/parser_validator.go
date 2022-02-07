@@ -69,8 +69,6 @@ func (p *ParserValidator) ParseRepoCfgData(repoCfgData []byte, globalCfg valid.G
 	validation.ErrorTag = "yaml"
 	if err := rawConfig.Validate(); err != nil {
 		return valid.RepoCfg{}, err
-	} else {
-		fmt.Println("TPKUB")
 	}
 
 	validConfig := rawConfig.ToValid()

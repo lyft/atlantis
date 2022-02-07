@@ -73,7 +73,7 @@ func TestJobs_ValidateError(t *testing.T) {
 		subject     raw.Jobs
 	}{
 		{
-			description: "Length lt 3",
+			description: "length lt 3",
 			subject: raw.Jobs{
 				StorageBackend: &raw.StorageBackend{
 					S3: &raw.S3{
@@ -83,7 +83,7 @@ func TestJobs_ValidateError(t *testing.T) {
 			},
 		},
 		{
-			description: "Lengtth gt 63",
+			description: "lengtth gt 63",
 			subject: raw.Jobs{
 				StorageBackend: &raw.StorageBackend{
 					S3: &raw.S3{
@@ -93,7 +93,7 @@ func TestJobs_ValidateError(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid chars",
+			description: "invalid chars",
 			subject: raw.Jobs{
 				StorageBackend: &raw.StorageBackend{
 					S3: &raw.S3{
@@ -103,7 +103,7 @@ func TestJobs_ValidateError(t *testing.T) {
 			},
 		},
 		{
-			description: "Starts with a non-letter and non-number",
+			description: "starts with a non-letter and non-number",
 			subject: raw.Jobs{
 				StorageBackend: &raw.StorageBackend{
 					S3: &raw.S3{
@@ -113,7 +113,7 @@ func TestJobs_ValidateError(t *testing.T) {
 			},
 		},
 		{
-			description: "Ends with a non-letter and non-number",
+			description: "ends with a non-letter and non-number",
 			subject: raw.Jobs{
 				StorageBackend: &raw.StorageBackend{
 					S3: &raw.S3{
@@ -123,7 +123,7 @@ func TestJobs_ValidateError(t *testing.T) {
 			},
 		},
 		{
-			description: "Uppercase letters",
+			description: "uppercase letters",
 			subject: raw.Jobs{
 				StorageBackend: &raw.StorageBackend{
 					S3: &raw.S3{
