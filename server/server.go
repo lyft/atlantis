@@ -33,9 +33,9 @@ import (
 	"time"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
-	"github.com/runatlantis/atlantis/server/events/yaml/valid"
-	"github.com/runatlantis/atlantis/server/handlers"
+	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
@@ -51,6 +51,7 @@ import (
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/controllers/websocket"
+	cfgParser "github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/locking"
 	"github.com/runatlantis/atlantis/server/core/runtime"
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
@@ -62,7 +63,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
-	"github.com/runatlantis/atlantis/server/events/yaml"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/static"
 	"github.com/urfave/cli"
@@ -114,7 +114,7 @@ type Server struct {
 	SSLKeyFile                    string
 	Drainer                       *events.Drainer
 	ScheduledExecutorService      *scheduled.ExecutorService
-	ProjectCmdOutputHandler       handlers.ProjectCommandOutputHandler
+	ProjectCmdOutputHandler       jobs.ProjectCommandOutputHandler
 }
 
 // Config holds config for server that isn't passed in by the user.
@@ -174,7 +174,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		policyChecksEnabled = true
 	}
 
-	validator := &yaml.ParserValidator{}
+	validator := &cfgParser.ParserValidator{}
 
 	globalCfg := valid.NewGlobalCfgFromArgs(
 		valid.GlobalCfgArgs{
@@ -368,17 +368,15 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
-	var projectCmdOutputHandler handlers.ProjectCommandOutputHandler
+	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
 
 	if userConfig.TFEToken != "" {
-		projectCmdOutputHandler = &handlers.NoopProjectOutputHandler{}
+		projectCmdOutputHandler = &jobs.NoopProjectOutputHandler{}
 	} else {
-		projectCmdOutput := make(chan *handlers.ProjectCmdOutputLine)
-		projectCmdOutputHandler = handlers.NewAsyncProjectCommandOutputHandler(
+		projectCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
+		projectCmdOutputHandler = jobs.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
-			commitStatusUpdater,
-			router,
 			logger,
 		)
 	}
@@ -464,6 +462,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			VCSClient:                vcsClient,
 		},
 	)
+
 	eventParser := &events.EventParser{
 		GithubUser:         userConfig.GithubUser,
 		GithubToken:        userConfig.GithubToken,
@@ -595,8 +594,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	projectOutputWrapper := &events.ProjectOutputWrapper{
-		ProjectCmdOutputHandler: projectCmdOutputHandler,
-		ProjectCommandRunner:    projectCommandRunner,
+		JobMessageSender:     projectCmdOutputHandler,
+		ProjectCommandRunner: projectCommandRunner,
+		JobURLSetter:         jobs.NewJobURLSetter(router, commitStatusUpdater),
 	}
 
 	featureAwareProjectCommandRunner := &events.FeatureAwareProjectCommandRunner{
