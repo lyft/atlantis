@@ -638,14 +638,14 @@ func TestPullStatus_UpdateNewCommit(t *testing.T) {
 				Workspace:    "staging",
 				ApplySuccess: "success!",
 			},
-		}, defaultTime.Add(time.Millisecond*1000))
+		}, defaultTime.Add(1000*time.Second))
 
 	Ok(t, err)
 	Equals(t, 1, len(status.Projects))
 
 	maybeStatus, err := b.GetPullStatus(pull)
 	Ok(t, err)
-	Equals(t, defaultTime.Add(time.Millisecond*1000), maybeStatus.LastEventTimestamp)
+	Equals(t, defaultTime.Add(1000*time.Second), maybeStatus.LastEventTimestamp)
 	Equals(t, pull, maybeStatus.Pull)
 	Equals(t, []models.ProjectStatus{
 		{
@@ -734,7 +734,7 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 				Workspace:    "default",
 				ApplySuccess: "success!",
 			},
-		}, defaultTime)
+		}, defaultTime.Add(1000*time.Second))
 	Ok(t, err)
 
 	getStatus, err := b.GetPullStatus(pull)
@@ -743,7 +743,7 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 	// Test both the pull state returned from the update call *and* the getCommandLock
 	// call.
 	for _, s := range []models.PullStatus{updateStatus, *getStatus} {
-		Equals(t, defaultTime, s.LastEventTimestamp)
+		Equals(t, defaultTime.Add(1000*time.Second), s.LastEventTimestamp)
 		Equals(t, pull, s.Pull)
 		Equals(t, []models.ProjectStatus{
 			{
