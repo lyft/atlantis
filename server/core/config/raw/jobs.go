@@ -1,10 +1,7 @@
 package raw
 
 import (
-	"regexp"
-
 	validation "github.com/go-ozzo/ozzo-validation"
-	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 )
 
@@ -42,21 +39,8 @@ func (s StorageBackend) Validate() error {
 
 func (s S3) Validate() error {
 	return validation.ValidateStruct(&s,
-		validation.Field(&s.BucketName, validation.Required, validation.Length(3, 63)),
-		validation.Field(&s.BucketName, validation.By(s.validateBucketName)),
+		validation.Field(&s.BucketName, validation.Required),
 	)
-}
-
-func (s *S3) validateBucketName(value interface{}) error {
-	bucketName, _ := value.(string)
-
-	// Check for invalid characters
-	re := regexp.MustCompile(ValidBucketNameRegEx)
-	if !re.MatchString(bucketName) {
-		return errors.New("s3 bucket names can only consist of lowercase letters, numbers, dots(.) and hyphens(-)")
-	}
-
-	return nil
 }
 
 func (j *Jobs) ToValid() valid.Jobs {

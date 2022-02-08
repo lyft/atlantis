@@ -2,7 +2,6 @@ package raw_test
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/core/config/raw"
@@ -53,7 +52,7 @@ func TestJobs_Validate_Success(t *testing.T) {
 			subject: raw.Jobs{
 				StorageBackend: &raw.StorageBackend{
 					S3: &raw.S3{
-						BucketName: "test-.bucket",
+						BucketName: "test-bucket",
 					},
 				},
 			},
@@ -73,42 +72,10 @@ func TestJobs_ValidateError(t *testing.T) {
 		subject     raw.Jobs
 	}{
 		{
-			description: "length lt 3",
+			description: "bucket name not specified",
 			subject: raw.Jobs{
 				StorageBackend: &raw.StorageBackend{
-					S3: &raw.S3{
-						BucketName: "aa",
-					},
-				},
-			},
-		},
-		{
-			description: "lengtth gt 63",
-			subject: raw.Jobs{
-				StorageBackend: &raw.StorageBackend{
-					S3: &raw.S3{
-						BucketName: strings.Repeat("a", 65),
-					},
-				},
-			},
-		},
-		{
-			description: "invalid chars",
-			subject: raw.Jobs{
-				StorageBackend: &raw.StorageBackend{
-					S3: &raw.S3{
-						BucketName: "*&hello",
-					},
-				},
-			},
-		},
-		{
-			description: "uppercase letters",
-			subject: raw.Jobs{
-				StorageBackend: &raw.StorageBackend{
-					S3: &raw.S3{
-						BucketName: "Bucket-name",
-					},
+					S3: &raw.S3{},
 				},
 			},
 		},
