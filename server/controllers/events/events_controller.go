@@ -287,7 +287,6 @@ func (e *VCSEventsController) HandleGithubCommentEvent(event *github.IssueCommen
 			body: fmt.Sprintf("Ignoring comment event since action was not created %s", githubReqID),
 		}
 	}
-	eventTimestamp := time.Now()
 
 	baseRepo, user, pullNum, err := e.Parser.ParseGithubIssueCommentEvent(event)
 
@@ -304,6 +303,7 @@ func (e *VCSEventsController) HandleGithubCommentEvent(event *github.IssueCommen
 
 	// We pass in nil for maybeHeadRepo because the head repo data isn't
 	// available in the GithubIssueComment event.
+	eventTimestamp := time.Now()
 	return e.handleCommentEvent(logger, baseRepo, nil, nil, user, pullNum, event.Comment.GetBody(), models.Github, eventTimestamp)
 }
 
@@ -412,8 +412,8 @@ func (e *VCSEventsController) HandleGithubPullRequestEvent(logger logging.Simple
 			},
 		}
 	}
-	eventTimestamp := time.Now()
 	logger.Debug("identified event as type %q", pullEventType.String())
+	eventTimestamp := time.Now()
 	return e.handlePullRequestEvent(logger, baseRepo, headRepo, pull, user, pullEventType, eventTimestamp)
 }
 
@@ -638,8 +638,8 @@ func (e *VCSEventsController) HandleAzureDevopsPullRequestCommentedEvent(w http.
 		e.respond(w, logging.Error, http.StatusBadRequest, "Error parsing pull request repository field: %s; %s", err, azuredevopsReqID)
 		return
 	}
-	eventTimeStamp := time.Now()
-	resp := e.handleCommentEvent(e.Logger, baseRepo, nil, nil, user, resource.PullRequest.GetPullRequestID(), string(strippedComment), models.AzureDevops, eventTimeStamp)
+	eventTimestamp := time.Now()
+	resp := e.handleCommentEvent(e.Logger, baseRepo, nil, nil, user, resource.PullRequest.GetPullRequestID(), string(strippedComment), models.AzureDevops, eventTimestamp)
 
 	//TODO: move this to the outer most function similar to github
 	lvl := logging.Debug

@@ -575,6 +575,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Webhooks:                   webhooksManager,
 		WorkingDirLocker:           workingDirLocker,
 		AggregateApplyRequirements: applyRequirementHandler,
+		PullStatusFetcher:          boltdb,
+		StaleCommandChecker: &events.StaleCommandHandler{
+			Counter: statsScope.SubScope("stale_checker").Counter("dropped_commands"),
+		},
 	}
 
 	dbUpdater := &events.DBUpdater{

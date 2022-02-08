@@ -51,5 +51,6 @@ type CommandContext struct {
 
 	Trigger CommandTrigger
 
+	// Time Atlantis received VCS event, triggering command to be executed
 	EventTimestamp time.Time
 }

@@ -959,6 +959,10 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: workingDir,
 		},
+		PullStatusFetcher: boltdb,
+		StaleCommandChecker: &events.StaleCommandHandler{
+			Counter: statsScope.SubScope("stale_checker").Counter("dropped_commands"),
+		},
 	}
 
 	dbUpdater := &events.DBUpdater{
