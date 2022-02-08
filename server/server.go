@@ -368,6 +368,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
+	storageBackend := &jobs.NoopStorageBackend{}
+
 	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
 
@@ -378,6 +380,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectCmdOutputHandler = jobs.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
 			logger,
+			storageBackend,
 		)
 	}
 
@@ -755,10 +758,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DeleteLockCommand:  deleteLockCommand,
 	}
 
+	// No Storage backend configured for now
 	wsMux := websocket.NewMultiplexor(
 		logger,
 		controllers.JobIDKeyGenerator{},
 		projectCmdOutputHandler,
+		storageBackend,
+		websocket.NewWriter(logger),
 	)
 
 	jobsController := &controllers.JobsController{

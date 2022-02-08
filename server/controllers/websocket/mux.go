@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -9,10 +10,26 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_response_writer.go ResponseWriter
+
+type ResponseWriter interface {
+	http.ResponseWriter
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_read_closer.go ReadCloser
+
+type ReadCloser interface {
+	io.ReadCloser
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_partition_key_generator.go PartitionKeyGenerator
+
 // PartitionKeyGenerator generates partition keys for the multiplexor
 type PartitionKeyGenerator interface {
 	Generate(r *http.Request) (string, error)
 }
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_partition_registry.go PartitionRegistry
 
 // PartitionRegistry is the registry holding each partition
 // and is responsible for registering/deregistering new buffers
@@ -22,25 +39,40 @@ type PartitionRegistry interface {
 	IsKeyExists(key string) bool
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_reader.go Reader
+
+// Reader for storage backend.
+type Reader interface {
+	IsKeyExists(key string) bool
+	Read(key string) io.ReadCloser
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_writer.go Writer
+
+// Writer for web socket connection.
+type Writer interface {
+	WriteFromChan(rw http.ResponseWriter, r *http.Request, input chan string) error
+	WriteFromReader(rw http.ResponseWriter, r *http.Request, reader io.ReadCloser) error
+}
+
 // Multiplexor is responsible for handling the data transfer between the storage layer
 // and the registry. Note this is still a WIP as right now the registry is assumed to handle
 // everything.
 type Multiplexor struct {
-	writer       *Writer
-	keyGenerator PartitionKeyGenerator
-	registry     PartitionRegistry
+	writer               Writer
+	keyGenerator         PartitionKeyGenerator
+	registry             PartitionRegistry
+	storageBackendReader Reader
 }
 
-func NewMultiplexor(log logging.SimpleLogging, keyGenerator PartitionKeyGenerator, registry PartitionRegistry) *Multiplexor {
+func NewMultiplexor(log logging.SimpleLogging, keyGenerator PartitionKeyGenerator, registry PartitionRegistry, storageBackendReader Reader, writer Writer) *Multiplexor {
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	return &Multiplexor{
-		writer: &Writer{
-			upgrader: upgrader,
-			log:      log,
-		},
-		keyGenerator: keyGenerator,
-		registry:     registry,
+		writer:               writer,
+		keyGenerator:         keyGenerator,
+		registry:             registry,
+		storageBackendReader: storageBackendReader,
 	}
 }
 
@@ -51,6 +83,12 @@ func (m *Multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
 
 	if err != nil {
 		return errors.Wrapf(err, "generating partition key")
+	}
+
+	// Serve from s3 if key exists.
+	if m.storageBackendReader.IsKeyExists(key) {
+		objReader := m.storageBackendReader.Read(key)
+		return errors.Wrapf(m.writer.WriteFromReader(w, r, objReader), "writing to ws %s", key)
 	}
 
 	// check if the job ID exists before registering receiver
@@ -66,5 +104,5 @@ func (m *Multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
 	go m.registry.Register(key, buffer)
 	defer m.registry.Deregister(key, buffer)
 
-	return errors.Wrapf(m.writer.Write(w, r, buffer), "writing to ws %s", key)
+	return errors.Wrapf(m.writer.WriteFromChan(w, r, buffer), "writing to ws %s", key)
 }

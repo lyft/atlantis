@@ -46,6 +46,8 @@ type AsyncProjectCommandOutputHandler struct {
 
 	// Tracks all the jobs for a pull request which is used for clean up after a pull request is closed.
 	pullToJobMapping sync.Map
+
+	storageBackend StorageBackend
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_output_handler.go ProjectCommandOutputHandler
@@ -73,6 +75,7 @@ type ProjectCommandOutputHandler interface {
 func NewAsyncProjectCommandOutputHandler(
 	projectCmdOutput chan *ProjectCmdOutputLine,
 	logger logging.SimpleLogging,
+	storageBackend StorageBackend,
 ) ProjectCommandOutputHandler {
 	return &AsyncProjectCommandOutputHandler{
 		projectCmdOutput:     projectCmdOutput,
@@ -80,6 +83,7 @@ func NewAsyncProjectCommandOutputHandler(
 		receiverBuffers:      map[string]map[chan string]bool{},
 		projectOutputBuffers: map[string]OutputBuffer{},
 		pullToJobMapping:     sync.Map{},
+		storageBackend:       storageBackend,
 	}
 }
 
@@ -114,7 +118,11 @@ func (p *AsyncProjectCommandOutputHandler) Register(jobID string, receiver chan 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
 		if msg.OperationComplete {
-			p.completeJob(msg.JobID)
+			p.markOperationComplete(msg.JobID)
+
+			// Spin up a new goroutine and clear output buffer when complete
+			go p.persistJob(msg.JobID)
+
 			continue
 		}
 
@@ -131,6 +139,28 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 	}
 }
 
+func (p *AsyncProjectCommandOutputHandler) persistJob(jobID string) {
+	p.projectOutputBuffersLock.RLock()
+	logs := p.projectOutputBuffers[jobID].Buffer
+	p.projectOutputBuffersLock.RUnlock()
+
+	err := p.storageBackend.Write(jobID, logs)
+	if err != nil {
+		p.logger.Err("persisting job", err)
+	}
+	p.completeJob(jobID)
+}
+
+func (p *AsyncProjectCommandOutputHandler) markOperationComplete(jobID string) {
+	p.projectOutputBuffersLock.Lock()
+	defer p.projectOutputBuffersLock.Unlock()
+
+	if outputBuffer, ok := p.projectOutputBuffers[jobID]; ok {
+		outputBuffer.OperationComplete = true
+		p.projectOutputBuffers[jobID] = outputBuffer
+	}
+}
+
 func (p *AsyncProjectCommandOutputHandler) completeJob(jobID string) {
 	p.projectOutputBuffersLock.Lock()
 	p.receiverBuffersLock.Lock()
@@ -139,11 +169,8 @@ func (p *AsyncProjectCommandOutputHandler) completeJob(jobID string) {
 		p.receiverBuffersLock.Unlock()
 	}()
 
-	// Update operation status to complete
-	if outputBuffer, ok := p.projectOutputBuffers[jobID]; ok {
-		outputBuffer.OperationComplete = true
-		p.projectOutputBuffers[jobID] = outputBuffer
-	}
+	// Remove from output buffer after persisting logs
+	delete(p.projectOutputBuffers, jobID)
 
 	// Close active receiver channels
 	if openChannels, ok := p.receiverBuffers[jobID]; ok {
