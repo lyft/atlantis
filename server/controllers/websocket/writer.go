@@ -63,9 +63,9 @@ func (w *WebsocketWriter) WriteFromReader(rw http.ResponseWriter, r *http.Reques
 			break
 		}
 
+		// Do not return if a write fails
 		if err := conn.WriteMessage(websocket.BinaryMessage, buf); err != nil {
 			w.log.Warn("Failed to write ws message: %s", err)
-			return err
 		}
 	}
 

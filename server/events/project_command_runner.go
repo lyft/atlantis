@@ -127,6 +127,7 @@ type JobURLSetter interface {
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_closer.go JobCloser
 
+// Job Closer closes a job by marking op complete and clearing up buffers if logs are successfully persisted
 type JobCloser interface {
 	CloseJob(jobID string)
 }

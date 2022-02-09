@@ -15,6 +15,7 @@ type StorageBackend interface {
 	Write(key string, logs []string) (success bool, err error)
 }
 
+// Used when log persistence is not configured
 type NoopStorageBackend struct{}
 
 func (s *NoopStorageBackend) IsKeyExists(key string) bool {

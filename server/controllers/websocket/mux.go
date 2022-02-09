@@ -10,18 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_response_writer.go ResponseWriter
-
-type ResponseWriter interface {
-	http.ResponseWriter
-}
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_read_closer.go ReadCloser
-
-type ReadCloser interface {
-	io.ReadCloser
-}
-
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_partition_key_generator.go PartitionKeyGenerator
 
 // PartitionKeyGenerator generates partition keys for the multiplexor

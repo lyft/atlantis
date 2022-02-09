@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestArtifacts(t *testing.T) (*mocks.MockPartitionRegistry, *mocks.MockStorageBackendReader, *websocket.Multiplexor, *mocks.MockPartitionKeyGenerator, *mocks.MockWriter) {
+func setupTestArtifacts(t *testing.T) (*mocks.MockPartitionRegistry, *mocks.MockReader, *websocket.Multiplexor, *mocks.MockPartitionKeyGenerator, *mocks.MockWriter) {
 	partitionRegistry := mocks.NewMockPartitionRegistry()
-	storageBackendReader := mocks.NewMockStorageBackendReader()
+	storageBackendReader := mocks.NewMockReader()
 	keyGenerator := mocks.NewMockPartitionKeyGenerator()
 	writer := mocks.NewMockWriter()
 	mux := websocket.NewMultiplexor(logging.NewNoopLogger(t), keyGenerator, partitionRegistry, storageBackendReader, writer)
@@ -27,14 +27,14 @@ func setupTestArtifacts(t *testing.T) (*mocks.MockPartitionRegistry, *mocks.Mock
 func TestHandle(t *testing.T) {
 	RegisterMockTestingT(t)
 	t.Run("No job id", func(t *testing.T) {
-		_, _, mux, keyGenerator, _ := setupTestArtifacts(t)
+		_, _, multiplexor, keyGenerator, _ := setupTestArtifacts(t)
 		expectedErrString := "generating partition key: internal error: no job-id in route"
 
-		req, err := http.NewRequest("GET", "/jobs", nil)
+		req, err := http.NewRequest("GET", "", nil)
 		Ok(t, err)
 
 		When(keyGenerator.Generate(req)).ThenReturn("", fmt.Errorf("internal error: no job-id in route"))
-		err = mux.Handle(nil, req)
+		err = multiplexor.Handle(nil, req)
 
 		assert.EqualError(t, err, expectedErrString)
 	})
@@ -66,11 +66,9 @@ func TestHandle(t *testing.T) {
 
 		When(keyGenerator.Generate(req)).ThenReturn(key, nil)
 		When(storageBackendReader.IsKeyExists(key)).ThenReturn(true)
-		When(storageBackendReader.Read(key)).ThenReturn(mocks.NewMockReadCloser())
-
 		When(writer.WriteFromReader(matchers.AnyHttpResponseWriter(), matchers.AnyPtrToHttpRequest(), matchers.AnyIoReadCloser())).ThenReturn(nil)
 
-		err = mux.Handle(mocks.NewMockResponseWriter(), req)
+		err = mux.Handle(nil, req)
 		Ok(t, err)
 
 		storageBackendReader.VerifyWasCalledOnce().Read(key)
@@ -90,7 +88,7 @@ func TestHandle(t *testing.T) {
 
 		When(writer.WriteFromChan(matchers.AnyHttpResponseWriter(), matchers.AnyPtrToHttpRequest(), matchers.AnyChanOfString())).ThenReturn(nil)
 
-		err = mux.Handle(mocks.NewMockResponseWriter(), req)
+		err = mux.Handle(nil, req)
 		Ok(t, err)
 
 		writer.VerifyWasCalledOnce().WriteFromChan(matchers.AnyHttpResponseWriter(), matchers.AnyPtrToHttpRequest(), matchers.AnyChanOfString())
