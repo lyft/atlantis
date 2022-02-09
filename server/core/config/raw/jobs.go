@@ -5,14 +5,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 )
 
-/*
-Ref: https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
-S3 bucket naming rules:
-1. Must be between 3 - 63 characters long
-2. Must be lowercase letters, numbers, dots and hyphens.
-*/
-const ValidBucketNameRegEx = `^[a-z0-9-.]*$`
-
 type Jobs struct {
 	StorageBackend *StorageBackend `yaml:"storage-backend" json:"storage-backend"`
 }
