@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -25,10 +26,9 @@ type JobInfo struct {
 }
 
 type ProjectCmdOutputLine struct {
-	JobID             string
-	JobInfo           JobInfo
-	Line              string
-	OperationComplete bool
+	JobID   string
+	JobInfo JobInfo
+	Line    string
 }
 
 // AsyncProjectCommandOutputHandler is a handler to transport terraform client
@@ -54,7 +54,7 @@ type AsyncProjectCommandOutputHandler struct {
 
 type ProjectCommandOutputHandler interface {
 	// Send will enqueue the msg and wait for Handle() to receive the message.
-	Send(ctx models.ProjectCommandContext, msg string, operationComplete bool)
+	Send(ctx models.ProjectCommandContext, msg string)
 
 	// Register registers a channel and blocks until it is caught up. Callers should call this asynchronously when attempting
 	// to read the channel in the same goroutine
@@ -70,6 +70,9 @@ type ProjectCommandOutputHandler interface {
 
 	// Cleans up resources for a pull
 	CleanUp(pullInfo PullInfo)
+
+	// Persists job to storage backend and marks operation complete
+	CloseJob(jobID string)
 }
 
 func NewAsyncProjectCommandOutputHandler(
@@ -87,14 +90,51 @@ func NewAsyncProjectCommandOutputHandler(
 	}
 }
 
+func (p *AsyncProjectCommandOutputHandler) CloseJob(jobID string) {
+	// Mark operation complete
+	p.projectOutputBuffersLock.RLock()
+	outputBuffer := p.projectOutputBuffers[jobID]
+	outputBuffer.OperationComplete = true
+	p.projectOutputBuffers[jobID] = outputBuffer
+	p.projectOutputBuffersLock.RUnlock()
+
+	p.closeActiveChannels(jobID)
+
+	// Persist logs to storage backend
+	ok, err := p.storageBackend.Write(jobID, outputBuffer.Buffer)
+	if err != nil {
+		p.logger.Err(fmt.Sprintf("persisting job: %s", jobID), err)
+		return
+	}
+
+	// Clear output buffer if successfully persisted.
+	if ok {
+		p.projectOutputBuffersLock.Lock()
+		delete(p.projectOutputBuffers, jobID)
+		p.projectOutputBuffersLock.Unlock()
+	}
+}
+
+func (p *AsyncProjectCommandOutputHandler) closeActiveChannels(jobID string) {
+	p.receiverBuffersLock.Lock()
+	defer p.receiverBuffersLock.Unlock()
+
+	if openChannels, ok := p.receiverBuffers[jobID]; ok {
+		for ch := range openChannels {
+			close(ch)
+		}
+	}
+}
+
 func (p *AsyncProjectCommandOutputHandler) IsKeyExists(key string) bool {
 	p.projectOutputBuffersLock.RLock()
 	defer p.projectOutputBuffersLock.RUnlock()
+
 	_, ok := p.projectOutputBuffers[key]
 	return ok
 }
 
-func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string, operationComplete bool) {
+func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
 	p.projectCmdOutput <- &ProjectCmdOutputLine{
 		JobID: ctx.JobID,
 		JobInfo: JobInfo{
@@ -106,8 +146,7 @@ func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext
 				Workspace:   ctx.Workspace,
 			},
 		},
-		Line:              msg,
-		OperationComplete: operationComplete,
+		Line: msg,
 	}
 }
 
@@ -117,14 +156,6 @@ func (p *AsyncProjectCommandOutputHandler) Register(jobID string, receiver chan 
 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
-		if msg.OperationComplete {
-			p.markOperationComplete(msg.JobID)
-
-			// Spin up a new goroutine and clear output buffer when complete
-			go p.persistJob(msg.JobID)
-
-			continue
-		}
 
 		// Add job to pullToJob mapping
 		if _, ok := p.pullToJobMapping.Load(msg.JobInfo.PullInfo); !ok {
@@ -137,48 +168,6 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 		// Forward new message to all receiver channels and output buffer
 		p.writeLogLine(msg.JobID, msg.Line)
 	}
-}
-
-func (p *AsyncProjectCommandOutputHandler) persistJob(jobID string) {
-	p.projectOutputBuffersLock.RLock()
-	logs := p.projectOutputBuffers[jobID].Buffer
-	p.projectOutputBuffersLock.RUnlock()
-
-	err := p.storageBackend.Write(jobID, logs)
-	if err != nil {
-		p.logger.Err("persisting job", err)
-	}
-	p.completeJob(jobID)
-}
-
-func (p *AsyncProjectCommandOutputHandler) markOperationComplete(jobID string) {
-	p.projectOutputBuffersLock.Lock()
-	defer p.projectOutputBuffersLock.Unlock()
-
-	if outputBuffer, ok := p.projectOutputBuffers[jobID]; ok {
-		outputBuffer.OperationComplete = true
-		p.projectOutputBuffers[jobID] = outputBuffer
-	}
-}
-
-func (p *AsyncProjectCommandOutputHandler) completeJob(jobID string) {
-	p.projectOutputBuffersLock.Lock()
-	p.receiverBuffersLock.Lock()
-	defer func() {
-		p.projectOutputBuffersLock.Unlock()
-		p.receiverBuffersLock.Unlock()
-	}()
-
-	// Remove from output buffer after persisting logs
-	delete(p.projectOutputBuffers, jobID)
-
-	// Close active receiver channels
-	if openChannels, ok := p.receiverBuffers[jobID]; ok {
-		for ch := range openChannels {
-			close(ch)
-		}
-	}
-
 }
 
 func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, jobID string) {
@@ -276,7 +265,7 @@ func (p *AsyncProjectCommandOutputHandler) CleanUp(pullInfo PullInfo) {
 // NoopProjectOutputHandler is a mock that doesn't do anything
 type NoopProjectOutputHandler struct{}
 
-func (p *NoopProjectOutputHandler) Send(ctx models.ProjectCommandContext, msg string, isOperationComplete bool) {
+func (p *NoopProjectOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
 }
 
 func (p *NoopProjectOutputHandler) Register(jobID string, receiver chan string)   {}
@@ -290,4 +279,7 @@ func (p *NoopProjectOutputHandler) CleanUp(pullInfo PullInfo) {
 
 func (p *NoopProjectOutputHandler) IsKeyExists(key string) bool {
 	return false
+}
+
+func (p *NoopProjectOutputHandler) CloseJob(jobID string) {
 }

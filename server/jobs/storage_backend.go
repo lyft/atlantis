@@ -12,7 +12,7 @@ type StorageBackend interface {
 	Read(key string) io.ReadCloser
 
 	// Write logs to the storage backend
-	Write(key string, logs []string) error
+	Write(key string, logs []string) (success bool, err error)
 }
 
 type NoopStorageBackend struct{}
@@ -25,6 +25,6 @@ func (s *NoopStorageBackend) Read(key string) io.ReadCloser {
 	return nil
 }
 
-func (s *NoopStorageBackend) Write(key string, logs []string) error {
-	return nil
+func (s *NoopStorageBackend) Write(key string, logs []string) (success bool, err error) {
+	return false, nil
 }

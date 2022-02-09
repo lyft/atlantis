@@ -1,10 +1,12 @@
 package jobs_test
 
 import (
+	"fmt"
 	"sync"
 	"testing"
+	"time"
 
-	// . "github.com/petergtz/pegomock"
+	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/jobs/mocks"
@@ -42,7 +44,7 @@ func createTestProjectCmdContext(t *testing.T) models.ProjectCommandContext {
 	}
 }
 
-func createProjectCommandOutputHandler(t *testing.T) (jobs.ProjectCommandOutputHandler, *mocks.MockStorageBackend) {
+func createProjectCommandOutputHandler(t *testing.T) (jobs.ProjectCommandOutputHandler, jobs.StorageBackend) {
 	logger := logging.NewNoopLogger(t)
 	prjCmdOutputChan := make(chan *jobs.ProjectCmdOutputLine)
 	storageBackend := mocks.NewMockStorageBackend()
@@ -86,7 +88,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 			}
 		}()
 
-		projectOutputHandler.Send(ctx, Msg, false)
+		projectOutputHandler.Send(ctx, Msg)
 		wg.Wait()
 		close(ch)
 
@@ -99,7 +101,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		projectOutputHandler, _ := createProjectCommandOutputHandler(t)
 
 		// send first message to populated the buffer
-		projectOutputHandler.Send(ctx, Msg, false)
+		projectOutputHandler.Send(ctx, Msg)
 
 		ch := make(chan string)
 
@@ -123,7 +125,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// before sending messages due to the way we lock our buffer memory cache
 		projectOutputHandler.Register(ctx.JobID, ch)
 
-		projectOutputHandler.Send(ctx, Msg, false)
+		projectOutputHandler.Send(ctx, Msg)
 		wg.Wait()
 		close(ch)
 
@@ -157,8 +159,8 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 			}
 		}()
 
-		projectOutputHandler.Send(ctx, Msg, false)
-		projectOutputHandler.Send(ctx, "Complete", false)
+		projectOutputHandler.Send(ctx, Msg)
+		projectOutputHandler.Send(ctx, "")
 
 		pullContext := jobs.PullInfo{
 			PullNum:     ctx.Pull.Num,
@@ -177,76 +179,112 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		assert.Empty(t, dfProjectOutputHandler.GetJobIdMapForPull(pullContext))
 	})
 
-	// t.Run("mark operation status complete and close conn buffers for the job", func(t *testing.T) {
-	// 	projectOutputHandler, _ := createProjectCommandOutputHandler(t)
+	t.Run("mark job complete and retain logs if job persist fails", func(t *testing.T) {
+		projectOutputHandler, storageBackend := createProjectCommandOutputHandler(t)
+		When(storageBackend.Write(AnyString(), AnyStringSlice())).ThenReturn(false, fmt.Errorf("error"))
 
-	// 	ch := make(chan string)
+		ch := make(chan string)
 
-	// 	// register channel and backfill from buffer
-	// 	// Note: We call this synchronously because otherwise
-	// 	// there could be a race where we are unable to register the channel
-	// 	// before sending messages due to the way we lock our buffer memory cache
-	// 	projectOutputHandler.Register(ctx.JobID, ch)
+		// register channel and backfill from buffer
+		// Note: We call this synchronously because otherwise
+		// there could be a race where we are unable to register the channel
+		// before sending messages due to the way we lock our buffer memory cache
+		projectOutputHandler.Register(ctx.JobID, ch)
 
-	// 	// read from channel
-	// 	go func() {
-	// 		for _ = range ch {
-	// 		}
-	// 	}()
+		// read from channel
+		go func() {
+			for range ch {
+			}
+		}()
 
-	// 	projectOutputHandler.Send(ctx, Msg, false)
-	// 	projectOutputHandler.Send(ctx, "", true)
+		projectOutputHandler.Send(ctx, Msg)
+		// Wait for the handler to process the message
+		time.Sleep(10 * time.Millisecond)
 
-	// 	// Wait for the handler to process the message
-	// 	time.Sleep(10 * time.Millisecond)
+		projectOutputHandler.CloseJob(ctx.JobID)
 
-	// 	dfProjectOutputHandler, ok := projectOutputHandler.(*jobs.AsyncProjectCommandOutputHandler)
-	// 	assert.True(t, ok)
+		dfProjectOutputHandler, ok := projectOutputHandler.(*jobs.AsyncProjectCommandOutputHandler)
+		assert.True(t, ok)
 
-	// 	outputBuffer := dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID)
-	// 	assert.True(t, outputBuffer.OperationComplete)
+		outputBuffer := dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID)
+		assert.True(t, outputBuffer.OperationComplete)
 
-	// 	_, ok = (<-ch)
-	// 	assert.False(t, ok)
+		_, ok = (<-ch)
+		assert.False(t, ok)
 
-	// })
+	})
 
-	// t.Run("close conn buffer after streaming logs for completed operation", func(t *testing.T) {
-	// 	projectOutputHandler, storageBackend := createProjectCommandOutputHandler(t)
-	// 	When(storageBackend.Write(AnyString(), matchers.AnySliceOfString())).ThenReturn(nil)
+	t.Run("close conn buffer after streaming logs for completed operation", func(t *testing.T) {
+		projectOutputHandler, storageBackend := createProjectCommandOutputHandler(t)
+		When(storageBackend.Write(AnyString(), AnyStringSlice())).ThenReturn(false, nil)
 
-	// 	ch := make(chan string)
+		ch := make(chan string)
 
-	// 	// register channel and backfill from buffer
-	// 	// Note: We call this synchronously because otherwise
-	// 	// there could be a race where we are unable to register the channel
-	// 	// before sending messages due to the way we lock our buffer memory cache
-	// 	projectOutputHandler.Register(ctx.JobID, ch)
+		// register channel and backfill from buffer
+		// Note: We call this synchronously because otherwise
+		// there could be a race where we are unable to register the channel
+		// before sending messages due to the way we lock our buffer memory cache
+		projectOutputHandler.Register(ctx.JobID, ch)
 
-	// 	// read from channel
-	// 	go func() {
-	// 		for _ = range ch {
-	// 		}
-	// 	}()
+		// read from channel
+		go func() {
+			for range ch {
+			}
+		}()
 
-	// 	projectOutputHandler.Send(ctx, Msg, false)
-	// 	projectOutputHandler.Send(ctx, "", true)
+		projectOutputHandler.Send(ctx, Msg)
 
-	// 	// Wait for the handler to process the message
-	// 	time.Sleep(10 * time.Millisecond)
+		// Wait for the handler to process the message
+		time.Sleep(10 * time.Millisecond)
 
-	// 	ch_2 := make(chan string)
-	// 	opComplete := make(chan bool)
+		projectOutputHandler.CloseJob(ctx.JobID)
 
-	// 	// buffer channel will be closed immediately after logs are streamed
-	// 	go func() {
-	// 		for _ = range ch_2 {
-	// 		}
-	// 		opComplete <- true
-	// 	}()
+		ch_2 := make(chan string)
+		opComplete := make(chan bool)
 
-	// 	projectOutputHandler.Register(ctx.JobID, ch_2)
+		// buffer channel will be closed immediately after logs are streamed
+		go func() {
+			for _ = range ch_2 {
+			}
+			opComplete <- true
+		}()
 
-	// 	assert.True(t, <-opComplete)
-	// })
+		projectOutputHandler.Register(ctx.JobID, ch_2)
+
+		assert.True(t, <-opComplete)
+	})
+
+	t.Run("mark job complete and clear logs if job persist succeeds", func(t *testing.T) {
+		projectOutputHandler, storageBackend := createProjectCommandOutputHandler(t)
+		When(storageBackend.Write(AnyString(), AnyStringSlice())).ThenReturn(true, nil)
+
+		ch := make(chan string)
+
+		// register channel and backfill from buffer
+		// Note: We call this synchronously because otherwise
+		// there could be a race where we are unable to register the channel
+		// before sending messages due to the way we lock our buffer memory cache
+		projectOutputHandler.Register(ctx.JobID, ch)
+
+		// read from channel
+		go func() {
+			for range ch {
+			}
+		}()
+
+		projectOutputHandler.Send(ctx, Msg)
+		// Wait for the handler to process the message
+		time.Sleep(10 * time.Millisecond)
+
+		projectOutputHandler.CloseJob(ctx.JobID)
+
+		dfProjectOutputHandler, ok := projectOutputHandler.(*jobs.AsyncProjectCommandOutputHandler)
+		assert.True(t, ok)
+
+		outputBuffer := dfProjectOutputHandler.GetProjectOutputBuffer(ctx.JobID)
+		assert.Empty(t, outputBuffer.Buffer)
+
+		_, ok = (<-ch)
+		assert.False(t, ok)
+	})
 }
