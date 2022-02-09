@@ -426,8 +426,6 @@ type ProjectCommandContext struct {
 	DeleteSourceBranchOnMerge bool
 	// UUID for atlantis logs
 	JobID string
-	// EventTimestamp is the time atlantis received VCS event that triggered command
-	EventTimestamp time.Time
 }
 
 // ProjectCloneDir creates relative path to clone the repo to. If we are running
@@ -616,9 +614,8 @@ type PullStatus struct {
 	Projects []ProjectStatus
 	// Pull is the original pull request model.
 	Pull PullRequest
-	// LastEventTimestamp is the time Atlantis received the event
-	// that triggered the current pull status update.
-	LastEventTimestamp time.Time
+	// UpdatedAt is the time Atlantis writes model into DB.
+	UpdatedAt time.Time
 }
 
 // StatusCount returns the number of projects that have status.

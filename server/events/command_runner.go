@@ -47,6 +47,14 @@ type CommandRunner interface {
 	RunAutoplanCommand(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time)
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_stale_command_checker.go StaleCommandChecker
+
+// StaleCommandChecker handles checks to validate if current command is stale and can be dropped.
+type StaleCommandChecker interface {
+	// CommandIsStale returns true if currentEventTimestamp is earlier than timestamp set in DB's latest pull model.
+	CommandIsStale(ctx *CommandContext) bool
+}
+
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_getter.go GithubPullGetter
 
 // GithubPullGetter makes API calls to get pull requests.
@@ -121,6 +129,7 @@ type DefaultCommandRunner struct {
 	Drainer                       *Drainer
 	PreWorkflowHooksCommandRunner PreWorkflowHooksCommandRunner
 	PullStatusFetcher             PullStatusFetcher
+	StaleCommandChecker           StaleCommandChecker
 }
 
 // RunAutoplanCommand runs plan and policy_checks when a pull request is opened or updated.
@@ -146,19 +155,23 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 	defer timer.Stop()
 
 	ctx := &CommandContext{
-		User:           user,
-		Log:            log,
-		Scope:          scope,
-		Pull:           pull,
-		HeadRepo:       headRepo,
-		PullStatus:     status,
-		Trigger:        Auto,
-		EventTimestamp: timestamp,
+		User:             user,
+		Log:              log,
+		Scope:            scope,
+		Pull:             pull,
+		HeadRepo:         headRepo,
+		PullStatus:       status,
+		Trigger:          Auto,
+		TriggerTimestamp: timestamp,
 	}
 	if !c.validateCtxAndComment(ctx) {
 		return
 	}
 	if c.DisableAutoplan {
+		return
+	}
+	// Drop request if a more recent VCS event updated Atlantis state
+	if c.StaleCommandChecker.CommandIsStale(ctx) {
 		return
 	}
 
@@ -210,17 +223,22 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 	}
 
 	ctx := &CommandContext{
-		User:           user,
-		Log:            log,
-		Pull:           pull,
-		PullStatus:     status,
-		HeadRepo:       headRepo,
-		Trigger:        Comment,
-		Scope:          scope,
-		EventTimestamp: timestamp,
+		User:             user,
+		Log:              log,
+		Pull:             pull,
+		PullStatus:       status,
+		HeadRepo:         headRepo,
+		Trigger:          Comment,
+		Scope:            scope,
+		TriggerTimestamp: timestamp,
 	}
 
 	if !c.validateCtxAndComment(ctx) {
+		return
+	}
+
+	// Drop request if a more recent VCS event updated Atlantis state
+	if c.StaleCommandChecker.CommandIsStale(ctx) {
 		return
 	}
 

@@ -43,7 +43,6 @@ var lock = models.ProjectLock{
 	Project:   project,
 	Time:      time.Now(),
 }
-var defaultTime = time.Unix(123456, 7890)
 
 func TestLockCommandNotSet(t *testing.T) {
 	t.Log("retrieving apply lock when there are none should return empty LockCommand")
@@ -465,12 +464,12 @@ func TestPullStatus_UpdateGet(t *testing.T) {
 				Workspace:  "default",
 				Failure:    "failure",
 			},
-		}, defaultTime)
+		})
 	Ok(t, err)
 
 	maybeStatus, err := b.GetPullStatus(pull)
 	Ok(t, err)
-	Equals(t, defaultTime, maybeStatus.LastEventTimestamp)
+	Assert(t, !maybeStatus.UpdatedAt.IsZero(), "status should have a new time set")
 	Equals(t, pull, maybeStatus.Pull) // nolint: staticcheck
 	Equals(t, []models.ProjectStatus{
 		{
@@ -516,7 +515,7 @@ func TestPullStatus_UpdateDeleteGet(t *testing.T) {
 				Workspace:  "default",
 				Failure:    "failure",
 			},
-		}, defaultTime)
+		})
 	Ok(t, err)
 
 	err = b.DeletePullStatus(pull)
@@ -567,7 +566,7 @@ func TestPullStatus_UpdateProject(t *testing.T) {
 				Workspace:    "staging",
 				ApplySuccess: "success!",
 			},
-		}, defaultTime)
+		})
 	Ok(t, err)
 
 	err = b.UpdateProjectStatus(pull, "default", ".", models.DiscardedPlanStatus)
@@ -575,7 +574,7 @@ func TestPullStatus_UpdateProject(t *testing.T) {
 
 	status, err := b.GetPullStatus(pull)
 	Ok(t, err)
-	Equals(t, defaultTime, status.LastEventTimestamp)
+	Assert(t, !status.UpdatedAt.IsZero(), "status should have a new time set")
 	Equals(t, pull, status.Pull) // nolint: staticcheck
 	Equals(t, []models.ProjectStatus{
 		{
@@ -619,7 +618,7 @@ func TestPullStatus_UpdateNewCommit(t *testing.T) {
 			},
 		},
 	}
-	_, err := b.UpdatePullWithResults(
+	initialStatus, err := b.UpdatePullWithResults(
 		pull,
 		[]models.ProjectResult{
 			{
@@ -627,8 +626,10 @@ func TestPullStatus_UpdateNewCommit(t *testing.T) {
 				Workspace:  "default",
 				Failure:    "failure",
 			},
-		}, defaultTime)
+		})
 	Ok(t, err)
+	initialTimestamp := initialStatus.UpdatedAt
+	Assert(t, !initialTimestamp.IsZero(), "status should have a new time set")
 
 	pull.HeadCommit = "newsha"
 	status, err := b.UpdatePullWithResults(pull,
@@ -638,14 +639,14 @@ func TestPullStatus_UpdateNewCommit(t *testing.T) {
 				Workspace:    "staging",
 				ApplySuccess: "success!",
 			},
-		}, defaultTime.Add(1000*time.Second))
+		})
 
 	Ok(t, err)
 	Equals(t, 1, len(status.Projects))
 
 	maybeStatus, err := b.GetPullStatus(pull)
 	Ok(t, err)
-	Equals(t, defaultTime.Add(1000*time.Second), maybeStatus.LastEventTimestamp)
+	Assert(t, maybeStatus.UpdatedAt.After(initialTimestamp), "new timestamp should be after old")
 	Equals(t, pull, maybeStatus.Pull)
 	Equals(t, []models.ProjectStatus{
 		{
@@ -683,7 +684,7 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 			},
 		},
 	}
-	_, err := b.UpdatePullWithResults(
+	initialStatus, err := b.UpdatePullWithResults(
 		pull,
 		[]models.ProjectResult{
 			{
@@ -710,8 +711,10 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 					ApplyCmd:        "apply command",
 				},
 			},
-		}, defaultTime)
+		})
 	Ok(t, err)
+	initialTimestamp := initialStatus.UpdatedAt
+	Assert(t, !initialTimestamp.IsZero(), "status should have a new time set")
 
 	updateStatus, err := b.UpdatePullWithResults(pull,
 		[]models.ProjectResult{
@@ -734,7 +737,7 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 				Workspace:    "default",
 				ApplySuccess: "success!",
 			},
-		}, defaultTime.Add(1000*time.Second))
+		})
 	Ok(t, err)
 
 	getStatus, err := b.GetPullStatus(pull)
@@ -743,7 +746,7 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 	// Test both the pull state returned from the update call *and* the getCommandLock
 	// call.
 	for _, s := range []models.PullStatus{updateStatus, *getStatus} {
-		Equals(t, defaultTime.Add(1000*time.Second), s.LastEventTimestamp)
+		Assert(t, s.UpdatedAt.After(initialTimestamp), "new timestamp should be after old")
 		Equals(t, pull, s.Pull)
 		Equals(t, []models.ProjectStatus{
 			{

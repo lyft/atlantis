@@ -44,7 +44,6 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
 	mockApplyReqHandler := mocks.NewMockApplyRequirement()
-	mockStaleCommandChecker := mocks.NewMockStaleCommandChecker()
 
 	runner := events.DefaultProjectCommandRunner{
 		Locker:                     mockLocker,
@@ -59,15 +58,10 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 		Webhooks:                   nil,
 		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: mockApplyReqHandler,
-		StaleCommandChecker:        mockStaleCommandChecker,
 	}
 
 	repoDir, cleanup := TempDir(t)
 	defer cleanup()
-	When(mockStaleCommandChecker.CommandIsStale(
-		matchers.AnyModelsProjectCommandContext(),
-		matchers.AnyEventsPullStatusFetcher(),
-	)).ThenReturn(false)
 	When(mockWorkingDir.Clone(
 		matchers.AnyPtrToLoggingSimpleLogger(),
 		matchers.AnyModelsRepo(),
@@ -292,15 +286,13 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockSender := mocks.NewMockWebhooksSender()
-	mockStaleCommandChecker := mocks.NewMockStaleCommandChecker()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		Webhooks:            mockSender,
-		StaleCommandChecker: mockStaleCommandChecker,
+		Webhooks: mockSender,
 	}
 	ctx := models.ProjectCommandContext{
 		PullReqStatus: models.PullReqStatus{
@@ -314,10 +306,6 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(mockStaleCommandChecker.CommandIsStale(
-		matchers.AnyModelsProjectCommandContext(),
-		matchers.AnyEventsPullStatusFetcher(),
-	)).ThenReturn(false)
 
 	res := runner.Apply(ctx)
 	Equals(t, "", res.Failure)
@@ -327,15 +315,13 @@ func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T)
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockSender := mocks.NewMockWebhooksSender()
-	mockStaleCommandChecker := mocks.NewMockStaleCommandChecker()
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir:       mockWorkingDir,
 		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: &events.AggregateApplyRequirements{
 			WorkingDir: mockWorkingDir,
 		},
-		Webhooks:            mockSender,
-		StaleCommandChecker: mockStaleCommandChecker,
+		Webhooks: mockSender,
 	}
 	featureAwareRunner := &events.FeatureAwareProjectCommandRunner{
 		ProjectCommandRunner: runner,
@@ -353,10 +339,6 @@ func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T)
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn(tmp, nil)
-	When(mockStaleCommandChecker.CommandIsStale(
-		matchers.AnyModelsProjectCommandContext(),
-		matchers.AnyEventsPullStatusFetcher(),
-	)).ThenReturn(false)
 
 	res := featureAwareRunner.Apply(ctx)
 	Equals(t, "", res.Failure)
@@ -499,7 +481,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			mockWorkingDir := mocks.NewMockWorkingDir()
 			mockLocker := mocks.NewMockProjectLocker()
 			mockSender := mocks.NewMockWebhooksSender()
-			mockStaleCommandChecker := mocks.NewMockStaleCommandChecker()
 			applyReqHandler := &events.AggregateApplyRequirements{
 				WorkingDir: mockWorkingDir,
 			}
@@ -516,7 +497,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 				Webhooks:                   mockSender,
 				WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 				AggregateApplyRequirements: applyReqHandler,
-				StaleCommandChecker:        mockStaleCommandChecker,
 			}
 			repoDir, cleanup := TempDir(t)
 			defer cleanup()
@@ -525,10 +505,6 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 				matchers.AnyModelsPullRequest(),
 				AnyString(),
 			)).ThenReturn(repoDir, nil)
-			When(mockStaleCommandChecker.CommandIsStale(
-				matchers.AnyModelsProjectCommandContext(),
-				matchers.AnyEventsPullStatusFetcher(),
-			)).ThenReturn(false)
 
 			ctx := models.ProjectCommandContext{
 				Log:               logging.NewNoopLogger(t),
@@ -581,7 +557,6 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
 	mockSender := mocks.NewMockWebhooksSender()
-	mockStaleCommandChecker := mocks.NewMockStaleCommandChecker()
 	applyReqHandler := &events.AggregateApplyRequirements{
 		WorkingDir: mockWorkingDir,
 	}
@@ -594,7 +569,6 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
 		AggregateApplyRequirements: applyReqHandler,
 		Webhooks:                   mockSender,
-		StaleCommandChecker:        mockStaleCommandChecker,
 	}
 	repoDir, cleanup := TempDir(t)
 	defer cleanup()
@@ -603,10 +577,6 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 		matchers.AnyModelsPullRequest(),
 		AnyString(),
 	)).ThenReturn(repoDir, nil)
-	When(mockStaleCommandChecker.CommandIsStale(
-		matchers.AnyModelsProjectCommandContext(),
-		matchers.AnyEventsPullStatusFetcher(),
-	)).ThenReturn(false)
 
 	ctx := models.ProjectCommandContext{
 		Log: logging.NewNoopLogger(t),
@@ -647,17 +617,15 @@ func TestDefaultProjectCommandRunner_RunEnvSteps(t *testing.T) {
 	}
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
-	mockStaleCommandChecker := mocks.NewMockStaleCommandChecker()
 
 	runner := events.DefaultProjectCommandRunner{
-		Locker:              mockLocker,
-		LockURLGenerator:    mockURLGenerator{},
-		RunStepRunner:       &run,
-		EnvStepRunner:       &env,
-		WorkingDir:          mockWorkingDir,
-		Webhooks:            nil,
-		WorkingDirLocker:    events.NewDefaultWorkingDirLocker(),
-		StaleCommandChecker: mockStaleCommandChecker,
+		Locker:           mockLocker,
+		LockURLGenerator: mockURLGenerator{},
+		RunStepRunner:    &run,
+		EnvStepRunner:    &env,
+		WorkingDir:       mockWorkingDir,
+		Webhooks:         nil,
+		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
 	}
 
 	repoDir, cleanup := TempDir(t)
@@ -668,10 +636,6 @@ func TestDefaultProjectCommandRunner_RunEnvSteps(t *testing.T) {
 		matchers.AnyModelsPullRequest(),
 		AnyString(),
 	)).ThenReturn(repoDir, false, nil)
-	When(mockStaleCommandChecker.CommandIsStale(
-		matchers.AnyModelsProjectCommandContext(),
-		matchers.AnyEventsPullStatusFetcher(),
-	)).ThenReturn(false)
 	When(mockLocker.TryLock(
 		matchers.AnyPtrToLoggingSimpleLogger(),
 		matchers.AnyModelsPullRequest(),
@@ -726,49 +690,6 @@ func TestDefaultProjectCommandRunner_RunEnvSteps(t *testing.T) {
 	Assert(t, res.PlanSuccess != nil, "exp plan success")
 	Equals(t, "https://lock-key", res.PlanSuccess.LockURL)
 	Equals(t, "var=\n\nvar=value\n\ndynamic_var=dynamic_value\n\ndynamic_var=overridden\n", res.PlanSuccess.TerraformOutput)
-}
-
-// Test that we return error on stale commands
-func TestDefaultProjectCommandRunner_Plan_StaleCommandFailure(t *testing.T) {
-	RegisterMockTestingT(t)
-	realEnv := runtime.EnvStepRunner{}
-	mockLocker := mocks.NewMockProjectLocker()
-	mockStaleCommandChecker := mocks.NewMockStaleCommandChecker()
-
-	runner := events.DefaultProjectCommandRunner{
-		Locker:              mockLocker,
-		LockURLGenerator:    mockURLGenerator{},
-		EnvStepRunner:       &realEnv,
-		PullApprovedChecker: nil,
-		Webhooks:            nil,
-		WorkingDirLocker:    events.NewDefaultWorkingDirLocker(),
-		StaleCommandChecker: mockStaleCommandChecker,
-	}
-	When(mockStaleCommandChecker.CommandIsStale(
-		matchers.AnyModelsProjectCommandContext(),
-		matchers.AnyEventsPullStatusFetcher(),
-	)).ThenReturn(true)
-
-	When(mockLocker.TryLock(
-		matchers.AnyPtrToLoggingSimpleLogger(),
-		matchers.AnyModelsPullRequest(),
-		matchers.AnyModelsUser(),
-		AnyString(),
-		matchers.AnyModelsProject(),
-	)).ThenReturn(&events.TryLockResponse{
-		LockAcquired: true,
-		LockKey:      "lock-key",
-	}, nil)
-
-	ctx := models.ProjectCommandContext{
-		Log:        logging.NewNoopLogger(t),
-		Workspace:  "default",
-		RepoRelDir: ".",
-	}
-	// Each step will output its step name.
-	res := runner.Plan(ctx)
-	Assert(t, res.PlanSuccess == nil, "exp plan failed")
-	Assert(t, res.Error.Error() == "command dropped", "stale command shouldn't run")
 }
 
 type mockURLGenerator struct{}

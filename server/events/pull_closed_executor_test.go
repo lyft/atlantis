@@ -14,13 +14,11 @@
 package events_test
 
 import (
-	"io/ioutil"
-	"testing"
-	"time"
-
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/db"
 	bolt "go.etcd.io/bbolt"
+	"io/ioutil"
+	"testing"
 
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/stretchr/testify/assert"
@@ -245,7 +243,7 @@ func TestCleanUpLogStreaming(t *testing.T) {
 		}
 
 		// Create a new record for pull
-		_, err = db.UpdatePullWithResults(fixtures.Pull, result, time.Now())
+		_, err = db.UpdatePullWithResults(fixtures.Pull, result)
 		Ok(t, err)
 
 		workingDir := mocks.NewMockWorkingDir()

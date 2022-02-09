@@ -575,10 +575,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Webhooks:                   webhooksManager,
 		WorkingDirLocker:           workingDirLocker,
 		AggregateApplyRequirements: applyRequirementHandler,
-		PullStatusFetcher:          boltdb,
-		StaleCommandChecker: &events.StaleCommandHandler{
-			Counter: statsScope.SubScope("stale_checker").Counter("dropped_commands"),
-		},
 	}
 
 	dbUpdater := &events.DBUpdater{
@@ -713,7 +709,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		models.UnlockCommand:          unlockCommandRunner,
 		models.VersionCommand:         versionCommandRunner,
 	}
-
+	cmdStatsScope := statsScope.SubScope("cmd")
+	staleCommandChecker := &events.StaleCommandHandler{
+		StaleStatsScope: cmdStatsScope.SubScope("stale"),
+	}
 	commandRunner := &events.DefaultCommandRunner{
 		VCSClient:                     vcsClient,
 		GithubPullGetter:              githubClient,
@@ -723,7 +722,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EventParser:                   eventParser,
 		Logger:                        logger,
 		GlobalCfg:                     globalCfg,
-		StatsScope:                    statsScope.SubScope("cmd"),
+		StatsScope:                    cmdStatsScope,
 		AllowForkPRs:                  userConfig.AllowForkPRs,
 		AllowForkPRsFlag:              config.AllowForkPRsFlag,
 		SilenceForkPRErrors:           userConfig.SilenceForkPRErrors,
@@ -732,6 +731,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Drainer:                       drainer,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
+		StaleCommandChecker:           staleCommandChecker,
 	}
 
 	featureAwareCommandRunner := &events.FeatureAwareCommandRunner{

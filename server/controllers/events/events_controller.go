@@ -301,9 +301,13 @@ func (e *VCSEventsController) HandleGithubCommentEvent(event *github.IssueCommen
 		}
 	}
 
+	eventTimestamp := time.Now()
+	githubComment := event.Comment
+	if githubComment != nil && githubComment.UpdatedAt != nil {
+		eventTimestamp = *githubComment.UpdatedAt
+	}
 	// We pass in nil for maybeHeadRepo because the head repo data isn't
 	// available in the GithubIssueComment event.
-	eventTimestamp := time.Now()
 	return e.handleCommentEvent(logger, baseRepo, nil, nil, user, pullNum, event.Comment.GetBody(), models.Github, eventTimestamp)
 }
 
@@ -414,6 +418,10 @@ func (e *VCSEventsController) HandleGithubPullRequestEvent(logger logging.Simple
 	}
 	logger.Debug("identified event as type %q", pullEventType.String())
 	eventTimestamp := time.Now()
+	githubPullRequest := pullEvent.PullRequest
+	if githubPullRequest != nil && githubPullRequest.CreatedAt != nil {
+		eventTimestamp = *githubPullRequest.CreatedAt
+	}
 	return e.handlePullRequestEvent(logger, baseRepo, headRepo, pull, user, pullEventType, eventTimestamp)
 }
 

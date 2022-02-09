@@ -260,7 +260,6 @@ func newProjectCommandContext(ctx *CommandContext,
 		Tags:                      projCfg.Tags,
 		PullReqStatus:             pullStatus,
 		JobID:                     uuid.New().String(),
-		EventTimestamp:            ctx.EventTimestamp,
 	}
 }
 

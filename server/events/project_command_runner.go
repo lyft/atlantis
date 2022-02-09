@@ -48,14 +48,6 @@ type LockURLGenerator interface {
 	GenerateLockURL(lockID string) string
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_stale_command_checker.go StaleCommandChecker
-
-// StaleCommandChecker handles checks to validate if current command is stale and can be dropped.
-type StaleCommandChecker interface {
-	// CommandIsStale returns true if currentEventTimestamp is earlier than timestamp set in DB's latest pull model.
-	CommandIsStale(ctx models.ProjectCommandContext, fetcher PullStatusFetcher) bool
-}
-
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_step_runner.go StepRunner
 
 // StepRunner runs steps. Steps are individual pieces of execution like
@@ -211,8 +203,6 @@ type DefaultProjectCommandRunner struct { //create object and test
 	Webhooks                   WebhooksSender
 	WorkingDirLocker           WorkingDirLocker
 	AggregateApplyRequirements ApplyRequirement
-	PullStatusFetcher          PullStatusFetcher
-	StaleCommandChecker        StaleCommandChecker
 }
 
 // Plan runs terraform plan for the project described by ctx.
@@ -319,11 +309,6 @@ func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx models.ProjectCommandCon
 	}
 	defer unlockFn()
 
-	// Drop request if a more recent VCS event updated Atlantis state
-	if p.StaleCommandChecker.CommandIsStale(ctx, p.PullStatusFetcher) {
-		return nil, "", errors.New("command dropped")
-	}
-
 	// we shouldn't attempt to clone this again. If changes occur to the pull request while the plan is happening
 	// that shouldn't affect this particular operation.
 	repoDir, err := p.WorkingDir.GetWorkingDir(ctx.Pull.BaseRepo, ctx.Pull, ctx.Workspace)
@@ -387,11 +372,6 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx models.ProjectCommandContext) (
 	}
 	defer unlockFn()
 
-	// Drop request if a more recent VCS event updated Atlantis state
-	if p.StaleCommandChecker.CommandIsStale(ctx, p.PullStatusFetcher) {
-		return nil, "", errors.New("command dropped")
-	}
-
 	// Clone is idempotent so okay to run even if the repo was already cloned.
 	repoDir, hasDiverged, cloneErr := p.WorkingDir.Clone(ctx.Log, ctx.HeadRepo, ctx.Pull, ctx.ProjectCloneDir())
 	if cloneErr != nil {
@@ -449,11 +429,6 @@ func (p *DefaultProjectCommandRunner) doApply(ctx models.ProjectCommandContext) 
 	}
 	defer unlockFn()
 
-	// Drop request if a more recent VCS event updated Atlantis state
-	if p.StaleCommandChecker.CommandIsStale(ctx, p.PullStatusFetcher) {
-		return "", "", errors.New("command dropped")
-	}
-
 	outputs, err := p.runSteps(ctx.Steps, ctx, absPath)
 
 	p.Webhooks.Send(ctx.Log, webhooks.ApplyResult{ // nolint: errcheck
@@ -491,11 +466,6 @@ func (p *DefaultProjectCommandRunner) doVersion(ctx models.ProjectCommandContext
 		return "", "", err
 	}
 	defer unlockFn()
-
-	// Drop request if a more recent VCS event updated Atlantis state
-	if p.StaleCommandChecker.CommandIsStale(ctx, p.PullStatusFetcher) {
-		return "", "", errors.New("command dropped")
-	}
 
 	outputs, err := p.runSteps(ctx.Steps, ctx, absPath)
 	if err != nil {

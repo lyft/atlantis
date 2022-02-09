@@ -6,7 +6,6 @@ package mocks
 import (
 	pegomock "github.com/petergtz/pegomock"
 	events "github.com/runatlantis/atlantis/server/events"
-	models "github.com/runatlantis/atlantis/server/events/models"
 	"reflect"
 	"time"
 )
@@ -26,11 +25,11 @@ func NewMockStaleCommandChecker(options ...pegomock.Option) *MockStaleCommandChe
 func (mock *MockStaleCommandChecker) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockStaleCommandChecker) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockStaleCommandChecker) CommandIsStale(ctx models.ProjectCommandContext, fetcher events.PullStatusFetcher) bool {
+func (mock *MockStaleCommandChecker) CommandIsStale(ctx *events.CommandContext) bool {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockStaleCommandChecker().")
 	}
-	params := []pegomock.Param{ctx, fetcher}
+	params := []pegomock.Param{ctx}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("CommandIsStale", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem()})
 	var ret0 bool
 	if len(result) != 0 {
@@ -78,8 +77,8 @@ type VerifierMockStaleCommandChecker struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockStaleCommandChecker) CommandIsStale(ctx models.ProjectCommandContext, fetcher events.PullStatusFetcher) *MockStaleCommandChecker_CommandIsStale_OngoingVerification {
-	params := []pegomock.Param{ctx, fetcher}
+func (verifier *VerifierMockStaleCommandChecker) CommandIsStale(ctx *events.CommandContext) *MockStaleCommandChecker_CommandIsStale_OngoingVerification {
+	params := []pegomock.Param{ctx}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "CommandIsStale", params, verifier.timeout)
 	return &MockStaleCommandChecker_CommandIsStale_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
@@ -89,21 +88,17 @@ type MockStaleCommandChecker_CommandIsStale_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockStaleCommandChecker_CommandIsStale_OngoingVerification) GetCapturedArguments() (models.ProjectCommandContext, events.PullStatusFetcher) {
-	ctx, fetcher := c.GetAllCapturedArguments()
-	return ctx[len(ctx)-1], fetcher[len(fetcher)-1]
+func (c *MockStaleCommandChecker_CommandIsStale_OngoingVerification) GetCapturedArguments() *events.CommandContext {
+	ctx := c.GetAllCapturedArguments()
+	return ctx[len(ctx)-1]
 }
 
-func (c *MockStaleCommandChecker_CommandIsStale_OngoingVerification) GetAllCapturedArguments() (_param0 []models.ProjectCommandContext, _param1 []events.PullStatusFetcher) {
+func (c *MockStaleCommandChecker_CommandIsStale_OngoingVerification) GetAllCapturedArguments() (_param0 []*events.CommandContext) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]models.ProjectCommandContext, len(c.methodInvocations))
+		_param0 = make([]*events.CommandContext, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(models.ProjectCommandContext)
-		}
-		_param1 = make([]events.PullStatusFetcher, len(c.methodInvocations))
-		for u, param := range params[1] {
-			_param1[u] = param.(events.PullStatusFetcher)
+			_param0[u] = param.(*events.CommandContext)
 		}
 	}
 	return
