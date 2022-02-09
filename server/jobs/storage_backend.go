@@ -1,6 +1,10 @@
 package jobs
 
-import "io"
+import (
+	"io"
+
+	"github.com/runatlantis/atlantis/server/core/config/valid"
+)
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_storage_backend.go StorageBackend
 
@@ -13,6 +17,11 @@ type StorageBackend interface {
 
 	// Write logs to the storage backend
 	Write(key string, logs []string) (success bool, err error)
+}
+
+func NewStorageBackend(jobs valid.Jobs) StorageBackend {
+	// No storage backend configured, return Noop for now
+	return &NoopStorageBackend{}
 }
 
 // Used when log persistence is not configured

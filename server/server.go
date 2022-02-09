@@ -368,7 +368,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
-	storageBackend := &jobs.NoopStorageBackend{}
+	storageBackend := jobs.NewStorageBackend(globalCfg.Jobs)
 
 	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
