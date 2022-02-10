@@ -160,7 +160,7 @@ func TestPost_GithubInvalidComment(t *testing.T) {
 	e, v, _, p, _, _, _, _ := setup(t)
 	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
 	req.Header.Set(githubHeader, "issue_comment")
-	event := `{"action": "created", "comment": {"created_at": "2019-05-15T15:20:21Z"}}`
+	event := `{"action": "created"}`
 	When(v.Validate(req, secret)).ThenReturn([]byte(event), nil)
 	When(p.ParseGithubIssueCommentEvent(matchers.AnyPtrToGithubIssueCommentEvent())).ThenReturn(models.Repo{}, models.User{}, 1, errors.New("err"))
 	w := httptest.NewRecorder()
@@ -185,7 +185,7 @@ func TestPost_GithubCommentInvalidCommand(t *testing.T) {
 	e, v, _, p, _, _, _, cp := setup(t)
 	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
 	req.Header.Set(githubHeader, "issue_comment")
-	event := `{"action": "created", "comment": {"created_at": "2019-05-15T15:20:21Z"}}`
+	event := `{"action": "created"}`
 	When(v.Validate(req, secret)).ThenReturn([]byte(event), nil)
 	When(p.ParseGithubIssueCommentEvent(matchers.AnyPtrToGithubIssueCommentEvent())).ThenReturn(models.Repo{}, models.User{}, 1, nil)
 	When(cp.Parse("", models.Github)).ThenReturn(events.CommentParseResult{Ignore: true})
@@ -339,7 +339,7 @@ func TestPost_GithubCommentResponse(t *testing.T) {
 	e, v, _, p, _, _, vcsClient, cp := setup(t)
 	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
 	req.Header.Set(githubHeader, "issue_comment")
-	event := `{"action": "created", "comment": {"created_at": "2019-05-15T15:20:21Z"}}`
+	event := `{"action": "created"}`
 	When(v.Validate(req, secret)).ThenReturn([]byte(event), nil)
 	baseRepo := models.Repo{}
 	user := models.User{}
@@ -370,7 +370,7 @@ func TestPost_GithubCommentSuccess(t *testing.T) {
 	e, v, _, p, cr, _, _, cp := setup(t)
 	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
 	req.Header.Set(githubHeader, "issue_comment")
-	event := `{"action": "created", "comment": {"created_at": "2019-05-15T15:20:21Z"}}`
+	event := `{"action": "created"}`
 	When(v.Validate(req, secret)).ThenReturn([]byte(event), nil)
 	baseRepo := models.Repo{}
 	user := models.User{}
@@ -420,7 +420,7 @@ func TestPost_GithubPullRequestNotAllowlisted(t *testing.T) {
 	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
 	req.Header.Set(githubHeader, "pull_request")
 
-	event := `{"action": "closed", "pull_request": {"updated_at": "2019-05-15T15:20:21Z"}}`
+	event := `{"action": "closed"}`
 	When(v.Validate(req, secret)).ThenReturn([]byte(event), nil)
 	w := httptest.NewRecorder()
 	e.Post(w, req)
@@ -756,7 +756,7 @@ func TestPost_PullOpenedOrUpdated(t *testing.T) {
 				When(p.ParseGitlabMergeRequestEvent(event)).ThenReturn(pullRequest, models.OpenedPullEvent, repo, repo, models.User{}, nil)
 			case models.Github:
 				req.Header.Set(githubHeader, "pull_request")
-				event := fmt.Sprintf(`{"action": "%s", "pull_request": {"updated_at": "2019-05-15T15:20:21Z"}}`, c.Action)
+				event := fmt.Sprintf(`{"action": "%s"}`, c.Action)
 				When(v.Validate(req, secret)).ThenReturn([]byte(event), nil)
 				repo = models.Repo{}
 				pullRequest = models.PullRequest{State: models.ClosedPullState}
