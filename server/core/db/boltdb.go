@@ -336,7 +336,7 @@ func (b *BoltDB) UpdatePullWithResults(pull models.PullRequest, newResults []mod
 			newStatus = models.PullStatus{
 				Pull:      pull,
 				Projects:  statuses,
-				UpdatedAt: time.Now(),
+				UpdatedAt: time.Now().Unix(),
 			}
 		} else {
 			// If there's an existing pull at the right commit then we have to
@@ -345,7 +345,7 @@ func (b *BoltDB) UpdatePullWithResults(pull models.PullRequest, newResults []mod
 			// in this command and so we don't want to delete our data about
 			// other projects that aren't affected by this command.
 			newStatus = *currStatus
-			newStatus.UpdatedAt = time.Now()
+			newStatus.UpdatedAt = time.Now().Unix()
 			for _, res := range newResults {
 				// First, check if we should update any existing projects.
 				updatedExisting := false

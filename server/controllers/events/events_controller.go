@@ -300,15 +300,9 @@ func (e *VCSEventsController) HandleGithubCommentEvent(event *github.IssueCommen
 			},
 		}
 	}
-
-	eventTimestamp := time.Now()
-	githubComment := event.Comment
-	if githubComment != nil && githubComment.CreatedAt != nil {
-		eventTimestamp = *githubComment.CreatedAt
-	}
 	// We pass in nil for maybeHeadRepo because the head repo data isn't
 	// available in the GithubIssueComment event.
-	return e.handleCommentEvent(logger, baseRepo, nil, nil, user, pullNum, event.Comment.GetBody(), models.Github, eventTimestamp)
+	return e.handleCommentEvent(logger, baseRepo, nil, nil, user, pullNum, event.Comment.GetBody(), models.Github, *event.Comment.CreatedAt)
 }
 
 // HandleBitbucketCloudCommentEvent handles comment events from Bitbucket.
@@ -417,12 +411,7 @@ func (e *VCSEventsController) HandleGithubPullRequestEvent(logger logging.Simple
 		}
 	}
 	logger.Debug("identified event as type %q", pullEventType.String())
-	eventTimestamp := time.Now()
-	githubPullRequest := pullEvent.PullRequest
-	if githubPullRequest != nil && githubPullRequest.UpdatedAt != nil {
-		eventTimestamp = *githubPullRequest.UpdatedAt
-	}
-	return e.handlePullRequestEvent(logger, baseRepo, headRepo, pull, user, pullEventType, eventTimestamp)
+	return e.handlePullRequestEvent(logger, baseRepo, headRepo, pull, user, pullEventType, *pullEvent.PullRequest.UpdatedAt)
 }
 
 func (e *VCSEventsController) handlePullRequestEvent(logger logging.SimpleLogging, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, eventType models.PullRequestEventType, timestamp time.Time) HttpResponse {

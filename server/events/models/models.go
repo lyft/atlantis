@@ -614,8 +614,8 @@ type PullStatus struct {
 	Projects []ProjectStatus
 	// Pull is the original pull request model.
 	Pull PullRequest
-	// UpdatedAt is the time Atlantis writes model into DB.
-	UpdatedAt time.Time
+	// UpdatedAt is the unix time Atlantis writes model into DB.
+	UpdatedAt int64
 }
 
 // StatusCount returns the number of projects that have status.

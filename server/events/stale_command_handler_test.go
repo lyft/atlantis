@@ -12,7 +12,7 @@ import (
 
 func TestStaleCommandHandler_CommandIsStale(t *testing.T) {
 	olderTimestamp := time.Unix(123, 456)
-	newerTimestamp := time.Unix(123, 457)
+	newerTimestamp := time.Unix(124, 457)
 	testScope := tally.NewTestScope("test", nil)
 	cases := []struct {
 		Description      string
@@ -23,7 +23,7 @@ func TestStaleCommandHandler_CommandIsStale(t *testing.T) {
 		{
 			Description: "simple stale command",
 			PullStatus: models.PullStatus{
-				UpdatedAt: newerTimestamp,
+				UpdatedAt: newerTimestamp.Unix(),
 			},
 			CommandTimestamp: olderTimestamp,
 			Expected:         true,
@@ -31,7 +31,7 @@ func TestStaleCommandHandler_CommandIsStale(t *testing.T) {
 		{
 			Description: "simple not stale command",
 			PullStatus: models.PullStatus{
-				UpdatedAt: olderTimestamp,
+				UpdatedAt: olderTimestamp.Unix(),
 			},
 			CommandTimestamp: newerTimestamp,
 			Expected:         false,
