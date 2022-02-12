@@ -43,7 +43,7 @@ func NewGatewaySQSWorker(scope tally.Scope, queueURL string, commandRunner event
 	handler := &MessageHandler{
 		CommandRunner: commandRunner,
 		Scope:         scope.SubScope(ProcessMessageMetricName),
-		TestingMode:   true,
+		TestingMode:   false,
 	}
 
 	return &Worker{
