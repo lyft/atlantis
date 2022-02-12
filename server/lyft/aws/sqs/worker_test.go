@@ -9,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/aws/sqs/mocks"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sqs/mocks/matchers"
 	. "github.com/runatlantis/atlantis/testing"
-	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/tally"
 
 	"context"
@@ -188,7 +187,7 @@ func TestWorker_HandlerError(t *testing.T) {
 // assertCompletes places a timeout on a sync.WaitGroup and fails if the
 // groups doesn't complete before the timeout occurs
 func assertCompletes(t *testing.T, waitGroup *sync.WaitGroup, timeout time.Duration) {
-	assert.False(t, timedOut(waitGroup, timeout), "wait group timed out after %s", timeout)
+	Assert(t, !timedOut(waitGroup, timeout), "wait group timed out after %s", timeout)
 }
 
 func timedOut(waitGroup *sync.WaitGroup, timeout time.Duration) bool {
