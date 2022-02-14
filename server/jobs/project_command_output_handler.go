@@ -100,6 +100,7 @@ func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext
 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
+
 		// Add job to pullToJob mapping
 		if _, ok := p.pullToJobMapping.Load(msg.JobInfo.PullInfo); !ok {
 			p.pullToJobMapping.Store(msg.JobInfo.PullInfo, map[string]bool{})

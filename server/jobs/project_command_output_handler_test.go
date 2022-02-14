@@ -89,7 +89,6 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		projectOutputHandler.Register(ctx.JobID, ch)
 
 		wg.Add(1)
-
 		projectOutputHandler.Send(ctx, Msg)
 		wg.Wait()
 		close(ch)

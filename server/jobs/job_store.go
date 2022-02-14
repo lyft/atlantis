@@ -2,8 +2,6 @@ package jobs
 
 import (
 	"fmt"
-	"io"
-	"strings"
 	"sync"
 )
 
@@ -17,19 +15,6 @@ const (
 type Job struct {
 	Output []string
 	Status JobStatus
-}
-
-func NewJob(reader io.ReadCloser) *Job {
-	buf := new(strings.Builder)
-	_, err := io.Copy(buf, reader)
-	if err != nil {
-		return &Job{}
-	}
-
-	return &Job{
-		Output: strings.Split(buf.String(), "/n"),
-		Status: Complete,
-	}
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_store.go JobStore
@@ -57,7 +42,7 @@ func NewJobStore(storageBackend StorageBackend) JobStore {
 	}
 }
 
-// Setup the job store for testing
+// Setup job store for testing
 func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job) JobStore {
 	return &LayeredJobStore{
 		jobs:           jobs,
@@ -65,6 +50,8 @@ func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job) JobSto
 	}
 }
 
+// layeredJobStore is a job store with one or more than one layers of persistence
+// storageBackend in this case
 type LayeredJobStore struct {
 	jobs           map[string]*Job
 	storageBackend StorageBackend
@@ -129,12 +116,12 @@ func (j *LayeredJobStore) SetCompleteJobStatus(jobID string, status JobStatus) e
 
 	// Error out when job dne
 	if j.jobs[jobID] == nil {
-		return fmt.Errorf("jobID does not exist")
+		return fmt.Errorf("job: %s does not exist", jobID)
 	}
 
 	// Error when job is already set to complete
 	if job := j.jobs[jobID]; job.Status == Complete {
-		return fmt.Errorf("job is already complete")
+		return fmt.Errorf("job: %s is already complete", jobID)
 	}
 
 	job := j.jobs[jobID]
