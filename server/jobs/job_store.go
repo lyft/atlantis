@@ -3,6 +3,8 @@ package jobs
 import (
 	"fmt"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 type JobStatus int
@@ -130,7 +132,7 @@ func (j *LayeredJobStore) SetCompleteJobStatus(jobID string, status JobStatus) e
 	// Persist to storage backend
 	ok, err := j.storageBackend.Write(jobID, job.Output)
 	if err != nil {
-		return fmt.Errorf("error persisting job: %s", jobID)
+		return errors.Wrapf(err, "error persisting job: %s", jobID)
 	}
 
 	// Clear output buffers if successfully persisted

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/jobs/mocks"
 	"github.com/runatlantis/atlantis/server/jobs/mocks/matchers"
@@ -132,16 +133,17 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		}
 		jobsMap := make(map[string]*jobs.Job)
 		jobsMap[jobID] = job
-		expecterErrString := fmt.Sprintf("error persisting job: %s", jobID)
+		storageBackendErr := fmt.Errorf("random error")
+		expecterErr := errors.Wrapf(storageBackendErr, "error persisting job: %s", jobID)
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString())).ThenReturn(false, fmt.Errorf(""))
+		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString())).ThenReturn(false, storageBackendErr)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
 		err := jobStore.SetCompleteJobStatus(jobID, jobs.Complete)
 
 		// Assert storage backend error
-		assert.EqualError(t, err, expecterErrString)
+		assert.EqualError(t, err, expecterErr.Error())
 
 		// Assert the job is in memory
 		jobInMem, err := jobStore.Get(jobID)
@@ -177,7 +179,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		storageBackend := mocks.NewMockStorageBackend()
 		jobStore := jobs.NewJobStore(storageBackend)
 		jobID := "1234"
-		expectedErrString := "jobID does not exist"
+		expectedErrString := fmt.Sprintf("job: %s does not exist", jobID)
 
 		err := jobStore.SetCompleteJobStatus(jobID, jobs.Complete)
 		assert.EqualError(t, err, expectedErrString)
