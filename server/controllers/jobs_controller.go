@@ -32,7 +32,7 @@ type JobsController struct {
 	ProjectJobsTemplate      templates.TemplateWriter
 	ProjectJobsErrorTemplate templates.TemplateWriter
 	Db                       *db.BoltDB
-	WsMux                    *websocket.Multiplexor
+	WsMux                    websocket.Multiplexor
 	StatsScope               tally.Scope
 	KeyGenerator             JobIDKeyGenerator
 }

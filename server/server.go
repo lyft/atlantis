@@ -755,10 +755,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DeleteLockCommand:  deleteLockCommand,
 	}
 
-	wsMux := websocket.NewMultiplexor(
-		logger,
-		controllers.JobIDKeyGenerator{},
-		projectCmdOutputHandler,
+	wsMux := websocket.NewInstrumentedMultiplexor(
+		websocket.NewMultiplexor(
+			logger,
+			controllers.JobIDKeyGenerator{},
+			projectCmdOutputHandler,
+		),
+		statsScope,
 	)
 
 	jobsController := &controllers.JobsController{
