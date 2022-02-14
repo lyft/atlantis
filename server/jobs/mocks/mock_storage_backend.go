@@ -5,7 +5,6 @@ package mocks
 
 import (
 	pegomock "github.com/petergtz/pegomock"
-	io "io"
 	"reflect"
 	"time"
 )
@@ -25,34 +24,23 @@ func NewMockStorageBackend(options ...pegomock.Option) *MockStorageBackend {
 func (mock *MockStorageBackend) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockStorageBackend) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockStorageBackend) IsKeyExists(_param0 string) bool {
+func (mock *MockStorageBackend) Read(_param0 string) ([]string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockStorageBackend().")
 	}
 	params := []pegomock.Param{_param0}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("IsKeyExists", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem()})
-	var ret0 bool
+	result := pegomock.GetGenericMockFrom(mock).Invoke("Read", params, []reflect.Type{reflect.TypeOf((*[]string)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 []string
+	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(bool)
+			ret0 = result[0].([]string)
+		}
+		if result[1] != nil {
+			ret1 = result[1].(error)
 		}
 	}
-	return ret0
-}
-
-func (mock *MockStorageBackend) Read(_param0 string) io.ReadCloser {
-	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockStorageBackend().")
-	}
-	params := []pegomock.Param{_param0}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("Read", params, []reflect.Type{reflect.TypeOf((*io.ReadCloser)(nil)).Elem()})
-	var ret0 io.ReadCloser
-	if len(result) != 0 {
-		if result[0] != nil {
-			ret0 = result[0].(io.ReadCloser)
-		}
-	}
-	return ret0
+	return ret0, ret1
 }
 
 func (mock *MockStorageBackend) Write(_param0 string, _param1 []string) (bool, error) {
@@ -109,33 +97,6 @@ type VerifierMockStorageBackend struct {
 	invocationCountMatcher pegomock.InvocationCountMatcher
 	inOrderContext         *pegomock.InOrderContext
 	timeout                time.Duration
-}
-
-func (verifier *VerifierMockStorageBackend) IsKeyExists(_param0 string) *MockStorageBackend_IsKeyExists_OngoingVerification {
-	params := []pegomock.Param{_param0}
-	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "IsKeyExists", params, verifier.timeout)
-	return &MockStorageBackend_IsKeyExists_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
-}
-
-type MockStorageBackend_IsKeyExists_OngoingVerification struct {
-	mock              *MockStorageBackend
-	methodInvocations []pegomock.MethodInvocation
-}
-
-func (c *MockStorageBackend_IsKeyExists_OngoingVerification) GetCapturedArguments() string {
-	_param0 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1]
-}
-
-func (c *MockStorageBackend_IsKeyExists_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
-	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
-	if len(params) > 0 {
-		_param0 = make([]string, len(c.methodInvocations))
-		for u, param := range params[0] {
-			_param0[u] = param.(string)
-		}
-	}
-	return
 }
 
 func (verifier *VerifierMockStorageBackend) Read(_param0 string) *MockStorageBackend_Read_OngoingVerification {

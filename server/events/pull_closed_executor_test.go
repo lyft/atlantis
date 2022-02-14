@@ -200,7 +200,7 @@ func TestCleanUpLogStreaming(t *testing.T) {
 		// Create Log streaming resources
 		prjCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
 		storageBackend := jobmocks.NewMockStorageBackend()
-		prjCmdOutHandler := jobs.NewAsyncProjectCommandOutputHandler(prjCmdOutput, logger, storageBackend)
+		prjCmdOutHandler := jobs.NewAsyncProjectCommandOutputHandler(prjCmdOutput, logger, jobs.NewJobStore(storageBackend))
 		ctx := models.ProjectCommandContext{
 			BaseRepo:    fixtures.GithubRepo,
 			Pull:        fixtures.Pull,
@@ -283,7 +283,7 @@ func TestCleanUpLogStreaming(t *testing.T) {
 
 		// Assert log streaming resources are cleaned up.
 		dfPrjCmdOutputHandler := prjCmdOutHandler.(*jobs.AsyncProjectCommandOutputHandler)
-		assert.Empty(t, dfPrjCmdOutputHandler.GetProjectOutputBuffer(ctx.PullInfo()))
+		assert.Empty(t, dfPrjCmdOutputHandler.GetJob(ctx.PullInfo()).Output)
 		assert.Empty(t, dfPrjCmdOutputHandler.GetReceiverBufferForPull(ctx.PullInfo()))
 	})
 }

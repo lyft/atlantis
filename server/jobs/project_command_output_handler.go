@@ -31,42 +31,18 @@ type ProjectCmdOutputLine struct {
 	Line    string
 }
 
-// AsyncProjectCommandOutputHandler is a handler to transport terraform client
-// outputs to the front end.
-type AsyncProjectCommandOutputHandler struct {
-	projectCmdOutput chan *ProjectCmdOutputLine
-
-	projectOutputBuffers     map[string]OutputBuffer
-	projectOutputBuffersLock sync.RWMutex
-
-	receiverBuffers     map[string]map[chan string]bool
-	receiverBuffersLock sync.RWMutex
-
-	logger logging.SimpleLogging
-
-	// Tracks all the jobs for a pull request which is used for clean up after a pull request is closed.
-	pullToJobMapping sync.Map
-
-	storageBackend StorageBackend
-}
-
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_output_handler.go ProjectCommandOutputHandler
 
 type ProjectCommandOutputHandler interface {
 	// Send will enqueue the msg and wait for Handle() to receive the message.
 	Send(ctx models.ProjectCommandContext, msg string)
 
+	// Listens for msg from channel
+	Handle()
+
 	// Register registers a channel and blocks until it is caught up. Callers should call this asynchronously when attempting
 	// to read the channel in the same goroutine
 	Register(jobID string, receiver chan string)
-
-	// Deregister removes a channel from successive updates and closes it.
-	Deregister(jobID string, receiver chan string)
-
-	IsKeyExists(key string) bool
-
-	// Listens for msg from channel
-	Handle()
 
 	// Cleans up resources for a pull
 	CleanUp(pullInfo PullInfo)
@@ -75,63 +51,35 @@ type ProjectCommandOutputHandler interface {
 	CloseJob(jobID string)
 }
 
+// AsyncProjectCommandOutputHandler is a handler to transport terraform client
+// outputs to the front end.
+type AsyncProjectCommandOutputHandler struct {
+	// Main channel that receives output from the terraform client
+	projectCmdOutput chan *ProjectCmdOutputLine
+
+	// Storage for jobs
+	jobStore JobStore
+
+	// Registry to track active connections for a job
+	receiverRegistry ReceiverRegistry
+
+	// Map to track jobs in a pull request
+	pullToJobMapping sync.Map
+	logger           logging.SimpleLogging
+}
+
 func NewAsyncProjectCommandOutputHandler(
 	projectCmdOutput chan *ProjectCmdOutputLine,
 	logger logging.SimpleLogging,
-	storageBackend StorageBackend,
+	jobStore JobStore,
 ) ProjectCommandOutputHandler {
 	return &AsyncProjectCommandOutputHandler{
-		projectCmdOutput:     projectCmdOutput,
-		logger:               logger,
-		receiverBuffers:      map[string]map[chan string]bool{},
-		projectOutputBuffers: map[string]OutputBuffer{},
-		pullToJobMapping:     sync.Map{},
-		storageBackend:       storageBackend,
+		projectCmdOutput: projectCmdOutput,
+		logger:           logger,
+		pullToJobMapping: sync.Map{},
+		jobStore:         jobStore,
+		receiverRegistry: NewReceiverRegistry(),
 	}
-}
-
-func (p *AsyncProjectCommandOutputHandler) CloseJob(jobID string) {
-	// Mark operation complete
-	p.projectOutputBuffersLock.RLock()
-	outputBuffer := p.projectOutputBuffers[jobID]
-	outputBuffer.OperationComplete = true
-	p.projectOutputBuffers[jobID] = outputBuffer
-	p.projectOutputBuffersLock.RUnlock()
-
-	p.closeActiveChannels(jobID)
-
-	// Persist logs to storage backend
-	ok, err := p.storageBackend.Write(jobID, outputBuffer.Buffer)
-	if err != nil {
-		p.logger.Err(fmt.Sprintf("persisting job: %s", jobID), err)
-		return
-	}
-
-	// Clear output buffer if successfully persisted.
-	if ok {
-		p.projectOutputBuffersLock.Lock()
-		delete(p.projectOutputBuffers, jobID)
-		p.projectOutputBuffersLock.Unlock()
-	}
-}
-
-func (p *AsyncProjectCommandOutputHandler) closeActiveChannels(jobID string) {
-	p.receiverBuffersLock.Lock()
-	defer p.receiverBuffersLock.Unlock()
-
-	if openChannels, ok := p.receiverBuffers[jobID]; ok {
-		for ch := range openChannels {
-			close(ch)
-		}
-	}
-}
-
-func (p *AsyncProjectCommandOutputHandler) IsKeyExists(key string) bool {
-	p.projectOutputBuffersLock.RLock()
-	defer p.projectOutputBuffersLock.RUnlock()
-
-	_, ok := p.projectOutputBuffers[key]
-	return ok
 }
 
 func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
@@ -150,13 +98,8 @@ func (p *AsyncProjectCommandOutputHandler) Send(ctx models.ProjectCommandContext
 	}
 }
 
-func (p *AsyncProjectCommandOutputHandler) Register(jobID string, receiver chan string) {
-	p.addChan(receiver, jobID)
-}
-
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
-
 		// Add job to pullToJob mapping
 		if _, ok := p.pullToJobMapping.Load(msg.JobInfo.PullInfo); !ok {
 			p.pullToJobMapping.Store(msg.JobInfo.PullInfo, map[string]bool{})
@@ -165,76 +108,76 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 		jobMapping := value.(map[string]bool)
 		jobMapping[msg.JobID] = true
 
-		// Forward new message to all receiver channels and output buffer
-		p.writeLogLine(msg.JobID, msg.Line)
+		// Write logs to all active connections
+		for ch := range p.receiverRegistry.GetReceivers(msg.JobID) {
+			select {
+			case ch <- msg.Line:
+			default:
+				p.receiverRegistry.RemoveReceiver(msg.JobID, ch)
+			}
+		}
+
+		// Append new log to the output buffer for the job
+		p.jobStore.AppendOutput(msg.JobID, msg.Line)
 	}
 }
 
-func (p *AsyncProjectCommandOutputHandler) addChan(ch chan string, jobID string) {
-	p.projectOutputBuffersLock.RLock()
-	outputBuffer := p.projectOutputBuffers[jobID]
-	p.projectOutputBuffersLock.RUnlock()
-
-	for _, line := range outputBuffer.Buffer {
-		ch <- line
-	}
-
-	// No need register receiver since all the logs have been streamed
-	if outputBuffer.OperationComplete {
-		close(ch)
+func (p *AsyncProjectCommandOutputHandler) Register(jobID string, connection chan string) {
+	job, err := p.jobStore.Get(jobID)
+	if err != nil {
+		p.logger.Err(fmt.Sprintf("getting job: %s", jobID), err)
 		return
 	}
 
-	// add the channel to our registry after we backfill the contents of the buffer,
-	// to prevent new messages coming in interleaving with this backfill.
-	p.receiverBuffersLock.Lock()
-	if p.receiverBuffers[jobID] == nil {
-		p.receiverBuffers[jobID] = map[chan string]bool{}
+	// Back fill contents from the output buffer
+	for _, line := range job.Output {
+		connection <- line
 	}
-	p.receiverBuffers[jobID][ch] = true
-	p.receiverBuffersLock.Unlock()
+
+	// Close connection if job is complete
+	if job.Status == Complete {
+		close(connection)
+		return
+	}
+
+	// add receiver to registry after backfilling contents from the buffer
+	p.receiverRegistry.AddReceiver(jobID, connection)
 }
 
-//Add log line to buffer and send to all current channels
-func (p *AsyncProjectCommandOutputHandler) writeLogLine(jobID string, line string) {
-	p.receiverBuffersLock.Lock()
-	for ch := range p.receiverBuffers[jobID] {
-		select {
-		case ch <- line:
-		default:
-			// Delete buffered channel if it's blocking.
-			delete(p.receiverBuffers[jobID], ch)
+func (p *AsyncProjectCommandOutputHandler) CloseJob(jobID string) {
+	// Close active connections and remove receivers from registry
+	p.receiverRegistry.CloseAndRemoveReceiversForJob(jobID)
+
+	// Update job status and persist to storage if configured
+	if err := p.jobStore.SetCompleteJobStatus(jobID, Complete); err != nil {
+		p.logger.Err("updating jobs status to complete", err)
+	}
+}
+
+func (p *AsyncProjectCommandOutputHandler) CleanUp(pullInfo PullInfo) {
+	if value, ok := p.pullToJobMapping.Load(pullInfo); ok {
+		jobMapping := value.(map[string]bool)
+		for jobID := range jobMapping {
+			// Clear output buffer for the job
+			p.jobStore.RemoveJob(jobID)
+
+			// Close connections and clear registry for the job
+			p.receiverRegistry.CloseAndRemoveReceiversForJob(jobID)
 		}
-	}
-	p.receiverBuffersLock.Unlock()
 
-	p.projectOutputBuffersLock.Lock()
-	if _, ok := p.projectOutputBuffers[jobID]; !ok {
-		p.projectOutputBuffers[jobID] = OutputBuffer{
-			Buffer: []string{},
-		}
+		// Remove pull to job mapping for the job
+		p.pullToJobMapping.Delete(pullInfo)
 	}
-	outputBuffer := p.projectOutputBuffers[jobID]
-	outputBuffer.Buffer = append(outputBuffer.Buffer, line)
-	p.projectOutputBuffers[jobID] = outputBuffer
-
-	p.projectOutputBuffersLock.Unlock()
 }
 
-//Remove channel, so client no longer receives Terraform output
-func (p *AsyncProjectCommandOutputHandler) Deregister(jobID string, ch chan string) {
-	p.logger.Debug("Removing channel for %s", jobID)
-	p.receiverBuffersLock.Lock()
-	delete(p.receiverBuffers[jobID], ch)
-	p.receiverBuffersLock.Unlock()
-}
-
+// Helper methods for testing
 func (p *AsyncProjectCommandOutputHandler) GetReceiverBufferForPull(jobID string) map[chan string]bool {
-	return p.receiverBuffers[jobID]
+	return p.receiverRegistry.GetReceivers(jobID)
 }
 
-func (p *AsyncProjectCommandOutputHandler) GetProjectOutputBuffer(jobID string) OutputBuffer {
-	return p.projectOutputBuffers[jobID]
+func (p *AsyncProjectCommandOutputHandler) GetJob(jobID string) Job {
+	job, _ := p.jobStore.Get(jobID)
+	return job
 }
 
 func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPull(pullInfo PullInfo) map[string]bool {
@@ -244,40 +187,21 @@ func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPull(pullInfo PullInfo)
 	return nil
 }
 
-func (p *AsyncProjectCommandOutputHandler) CleanUp(pullInfo PullInfo) {
-	if value, ok := p.pullToJobMapping.Load(pullInfo); ok {
-		jobMapping := value.(map[string]bool)
-		for jobID := range jobMapping {
-			p.projectOutputBuffersLock.Lock()
-			delete(p.projectOutputBuffers, jobID)
-			p.projectOutputBuffersLock.Unlock()
-
-			p.receiverBuffersLock.Lock()
-			delete(p.receiverBuffers, jobID)
-			p.receiverBuffersLock.Unlock()
-		}
-
-		// Remove job mapping
-		p.pullToJobMapping.Delete(pullInfo)
-	}
-}
-
 // NoopProjectOutputHandler is a mock that doesn't do anything
 type NoopProjectOutputHandler struct{}
 
 func (p *NoopProjectOutputHandler) Send(ctx models.ProjectCommandContext, msg string) {
 }
 
-func (p *NoopProjectOutputHandler) Register(jobID string, receiver chan string)   {}
-func (p *NoopProjectOutputHandler) Deregister(jobID string, receiver chan string) {}
-
 func (p *NoopProjectOutputHandler) Handle() {
 }
+
+func (p *NoopProjectOutputHandler) Register(jobID string, receiver chan string) {}
 
 func (p *NoopProjectOutputHandler) CleanUp(pullInfo PullInfo) {
 }
 
-func (p *NoopProjectOutputHandler) IsKeyExists(key string) bool {
+func (p *NoopProjectOutputHandler) DoesKeyExist(key string) bool {
 	return false
 }
 

@@ -368,7 +368,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
-	storageBackend := jobs.NewStorageBackend(globalCfg.Jobs)
+	jobStore := jobs.NewJobStore(
+		jobs.NewStorageBackend(globalCfg.Jobs),
+	)
 
 	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
@@ -380,7 +382,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectCmdOutputHandler = jobs.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
 			logger,
-			storageBackend,
+			jobStore,
 		)
 	}
 
@@ -763,8 +765,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		logger,
 		controllers.JobIDKeyGenerator{},
 		projectCmdOutputHandler,
-		storageBackend,
-		websocket.NewWriter(logger),
 	)
 
 	jobsController := &controllers.JobsController{
