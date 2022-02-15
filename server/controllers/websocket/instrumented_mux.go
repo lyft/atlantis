@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"net/http"
+	"sync/atomic"
 
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
@@ -18,20 +19,18 @@ type InstrumentedMultiplexor struct {
 func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope, logger logging.SimpleLogging) Multiplexor {
 	return &InstrumentedMultiplexor{
 		Multiplexor:     multiplexor,
-		NumWsConnection: statsScope.SubScope("api").SubScope("jobs").SubScope("websocket").Gauge("connections"),
+		NumWsConnection: statsScope.SubScope("getprojectjobs").SubScope("websocket").Gauge("connections"),
 		logger:          logger,
 	}
 }
 
 func (i *InstrumentedMultiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
-	i.numWsConnections += 1
+	atomic.AddInt64(&i.numWsConnections, 1)
 	i.NumWsConnection.Update(float64(i.numWsConnections))
-	i.logger.Info("Opening new ws connection")
 
 	defer func() {
-		i.numWsConnections -= 1
+		atomic.AddInt64(&i.numWsConnections, -1)
 		i.NumWsConnection.Update(float64(i.numWsConnections))
-		i.logger.Info("Closing ws connection")
 	}()
 
 	return i.Multiplexor.Handle(w, r)

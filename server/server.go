@@ -761,7 +761,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			controllers.JobIDKeyGenerator{},
 			projectCmdOutputHandler,
 		),
-		statsScope,
+		statsScope.SubScope("api"),
 		logger,
 	)
 
