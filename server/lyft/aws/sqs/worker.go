@@ -5,15 +5,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/runatlantis/atlantis/server/events"
+	events_controller "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/uber-go/tally"
 	"sync"
 )
 
 const (
-	ProcessMessageMetricName = "process_msg"
-	ReceiveMessageMetricName = "receive_msg"
-	DeleteMessageMetricName  = "delete_msg"
+	msgSubScope = "msg"
+
+	ProcessMessageMetricName = "process"
+	ReceiveMessageMetricName = "receive"
+	DeleteMessageMetricName  = "delete"
 
 	Latency = "latency"
 	Success = "success"
@@ -21,36 +23,38 @@ const (
 )
 
 type Worker struct {
-	Queue    Queue
-	QueueURL string
-	Handler  MessageProcessor
-	Scope    tally.Scope
+	Queue            Queue
+	QueueURL         string
+	MessageProcessor MessageProcessor
+	Scope            tally.Scope
 }
 
 // TODO: initialize SQS worker in server.go upon creation of worker/hybrid modes
 
-func NewGatewaySQSWorker(scope tally.Scope, queueURL string, commandRunner events.CommandRunner) (*Worker, error) {
+func NewGatewaySQSWorker(scope tally.Scope, queueURL string, postHandler events_controller.VCSPostHandler) (*Worker, error) {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		return nil, err
 	}
+	scope = scope.SubScope("aws.sqs")
 	sqsQueueWrapper := &QueueWithStats{
 		Queue:    sqs.NewFromConfig(cfg),
 		Scope:    scope,
 		QueueURL: queueURL,
 	}
 
-	handler := &MessageHandler{
-		CommandRunner: commandRunner,
-		Scope:         scope.SubScope(ProcessMessageMetricName),
-		TestingMode:   false,
+	handler := &VCSEventMessageProcessorStats{
+		VCSEventMessageProcessor: VCSEventMessageProcessor{
+			PostHandler: postHandler,
+		},
+		Scope: scope.SubScope(msgSubScope).SubScope(ProcessMessageMetricName),
 	}
 
 	return &Worker{
-		Queue:    sqsQueueWrapper,
-		QueueURL: queueURL,
-		Handler:  handler,
-		Scope:    scope,
+		Queue:            sqsQueueWrapper,
+		QueueURL:         queueURL,
+		MessageProcessor: handler,
+		Scope:            scope.SubScope(msgSubScope),
 	}, nil
 }
 
@@ -93,7 +97,7 @@ func (w *Worker) receiveMessages(ctx context.Context, messages chan types.Messag
 func (w *Worker) processMessage(ctx context.Context, messages chan types.Message) {
 	// VisibilityTimeout is 30s, ideally enough time to "processMessage" < 10 messages (i.e. spin up goroutine for each)
 	for message := range messages {
-		err := w.Handler.ProcessMessage(message)
+		err := w.MessageProcessor.ProcessMessage(message)
 		if err != nil {
 			continue
 		}

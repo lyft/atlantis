@@ -83,10 +83,10 @@ func TestWorker_Success(t *testing.T) {
 	handler := mocks.NewMockMessageProcessor()
 	When(handler.ProcessMessage(matchers.AnyTypesMessage())).ThenReturn(nil)
 	worker := &sqs.Worker{
-		Queue:    queue,
-		QueueURL: "testUrl",
-		Handler:  handler,
-		Scope:    testScope,
+		Queue:            queue,
+		QueueURL:         "testUrl",
+		MessageProcessor: handler,
+		Scope:            testScope,
 	}
 
 	wg.Add(1)
@@ -97,7 +97,8 @@ func TestWorker_Success(t *testing.T) {
 
 	// wait for listen to complete or timeout.
 	assertCompletes(t, &wg, time.Second)
-	Assert(t, testScope.Snapshot().Counters()["test.receive_msg.success+"].Value() == 1, "should have received message")
+	Assert(t, testScope.Snapshot().Counters()["test.receive.success+"].Value() == 1, "should have received message")
+	Assert(t, testScope.Snapshot().Counters()["test.delete.success+"].Value() == 1, "should have deleted message")
 	Assert(t, len(tq.messages) == 0, "should have processed all messages")
 	handler.VerifyWasCalledOnce().ProcessMessage(matchers.AnyTypesMessage())
 }
@@ -120,10 +121,10 @@ func TestWorker_Error(t *testing.T) {
 	handler := mocks.NewMockMessageProcessor()
 	When(handler.ProcessMessage(matchers.AnyTypesMessage())).ThenReturn(nil)
 	worker := &sqs.Worker{
-		Queue:    queue,
-		QueueURL: "testUrl",
-		Handler:  handler,
-		Scope:    testScope,
+		Queue:            queue,
+		QueueURL:         "testUrl",
+		MessageProcessor: handler,
+		Scope:            testScope,
 	}
 
 	wg.Add(1)
@@ -134,7 +135,7 @@ func TestWorker_Error(t *testing.T) {
 
 	// wait for listen to complete or timeout.
 	assertCompletes(t, &wg, time.Second)
-	Assert(t, testScope.Snapshot().Counters()["test.receive_msg.error+"].Value() == 1, "should have not received message")
+	Assert(t, testScope.Snapshot().Counters()["test.receive.error+"].Value() == 1, "should have not received message")
 	handler.VerifyWasCalled(Never()).ProcessMessage(matchers.AnyTypesMessage())
 }
 
@@ -165,10 +166,10 @@ func TestWorker_HandlerError(t *testing.T) {
 	handler := mocks.NewMockMessageProcessor()
 	When(handler.ProcessMessage(matchers.AnyTypesMessage())).ThenReturn(errors.New("unable to process msg"))
 	worker := &sqs.Worker{
-		Queue:    queue,
-		QueueURL: "testUrl",
-		Handler:  handler,
-		Scope:    testScope,
+		Queue:            queue,
+		QueueURL:         "testUrl",
+		MessageProcessor: handler,
+		Scope:            testScope,
 	}
 
 	wg.Add(1)
@@ -179,7 +180,7 @@ func TestWorker_HandlerError(t *testing.T) {
 
 	// wait for listen to complete or timeout.
 	assertCompletes(t, &wg, time.Second)
-	Assert(t, testScope.Snapshot().Counters()["test.receive_msg.success+"].Value() == 1, "should have received message")
+	Assert(t, testScope.Snapshot().Counters()["test.receive.success+"].Value() == 1, "should have received message")
 	Assert(t, len(tq.messages) == 1, "should have not successfully processed message")
 	handler.VerifyWasCalled(Once()).ProcessMessage(matchers.AnyTypesMessage())
 }

@@ -89,6 +89,11 @@ type VCSEventsController struct {
 	AzureDevopsRequestValidator     AzureDevopsRequestValidator
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_vcs_post_handler.go VCSPostHandler
+type VCSPostHandler interface {
+	Post(w http.ResponseWriter, r *http.Request)
+}
+
 // Post handles POST webhook requests.
 func (e *VCSEventsController) Post(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get(githubHeader) != "" {
