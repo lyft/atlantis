@@ -38,8 +38,8 @@ func (p *VCSEventMessageProcessor) ProcessMessage(msg types.Message) error {
 		return errors.Wrap(err, "reading bytes from sqs into http request")
 	}
 
-	// TODO: send a processing message back to VCS (can't stay nil), might need to implement a decorator around Post
-	p.PostHandler.Post(nil, req)
+	// using a no-op writer since we shouldn't send response back in worker mode
+	p.PostHandler.Post(&NoOpResponseWriter{}, req)
 	return nil
 }
 
@@ -59,3 +59,15 @@ func (s *VCSEventMessageProcessorStats) ProcessMessage(msg types.Message) error 
 	successCount.Inc(1)
 	return nil
 }
+
+type NoOpResponseWriter struct{}
+
+func (n *NoOpResponseWriter) Header() http.Header {
+	return nil
+}
+
+func (n *NoOpResponseWriter) Write([]byte) (int, error) {
+	return 0, nil
+}
+
+func (n *NoOpResponseWriter) WriteHeader(statusCode int) {}
