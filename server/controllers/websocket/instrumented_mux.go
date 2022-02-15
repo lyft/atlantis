@@ -15,10 +15,11 @@ type InstrumentedMultiplexor struct {
 	logger           logging.SimpleLogging
 }
 
-func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope) Multiplexor {
+func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope, logger logging.SimpleLogging) Multiplexor {
 	return &InstrumentedMultiplexor{
 		Multiplexor:     multiplexor,
 		NumWsConnection: statsScope.SubScope("api").SubScope("jobs").SubScope("websocket").Gauge("connections"),
+		logger:          logger,
 	}
 }
 

@@ -762,6 +762,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			projectCmdOutputHandler,
 		),
 		statsScope,
+		logger,
 	)
 
 	jobsController := &controllers.JobsController{
