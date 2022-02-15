@@ -3,6 +3,7 @@ package websocket
 import (
 	"net/http"
 
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
 )
 
@@ -11,6 +12,7 @@ type InstrumentedMultiplexor struct {
 
 	numWsConnections int64
 	NumWsConnection  tally.Gauge
+	logger           logging.SimpleLogging
 }
 
 func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope) Multiplexor {
@@ -23,10 +25,12 @@ func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope)
 func (i *InstrumentedMultiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
 	i.numWsConnections += 1
 	i.NumWsConnection.Update(float64(i.numWsConnections))
+	i.logger.Info("Opening new ws connection")
 
 	defer func() {
 		i.numWsConnections -= 1
 		i.NumWsConnection.Update(float64(i.numWsConnections))
+		i.logger.Info("Closing ws connection")
 	}()
 
 	return i.Multiplexor.Handle(w, r)
