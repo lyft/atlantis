@@ -37,7 +37,7 @@ type JobStore interface {
 	RemoveJob(jobID string)
 }
 
-func NewJobStore(storageBackend StorageBackend) JobStore {
+func NewJobStore(storageBackend StorageBackend) *LayeredJobStore {
 	return &LayeredJobStore{
 		jobs:           map[string]*Job{},
 		storageBackend: storageBackend,
@@ -45,7 +45,7 @@ func NewJobStore(storageBackend StorageBackend) JobStore {
 }
 
 // Setup job store for testing
-func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job) JobStore {
+func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job) *LayeredJobStore {
 	return &LayeredJobStore{
 		jobs:           jobs,
 		storageBackend: storageBackend,
@@ -81,6 +81,9 @@ func (j *LayeredJobStore) Get(jobID string) (Job, error) {
 }
 
 func (j *LayeredJobStore) GetJobFromMemory(jobID string) (Job, bool) {
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+
 	if j.jobs[jobID] == nil {
 		return Job{}, false
 	}
@@ -112,7 +115,7 @@ func (j *LayeredJobStore) RemoveJob(jobID string) {
 	delete(j.jobs, jobID)
 }
 
-func (j *LayeredJobStore) SetCompleteJobStatus(jobID string, status JobStatus) error {
+func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, status JobStatus) error {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 

@@ -202,9 +202,5 @@ func (p *NoopProjectOutputHandler) Register(jobID string, receiver chan string) 
 func (p *NoopProjectOutputHandler) CleanUp(pullInfo PullInfo) {
 }
 
-func (p *NoopProjectOutputHandler) DoesKeyExist(key string) bool {
-	return false
-}
-
 func (p *NoopProjectOutputHandler) CloseJob(jobID string) {
 }

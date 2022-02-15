@@ -14,7 +14,7 @@ type receiverRegistry struct {
 	lock      sync.RWMutex
 }
 
-func NewReceiverRegistry() ReceiverRegistry {
+func NewReceiverRegistry() *receiverRegistry {
 	return &receiverRegistry{
 		receivers: map[string]map[chan string]bool{},
 	}

@@ -140,7 +140,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		storageBackend := mocks.NewMockStorageBackend()
 		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString())).ThenReturn(false, storageBackendErr)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetCompleteJobStatus(jobID, jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
 
 		// Assert storage backend error
 		assert.EqualError(t, err, expecterErr.Error())
@@ -167,11 +167,10 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString())).ThenReturn(true, nil)
 
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetCompleteJobStatus(jobID, jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
 		assert.Nil(t, err)
 
-		typedJobStore := jobStore.(*jobs.LayeredJobStore)
-		_, ok := typedJobStore.GetJobFromMemory(jobID)
+		_, ok := jobStore.GetJobFromMemory(jobID)
 		assert.False(t, ok)
 	})
 
@@ -181,7 +180,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		jobID := "1234"
 		expectedErrString := fmt.Sprintf("job: %s does not exist", jobID)
 
-		err := jobStore.SetCompleteJobStatus(jobID, jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
 		assert.EqualError(t, err, expectedErrString)
 
 	})
