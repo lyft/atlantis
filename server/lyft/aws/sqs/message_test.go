@@ -65,10 +65,6 @@ func createExampleRequest(t *testing.T) *http.Request {
 	url, err := url.Parse("http://www.atlantis.com")
 	assert.NoError(t, err)
 	req := &http.Request{
-		Host: "atlantis",
-		Header: map[string][]string{
-			"X-Github-Event": {"X-Github-Event"},
-		},
 		URL: url,
 	}
 	return req
