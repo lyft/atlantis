@@ -13,14 +13,12 @@ type InstrumentedMultiplexor struct {
 
 	numWsConnections int64
 	NumWsConnections tally.Gauge
-	logger           logging.SimpleLogging
 }
 
 func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope, logger logging.SimpleLogging) Multiplexor {
 	return &InstrumentedMultiplexor{
 		Multiplexor:      multiplexor,
 		NumWsConnections: statsScope.SubScope("getprojectjobs").SubScope("websocket").Gauge("connections"),
-		logger:           logger,
 	}
 }
 
