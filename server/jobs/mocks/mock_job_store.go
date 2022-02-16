@@ -67,12 +67,12 @@ func (mock *MockJobStore) RemoveJob(_param0 string) {
 	pegomock.GetGenericMockFrom(mock).Invoke("RemoveJob", params, []reflect.Type{})
 }
 
-func (mock *MockJobStore) SetCompleteJobStatus(_param0 string, _param1 jobs.JobStatus) error {
+func (mock *MockJobStore) SetJobCompleteStatus(_param0 string, _param1 jobs.JobStatus) error {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockJobStore().")
 	}
 	params := []pegomock.Param{_param0, _param1}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("SetCompleteJobStatus", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
+	result := pegomock.GetGenericMockFrom(mock).Invoke("SetJobCompleteStatus", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 error
 	if len(result) != 0 {
 		if result[0] != nil {
@@ -204,23 +204,23 @@ func (c *MockJobStore_RemoveJob_OngoingVerification) GetAllCapturedArguments() (
 	return
 }
 
-func (verifier *VerifierMockJobStore) SetCompleteJobStatus(_param0 string, _param1 jobs.JobStatus) *MockJobStore_SetCompleteJobStatus_OngoingVerification {
+func (verifier *VerifierMockJobStore) SetJobCompleteStatus(_param0 string, _param1 jobs.JobStatus) *MockJobStore_SetJobCompleteStatus_OngoingVerification {
 	params := []pegomock.Param{_param0, _param1}
-	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "SetCompleteJobStatus", params, verifier.timeout)
-	return &MockJobStore_SetCompleteJobStatus_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "SetJobCompleteStatus", params, verifier.timeout)
+	return &MockJobStore_SetJobCompleteStatus_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
 
-type MockJobStore_SetCompleteJobStatus_OngoingVerification struct {
+type MockJobStore_SetJobCompleteStatus_OngoingVerification struct {
 	mock              *MockJobStore
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockJobStore_SetCompleteJobStatus_OngoingVerification) GetCapturedArguments() (string, jobs.JobStatus) {
+func (c *MockJobStore_SetJobCompleteStatus_OngoingVerification) GetCapturedArguments() (string, jobs.JobStatus) {
 	_param0, _param1 := c.GetAllCapturedArguments()
 	return _param0[len(_param0)-1], _param1[len(_param1)-1]
 }
 
-func (c *MockJobStore_SetCompleteJobStatus_OngoingVerification) GetAllCapturedArguments() (_param0 []string, _param1 []jobs.JobStatus) {
+func (c *MockJobStore_SetJobCompleteStatus_OngoingVerification) GetAllCapturedArguments() (_param0 []string, _param1 []jobs.JobStatus) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]string, len(c.methodInvocations))

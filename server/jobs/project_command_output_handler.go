@@ -150,7 +150,7 @@ func (p *AsyncProjectCommandOutputHandler) CloseJob(jobID string) {
 	p.receiverRegistry.CloseAndRemoveReceiversForJob(jobID)
 
 	// Update job status and persist to storage if configured
-	if err := p.jobStore.SetCompleteJobStatus(jobID, Complete); err != nil {
+	if err := p.jobStore.SetJobCompleteStatus(jobID, Complete); err != nil {
 		p.logger.Err("updating jobs status to complete", err)
 	}
 }

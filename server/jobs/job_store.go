@@ -31,7 +31,7 @@ type JobStore interface {
 
 	// Sets a job status to complete and triggers any associated workflow,
 	// e.g: if the status is complete, the job is flushed to the associated storage backend
-	SetCompleteJobStatus(jobID string, status JobStatus) error
+	SetJobCompleteStatus(jobID string, status JobStatus) error
 
 	// Removes a job from the store
 	RemoveJob(jobID string)
