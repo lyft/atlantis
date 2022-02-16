@@ -145,19 +145,8 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 
 	t.Run("clean up all jobs when PR is closed", func(t *testing.T) {
 		var wg sync.WaitGroup
-
-		logger := logging.NewNoopLogger(t)
-		prjCmdOutputChan := make(chan *jobs.ProjectCmdOutputLine)
-		jobStore := jobs.NewJobStore(&jobs.NoopStorageBackend{})
-		projectOutputHandler := jobs.NewAsyncProjectCommandOutputHandler(
-			prjCmdOutputChan,
-			logger,
-			jobStore,
-		)
-
-		go func() {
-			projectOutputHandler.Handle()
-		}()
+		projectOutputHandler, jobStore := createProjectCommandOutputHandler(t)
+		When(jobStore.Get(AnyString())).ThenReturn(jobs.Job{}, nil)
 
 		ch := make(chan string)
 
