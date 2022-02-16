@@ -5,25 +5,22 @@ import (
 	"bytes"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/pkg/errors"
-	events_controller "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/uber-go/tally"
 	"net/http"
 )
-
-// VCSMessage is our sqs message containing data parsed from VCS event
-// to run either autoplan or comment commands in the worker.
-type VCSMessage struct {
-	Writer http.ResponseWriter
-	Req    *http.Request
-}
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_sqs_message_handler.go MessageProcessor
 type MessageProcessor interface {
 	ProcessMessage(types.Message) error
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_vcs_post_handler.go VCSPostHandler
+type VCSPostHandler interface {
+	Post(w http.ResponseWriter, r *http.Request)
+}
+
 type VCSEventMessageProcessor struct {
-	PostHandler events_controller.VCSPostHandler
+	PostHandler VCSPostHandler
 }
 
 func (p *VCSEventMessageProcessor) ProcessMessage(msg types.Message) error {

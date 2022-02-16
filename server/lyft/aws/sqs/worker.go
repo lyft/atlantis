@@ -5,7 +5,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	events_controller "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/uber-go/tally"
 	"sync"
 )
@@ -31,7 +30,7 @@ type Worker struct {
 
 // TODO: initialize SQS worker in server.go upon creation of worker/hybrid modes
 
-func NewGatewaySQSWorker(scope tally.Scope, queueURL string, postHandler events_controller.VCSPostHandler) (*Worker, error) {
+func NewGatewaySQSWorker(scope tally.Scope, queueURL string, postHandler VCSPostHandler) (*Worker, error) {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		return nil, err
