@@ -368,6 +368,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
+	jobStore := jobs.NewJobStore(
+		jobs.NewStorageBackend(globalCfg.Jobs),
+	)
+
 	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
 
@@ -378,6 +382,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectCmdOutputHandler = jobs.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
 			logger,
+			jobStore,
 		)
 	}
 
@@ -594,9 +599,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	projectOutputWrapper := &events.ProjectOutputWrapper{
-		JobMessageSender:     projectCmdOutputHandler,
 		ProjectCommandRunner: projectCommandRunner,
 		JobURLSetter:         jobs.NewJobURLSetter(router, commitStatusUpdater),
+		JobCloser:            projectCmdOutputHandler,
 	}
 
 	featureAwareProjectCommandRunner := &events.FeatureAwareProjectCommandRunner{
@@ -709,7 +714,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		models.UnlockCommand:          unlockCommandRunner,
 		models.VersionCommand:         versionCommandRunner,
 	}
-
+	cmdStatsScope := statsScope.SubScope("cmd")
+	staleCommandChecker := &events.StaleCommandHandler{
+		StaleStatsScope: cmdStatsScope.SubScope("stale"),
+	}
 	commandRunner := &events.DefaultCommandRunner{
 		VCSClient:                     vcsClient,
 		GithubPullGetter:              githubClient,
@@ -719,7 +727,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EventParser:                   eventParser,
 		Logger:                        logger,
 		GlobalCfg:                     globalCfg,
-		StatsScope:                    statsScope.SubScope("cmd"),
+		StatsScope:                    cmdStatsScope,
 		AllowForkPRs:                  userConfig.AllowForkPRs,
 		AllowForkPRsFlag:              config.AllowForkPRsFlag,
 		SilenceForkPRErrors:           userConfig.SilenceForkPRErrors,
@@ -728,6 +736,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Drainer:                       drainer,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
+		StaleCommandChecker:           staleCommandChecker,
 	}
 
 	featureAwareCommandRunner := &events.FeatureAwareCommandRunner{
@@ -762,7 +771,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			projectCmdOutputHandler,
 		),
 		statsScope.SubScope("api"),
-		logger,
 	)
 
 	jobsController := &controllers.JobsController{

@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
 )
 
@@ -15,7 +14,7 @@ type InstrumentedMultiplexor struct {
 	NumWsConnections tally.Gauge
 }
 
-func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope, logger logging.SimpleLogging) Multiplexor {
+func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope) Multiplexor {
 	return &InstrumentedMultiplexor{
 		Multiplexor:      multiplexor,
 		NumWsConnections: statsScope.SubScope("getprojectjobs").SubScope("websocket").Gauge("connections"),
