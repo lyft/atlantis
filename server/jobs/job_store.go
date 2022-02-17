@@ -2,6 +2,8 @@ package jobs
 
 import (
 	"fmt"
+	"io"
+	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -17,6 +19,10 @@ const (
 type Job struct {
 	Output []string
 	Status JobStatus
+}
+
+func (j *Job) GetReader() io.Reader {
+	return strings.NewReader(strings.Join(j.Output, "\n"))
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_store.go JobStore
@@ -133,7 +139,7 @@ func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, status JobStatus) e
 	job.Status = Complete
 
 	// Persist to storage backend
-	ok, err := j.storageBackend.Write(jobID, job.Output)
+	ok, err := j.storageBackend.Write(jobID, job.GetReader())
 	if err != nil {
 		return errors.Wrapf(err, "error persisting job: %s", jobID)
 	}

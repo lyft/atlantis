@@ -1,12 +1,10 @@
 package jobs
 
 import (
-	"fmt"
 	"io"
-	"strings"
 
 	"github.com/graymeta/stow"
-	_ "github.com/graymeta/stow/s3"
+	"github.com/graymeta/stow/s3"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -18,7 +16,7 @@ type StorageBackend interface {
 	Read(key string) ([]string, error)
 
 	// Write logs to the storage backend
-	Write(key string, logs []string) (success bool, err error)
+	Write(key string, reader io.Reader) (success bool, err error)
 }
 
 type storageBackend struct {
@@ -28,70 +26,26 @@ type storageBackend struct {
 }
 
 func (s *storageBackend) Read(key string) ([]string, error) {
-	logs := []string{}
-	err := stow.WalkContainers(s.location, stow.NoPrefix, 100, func(container stow.Container, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Found the right container
-		if container.Name() == s.containerName {
-			err := stow.Walk(container, stow.NoPrefix, 100, func(item stow.Item, err error) error {
-				if err != nil {
-					return err
-				}
-
-				// Found the right object
-				if item.Name() == key {
-
-					r, err := item.Open()
-					if err != nil {
-						return err
-					}
-
-					buf := new(strings.Builder)
-					_, err = io.Copy(buf, r)
-					if err != nil {
-						return err
-					}
-
-					logs = strings.Split(buf.String(), "\n")
-					return nil
-				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-		return nil
-	})
-
-	if err != nil {
-		return []string{}, err
-	}
-	return logs, nil
+	return []string{}, nil
 }
 
-func (s *storageBackend) Write(key string, logs []string) (success bool, err error) {
+func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err error) {
 	err = stow.WalkContainers(s.location, stow.NoPrefix, 100, func(container stow.Container, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Found the right container
-		if container.Name() == s.containerName {
-			logsStr := strings.Join(logs, "\n")
-			r := strings.NewReader(logsStr)
-			size := int64(len(logsStr))
-
-			item, err := container.Put(key, r, size, nil)
-			if err != nil {
-				return err
-			}
-			fmt.Println("Successfully uplodaded: %s", item.Name())
+		// Skip if not right container
+		if container.Name() != s.containerName {
+			return nil
 		}
+
+		_, err = container.Put(key, reader, 100, nil)
+		if err != nil {
+			return err
+		}
+		s.logger.Info("successfully uploaded logs for job: %s", key)
+
 		return nil
 	})
 
@@ -103,7 +57,10 @@ func (s *storageBackend) Write(key string, logs []string) (success bool, err err
 
 func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBackend, error) {
 	if jobs.StorageBackend.S3 != nil {
-		config := stow.ConfigMap{}
+		config := stow.ConfigMap{
+			s3.ConfigAccessKeyID: "AKIAS4MV5KQZP3WBK3W6",
+			s3.ConfigSecretKey:   "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",
+		}
 
 		// Dial to s3
 		location, err := stow.Dial("s3", config)
@@ -127,6 +84,6 @@ func (s *NoopStorageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *NoopStorageBackend) Write(key string, logs []string) (success bool, err error) {
+func (s *NoopStorageBackend) Write(key string, reader io.Reader) (success bool, err error) {
 	return false, nil
 }
