@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"github.com/graymeta/stow"
-	"github.com/graymeta/stow/s3"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -57,10 +56,7 @@ func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err 
 
 func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBackend, error) {
 	if jobs.StorageBackend.S3 != nil {
-		config := stow.ConfigMap{
-			s3.ConfigAccessKeyID: "AKIAS4MV5KQZP3WBK3W6",
-			s3.ConfigSecretKey:   "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",
-		}
+		config := stow.ConfigMap{}
 
 		// Dial to s3
 		location, err := stow.Dial("s3", config)
