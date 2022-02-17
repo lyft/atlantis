@@ -55,22 +55,22 @@ func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err 
 }
 
 func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBackend, error) {
-	if jobs.StorageBackend.S3 != nil {
-		config := stow.ConfigMap{}
 
-		// Dial to s3
-		location, err := stow.Dial("s3", config)
-		if err != nil {
-			return nil, err
-		}
-
-		return &storageBackend{
-			location:      location,
-			logger:        logger,
-			containerName: jobs.StorageBackend.S3.BucketName,
-		}, nil
+	if jobs.StorageBackend == nil {
+		return &NoopStorageBackend{}, nil
 	}
-	return &NoopStorageBackend{}, nil
+
+	config := jobs.StorageBackend.GetConfigMap()
+	location, err := stow.Dial("s3", config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &storageBackend{
+		location:      location,
+		logger:        logger,
+		containerName: jobs.StorageBackend.S3.BucketName,
+	}, nil
 }
 
 // Used when log persistence is not configured

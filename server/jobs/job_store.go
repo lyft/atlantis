@@ -3,7 +3,6 @@ package jobs
 import (
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -19,10 +18,33 @@ const (
 type Job struct {
 	Output []string
 	Status JobStatus
+
+	readIndex  int
+	readBuffer string
 }
 
-func (j *Job) GetReader() io.Reader {
-	return strings.NewReader(strings.Join(j.Output, "\n"))
+// size(p) is configured to be 5.2Mb by stow, if a line is longer than 5.2Mb
+// we hold the remaining line in the readBuffer and write it to the buffer in the
+// next iteration
+func (j *Job) Read(p []byte) (n int, err error) {
+	if j.readIndex >= len(j.Output) {
+		return 0, io.EOF
+	}
+
+	if j.readBuffer == "" {
+		j.readBuffer = fmt.Sprintf("%s\n", j.Output[j.readIndex])
+	}
+
+	n = copy(p, []byte(j.readBuffer))
+
+	// Increment read index if readBuffer successfully copied
+	if n == len(j.readBuffer) {
+		j.readIndex += 1
+		j.readBuffer = ""
+	} else {
+		j.readBuffer = j.readBuffer[n:]
+	}
+	return n, nil
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_store.go JobStore
@@ -139,7 +161,7 @@ func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, status JobStatus) e
 	job.Status = Complete
 
 	// Persist to storage backend
-	ok, err := j.storageBackend.Write(jobID, job.GetReader())
+	ok, err := j.storageBackend.Write(jobID, job)
 	if err != nil {
 		return errors.Wrapf(err, "error persisting job: %s", jobID)
 	}

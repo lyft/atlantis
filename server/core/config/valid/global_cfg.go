@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/graymeta/stow"
+	"github.com/graymeta/stow/s3"
 	version "github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -42,6 +44,24 @@ type GlobalCfg struct {
 	Jobs                 Jobs
 }
 
+type AuthType int
+
+const (
+	Iam AuthType = iota
+	AccessKey
+)
+
+func (a AuthType) String() string {
+	switch a {
+	case Iam:
+		return "iam"
+	case AccessKey:
+		return "accesskey"
+	default:
+		return ""
+	}
+}
+
 type Jobs struct {
 	StorageBackend *StorageBackend
 }
@@ -50,8 +70,39 @@ type StorageBackend struct {
 	S3 *S3
 }
 
+func (s *StorageBackend) GetConfigMap() stow.ConfigMap {
+	switch {
+	case s.S3 != nil:
+		return s.S3.GetConfigMap()
+	default:
+		return map[string]string{}
+	}
+}
+
 type S3 struct {
 	BucketName string
+	AuthType   AuthType
+
+	// params when auth type is set to accesskey
+	AccessKeyID string
+	SecretKey   string
+}
+
+func (s *S3) GetConfigMap() stow.ConfigMap {
+	switch {
+	case s.AuthType == Iam:
+		return map[string]string{
+			s3.ConfigAuthType: s.AuthType.String(),
+		}
+	case s.AuthType == AccessKey:
+		return map[string]string{
+			s3.ConfigAuthType:    s.AuthType.String(),
+			s3.ConfigAccessKeyID: s.AccessKeyID,
+			s3.ConfigSecretKey:   s.SecretKey,
+		}
+	default:
+		return map[string]string{}
+	}
 }
 
 type Metrics struct {
