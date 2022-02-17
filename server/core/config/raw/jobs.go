@@ -73,8 +73,10 @@ func (j *Jobs) ToValid() valid.Jobs {
 		return valid.Jobs{
 			StorageBackend: &valid.StorageBackend{
 				S3: &valid.S3{
-					BucketName: s.S3.BucketName,
-					AuthType:   s.S3.getValidAuthType(),
+					BucketName:  s.S3.BucketName,
+					AuthType:    s.S3.getValidAuthType(),
+					AccessKeyID: s.S3.AccessKey.ConfigAccessKeyID,
+					SecretKey:   s.S3.AccessKey.ConfigSecretKey,
 				},
 			},
 		}
