@@ -4,5 +4,3 @@ jobs:
       bucket-name: atlantis-production-jobs-test
       auth-type: accesskey
       access-key:
-        access-id: AKIAS4MV5KQZGEBS2XXD
-        secret-key: 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
