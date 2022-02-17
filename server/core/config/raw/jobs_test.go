@@ -16,6 +16,7 @@ func TestJobs_Unmarshal(t *testing.T) {
 storage-backend:
   s3:
     bucket-name: atlantis-test
+    auth-type: iam
 `
 
 		var result raw.Jobs
@@ -29,7 +30,8 @@ storage-backend:
 	{
 		"storage-backend": {
 			"s3": {
-				"bucket-name": "atlantis-test"
+				"bucket-name": "atlantis-test",
+				"auth-type": "iam"
 			}
 		}
 	}
@@ -53,6 +55,7 @@ func TestJobs_Validate_Success(t *testing.T) {
 				StorageBackend: &raw.StorageBackend{
 					S3: &raw.S3{
 						BucketName: "test-bucket",
+						AuthType:   "iam",
 					},
 				},
 			},

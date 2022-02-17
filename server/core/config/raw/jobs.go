@@ -47,7 +47,7 @@ type AccessKey struct {
 func (s S3) Validate() error {
 	return validation.ValidateStruct(&s,
 		validation.Field(&s.BucketName, validation.Required),
-		validation.Field(&s.AuthType, validation.Required),
+		validation.Field(&s.AuthType, validation.Required, validation.In(IamAuthType, AccessKeyAuthType)),
 	)
 }
 

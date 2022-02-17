@@ -79,6 +79,24 @@ func (s *StorageBackend) GetConfigMap() stow.ConfigMap {
 	}
 }
 
+func (s *StorageBackend) GetConfiguredBackend() string {
+	switch {
+	case s.S3 != nil:
+		return "s3"
+	default:
+		return ""
+	}
+}
+
+func (s *StorageBackend) GetContainerName() string {
+	switch {
+	case s.S3 != nil:
+		return s.S3.BucketName
+	default:
+		return ""
+	}
+}
+
 type S3 struct {
 	BucketName string
 	AuthType   AuthType

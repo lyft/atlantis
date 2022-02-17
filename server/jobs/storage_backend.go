@@ -61,7 +61,10 @@ func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBa
 	}
 
 	config := jobs.StorageBackend.GetConfigMap()
-	location, err := stow.Dial("s3", config)
+	backend := jobs.StorageBackend.GetConfiguredBackend()
+	containerName := jobs.StorageBackend.GetContainerName()
+
+	location, err := stow.Dial(backend, config)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +72,7 @@ func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBa
 	return &storageBackend{
 		location:      location,
 		logger:        logger,
-		containerName: jobs.StorageBackend.S3.BucketName,
+		containerName: containerName,
 	}, nil
 }
 
