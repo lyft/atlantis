@@ -28,7 +28,7 @@ type storageBackend struct {
 func (s *storageBackend) Read(key string) ([]string, error) {
 
 	logs := []string{}
-	err := stow.WalkContainers(s.location, stow.NoPrefix, 100, func(container stow.Container, err error) error {
+	err := stow.WalkContainers(s.location, s.containerName, 100, func(container stow.Container, err error) error {
 		if err != nil {
 			return err
 		}
@@ -38,7 +38,7 @@ func (s *storageBackend) Read(key string) ([]string, error) {
 			return nil
 		}
 
-		err = stow.Walk(container, stow.NoPrefix, 100, func(item stow.Item, err error) error {
+		err = stow.Walk(container, key, 100, func(item stow.Item, err error) error {
 			if err != nil {
 				return err
 			}
@@ -75,7 +75,7 @@ func (s *storageBackend) Read(key string) ([]string, error) {
 
 func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err error) {
 	s.logger.Info("Writing: %s to bucket: %s", key, s.containerName)
-	err = stow.WalkContainers(s.location, stow.NoPrefix, 100, func(container stow.Container, err error) error {
+	err = stow.WalkContainers(s.location, s.containerName, 100, func(container stow.Container, err error) error {
 		if err != nil {
 			s.logger.Info(err.Error())
 			return err
