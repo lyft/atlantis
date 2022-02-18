@@ -1,6 +1,8 @@
 package raw
 
 import (
+	"os"
+
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 )
@@ -73,7 +75,7 @@ func (j *Jobs) ToValid() valid.Jobs {
 		return valid.Jobs{
 			StorageBackend: &valid.StorageBackend{
 				S3: &valid.S3{
-					BucketName: s.S3.BucketName,
+					BucketName: s.S3.resolveBucketName(),
 					AuthType:   s.S3.getValidAuthType(),
 				},
 			},
@@ -81,4 +83,11 @@ func (j *Jobs) ToValid() valid.Jobs {
 	default:
 		return valid.Jobs{}
 	}
+}
+
+func (s *S3) resolveBucketName() string {
+	if s.BucketName[0:1] == "$" {
+		return os.Getenv(s.BucketName[1:])
+	}
+	return s.BucketName
 }
