@@ -29,8 +29,10 @@ func (s *storageBackend) Read(key string) ([]string, error) {
 }
 
 func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err error) {
+	s.logger.Info("Writing: %s to bucket: %s", key, s.containerName)
 	err = stow.WalkContainers(s.location, stow.NoPrefix, 100, func(container stow.Container, err error) error {
 		if err != nil {
+			s.logger.Info(err.Error())
 			return err
 		}
 
@@ -41,6 +43,7 @@ func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err 
 
 		_, err = container.Put(key, reader, 100, nil)
 		if err != nil {
+			s.logger.Info("error uploading to s3: ", err)
 			return err
 		}
 		s.logger.Info("successfully uploaded logs for job: %s", key)
