@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"io"
+	"strings"
 
 	"github.com/graymeta/stow"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -25,7 +26,51 @@ type storageBackend struct {
 }
 
 func (s *storageBackend) Read(key string) ([]string, error) {
-	return []string{}, nil
+
+	logs := []string{}
+	err := stow.WalkContainers(s.location, stow.NoPrefix, 100, func(container stow.Container, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip if not right container
+		if container.Name() != s.containerName {
+			return nil
+		}
+
+		err = stow.Walk(container, stow.NoPrefix, 100, func(item stow.Item, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// Found the right object
+			if item.Name() == key {
+
+				r, err := item.Open()
+				if err != nil {
+					return err
+				}
+
+				buf := new(strings.Builder)
+				_, err = io.Copy(buf, r)
+				if err != nil {
+					return err
+				}
+
+				logs = strings.Split(buf.String(), "\n")
+				return nil
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return []string{}, err
+	}
+	return logs, nil
 }
 
 func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err error) {
