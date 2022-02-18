@@ -2,6 +2,8 @@
 
 This workflow emulates a typical deployment system where there exists a deployment queue for a single repository and each revision that needs to be deployed in order.  The workflow iterates through that queue serially and runs the dry run steps (terraform init, plan). Approval is required to run the terraform apply operation.
 
+terraform data (plan files/archives) are kept locally and worker sessions are used to ensure that terraform activities within a given workflow are run on the same worker and therefore access the same data directory.
+
 ## Setup
 
 In order to run this workflow a temporal cluster needs to be running.  I usually just run a local version of this:
@@ -54,9 +56,6 @@ curl -H 'Content-Type: application/json' -d '{
 
 Note: run id can be found by looking at the worker logs, in an ideal world this info is relayed back to the client.
 
-## TODO
-
-As of now, this can only be run in one worker since local disk level state is needed, however, this changes if we configure our activities to run in a session.  
 
 
 

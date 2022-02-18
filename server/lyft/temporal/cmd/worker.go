@@ -13,6 +13,7 @@ import (
 type WorkerConfig struct {
 	GhUser  string
 	GhToken string
+	DataDir string
 }
 
 func NewWorkerCmd(config WorkerConfig) *cobra.Command {
@@ -36,9 +37,7 @@ func NewWorkerCmd(config WorkerConfig) *cobra.Command {
 
 	c.PersistentFlags().StringVarP(&config.GhUser, "ghuser", "", "", "github user")
 	c.PersistentFlags().StringVarP(&config.GhUser, "ghtoken", "", "", "github token")
-	c.PersistentFlags().StringVarP(&config.GhUser, "repo-name", "", "", "repository name")
-	c.PersistentFlags().StringVarP(&config.GhUser, "repo-owner", "", "", "repository owner")
-	c.PersistentFlags().StringVarP(&config.GhUser, "repo-branch", "", "", "repository branch")
+	c.PersistentFlags().StringVarP(&config.DataDir, "datadir", "", "", "data directory")
 
 	return c
 }
@@ -57,7 +56,11 @@ func NewWorker(config WorkerConfig) worker.Worker {
 
 	vcsClient := activities.NewVCSClientWrapper(config.GhUser, config.GhToken)
 
-	worker.RegisterWorkflow(workflows.Deploy)
+	deploy := &workflows.Deploy{
+		DataDir: config.DataDir,
+	}
+
+	worker.RegisterWorkflow(deploy.Run)
 	worker.RegisterActivity(vcsClient.GetRepository)
 	worker.RegisterActivity(activities.Clone)
 	worker.RegisterActivity(activities.Init)

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/gorilla/mux"
 	"github.com/runatlantis/atlantis/server/lyft/temporal/workflows"
@@ -120,10 +118,11 @@ func (s *Server) ExecuteQueueDeployment(w http.ResponseWriter, r *http.Request) 
 	options := client.StartWorkflowOptions{TaskQueue: workflows.TaskQueue}
 
 	workflowRequest := workflows.DeployRequest{
-		Repo:    in.Repo,
-		Branch:  in.Branch,
-		DataDir: filepath.Join(os.TempDir(), "temporal-data"),
+		Repo:   in.Repo,
+		Branch: in.Branch,
 	}
+
+	var deployWorkflow *workflows.Deploy
 
 	// starts our workflow while also signaling it to a deploy a specific commit
 	workflow, err := s.temporal.SignalWithStartWorkflow(
@@ -132,7 +131,7 @@ func (s *Server) ExecuteQueueDeployment(w http.ResponseWriter, r *http.Request) 
 		workflows.NewCommitAddedSignal,
 		in.Revision,
 		options,
-		workflows.Deploy,
+		deployWorkflow.Run,
 		workflowRequest,
 	)
 

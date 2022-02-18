@@ -30,9 +30,8 @@ type Repo struct {
 }
 
 type DeployRequest struct {
-	Repo    Repo
-	Branch  string
-	DataDir string
+	Repo   Repo
+	Branch string
 }
 
 type DeployStatus int
@@ -43,7 +42,11 @@ type PlanReview struct {
 	Status PlanReviewStatus
 }
 
-func Deploy(ctx workflow.Context, request DeployRequest) error {
+type Deploy struct {
+	DataDir string
+}
+
+func (d *Deploy) Run(ctx workflow.Context, request DeployRequest) error {
 	logger := workflow.GetLogger(ctx)
 	options := workflow.ActivityOptions{
 		TaskQueue:              TaskQueue,
@@ -80,24 +83,10 @@ func Deploy(ctx workflow.Context, request DeployRequest) error {
 			return err
 		}
 		repo := getRepositoryResponse.Repo
-		repoDir := filepath.Join(request.DataDir, repo.Owner, repo.Name)
+		repoDir := filepath.Join(d.DataDir, repo.Owner, repo.Name)
 
-		// execute set of activities that make up a terraform plan
-		planResponse, err := plan(ctx, request, repo, repoDir, revision)
-		if err != nil {
-			return err
-		}
-
-		// block until we get a valid plan review
-		planReview := awaitPlanReview(ctx)
-
-		if planReview.Status == Discard {
-			logger.Warn("Deployment cancelled due to discarded plan")
-			return nil
-		}
-
-		// since the plan has now been approved let's apply
-		err = apply(ctx, planResponse, repoDir)
+		// execute the actual deployment related activities
+		err = executeDeploy(ctx, request, repo, repoDir, revision)
 
 		if err != nil {
 			return err
@@ -105,6 +94,41 @@ func Deploy(ctx workflow.Context, request DeployRequest) error {
 	}
 
 	return nil
+}
+
+func executeDeploy(ctx workflow.Context, request DeployRequest, repo models.Repo, repoDir, revision string) error {
+	logger := workflow.GetLogger(ctx)
+
+	opts := &workflow.SessionOptions{
+		CreationTimeout:  time.Minute,
+		ExecutionTimeout: 30 * time.Minute,
+	}
+
+	// sessions ensure that we are running our plans and applies on the same worker
+	// which basically ensures this workflow can run on multiple hosts
+	sessionCtx, err := workflow.CreateSession(ctx, opts)
+	if err != nil {
+		return errors.Wrapf(err, "creating deployment session")
+	}
+
+	defer workflow.CompleteSession(sessionCtx)
+
+	// execute set of activities that make up a terraform plan
+	planResponse, err := plan(sessionCtx, request, repo, repoDir, revision)
+	if err != nil {
+		return err
+	}
+
+	// block until we get a valid plan review
+	planReview := awaitPlanReview(sessionCtx)
+
+	if planReview.Status == Discard {
+		logger.Warn("Deployment cancelled due to discarded plan")
+		return nil
+	}
+
+	// since the plan has now been approved let's apply
+	return apply(sessionCtx, planResponse, repoDir)
 }
 
 func getRepository(ctx workflow.Context, request DeployRequest) (activities.GetRepositoryResponse, error) {
