@@ -1,6 +1,7 @@
 package raw
 
 import (
+	"fmt"
 	"os"
 
 	validation "github.com/go-ozzo/ozzo-validation"
@@ -22,6 +23,16 @@ func (j Jobs) Validate() error {
 	)
 }
 
+func (j *Jobs) ToValid() valid.Jobs {
+	if j.StorageBackend == nil {
+		return valid.Jobs{}
+	}
+
+	return valid.Jobs{
+		StorageBackend: j.StorageBackend.ToValid(),
+	}
+}
+
 type StorageBackend struct {
 	S3 *S3 `yaml:"s3" json:"s3"`
 }
@@ -34,54 +45,60 @@ func (s StorageBackend) Validate() error {
 	)
 }
 
+// Here we know that only one storage backend is configured
+// Find the non-nil one and return the valid config
+func (s *StorageBackend) ToValid() *valid.StorageBackend {
+	switch {
+	case s.S3 != nil:
+		return &valid.StorageBackend{
+			S3: s.S3.ToValid(),
+		}
+	default:
+		return &valid.StorageBackend{}
+	}
+}
+
 type S3 struct {
 	BucketName string     `yaml:"bucket-name" json:"bucket-name"`
 	AuthType   string     `yaml:"auth-type" json:"auth-type"`
 	AccessKey  *AccessKey `yaml:"access-key" json:"access-key"`
 }
 
-type AccessKey struct {
-	ConfigAccessKeyID string `yaml:"access-id" json:"access-id"`
-	ConfigSecretKey   string `yaml:"secret-key" json:"secret-key"`
-}
-
-// TODO: Add validation to check AccessKeys are configured when AuthType set to accesskeys
+// TODO: Use validation.When() to do conditional validation based on Auth Type
 func (s S3) Validate() error {
-	return validation.ValidateStruct(&s,
-		validation.Field(&s.BucketName, validation.Required),
-		validation.Field(&s.AuthType, validation.Required, validation.In(IamAuthType, AccessKeyAuthType)),
-	)
+	if s.AuthType == AccessKeyAuthType {
+		return validation.ValidateStruct(&s,
+			validation.Field(&s.BucketName, validation.Required),
+			validation.Field(&s.AuthType, validation.Required),
+			validation.Field(&s.AccessKey, validation.Required),
+		)
+	} else if s.AuthType == IamAuthType {
+		return validation.ValidateStruct(&s,
+			validation.Field(&s.BucketName, validation.Required),
+			validation.Field(&s.AuthType, validation.Required),
+		)
+	} else {
+		return fmt.Errorf("invalid auth type. Valid auth types are: %s and %s", IamAuthType, AccessKeyAuthType)
+	}
 }
 
-func (s S3) getValidAuthType() valid.AuthType {
-	if s.AuthType == IamAuthType {
-		return valid.Iam
-	} else if s.AuthType == AccessKeyAuthType {
-		return valid.AccessKey
-	}
-	return 0
-}
+func (s S3) ToValid() *valid.S3 {
 
-func (j *Jobs) ToValid() valid.Jobs {
-	if j.StorageBackend == nil {
-		return valid.Jobs{}
-	}
-
-	// Here we have already validated that only one storage backend is configured
-	// Switch through all the storage backends and return the non-nil one
-	s := j.StorageBackend
-	switch {
-	case s.S3 != nil:
-		return valid.Jobs{
-			StorageBackend: &valid.StorageBackend{
-				S3: &valid.S3{
-					BucketName: s.S3.resolveBucketName(),
-					AuthType:   s.S3.getValidAuthType(),
-				},
-			},
+	switch s.AuthType {
+	case IamAuthType:
+		return &valid.S3{
+			AuthType:   valid.Iam,
+			BucketName: s.resolveBucketName(),
+		}
+	case AccessKeyAuthType:
+		return &valid.S3{
+			AuthType:    valid.AccessKey,
+			BucketName:  s.resolveBucketName(),
+			AccessKeyID: s.AccessKey.ConfigAccessKeyID,
+			SecretKey:   s.AccessKey.ConfigSecretKey,
 		}
 	default:
-		return valid.Jobs{}
+		return nil
 	}
 }
 
@@ -90,4 +107,16 @@ func (s *S3) resolveBucketName() string {
 		return os.Getenv(s.BucketName[1:])
 	}
 	return s.BucketName
+}
+
+type AccessKey struct {
+	ConfigAccessKeyID string `yaml:"access-id" json:"access-id"`
+	ConfigSecretKey   string `yaml:"secret-key" json:"secret-key"`
+}
+
+func (a AccessKey) Validate() error {
+	return validation.ValidateStruct(&a,
+		validation.Field(&a.ConfigAccessKeyID, validation.Required),
+		validation.Field(&a.ConfigSecretKey, validation.Required),
+	)
 }
