@@ -12,13 +12,13 @@ import (
 
 // GlobalCfg is the raw schema for server-side repo config.
 type GlobalCfg struct {
-	Version              string               `yaml:"version" json:"version"`
 	Repos                []Repo               `yaml:"repos" json:"repos"`
 	Workflows            Workflows            `yaml:"workflows" json:"workflows"`
 	PullRequestWorkflows PullRequestWorkflows `yaml:"pull_request_workflows" json:"pull_request_workflows"`
 	DeploymentWorkflows  DeploymentWorkflows  `yaml:"deployment_workflows" json:"deployment_workflows"`
 	PolicySets           PolicySets           `yaml:"policies" json:"policies"`
 	Metrics              Metrics              `yaml:"metrics" json:"metrics"`
+	Jobs                 Jobs                 `yaml:"jobs" json:"jobs"`
 }
 
 // Repo is the raw schema for repos in the server-side repo config.
@@ -70,6 +70,7 @@ func (g GlobalCfg) Validate() error {
 		validation.Field(&g.PullRequestWorkflows),
 		validation.Field(&g.DeploymentWorkflows),
 		validation.Field(&g.Metrics),
+		validation.Field(&g.Jobs),
 	)
 	if err != nil {
 		return err
@@ -162,6 +163,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		DeploymentWorkflows:  validDeploymentWorkflows,
 		PolicySets:           g.PolicySets.ToValid(),
 		Metrics:              g.Metrics.ToValid(),
+		Jobs:                 g.Jobs.ToValid(),
 	}
 }
 

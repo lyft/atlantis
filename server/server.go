@@ -35,7 +35,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
-	"github.com/runatlantis/atlantis/server/handlers"
+	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
@@ -114,7 +114,7 @@ type Server struct {
 	SSLKeyFile                    string
 	Drainer                       *events.Drainer
 	ScheduledExecutorService      *scheduled.ExecutorService
-	ProjectCmdOutputHandler       handlers.ProjectCommandOutputHandler
+	ProjectCmdOutputHandler       jobs.ProjectCommandOutputHandler
 }
 
 // Config holds config for server that isn't passed in by the user.
@@ -369,18 +369,21 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
-	var projectCmdOutputHandler handlers.ProjectCommandOutputHandler
+	jobStore := jobs.NewJobStore(
+		jobs.NewStorageBackend(globalCfg.Jobs),
+	)
+
+	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
 
 	if userConfig.TFEToken != "" {
-		projectCmdOutputHandler = &handlers.NoopProjectOutputHandler{}
+		projectCmdOutputHandler = &jobs.NoopProjectOutputHandler{}
 	} else {
-		projectCmdOutput := make(chan *handlers.ProjectCmdOutputLine)
-		projectCmdOutputHandler = handlers.NewAsyncProjectCommandOutputHandler(
+		projectCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
+		projectCmdOutputHandler = jobs.NewAsyncProjectCommandOutputHandler(
 			projectCmdOutput,
-			commitStatusUpdater,
-			router,
 			logger,
+			jobStore,
 		)
 	}
 
@@ -597,8 +600,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	projectOutputWrapper := &events.ProjectOutputWrapper{
-		ProjectCmdOutputHandler: projectCmdOutputHandler,
-		ProjectCommandRunner:    projectCommandRunner,
+		ProjectCommandRunner: projectCommandRunner,
+		JobURLSetter:         jobs.NewJobURLSetter(router, commitStatusUpdater),
+		JobCloser:            projectCmdOutputHandler,
 	}
 
 	featureAwareProjectCommandRunner := &events.FeatureAwareProjectCommandRunner{
@@ -711,7 +715,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		models.UnlockCommand:          unlockCommandRunner,
 		models.VersionCommand:         versionCommandRunner,
 	}
-
+	cmdStatsScope := statsScope.SubScope("cmd")
+	staleCommandChecker := &events.StaleCommandHandler{
+		StaleStatsScope: cmdStatsScope.SubScope("stale"),
+	}
 	commandRunner := &events.DefaultCommandRunner{
 		VCSClient:                     vcsClient,
 		GithubPullGetter:              githubClient,
@@ -721,7 +728,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		EventParser:                   eventParser,
 		Logger:                        logger,
 		GlobalCfg:                     globalCfg,
-		StatsScope:                    statsScope.SubScope("cmd"),
+		StatsScope:                    cmdStatsScope,
 		AllowForkPRs:                  userConfig.AllowForkPRs,
 		AllowForkPRsFlag:              config.AllowForkPRsFlag,
 		SilenceForkPRErrors:           userConfig.SilenceForkPRErrors,
@@ -730,6 +737,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Drainer:                       drainer,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
+		StaleCommandChecker:           staleCommandChecker,
 	}
 
 	featureAwareCommandRunner := &events.FeatureAwareCommandRunner{
@@ -757,6 +765,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DeleteLockCommand:  deleteLockCommand,
 	}
 
+	// No Storage backend configured for now
 	wsMux := websocket.NewMultiplexor(
 		logger,
 		controllers.JobIDKeyGenerator{},
