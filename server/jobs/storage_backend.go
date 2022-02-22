@@ -19,7 +19,7 @@ type StorageBackend interface {
 	Read(key string) ([]string, error)
 
 	// Write logs to the storage backend
-	Write(key string, reader io.Reader) (success bool, err error)
+	Write(key string, reader io.Reader) error
 }
 
 type storageBackend struct {
@@ -32,14 +32,13 @@ func (s *storageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err error) {
+func (s *storageBackend) Write(key string, reader io.Reader) error {
 	containerFound := false
 
 	// Function to write to container
 	writeFn := func(container stow.Container, err error) error {
 		if err != nil {
-			s.logger.Warn(errors.Wrapf(err, "walking container %s at location: %s", s.containerName, s.location).Error())
-			return err
+			return errors.Wrapf(err, "walking containers at location: %s", s.location)
 		}
 
 		// Skip if not right container
@@ -59,15 +58,13 @@ func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err 
 	}
 
 	s.logger.Info("Writing: %s to bucket: %s", key, s.containerName)
-	if err = stow.WalkContainers(s.location, s.containerName, PageSize, writeFn); err != nil {
-		return false, err
-	}
+	err := stow.WalkContainers(s.location, s.containerName, PageSize, writeFn)
 
 	if !containerFound {
-		return false, fmt.Errorf("container: %s at location: %s not found", s.containerName, s.location)
+		return fmt.Errorf("container: %s not found at location: %s", s.containerName, s.location)
 	}
 
-	return true, nil
+	return err
 }
 
 func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBackend, error) {
@@ -92,6 +89,12 @@ func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBa
 	}, nil
 }
 
+type StorageBackendNotConfigured struct{}
+
+func (s *StorageBackendNotConfigured) Error() string {
+	return "storage backend is not configured"
+}
+
 // Used when log persistence is not configured
 type NoopStorageBackend struct{}
 
@@ -99,6 +102,6 @@ func (s *NoopStorageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *NoopStorageBackend) Write(key string, reader io.Reader) (success bool, err error) {
-	return false, nil
+func (s *NoopStorageBackend) Write(key string, reader io.Reader) error {
+	return &StorageBackendNotConfigured{}
 }
