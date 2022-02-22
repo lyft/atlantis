@@ -764,13 +764,15 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DeleteLockCommand:  deleteLockCommand,
 	}
 
+	logStreamingScope := statsScope.SubScope("jobs").SubScope("log-streaming")
+
 	wsMux := websocket.NewInstrumentedMultiplexor(
 		websocket.NewMultiplexor(
 			logger,
 			controllers.JobIDKeyGenerator{},
 			projectCmdOutputHandler,
 		),
-		statsScope.SubScope("api"),
+		logStreamingScope,
 	)
 
 	jobsController := &controllers.JobsController{
@@ -781,7 +783,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ProjectJobsErrorTemplate: templates.ProjectJobsErrorTemplate,
 		Db:                       boltdb,
 		WsMux:                    wsMux,
-		StatsScope:               statsScope.SubScope("api"),
+		StatsScope:               logStreamingScope,
 		KeyGenerator:             controllers.JobIDKeyGenerator{},
 	}
 

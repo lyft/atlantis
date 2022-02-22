@@ -17,7 +17,7 @@ type InstrumentedMultiplexor struct {
 func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope) Multiplexor {
 	return &InstrumentedMultiplexor{
 		Multiplexor:      multiplexor,
-		NumWsConnections: statsScope.SubScope("getprojectjobs").SubScope("websocket").Gauge("connections"),
+		NumWsConnections: statsScope.SubScope("websocket").Gauge("connections"),
 	}
 }
 
