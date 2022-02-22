@@ -1,13 +1,16 @@
 package jobs
 
 import (
+	"fmt"
 	"io"
-	"strings"
 
 	"github.com/graymeta/stow"
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 )
+
+const PageSize = 100
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_storage_backend.go StorageBackend
 
@@ -26,58 +29,16 @@ type storageBackend struct {
 }
 
 func (s *storageBackend) Read(key string) ([]string, error) {
-
-	logs := []string{}
-	err := stow.WalkContainers(s.location, s.containerName, 100, func(container stow.Container, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Skip if not right container
-		if container.Name() != s.containerName {
-			return nil
-		}
-
-		err = stow.Walk(container, key, 100, func(item stow.Item, err error) error {
-			if err != nil {
-				return err
-			}
-
-			// Found the right object
-			if item.Name() == key {
-
-				r, err := item.Open()
-				if err != nil {
-					return err
-				}
-
-				buf := new(strings.Builder)
-				_, err = io.Copy(buf, r)
-				if err != nil {
-					return err
-				}
-
-				logs = strings.Split(buf.String(), "\n")
-				return nil
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return []string{}, err
-	}
-	return logs, nil
+	return []string{}, nil
 }
 
 func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err error) {
-	s.logger.Info("Writing: %s to bucket: %s", key, s.containerName)
-	err = stow.WalkContainers(s.location, s.containerName, 100, func(container stow.Container, err error) error {
+	containerFound := false
+
+	// Function to write to container
+	writeFn := func(container stow.Container, err error) error {
 		if err != nil {
-			s.logger.Info(err.Error())
+			s.logger.Warn(errors.Wrapf(err, "walking container %s at location: %s", s.containerName, s.location).Error())
 			return err
 		}
 
@@ -86,19 +47,26 @@ func (s *storageBackend) Write(key string, reader io.Reader) (success bool, err 
 			return nil
 		}
 
+		containerFound = true
 		_, err = container.Put(key, reader, 100, nil)
 		if err != nil {
-			s.logger.Info("error uploading to s3: ", err)
+			s.logger.Warn(fmt.Sprintf("error uploading to %s", s.location), err)
 			return err
 		}
 		s.logger.Info("successfully uploaded logs for job: %s", key)
 
 		return nil
-	})
+	}
 
-	if err != nil {
+	s.logger.Info("Writing: %s to bucket: %s", key, s.containerName)
+	if err = stow.WalkContainers(s.location, s.containerName, PageSize, writeFn); err != nil {
 		return false, err
 	}
+
+	if !containerFound {
+		return false, fmt.Errorf("container: %s at location: %s not found", s.containerName, s.location)
+	}
+
 	return true, nil
 }
 

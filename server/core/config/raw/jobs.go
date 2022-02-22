@@ -66,7 +66,9 @@ type S3 struct {
 
 // TODO: Use validation.When() to do conditional validation based on Auth Type
 func (s S3) Validate() error {
-	if s.AuthType == AccessKeyAuthType {
+	if s.AuthType == "" {
+		return fmt.Errorf("AuthType must be configured: Valid auth types are: %s and %s", IamAuthType, AccessKeyAuthType)
+	} else if s.AuthType == AccessKeyAuthType {
 		return validation.ValidateStruct(&s,
 			validation.Field(&s.BucketName, validation.Required),
 			validation.Field(&s.AuthType, validation.Required),
@@ -103,6 +105,7 @@ func (s S3) ToValid() *valid.S3 {
 }
 
 func (s *S3) resolveBucketName() string {
+	// env variable
 	if s.BucketName[0:1] == "$" {
 		return os.Getenv(s.BucketName[1:])
 	}
