@@ -764,7 +764,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DeleteLockCommand:  deleteLockCommand,
 	}
 
-	logStreamingScope := statsScope.SubScope("jobs").SubScope("log-streaming")
+	logStreamingScope := statsScope.SubScope("getprojectjobs")
 
 	wsMux := websocket.NewInstrumentedMultiplexor(
 		websocket.NewMultiplexor(
