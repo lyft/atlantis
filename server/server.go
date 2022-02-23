@@ -784,8 +784,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	eventsController := &events_controllers.VCSEventsController{
-		CommandRunner:                   featureAwareCommandRunner,
-		PullCleaner:                     pullClosedExecutor,
 		Parser:                          eventParser,
 		CommentParser:                   commentParser,
 		Logger:                          logger,
@@ -803,6 +801,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		AzureDevopsWebhookBasicUser:     []byte(userConfig.AzureDevopsWebhookUser),
 		AzureDevopsWebhookBasicPassword: []byte(userConfig.AzureDevopsWebhookPassword),
 		AzureDevopsRequestValidator:     &events_controllers.DefaultAzureDevopsRequestValidator{},
+		CommandExecutor: &events_controllers.DefaultCommandExecutor{
+			CommandRunner: featureAwareCommandRunner,
+			PullCleaner:   pullClosedExecutor,
+		},
 	}
 	githubAppController := &controllers.GithubAppController{
 		AtlantisURL:         parsedURL,

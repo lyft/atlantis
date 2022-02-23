@@ -855,3 +855,39 @@ func TestRunAutoplanCommand_DropStaleRequest(t *testing.T) {
 	ch.RunAutoplanCommand(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, time.Now())
 	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
 }
+
+func TestRunPseudoAutoplanCommand_DrainOngoing(t *testing.T) {
+	t.Log("if drain is ongoing then a message should be displayed")
+	vcsClient := setup(t)
+	drainer.ShutdownBlocking()
+	containsTerraformChanges := ch.RunPseudoAutoplanCommand(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "Atlantis server is shutting down, please try again later.", "plan")
+	Assert(t, containsTerraformChanges == false, "should be false when an error occurs")
+}
+
+func TestRunPseudoAutoplanCommand_TerraformChanges(t *testing.T) {
+	t.Log("verify PseudoRun returns true if terraform changes exist")
+	vcsClient := setup(t)
+
+	When(projectCommandBuilder.BuildAutoplanCommands(matchers.AnyPtrToEventsCommandContext())).
+		ThenReturn([]models.ProjectCommandContext{
+			{
+				CommandName: models.PlanCommand,
+			},
+			{
+				CommandName: models.PlanCommand,
+			},
+		}, nil)
+
+	containsTerraformChanges := ch.RunPseudoAutoplanCommand(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	Assert(t, containsTerraformChanges == true, "should have")
+	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
+}
+
+func TestRunPseudoAutoplanCommand_WithoutTerraformChanges(t *testing.T) {
+	t.Log("verify PseudoRun returns false if terraform changes exist")
+	vcsClient := setup(t)
+	containsTerraformChanges := ch.RunPseudoAutoplanCommand(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	Assert(t, containsTerraformChanges == false, "should have no terraform changes")
+	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
+}

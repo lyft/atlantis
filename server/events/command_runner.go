@@ -45,6 +45,7 @@ type CommandRunner interface {
 	// and then calling the appropriate services to finish executing the command.
 	RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand, timestamp time.Time)
 	RunAutoplanCommand(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time)
+	RunPseudoAutoplanCommand(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_stale_command_checker.go StaleCommandChecker
@@ -82,6 +83,7 @@ type GitlabMergeRequestGetter interface {
 // CommentCommandRunner runs individual command workflows.
 type CommentCommandRunner interface {
 	Run(*CommandContext, *CommentCommand)
+	PseudoRun(ctx *CommandContext) bool
 }
 
 func buildCommentCommandRunner(
@@ -130,6 +132,45 @@ type DefaultCommandRunner struct {
 	PreWorkflowHooksCommandRunner PreWorkflowHooksCommandRunner
 	PullStatusFetcher             PullStatusFetcher
 	StaleCommandChecker           StaleCommandChecker
+}
+
+// RunPseudoAutoplanCommand runs plan when a pull request is opened or updated to determine if any terraform changes exist.
+func (c *DefaultCommandRunner) RunPseudoAutoplanCommand(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool {
+	if opStarted := c.Drainer.StartOp(); !opStarted {
+		if commentErr := c.VCSClient.CreateComment(baseRepo, pull.Num, ShutdownComment, models.PlanCommand.String()); commentErr != nil {
+			c.Logger.Log(logging.Error, "unable to comment that Atlantis is shutting down: %s", commentErr)
+		}
+		return false
+	}
+	defer c.Drainer.OpDone()
+
+	log := c.buildLogger(baseRepo.FullName, pull.Num)
+	defer c.logPanics(baseRepo, pull.Num, log)
+
+	scope := c.StatsScope.SubScope("autoplan")
+	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
+	defer timer.Stop()
+
+	ctx := &CommandContext{
+		User:     user,
+		Log:      log,
+		Scope:    scope,
+		Pull:     pull,
+		HeadRepo: headRepo,
+		Trigger:  Auto,
+	}
+	if !c.validateCtxAndComment(ctx) {
+		return false
+	}
+	if c.DisableAutoplan {
+		return false
+	}
+	err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
+	if err != nil {
+		ctx.Log.Err("Error running pre-workflow hooks %s. Proceeding with %s command.", err, models.PlanCommand)
+	}
+	autoPlanRunner := buildCommentCommandRunner(c, models.PlanCommand)
+	return autoPlanRunner.PseudoRun(ctx)
 }
 
 // RunAutoplanCommand runs plan and policy_checks when a pull request is opened or updated.

@@ -495,7 +495,6 @@ func TestPost_AzureDevopsPullRequestIgnoreEvent(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	scope, _, _ := metrics.NewLoggingScope(logger, "null")
 	e := events_controllers.VCSEventsController{
-		TestingMode:                     true,
 		Logger:                          logger,
 		Scope:                           scope,
 		ApplyDisabled:                   false,
@@ -504,11 +503,14 @@ func TestPost_AzureDevopsPullRequestIgnoreEvent(t *testing.T) {
 		AzureDevopsRequestValidator:     v,
 		Parser:                          p,
 		CommentParser:                   cp,
-		CommandRunner:                   cr,
-		PullCleaner:                     c,
 		SupportedVCSHosts:               []models.VCSHostType{models.AzureDevops},
 		RepoAllowlistChecker:            repoAllowlistChecker,
 		VCSClient:                       vcsmock,
+		CommandExecutor: &events_controllers.DefaultCommandExecutor{
+			CommandRunner: cr,
+			PullCleaner:   c,
+			TestingMode:   true,
+		},
 	}
 
 	event := `{
@@ -654,7 +656,9 @@ func TestPost_BBServerPullClosed(t *testing.T) {
 			logger := logging.NewNoopLogger(t)
 			scope, _, _ := metrics.NewLoggingScope(logger, "null")
 			ec := &events_controllers.VCSEventsController{
-				PullCleaner: pullCleaner,
+				CommandExecutor: &events_controllers.DefaultCommandExecutor{
+					PullCleaner: pullCleaner,
+				},
 				Parser: &events.EventParser{
 					BitbucketUser:      "bb-user",
 					BitbucketToken:     "bb-token",
@@ -785,20 +789,22 @@ func setup(t *testing.T) (events_controllers.VCSEventsController, *mocks.MockGit
 	logger := logging.NewNoopLogger(t)
 	scope, _, _ := metrics.NewLoggingScope(logger, "null")
 	e := events_controllers.VCSEventsController{
-		TestingMode:                  true,
 		Logger:                       logger,
 		Scope:                        scope,
 		GithubRequestValidator:       v,
 		Parser:                       p,
 		CommentParser:                cp,
-		CommandRunner:                cr,
-		PullCleaner:                  c,
 		GithubWebhookSecret:          secret,
 		SupportedVCSHosts:            []models.VCSHostType{models.Github, models.Gitlab},
 		GitlabWebhookSecret:          secret,
 		GitlabRequestParserValidator: gl,
 		RepoAllowlistChecker:         repoAllowlistChecker,
 		VCSClient:                    vcsmock,
+		CommandExecutor: &events_controllers.DefaultCommandExecutor{
+			CommandRunner: cr,
+			PullCleaner:   c,
+			TestingMode:   true,
+		},
 	}
 	return e, v, gl, p, cr, c, vcsmock, cp
 }

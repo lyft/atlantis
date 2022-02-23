@@ -28,6 +28,11 @@ type VersionCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
+// PseudoRun is an unusued implementation here
+func (v *VersionCommandRunner) PseudoRun(ctx *CommandContext) bool {
+	return false
+}
+
 func (v *VersionCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	var err error
 	var projectCmds []models.ProjectCommandContext

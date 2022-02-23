@@ -38,6 +38,11 @@ type ApprovePoliciesCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
+// PseudoRun is an unusued implementation here
+func (a *ApprovePoliciesCommandRunner) PseudoRun(ctx *CommandContext) bool {
+	return false
+}
+
 func (a *ApprovePoliciesCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull

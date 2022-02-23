@@ -25,6 +25,11 @@ type UnlockCommandRunner struct {
 	SilenceNoProjects bool
 }
 
+// PseudoRun is an unusued implementation here
+func (u *UnlockCommandRunner) PseudoRun(ctx *CommandContext) bool {
+	return false
+}
+
 func (u *UnlockCommandRunner) Run(
 	ctx *CommandContext,
 	cmd *CommentCommand,

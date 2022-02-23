@@ -1079,15 +1079,17 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	Ok(t, err)
 
 	ctrl := events_controllers.VCSEventsController{
-		TestingMode:   true,
-		CommandRunner: commandRunner,
-		PullCleaner: &events.PullClosedExecutor{
-			Locker:                   lockingClient,
-			VCSClient:                e2eVCSClient,
-			WorkingDir:               workingDir,
-			DB:                       boltdb,
-			PullClosedTemplate:       &events.PullClosedEventTemplate{},
-			LogStreamResourceCleaner: projectCmdOutputHandler,
+		CommandExecutor: &events_controllers.DefaultCommandExecutor{
+			CommandRunner: commandRunner,
+			PullCleaner: &events.PullClosedExecutor{
+				Locker:                   lockingClient,
+				VCSClient:                e2eVCSClient,
+				WorkingDir:               workingDir,
+				DB:                       boltdb,
+				PullClosedTemplate:       &events.PullClosedEventTemplate{},
+				LogStreamResourceCleaner: projectCmdOutputHandler,
+			},
+			TestingMode: true,
 		},
 		Logger:                       logger,
 		Scope:                        statsScope,

@@ -216,6 +216,43 @@ func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 	}
 }
 
+func (p *PlanCommandRunner) PseudoRun(ctx *CommandContext) bool {
+	baseRepo := ctx.Pull.BaseRepo
+	pull := ctx.Pull
+
+	projectCmds, err := p.prjCmdBuilder.BuildAutoplanCommands(ctx)
+	if err != nil {
+		if statusErr := p.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.FailedCommitStatus, models.PlanCommand); statusErr != nil {
+			ctx.Log.Warn("unable to update commit status: %s", statusErr)
+		}
+		p.pullUpdater.updatePull(ctx, AutoplanCommand{}, CommandResult{Error: err})
+		return false
+	}
+
+	projectCmds, _ = p.partitionProjectCmds(ctx, projectCmds)
+
+	if len(projectCmds) == 0 {
+		ctx.Log.Info("determined there was no project to run plan in")
+		if !(p.silenceVCSStatusNoPlans || p.silenceVCSStatusNoProjects) {
+			// If there were no projects modified, we set successful commit statuses
+			// with 0/0 projects planned/policy_checked/applied successfully because some users require
+			// the Atlantis status to be passing for all pull requests.
+			ctx.Log.Debug("setting VCS status to success with no projects found")
+			if err := p.commitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, models.PlanCommand, 0, 0); err != nil {
+				ctx.Log.Warn("unable to update commit status: %s", err)
+			}
+			if err := p.commitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, models.PolicyCheckCommand, 0, 0); err != nil {
+				ctx.Log.Warn("unable to update commit status: %s", err)
+			}
+			if err := p.commitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, models.ApplyCommand, 0, 0); err != nil {
+				ctx.Log.Warn("unable to update commit status: %s", err)
+			}
+		}
+		return false
+	}
+	return true
+}
+
 func (p *PlanCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	if ctx.Trigger == Auto {
 		p.runAutoplan(ctx)

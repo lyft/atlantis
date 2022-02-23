@@ -47,8 +47,6 @@ const bitbucketServerSignatureHeader = "X-Hub-Signature"
 // VCSEventsController handles all webhook requests which signify 'events' in the
 // VCS host, ex. GitHub.
 type VCSEventsController struct {
-	CommandRunner events.CommandRunner
-	PullCleaner   events.PullCleaner
 	Logger        logging.SimpleLogging
 	Scope         tally.Scope
 	Parser        events.EventParsing
@@ -72,7 +70,6 @@ type VCSEventsController struct {
 	// startup to support.
 	SupportedVCSHosts []models.VCSHostType
 	VCSClient         vcs.Client
-	TestingMode       bool
 	// BitbucketWebhookSecret is the secret added to this webhook via the Bitbucket
 	// UI that identifies this call as coming from Bitbucket. If empty, no
 	// request validation is done.
@@ -87,6 +84,18 @@ type VCSEventsController struct {
 	// Azure DevOps Team Project. If empty, no request validation is done.
 	AzureDevopsWebhookBasicPassword []byte
 	AzureDevopsRequestValidator     AzureDevopsRequestValidator
+	CommandExecutor                 CommandExecutor
+}
+
+type CommandExecutor interface {
+	ExecuteCommentCommand(request *http.Request, baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *events.CommentCommand, timestamp time.Time) HttpResponse
+	ExecuteAutoplanCommand(_ *http.Request, eventType models.PullRequestEventType, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time, logger logging.SimpleLogging) HttpResponse
+}
+
+type DefaultCommandExecutor struct {
+	TestingMode   bool
+	PullCleaner   events.PullCleaner
+	CommandRunner events.CommandRunner
 }
 
 // Post handles POST webhook requests.
@@ -448,7 +457,10 @@ func (e *VCSEventsController) handlePullRequestEvent(logger logging.SimpleLoggin
 			},
 		}
 	}
+	return e.CommandExecutor.ExecuteAutoplanCommand(nil, eventType, baseRepo, headRepo, pull, user, timestamp, logger)
+}
 
+func (d *DefaultCommandExecutor) ExecuteAutoplanCommand(_ *http.Request, eventType models.PullRequestEventType, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time, logger logging.SimpleLogging) HttpResponse {
 	switch eventType {
 	case models.OpenedPullEvent, models.UpdatedPullEvent:
 		// If the pull request was opened or updated, we will try to autoplan.
@@ -456,18 +468,18 @@ func (e *VCSEventsController) handlePullRequestEvent(logger logging.SimpleLoggin
 		// Respond with success and then actually execute the command asynchronously.
 		// We use a goroutine so that this function returns and the connection is
 		// closed.
-		if !e.TestingMode {
-			go e.CommandRunner.RunAutoplanCommand(baseRepo, headRepo, pull, user, timestamp)
+		if !d.TestingMode {
+			go d.CommandRunner.RunAutoplanCommand(baseRepo, headRepo, pull, user, timestamp)
 		} else {
 			// When testing we want to wait for everything to complete.
-			e.CommandRunner.RunAutoplanCommand(baseRepo, headRepo, pull, user, timestamp)
+			d.CommandRunner.RunAutoplanCommand(baseRepo, headRepo, pull, user, timestamp)
 		}
 		return HttpResponse{
 			body: "Processing...",
 		}
 	case models.ClosedPullEvent:
 		// If the pull request was closed, we delete locks.
-		if err := e.PullCleaner.CleanUpPull(baseRepo, pull); err != nil {
+		if err := d.PullCleaner.CleanUpPull(baseRepo, pull); err != nil {
 			return HttpResponse{
 				body: err.Error(),
 				err: HttpError{
@@ -580,16 +592,19 @@ func (e *VCSEventsController) handleCommentEvent(logger logging.SimpleLogging, b
 	}
 
 	logger.Debug("executing command")
-	if !e.TestingMode {
+	return e.CommandExecutor.ExecuteCommentCommand(nil, baseRepo, maybeHeadRepo, maybePull, user, pullNum, parseResult.Command, timestamp)
+}
+
+func (d *DefaultCommandExecutor) ExecuteCommentCommand(_ *http.Request, baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *events.CommentCommand, timestamp time.Time) HttpResponse {
+	if !d.TestingMode {
 		// Respond with success and then actually execute the command asynchronously.
 		// We use a goroutine so that this function returns and the connection is
 		// closed.
-		go e.CommandRunner.RunCommentCommand(baseRepo, maybeHeadRepo, maybePull, user, pullNum, parseResult.Command, timestamp)
+		go d.CommandRunner.RunCommentCommand(baseRepo, maybeHeadRepo, maybePull, user, pullNum, cmd, timestamp)
 	} else {
 		// When testing we want to wait for everything to complete.
-		e.CommandRunner.RunCommentCommand(baseRepo, maybeHeadRepo, maybePull, user, pullNum, parseResult.Command, timestamp)
+		d.CommandRunner.RunCommentCommand(baseRepo, maybeHeadRepo, maybePull, user, pullNum, cmd, timestamp)
 	}
-
 	return HttpResponse{
 		body: "Processing...",
 	}

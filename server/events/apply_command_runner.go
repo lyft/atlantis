@@ -62,6 +62,11 @@ type ApplyCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
+// PseudoRun is an unusued implementation here
+func (a *ApplyCommandRunner) PseudoRun(ctx *CommandContext) bool {
+	return false
+}
+
 func (a *ApplyCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
