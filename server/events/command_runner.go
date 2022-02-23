@@ -147,7 +147,7 @@ func (c *DefaultCommandRunner) RunPseudoAutoplanCommand(baseRepo models.Repo, he
 	log := c.buildLogger(baseRepo.FullName, pull.Num)
 	defer c.logPanics(baseRepo, pull.Num, log)
 
-	scope := c.StatsScope.SubScope("autoplan")
+	scope := c.StatsScope.SubScope("pseudoautoplan")
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 

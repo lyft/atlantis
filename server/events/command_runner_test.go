@@ -880,7 +880,7 @@ func TestRunPseudoAutoplanCommand_TerraformChanges(t *testing.T) {
 		}, nil)
 
 	containsTerraformChanges := ch.RunPseudoAutoplanCommand(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
-	Assert(t, containsTerraformChanges == true, "should have")
+	Assert(t, containsTerraformChanges == true, "should have terraform changes")
 	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
 }
 

@@ -89,7 +89,7 @@ type VCSEventsController struct {
 
 type CommandExecutor interface {
 	ExecuteCommentCommand(request *http.Request, baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *events.CommentCommand, timestamp time.Time) HttpResponse
-	ExecuteAutoplanCommand(_ *http.Request, eventType models.PullRequestEventType, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time, logger logging.SimpleLogging) HttpResponse
+	ExecuteAutoplanCommand(request *http.Request, eventType models.PullRequestEventType, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time, logger logging.SimpleLogging) HttpResponse
 }
 
 type DefaultCommandExecutor struct {
