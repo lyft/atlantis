@@ -11,6 +11,7 @@ import (
 	sns_matchers "github.com/runatlantis/atlantis/server/lyft/aws/sns/mocks/matchers"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/uber-go/tally"
 	"net/http"
 	"net/url"
 	"testing"
@@ -22,15 +23,19 @@ func TestExecuteCommentCommand_Success(t *testing.T) {
 	mockCommandRunner := mocks.NewMockCommandRunner()
 	mockWriter := sns_mocks.NewMockWriter()
 	When(mockWriter.Write(sns_matchers.AnySliceOfByte())).ThenReturn(nil)
+	scope := tally.NewTestScope("test", nil)
 	executor := GatewayCommandExecutor{
 		SNSWriter:     mockWriter,
 		CommandRunner: mockCommandRunner,
+		Scope:         scope,
+		Logger:        logging.NewNoopLogger(t),
 	}
 	req := createExampleRequest(t)
 	resp := executor.ExecuteCommentCommand(req, models.Repo{}, nil, nil, models.User{}, 0, nil, time.Time{})
 	mockWriter.VerifyWasCalledOnce().Write(sns_matchers.AnySliceOfByte())
 	Assert(t, resp.err.code == 0, "response should have no error")
 	Assert(t, resp.body == "Processing...", "response should be processing")
+	Assert(t, scope.Snapshot().Counters()["test.send.success+"].Value() == 1, "should be a successful send")
 }
 
 func TestExecuteCommentCommand_Failure(t *testing.T) {
@@ -38,15 +43,19 @@ func TestExecuteCommentCommand_Failure(t *testing.T) {
 	mockCommandRunner := mocks.NewMockCommandRunner()
 	mockWriter := sns_mocks.NewMockWriter()
 	When(mockWriter.Write(sns_matchers.AnySliceOfByte())).ThenReturn(errors.New("marshal err"))
+	scope := tally.NewTestScope("test", nil)
 	executor := GatewayCommandExecutor{
 		SNSWriter:     mockWriter,
 		CommandRunner: mockCommandRunner,
+		Scope:         scope,
+		Logger:        logging.NewNoopLogger(t),
 	}
 	req := createExampleRequest(t)
 	resp := executor.ExecuteCommentCommand(req, models.Repo{}, nil, nil, models.User{}, 0, nil, time.Time{})
 	mockWriter.VerifyWasCalledOnce().Write(sns_matchers.AnySliceOfByte())
 	Assert(t, resp.err.code == 400, "response should have bad request error")
 	Assert(t, resp.body == "Writing gateway message to sns topic: marshal err", "response should be a marshal err")
+	Assert(t, scope.Snapshot().Counters()["test.send.failure+"].Value() == 1, "should be a failed send")
 }
 
 func TestExecuteAutoplanCommand_OpenWithTerraformChanges(t *testing.T) {
@@ -56,9 +65,12 @@ func TestExecuteAutoplanCommand_OpenWithTerraformChanges(t *testing.T) {
 	mockCommandRunner := mocks.NewMockCommandRunner()
 	When(mockCommandRunner.RunPseudoAutoplanCommand(
 		matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(true)
+	scope := tally.NewTestScope("test", nil)
 	executor := GatewayCommandExecutor{
 		SNSWriter:     mockWriter,
 		CommandRunner: mockCommandRunner,
+		Scope:         scope,
+		Logger:        logging.NewNoopLogger(t),
 	}
 	req := createExampleRequest(t)
 	logger := logging.NewNoopLogger(t)
@@ -69,6 +81,7 @@ func TestExecuteAutoplanCommand_OpenWithTerraformChanges(t *testing.T) {
 		matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
 	Assert(t, resp.err.code == 0, "response should have no error")
 	Assert(t, resp.body == "Processing...", "response should be processing")
+	Assert(t, scope.Snapshot().Counters()["test.send.success+"].Value() == 1, "should be a successful send")
 }
 
 func TestExecuteAutoplanCommand_OpenWithoutTerraformChanges(t *testing.T) {
@@ -81,6 +94,7 @@ func TestExecuteAutoplanCommand_OpenWithoutTerraformChanges(t *testing.T) {
 	executor := GatewayCommandExecutor{
 		SNSWriter:     mockWriter,
 		CommandRunner: mockCommandRunner,
+		Logger:        logging.NewNoopLogger(t),
 	}
 	req := createExampleRequest(t)
 	logger := logging.NewNoopLogger(t)
@@ -100,9 +114,12 @@ func TestExecuteAutoplanCommand_Close(t *testing.T) {
 	mockCommandRunner := mocks.NewMockCommandRunner()
 	When(mockCommandRunner.RunPseudoAutoplanCommand(
 		matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(false)
+	scope := tally.NewTestScope("test", nil)
 	executor := GatewayCommandExecutor{
 		SNSWriter:     mockWriter,
 		CommandRunner: mockCommandRunner,
+		Scope:         scope,
+		Logger:        logging.NewNoopLogger(t),
 	}
 	req := createExampleRequest(t)
 	logger := logging.NewNoopLogger(t)
@@ -113,6 +130,7 @@ func TestExecuteAutoplanCommand_Close(t *testing.T) {
 		matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
 	Assert(t, resp.err.code == 0, "response should have no error")
 	Assert(t, resp.body == "", "response should be empty")
+	Assert(t, scope.Snapshot().Counters()["test.send.success+"].Value() == 1, "should be a successful send")
 }
 
 func createExampleRequest(t *testing.T) *http.Request {

@@ -7,6 +7,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
+	"github.com/uber-go/tally"
 	"net/http"
 	"time"
 )
@@ -14,11 +15,14 @@ import (
 type GatewayCommandExecutor struct {
 	SNSWriter     sns.Writer
 	CommandRunner events.CommandRunner
+	Scope         tally.Scope
+	Logger        logging.SimpleLogging
 }
 
 func (g *GatewayCommandExecutor) ExecuteCommentCommand(request *http.Request, _ models.Repo, _ *models.Repo, _ *models.PullRequest, _ models.User, _ int, _ *events.CommentCommand, _ time.Time) HttpResponse {
 	err := g.SendToWorker(request)
 	if err != nil {
+		g.Logger.With("err", err).Warn("Failed to send comment request to Atlantis worker")
 		return HttpResponse{
 			body: err.Error(),
 			err: HttpError{
@@ -52,6 +56,7 @@ func (g *GatewayCommandExecutor) ExecuteAutoplanCommand(request *http.Request, e
 		respBody = "Ignoring non-actionable pull request event"
 	}
 	if err != nil {
+		g.Logger.With("err", err, "eventType", eventType).Warn("Failed to send autoplan request to Atlantis worker")
 		return HttpResponse{
 			body: err.Error(),
 			err: HttpError{
@@ -68,10 +73,13 @@ func (g *GatewayCommandExecutor) ExecuteAutoplanCommand(request *http.Request, e
 func (g *GatewayCommandExecutor) SendToWorker(r *http.Request) error {
 	buffer := bytes.NewBuffer([]byte{})
 	if err := r.Write(buffer); err != nil {
+		g.Scope.SubScope("send").Counter("failure").Inc(1)
 		return errors.Wrap(err, "Marshalling gateway request to buffer")
 	}
 	if err := g.SNSWriter.Write(buffer.Bytes()); err != nil {
+		g.Scope.SubScope("send").Counter("failure").Inc(1)
 		return errors.Wrap(err, "Writing gateway message to sns topic")
 	}
+	g.Scope.SubScope("send").Counter("success").Inc(1)
 	return nil
 }

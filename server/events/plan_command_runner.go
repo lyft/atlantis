@@ -248,8 +248,10 @@ func (p *PlanCommandRunner) PseudoRun(ctx *CommandContext) bool {
 				ctx.Log.Warn("unable to update commit status: %s", err)
 			}
 		}
+		ctx.Scope.Counter("tf_projects_found").Inc(1)
 		return false
 	}
+	ctx.Scope.Counter("tf_projects_not_found").Inc(1)
 	return true
 }
 
