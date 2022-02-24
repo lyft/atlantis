@@ -73,9 +73,9 @@ func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBa
 		return &NoopStorageBackend{}, nil
 	}
 
-	config := jobs.StorageBackend.GetConfigMap()
-	backend := jobs.StorageBackend.GetConfiguredBackend()
-	containerName := jobs.StorageBackend.GetContainerName()
+	config := jobs.StorageBackend.Backend.GetConfigMap()
+	backend := jobs.StorageBackend.Backend.GetConfiguredBackend()
+	containerName := jobs.StorageBackend.Backend.GetContainerName()
 
 	location, err := stow.Dial(backend, config)
 	if err != nil {

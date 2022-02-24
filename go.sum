@@ -120,6 +120,7 @@ github.com/briandowns/spinner v0.0.0-20170614154858-48dbb65d7bd5/go.mod h1:hw/JE
 github.com/cactus/go-statsd-client/statsd v0.0.0-20200623234511-94959e3146b2 h1:GgJnJEJYymy/lx+1zXOO2TvGPRQJJ9vz4onxnA9gF3k=
 github.com/cactus/go-statsd-client/statsd v0.0.0-20200623234511-94959e3146b2/go.mod h1:l/bIBLeOl9eX+wxJAzxS4TveKRtAqlyDpHjhkfO0MEI=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
+github.com/cheekybits/is v0.0.0-20150225183255-68e9c0620927 h1:SKI1/fuSdodxmNNyVBR8d7X/HuLnRpvvFO0AgyQk764=
 github.com/cheekybits/is v0.0.0-20150225183255-68e9c0620927/go.mod h1:h/aW8ynjgkuj+NQRlZcDbAbM1ORAbXjXX77sX7T289U=
 github.com/cheggaaa/pb v1.0.27/go.mod h1:pQciLPpbU0oxA0h+VJYYLxO+XeDQb5pZijXscXHm81s=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=

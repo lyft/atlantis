@@ -62,65 +62,36 @@ func (a AuthType) String() string {
 	}
 }
 
+type BackendConfigurer interface {
+	GetConfigMap() stow.Config
+	GetConfiguredBackend() string
+	GetContainerName() string
+}
+
 type Jobs struct {
 	StorageBackend *StorageBackend
 }
 
 type StorageBackend struct {
-	S3 *S3
-}
-
-func (s *StorageBackend) GetConfigMap() stow.ConfigMap {
-	switch {
-	case s.S3 != nil:
-		return s.S3.GetConfigMap()
-	default:
-		return map[string]string{}
-	}
-}
-
-func (s *StorageBackend) GetConfiguredBackend() string {
-	switch {
-	case s.S3 != nil:
-		return "s3"
-	default:
-		return ""
-	}
-}
-
-func (s *StorageBackend) GetContainerName() string {
-	switch {
-	case s.S3 != nil:
-		return s.S3.BucketName
-	default:
-		return ""
-	}
+	Backend BackendConfigurer
 }
 
 type S3 struct {
 	BucketName string
-	AuthType   AuthType
-
-	// params when auth type is set to accesskey
-	AccessKeyID string
-	SecretKey   string
 }
 
-func (s *S3) GetConfigMap() stow.ConfigMap {
-	switch {
-	case s.AuthType == Iam:
-		return map[string]string{
-			s3.ConfigAuthType: s.AuthType.String(),
-		}
-	case s.AuthType == AccessKey:
-		return map[string]string{
-			s3.ConfigAuthType:    s.AuthType.String(),
-			s3.ConfigAccessKeyID: s.AccessKeyID,
-			s3.ConfigSecretKey:   s.SecretKey,
-		}
-	default:
-		return map[string]string{}
+func (s *S3) GetConfigMap() stow.Config {
+	return stow.ConfigMap{
+		s3.ConfigAuthType: "iam",
 	}
+}
+
+func (s *S3) GetConfiguredBackend() string {
+	return "s3"
+}
+
+func (s *S3) GetContainerName() string {
+	return s.BucketName
 }
 
 type Metrics struct {

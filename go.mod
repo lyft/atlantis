@@ -138,6 +138,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.13.0
 	github.com/aws/aws-sdk-go-v2/config v1.13.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.16.0
+	github.com/graymeta/stow v0.2.7
 )
 
 require (
@@ -151,6 +152,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.9.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.14.0 // indirect
 	github.com/aws/smithy-go v1.10.0 // indirect
-	github.com/graymeta/stow v0.2.7 // indirect
 	github.com/onsi/ginkgo v1.14.0 // indirect
 )
