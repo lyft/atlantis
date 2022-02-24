@@ -44,6 +44,8 @@ type GlobalCfg struct {
 	Jobs                 Jobs
 }
 
+// Interface to configure the storage backends
+// Additional storage backends will implement this interface
 type BackendConfigurer interface {
 	GetConfigMap() stow.Config
 	GetConfiguredBackend() string
@@ -55,14 +57,17 @@ type Jobs struct {
 }
 
 type StorageBackend struct {
-	Backend BackendConfigurer
+	BackendConfig BackendConfigurer
 }
 
+// S3 implementation for s3 backend storage
 type S3 struct {
 	BucketName string
 }
 
 func (s *S3) GetConfigMap() stow.Config {
+	// Only supports Iam auth type for now
+	// TODO: Add accesskeys auth type
 	return stow.ConfigMap{
 		s3.ConfigAuthType: "iam",
 	}

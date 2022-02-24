@@ -49,7 +49,7 @@ func (s *storageBackend) Write(key string, reader io.Reader) (bool, error) {
 		containerFound = true
 		_, err = container.Put(key, reader, 100, nil)
 		if err != nil {
-			s.logger.Warn(fmt.Sprintf("error uploading to %s", s.location), err)
+			s.logger.Warn("error uploading to %s", s.location, err)
 			return err
 		}
 		s.logger.Info("successfully uploaded logs for job: %s", key)
@@ -77,9 +77,9 @@ func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBa
 		return &NoopStorageBackend{}, nil
 	}
 
-	config := jobs.StorageBackend.Backend.GetConfigMap()
-	backend := jobs.StorageBackend.Backend.GetConfiguredBackend()
-	containerName := jobs.StorageBackend.Backend.GetContainerName()
+	config := jobs.StorageBackend.BackendConfig.GetConfigMap()
+	backend := jobs.StorageBackend.BackendConfig.GetConfiguredBackend()
+	containerName := jobs.StorageBackend.BackendConfig.GetContainerName()
 
 	location, err := stow.Dial(backend, config)
 	if err != nil {
@@ -91,12 +91,6 @@ func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBa
 		logger:        logger,
 		containerName: containerName,
 	}, nil
-}
-
-type StorageBackendNotConfigured struct{}
-
-func (s *StorageBackendNotConfigured) Error() string {
-	return "storage backend is not configured"
 }
 
 // Used when log persistence is not configured

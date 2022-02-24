@@ -138,7 +138,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(AnyString(), matchers.AnyIoReader())).ThenReturn(storageBackendErr)
+		When(storageBackend.Write(AnyString(), matchers.AnyIoReader())).ThenReturn(false, storageBackendErr)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
 		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
 
@@ -188,7 +188,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(AnyString(), matchers.AnyIoReader())).ThenReturn(nil)
+		When(storageBackend.Write(AnyString(), matchers.AnyIoReader())).ThenReturn(true, nil)
 
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
 		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)

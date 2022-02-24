@@ -35,7 +35,7 @@ func (s *StorageBackend) ToValid() valid.StorageBackend {
 	switch {
 	case s.S3 != nil:
 		return valid.StorageBackend{
-			Backend: &valid.S3{
+			BackendConfig: &valid.S3{
 				BucketName: s.S3.BucketName,
 			},
 		}

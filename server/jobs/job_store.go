@@ -19,9 +19,6 @@ const (
 type Job struct {
 	Output []string
 	Status JobStatus
-
-	readIndex  int
-	readBuffer string
 }
 
 func (j *Job) GetReader() io.Reader {
@@ -142,14 +139,14 @@ func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, status JobStatus) e
 	job := j.jobs[jobID]
 	job.Status = Complete
 
-	// Persist to storage backend and return error if error other than StorageBackendNotConfigured
+	// Persist to storage backend
 	ok, err := j.storageBackend.Write(jobID, job.GetReader())
 	if err != nil {
 		return errors.Wrapf(err, "error persisting job: %s", jobID)
 	}
 
+	// Only remove from memory if logs are persisted successfully
 	if ok {
-		// Only remove from memory if logs are persisted successfully
 		delete(j.jobs, jobID)
 	}
 
