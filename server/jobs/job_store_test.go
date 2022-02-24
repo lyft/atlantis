@@ -209,9 +209,3 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 	})
 }
-
-func TestJob_Read(t *testing.T) {
-
-	t.Run("success", func(t *testing.T) {})
-	t.Run("log exceeds byte array size", func(t *testing.T) {})
-}
