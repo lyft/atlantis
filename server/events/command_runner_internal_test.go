@@ -3,6 +3,7 @@ package events
 import (
 	"testing"
 
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -74,7 +75,7 @@ func TestApplyUpdateCommitStatus(t *testing.T) {
 			cr := &ApplyCommandRunner{
 				commitStatusUpdater: csu,
 			}
-			cr.updateCommitStatus(&models.CommandContext{}, c.pullStatus)
+			cr.updateCommitStatus(&command.Context{}, c.pullStatus)
 			Equals(t, models.Repo{}, csu.CalledRepo)
 			Equals(t, models.PullRequest{}, csu.CalledPull)
 			Equals(t, c.expStatus, csu.CalledStatus)
@@ -136,7 +137,7 @@ func TestPlanUpdateCommitStatus(t *testing.T) {
 			cr := &PlanCommandRunner{
 				commitStatusUpdater: csu,
 			}
-			cr.updateCommitStatus(&models.CommandContext{}, c.pullStatus)
+			cr.updateCommitStatus(&command.Context{}, c.pullStatus)
 			Equals(t, models.Repo{}, csu.CalledRepo)
 			Equals(t, models.PullRequest{}, csu.CalledPull)
 			Equals(t, c.expStatus, csu.CalledStatus)

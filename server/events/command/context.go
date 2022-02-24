@@ -1,8 +1,9 @@
-package models
+package command
 
 import (
 	"time"
 
+	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
 )
@@ -18,24 +19,24 @@ const (
 	Comment
 )
 
-// CommandContext represents the context of a command that should be executed
+// Context represents the context of a command that should be executed
 // for a pull request.
-type CommandContext struct {
+type Context struct {
 	// HeadRepo is the repository that is getting merged into the BaseRepo.
 	// If the pull request branch is from the same repository then HeadRepo will
 	// be the same as BaseRepo.
 	// See https://help.github.com/articles/about-pull-request-merges/.
-	HeadRepo Repo
-	Pull     PullRequest
+	HeadRepo models.Repo
+	Pull     models.PullRequest
 	Scope    tally.Scope
 	// User is the user that triggered this command.
-	User User
+	User models.User
 	Log  logging.SimpleLogging
 
 	// Current PR state
-	PullRequestStatus PullReqStatus
+	PullRequestStatus models.PullReqStatus
 
-	PullStatus *PullStatus
+	PullStatus *models.PullStatus
 
 	Trigger CommandTrigger
 

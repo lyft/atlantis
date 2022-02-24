@@ -3,6 +3,7 @@ package events
 import (
 	"fmt"
 
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -38,7 +39,7 @@ type ApprovePoliciesCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
-func (a *ApprovePoliciesCommandRunner) Run(ctx *models.CommandContext, cmd *CommentCommand) {
+func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
@@ -51,7 +52,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *models.CommandContext, cmd *Comm
 		if statusErr := a.commitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, models.PolicyCheckCommand); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
-		a.pullUpdater.updatePull(ctx, cmd, models.CommandResult{Error: err})
+		a.pullUpdater.updatePull(ctx, cmd, command.Result{Error: err})
 		return
 	}
 
@@ -86,7 +87,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *models.CommandContext, cmd *Comm
 	a.updateCommitStatus(ctx, pullStatus)
 }
 
-func (a *ApprovePoliciesCommandRunner) buildApprovePolicyCommandResults(ctx *models.CommandContext, prjCmds []models.ProjectCommandContext) (result models.CommandResult) {
+func (a *ApprovePoliciesCommandRunner) buildApprovePolicyCommandResults(ctx *command.Context, prjCmds []models.ProjectCommandContext) (result command.Result) {
 	// Check if vcs user is in the owner list of the PolicySets. All projects
 	// share the same Owners list at this time so no reason to iterate over each
 	// project.
@@ -105,7 +106,7 @@ func (a *ApprovePoliciesCommandRunner) buildApprovePolicyCommandResults(ctx *mod
 	return
 }
 
-func (a *ApprovePoliciesCommandRunner) updateCommitStatus(ctx *models.CommandContext, pullStatus models.PullStatus) {
+func (a *ApprovePoliciesCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus

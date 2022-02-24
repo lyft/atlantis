@@ -8,6 +8,7 @@ import (
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/core/locking"
 	"github.com/runatlantis/atlantis/server/events"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -57,7 +58,7 @@ func TestApplyCommandRunner_IsLocked(t *testing.T) {
 			When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
 			When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
 
-			ctx := &models.CommandContext{
+			ctx := &command.Context{
 				User:     fixtures.User,
 				Log:      logger,
 				Pull:     modelPull,

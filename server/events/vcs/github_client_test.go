@@ -506,7 +506,7 @@ func TestGithubClient_PullIsMergeable(t *testing.T) {
         "created_at": "2012-08-20T01:19:13Z",
         "updated_at": "2012-08-20T01:19:13Z"
 	  }`
-	  checksJSON := `{
+	checksJSON := `{
 		"check_runs": [
 		  {
 			"id": 4,
@@ -608,7 +608,7 @@ func TestGithubClient_PullIsMergeable(t *testing.T) {
 					Hostname: "github.com",
 				},
 			}, models.PullRequest{
-				Num: 1,
+				Num:        1,
 				HeadCommit: "2",
 			})
 			Ok(t, err)

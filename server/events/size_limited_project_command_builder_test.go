@@ -5,6 +5,7 @@ import (
 
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/models"
 	. "github.com/runatlantis/atlantis/testing"
@@ -15,7 +16,7 @@ func TestSizeLimitedProjectCommandBuilder_autoplan(t *testing.T) {
 
 	delegate := mocks.NewMockProjectCommandBuilder()
 
-	ctx := &models.CommandContext{}
+	ctx := &command.Context{}
 
 	project1 := models.ProjectCommandContext{
 		ProjectName: "test1",
@@ -104,7 +105,7 @@ func TestSizeLimitedProjectCommandBuilder_planComment(t *testing.T) {
 
 	delegate := mocks.NewMockProjectCommandBuilder()
 
-	ctx := &models.CommandContext{}
+	ctx := &command.Context{}
 
 	comment := &events.CommentCommand{}
 

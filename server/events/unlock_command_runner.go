@@ -1,6 +1,7 @@
 package events
 
 import (
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -26,7 +27,7 @@ type UnlockCommandRunner struct {
 }
 
 func (u *UnlockCommandRunner) Run(
-	ctx *models.CommandContext,
+	ctx *command.Context,
 	cmd *CommentCommand,
 ) {
 	baseRepo := ctx.Pull.BaseRepo

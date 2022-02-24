@@ -6,6 +6,7 @@ import (
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -37,7 +38,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 		Projects: []models.ProjectStatus{},
 	}
 
-	commandCtx := &models.CommandContext{
+	commandCtx := &command.Context{
 		Log:        logging.NewNoopLogger(t),
 		PullStatus: pullStatus,
 	}

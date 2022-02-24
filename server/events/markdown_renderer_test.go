@@ -163,7 +163,7 @@ $$$
 	}
 	r := events.MarkdownRenderer{}
 	for _, c := range cases {
-		res := models.CommandResult{
+		res := command.Result{
 			ProjectResults: c.ProjectResults,
 		}
 		expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
@@ -206,7 +206,7 @@ func TestRenderErr(t *testing.T) {
 
 	r := events.MarkdownRenderer{}
 	for _, c := range cases {
-		res := models.CommandResult{
+		res := command.Result{
 			Error: c.Error,
 		}
 		for _, verbose := range []bool{true, false} {
@@ -251,7 +251,7 @@ func TestRenderFailure(t *testing.T) {
 
 	r := events.MarkdownRenderer{}
 	for _, c := range cases {
-		res := models.CommandResult{
+		res := command.Result{
 			Failure: c.Failure,
 		}
 		for _, verbose := range []bool{true, false} {
@@ -269,7 +269,7 @@ func TestRenderFailure(t *testing.T) {
 
 func TestRenderErrAndFailure(t *testing.T) {
 	r := events.MarkdownRenderer{}
-	res := models.CommandResult{
+	res := command.Result{
 		Error:   errors.New("error"),
 		Failure: "failure",
 	}
@@ -906,7 +906,7 @@ $$$
 	r := events.MarkdownRenderer{}
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			res := models.CommandResult{
+			res := command.Result{
 				ProjectResults: c.ProjectResults,
 			}
 			for _, verbose := range []bool{true, false} {
@@ -1059,7 +1059,7 @@ $$$
 	}
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			res := models.CommandResult{
+			res := command.Result{
 				ProjectResults: c.ProjectResults,
 			}
 			for _, verbose := range []bool{true, false} {
@@ -1205,7 +1205,7 @@ $$$
 	}
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			res := models.CommandResult{
+			res := command.Result{
 				ProjectResults: c.ProjectResults,
 			}
 			for _, verbose := range []bool{true, false} {
@@ -1229,7 +1229,7 @@ func TestRenderProjectResults_DisableFolding(t *testing.T) {
 		DisableMarkdownFolding: true,
 	}
 
-	rendered := mr.Render(models.CommandResult{
+	rendered := mr.Render(command.Result{
 		ProjectResults: []models.ProjectResult{
 			{
 				RepoRelDir: ".",
@@ -1313,7 +1313,7 @@ func TestRenderProjectResults_WrappedErr(t *testing.T) {
 					GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
 				}
 
-				rendered := mr.Render(models.CommandResult{
+				rendered := mr.Render(command.Result{
 					ProjectResults: []models.ProjectResult{
 						{
 							RepoRelDir: ".",
@@ -1444,7 +1444,7 @@ func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 							ApplySuccess: c.Output,
 						}
 					}
-					rendered := mr.Render(models.CommandResult{
+					rendered := mr.Render(command.Result{
 						ProjectResults: []models.ProjectResult{pr},
 					}, cmd, "log", false, c.VCSHost, make(map[string]string))
 
@@ -1528,7 +1528,7 @@ $$$
 func TestRenderProjectResults_MultiProjectApplyWrapped(t *testing.T) {
 	mr := events.MarkdownRenderer{}
 	tfOut := strings.Repeat("line\n", 13)
-	rendered := mr.Render(models.CommandResult{
+	rendered := mr.Render(command.Result{
 		ProjectResults: []models.ProjectResult{
 			{
 				RepoRelDir:   ".",
@@ -1574,7 +1574,7 @@ $$$
 func TestRenderProjectResults_MultiProjectPlanWrapped(t *testing.T) {
 	mr := events.MarkdownRenderer{}
 	tfOut := strings.Repeat("line\n", 13) + "Plan: 1 to add, 0 to change, 0 to destroy."
-	rendered := mr.Render(models.CommandResult{
+	rendered := mr.Render(command.Result{
 		ProjectResults: []models.ProjectResult{
 			{
 				RepoRelDir: ".",
@@ -1648,11 +1648,11 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 // all the plans as a result.
 func TestRenderProjectResults_PlansDeleted(t *testing.T) {
 	cases := map[string]struct {
-		cr  models.CommandResult
+		cr  command.Result
 		exp string
 	}{
 		"one failure": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{
 					{
 						RepoRelDir: ".",
@@ -1669,7 +1669,7 @@ func TestRenderProjectResults_PlansDeleted(t *testing.T) {
 `,
 		},
 		"two failures": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{
 					{
 						RepoRelDir: ".",
@@ -1701,7 +1701,7 @@ func TestRenderProjectResults_PlansDeleted(t *testing.T) {
 `,
 		},
 		"one failure, one success": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{
 					{
 						RepoRelDir: ".",
@@ -2209,7 +2209,7 @@ $$$
 	r.DisableRepoLocking = true
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			res := models.CommandResult{
+			res := command.Result{
 				ProjectResults: c.ProjectResults,
 			}
 			for _, verbose := range []bool{true, false} {
@@ -2489,7 +2489,7 @@ Plan: 1 to add, 1 to change, 1 to destroy.
 	}
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			res := models.CommandResult{
+			res := command.Result{
 				ProjectResults: c.ProjectResults,
 			}
 			for _, verbose := range []bool{true, false} {

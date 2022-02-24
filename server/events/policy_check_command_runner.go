@@ -1,6 +1,9 @@
 package events
 
-import "github.com/runatlantis/atlantis/server/events/models"
+import (
+	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/models"
+)
 
 func NewPolicyCheckCommandRunner(
 	dbUpdater *DBUpdater,
@@ -31,7 +34,7 @@ type PolicyCheckCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
-func (p *PolicyCheckCommandRunner) Run(ctx *models.CommandContext, cmds []models.ProjectCommandContext) {
+func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []models.ProjectCommandContext) {
 	if len(cmds) == 0 {
 		ctx.Log.Info("no projects to run policy_check in")
 		if !p.silenceVCSStatusNoProjects {
@@ -51,7 +54,7 @@ func (p *PolicyCheckCommandRunner) Run(ctx *models.CommandContext, cmds []models
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
 
-	var result models.CommandResult
+	var result command.Result
 	if p.isParallelEnabled(cmds) {
 		ctx.Log.Info("Running policy_checks in parallel")
 		result = runProjectCmdsParallel(cmds, p.prjCmdRunner.PolicyCheck, p.parallelPoolSize)
@@ -69,7 +72,7 @@ func (p *PolicyCheckCommandRunner) Run(ctx *models.CommandContext, cmds []models
 	p.updateCommitStatus(ctx, pullStatus)
 }
 
-func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *models.CommandContext, pullStatus models.PullStatus) {
+func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus

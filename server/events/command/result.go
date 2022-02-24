@@ -1,10 +1,12 @@
-package models
+package command
 
-// CommandResult is the result of running a Command.
-type CommandResult struct {
+import "github.com/runatlantis/atlantis/server/events/models"
+
+// Result is the result of running a Command.
+type Result struct {
 	Error          error
 	Failure        string
-	ProjectResults []ProjectResult
+	ProjectResults []models.ProjectResult
 	// PlansDeleted is true if all plans created during this command were
 	// deleted. This happens if automerging is enabled and one project has an
 	// error since automerging requires all plans to succeed.
@@ -13,7 +15,7 @@ type CommandResult struct {
 
 // HasErrors returns true if there were any errors during the execution,
 // even if it was only in one project.
-func (c CommandResult) HasErrors() bool {
+func (c Result) HasErrors() bool {
 	if c.Error != nil || c.Failure != "" {
 		return true
 	}

@@ -10,6 +10,7 @@ import (
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
@@ -622,7 +623,7 @@ projects:
 			// We run a test for each type of command.
 			for _, cmd := range []models.CommandName{models.PlanCommand, models.ApplyCommand} {
 				t.Run(cmd.String(), func(t *testing.T) {
-					ctxs, err := builder.buildProjectCommandCtx(&models.CommandContext{
+					ctxs, err := builder.buildProjectCommandCtx(&command.Context{
 						Log: logger,
 						Pull: models.PullRequest{
 							BaseRepo: baseRepo,
@@ -817,7 +818,7 @@ projects:
 			// We run a test for each type of command, again specific projects
 			for _, cmd := range []models.CommandName{models.PlanCommand, models.ApplyCommand} {
 				t.Run(cmd.String(), func(t *testing.T) {
-					ctxs, err := builder.buildProjectCommandCtx(&models.CommandContext{
+					ctxs, err := builder.buildProjectCommandCtx(&command.Context{
 						Pull: models.PullRequest{
 							BaseRepo: baseRepo,
 						},
@@ -1042,7 +1043,7 @@ workflows:
 
 			cmd := models.PolicyCheckCommand
 			t.Run(cmd.String(), func(t *testing.T) {
-				ctxs, err := builder.buildProjectCommandCtx(&models.CommandContext{
+				ctxs, err := builder.buildProjectCommandCtx(&command.Context{
 					Log: logger,
 					Pull: models.PullRequest{
 						BaseRepo: baseRepo,

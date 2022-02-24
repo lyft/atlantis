@@ -1,4 +1,4 @@
-package models_test
+package command_test
 
 import (
 	"errors"
@@ -10,29 +10,29 @@ import (
 
 func TestCommandResult_HasErrors(t *testing.T) {
 	cases := map[string]struct {
-		cr  models.CommandResult
+		cr  command.Result
 		exp bool
 	}{
 		"error": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				Error: errors.New("err"),
 			},
 			exp: true,
 		},
 		"failure": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				Failure: "failure",
 			},
 			exp: true,
 		},
 		"empty results list": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{},
 			},
 			exp: false,
 		},
 		"successful plan": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{
 					{
 						PlanSuccess: &models.PlanSuccess{},
@@ -42,7 +42,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 			exp: false,
 		},
 		"successful apply": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{
 					{
 						ApplySuccess: "success",
@@ -52,7 +52,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 			exp: false,
 		},
 		"single errored project": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{
 					{
 						Error: errors.New("err"),
@@ -62,7 +62,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 			exp: true,
 		},
 		"single failed project": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{
 					{
 						Failure: "failure",
@@ -72,7 +72,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 			exp: true,
 		},
 		"two successful projects": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{
 					{
 						PlanSuccess: &models.PlanSuccess{},
@@ -85,7 +85,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 			exp: false,
 		},
 		"one successful, one failed project": {
-			cr: models.CommandResult{
+			cr: command.Result{
 				ProjectResults: []models.ProjectResult{
 					{
 						PlanSuccess: &models.PlanSuccess{},

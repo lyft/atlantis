@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -118,30 +119,30 @@ func NewProjectCommandBuilderWithLimit(
 type ProjectPlanCommandBuilder interface {
 	// BuildAutoplanCommands builds project commands that will run plan on
 	// the projects determined to be modified.
-	BuildAutoplanCommands(ctx *models.CommandContext) ([]models.ProjectCommandContext, error)
+	BuildAutoplanCommands(ctx *command.Context) ([]models.ProjectCommandContext, error)
 	// BuildPlanCommands builds project plan commands for this ctx and comment. If
 	// comment doesn't specify one project then there may be multiple commands
 	// to be run.
-	BuildPlanCommands(ctx *models.CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error)
+	BuildPlanCommands(ctx *command.Context, comment *CommentCommand) ([]models.ProjectCommandContext, error)
 }
 
 type ProjectApplyCommandBuilder interface {
 	// BuildApplyCommands builds project Apply commands for this ctx and comment. If
 	// comment doesn't specify one project then there may be multiple commands
 	// to be run.
-	BuildApplyCommands(ctx *models.CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error)
+	BuildApplyCommands(ctx *command.Context, comment *CommentCommand) ([]models.ProjectCommandContext, error)
 }
 
 type ProjectApprovePoliciesCommandBuilder interface {
 	// BuildApprovePoliciesCommands builds project PolicyCheck commands for this ctx and comment.
-	BuildApprovePoliciesCommands(ctx *models.CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error)
+	BuildApprovePoliciesCommands(ctx *command.Context, comment *CommentCommand) ([]models.ProjectCommandContext, error)
 }
 
 type ProjectVersionCommandBuilder interface {
 	// BuildVersionCommands builds project Version commands for this ctx and comment. If
 	// comment doesn't specify one project then there may be multiple commands
 	// to be run.
-	BuildVersionCommands(ctx *models.CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error)
+	BuildVersionCommands(ctx *command.Context, comment *CommentCommand) ([]models.ProjectCommandContext, error)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_command_builder.go ProjectCommandBuilder
@@ -173,7 +174,7 @@ type DefaultProjectCommandBuilder struct {
 }
 
 // See ProjectCommandBuilder.BuildAutoplanCommands.
-func (p *DefaultProjectCommandBuilder) BuildAutoplanCommands(ctx *models.CommandContext) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) BuildAutoplanCommands(ctx *command.Context) ([]models.ProjectCommandContext, error) {
 	projCtxs, err := p.buildPlanAllCommands(ctx, nil, false, false)
 	if err != nil {
 		return nil, err
@@ -190,7 +191,7 @@ func (p *DefaultProjectCommandBuilder) BuildAutoplanCommands(ctx *models.Command
 }
 
 // See ProjectCommandBuilder.BuildPlanCommands.
-func (p *DefaultProjectCommandBuilder) BuildPlanCommands(ctx *models.CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) BuildPlanCommands(ctx *command.Context, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	if !cmd.IsForSpecificProject() {
 		return p.buildPlanAllCommands(ctx, cmd.Flags, cmd.Verbose, cmd.ForceApply)
 	}
@@ -199,7 +200,7 @@ func (p *DefaultProjectCommandBuilder) BuildPlanCommands(ctx *models.CommandCont
 }
 
 // See ProjectCommandBuilder.BuildApplyCommands.
-func (p *DefaultProjectCommandBuilder) BuildApplyCommands(ctx *models.CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) BuildApplyCommands(ctx *command.Context, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	if !cmd.IsForSpecificProject() {
 		return p.buildAllProjectCommands(ctx, cmd)
 	}
@@ -207,11 +208,11 @@ func (p *DefaultProjectCommandBuilder) BuildApplyCommands(ctx *models.CommandCon
 	return pac, err
 }
 
-func (p *DefaultProjectCommandBuilder) BuildApprovePoliciesCommands(ctx *models.CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) BuildApprovePoliciesCommands(ctx *command.Context, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	return p.buildAllProjectCommands(ctx, cmd)
 }
 
-func (p *DefaultProjectCommandBuilder) BuildVersionCommands(ctx *models.CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) BuildVersionCommands(ctx *command.Context, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	if !cmd.IsForSpecificProject() {
 		return p.buildAllProjectCommands(ctx, cmd)
 	}
@@ -221,7 +222,7 @@ func (p *DefaultProjectCommandBuilder) BuildVersionCommands(ctx *models.CommandC
 
 // buildPlanAllCommands builds plan contexts for all projects we determine were
 // modified in this ctx.
-func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *models.CommandContext, commentFlags []string, verbose bool, forceApply bool) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context, commentFlags []string, verbose bool, forceApply bool) ([]models.ProjectCommandContext, error) {
 	// We'll need the list of modified files.
 	modifiedFiles, err := p.VCSClient.GetModifiedFiles(ctx.Pull.BaseRepo, ctx.Pull)
 	if err != nil {
@@ -353,7 +354,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *models.CommandC
 
 // buildProjectPlanCommand builds a plan context for a single project.
 // cmd must be for only one project.
-func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *models.CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *command.Context, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	workspace := DefaultWorkspace
 	if cmd.Workspace != "" {
 		workspace = cmd.Workspace
@@ -400,7 +401,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *models.Comma
 
 // getCfg returns the atlantis.yaml config (if it exists) for this project. If
 // there is no config, then projectCfg and repoCfg will be nil.
-func (p *DefaultProjectCommandBuilder) getCfg(ctx *models.CommandContext, projectName string, dir string, workspace string, repoDir string) (projectsCfg []valid.Project, repoCfg *valid.RepoCfg, err error) {
+func (p *DefaultProjectCommandBuilder) getCfg(ctx *command.Context, projectName string, dir string, workspace string, repoDir string) (projectsCfg []valid.Project, repoCfg *valid.RepoCfg, err error) {
 	hasConfigFile, err := p.ParserValidator.HasRepoCfg(repoDir)
 	if err != nil {
 		err = errors.Wrapf(err, "looking for %s file in %q", config.AtlantisYAMLFilename, repoDir)
@@ -452,7 +453,7 @@ func (p *DefaultProjectCommandBuilder) getCfg(ctx *models.CommandContext, projec
 
 // buildAllProjectCommands builds contexts for a command for every project that has
 // pending plans in this ctx.
-func (p *DefaultProjectCommandBuilder) buildAllProjectCommands(ctx *models.CommandContext, commentCmd *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) buildAllProjectCommands(ctx *command.Context, commentCmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	// Lock all dirs in this pull request (instead of a single dir) because we
 	// don't know how many dirs we'll need to run the command in.
 	unlockFn, err := p.WorkingDirLocker.TryLockPull(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num)
@@ -491,7 +492,7 @@ func (p *DefaultProjectCommandBuilder) buildAllProjectCommands(ctx *models.Comma
 
 // buildProjectApplyCommand builds an apply command for the single project
 // identified by cmd.
-func (p *DefaultProjectCommandBuilder) buildProjectApplyCommand(ctx *models.CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) buildProjectApplyCommand(ctx *command.Context, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	workspace := DefaultWorkspace
 	if cmd.Workspace != "" {
 		workspace = cmd.Workspace
@@ -533,7 +534,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectApplyCommand(ctx *models.Comm
 
 // buildProjectVersionCommand builds a version command for the single project
 // identified by cmd.
-func (p *DefaultProjectCommandBuilder) buildProjectVersionCommand(ctx *models.CommandContext, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (p *DefaultProjectCommandBuilder) buildProjectVersionCommand(ctx *command.Context, cmd *CommentCommand) ([]models.ProjectCommandContext, error) {
 	workspace := DefaultWorkspace
 	if cmd.Workspace != "" {
 		workspace = cmd.Workspace
@@ -575,7 +576,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectVersionCommand(ctx *models.Co
 
 // buildProjectCommandCtx builds a context for a single or several projects identified
 // by the parameters.
-func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *models.CommandContext,
+func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Context,
 	cmd models.CommandName,
 	projectName string,
 	commentFlags []string,

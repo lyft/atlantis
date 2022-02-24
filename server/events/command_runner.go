@@ -22,11 +22,11 @@ import (
 	"github.com/mcdafydd/go-azuredevops/azuredevops"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/recovery"
 	"github.com/uber-go/tally"
 	gitlab "github.com/xanzy/go-gitlab"
@@ -52,7 +52,7 @@ type CommandRunner interface {
 // StaleCommandChecker handles checks to validate if current command is stale and can be dropped.
 type StaleCommandChecker interface {
 	// CommandIsStale returns true if currentEventTimestamp is earlier than timestamp set in DB's latest pull model.
-	CommandIsStale(ctx *models.CommandContext) bool
+	CommandIsStale(ctx *command.Context) bool
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_getter.go GithubPullGetter
@@ -81,7 +81,7 @@ type GitlabMergeRequestGetter interface {
 
 // CommentCommandRunner runs individual command workflows.
 type CommentCommandRunner interface {
-	Run(*models.CommandContext, *CommentCommand)
+	Run(*command.Context, *CommentCommand)
 }
 
 func buildCommentCommandRunner(
@@ -154,7 +154,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 
-	ctx := &models.CommandContext{
+	ctx := &command.Context{
 		User:             user,
 		Log:              log,
 		Scope:            scope,
@@ -222,7 +222,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 		log.Err("Unable to fetch pull status, this is likely a bug.", err)
 	}
 
-	ctx := &models.CommandContext{
+	ctx := &command.Context{
 		User:             user,
 		Log:              log,
 		Pull:             pull,
@@ -343,7 +343,7 @@ func (c *DefaultCommandRunner) ensureValidRepoMetadata(
 	return
 }
 
-func (c *DefaultCommandRunner) validateCtxAndComment(ctx *models.CommandContext) bool {
+func (c *DefaultCommandRunner) validateCtxAndComment(ctx *command.Context) bool {
 	if !c.AllowForkPRs && ctx.HeadRepo.Owner != ctx.Pull.BaseRepo.Owner {
 		if c.SilenceForkPRErrors {
 			return false
@@ -390,15 +390,13 @@ func (c *DefaultCommandRunner) logPanics(baseRepo models.Repo, pullNum int, logg
 
 var automergeComment = `Automatically merging because all plans have been successfully applied.`
 
-type FeatureAwareCommandRunner struct {
+type ForceApplyCommandRunner struct {
 	CommandRunner
-	FeatureAllocator feature.Allocator
-	Logger           logging.SimpleLogging
-	VCSClient        vcs.Client
+	Logger    logging.SimpleLogging
+	VCSClient vcs.Client
 }
 
-func (f *FeatureAwareCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand, timestamp time.Time) {
-
+func (f *ForceApplyCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand, timestamp time.Time) {
 	if cmd.ForceApply {
 		warningMessage := "⚠️ WARNING ⚠️\n\n You have bypassed all apply requirements for this PR 🚀 . This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘 .\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
 		if commentErr := f.VCSClient.CreateComment(baseRepo, pullNum, warningMessage, ""); commentErr != nil {

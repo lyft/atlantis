@@ -13,7 +13,7 @@ func runProjectCmdsParallel(
 	cmds []models.ProjectCommandContext,
 	runnerFunc prjCmdRunnerFunc,
 	poolSize int,
-) models.CommandResult {
+) command.Result {
 	var results []models.ProjectResult
 	mux := &sync.Mutex{}
 
@@ -35,18 +35,18 @@ func runProjectCmdsParallel(
 	}
 
 	wg.Wait()
-	return models.CommandResult{ProjectResults: results}
+	return command.Result{ProjectResults: results}
 }
 
 func runProjectCmds(
 	cmds []models.ProjectCommandContext,
 	runnerFunc prjCmdRunnerFunc,
-) models.CommandResult {
+) command.Result {
 	var results []models.ProjectResult
 	for _, pCmd := range cmds {
 		res := runnerFunc(pCmd)
 
 		results = append(results, res)
 	}
-	return models.CommandResult{ProjectResults: results}
+	return command.Result{ProjectResults: results}
 }

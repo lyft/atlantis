@@ -3,6 +3,7 @@ package events
 import (
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/locking"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -62,7 +63,7 @@ type ApplyCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
-func (a *ApplyCommandRunner) Run(ctx *models.CommandContext, cmd *CommentCommand) {
+func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
@@ -118,7 +119,7 @@ func (a *ApplyCommandRunner) Run(ctx *models.CommandContext, cmd *CommentCommand
 		if statusErr := a.commitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName()); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
-		a.pullUpdater.updatePull(ctx, cmd, models.CommandResult{Error: err})
+		a.pullUpdater.updatePull(ctx, cmd, command.Result{Error: err})
 		return
 	}
 
@@ -138,7 +139,7 @@ func (a *ApplyCommandRunner) Run(ctx *models.CommandContext, cmd *CommentCommand
 	}
 
 	// Only run commands in parallel if enabled
-	var result models.CommandResult
+	var result command.Result
 	if a.isParallelEnabled(projectCmds) {
 		ctx.Log.Info("Running applies in parallel")
 		result = runProjectCmdsParallel(projectCmds, a.prjCmdRunner.Apply, a.parallelPoolSize)
@@ -174,7 +175,7 @@ func (a *ApplyCommandRunner) isParallelEnabled(projectCmds []models.ProjectComma
 	return len(projectCmds) > 0 && projectCmds[0].ParallelApplyEnabled
 }
 
-func (a *ApplyCommandRunner) updateCommitStatus(ctx *models.CommandContext, pullStatus models.PullStatus) {
+func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus

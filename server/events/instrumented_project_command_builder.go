@@ -1,6 +1,7 @@
 package events
 
 import (
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -11,7 +12,7 @@ type InstrumentedProjectCommandBuilder struct {
 	Logger logging.SimpleLogging
 }
 
-func (b *InstrumentedProjectCommandBuilder) BuildApplyCommands(ctx *models.CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (b *InstrumentedProjectCommandBuilder) BuildApplyCommands(ctx *command.Context, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
 	scope := ctx.Scope.SubScope("builder")
 
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
@@ -32,7 +33,7 @@ func (b *InstrumentedProjectCommandBuilder) BuildApplyCommands(ctx *models.Comma
 	return projectCmds, err
 
 }
-func (b *InstrumentedProjectCommandBuilder) BuildAutoplanCommands(ctx *models.CommandContext) ([]models.ProjectCommandContext, error) {
+func (b *InstrumentedProjectCommandBuilder) BuildAutoplanCommands(ctx *command.Context) ([]models.ProjectCommandContext, error) {
 	scope := ctx.Scope.SubScope("builder")
 
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
@@ -53,7 +54,7 @@ func (b *InstrumentedProjectCommandBuilder) BuildAutoplanCommands(ctx *models.Co
 	return projectCmds, err
 
 }
-func (b *InstrumentedProjectCommandBuilder) BuildPlanCommands(ctx *models.CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (b *InstrumentedProjectCommandBuilder) BuildPlanCommands(ctx *command.Context, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
 	scope := ctx.Scope.SubScope("builder")
 
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()

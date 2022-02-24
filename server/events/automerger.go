@@ -3,6 +3,7 @@ package events
 import (
 	"fmt"
 
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -12,7 +13,7 @@ type AutoMerger struct {
 	GlobalAutomerge bool
 }
 
-func (c *AutoMerger) automerge(ctx *models.CommandContext, pullStatus models.PullStatus, deleteSourceBranchOnMerge bool) {
+func (c *AutoMerger) automerge(ctx *command.Context, pullStatus models.PullStatus, deleteSourceBranchOnMerge bool) {
 	// We only automerge if all projects have been successfully applied.
 	for _, p := range pullStatus.Projects {
 		if p.Status != models.AppliedPlanStatus {

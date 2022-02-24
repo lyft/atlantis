@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -12,7 +13,7 @@ type SizeLimitedProjectCommandBuilder struct {
 	ProjectCommandBuilder
 }
 
-func (b *SizeLimitedProjectCommandBuilder) BuildAutoplanCommands(ctx *models.CommandContext) ([]models.ProjectCommandContext, error) {
+func (b *SizeLimitedProjectCommandBuilder) BuildAutoplanCommands(ctx *command.Context) ([]models.ProjectCommandContext, error) {
 	projects, err := b.ProjectCommandBuilder.BuildAutoplanCommands(ctx)
 
 	if err != nil {
@@ -22,7 +23,7 @@ func (b *SizeLimitedProjectCommandBuilder) BuildAutoplanCommands(ctx *models.Com
 	return projects, b.CheckAgainstLimit(projects)
 }
 
-func (b *SizeLimitedProjectCommandBuilder) BuildPlanCommands(ctx *models.CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (b *SizeLimitedProjectCommandBuilder) BuildPlanCommands(ctx *command.Context, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
 	projects, err := b.ProjectCommandBuilder.BuildPlanCommands(ctx, comment)
 
 	if err != nil {
