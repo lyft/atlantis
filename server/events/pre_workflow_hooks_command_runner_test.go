@@ -47,7 +47,7 @@ func TestRunPreHooks_Clone(t *testing.T) {
 	var newPull = fixtures.Pull
 	newPull.BaseRepo = fixtures.GithubRepo
 
-	ctx := &events.CommandContext{
+	ctx := &models.CommandContext{
 		Pull:     newPull,
 		HeadRepo: fixtures.GithubRepo,
 		User:     fixtures.User,

@@ -162,7 +162,7 @@ projects:
 				logger,
 			)
 
-			ctxs, err := builder.BuildAutoplanCommands(&events.CommandContext{
+			ctxs, err := builder.BuildAutoplanCommands(&models.CommandContext{
 				PullRequestStatus: models.PullReqStatus{
 					Mergeable: true,
 				},
@@ -433,12 +433,12 @@ projects:
 				var actCtxs []models.ProjectCommandContext
 				var err error
 				if cmdName == models.PlanCommand {
-					actCtxs, err = builder.BuildPlanCommands(&events.CommandContext{
+					actCtxs, err = builder.BuildPlanCommands(&models.CommandContext{
 						Log:   logger,
 						Scope: scope,
 					}, &c.Cmd)
 				} else {
-					actCtxs, err = builder.BuildApplyCommands(&events.CommandContext{Log: logger, Scope: scope}, &c.Cmd)
+					actCtxs, err = builder.BuildApplyCommands(&models.CommandContext{Log: logger, Scope: scope}, &c.Cmd)
 				}
 
 				if c.ExpErr != "" {
@@ -586,7 +586,7 @@ projects:
 			)
 
 			ctxs, err := builder.BuildPlanCommands(
-				&events.CommandContext{
+				&models.CommandContext{
 					Log:   logger,
 					Scope: scope,
 				},
@@ -677,7 +677,7 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 	)
 
 	ctxs, err := builder.BuildApplyCommands(
-		&events.CommandContext{
+		&models.CommandContext{
 			Log:   logger,
 			Scope: scope,
 		},
@@ -761,7 +761,7 @@ projects:
 		logger,
 	)
 
-	ctx := &events.CommandContext{
+	ctx := &models.CommandContext{
 		HeadRepo: models.Repo{},
 		Pull:     models.PullRequest{},
 		User:     models.User{},
@@ -842,7 +842,7 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 
 			var actCtxs []models.ProjectCommandContext
 			var err error
-			actCtxs, err = builder.BuildPlanCommands(&events.CommandContext{
+			actCtxs, err = builder.BuildPlanCommands(&models.CommandContext{
 				Log:   logger,
 				Scope: scope,
 			}, &events.CommentCommand{
@@ -1024,7 +1024,7 @@ projects:
 			)
 
 			actCtxs, err := builder.BuildPlanCommands(
-				&events.CommandContext{
+				&models.CommandContext{
 					Log:   logger,
 					Scope: scope,
 				},
@@ -1092,7 +1092,7 @@ projects:
 
 	var actCtxs []models.ProjectCommandContext
 	var err error
-	actCtxs, err = builder.BuildAutoplanCommands(&events.CommandContext{
+	actCtxs, err = builder.BuildAutoplanCommands(&models.CommandContext{
 		HeadRepo: models.Repo{},
 		Pull:     models.PullRequest{},
 		User:     models.User{},
@@ -1148,7 +1148,7 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 		logger,
 	)
 
-	ctxs, err := builder.BuildAutoplanCommands(&events.CommandContext{
+	ctxs, err := builder.BuildAutoplanCommands(&models.CommandContext{
 		PullRequestStatus: models.PullReqStatus{
 			Mergeable: true,
 		},
@@ -1231,7 +1231,7 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 	)
 
 	ctxs, err := builder.BuildVersionCommands(
-		&events.CommandContext{
+		&models.CommandContext{
 			Log: logger,
 		},
 		&events.CommentCommand{

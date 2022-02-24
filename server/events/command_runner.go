@@ -52,7 +52,7 @@ type CommandRunner interface {
 // StaleCommandChecker handles checks to validate if current command is stale and can be dropped.
 type StaleCommandChecker interface {
 	// CommandIsStale returns true if currentEventTimestamp is earlier than timestamp set in DB's latest pull model.
-	CommandIsStale(ctx *CommandContext) bool
+	CommandIsStale(ctx *models.CommandContext) bool
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_getter.go GithubPullGetter
@@ -81,7 +81,7 @@ type GitlabMergeRequestGetter interface {
 
 // CommentCommandRunner runs individual command workflows.
 type CommentCommandRunner interface {
-	Run(*CommandContext, *CommentCommand)
+	Run(*models.CommandContext, *CommentCommand)
 }
 
 func buildCommentCommandRunner(
@@ -154,14 +154,14 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 
-	ctx := &CommandContext{
+	ctx := &models.CommandContext{
 		User:             user,
 		Log:              log,
 		Scope:            scope,
 		Pull:             pull,
 		HeadRepo:         headRepo,
 		PullStatus:       status,
-		Trigger:          Auto,
+		Trigger:          models.Auto,
 		TriggerTimestamp: timestamp,
 	}
 	if !c.validateCtxAndComment(ctx) {
@@ -222,13 +222,13 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 		log.Err("Unable to fetch pull status, this is likely a bug.", err)
 	}
 
-	ctx := &CommandContext{
+	ctx := &models.CommandContext{
 		User:             user,
 		Log:              log,
 		Pull:             pull,
 		PullStatus:       status,
 		HeadRepo:         headRepo,
-		Trigger:          Comment,
+		Trigger:          models.Comment,
 		Scope:            scope,
 		TriggerTimestamp: timestamp,
 	}
@@ -343,7 +343,7 @@ func (c *DefaultCommandRunner) ensureValidRepoMetadata(
 	return
 }
 
-func (c *DefaultCommandRunner) validateCtxAndComment(ctx *CommandContext) bool {
+func (c *DefaultCommandRunner) validateCtxAndComment(ctx *models.CommandContext) bool {
 	if !c.AllowForkPRs && ctx.HeadRepo.Owner != ctx.Pull.BaseRepo.Owner {
 		if c.SilenceForkPRErrors {
 			return false

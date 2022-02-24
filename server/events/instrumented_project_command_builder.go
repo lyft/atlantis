@@ -11,7 +11,7 @@ type InstrumentedProjectCommandBuilder struct {
 	Logger logging.SimpleLogging
 }
 
-func (b *InstrumentedProjectCommandBuilder) BuildApplyCommands(ctx *CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (b *InstrumentedProjectCommandBuilder) BuildApplyCommands(ctx *models.CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
 	scope := ctx.Scope.SubScope("builder")
 
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
@@ -32,7 +32,7 @@ func (b *InstrumentedProjectCommandBuilder) BuildApplyCommands(ctx *CommandConte
 	return projectCmds, err
 
 }
-func (b *InstrumentedProjectCommandBuilder) BuildAutoplanCommands(ctx *CommandContext) ([]models.ProjectCommandContext, error) {
+func (b *InstrumentedProjectCommandBuilder) BuildAutoplanCommands(ctx *models.CommandContext) ([]models.ProjectCommandContext, error) {
 	scope := ctx.Scope.SubScope("builder")
 
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
@@ -53,7 +53,7 @@ func (b *InstrumentedProjectCommandBuilder) BuildAutoplanCommands(ctx *CommandCo
 	return projectCmds, err
 
 }
-func (b *InstrumentedProjectCommandBuilder) BuildPlanCommands(ctx *CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
+func (b *InstrumentedProjectCommandBuilder) BuildPlanCommands(ctx *models.CommandContext, comment *CommentCommand) ([]models.ProjectCommandContext, error) {
 	scope := ctx.Scope.SubScope("builder")
 
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()

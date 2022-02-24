@@ -31,7 +31,7 @@ type PolicyCheckCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
-func (p *PolicyCheckCommandRunner) Run(ctx *CommandContext, cmds []models.ProjectCommandContext) {
+func (p *PolicyCheckCommandRunner) Run(ctx *models.CommandContext, cmds []models.ProjectCommandContext) {
 	if len(cmds) == 0 {
 		ctx.Log.Info("no projects to run policy_check in")
 		if !p.silenceVCSStatusNoProjects {
@@ -51,7 +51,7 @@ func (p *PolicyCheckCommandRunner) Run(ctx *CommandContext, cmds []models.Projec
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
 
-	var result CommandResult
+	var result models.CommandResult
 	if p.isParallelEnabled(cmds) {
 		ctx.Log.Info("Running policy_checks in parallel")
 		result = runProjectCmdsParallel(cmds, p.prjCmdRunner.PolicyCheck, p.parallelPoolSize)
@@ -69,7 +69,7 @@ func (p *PolicyCheckCommandRunner) Run(ctx *CommandContext, cmds []models.Projec
 	p.updateCommitStatus(ctx, pullStatus)
 }
 
-func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus models.PullStatus) {
+func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *models.CommandContext, pullStatus models.PullStatus) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus

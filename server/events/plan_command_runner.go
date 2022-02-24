@@ -65,7 +65,7 @@ type PlanCommandRunner struct {
 	pullStatusFetcher          PullStatusFetcher
 }
 
-func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
+func (p *PlanCommandRunner) runAutoplan(ctx *models.CommandContext) {
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
@@ -74,7 +74,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
 		if statusErr := p.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.FailedCommitStatus, models.PlanCommand); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
-		p.pullUpdater.updatePull(ctx, AutoplanCommand{}, CommandResult{Error: err})
+		p.pullUpdater.updatePull(ctx, AutoplanCommand{}, models.CommandResult{Error: err})
 		return
 	}
 
@@ -106,7 +106,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
 	}
 
 	// Only run commands in parallel if enabled
-	var result CommandResult
+	var result models.CommandResult
 	if p.isParallelEnabled(projectCmds) {
 		ctx.Log.Info("Running plans in parallel")
 		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunner.Plan, p.parallelPoolSize)
@@ -145,7 +145,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *CommandContext) {
 	}
 }
 
-func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
+func (p *PlanCommandRunner) run(ctx *models.CommandContext, cmd *CommentCommand) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
@@ -159,7 +159,7 @@ func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 		if statusErr := p.commitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, models.PlanCommand); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
-		p.pullUpdater.updatePull(ctx, cmd, CommandResult{Error: err})
+		p.pullUpdater.updatePull(ctx, cmd, models.CommandResult{Error: err})
 		return
 	}
 
@@ -180,7 +180,7 @@ func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 	projectCmds, policyCheckCmds := p.partitionProjectCmds(ctx, projectCmds)
 
 	// Only run commands in parallel if enabled
-	var result CommandResult
+	var result models.CommandResult
 	if p.isParallelEnabled(projectCmds) {
 		ctx.Log.Info("Running applies in parallel")
 		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunner.Plan, p.parallelPoolSize)
@@ -216,15 +216,15 @@ func (p *PlanCommandRunner) run(ctx *CommandContext, cmd *CommentCommand) {
 	}
 }
 
-func (p *PlanCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
-	if ctx.Trigger == Auto {
+func (p *PlanCommandRunner) Run(ctx *models.CommandContext, cmd *CommentCommand) {
+	if ctx.Trigger == models.Auto {
 		p.runAutoplan(ctx)
 	} else {
 		p.run(ctx, cmd)
 	}
 }
 
-func (p *PlanCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus models.PullStatus) {
+func (p *PlanCommandRunner) updateCommitStatus(ctx *models.CommandContext, pullStatus models.PullStatus) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus
@@ -252,7 +252,7 @@ func (p *PlanCommandRunner) updateCommitStatus(ctx *CommandContext, pullStatus m
 }
 
 // deletePlans deletes all plans generated in this ctx.
-func (p *PlanCommandRunner) deletePlans(ctx *CommandContext) {
+func (p *PlanCommandRunner) deletePlans(ctx *models.CommandContext) {
 	pullDir, err := p.workingDir.GetPullDir(ctx.Pull.BaseRepo, ctx.Pull)
 	if err != nil {
 		ctx.Log.Err("getting pull dir: %s", err)
@@ -263,7 +263,7 @@ func (p *PlanCommandRunner) deletePlans(ctx *CommandContext) {
 }
 
 func (p *PlanCommandRunner) partitionProjectCmds(
-	ctx *CommandContext,
+	ctx *models.CommandContext,
 	cmds []models.ProjectCommandContext,
 ) (
 	projectCmds []models.ProjectCommandContext,

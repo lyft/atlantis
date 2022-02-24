@@ -12,7 +12,7 @@ type AutoMerger struct {
 	GlobalAutomerge bool
 }
 
-func (c *AutoMerger) automerge(ctx *CommandContext, pullStatus models.PullStatus, deleteSourceBranchOnMerge bool) {
+func (c *AutoMerger) automerge(ctx *models.CommandContext, pullStatus models.PullStatus, deleteSourceBranchOnMerge bool) {
 	// We only automerge if all projects have been successfully applied.
 	for _, p := range pullStatus.Projects {
 		if p.Status != models.AppliedPlanStatus {

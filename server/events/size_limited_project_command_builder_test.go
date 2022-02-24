@@ -15,7 +15,7 @@ func TestSizeLimitedProjectCommandBuilder_autoplan(t *testing.T) {
 
 	delegate := mocks.NewMockProjectCommandBuilder()
 
-	ctx := &events.CommandContext{}
+	ctx := &models.CommandContext{}
 
 	project1 := models.ProjectCommandContext{
 		ProjectName: "test1",
@@ -104,7 +104,7 @@ func TestSizeLimitedProjectCommandBuilder_planComment(t *testing.T) {
 
 	delegate := mocks.NewMockProjectCommandBuilder()
 
-	ctx := &events.CommandContext{}
+	ctx := &models.CommandContext{}
 
 	comment := &events.CommentCommand{}
 

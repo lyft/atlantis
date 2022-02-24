@@ -37,7 +37,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 		Projects: []models.ProjectStatus{},
 	}
 
-	commandCtx := &events.CommandContext{
+	commandCtx := &models.CommandContext{
 		Log:        logging.NewNoopLogger(t),
 		PullStatus: pullStatus,
 	}

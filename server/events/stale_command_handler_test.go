@@ -40,7 +40,7 @@ func TestStaleCommandHandler_CommandIsStale(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
 			RegisterMockTestingT(t)
-			ctx := &events.CommandContext{
+			ctx := &models.CommandContext{
 				TriggerTimestamp: c.CommandTimestamp,
 				PullStatus:       &c.PullStatus,
 			}
@@ -60,7 +60,7 @@ func TestStaleCommandHandler_CommandIsStale_NilPullModel(t *testing.T) {
 	staleCommandHandler := &events.StaleCommandHandler{
 		StaleStatsScope: testScope,
 	}
-	Assert(t, staleCommandHandler.CommandIsStale(&events.CommandContext{}) == false,
+	Assert(t, staleCommandHandler.CommandIsStale(&models.CommandContext{}) == false,
 		"CommandIsStale returned value should be false")
 	Assert(t, len(testScope.Snapshot().Counters()) == 0, "no counters should have started")
 }

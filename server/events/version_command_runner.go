@@ -28,7 +28,7 @@ type VersionCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
-func (v *VersionCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
+func (v *VersionCommandRunner) Run(ctx *models.CommandContext, cmd *CommentCommand) {
 	var err error
 	var projectCmds []models.ProjectCommandContext
 	projectCmds, err = v.prjCmdBuilder.BuildVersionCommands(ctx, cmd)
@@ -42,7 +42,7 @@ func (v *VersionCommandRunner) Run(ctx *CommandContext, cmd *CommentCommand) {
 	}
 
 	// Only run commands in parallel if enabled
-	var result CommandResult
+	var result models.CommandResult
 	if v.isParallelEnabled(projectCmds) {
 		ctx.Log.Info("Running version in parallel")
 		result = runProjectCmdsParallel(projectCmds, v.prjCmdRunner.Version, v.parallelPoolSize)

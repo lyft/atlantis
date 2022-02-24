@@ -57,12 +57,12 @@ func TestApplyCommandRunner_IsLocked(t *testing.T) {
 			When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
 			When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
 
-			ctx := &events.CommandContext{
+			ctx := &models.CommandContext{
 				User:     fixtures.User,
 				Log:      logger,
 				Pull:     modelPull,
 				HeadRepo: fixtures.GithubRepo,
-				Trigger:  events.Comment,
+				Trigger:  models.Comment,
 				Scope:    scopeNull,
 			}
 

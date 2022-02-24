@@ -1,8 +1,9 @@
 package events
 
 import (
-	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
 type PullUpdater struct {
@@ -12,7 +13,7 @@ type PullUpdater struct {
 	GlobalCfg            valid.GlobalCfg
 }
 
-func (c *PullUpdater) updatePull(ctx *CommandContext, command PullCommand, res CommandResult) {
+func (c *PullUpdater) updatePull(ctx *models.CommandContext, command PullCommand, res models.CommandResult) {
 	// Log if we got any errors or failures.
 	if res.Error != nil {
 		ctx.Log.Err(res.Error.Error())

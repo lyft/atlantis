@@ -44,7 +44,7 @@ type ContextFlags struct {
 type ProjectCommandContextBuilder interface {
 	// BuildProjectContext builds project command contexts for atlantis commands
 	BuildProjectContext(
-		ctx *CommandContext,
+		ctx *models.CommandContext,
 		cmdName models.CommandName,
 		prjCfg valid.MergedProjectCfg,
 		commentFlags []string,
@@ -63,7 +63,7 @@ type CommandScopedStatsProjectCommandContextBuilder struct {
 
 // BuildProjectContext builds the context and injects the appropriate command level scope after the fact.
 func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
-	ctx *CommandContext,
+	ctx *models.CommandContext,
 	cmdName models.CommandName,
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
@@ -95,7 +95,7 @@ type DefaultProjectCommandContextBuilder struct {
 }
 
 func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
-	ctx *CommandContext,
+	ctx *models.CommandContext,
 	cmdName models.CommandName,
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
@@ -149,7 +149,7 @@ type PolicyCheckProjectCommandContextBuilder struct {
 }
 
 func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
-	ctx *CommandContext,
+	ctx *models.CommandContext,
 	cmdName models.CommandName,
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
@@ -198,7 +198,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 
 // newProjectCommandContext is a initializer method that handles constructing the
 // ProjectCommandContext.
-func newProjectCommandContext(ctx *CommandContext,
+func newProjectCommandContext(ctx *models.CommandContext,
 	cmd models.CommandName,
 	applyCmd string,
 	planCmd string,
@@ -277,7 +277,7 @@ func escapeArgs(args []string) []string {
 
 // Extracts required_version from Terraform configuration.
 // Returns nil if unable to determine version from configuration.
-func getTfVersion(ctx *CommandContext, absProjDir string) *version.Version {
+func getTfVersion(ctx *models.CommandContext, absProjDir string) *version.Version {
 	module, diags := tfconfig.LoadModule(absProjDir)
 	if diags.HasErrors() {
 		ctx.Log.Err("trying to detect required version: %s", diags.Error())

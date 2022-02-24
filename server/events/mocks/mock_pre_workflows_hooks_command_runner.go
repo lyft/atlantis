@@ -5,7 +5,7 @@ package mocks
 
 import (
 	pegomock "github.com/petergtz/pegomock"
-	events "github.com/runatlantis/atlantis/server/events"
+	models "github.com/runatlantis/atlantis/server/events/models"
 	"reflect"
 	"time"
 )
@@ -27,7 +27,7 @@ func (mock *MockPreWorkflowHooksCommandRunner) SetFailHandler(fh pegomock.FailHa
 }
 func (mock *MockPreWorkflowHooksCommandRunner) FailHandler() pegomock.FailHandler { return mock.fail }
 
-func (mock *MockPreWorkflowHooksCommandRunner) RunPreHooks(ctx *events.CommandContext) error {
+func (mock *MockPreWorkflowHooksCommandRunner) RunPreHooks(ctx *models.CommandContext) error {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockPreWorkflowHooksCommandRunner().")
 	}
@@ -79,7 +79,7 @@ type VerifierMockPreWorkflowHooksCommandRunner struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockPreWorkflowHooksCommandRunner) RunPreHooks(ctx *events.CommandContext) *MockPreWorkflowHooksCommandRunner_RunPreHooks_OngoingVerification {
+func (verifier *VerifierMockPreWorkflowHooksCommandRunner) RunPreHooks(ctx *models.CommandContext) *MockPreWorkflowHooksCommandRunner_RunPreHooks_OngoingVerification {
 	params := []pegomock.Param{ctx}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "RunPreHooks", params, verifier.timeout)
 	return &MockPreWorkflowHooksCommandRunner_RunPreHooks_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -90,17 +90,17 @@ type MockPreWorkflowHooksCommandRunner_RunPreHooks_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockPreWorkflowHooksCommandRunner_RunPreHooks_OngoingVerification) GetCapturedArguments() *events.CommandContext {
+func (c *MockPreWorkflowHooksCommandRunner_RunPreHooks_OngoingVerification) GetCapturedArguments() *models.CommandContext {
 	ctx := c.GetAllCapturedArguments()
 	return ctx[len(ctx)-1]
 }
 
-func (c *MockPreWorkflowHooksCommandRunner_RunPreHooks_OngoingVerification) GetAllCapturedArguments() (_param0 []*events.CommandContext) {
+func (c *MockPreWorkflowHooksCommandRunner_RunPreHooks_OngoingVerification) GetAllCapturedArguments() (_param0 []*models.CommandContext) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]*events.CommandContext, len(c.methodInvocations))
+		_param0 = make([]*models.CommandContext, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(*events.CommandContext)
+			_param0[u] = param.(*models.CommandContext)
 		}
 	}
 	return
