@@ -21,9 +21,9 @@ type Job struct {
 	Status JobStatus
 }
 
-func (j *Job) GetReader() io.Reader {
+func (j *Job) GetReader() (io.Reader, int64) {
 	logs := strings.Join(j.Output, "\n")
-	return strings.NewReader(logs)
+	return strings.NewReader(logs), int64(len(logs))
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_store.go JobStore
@@ -139,8 +139,10 @@ func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, status JobStatus) e
 	job := j.jobs[jobID]
 	job.Status = Complete
 
+	reader, size := job.GetReader()
+
 	// Persist to storage backend
-	ok, err := j.storageBackend.Write(jobID, job.GetReader())
+	ok, err := j.storageBackend.Write(jobID, reader, size)
 	if err != nil {
 		return errors.Wrapf(err, "error persisting job: %s", jobID)
 	}

@@ -19,7 +19,7 @@ type StorageBackend interface {
 	Read(key string) ([]string, error)
 
 	// Write logs to the storage backend
-	Write(key string, reader io.Reader) (bool, error)
+	Write(key string, reader io.Reader, size int64) (bool, error)
 }
 
 type storageBackend struct {
@@ -32,7 +32,7 @@ func (s *storageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *storageBackend) Write(key string, reader io.Reader) (bool, error) {
+func (s *storageBackend) Write(key string, reader io.Reader, size int64) (bool, error) {
 	containerFound := false
 
 	// Function to write to container
@@ -47,7 +47,7 @@ func (s *storageBackend) Write(key string, reader io.Reader) (bool, error) {
 		}
 
 		containerFound = true
-		_, err = container.Put(key, reader, 100, nil)
+		_, err = container.Put(key, reader, size, nil)
 		if err != nil {
 			s.logger.Warn("error uploading to %s", s.location, err)
 			return err
@@ -100,6 +100,6 @@ func (s *NoopStorageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *NoopStorageBackend) Write(key string, reader io.Reader) (bool, error) {
+func (s *NoopStorageBackend) Write(key string, reader io.Reader, size int64) (bool, error) {
 	return false, nil
 }
