@@ -44,24 +44,6 @@ type GlobalCfg struct {
 	Jobs                 Jobs
 }
 
-type AuthType int
-
-const (
-	Iam AuthType = iota
-	AccessKey
-)
-
-func (a AuthType) String() string {
-	switch a {
-	case Iam:
-		return "iam"
-	case AccessKey:
-		return "accesskey"
-	default:
-		return ""
-	}
-}
-
 type BackendConfigurer interface {
 	GetConfigMap() stow.Config
 	GetConfiguredBackend() string

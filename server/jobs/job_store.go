@@ -143,12 +143,14 @@ func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, status JobStatus) e
 	job.Status = Complete
 
 	// Persist to storage backend and return error if error other than StorageBackendNotConfigured
-	err := j.storageBackend.Write(jobID, job.GetReader())
-	if err == nil {
+	ok, err := j.storageBackend.Write(jobID, job.GetReader())
+	if err != nil {
+		return errors.Wrapf(err, "error persisting job: %s", jobID)
+	}
+
+	if ok {
 		// Only remove from memory if logs are persisted successfully
 		delete(j.jobs, jobID)
-	} else if !errors.Is(err, &StorageBackendNotConfigured{}) {
-		return errors.Wrapf(err, "error persisting job: %s", jobID)
 	}
 
 	return nil

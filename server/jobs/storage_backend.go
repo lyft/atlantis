@@ -19,7 +19,7 @@ type StorageBackend interface {
 	Read(key string) ([]string, error)
 
 	// Write logs to the storage backend
-	Write(key string, reader io.Reader) error
+	Write(key string, reader io.Reader) (bool, error)
 }
 
 type storageBackend struct {
@@ -32,7 +32,7 @@ func (s *storageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *storageBackend) Write(key string, reader io.Reader) error {
+func (s *storageBackend) Write(key string, reader io.Reader) (bool, error) {
 	containerFound := false
 
 	// Function to write to container
@@ -61,10 +61,14 @@ func (s *storageBackend) Write(key string, reader io.Reader) error {
 	err := stow.WalkContainers(s.location, s.containerName, PageSize, writeFn)
 
 	if !containerFound {
-		return fmt.Errorf("container: %s not found at location: %s", s.containerName, s.location)
+		return false, fmt.Errorf("container: %s not found at location: %s", s.containerName, s.location)
 	}
 
-	return err
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBackend, error) {
@@ -102,6 +106,6 @@ func (s *NoopStorageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *NoopStorageBackend) Write(key string, reader io.Reader) error {
-	return &StorageBackendNotConfigured{}
+func (s *NoopStorageBackend) Write(key string, reader io.Reader) (bool, error) {
+	return false, nil
 }
