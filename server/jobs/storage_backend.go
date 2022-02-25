@@ -2,7 +2,7 @@ package jobs
 
 import (
 	"fmt"
-	"io"
+	"strings"
 
 	"github.com/graymeta/stow"
 	"github.com/pkg/errors"
@@ -19,7 +19,7 @@ type StorageBackend interface {
 	Read(key string) ([]string, error)
 
 	// Write logs to the storage backend
-	Write(key string, reader io.Reader, size int64) (bool, error)
+	Write(key string, logs []string) (bool, error)
 }
 
 type storageBackend struct {
@@ -32,8 +32,12 @@ func (s *storageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *storageBackend) Write(key string, reader io.Reader, size int64) (bool, error) {
+func (s *storageBackend) Write(key string, logs []string) (bool, error) {
 	containerFound := false
+
+	logString := strings.Join(logs, "\n")
+	size := int64(len(logString))
+	reader := strings.NewReader(logString)
 
 	// Function to write to container
 	writeFn := func(container stow.Container, err error) error {
@@ -49,25 +53,22 @@ func (s *storageBackend) Write(key string, reader io.Reader, size int64) (bool, 
 		containerFound = true
 		_, err = container.Put(key, reader, size, nil)
 		if err != nil {
-			s.logger.Warn("error uploading to %s", s.location, err)
-			return err
+			return errors.Wrapf(err, "uploading object for job: %s to %s", key, s.location)
 		}
-		s.logger.Info("successfully uploaded logs for job: %s", key)
 
+		s.logger.Info("successfully uploaded object for job: %s at location: %s", key, s.location)
 		return nil
 	}
 
-	s.logger.Info("Writing: %s to bucket: %s", key, s.containerName)
+	s.logger.Info("uploading object for job: %s to container: %s at location: %s", key, s.containerName, s.location)
 	err := stow.WalkContainers(s.location, s.containerName, PageSize, writeFn)
-
-	if !containerFound {
-		return false, fmt.Errorf("container: %s not found at location: %s", s.containerName, s.location)
-	}
-
 	if err != nil {
 		return false, err
 	}
 
+	if !containerFound {
+		return false, fmt.Errorf("container: %s not found at location: %s", s.containerName, s.location)
+	}
 	return true, nil
 }
 
@@ -100,6 +101,6 @@ func (s *NoopStorageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *NoopStorageBackend) Write(key string, reader io.Reader, size int64) (bool, error) {
+func (s *NoopStorageBackend) Write(key string, logs []string) (bool, error) {
 	return false, nil
 }

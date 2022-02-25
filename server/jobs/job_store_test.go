@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/jobs/mocks"
-	"github.com/runatlantis/atlantis/server/jobs/mocks/matchers"
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/petergtz/pegomock"
@@ -138,7 +137,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(AnyString(), matchers.AnyIoReader(), AnyInt64())).ThenReturn(false, storageBackendErr)
+		When(storageBackend.Write(AnyString(), AnyStringSlice())).ThenReturn(false, storageBackendErr)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
 		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
 
@@ -188,7 +187,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(AnyString(), matchers.AnyIoReader(), AnyInt64())).ThenReturn(true, nil)
+		When(storageBackend.Write(AnyString(), AnyStringSlice())).ThenReturn(true, nil)
 
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
 		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
