@@ -27,6 +27,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/recovery"
 	"github.com/uber-go/tally"
 	gitlab "github.com/xanzy/go-gitlab"
@@ -390,13 +391,14 @@ func (c *DefaultCommandRunner) logPanics(baseRepo models.Repo, pullNum int, logg
 
 var automergeComment = `Automatically merging because all plans have been successfully applied.`
 
-type ForceApplyCommandRunner struct {
+type FeatureAwareCommandRunner struct {
 	CommandRunner
-	Logger    logging.SimpleLogging
-	VCSClient vcs.Client
+	FeatureAllocator feature.Allocator
+	Logger           logging.SimpleLogging
+	VCSClient        vcs.Client
 }
 
-func (f *ForceApplyCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand, timestamp time.Time) {
+func (f *FeatureAwareCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHeadRepo *models.Repo, maybePull *models.PullRequest, user models.User, pullNum int, cmd *CommentCommand, timestamp time.Time) {
 	if cmd.ForceApply {
 		warningMessage := "⚠️ WARNING ⚠️\n\n You have bypassed all apply requirements for this PR 🚀 . This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘 .\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
 		if commentErr := f.VCSClient.CreateComment(baseRepo, pullNum, warningMessage, ""); commentErr != nil {
