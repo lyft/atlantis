@@ -100,7 +100,7 @@ type CommentParseResult struct {
 // Valid commands contain:
 // - The initial "executable" name, 'run' or 'atlantis' or '@GithubUser'
 //   where GithubUser is the API user Atlantis is running as.
-// - Then a command, either 'plan', 'apply', 'approve_policies', or 'help'.
+// - Then a cmd, either 'plan', 'apply', 'approve_policies', or 'help'.
 // - Then optional flags, then an optional separator '--' followed by optional
 //   extra flags to be appended to the terraform plan/apply command.
 //
@@ -162,16 +162,16 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	if len(args) == 1 {
 		return CommentParseResult{CommentResponse: e.HelpComment(e.ApplyDisabled)}
 	}
-	command := args[1]
+	cmd := args[1]
 
 	// Help output.
-	if e.stringInSlice(command, []string{"help", "-h", "--help"}) {
+	if e.stringInSlice(cmd, []string{"help", "-h", "--help"}) {
 		return CommentParseResult{CommentResponse: e.HelpComment(e.ApplyDisabled)}
 	}
 
 	// Need to have a plan, apply, approve_policy or unlock at this point.
-	if !e.stringInSlice(command, []string{command.Plan.String(), command.Apply.String(), command.UnlockCommand.String(), command.ApprovePolicies.String(), command.Version.String()}) {
-		return CommentParseResult{CommentResponse: fmt.Sprintf("```\nError: unknown command %q.\nRun 'atlantis --help' for usage.\n```", command)}
+	if !e.stringInSlice(cmd, []string{command.Plan.String(), command.Apply.String(), command.Unlock.String(), command.ApprovePolicies.String(), command.Version.String()}) {
+		return CommentParseResult{CommentResponse: fmt.Sprintf("```\nError: unknown command %q.\nRun 'atlantis --help' for usage.\n```", cmd)}
 	}
 
 	var workspace string
@@ -182,7 +182,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	var name command.Name
 
 	// Set up the flag parsing depending on the command.
-	switch command {
+	switch cmd {
 	case command.Plan.String():
 		name = command.Plan
 		flagSet = pflag.NewFlagSet(command.Plan.String(), pflag.ContinueOnError)
@@ -206,9 +206,9 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 		flagSet = pflag.NewFlagSet(command.ApprovePolicies.String(), pflag.ContinueOnError)
 		flagSet.SetOutput(ioutil.Discard)
 		flagSet.BoolVarP(&verbose, verboseFlagLong, verboseFlagShort, false, "Append Atlantis log to comment.")
-	case command.UnlockCommand.String():
-		name = command.UnlockCommand
-		flagSet = pflag.NewFlagSet(command.UnlockCommand.String(), pflag.ContinueOnError)
+	case command.Unlock.String():
+		name = command.Unlock
+		flagSet = pflag.NewFlagSet(command.Unlock.String(), pflag.ContinueOnError)
 		flagSet.SetOutput(ioutil.Discard)
 	case command.Version.String():
 		name = command.Version
@@ -218,20 +218,20 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 		flagSet.StringVarP(&project, projectFlagLong, projectFlagShort, "", fmt.Sprintf("Print the version for this project. Refers to the name of the project configured in %s.", config.AtlantisYAMLFilename))
 		flagSet.BoolVarP(&verbose, verboseFlagLong, verboseFlagShort, false, "Append Atlantis log to comment.")
 	default:
-		return CommentParseResult{CommentResponse: fmt.Sprintf("Error: unknown command %q – this is a bug", command)}
+		return CommentParseResult{CommentResponse: fmt.Sprintf("Error: unknown command %q – this is a bug", cmd)}
 	}
 
 	// Now parse the flags.
 	// It's safe to use [2:] because we know there's at least 2 elements in args.
 	err = flagSet.Parse(args[2:])
 	if err == pflag.ErrHelp {
-		return CommentParseResult{CommentResponse: fmt.Sprintf("```\nUsage of %s:\n%s\n```", command, flagSet.FlagUsagesWrapped(usagesCols))}
+		return CommentParseResult{CommentResponse: fmt.Sprintf("```\nUsage of %s:\n%s\n```", cmd, flagSet.FlagUsagesWrapped(usagesCols))}
 	}
 	if err != nil {
-		if command == command.UnlockCommand.String() {
+		if cmd == command.Unlock.String() {
 			return CommentParseResult{CommentResponse: UnlockUsage}
 		}
-		return CommentParseResult{CommentResponse: e.errMarkdown(err.Error(), command, flagSet)}
+		return CommentParseResult{CommentResponse: e.errMarkdown(err.Error(), cmd, flagSet)}
 	}
 
 	var unusedArgs []string
@@ -241,7 +241,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 		unusedArgs = flagSet.Args()[0:flagSet.ArgsLenAtDash()]
 	}
 	if len(unusedArgs) > 0 {
-		return CommentParseResult{CommentResponse: e.errMarkdown(fmt.Sprintf("unknown argument(s) – %s", strings.Join(unusedArgs, " ")), command, flagSet)}
+		return CommentParseResult{CommentResponse: e.errMarkdown(fmt.Sprintf("unknown argument(s) – %s", strings.Join(unusedArgs, " ")), cmd, flagSet)}
 	}
 
 	var extraArgs []string
@@ -251,14 +251,14 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 
 	dir, err = e.validateDir(dir)
 	if err != nil {
-		return CommentParseResult{CommentResponse: e.errMarkdown(err.Error(), command, flagSet)}
+		return CommentParseResult{CommentResponse: e.errMarkdown(err.Error(), cmd, flagSet)}
 	}
 
 	// Use the same validation that Terraform uses: https://git.io/vxGhU. Plus
 	// we also don't allow '..'. We don't want the workspace to contain a path
 	// since we create files based on the name.
 	if workspace != url.PathEscape(workspace) || strings.Contains(workspace, "..") {
-		return CommentParseResult{CommentResponse: e.errMarkdown(fmt.Sprintf("invalid workspace: %q", workspace), command, flagSet)}
+		return CommentParseResult{CommentResponse: e.errMarkdown(fmt.Sprintf("invalid workspace: %q", workspace), cmd, flagSet)}
 	}
 
 	// If project is specified, dir or workspace should not be set. Since we
@@ -268,7 +268,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	// an error.
 	if project != "" && (workspace != "" || dir != "") {
 		err := fmt.Sprintf("cannot use -%s/--%s at same time as -%s/--%s or -%s/--%s", projectFlagShort, projectFlagLong, dirFlagShort, dirFlagLong, workspaceFlagShort, workspaceFlagLong)
-		return CommentParseResult{CommentResponse: e.errMarkdown(err, command, flagSet)}
+		return CommentParseResult{CommentResponse: e.errMarkdown(err, cmd, flagSet)}
 	}
 
 	return CommentParseResult{
@@ -362,8 +362,8 @@ func (e *CommentParser) stringInSlice(a string, list []string) bool {
 	return false
 }
 
-func (e *CommentParser) errMarkdown(errMsg string, command string, flagSet *pflag.FlagSet) string {
-	return fmt.Sprintf("```\nError: %s.\nUsage of %s:\n%s```", errMsg, command, flagSet.FlagUsagesWrapped(usagesCols))
+func (e *CommentParser) errMarkdown(errMsg string, cmd string, flagSet *pflag.FlagSet) string {
+	return fmt.Sprintf("```\nError: %s.\nUsage of %s:\n%s```", errMsg, cmd, flagSet.FlagUsagesWrapped(usagesCols))
 }
 
 func (e *CommentParser) HelpComment(applyDisabled bool) string {

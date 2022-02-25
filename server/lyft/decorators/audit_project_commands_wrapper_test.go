@@ -9,7 +9,7 @@ import (
 
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/command/project"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -51,7 +51,7 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 				ProjectCommandRunner: projectCmdRunnerMock,
 			}
 
-			prjRslt := project.Result{}
+			prjRslt := command.ProjectResult{}
 
 			if c.Error {
 				prjRslt.Error = errors.New("oh-no")
@@ -65,7 +65,7 @@ func TestAuditProjectCommandsWrapper(t *testing.T) {
 
 			scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
-			ctx := project.Context{
+			ctx := command.ProjectContext{
 				Scope:       scope,
 				Log:         logger,
 				Steps:       []valid.Step{},

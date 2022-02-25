@@ -12,7 +12,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -432,7 +431,7 @@ projects:
 					logger,
 				)
 
-				var actCtxs []project.Context
+				var actCtxs []command.ProjectContext
 				var err error
 				if cmdName == command.Plan {
 					actCtxs, err = builder.BuildPlanCommands(&command.Context{
@@ -842,7 +841,7 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 				logger,
 			)
 
-			var actCtxs []project.Context
+			var actCtxs []command.ProjectContext
 			var err error
 			actCtxs, err = builder.BuildPlanCommands(&command.Context{
 				Log:   logger,
@@ -1092,7 +1091,7 @@ projects:
 		logger,
 	)
 
-	var actCtxs []project.Context
+	var actCtxs []command.ProjectContext
 	var err error
 	actCtxs, err = builder.BuildAutoplanCommands(&command.Context{
 		HeadRepo: models.Repo{},

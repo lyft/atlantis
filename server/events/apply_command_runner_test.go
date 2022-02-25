@@ -63,7 +63,7 @@ func TestApplyCommandRunner_IsLocked(t *testing.T) {
 				Log:      logger,
 				Pull:     modelPull,
 				HeadRepo: fixtures.GithubRepo,
-				Trigger:  models.Comment,
+				Trigger:  command.CommentTrigger,
 				Scope:    scopeNull,
 			}
 

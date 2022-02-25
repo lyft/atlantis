@@ -21,7 +21,6 @@ import (
 
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -30,7 +29,7 @@ func TestCustomTemplates(t *testing.T) {
 	cases := []struct {
 		Description       string
 		Command           command.Name
-		ProjectResults    []project.Result
+		ProjectResults    []command.ProjectResult
 		VCSHost           models.VCSHostType
 		Expected          string
 		TemplateOverrides map[string]string
@@ -38,7 +37,7 @@ func TestCustomTemplates(t *testing.T) {
 		{
 			"Plan Override",
 			command.Plan,
-			[]project.Result{},
+			[]command.ProjectResult{},
 			models.Github,
 			"Custom Template",
 			map[string]string{"plan": "testdata/custom_template.tmpl"},
@@ -46,7 +45,7 @@ func TestCustomTemplates(t *testing.T) {
 		{
 			"Default Plan",
 			command.Plan,
-			[]project.Result{},
+			[]command.ProjectResult{},
 			models.Github,
 			"Ran Plan for 0 projects:\n\n\n\n",
 			map[string]string{"apply": "testdata/custom_template.tmpl"},
@@ -54,7 +53,7 @@ func TestCustomTemplates(t *testing.T) {
 		{
 			"Apply Override",
 			command.Apply,
-			[]project.Result{},
+			[]command.ProjectResult{},
 			models.Github,
 			"Custom Template",
 			map[string]string{"apply": "testdata/custom_template.tmpl"},
@@ -62,7 +61,7 @@ func TestCustomTemplates(t *testing.T) {
 		{
 			"Project Plan Successful Custom Template",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:   "workspace",
 					RepoRelDir:  "path1",
@@ -110,7 +109,7 @@ Custom Template
 		{
 			"Only Use Plan Success Override with failed, and errored plan",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:  "workspace",
 					RepoRelDir: "path",
@@ -283,28 +282,28 @@ func TestRenderProjectResults(t *testing.T) {
 	cases := []struct {
 		Description    string
 		Command        command.Name
-		ProjectResults []project.Result
+		ProjectResults []command.ProjectResult
 		VCSHost        models.VCSHostType
 		Expected       string
 	}{
 		{
 			"no projects",
 			command.Plan,
-			[]project.Result{},
+			[]command.ProjectResult{},
 			models.Github,
 			"Ran Plan for 0 projects:\n\n\n\n",
 		},
 		{
 			"approve policies",
 			command.ApprovePolicies,
-			[]project.Result{},
+			[]command.ProjectResult{},
 			models.Github,
 			"Approved Policies for 0 projects:\n\n\n\n",
 		},
 		{
 			"single successful plan",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -339,7 +338,7 @@ $$$
 		{
 			"single successful plan with master ahead",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -377,7 +376,7 @@ $$$
 		{
 			"single successful plan with project name",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -413,7 +412,7 @@ $$$
 		{
 			"single successful policy check with project name",
 			command.PolicyCheck,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PolicyCheckSuccess: &models.PolicyCheckSuccess{
 						PolicyCheckOutput: "2 tests, 1 passed, 0 warnings, 0 failure, 0 exceptions",
@@ -449,7 +448,7 @@ $$$
 		{
 			"single successful apply",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					ApplySuccess: "success",
 					Workspace:    "workspace",
@@ -468,7 +467,7 @@ $$$
 		{
 			"single successful apply with project name",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					ApplySuccess: "success",
 					Workspace:    "workspace",
@@ -488,7 +487,7 @@ $$$
 		{
 			"multiple successful plans",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:  "workspace",
 					RepoRelDir: "path",
@@ -550,7 +549,7 @@ $$$
 		{
 			"multiple successful policy checks",
 			command.PolicyCheck,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:  "workspace",
 					RepoRelDir: "path",
@@ -612,7 +611,7 @@ $$$
 		{
 			"multiple successful applies",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					RepoRelDir:   "path",
 					Workspace:    "workspace",
@@ -649,7 +648,7 @@ $$$
 		{
 			"single errored plan",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Error:      errors.New("error"),
 					RepoRelDir: "path",
@@ -669,7 +668,7 @@ $$$
 		{
 			"single failed plan",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					RepoRelDir: "path",
 					Workspace:  "workspace",
@@ -686,7 +685,7 @@ $$$
 		{
 			"successful, failed, and errored plan",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:  "workspace",
 					RepoRelDir: "path",
@@ -748,7 +747,7 @@ $$$
 		{
 			"successful, failed, and errored policy check",
 			command.PolicyCheck,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:  "workspace",
 					RepoRelDir: "path",
@@ -812,7 +811,7 @@ $$$
 		{
 			"successful, failed, and errored apply",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:    "workspace",
 					RepoRelDir:   "path",
@@ -859,7 +858,7 @@ $$$
 		{
 			"successful, failed, and errored apply",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:    "workspace",
 					RepoRelDir:   "path",
@@ -931,14 +930,14 @@ func TestRenderProjectResultsDisableApplyAll(t *testing.T) {
 	cases := []struct {
 		Description    string
 		Command        command.Name
-		ProjectResults []project.Result
+		ProjectResults []command.ProjectResult
 		VCSHost        models.VCSHostType
 		Expected       string
 	}{
 		{
 			"single successful plan with disable apply all set",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -969,7 +968,7 @@ $$$
 		{
 			"single successful plan with project name with disable apply all set",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -1001,7 +1000,7 @@ $$$
 		{
 			"multiple successful plans, disable apply all set",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:  "workspace",
 					RepoRelDir: "path",
@@ -1084,14 +1083,14 @@ func TestRenderProjectResultsDisableApply(t *testing.T) {
 	cases := []struct {
 		Description    string
 		Command        command.Name
-		ProjectResults []project.Result
+		ProjectResults []command.ProjectResult
 		VCSHost        models.VCSHostType
 		Expected       string
 	}{
 		{
 			"single successful plan with disable apply set",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -1120,7 +1119,7 @@ $$$
 		{
 			"single successful plan with project name with disable apply set",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -1150,7 +1149,7 @@ $$$
 		{
 			"multiple successful plans, disable apply set",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:  "workspace",
 					RepoRelDir: "path",
@@ -1232,7 +1231,7 @@ func TestRenderProjectResults_DisableFolding(t *testing.T) {
 	}
 
 	rendered := mr.Render(command.Result{
-		ProjectResults: []project.Result{
+		ProjectResults: []command.ProjectResult{
 			{
 				RepoRelDir: ".",
 				Workspace:  "default",
@@ -1316,7 +1315,7 @@ func TestRenderProjectResults_WrappedErr(t *testing.T) {
 				}
 
 				rendered := mr.Render(command.Result{
-					ProjectResults: []project.Result{
+					ProjectResults: []command.ProjectResult{
 						{
 							RepoRelDir: ".",
 							Workspace:  "default",
@@ -1426,10 +1425,10 @@ func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 					mr := events.MarkdownRenderer{
 						GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
 					}
-					var pr project.Result
+					var pr command.ProjectResult
 					switch cmd {
 					case command.Plan:
-						pr = project.Result{
+						pr = command.ProjectResult{
 							RepoRelDir: ".",
 							Workspace:  "default",
 							PlanSuccess: &models.PlanSuccess{
@@ -1440,14 +1439,14 @@ func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 							},
 						}
 					case command.Apply:
-						pr = project.Result{
+						pr = command.ProjectResult{
 							RepoRelDir:   ".",
 							Workspace:    "default",
 							ApplySuccess: c.Output,
 						}
 					}
 					rendered := mr.Render(command.Result{
-						ProjectResults: []project.Result{pr},
+						ProjectResults: []command.ProjectResult{pr},
 					}, cmd, "log", false, c.VCSHost, make(map[string]string))
 
 					// Check result.
@@ -1531,7 +1530,7 @@ func TestRenderProjectResults_MultiProjectApplyWrapped(t *testing.T) {
 	mr := events.MarkdownRenderer{}
 	tfOut := strings.Repeat("line\n", 13)
 	rendered := mr.Render(command.Result{
-		ProjectResults: []project.Result{
+		ProjectResults: []command.ProjectResult{
 			{
 				RepoRelDir:   ".",
 				Workspace:    "staging",
@@ -1577,7 +1576,7 @@ func TestRenderProjectResults_MultiProjectPlanWrapped(t *testing.T) {
 	mr := events.MarkdownRenderer{}
 	tfOut := strings.Repeat("line\n", 13) + "Plan: 1 to add, 0 to change, 0 to destroy."
 	rendered := mr.Render(command.Result{
-		ProjectResults: []project.Result{
+		ProjectResults: []command.ProjectResult{
 			{
 				RepoRelDir: ".",
 				Workspace:  "staging",
@@ -1655,7 +1654,7 @@ func TestRenderProjectResults_PlansDeleted(t *testing.T) {
 	}{
 		"one failure": {
 			cr: command.Result{
-				ProjectResults: []project.Result{
+				ProjectResults: []command.ProjectResult{
 					{
 						RepoRelDir: ".",
 						Workspace:  "staging",
@@ -1672,7 +1671,7 @@ func TestRenderProjectResults_PlansDeleted(t *testing.T) {
 		},
 		"two failures": {
 			cr: command.Result{
-				ProjectResults: []project.Result{
+				ProjectResults: []command.ProjectResult{
 					{
 						RepoRelDir: ".",
 						Workspace:  "staging",
@@ -1704,7 +1703,7 @@ func TestRenderProjectResults_PlansDeleted(t *testing.T) {
 		},
 		"one failure, one success": {
 			cr: command.Result{
-				ProjectResults: []project.Result{
+				ProjectResults: []command.ProjectResult{
 					{
 						RepoRelDir: ".",
 						Workspace:  "staging",
@@ -1760,21 +1759,21 @@ func TestRenderProjectResultsWithRepoLockingDisabled(t *testing.T) {
 	cases := []struct {
 		Description    string
 		Command        command.Name
-		ProjectResults []project.Result
+		ProjectResults []command.ProjectResult
 		VCSHost        models.VCSHostType
 		Expected       string
 	}{
 		{
 			"no projects",
 			command.Plan,
-			[]project.Result{},
+			[]command.ProjectResult{},
 			models.Github,
 			"Ran Plan for 0 projects:\n\n\n\n",
 		},
 		{
 			"single successful plan",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -1808,7 +1807,7 @@ $$$
 		{
 			"single successful plan with master ahead",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -1845,7 +1844,7 @@ $$$
 		{
 			"single successful plan with project name",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: "terraform-output",
@@ -1880,7 +1879,7 @@ $$$
 		{
 			"single successful apply",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					ApplySuccess: "success",
 					Workspace:    "workspace",
@@ -1899,7 +1898,7 @@ $$$
 		{
 			"single successful apply with project name",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					ApplySuccess: "success",
 					Workspace:    "workspace",
@@ -1919,7 +1918,7 @@ $$$
 		{
 			"multiple successful plans",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:  "workspace",
 					RepoRelDir: "path",
@@ -1979,7 +1978,7 @@ $$$
 		{
 			"multiple successful applies",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					RepoRelDir:   "path",
 					Workspace:    "workspace",
@@ -2016,7 +2015,7 @@ $$$
 		{
 			"single errored plan",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Error:      errors.New("error"),
 					RepoRelDir: "path",
@@ -2036,7 +2035,7 @@ $$$
 		{
 			"single failed plan",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					RepoRelDir: "path",
 					Workspace:  "workspace",
@@ -2053,7 +2052,7 @@ $$$
 		{
 			"successful, failed, and errored plan",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:  "workspace",
 					RepoRelDir: "path",
@@ -2114,7 +2113,7 @@ $$$
 		{
 			"successful, failed, and errored apply",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:    "workspace",
 					RepoRelDir:   "path",
@@ -2161,7 +2160,7 @@ $$$
 		{
 			"successful, failed, and errored apply",
 			command.Apply,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					Workspace:    "workspace",
 					RepoRelDir:   "path",
@@ -2340,14 +2339,14 @@ Plan: 1 to add, 1 to change, 1 to destroy.
 	cases := []struct {
 		Description    string
 		Command        command.Name
-		ProjectResults []project.Result
+		ProjectResults []command.ProjectResult
 		VCSHost        models.VCSHostType
 		Expected       string
 	}{
 		{
 			"single successful plan with diff markdown formatted",
 			command.Plan,
-			[]project.Result{
+			[]command.ProjectResult{
 				{
 					PlanSuccess: &models.PlanSuccess{
 						TerraformOutput: tfOutput,

@@ -5,29 +5,29 @@ import (
 	"reflect"
 
 	"github.com/petergtz/pegomock"
-	"github.com/runatlantis/atlantis/server/events/command/project"
+	"github.com/runatlantis/atlantis/server/events/command"
 )
 
-func AnySliceOfModelsProjectCommandContext() []project.Context {
-	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*([]project.Context))(nil)).Elem()))
-	var nullValue []project.Context
+func AnySliceOfModelsProjectCommandContext() []command.ProjectContext {
+	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*([]command.ProjectContext))(nil)).Elem()))
+	var nullValue []command.ProjectContext
 	return nullValue
 }
 
-func EqSliceOfModelsProjectCommandContext(value []project.Context) []project.Context {
+func EqSliceOfModelsProjectCommandContext(value []command.ProjectContext) []command.ProjectContext {
 	pegomock.RegisterMatcher(&pegomock.EqMatcher{Value: value})
-	var nullValue []project.Context
+	var nullValue []command.ProjectContext
 	return nullValue
 }
 
-func NotEqSliceOfModelsProjectCommandContext(value []project.Context) []project.Context {
+func NotEqSliceOfModelsProjectCommandContext(value []command.ProjectContext) []command.ProjectContext {
 	pegomock.RegisterMatcher(&pegomock.NotEqMatcher{Value: value})
-	var nullValue []project.Context
+	var nullValue []command.ProjectContext
 	return nullValue
 }
 
-func SliceOfModelsProjectCommandContextThat(matcher pegomock.ArgumentMatcher) []project.Context {
+func SliceOfModelsProjectCommandContextThat(matcher pegomock.ArgumentMatcher) []command.ProjectContext {
 	pegomock.RegisterMatcher(matcher)
-	var nullValue []project.Context
+	var nullValue []command.ProjectContext
 	return nullValue
 }

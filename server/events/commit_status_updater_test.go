@@ -20,7 +20,6 @@ import (
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/mocks"
@@ -177,7 +176,7 @@ func TestDefaultCommitStatusUpdater_UpdateProjectSrc(t *testing.T) {
 			client := mocks.NewMockClient()
 			titleBuilder := vcs.StatusTitleBuilder{TitlePrefix: "atlantis"}
 			s := events.DefaultCommitStatusUpdater{Client: client, TitleBuilder: titleBuilder}
-			err := s.UpdateProject(project.Context{
+			err := s.UpdateProject(command.ProjectContext{
 				ProjectName: c.projectName,
 				RepoRelDir:  c.repoRelDir,
 				Workspace:   c.workspace,
@@ -236,7 +235,7 @@ func TestDefaultCommitStatusUpdater_UpdateProject(t *testing.T) {
 			client := mocks.NewMockClient()
 			titleBuilder := vcs.StatusTitleBuilder{TitlePrefix: "atlantis"}
 			s := events.DefaultCommitStatusUpdater{Client: client, TitleBuilder: titleBuilder}
-			err := s.UpdateProject(project.Context{
+			err := s.UpdateProject(command.ProjectContext{
 				RepoRelDir: ".",
 				Workspace:  "default",
 			},
@@ -255,7 +254,7 @@ func TestDefaultCommitStatusUpdater_UpdateProjectCustomStatusName(t *testing.T) 
 	client := mocks.NewMockClient()
 	titleBuilder := vcs.StatusTitleBuilder{TitlePrefix: "custom"}
 	s := events.DefaultCommitStatusUpdater{Client: client, TitleBuilder: titleBuilder}
-	err := s.UpdateProject(project.Context{
+	err := s.UpdateProject(command.ProjectContext{
 		RepoRelDir: ".",
 		Workspace:  "default",
 	},

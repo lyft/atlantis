@@ -126,17 +126,17 @@ func (mock *MockBackend) UnlockByPull(repoFullName string, pullNum int) ([]model
 	return ret0, ret1
 }
 
-func (mock *MockBackend) LockCommand(cmdName command.Name, lockTime time.Time) (*models.CommandLock, error) {
+func (mock *MockBackend) LockCommand(cmdName command.Name, lockTime time.Time) (*command.Lock, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockBackend().")
 	}
 	params := []pegomock.Param{cmdName, lockTime}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("LockCommand", params, []reflect.Type{reflect.TypeOf((**models.CommandLock)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 *models.CommandLock
+	result := pegomock.GetGenericMockFrom(mock).Invoke("LockCommand", params, []reflect.Type{reflect.TypeOf((**command.Lock)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 *command.Lock
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(*models.CommandLock)
+			ret0 = result[0].(*command.Lock)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)
@@ -160,17 +160,17 @@ func (mock *MockBackend) UnlockCommand(cmdName command.Name) error {
 	return ret0
 }
 
-func (mock *MockBackend) CheckCommandLock(cmdName command.Name) (*models.CommandLock, error) {
+func (mock *MockBackend) CheckCommandLock(cmdName command.Name) (*command.Lock, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockBackend().")
 	}
 	params := []pegomock.Param{cmdName}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("CheckCommandLock", params, []reflect.Type{reflect.TypeOf((**models.CommandLock)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 *models.CommandLock
+	result := pegomock.GetGenericMockFrom(mock).Invoke("CheckCommandLock", params, []reflect.Type{reflect.TypeOf((**command.Lock)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 *command.Lock
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(*models.CommandLock)
+			ret0 = result[0].(*command.Lock)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)

@@ -11,7 +11,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
@@ -40,7 +39,7 @@ func TestBuildProjectCmdCtx(t *testing.T) {
 		globalCfg     string
 		repoCfg       string
 		expErr        string
-		expCtx        project.Context
+		expCtx        command.ProjectContext
 		expPlanSteps  []string
 		expApplySteps []string
 	}{
@@ -61,7 +60,7 @@ workflows:
       steps:
       - apply`,
 			repoCfg: "",
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -113,7 +112,7 @@ projects:
     when_modified: [../modules/**/*.tf]
   terraform_version: v10.0
   `,
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -167,7 +166,7 @@ projects:
     when_modified: [../modules/**/*.tf]
   terraform_version: v10.0
 `,
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -229,7 +228,7 @@ projects:
     when_modified: [../modules/**/*.tf]
   terraform_version: v10.0
 `,
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -378,7 +377,7 @@ workflows:
       steps:
       - apply
 `,
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -436,7 +435,7 @@ projects:
   terraform_version: v10.0
   workflow: custom
 `,
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -497,7 +496,7 @@ workflows:
     apply:
       steps: []
 `,
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -542,7 +541,7 @@ projects:
 - dir: project1
   workspace: myworkspace
 `,
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -695,7 +694,7 @@ func TestBuildProjectCmdCtx_WithRegExpCmdEnabled(t *testing.T) {
 		globalCfg     string
 		repoCfg       string
 		expErr        string
-		expCtx        project.Context
+		expCtx        command.ProjectContext
 		expPlanSteps  []string
 		expApplySteps []string
 	}{
@@ -742,7 +741,7 @@ projects:
     when_modified: [../modules/**/*.tf]
   terraform_version: v10.0
   `,
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -p myproject_1",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -892,7 +891,7 @@ func TestBuildProjectCmdCtx_WithPolicCheckEnabled(t *testing.T) {
 		globalCfg           string
 		repoCfg             string
 		expErr              string
-		expCtx              project.Context
+		expCtx              command.ProjectContext
 		expPolicyCheckSteps []string
 	}{
 		// Test that if we've set global defaults and no project config
@@ -903,7 +902,7 @@ repos:
 - id: /.*/
 `,
 			repoCfg: "",
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},
@@ -960,7 +959,7 @@ workflows:
       steps:
       - policy_check
 `,
-			expCtx: project.Context{
+			expCtx: command.ProjectContext{
 				ApplyCmd:           "atlantis apply -d project1 -w myworkspace",
 				BaseRepo:           baseRepo,
 				EscapedCommentArgs: []string{`\f\l\a\g`},

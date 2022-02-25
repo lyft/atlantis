@@ -1,4 +1,4 @@
-package project
+package command
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
@@ -17,10 +16,10 @@ const (
 	planfileSlashReplace = "::"
 )
 
-// Context defines the context for a plan or apply stage that will
+// ProjectContext defines the context for a plan or apply stage that will
 // be executed for a project.
-type Context struct {
-	CommandName command.Name
+type ProjectContext struct {
+	CommandName Name
 	// ApplyCmd is the command that users should run to apply this plan. If
 	// this is an apply then this will be empty.
 	ApplyCmd string
@@ -99,7 +98,7 @@ type Context struct {
 
 // ProjectCloneDir creates relative path to clone the repo to. If we are running
 // plans and apply in parallel we want to have a directory per project.
-func (p Context) ProjectCloneDir() string {
+func (p ProjectContext) ProjectCloneDir() string {
 	if p.ParallelPlanEnabled || p.ParallelApplyEnabled {
 		return filepath.Join(p.ProjectName, p.Workspace)
 	}
@@ -109,12 +108,12 @@ func (p Context) ProjectCloneDir() string {
 
 // SetScope sets the scope of the stats object field. Note: we deliberately set this on the value
 // instead of a pointer since we want scopes to mirror our function stack
-func (p Context) SetScope(scope string) {
+func (p ProjectContext) SetScope(scope string) {
 	p.Scope = p.Scope.SubScope(scope) //nolint
 }
 
 // GetShowResultFileName returns the filename (not the path) to store the tf show result
-func (p Context) GetShowResultFileName() string {
+func (p ProjectContext) GetShowResultFileName() string {
 	if p.ProjectName == "" {
 		return fmt.Sprintf("%s.json", p.Workspace)
 	}
@@ -123,7 +122,7 @@ func (p Context) GetShowResultFileName() string {
 }
 
 // Gets a unique identifier for the current pull request as a single string
-func (p Context) PullInfo() string {
+func (p ProjectContext) PullInfo() string {
 	return buildPullInfo(p.BaseRepo.FullName, p.Pull.Num, p.ProjectName, p.RepoRelDir, p.Workspace)
 }
 func buildPullInfo(repoName string, pullNum int, projectName string, relDir string, workspace string) string {

@@ -34,9 +34,9 @@ type Backend interface {
 	GetLock(project models.Project, workspace string) (*models.ProjectLock, error)
 	UnlockByPull(repoFullName string, pullNum int) ([]models.ProjectLock, error)
 
-	LockCommand(cmdName command.Name, lockTime time.Time) (*models.CommandLock, error)
+	LockCommand(cmdName command.Name, lockTime time.Time) (*command.Lock, error)
 	UnlockCommand(cmdName command.Name) error
-	CheckCommandLock(cmdName command.Name) (*models.CommandLock, error)
+	CheckCommandLock(cmdName command.Name) (*command.Lock, error)
 }
 
 // TryLockResponse results from an attempted lock.

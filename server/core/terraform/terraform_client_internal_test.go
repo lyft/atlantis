@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-version"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/core/terraform/mocks"
-	"github.com/runatlantis/atlantis/server/events/command/project"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	jobmocks "github.com/runatlantis/atlantis/server/jobs/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -29,7 +29,7 @@ func TestDefaultClient_Synchronous_RunCommandWithVersion(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	echoCommand := exec.Command("sh", "-c", "echo hello")
 
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		Log: logger,
 		BaseRepo: models.Repo{
 			FullName: "owner/repo",
@@ -104,7 +104,7 @@ func TestDefaultClient_Synchronous_RunCommandWithVersion_Error(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	echoCommand := exec.Command("sh", "-c", "echo dying && exit 1")
 
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		Log: logger,
 		BaseRepo: models.Repo{
 			FullName: "owner/repo",

@@ -29,6 +29,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/events"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -1054,7 +1055,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		command.Plan:            planCommandRunner,
 		command.Apply:           applyCommandRunner,
 		command.ApprovePolicies: approvePoliciesCommandRunner,
-		command.UnlockCommand:   unlockCommandRunner,
+		command.Unlock:          unlockCommandRunner,
 		command.Version:         versionCommandRunner,
 	}
 	staleCommandChecker := mocks.NewMockStaleCommandChecker()

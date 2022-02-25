@@ -23,7 +23,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -56,7 +55,7 @@ type LockURLGenerator interface {
 // `terraform plan`.
 type StepRunner interface {
 	// Run runs the step.
-	Run(ctx project.Context, extraArgs []string, path string, envs map[string]string) (string, error)
+	Run(ctx command.ProjectContext, extraArgs []string, path string, envs map[string]string) (string, error)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_custom_step_runner.go CustomStepRunner
@@ -64,14 +63,14 @@ type StepRunner interface {
 // CustomStepRunner runs custom run steps.
 type CustomStepRunner interface {
 	// Run cmd in path.
-	Run(ctx project.Context, cmd string, path string, envs map[string]string) (string, error)
+	Run(ctx command.ProjectContext, cmd string, path string, envs map[string]string) (string, error)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_env_step_runner.go EnvStepRunner
 
 // EnvStepRunner runs env steps.
 type EnvStepRunner interface {
-	Run(ctx project.Context, cmd string, value string, path string, envs map[string]string) (string, error)
+	Run(ctx command.ProjectContext, cmd string, value string, path string, envs map[string]string) (string, error)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_webhooks_sender.go WebhooksSender
@@ -86,27 +85,27 @@ type WebhooksSender interface {
 
 type ProjectPlanCommandRunner interface {
 	// Plan runs terraform plan for the project described by ctx.
-	Plan(ctx project.Context) project.Result
+	Plan(ctx command.ProjectContext) command.ProjectResult
 }
 
 type ProjectApplyCommandRunner interface {
 	// Apply runs terraform apply for the project described by ctx.
-	Apply(ctx project.Context) project.Result
+	Apply(ctx command.ProjectContext) command.ProjectResult
 }
 
 type ProjectPolicyCheckCommandRunner interface {
 	// PolicyCheck runs OPA defined policies for the project desribed by ctx.
-	PolicyCheck(ctx project.Context) project.Result
+	PolicyCheck(ctx command.ProjectContext) command.ProjectResult
 }
 
 type ProjectApprovePoliciesCommandRunner interface {
 	// Approves any failing OPA policies.
-	ApprovePolicies(ctx project.Context) project.Result
+	ApprovePolicies(ctx command.ProjectContext) command.ProjectResult
 }
 
 type ProjectVersionCommandRunner interface {
 	// Version runs terraform version for the project described by ctx.
-	Version(ctx project.Context) project.Result
+	Version(ctx command.ProjectContext) command.ProjectResult
 }
 
 // ProjectCommandRunner runs project commands. A project command is a command
@@ -124,7 +123,7 @@ type ProjectCommandRunner interface {
 type JobURLSetter interface {
 	// SetJobURLWithStatus sets the commit status for the project represented by
 	// ctx and updates the status with and url to a job.
-	SetJobURLWithStatus(ctx project.Context, cmdName command.Name, status models.CommitStatus) error
+	SetJobURLWithStatus(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus) error
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_closer.go JobCloser
@@ -142,19 +141,19 @@ type ProjectOutputWrapper struct {
 	JobCloser    JobCloser
 }
 
-func (p *ProjectOutputWrapper) Plan(ctx project.Context) project.Result {
+func (p *ProjectOutputWrapper) Plan(ctx command.ProjectContext) command.ProjectResult {
 	result := p.updateProjectPRStatus(command.Plan, ctx, p.ProjectCommandRunner.Plan)
 	p.JobCloser.CloseJob(ctx.JobID)
 	return result
 }
 
-func (p *ProjectOutputWrapper) Apply(ctx project.Context) project.Result {
+func (p *ProjectOutputWrapper) Apply(ctx command.ProjectContext) command.ProjectResult {
 	result := p.updateProjectPRStatus(command.Apply, ctx, p.ProjectCommandRunner.Apply)
 	p.JobCloser.CloseJob(ctx.JobID)
 	return result
 }
 
-func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName command.Name, ctx project.Context, execute func(ctx project.Context) project.Result) project.Result {
+func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName command.Name, ctx command.ProjectContext, execute func(ctx command.ProjectContext) command.ProjectResult) command.ProjectResult {
 	// Create a PR status to track project's plan status. The status will
 	// include a link to view the progress of atlantis plan command in real
 	// time
@@ -185,7 +184,7 @@ type FeatureAwareProjectCommandRunner struct {
 	FeatureAllocator feature.Allocator
 }
 
-func (f *FeatureAwareProjectCommandRunner) Apply(ctx project.Context) project.Result {
+func (f *FeatureAwareProjectCommandRunner) Apply(ctx command.ProjectContext) command.ProjectResult {
 	return f.ProjectCommandRunner.Apply(ctx)
 }
 
@@ -209,9 +208,9 @@ type DefaultProjectCommandRunner struct { //create object and test
 }
 
 // Plan runs terraform plan for the project described by ctx.
-func (p *DefaultProjectCommandRunner) Plan(ctx project.Context) project.Result {
+func (p *DefaultProjectCommandRunner) Plan(ctx command.ProjectContext) command.ProjectResult {
 	planSuccess, failure, err := p.doPlan(ctx)
-	return project.Result{
+	return command.ProjectResult{
 		Command:     command.Plan,
 		PlanSuccess: planSuccess,
 		Error:       err,
@@ -223,9 +222,9 @@ func (p *DefaultProjectCommandRunner) Plan(ctx project.Context) project.Result {
 }
 
 // PolicyCheck evaluates policies defined with Rego for the project described by ctx.
-func (p *DefaultProjectCommandRunner) PolicyCheck(ctx project.Context) project.Result {
+func (p *DefaultProjectCommandRunner) PolicyCheck(ctx command.ProjectContext) command.ProjectResult {
 	policySuccess, failure, err := p.doPolicyCheck(ctx)
-	return project.Result{
+	return command.ProjectResult{
 		Command:            command.PolicyCheck,
 		PolicyCheckSuccess: policySuccess,
 		Error:              err,
@@ -237,9 +236,9 @@ func (p *DefaultProjectCommandRunner) PolicyCheck(ctx project.Context) project.R
 }
 
 // Apply runs terraform apply for the project described by ctx.
-func (p *DefaultProjectCommandRunner) Apply(ctx project.Context) project.Result {
+func (p *DefaultProjectCommandRunner) Apply(ctx command.ProjectContext) command.ProjectResult {
 	applyOut, failure, err := p.doApply(ctx)
-	return project.Result{
+	return command.ProjectResult{
 		Command:      command.Apply,
 		Failure:      failure,
 		Error:        err,
@@ -250,9 +249,9 @@ func (p *DefaultProjectCommandRunner) Apply(ctx project.Context) project.Result 
 	}
 }
 
-func (p *DefaultProjectCommandRunner) ApprovePolicies(ctx project.Context) project.Result {
+func (p *DefaultProjectCommandRunner) ApprovePolicies(ctx command.ProjectContext) command.ProjectResult {
 	approvedOut, failure, err := p.doApprovePolicies(ctx)
-	return project.Result{
+	return command.ProjectResult{
 		Command:            command.PolicyCheck,
 		Failure:            failure,
 		Error:              err,
@@ -263,9 +262,9 @@ func (p *DefaultProjectCommandRunner) ApprovePolicies(ctx project.Context) proje
 	}
 }
 
-func (p *DefaultProjectCommandRunner) Version(ctx project.Context) project.Result {
+func (p *DefaultProjectCommandRunner) Version(ctx command.ProjectContext) command.ProjectResult {
 	versionOut, failure, err := p.doVersion(ctx)
-	return project.Result{
+	return command.ProjectResult{
 		Command:        command.Version,
 		Failure:        failure,
 		Error:          err,
@@ -276,7 +275,7 @@ func (p *DefaultProjectCommandRunner) Version(ctx project.Context) project.Resul
 	}
 }
 
-func (p *DefaultProjectCommandRunner) doApprovePolicies(ctx project.Context) (*models.PolicyCheckSuccess, string, error) {
+func (p *DefaultProjectCommandRunner) doApprovePolicies(ctx command.ProjectContext) (*models.PolicyCheckSuccess, string, error) {
 
 	// TODO: Make this a bit smarter
 	// without checking some sort of state that the policy check has indeed passed this is likely to cause issues
@@ -286,7 +285,7 @@ func (p *DefaultProjectCommandRunner) doApprovePolicies(ctx project.Context) (*m
 	}, "", nil
 }
 
-func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx project.Context) (*models.PolicyCheckSuccess, string, error) {
+func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx command.ProjectContext) (*models.PolicyCheckSuccess, string, error) {
 	// Acquire Atlantis lock for this repo/dir/workspace.
 	// This should already be acquired from the prior plan operation.
 	// if for some reason an unlock happens between the plan and policy check step
@@ -357,7 +356,7 @@ func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx project.Context) (*model
 	}, "", nil
 }
 
-func (p *DefaultProjectCommandRunner) doPlan(ctx project.Context) (*models.PlanSuccess, string, error) {
+func (p *DefaultProjectCommandRunner) doPlan(ctx command.ProjectContext) (*models.PlanSuccess, string, error) {
 	// Acquire Atlantis lock for this repo/dir/workspace.
 	lockAttempt, err := p.Locker.TryLock(ctx.Log, ctx.Pull, ctx.User, ctx.Workspace, models.NewProject(ctx.Pull.BaseRepo.FullName, ctx.RepoRelDir))
 	if err != nil {
@@ -406,7 +405,7 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx project.Context) (*models.PlanS
 	}, "", nil
 }
 
-func (p *DefaultProjectCommandRunner) doApply(ctx project.Context) (applyOut string, failure string, err error) {
+func (p *DefaultProjectCommandRunner) doApply(ctx command.ProjectContext) (applyOut string, failure string, err error) {
 	repoDir, err := p.WorkingDir.GetWorkingDir(ctx.Pull.BaseRepo, ctx.Pull, ctx.Workspace)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -450,7 +449,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx project.Context) (applyOut str
 	return strings.Join(outputs, "\n"), "", nil
 }
 
-func (p *DefaultProjectCommandRunner) doVersion(ctx project.Context) (versionOut string, failure string, err error) {
+func (p *DefaultProjectCommandRunner) doVersion(ctx command.ProjectContext) (versionOut string, failure string, err error) {
 	repoDir, err := p.WorkingDir.GetWorkingDir(ctx.Pull.BaseRepo, ctx.Pull, ctx.Workspace)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -478,7 +477,7 @@ func (p *DefaultProjectCommandRunner) doVersion(ctx project.Context) (versionOut
 	return strings.Join(outputs, "\n"), "", nil
 }
 
-func (p *DefaultProjectCommandRunner) runSteps(steps []valid.Step, ctx project.Context, absPath string) ([]string, error) {
+func (p *DefaultProjectCommandRunner) runSteps(steps []valid.Step, ctx command.ProjectContext, absPath string) ([]string, error) {
 	var outputs []string
 
 	envs := make(map[string]string)

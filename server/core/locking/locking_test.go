@@ -185,9 +185,9 @@ func TestGetLock_NoOpLocker(t *testing.T) {
 
 func TestApplyLocker(t *testing.T) {
 	RegisterMockTestingT(t)
-	applyLock := &models.CommandLock{
+	applyLock := &command.Lock{
 		CommandName: command.Apply,
-		LockMetadata: models.LockMetadata{
+		LockMetadata: command.LockMetadata{
 			UnixTime: time.Now().Unix(),
 		},
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/runatlantis/atlantis/server"
-	"github.com/runatlantis/atlantis/server/events/command/project"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/stretchr/testify/assert"
@@ -83,7 +83,7 @@ func setupJobsRouter(t *testing.T) *server.Router {
 func TestGenerateProjectJobURL_ShouldGenerateURLWhenJobIDSpecified(t *testing.T) {
 	router := setupJobsRouter(t)
 	jobID := uuid.New().String()
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		JobID: jobID,
 	}
 	expectedURL := fmt.Sprintf("http://localhost:4141/jobs/%s", jobID)
@@ -95,7 +95,7 @@ func TestGenerateProjectJobURL_ShouldGenerateURLWhenJobIDSpecified(t *testing.T)
 
 func TestGenerateProjectJobURL_ShouldReturnErrorWhenJobIDNotSpecified(t *testing.T) {
 	router := setupJobsRouter(t)
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		Pull: models.PullRequest{
 			BaseRepo: models.Repo{
 				Owner: "test-owner",

@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -10,7 +9,7 @@ import (
 
 // ProjectJobURLGenerator generates urls to view project's progress.
 type ProjectJobURLGenerator interface {
-	GenerateProjectJobURL(p project.Context) (string, error)
+	GenerateProjectJobURL(p command.ProjectContext) (string, error)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_status_updater.go ProjectStatusUpdater
@@ -18,7 +17,7 @@ type ProjectJobURLGenerator interface {
 type ProjectStatusUpdater interface {
 	// UpdateProject sets the commit status for the project represented by
 	// ctx.
-	UpdateProject(ctx project.Context, cmdName command.Name, status models.CommitStatus, url string) error
+	UpdateProject(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus, url string) error
 }
 
 type JobURLSetter struct {
@@ -33,7 +32,7 @@ func NewJobURLSetter(projectJobURLGenerator ProjectJobURLGenerator, projectStatu
 	}
 }
 
-func (j *JobURLSetter) SetJobURLWithStatus(ctx project.Context, cmdName command.Name, status models.CommitStatus) error {
+func (j *JobURLSetter) SetJobURLWithStatus(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus) error {
 	url, err := j.projectJobURLGenerator.GenerateProjectJobURL(ctx)
 
 	if err != nil {

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/events/command/project"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	. "github.com/runatlantis/atlantis/testing"
@@ -359,35 +359,35 @@ func TestAzureDevopsSplitRepoFullName(t *testing.T) {
 
 func TestProjectResult_IsSuccessful(t *testing.T) {
 	cases := map[string]struct {
-		pr  project.Result
+		pr  command.ProjectResult
 		exp bool
 	}{
 		"plan success": {
-			project.Result{
+			command.ProjectResult{
 				PlanSuccess: &models.PlanSuccess{},
 			},
 			true,
 		},
 		"policy_check success": {
-			project.Result{
+			command.ProjectResult{
 				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
 			},
 			true,
 		},
 		"apply success": {
-			project.Result{
+			command.ProjectResult{
 				ApplySuccess: "success",
 			},
 			true,
 		},
 		"failure": {
-			project.Result{
+			command.ProjectResult{
 				Failure: "failure",
 			},
 			false,
 		},
 		"error": {
-			project.Result{
+			command.ProjectResult{
 				Error: errors.New("error"),
 			},
 			false,
@@ -403,74 +403,74 @@ func TestProjectResult_IsSuccessful(t *testing.T) {
 
 func TestProjectResult_PlanStatus(t *testing.T) {
 	cases := []struct {
-		p         project.Result
+		p         command.ProjectResult
 		expStatus models.ProjectPlanStatus
 	}{
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command: command.Plan,
 				Error:   errors.New("err"),
 			},
 			expStatus: models.ErroredPlanStatus,
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command: command.Plan,
 				Failure: "failure",
 			},
 			expStatus: models.ErroredPlanStatus,
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command:     command.Plan,
 				PlanSuccess: &models.PlanSuccess{},
 			},
 			expStatus: models.PlannedPlanStatus,
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command: command.Apply,
 				Error:   errors.New("err"),
 			},
 			expStatus: models.ErroredApplyStatus,
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command: command.Apply,
 				Failure: "failure",
 			},
 			expStatus: models.ErroredApplyStatus,
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command:      command.Apply,
 				ApplySuccess: "success",
 			},
 			expStatus: models.AppliedPlanStatus,
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command:            command.PolicyCheck,
 				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
 			},
 			expStatus: models.PassedPolicyCheckStatus,
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command: command.PolicyCheck,
 				Failure: "failure",
 			},
 			expStatus: models.ErroredPolicyCheckStatus,
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command:            command.ApprovePolicies,
 				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
 			},
 			expStatus: models.PassedPolicyCheckStatus,
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				Command: command.ApprovePolicies,
 				Failure: "failure",
 			},
@@ -487,11 +487,11 @@ func TestProjectResult_PlanStatus(t *testing.T) {
 
 func TestPlanSuccess_Summary(t *testing.T) {
 	cases := []struct {
-		p         project.Result
+		p         command.ProjectResult
 		expResult string
 	}{
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				PlanSuccess: &models.PlanSuccess{
 					TerraformOutput: `
 					An execution plan has been generated and is shown below.
@@ -509,7 +509,7 @@ func TestPlanSuccess_Summary(t *testing.T) {
 			expResult: "Plan: 0 to add, 0 to change, 1 to destroy.",
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				PlanSuccess: &models.PlanSuccess{
 					TerraformOutput: `
 					An execution plan has been generated and is shown below.
@@ -521,7 +521,7 @@ func TestPlanSuccess_Summary(t *testing.T) {
 			expResult: "No changes. Infrastructure is up-to-date.",
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				PlanSuccess: &models.PlanSuccess{
 					TerraformOutput: `
 					Note: Objects have changed outside of Terraform
@@ -535,7 +535,7 @@ func TestPlanSuccess_Summary(t *testing.T) {
 			expResult: "\n**Note: Objects have changed outside of Terraform**\nNo changes. Your infrastructure matches the configuration.",
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				PlanSuccess: &models.PlanSuccess{
 					TerraformOutput: `
 					Note: Objects have changed outside of Terraform
@@ -558,7 +558,7 @@ func TestPlanSuccess_Summary(t *testing.T) {
 			expResult: "\n**Note: Objects have changed outside of Terraform**\nPlan: 0 to add, 0 to change, 1 to destroy.",
 		},
 		{
-			p: project.Result{
+			p: command.ProjectResult{
 				PlanSuccess: &models.PlanSuccess{
 					TerraformOutput: `No match, expect empty`,
 				},
@@ -629,7 +629,7 @@ func TestPolicyCheckCommand_String(t *testing.T) {
 }
 
 func TestUnlockCommand_String(t *testing.T) {
-	uc := command.UnlockCommand
+	uc := command.Unlock
 
 	Equals(t, "unlock", uc.String())
 }

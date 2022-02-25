@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -46,7 +45,7 @@ func (c *AutoMerger) automerge(ctx *command.Context, pullStatus models.PullStatu
 }
 
 // automergeEnabled returns true if automerging is enabled in this context.
-func (c *AutoMerger) automergeEnabled(projectCmds []project.Context) bool {
+func (c *AutoMerger) automergeEnabled(projectCmds []command.ProjectContext) bool {
 	// If the global automerge is set, we always automerge.
 	return c.GlobalAutomerge ||
 		// Otherwise we check if this repo is configured for automerging.
@@ -54,7 +53,7 @@ func (c *AutoMerger) automergeEnabled(projectCmds []project.Context) bool {
 }
 
 // deleteSourceBranchOnMergeEnabled returns true if we should delete the source branch on merge in this context.
-func (c *AutoMerger) deleteSourceBranchOnMergeEnabled(projectCmds []project.Context) bool {
+func (c *AutoMerger) deleteSourceBranchOnMergeEnabled(projectCmds []command.ProjectContext) bool {
 	//check if this repo is configured for automerging.
 	return (len(projectCmds) > 0 && projectCmds[0].DeleteSourceBranchOnMerge)
 }

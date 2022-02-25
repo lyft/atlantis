@@ -458,7 +458,7 @@ func TestPullStatus_UpdateGet(t *testing.T) {
 	}
 	status, err := b.UpdatePullWithResults(
 		pull,
-		[]project.Result{
+		[]command.ProjectResult{
 			{
 				Command:    command.Plan,
 				RepoRelDir: ".",
@@ -510,7 +510,7 @@ func TestPullStatus_UpdateDeleteGet(t *testing.T) {
 	}
 	_, err := b.UpdatePullWithResults(
 		pull,
-		[]project.Result{
+		[]command.ProjectResult{
 			{
 				RepoRelDir: ".",
 				Workspace:  "default",
@@ -556,7 +556,7 @@ func TestPullStatus_UpdateProject(t *testing.T) {
 	}
 	_, err := b.UpdatePullWithResults(
 		pull,
-		[]project.Result{
+		[]command.ProjectResult{
 			{
 				RepoRelDir: ".",
 				Workspace:  "default",
@@ -621,7 +621,7 @@ func TestPullStatus_UpdateNewCommit(t *testing.T) {
 	}
 	initialStatus, err := b.UpdatePullWithResults(
 		pull,
-		[]project.Result{
+		[]command.ProjectResult{
 			{
 				RepoRelDir: ".",
 				Workspace:  "default",
@@ -635,7 +635,7 @@ func TestPullStatus_UpdateNewCommit(t *testing.T) {
 
 	pull.HeadCommit = "newsha"
 	status, err := b.UpdatePullWithResults(pull,
-		[]project.Result{
+		[]command.ProjectResult{
 			{
 				RepoRelDir:   ".",
 				Workspace:    "staging",
@@ -688,7 +688,7 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 	}
 	initialStatus, err := b.UpdatePullWithResults(
 		pull,
-		[]project.Result{
+		[]command.ProjectResult{
 			{
 				Command:    command.Plan,
 				RepoRelDir: "mergeme",
@@ -720,7 +720,7 @@ func TestPullStatus_UpdateMerge(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	updateStatus, err := b.UpdatePullWithResults(pull,
-		[]project.Result{
+		[]command.ProjectResult{
 			{
 				Command:      command.Apply,
 				RepoRelDir:   "mergeme",

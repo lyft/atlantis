@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -29,13 +28,13 @@ func TestCommandResult_HasErrors(t *testing.T) {
 		},
 		"empty results list": {
 			cr: command.Result{
-				ProjectResults: []project.Result{},
+				ProjectResults: []command.ProjectResult{},
 			},
 			exp: false,
 		},
 		"successful plan": {
 			cr: command.Result{
-				ProjectResults: []project.Result{
+				ProjectResults: []command.ProjectResult{
 					{
 						PlanSuccess: &models.PlanSuccess{},
 					},
@@ -45,7 +44,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 		},
 		"successful apply": {
 			cr: command.Result{
-				ProjectResults: []project.Result{
+				ProjectResults: []command.ProjectResult{
 					{
 						ApplySuccess: "success",
 					},
@@ -55,7 +54,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 		},
 		"single errored project": {
 			cr: command.Result{
-				ProjectResults: []project.Result{
+				ProjectResults: []command.ProjectResult{
 					{
 						Error: errors.New("err"),
 					},
@@ -65,7 +64,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 		},
 		"single failed project": {
 			cr: command.Result{
-				ProjectResults: []project.Result{
+				ProjectResults: []command.ProjectResult{
 					{
 						Failure: "failure",
 					},
@@ -75,7 +74,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 		},
 		"two successful projects": {
 			cr: command.Result{
-				ProjectResults: []project.Result{
+				ProjectResults: []command.ProjectResult{
 					{
 						PlanSuccess: &models.PlanSuccess{},
 					},
@@ -88,7 +87,7 @@ func TestCommandResult_HasErrors(t *testing.T) {
 		},
 		"one successful, one failed project": {
 			cr: command.Result{
-				ProjectResults: []project.Result{
+				ProjectResults: []command.ProjectResult{
 					{
 						PlanSuccess: &models.PlanSuccess{},
 					},

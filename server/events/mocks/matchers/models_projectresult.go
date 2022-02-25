@@ -5,29 +5,29 @@ import (
 	"reflect"
 
 	"github.com/petergtz/pegomock"
-	"github.com/runatlantis/atlantis/server/events/command/project"
+	"github.com/runatlantis/atlantis/server/events/command"
 )
 
-func AnyModelsProjectResult() project.Result {
-	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(project.Result))(nil)).Elem()))
-	var nullValue project.Result
+func AnyModelsProjectResult() command.ProjectResult {
+	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(command.ProjectResult))(nil)).Elem()))
+	var nullValue command.ProjectResult
 	return nullValue
 }
 
-func EqModelsProjectResult(value project.Result) project.Result {
+func EqModelsProjectResult(value command.ProjectResult) command.ProjectResult {
 	pegomock.RegisterMatcher(&pegomock.EqMatcher{Value: value})
-	var nullValue project.Result
+	var nullValue command.ProjectResult
 	return nullValue
 }
 
-func NotEqModelsProjectResult(value project.Result) project.Result {
+func NotEqModelsProjectResult(value command.ProjectResult) command.ProjectResult {
 	pegomock.RegisterMatcher(&pegomock.NotEqMatcher{Value: value})
-	var nullValue project.Result
+	var nullValue command.ProjectResult
 	return nullValue
 }
 
-func ModelsProjectResultThat(matcher pegomock.ArgumentMatcher) project.Result {
+func ModelsProjectResultThat(matcher pegomock.ArgumentMatcher) command.ProjectResult {
 	pegomock.RegisterMatcher(matcher)
-	var nullValue project.Result
+	var nullValue command.ProjectResult
 	return nullValue
 }

@@ -26,7 +26,6 @@ import (
 	tmocks "github.com/runatlantis/atlantis/server/core/terraform/mocks"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	eventmocks "github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
@@ -84,7 +83,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	expEnvs := map[string]string{
 		"name": "value",
 	}
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		Log: logging.NewNoopLogger(t),
 		Steps: []valid.Step{
 			{
@@ -135,7 +134,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 
 func TestProjectOutputWrapper(t *testing.T) {
 	RegisterMockTestingT(t)
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		Log: logging.NewNoopLogger(t),
 		Steps: []valid.Step{
 			{
@@ -187,7 +186,7 @@ func TestProjectOutputWrapper(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			var prjResult project.Result
+			var prjResult command.ProjectResult
 			var expCommitStatus models.CommitStatus
 
 			mockJobURLSetter := eventmocks.NewMockJobURLSetter()
@@ -201,18 +200,18 @@ func TestProjectOutputWrapper(t *testing.T) {
 			}
 
 			if c.Success {
-				prjResult = project.Result{
+				prjResult = command.ProjectResult{
 					PlanSuccess:  &models.PlanSuccess{},
 					ApplySuccess: "exists",
 				}
 				expCommitStatus = models.SuccessCommitStatus
 			} else if c.Failure {
-				prjResult = project.Result{
+				prjResult = command.ProjectResult{
 					Failure: "failure",
 				}
 				expCommitStatus = models.FailedCommitStatus
 			} else if c.Error {
-				prjResult = project.Result{
+				prjResult = command.ProjectResult{
 					Error: errors.New("error"),
 				}
 				expCommitStatus = models.FailedCommitStatus
@@ -248,7 +247,7 @@ func TestDefaultProjectCommandRunner_ApplyNotCloned(t *testing.T) {
 	runner := &events.DefaultProjectCommandRunner{
 		WorkingDir: mockWorkingDir,
 	}
-	ctx := project.Context{}
+	ctx := command.ProjectContext{}
 	When(mockWorkingDir.GetWorkingDir(ctx.BaseRepo, ctx.Pull, ctx.Workspace)).ThenReturn("", os.ErrNotExist)
 
 	res := runner.Apply(ctx)
@@ -268,7 +267,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 		},
 		Webhooks: mockSender,
 	}
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		ApplyRequirements: []string{"approved"},
 		PullReqStatus: models.PullReqStatus{
 			ApprovalStatus: models.ApprovalStatus{
@@ -296,7 +295,7 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 		},
 		Webhooks: mockSender,
 	}
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		PullReqStatus: models.PullReqStatus{
 			ApprovalStatus: models.ApprovalStatus{
 				IsApproved: false,
@@ -328,7 +327,7 @@ func TestFeatureAwareProjectCommandRunner_ForceOverrideWhenEnabled(t *testing.T)
 	featureAwareRunner := &events.FeatureAwareProjectCommandRunner{
 		ProjectCommandRunner: runner,
 	}
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		ApplyRequirements: []string{"approved"},
 		ForceApply:        true,
 		PullReqStatus: models.PullReqStatus{
@@ -357,7 +356,7 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 			WorkingDir: mockWorkingDir,
 		},
 	}
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		PullReqStatus: models.PullReqStatus{
 			Mergeable: false,
 		},
@@ -382,7 +381,7 @@ func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 			WorkingDir: mockWorkingDir,
 		},
 	}
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		ApplyRequirements: []string{"undiverged"},
 	}
 	tmp, cleanup := TempDir(t)
@@ -508,7 +507,7 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 				AnyString(),
 			)).ThenReturn(repoDir, nil)
 
-			ctx := project.Context{
+			ctx := command.ProjectContext{
 				Log:               logging.NewNoopLogger(t),
 				Steps:             c.steps,
 				Workspace:         "default",
@@ -580,7 +579,7 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 		AnyString(),
 	)).ThenReturn(repoDir, nil)
 
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		Log: logging.NewNoopLogger(t),
 		Steps: []valid.Step{
 			{
@@ -649,7 +648,7 @@ func TestDefaultProjectCommandRunner_RunEnvSteps(t *testing.T) {
 		LockKey:      "lock-key",
 	}, nil)
 
-	ctx := project.Context{
+	ctx := command.ProjectContext{
 		Log: logging.NewNoopLogger(t),
 		Steps: []valid.Step{
 			{

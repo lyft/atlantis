@@ -2,7 +2,6 @@ package events
 
 import (
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -35,7 +34,7 @@ type PolicyCheckCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
-func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []project.Context) {
+func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []command.ProjectContext) {
 	if len(cmds) == 0 {
 		ctx.Log.Info("no projects to run policy_check in")
 		if !p.silenceVCSStatusNoProjects {
@@ -90,6 +89,6 @@ func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *command.Context, pull
 	}
 }
 
-func (p *PolicyCheckCommandRunner) isParallelEnabled(cmds []project.Context) bool {
+func (p *PolicyCheckCommandRunner) isParallelEnabled(cmds []command.ProjectContext) bool {
 	return len(cmds) > 0 && cmds[0].ParallelPolicyCheckEnabled
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	pegomock "github.com/petergtz/pegomock"
-	"github.com/runatlantis/atlantis/server/events/command/project"
+	"github.com/runatlantis/atlantis/server/events/command"
 )
 
 type MockEnvStepRunner struct {
@@ -26,7 +26,7 @@ func NewMockEnvStepRunner(options ...pegomock.Option) *MockEnvStepRunner {
 func (mock *MockEnvStepRunner) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockEnvStepRunner) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockEnvStepRunner) Run(ctx project.Context, cmd string, value string, path string, envs map[string]string) (string, error) {
+func (mock *MockEnvStepRunner) Run(ctx command.ProjectContext, cmd string, value string, path string, envs map[string]string) (string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockEnvStepRunner().")
 	}
@@ -82,7 +82,7 @@ type VerifierMockEnvStepRunner struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockEnvStepRunner) Run(ctx project.Context, cmd string, value string, path string, envs map[string]string) *MockEnvStepRunner_Run_OngoingVerification {
+func (verifier *VerifierMockEnvStepRunner) Run(ctx command.ProjectContext, cmd string, value string, path string, envs map[string]string) *MockEnvStepRunner_Run_OngoingVerification {
 	params := []pegomock.Param{ctx, cmd, value, path, envs}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Run", params, verifier.timeout)
 	return &MockEnvStepRunner_Run_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -93,17 +93,17 @@ type MockEnvStepRunner_Run_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockEnvStepRunner_Run_OngoingVerification) GetCapturedArguments() (project.Context, string, string, string, map[string]string) {
+func (c *MockEnvStepRunner_Run_OngoingVerification) GetCapturedArguments() (command.ProjectContext, string, string, string, map[string]string) {
 	ctx, cmd, value, path, envs := c.GetAllCapturedArguments()
 	return ctx[len(ctx)-1], cmd[len(cmd)-1], value[len(value)-1], path[len(path)-1], envs[len(envs)-1]
 }
 
-func (c *MockEnvStepRunner_Run_OngoingVerification) GetAllCapturedArguments() (_param0 []project.Context, _param1 []string, _param2 []string, _param3 []string, _param4 []map[string]string) {
+func (c *MockEnvStepRunner_Run_OngoingVerification) GetAllCapturedArguments() (_param0 []command.ProjectContext, _param1 []string, _param2 []string, _param3 []string, _param4 []map[string]string) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]project.Context, len(c.methodInvocations))
+		_param0 = make([]command.ProjectContext, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(project.Context)
+			_param0[u] = param.(command.ProjectContext)
 		}
 		_param1 = make([]string, len(c.methodInvocations))
 		for u, param := range params[1] {

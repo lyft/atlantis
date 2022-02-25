@@ -13,10 +13,10 @@ type CommandTrigger int
 
 const (
 	// Commands that are automatically triggered (ie. automatic plans)
-	Auto CommandTrigger = iota
+	AutoTrigger CommandTrigger = iota
 
 	// Commands that are triggered by comments (ie. atlantis plan)
-	Comment
+	CommentTrigger
 )
 
 // Context represents the context of a command that should be executed

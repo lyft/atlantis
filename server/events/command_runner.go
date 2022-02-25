@@ -161,7 +161,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(baseRepo models.Repo, headRepo
 		Pull:             pull,
 		HeadRepo:         headRepo,
 		PullStatus:       status,
-		Trigger:          models.Auto,
+		Trigger:          command.AutoTrigger,
 		TriggerTimestamp: timestamp,
 	}
 	if !c.validateCtxAndComment(ctx) {
@@ -228,7 +228,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(baseRepo models.Repo, maybeHead
 		Pull:             pull,
 		PullStatus:       status,
 		HeadRepo:         headRepo,
-		Trigger:          models.Comment,
+		Trigger:          command.CommentTrigger,
 		Scope:            scope,
 		TriggerTimestamp: timestamp,
 	}

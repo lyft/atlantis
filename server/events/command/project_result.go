@@ -1,26 +1,25 @@
-package project
+package command
 
 import (
-	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-// Result is the result of executing a plan/policy_check/apply for a specific project.
-type Result struct {
-	Command            command.Name
+// ProjectResult is the result of executing a plan/policy_check/apply for a specific project.
+type ProjectResult struct {
+	Command            Name
 	RepoRelDir         string
 	Workspace          string
 	Error              error
 	Failure            string
-	PlanSuccess        *PlanSuccess
-	PolicyCheckSuccess *PolicyCheckSuccess
+	PlanSuccess        *models.PlanSuccess
+	PolicyCheckSuccess *models.PolicyCheckSuccess
 	ApplySuccess       string
 	VersionSuccess     string
 	ProjectName        string
 }
 
 // CommitStatus returns the vcs commit status of this project result.
-func (p Result) CommitStatus() models.CommitStatus {
+func (p ProjectResult) CommitStatus() models.CommitStatus {
 	if p.Error != nil {
 		return models.FailedCommitStatus
 	}
@@ -31,24 +30,24 @@ func (p Result) CommitStatus() models.CommitStatus {
 }
 
 // PlanStatus returns the plan status.
-func (p Result) PlanStatus() models.ProjectPlanStatus {
+func (p ProjectResult) PlanStatus() models.ProjectPlanStatus {
 	switch p.Command {
 
-	case command.Plan:
+	case Plan:
 		if p.Error != nil {
 			return models.ErroredPlanStatus
 		} else if p.Failure != "" {
 			return models.ErroredPlanStatus
 		}
 		return models.PlannedPlanStatus
-	case command.PolicyCheck, command.ApprovePolicies:
+	case PolicyCheck, ApprovePolicies:
 		if p.Error != nil {
 			return models.ErroredPolicyCheckStatus
 		} else if p.Failure != "" {
 			return models.ErroredPolicyCheckStatus
 		}
 		return models.PassedPolicyCheckStatus
-	case command.Apply:
+	case Apply:
 		if p.Error != nil {
 			return models.ErroredApplyStatus
 		} else if p.Failure != "" {
@@ -58,4 +57,9 @@ func (p Result) PlanStatus() models.ProjectPlanStatus {
 	}
 
 	panic("PlanStatus() missing a combination")
+}
+
+// IsSuccessful returns true if this project result had no errors.
+func (p ProjectResult) IsSuccessful() bool {
+	return p.PlanSuccess != nil || p.PolicyCheckSuccess != nil || p.ApplySuccess != ""
 }

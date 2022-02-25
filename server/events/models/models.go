@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/logging"
 
 	"github.com/pkg/errors"
@@ -223,27 +222,6 @@ func (p PullRequestEventType) String() string {
 // During an autoplan, the user will be the Atlantis API user.
 type User struct {
 	Username string
-}
-
-// LockMetadata contains additional data provided to the lock
-type LockMetadata struct {
-	UnixTime int64
-}
-
-// CommandLock represents a global lock for an atlantis command (plan, apply, policy_check).
-// It is used to prevent commands from being executed
-type CommandLock struct {
-	// Time is the time at which the lock was first created.
-	LockMetadata LockMetadata
-	CommandName  command.Name
-}
-
-func (l *CommandLock) LockTime() time.Time {
-	return time.Unix(l.LockMetadata.UnixTime, 0)
-}
-
-func (l *CommandLock) IsLocked() bool {
-	return !l.LockTime().IsZero()
 }
 
 // ProjectLock represents a lock on a project.

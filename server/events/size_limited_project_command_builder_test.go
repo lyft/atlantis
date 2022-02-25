@@ -6,7 +6,6 @@ import (
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -18,22 +17,22 @@ func TestSizeLimitedProjectCommandBuilder_autoplan(t *testing.T) {
 
 	ctx := &command.Context{}
 
-	project1 := project.Context{
+	project1 := command.ProjectContext{
 		ProjectName: "test1",
 		CommandName: command.Plan,
 	}
 
-	project2 := project.Context{
+	project2 := command.ProjectContext{
 		ProjectName: "test2",
 		CommandName: command.Plan,
 	}
 
-	project3 := project.Context{
+	project3 := command.ProjectContext{
 		ProjectName: "test1",
 		CommandName: command.PolicyCheck,
 	}
 
-	expectedResult := []project.Context{project1, project2}
+	expectedResult := []command.ProjectContext{project1, project2}
 
 	t.Run("Limit Defined and Breached", func(t *testing.T) {
 		subject := &events.SizeLimitedProjectCommandBuilder{
@@ -88,7 +87,7 @@ Please break this pull request into smaller batches and try again.`, err)
 			ProjectCommandBuilder: delegate,
 		}
 
-		resultWithPolicyCheckCommand := []project.Context{project1, project2, project3}
+		resultWithPolicyCheckCommand := []command.ProjectContext{project1, project2, project3}
 
 		When(delegate.BuildAutoplanCommands(ctx)).ThenReturn(resultWithPolicyCheckCommand, nil)
 
@@ -109,17 +108,17 @@ func TestSizeLimitedProjectCommandBuilder_planComment(t *testing.T) {
 
 	comment := &events.CommentCommand{}
 
-	project1 := project.Context{
+	project1 := command.ProjectContext{
 		ProjectName: "test1",
 		CommandName: command.Plan,
 	}
 
-	project2 := project.Context{
+	project2 := command.ProjectContext{
 		ProjectName: "test2",
 		CommandName: command.Plan,
 	}
 
-	expectedResult := []project.Context{project1, project2}
+	expectedResult := []command.ProjectContext{project1, project2}
 
 	t.Run("Limit Defined and Breached", func(t *testing.T) {
 		subject := &events.SizeLimitedProjectCommandBuilder{

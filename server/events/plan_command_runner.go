@@ -2,7 +2,6 @@ package events
 
 import (
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -219,7 +218,7 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
 }
 
 func (p *PlanCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
-	if ctx.Trigger == models.Auto {
+	if ctx.Trigger == command.AutoTrigger {
 		p.runAutoplan(ctx)
 	} else {
 		p.run(ctx, cmd)
@@ -266,10 +265,10 @@ func (p *PlanCommandRunner) deletePlans(ctx *command.Context) {
 
 func (p *PlanCommandRunner) partitionProjectCmds(
 	ctx *command.Context,
-	cmds []project.Context,
+	cmds []command.ProjectContext,
 ) (
-	projectCmds []project.Context,
-	policyCheckCmds []project.Context,
+	projectCmds []command.ProjectContext,
+	policyCheckCmds []command.ProjectContext,
 ) {
 	for _, cmd := range cmds {
 		switch cmd.CommandName {
@@ -284,6 +283,6 @@ func (p *PlanCommandRunner) partitionProjectCmds(
 	return
 }
 
-func (p *PlanCommandRunner) isParallelEnabled(projectCmds []project.Context) bool {
+func (p *PlanCommandRunner) isParallelEnabled(projectCmds []command.ProjectContext) bool {
 	return len(projectCmds) > 0 && projectCmds[0].ParallelPlanEnabled
 }

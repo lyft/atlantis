@@ -57,6 +57,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/events"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
@@ -712,7 +713,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		command.Plan:            planCommandRunner,
 		command.Apply:           applyCommandRunner,
 		command.ApprovePolicies: approvePoliciesCommandRunner,
-		command.UnlockCommand:   unlockCommandRunner,
+		command.Unlock:          unlockCommandRunner,
 		command.Version:         versionCommandRunner,
 	}
 	cmdStatsScope := statsScope.SubScope("cmd")
@@ -740,11 +741,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		StaleCommandChecker:           staleCommandChecker,
 	}
 
-	featureAwareCommandRunner := &events.FeatureAwareCommandRunner{
-		CommandRunner:    commandRunner,
-		FeatureAllocator: featureAllocator,
-		VCSClient:        vcsClient,
-		Logger:           logger,
+	forceApplyCommandRunner := &events.ForceApplyCommandRunner{
+		CommandRunner: commandRunner,
+		VCSClient:     vcsClient,
+		Logger:        logger,
 	}
 
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
@@ -785,7 +785,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	eventsController := &events_controllers.VCSEventsController{
-		CommandRunner:                   featureAwareCommandRunner,
+		CommandRunner:                   forceApplyCommandRunner,
 		PullCleaner:                     pullClosedExecutor,
 		Parser:                          eventParser,
 		CommentParser:                   commentParser,

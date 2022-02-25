@@ -1,12 +1,10 @@
 package command
 
-import "github.com/runatlantis/atlantis/server/events/command/project"
-
 // Result is the result of running a Command.
 type Result struct {
 	Error          error
 	Failure        string
-	ProjectResults []project.Result
+	ProjectResults []ProjectResult
 	// PlansDeleted is true if all plans created during this command were
 	// deleted. This happens if automerging is enabled and one project has an
 	// error since automerging requires all plans to succeed.
