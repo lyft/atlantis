@@ -2,7 +2,7 @@ package events
 
 import (
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 )
 
 func NewVersionCommandRunner(
@@ -33,7 +33,7 @@ type VersionCommandRunner struct {
 
 func (v *VersionCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 	var err error
-	var projectCmds []models.ProjectCommandContext
+	var projectCmds []project.Context
 	projectCmds, err = v.prjCmdBuilder.BuildVersionCommands(ctx, cmd)
 	if err != nil {
 		ctx.Log.Warn("Error %s", err)
@@ -56,6 +56,6 @@ func (v *VersionCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 	v.pullUpdater.updatePull(ctx, cmd, result)
 }
 
-func (v *VersionCommandRunner) isParallelEnabled(cmds []models.ProjectCommandContext) bool {
+func (v *VersionCommandRunner) isParallelEnabled(cmds []project.Context) bool {
 	return len(cmds) > 0 && cmds[0].ParallelPolicyCheckEnabled
 }

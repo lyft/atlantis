@@ -4,6 +4,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/locking"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -112,7 +113,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 		ctx.Log.Warn("unable to get pull request status: %s. Continuing with mergeable and approved assumed false", err)
 	}
 
-	var projectCmds []models.ProjectCommandContext
+	var projectCmds []project.Context
 	projectCmds, err = a.prjCmdBuilder.BuildApplyCommands(ctx, cmd)
 
 	if err != nil {
@@ -171,7 +172,7 @@ func (a *ApplyCommandRunner) IsLocked() (bool, error) {
 	return lock.Locked, err
 }
 
-func (a *ApplyCommandRunner) isParallelEnabled(projectCmds []models.ProjectCommandContext) bool {
+func (a *ApplyCommandRunner) isParallelEnabled(projectCmds []project.Context) bool {
 	return len(projectCmds) > 0 && projectCmds[0].ParallelApplyEnabled
 }
 

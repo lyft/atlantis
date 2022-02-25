@@ -2,6 +2,7 @@ package events
 
 import (
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -265,10 +266,10 @@ func (p *PlanCommandRunner) deletePlans(ctx *command.Context) {
 
 func (p *PlanCommandRunner) partitionProjectCmds(
 	ctx *command.Context,
-	cmds []models.ProjectCommandContext,
+	cmds []project.Context,
 ) (
-	projectCmds []models.ProjectCommandContext,
-	policyCheckCmds []models.ProjectCommandContext,
+	projectCmds []project.Context,
+	policyCheckCmds []project.Context,
 ) {
 	for _, cmd := range cmds {
 		switch cmd.CommandName {
@@ -283,6 +284,6 @@ func (p *PlanCommandRunner) partitionProjectCmds(
 	return
 }
 
-func (p *PlanCommandRunner) isParallelEnabled(projectCmds []models.ProjectCommandContext) bool {
+func (p *PlanCommandRunner) isParallelEnabled(projectCmds []project.Context) bool {
 	return len(projectCmds) > 0 && projectCmds[0].ParallelPlanEnabled
 }

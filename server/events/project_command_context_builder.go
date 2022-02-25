@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/uber-go/tally"
 )
@@ -51,7 +52,7 @@ type ProjectCommandContextBuilder interface {
 		commentFlags []string,
 		repoDir string,
 		contextFlags *ContextFlags,
-	) []models.ProjectCommandContext
+	) []project.Context
 }
 
 // CommandScopedStatsProjectCommandContextBuilder ensures that project command context contains a scoped stats
@@ -70,14 +71,14 @@ func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 	commentFlags []string,
 	repoDir string,
 	contextFlags *ContextFlags,
-) (projectCmds []models.ProjectCommandContext) {
+) (projectCmds []project.Context) {
 	cb.ProjectCounter.Inc(1)
 
 	cmds := cb.ProjectCommandContextBuilder.BuildProjectContext(
 		ctx, cmdName, prjCfg, commentFlags, repoDir, contextFlags,
 	)
 
-	projectCmds = []models.ProjectCommandContext{}
+	projectCmds = []project.Context{}
 
 	for _, cmd := range cmds {
 
@@ -102,7 +103,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 	commentFlags []string,
 	repoDir string,
 	contextFlags *ContextFlags,
-) (projectCmds []models.ProjectCommandContext) {
+) (projectCmds []project.Context) {
 	ctx.Log.Debug("Building project command context for %s", cmdName)
 
 	var steps []valid.Step
@@ -156,7 +157,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 	commentFlags []string,
 	repoDir string,
 	contextFlags *ContextFlags,
-) (projectCmds []models.ProjectCommandContext) {
+) (projectCmds []project.Context) {
 	ctx.Log.Debug("PolicyChecks are enabled")
 
 	// If TerraformVersion not defined in config file look for a
@@ -211,7 +212,7 @@ func newProjectCommandContext(ctx *command.Context,
 	contextFlags *ContextFlags,
 	scope tally.Scope,
 	pullStatus models.PullReqStatus,
-) models.ProjectCommandContext {
+) project.Context {
 
 	var projectPlanStatus models.ProjectPlanStatus
 
@@ -231,7 +232,7 @@ func newProjectCommandContext(ctx *command.Context,
 		}
 	}
 
-	return models.ProjectCommandContext{
+	return project.Context{
 		CommandName:               cmd,
 		ApplyCmd:                  applyCmd,
 		BaseRepo:                  ctx.Pull.BaseRepo,

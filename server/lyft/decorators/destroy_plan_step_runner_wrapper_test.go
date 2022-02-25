@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime"
 	"github.com/runatlantis/atlantis/server/core/terraform/mocks"
 
+	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/decorators"
@@ -100,7 +101,7 @@ func TestRun_DestroyPlan(t *testing.T) {
 			stepRunner := decorators.DestroyPlanStepRunnerWrapper{
 				StepRunner: &planStepRunner,
 			}
-			ctx := models.ProjectCommandContext{
+			ctx := project.Context{
 				Log:                logger,
 				Workspace:          "workspace",
 				RepoRelDir:         ".",

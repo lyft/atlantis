@@ -8,7 +8,7 @@ import (
 	"time"
 
 	pegomock "github.com/petergtz/pegomock"
-	models "github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 )
 
 type MockJobMessageSender struct {
@@ -26,7 +26,7 @@ func NewMockJobMessageSender(options ...pegomock.Option) *MockJobMessageSender {
 func (mock *MockJobMessageSender) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockJobMessageSender) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockJobMessageSender) Send(_param0 models.ProjectCommandContext, _param1 string, _param2 bool) {
+func (mock *MockJobMessageSender) Send(_param0 project.Context, _param1 string, _param2 bool) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockJobMessageSender().")
 	}
@@ -71,7 +71,7 @@ type VerifierMockJobMessageSender struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockJobMessageSender) Send(_param0 models.ProjectCommandContext, _param1 string, _param2 bool) *MockJobMessageSender_Send_OngoingVerification {
+func (verifier *VerifierMockJobMessageSender) Send(_param0 project.Context, _param1 string, _param2 bool) *MockJobMessageSender_Send_OngoingVerification {
 	params := []pegomock.Param{_param0, _param1, _param2}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Send", params, verifier.timeout)
 	return &MockJobMessageSender_Send_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -82,17 +82,17 @@ type MockJobMessageSender_Send_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockJobMessageSender_Send_OngoingVerification) GetCapturedArguments() (models.ProjectCommandContext, string, bool) {
+func (c *MockJobMessageSender_Send_OngoingVerification) GetCapturedArguments() (project.Context, string, bool) {
 	_param0, _param1, _param2 := c.GetAllCapturedArguments()
 	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1]
 }
 
-func (c *MockJobMessageSender_Send_OngoingVerification) GetAllCapturedArguments() (_param0 []models.ProjectCommandContext, _param1 []string, _param2 []bool) {
+func (c *MockJobMessageSender_Send_OngoingVerification) GetAllCapturedArguments() (_param0 []project.Context, _param1 []string, _param2 []bool) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]models.ProjectCommandContext, len(c.methodInvocations))
+		_param0 = make([]project.Context, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(models.ProjectCommandContext)
+			_param0[u] = param.(project.Context)
 		}
 		_param1 = make([]string, len(c.methodInvocations))
 		for u, param := range params[1] {

@@ -1,27 +1,27 @@
 package events
 
 import (
+	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/metrics"
-	"github.com/runatlantis/atlantis/server/events/models"
 )
 
 type InstrumentedProjectCommandRunner struct {
 	ProjectCommandRunner
 }
 
-func (p *InstrumentedProjectCommandRunner) Plan(ctx models.ProjectCommandContext) models.ProjectResult {
+func (p *InstrumentedProjectCommandRunner) Plan(ctx project.Context) project.Result {
 	return RunAndEmitStats("plan", ctx, p.ProjectCommandRunner.Plan)
 }
 
-func (p *InstrumentedProjectCommandRunner) PolicyCheck(ctx models.ProjectCommandContext) models.ProjectResult {
+func (p *InstrumentedProjectCommandRunner) PolicyCheck(ctx project.Context) project.Result {
 	return RunAndEmitStats("policy check", ctx, p.ProjectCommandRunner.PolicyCheck)
 }
 
-func (p *InstrumentedProjectCommandRunner) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
+func (p *InstrumentedProjectCommandRunner) Apply(ctx project.Context) project.Result {
 	return RunAndEmitStats("apply", ctx, p.ProjectCommandRunner.Apply)
 }
 
-func RunAndEmitStats(commandName string, ctx models.ProjectCommandContext, execute func(ctx models.ProjectCommandContext) models.ProjectResult) models.ProjectResult {
+func RunAndEmitStats(commandName string, ctx project.Context, execute func(ctx project.Context) project.Result) project.Result {
 
 	// ensures we are differentiating between project level command and overall command
 	ctx.SetScope("project")

@@ -10,7 +10,7 @@ import (
 	pegomock "github.com/petergtz/pegomock"
 	events "github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	models "github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 )
 
 type MockProjectCommandBuilder struct {
@@ -28,17 +28,17 @@ func NewMockProjectCommandBuilder(options ...pegomock.Option) *MockProjectComman
 func (mock *MockProjectCommandBuilder) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockProjectCommandBuilder) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockProjectCommandBuilder) BuildAutoplanCommands(ctx *command.Context) ([]models.ProjectCommandContext, error) {
+func (mock *MockProjectCommandBuilder) BuildAutoplanCommands(ctx *command.Context) ([]project.Context, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectCommandBuilder().")
 	}
 	params := []pegomock.Param{ctx}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildAutoplanCommands", params, []reflect.Type{reflect.TypeOf((*[]models.ProjectCommandContext)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 []models.ProjectCommandContext
+	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildAutoplanCommands", params, []reflect.Type{reflect.TypeOf((*[]project.Context)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 []project.Context
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].([]models.ProjectCommandContext)
+			ret0 = result[0].([]project.Context)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)
@@ -47,17 +47,17 @@ func (mock *MockProjectCommandBuilder) BuildAutoplanCommands(ctx *command.Contex
 	return ret0, ret1
 }
 
-func (mock *MockProjectCommandBuilder) BuildPlanCommands(ctx *command.Context, comment *events.CommentCommand) ([]models.ProjectCommandContext, error) {
+func (mock *MockProjectCommandBuilder) BuildPlanCommands(ctx *command.Context, comment *events.CommentCommand) ([]project.Context, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectCommandBuilder().")
 	}
 	params := []pegomock.Param{ctx, comment}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildPlanCommands", params, []reflect.Type{reflect.TypeOf((*[]models.ProjectCommandContext)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 []models.ProjectCommandContext
+	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildPlanCommands", params, []reflect.Type{reflect.TypeOf((*[]project.Context)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 []project.Context
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].([]models.ProjectCommandContext)
+			ret0 = result[0].([]project.Context)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)
@@ -66,17 +66,17 @@ func (mock *MockProjectCommandBuilder) BuildPlanCommands(ctx *command.Context, c
 	return ret0, ret1
 }
 
-func (mock *MockProjectCommandBuilder) BuildApplyCommands(ctx *command.Context, comment *events.CommentCommand) ([]models.ProjectCommandContext, error) {
+func (mock *MockProjectCommandBuilder) BuildApplyCommands(ctx *command.Context, comment *events.CommentCommand) ([]project.Context, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectCommandBuilder().")
 	}
 	params := []pegomock.Param{ctx, comment}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildApplyCommands", params, []reflect.Type{reflect.TypeOf((*[]models.ProjectCommandContext)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 []models.ProjectCommandContext
+	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildApplyCommands", params, []reflect.Type{reflect.TypeOf((*[]project.Context)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 []project.Context
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].([]models.ProjectCommandContext)
+			ret0 = result[0].([]project.Context)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)
@@ -85,17 +85,17 @@ func (mock *MockProjectCommandBuilder) BuildApplyCommands(ctx *command.Context, 
 	return ret0, ret1
 }
 
-func (mock *MockProjectCommandBuilder) BuildApprovePoliciesCommands(ctx *command.Context, comment *events.CommentCommand) ([]models.ProjectCommandContext, error) {
+func (mock *MockProjectCommandBuilder) BuildApprovePoliciesCommands(ctx *command.Context, comment *events.CommentCommand) ([]project.Context, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectCommandBuilder().")
 	}
 	params := []pegomock.Param{ctx, comment}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildApprovePoliciesCommands", params, []reflect.Type{reflect.TypeOf((*[]models.ProjectCommandContext)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 []models.ProjectCommandContext
+	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildApprovePoliciesCommands", params, []reflect.Type{reflect.TypeOf((*[]project.Context)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 []project.Context
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].([]models.ProjectCommandContext)
+			ret0 = result[0].([]project.Context)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)
@@ -104,17 +104,17 @@ func (mock *MockProjectCommandBuilder) BuildApprovePoliciesCommands(ctx *command
 	return ret0, ret1
 }
 
-func (mock *MockProjectCommandBuilder) BuildVersionCommands(ctx *command.Context, comment *events.CommentCommand) ([]models.ProjectCommandContext, error) {
+func (mock *MockProjectCommandBuilder) BuildVersionCommands(ctx *command.Context, comment *events.CommentCommand) ([]project.Context, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectCommandBuilder().")
 	}
 	params := []pegomock.Param{ctx, comment}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildVersionCommands", params, []reflect.Type{reflect.TypeOf((*[]models.ProjectCommandContext)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 []models.ProjectCommandContext
+	result := pegomock.GetGenericMockFrom(mock).Invoke("BuildVersionCommands", params, []reflect.Type{reflect.TypeOf((*[]project.Context)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 []project.Context
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].([]models.ProjectCommandContext)
+			ret0 = result[0].([]project.Context)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)

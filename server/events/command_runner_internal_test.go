@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -169,6 +170,6 @@ func (m *MockCSU) UpdateCombinedCount(repo models.Repo, pull models.PullRequest,
 func (m *MockCSU) UpdateCombined(repo models.Repo, pull models.PullRequest, status models.CommitStatus, command command.Name) error {
 	return nil
 }
-func (m *MockCSU) UpdateProject(ctx models.ProjectCommandContext, cmdName command.Name, status models.CommitStatus, url string) error {
+func (m *MockCSU) UpdateProject(ctx project.Context, cmdName command.Name, status models.CommitStatus, url string) error {
 	return nil
 }

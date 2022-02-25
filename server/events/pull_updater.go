@@ -25,7 +25,7 @@ func (c *PullUpdater) updatePull(ctx *command.Context, command PullCommand, res 
 	// clutter in a pull/merge request. This will not delete the comment, since the
 	// comment trail may be useful in auditing or backtracing problems.
 	if c.HidePrevPlanComments {
-		if err := c.VCSClient.HidePrevCommandComments(ctx.Pull.BaseRepo, ctx.Pull.Num, command.CommandName().TitleString()); err != nil {
+		if err := c.VCSClient.HidePrevCommandComments(ctx.Pull.BaseRepo, ctx.Pull.Num, command.Name().TitleString()); err != nil {
 			ctx.Log.Err("unable to hide old comments: %s", err)
 		}
 	}
@@ -36,8 +36,8 @@ func (c *PullUpdater) updatePull(ctx *command.Context, command PullCommand, res 
 		templateOverrides = repoCfg.TemplateOverrides
 	}
 
-	comment := c.MarkdownRenderer.Render(res, command.CommandName(), ctx.Log.GetHistory(), command.IsVerbose(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
-	if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, comment, command.CommandName().String()); err != nil {
+	comment := c.MarkdownRenderer.Render(res, command.Name(), ctx.Log.GetHistory(), command.IsVerbose(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
+	if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, comment, command.Name().String()); err != nil {
 		ctx.Log.Err("unable to comment: %s", err)
 	}
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -124,7 +125,7 @@ func (m *MarkdownRenderer) Render(res command.Result, cmdName command.Name, log 
 	return m.renderProjectResults(res.ProjectResults, common, vcsHost, templateOverrides)
 }
 
-func (m *MarkdownRenderer) renderProjectResults(results []models.ProjectResult, common commonData, vcsHost models.VCSHostType, templateOverrides map[string]string) string {
+func (m *MarkdownRenderer) renderProjectResults(results []project.Result, common commonData, vcsHost models.VCSHostType, templateOverrides map[string]string) string {
 	var resultsTmplData []projectResultTmplData
 	numPlanSuccesses := 0
 	numPolicyCheckSuccesses := 0

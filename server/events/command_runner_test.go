@@ -24,6 +24,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -421,7 +422,7 @@ func TestRunCommentCommand_DisableDisableAutoplan(t *testing.T) {
 	defer func() { ch.DisableAutoplan = false }()
 
 	When(projectCommandBuilder.BuildAutoplanCommands(matchers.AnyPtrToEventsCommandContext())).
-		ThenReturn([]models.ProjectCommandContext{
+		ThenReturn([]project.Context{
 			{
 				CommandName: command.Plan,
 			},
@@ -537,7 +538,7 @@ func TestRunAutoplanCommand_DeletePlans(t *testing.T) {
 
 	When(staleCommandChecker.CommandIsStale(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
 	When(projectCommandBuilder.BuildAutoplanCommands(matchers.AnyPtrToEventsCommandContext())).
-		ThenReturn([]models.ProjectCommandContext{
+		ThenReturn([]project.Context{
 			{
 				CommandName: command.Plan,
 			},
@@ -551,14 +552,14 @@ func TestRunAutoplanCommand_DeletePlans(t *testing.T) {
 			// The first call, we return a successful result.
 			callCount++
 			return ReturnValues{
-				models.ProjectResult{
+				project.Result{
 					PlanSuccess: &models.PlanSuccess{},
 				},
 			}
 		}
 		// The second call, we return a failed result.
 		return ReturnValues{
-			models.ProjectResult{
+			project.Result{
 				Error: errors.New("err"),
 			},
 		}
@@ -596,7 +597,7 @@ func TestFailedApprovalCreatesFailedStatusUpdate(t *testing.T) {
 	When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
 	When(staleCommandChecker.CommandIsStale(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
 
-	When(projectCommandBuilder.BuildApprovePoliciesCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn([]models.ProjectCommandContext{
+	When(projectCommandBuilder.BuildApprovePoliciesCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn([]project.Context{
 		{
 			CommandName: command.ApprovePolicies,
 		},
@@ -643,7 +644,7 @@ func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
 	When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
 	When(staleCommandChecker.CommandIsStale(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
 
-	When(projectCommandBuilder.BuildApprovePoliciesCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn([]models.ProjectCommandContext{
+	When(projectCommandBuilder.BuildApprovePoliciesCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn([]project.Context{
 		{
 			CommandName: command.ApprovePolicies,
 			PolicySets: valid.PolicySets{
@@ -657,7 +658,7 @@ func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
 	When(workingDir.GetPullDir(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(tmp, nil)
 	When(projectCommandRunner.ApprovePolicies(matchers.AnyModelsProjectCommandContext())).Then(func(_ []Param) ReturnValues {
 		return ReturnValues{
-			models.ProjectResult{
+			project.Result{
 				Command:            command.PolicyCheck,
 				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
 			},
@@ -699,7 +700,7 @@ func TestApplyMergeablityWhenPolicyCheckFails(t *testing.T) {
 	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(pull, nil)
 	When(eventParsing.ParseGithubPull(pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
 
-	_, _ = boltDB.UpdatePullWithResults(modelPull, []models.ProjectResult{
+	_, _ = boltDB.UpdatePullWithResults(modelPull, []project.Result{
 		{
 			Command:     command.PolicyCheck,
 			Error:       fmt.Errorf("failing policy"),
@@ -713,7 +714,7 @@ func TestApplyMergeablityWhenPolicyCheckFails(t *testing.T) {
 
 	When(projectCommandBuilder.BuildApplyCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).Then(func(args []Param) ReturnValues {
 		return ReturnValues{
-			[]models.ProjectCommandContext{
+			[]project.Context{
 				{
 					CommandName:       command.Apply,
 					ProjectName:       "default",
@@ -766,7 +767,7 @@ func TestRunApply_DiscardedProjects(t *testing.T) {
 	applyCommandRunner.DB = boltDB
 	pull := fixtures.Pull
 	pull.BaseRepo = fixtures.GithubRepo
-	_, err = boltDB.UpdatePullWithResults(pull, []models.ProjectResult{
+	_, err = boltDB.UpdatePullWithResults(pull, []project.Result{
 		{
 			Command:    command.Plan,
 			RepoRelDir: ".",

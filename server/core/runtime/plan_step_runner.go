@@ -11,6 +11,7 @@ import (
 	version "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/project"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -33,7 +34,7 @@ type PlanStepRunner struct {
 	AsyncTFExec         AsyncTFExec
 }
 
-func (p *PlanStepRunner) Run(ctx models.ProjectCommandContext, extraArgs []string, path string, envs map[string]string) (string, error) {
+func (p *PlanStepRunner) Run(ctx project.Context, extraArgs []string, path string, envs map[string]string) (string, error) {
 	tfVersion := p.DefaultTFVersion
 	if ctx.TerraformVersion != nil {
 		tfVersion = ctx.TerraformVersion
@@ -69,7 +70,7 @@ func (p *PlanStepRunner) isRemoteOpsErr(output string, err error) bool {
 
 // remotePlan runs a terraform plan command compatible with TFE remote
 // operations.
-func (p *PlanStepRunner) remotePlan(ctx models.ProjectCommandContext, extraArgs []string, path string, tfVersion *version.Version, planFile string, envs map[string]string) (string, error) {
+func (p *PlanStepRunner) remotePlan(ctx project.Context, extraArgs []string, path string, tfVersion *version.Version, planFile string, envs map[string]string) (string, error) {
 	argList := [][]string{
 		{"plan", "-input=false", "-refresh"},
 		extraArgs,
@@ -103,7 +104,7 @@ func (p *PlanStepRunner) remotePlan(ctx models.ProjectCommandContext, extraArgs 
 
 // switchWorkspace changes the terraform workspace if necessary and will create
 // it if it doesn't exist. It handles differences between versions.
-func (p *PlanStepRunner) switchWorkspace(ctx models.ProjectCommandContext, path string, tfVersion *version.Version, envs map[string]string) error {
+func (p *PlanStepRunner) switchWorkspace(ctx project.Context, path string, tfVersion *version.Version, envs map[string]string) error {
 	// In versions less than 0.9 there is no support for workspaces.
 	noWorkspaceSupport := MustConstraint("<0.9").Check(tfVersion)
 	// If the user tried to set a specific workspace in the comment but their
@@ -153,7 +154,7 @@ func (p *PlanStepRunner) switchWorkspace(ctx models.ProjectCommandContext, path 
 	return nil
 }
 
-func (p *PlanStepRunner) buildPlanCmd(ctx models.ProjectCommandContext, extraArgs []string, path string, tfVersion *version.Version, planFile string) []string {
+func (p *PlanStepRunner) buildPlanCmd(ctx project.Context, extraArgs []string, path string, tfVersion *version.Version, planFile string) []string {
 	tfVars := p.tfVars(ctx, tfVersion)
 
 	// Check if env/{workspace}.tfvars exist and include it. This is a use-case
@@ -187,7 +188,7 @@ func (p *PlanStepRunner) buildPlanCmd(ctx models.ProjectCommandContext, extraArg
 // those versions don't allow setting -var flags for any variables that aren't
 // actually used in the configuration. Since there's no way for us to detect
 // if the configuration is using those variables, we don't set them.
-func (p *PlanStepRunner) tfVars(ctx models.ProjectCommandContext, tfVersion *version.Version) []string {
+func (p *PlanStepRunner) tfVars(ctx project.Context, tfVersion *version.Version) []string {
 	if tfVersion.GreaterThanOrEqual(version.Must(version.NewVersion("0.12.0"))) {
 		return nil
 	}
@@ -239,7 +240,7 @@ func (p *PlanStepRunner) fmtPlanOutput(output string, tfVersion *version.Version
 // cmdArgs is the args to terraform to execute.
 // path is the path to where we need to execute.
 func (p *PlanStepRunner) runRemotePlan(
-	ctx models.ProjectCommandContext,
+	ctx project.Context,
 	cmdArgs []string,
 	path string,
 	tfVersion *version.Version,
