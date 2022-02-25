@@ -407,70 +407,70 @@ func TestProjectResult_PlanStatus(t *testing.T) {
 	}{
 		{
 			p: models.ProjectResult{
-				Command: models.PlanCommand,
+				Command: command.Plan,
 				Error:   errors.New("err"),
 			},
 			expStatus: models.ErroredPlanStatus,
 		},
 		{
 			p: models.ProjectResult{
-				Command: models.PlanCommand,
+				Command: command.Plan,
 				Failure: "failure",
 			},
 			expStatus: models.ErroredPlanStatus,
 		},
 		{
 			p: models.ProjectResult{
-				Command:     models.PlanCommand,
+				Command:     command.Plan,
 				PlanSuccess: &models.PlanSuccess{},
 			},
 			expStatus: models.PlannedPlanStatus,
 		},
 		{
 			p: models.ProjectResult{
-				Command: models.ApplyCommand,
+				Command: command.Apply,
 				Error:   errors.New("err"),
 			},
 			expStatus: models.ErroredApplyStatus,
 		},
 		{
 			p: models.ProjectResult{
-				Command: models.ApplyCommand,
+				Command: command.Apply,
 				Failure: "failure",
 			},
 			expStatus: models.ErroredApplyStatus,
 		},
 		{
 			p: models.ProjectResult{
-				Command:      models.ApplyCommand,
+				Command:      command.Apply,
 				ApplySuccess: "success",
 			},
 			expStatus: models.AppliedPlanStatus,
 		},
 		{
 			p: models.ProjectResult{
-				Command:            models.PolicyCheckCommand,
+				Command:            command.PolicyCheck,
 				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
 			},
 			expStatus: models.PassedPolicyCheckStatus,
 		},
 		{
 			p: models.ProjectResult{
-				Command: models.PolicyCheckCommand,
+				Command: command.PolicyCheck,
 				Failure: "failure",
 			},
 			expStatus: models.ErroredPolicyCheckStatus,
 		},
 		{
 			p: models.ProjectResult{
-				Command:            models.ApprovePoliciesCommand,
+				Command:            command.ApprovePolicies,
 				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
 			},
 			expStatus: models.PassedPolicyCheckStatus,
 		},
 		{
 			p: models.ProjectResult{
-				Command: models.ApprovePoliciesCommand,
+				Command: command.ApprovePolicies,
 				Failure: "failure",
 			},
 			expStatus: models.ErroredPolicyCheckStatus,
@@ -610,25 +610,25 @@ func TestPullStatus_StatusCount(t *testing.T) {
 }
 
 func TestApplyCommand_String(t *testing.T) {
-	uc := models.ApplyCommand
+	uc := command.Apply
 
 	Equals(t, "apply", uc.String())
 }
 
 func TestPlanCommand_String(t *testing.T) {
-	uc := models.PlanCommand
+	uc := command.Plan
 
 	Equals(t, "plan", uc.String())
 }
 
 func TestPolicyCheckCommand_String(t *testing.T) {
-	uc := models.PolicyCheckCommand
+	uc := command.PolicyCheck
 
 	Equals(t, "policy_check", uc.String())
 }
 
 func TestUnlockCommand_String(t *testing.T) {
-	uc := models.UnlockCommand
+	uc := command.UnlockCommand
 
 	Equals(t, "unlock", uc.String())
 }

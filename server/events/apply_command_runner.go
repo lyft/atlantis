@@ -78,7 +78,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 
 	if locked {
 		ctx.Log.Info("ignoring apply command since apply disabled globally")
-		if err := a.vcsClient.CreateComment(baseRepo, pull.Num, applyDisabledComment, models.ApplyCommand.String()); err != nil {
+		if err := a.vcsClient.CreateComment(baseRepo, pull.Num, applyDisabledComment, command.Apply.String()); err != nil {
 			ctx.Log.Err("unable to comment on pull request: %s", err)
 		}
 
@@ -87,7 +87,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 
 	if a.DisableApplyAll && !cmd.IsForSpecificProject() {
 		ctx.Log.Info("ignoring apply command without flags since apply all is disabled")
-		if err := a.vcsClient.CreateComment(baseRepo, pull.Num, applyAllDisabledComment, models.ApplyCommand.String()); err != nil {
+		if err := a.vcsClient.CreateComment(baseRepo, pull.Num, applyAllDisabledComment, command.Apply.String()); err != nil {
 			ctx.Log.Err("unable to comment on pull request: %s", err)
 		}
 
@@ -131,7 +131,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 			// with 0/0 projects applied successfully because some users require
 			// the Atlantis status to be passing for all pull requests.
 			ctx.Log.Debug("setting VCS status to success with no projects found")
-			if err := a.commitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, models.ApplyCommand, 0, 0); err != nil {
+			if err := a.commitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, command.Apply, 0, 0); err != nil {
 				ctx.Log.Warn("unable to update commit status: %s", err)
 			}
 		}
@@ -195,7 +195,7 @@ func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus
 		ctx.Pull.BaseRepo,
 		ctx.Pull,
 		status,
-		models.ApplyCommand,
+		command.Apply,
 		numSuccess,
 		len(pullStatus.Projects),
 	); err != nil {

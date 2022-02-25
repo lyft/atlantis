@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/core/terraform"
+	"github.com/runatlantis/atlantis/server/events/command"
 	mocks2 "github.com/runatlantis/atlantis/server/events/mocks"
 
 	. "github.com/petergtz/pegomock"
@@ -807,8 +808,8 @@ Plan: 0 to add, 0 to change, 1 to destroy.`, string(bytes))
 
 			// Ensure that the status was updated with the runURL.
 			runURL := "https://app.terraform.io/app/lkysow-enterprises/atlantis-tfe-test/runs/run-is4oVvJfrkud1KvE"
-			updater.VerifyWasCalledOnce().UpdateProject(ctx, models.PlanCommand, models.PendingCommitStatus, runURL)
-			updater.VerifyWasCalledOnce().UpdateProject(ctx, models.PlanCommand, models.SuccessCommitStatus, runURL)
+			updater.VerifyWasCalledOnce().UpdateProject(ctx, command.Plan, models.PendingCommitStatus, runURL)
+			updater.VerifyWasCalledOnce().UpdateProject(ctx, command.Plan, models.SuccessCommitStatus, runURL)
 		})
 	}
 }

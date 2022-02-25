@@ -309,7 +309,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
 					ctx,
-					models.PlanCommand,
+					command.Plan,
 					mergedCfg,
 					commentFlags,
 					repoDir,
@@ -340,7 +340,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
 					ctx,
-					models.PlanCommand,
+					command.Plan,
 					pCfg,
 					commentFlags,
 					repoDir,
@@ -388,7 +388,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *command.Cont
 
 	return p.buildProjectCommandCtx(
 		ctx,
-		models.PlanCommand,
+		command.Plan,
 		cmd.ProjectName,
 		cmd.Flags,
 		defaultRepoDir,
@@ -521,7 +521,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectApplyCommand(ctx *command.Con
 
 	return p.buildProjectCommandCtx(
 		ctx,
-		models.ApplyCommand,
+		command.Apply,
 		cmd.ProjectName,
 		cmd.Flags,
 		repoDir,
@@ -563,7 +563,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectVersionCommand(ctx *command.C
 
 	return p.buildProjectCommandCtx(
 		ctx,
-		models.VersionCommand,
+		command.Version,
 		cmd.ProjectName,
 		cmd.Flags,
 		repoDir,
@@ -577,7 +577,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectVersionCommand(ctx *command.C
 // buildProjectCommandCtx builds a context for a single or several projects identified
 // by the parameters.
 func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Context,
-	cmd models.CommandName,
+	cmd command.Name,
 	projectName string,
 	commentFlags []string,
 	repoDir string,

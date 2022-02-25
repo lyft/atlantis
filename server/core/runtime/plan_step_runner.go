@@ -10,6 +10,7 @@ import (
 
 	version "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -246,7 +247,7 @@ func (p *PlanStepRunner) runRemotePlan(
 
 	// updateStatusF will update the commit status and log any error.
 	updateStatusF := func(status models.CommitStatus, url string) {
-		if err := p.CommitStatusUpdater.UpdateProject(ctx, models.PlanCommand, status, url); err != nil {
+		if err := p.CommitStatusUpdater.UpdateProject(ctx, command.Plan, status, url); err != nil {
 			ctx.Log.Err("unable to update status: %s", err)
 		}
 	}

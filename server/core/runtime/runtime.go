@@ -11,6 +11,7 @@ import (
 	version "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/terraform"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -47,7 +48,7 @@ type AsyncTFExec interface {
 // StatusUpdater brings the interface from CommitStatusUpdater into this package
 // without causing circular imports.
 type StatusUpdater interface {
-	UpdateProject(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus, url string) error
+	UpdateProject(ctx models.ProjectCommandContext, cmdName command.Name, status models.CommitStatus, url string) error
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_runner.go Runner

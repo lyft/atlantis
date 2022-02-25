@@ -65,7 +65,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 			Verbose:                   false,
 			ForceApply:                false,
 		}
-		result := subject.BuildProjectContext(commandCtx, models.PlanCommand, projCfg, []string{}, "some/dir", contextFlags)
+		result := subject.BuildProjectContext(commandCtx, command.Plan, projCfg, []string{}, "some/dir", contextFlags)
 
 		assert.Equal(t, models.ErroredPolicyCheckStatus, result[0].ProjectPlanStatus)
 	})
@@ -93,7 +93,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 			ForceApply:                false,
 		}
 
-		result := subject.BuildProjectContext(commandCtx, models.PlanCommand, projCfg, []string{}, "some/dir", contextFlags)
+		result := subject.BuildProjectContext(commandCtx, command.Plan, projCfg, []string{}, "some/dir", contextFlags)
 
 		assert.Equal(t, models.ErroredPolicyCheckStatus, result[0].ProjectPlanStatus)
 	})
@@ -120,7 +120,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 			Verbose:                   false,
 			ForceApply:                false,
 		}
-		result := subject.BuildProjectContext(commandCtx, models.PlanCommand, projCfg, []string{}, "some/dir", contextFlags)
+		result := subject.BuildProjectContext(commandCtx, command.Plan, projCfg, []string{}, "some/dir", contextFlags)
 
 		assert.True(t, result[0].ParallelApplyEnabled)
 		assert.False(t, result[0].ParallelPlanEnabled)

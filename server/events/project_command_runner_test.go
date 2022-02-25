@@ -25,6 +25,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime"
 	tmocks "github.com/runatlantis/atlantis/server/core/terraform/mocks"
 	"github.com/runatlantis/atlantis/server/events"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	eventmocks "github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
@@ -149,37 +150,37 @@ func TestProjectOutputWrapper(t *testing.T) {
 		Failure     bool
 		Error       bool
 		Success     bool
-		CommandName models.CommandName
+		CommandName command.Name
 	}{
 		{
 			Description: "plan success",
 			Success:     true,
-			CommandName: models.PlanCommand,
+			CommandName: command.Plan,
 		},
 		{
 			Description: "plan failure",
 			Failure:     true,
-			CommandName: models.PlanCommand,
+			CommandName: command.Plan,
 		},
 		{
 			Description: "plan error",
 			Error:       true,
-			CommandName: models.PlanCommand,
+			CommandName: command.Plan,
 		},
 		{
 			Description: "apply success",
 			Success:     true,
-			CommandName: models.ApplyCommand,
+			CommandName: command.Apply,
 		},
 		{
 			Description: "apply failure",
 			Failure:     true,
-			CommandName: models.ApplyCommand,
+			CommandName: command.Apply,
 		},
 		{
 			Description: "apply error",
 			Error:       true,
-			CommandName: models.ApplyCommand,
+			CommandName: command.Apply,
 		},
 	}
 
@@ -220,9 +221,9 @@ func TestProjectOutputWrapper(t *testing.T) {
 			When(mockProjectCommandRunner.Apply(matchers.AnyModelsProjectCommandContext())).ThenReturn(prjResult)
 
 			switch c.CommandName {
-			case models.PlanCommand:
+			case command.Plan:
 				runner.Plan(ctx)
-			case models.ApplyCommand:
+			case command.Apply:
 				runner.Apply(ctx)
 			}
 
@@ -230,9 +231,9 @@ func TestProjectOutputWrapper(t *testing.T) {
 			mockJobURLSetter.VerifyWasCalled(Once()).SetJobURLWithStatus(ctx, c.CommandName, expCommitStatus)
 
 			switch c.CommandName {
-			case models.PlanCommand:
+			case command.Plan:
 				mockProjectCommandRunner.VerifyWasCalledOnce().Plan(ctx)
-			case models.ApplyCommand:
+			case command.Apply:
 				mockProjectCommandRunner.VerifyWasCalledOnce().Apply(ctx)
 			}
 		})

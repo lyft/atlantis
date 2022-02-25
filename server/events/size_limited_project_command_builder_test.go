@@ -20,17 +20,17 @@ func TestSizeLimitedProjectCommandBuilder_autoplan(t *testing.T) {
 
 	project1 := models.ProjectCommandContext{
 		ProjectName: "test1",
-		CommandName: models.PlanCommand,
+		CommandName: command.Plan,
 	}
 
 	project2 := models.ProjectCommandContext{
 		ProjectName: "test2",
-		CommandName: models.PlanCommand,
+		CommandName: command.Plan,
 	}
 
 	project3 := models.ProjectCommandContext{
 		ProjectName: "test1",
-		CommandName: models.PolicyCheckCommand,
+		CommandName: command.PolicyCheck,
 	}
 
 	expectedResult := []models.ProjectCommandContext{project1, project2}
@@ -111,12 +111,12 @@ func TestSizeLimitedProjectCommandBuilder_planComment(t *testing.T) {
 
 	project1 := models.ProjectCommandContext{
 		ProjectName: "test1",
-		CommandName: models.PlanCommand,
+		CommandName: command.Plan,
 	}
 
 	project2 := models.ProjectCommandContext{
 		ProjectName: "test2",
-		CommandName: models.PlanCommand,
+		CommandName: command.Plan,
 	}
 
 	expectedResult := []models.ProjectCommandContext{project1, project2}

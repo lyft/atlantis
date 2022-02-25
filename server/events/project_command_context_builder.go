@@ -46,7 +46,7 @@ type ProjectCommandContextBuilder interface {
 	// BuildProjectContext builds project command contexts for atlantis commands
 	BuildProjectContext(
 		ctx *command.Context,
-		cmdName models.CommandName,
+		cmdName command.Name,
 		prjCfg valid.MergedProjectCfg,
 		commentFlags []string,
 		repoDir string,
@@ -65,7 +65,7 @@ type CommandScopedStatsProjectCommandContextBuilder struct {
 // BuildProjectContext builds the context and injects the appropriate command level scope after the fact.
 func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 	ctx *command.Context,
-	cmdName models.CommandName,
+	cmdName command.Name,
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
 	repoDir string,
@@ -97,7 +97,7 @@ type DefaultProjectCommandContextBuilder struct {
 
 func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 	ctx *command.Context,
-	cmdName models.CommandName,
+	cmdName command.Name,
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
 	repoDir string,
@@ -107,11 +107,11 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 
 	var steps []valid.Step
 	switch cmdName {
-	case models.PlanCommand:
+	case command.Plan:
 		steps = prjCfg.Workflow.Plan.Steps
-	case models.ApplyCommand:
+	case command.Apply:
 		steps = prjCfg.Workflow.Apply.Steps
-	case models.VersionCommand:
+	case command.Version:
 		// Setting statically since there will only be one step
 		steps = []valid.Step{{
 			StepName: "version",
@@ -151,7 +151,7 @@ type PolicyCheckProjectCommandContextBuilder struct {
 
 func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 	ctx *command.Context,
-	cmdName models.CommandName,
+	cmdName command.Name,
 	prjCfg valid.MergedProjectCfg,
 	commentFlags []string,
 	repoDir string,
@@ -174,13 +174,13 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 		contextFlags,
 	)
 
-	if cmdName == models.PlanCommand {
-		ctx.Log.Debug("Building project command context for %s", models.PolicyCheckCommand)
+	if cmdName == command.Plan {
+		ctx.Log.Debug("Building project command context for %s", command.PolicyCheck)
 		steps := prjCfg.Workflow.PolicyCheck.Steps
 
 		projectCmds = append(projectCmds, newProjectCommandContext(
 			ctx,
-			models.PolicyCheckCommand,
+			command.PolicyCheck,
 			cb.CommentBuilder.BuildApplyComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name, prjCfg.AutoMergeDisabled),
 			cb.CommentBuilder.BuildPlanComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name, commentFlags),
 			cb.CommentBuilder.BuildVersionComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name),
@@ -200,7 +200,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 // newProjectCommandContext is a initializer method that handles constructing the
 // ProjectCommandContext.
 func newProjectCommandContext(ctx *command.Context,
-	cmd models.CommandName,
+	cmd command.Name,
 	applyCmd string,
 	planCmd string,
 	versionCmd string,

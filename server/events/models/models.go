@@ -242,7 +242,7 @@ type LockMetadata struct {
 type CommandLock struct {
 	// Time is the time at which the lock was first created.
 	LockMetadata LockMetadata
-	CommandName  CommandName
+	CommandName  command.CommandName
 }
 
 func (l *CommandLock) LockTime() time.Time {
@@ -351,7 +351,7 @@ func (h VCSHostType) String() string {
 // ProjectCommandContext defines the context for a plan or apply stage that will
 // be executed for a project.
 type ProjectCommandContext struct {
-	CommandName CommandName
+	CommandName command.CommandName
 	// ApplyCmd is the command that users should run to apply this plan. If
 	// this is an apply then this will be empty.
 	ApplyCmd string
@@ -686,52 +686,6 @@ func (p ProjectPlanStatus) String() string {
 	default:
 		panic("missing String() impl for ProjectPlanStatus")
 	}
-}
-
-// CommandName is which command to run.
-type CommandName int
-
-const (
-	// ApplyCommand is a command to run terraform apply.
-	ApplyCommand CommandName = iota
-	// PlanCommand is a command to run terraform plan.
-	PlanCommand
-	// UnlockCommand is a command to discard previous plans as well as the atlantis locks.
-	UnlockCommand
-	// PolicyCheckCommand is a command to run conftest test.
-	PolicyCheckCommand
-	// ApprovePoliciesCommand is a command to approve policies with owner check
-	ApprovePoliciesCommand
-	// AutoplanCommand is a command to run terrafor plan on PR open/update if autoplan is enabled
-	AutoplanCommand
-	// VersionCommand is a command to run terraform version.
-	VersionCommand
-	// Adding more? Don't forget to update String() below
-)
-
-// TitleString returns the string representation in title form.
-// ie. policy_check becomes Policy Check
-func (c CommandName) TitleString() string {
-	return strings.Title(strings.ReplaceAll(strings.ToLower(c.String()), "_", " "))
-}
-
-// String returns the string representation of c.
-func (c CommandName) String() string {
-	switch c {
-	case ApplyCommand:
-		return "apply"
-	case PlanCommand, AutoplanCommand:
-		return "plan"
-	case UnlockCommand:
-		return "unlock"
-	case PolicyCheckCommand:
-		return "policy_check"
-	case ApprovePoliciesCommand:
-		return "approve_policies"
-	case VersionCommand:
-		return "version"
-	}
-	return ""
 }
 
 // PreWorkflowHookCommandContext defines the context for a pre_worklfow_hooks that will

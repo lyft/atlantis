@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	version "github.com/hashicorp/go-version"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -125,7 +126,7 @@ func (a *ApplyStepRunner) runRemoteApply(
 
 	// updateStatusF will update the commit status and log any error.
 	updateStatusF := func(status models.CommitStatus, url string) {
-		if err := a.CommitStatusUpdater.UpdateProject(ctx, models.ApplyCommand, status, url); err != nil {
+		if err := a.CommitStatusUpdater.UpdateProject(ctx, command.Apply, status, url); err != nil {
 			ctx.Log.Err("unable to update status: %s", err)
 		}
 	}

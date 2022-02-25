@@ -621,7 +621,7 @@ projects:
 			}
 
 			// We run a test for each type of command.
-			for _, cmd := range []models.CommandName{models.PlanCommand, models.ApplyCommand} {
+			for _, cmd := range []command.Name{command.Plan, command.Apply} {
 				t.Run(cmd.String(), func(t *testing.T) {
 					ctxs, err := builder.buildProjectCommandCtx(&command.Context{
 						Log: logger,
@@ -644,9 +644,9 @@ projects:
 					// Construct expected steps.
 					var stepNames []string
 					switch cmd {
-					case models.PlanCommand:
+					case command.Plan:
 						stepNames = c.expPlanSteps
-					case models.ApplyCommand:
+					case command.Apply:
 						stepNames = c.expApplySteps
 					}
 					var expSteps []valid.Step
@@ -816,7 +816,7 @@ projects:
 			}
 
 			// We run a test for each type of command, again specific projects
-			for _, cmd := range []models.CommandName{models.PlanCommand, models.ApplyCommand} {
+			for _, cmd := range []command.Name{command.Plan, command.Apply} {
 				t.Run(cmd.String(), func(t *testing.T) {
 					ctxs, err := builder.buildProjectCommandCtx(&command.Context{
 						Pull: models.PullRequest{
@@ -840,9 +840,9 @@ projects:
 					// Construct expected steps.
 					var stepNames []string
 					switch cmd {
-					case models.PlanCommand:
+					case command.Plan:
 						stepNames = c.expPlanSteps
-					case models.ApplyCommand:
+					case command.Apply:
 						stepNames = c.expApplySteps
 					}
 					var expSteps []valid.Step
@@ -1041,7 +1041,7 @@ workflows:
 				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 			}
 
-			cmd := models.PolicyCheckCommand
+			cmd := command.PolicyCheck
 			t.Run(cmd.String(), func(t *testing.T) {
 				ctxs, err := builder.buildProjectCommandCtx(&command.Context{
 					Log: logger,
@@ -1051,7 +1051,7 @@ workflows:
 					PullRequestStatus: models.PullReqStatus{
 						Mergeable: true,
 					},
-				}, models.PlanCommand, "", []string{"flag"}, tmp, "project1", "myworkspace", true, false)
+				}, command.Plan, "", []string{"flag"}, tmp, "project1", "myworkspace", true, false)
 
 				if c.expErr != "" {
 					ErrEquals(t, c.expErr, err)

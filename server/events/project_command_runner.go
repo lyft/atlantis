@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -122,7 +123,7 @@ type ProjectCommandRunner interface {
 type JobURLSetter interface {
 	// SetJobURLWithStatus sets the commit status for the project represented by
 	// ctx and updates the status with and url to a job.
-	SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName models.CommandName, status models.CommitStatus) error
+	SetJobURLWithStatus(ctx models.ProjectCommandContext, cmdName command.Name, status models.CommitStatus) error
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_job_closer.go JobCloser
@@ -141,18 +142,18 @@ type ProjectOutputWrapper struct {
 }
 
 func (p *ProjectOutputWrapper) Plan(ctx models.ProjectCommandContext) models.ProjectResult {
-	result := p.updateProjectPRStatus(models.PlanCommand, ctx, p.ProjectCommandRunner.Plan)
+	result := p.updateProjectPRStatus(command.Plan, ctx, p.ProjectCommandRunner.Plan)
 	p.JobCloser.CloseJob(ctx.JobID)
 	return result
 }
 
 func (p *ProjectOutputWrapper) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
-	result := p.updateProjectPRStatus(models.ApplyCommand, ctx, p.ProjectCommandRunner.Apply)
+	result := p.updateProjectPRStatus(command.Apply, ctx, p.ProjectCommandRunner.Apply)
 	p.JobCloser.CloseJob(ctx.JobID)
 	return result
 }
 
-func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName models.CommandName, ctx models.ProjectCommandContext, execute func(ctx models.ProjectCommandContext) models.ProjectResult) models.ProjectResult {
+func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName command.Name, ctx models.ProjectCommandContext, execute func(ctx models.ProjectCommandContext) models.ProjectResult) models.ProjectResult {
 	// Create a PR status to track project's plan status. The status will
 	// include a link to view the progress of atlantis plan command in real
 	// time
@@ -210,7 +211,7 @@ type DefaultProjectCommandRunner struct { //create object and test
 func (p *DefaultProjectCommandRunner) Plan(ctx models.ProjectCommandContext) models.ProjectResult {
 	planSuccess, failure, err := p.doPlan(ctx)
 	return models.ProjectResult{
-		Command:     models.PlanCommand,
+		Command:     command.Plan,
 		PlanSuccess: planSuccess,
 		Error:       err,
 		Failure:     failure,
@@ -224,7 +225,7 @@ func (p *DefaultProjectCommandRunner) Plan(ctx models.ProjectCommandContext) mod
 func (p *DefaultProjectCommandRunner) PolicyCheck(ctx models.ProjectCommandContext) models.ProjectResult {
 	policySuccess, failure, err := p.doPolicyCheck(ctx)
 	return models.ProjectResult{
-		Command:            models.PolicyCheckCommand,
+		Command:            command.PolicyCheck,
 		PolicyCheckSuccess: policySuccess,
 		Error:              err,
 		Failure:            failure,
@@ -238,7 +239,7 @@ func (p *DefaultProjectCommandRunner) PolicyCheck(ctx models.ProjectCommandConte
 func (p *DefaultProjectCommandRunner) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
 	applyOut, failure, err := p.doApply(ctx)
 	return models.ProjectResult{
-		Command:      models.ApplyCommand,
+		Command:      command.Apply,
 		Failure:      failure,
 		Error:        err,
 		ApplySuccess: applyOut,
@@ -251,7 +252,7 @@ func (p *DefaultProjectCommandRunner) Apply(ctx models.ProjectCommandContext) mo
 func (p *DefaultProjectCommandRunner) ApprovePolicies(ctx models.ProjectCommandContext) models.ProjectResult {
 	approvedOut, failure, err := p.doApprovePolicies(ctx)
 	return models.ProjectResult{
-		Command:            models.PolicyCheckCommand,
+		Command:            command.PolicyCheck,
 		Failure:            failure,
 		Error:              err,
 		PolicyCheckSuccess: approvedOut,
@@ -264,7 +265,7 @@ func (p *DefaultProjectCommandRunner) ApprovePolicies(ctx models.ProjectCommandC
 func (p *DefaultProjectCommandRunner) Version(ctx models.ProjectCommandContext) models.ProjectResult {
 	versionOut, failure, err := p.doVersion(ctx)
 	return models.ProjectResult{
-		Command:        models.VersionCommand,
+		Command:        command.Version,
 		Failure:        failure,
 		Error:          err,
 		VersionSuccess: versionOut,

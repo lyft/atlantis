@@ -25,6 +25,7 @@ import (
 
 	"github.com/flynn-archive/go-shlex"
 	"github.com/runatlantis/atlantis/server/core/config"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/spf13/pflag"
 )
@@ -169,7 +170,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	}
 
 	// Need to have a plan, apply, approve_policy or unlock at this point.
-	if !e.stringInSlice(command, []string{models.PlanCommand.String(), models.ApplyCommand.String(), models.UnlockCommand.String(), models.ApprovePoliciesCommand.String(), models.VersionCommand.String()}) {
+	if !e.stringInSlice(command, []string{command.Plan.String(), command.Apply.String(), command.UnlockCommand.String(), command.ApprovePolicies.String(), command.Version.String()}) {
 		return CommentParseResult{CommentResponse: fmt.Sprintf("```\nError: unknown command %q.\nRun 'atlantis --help' for usage.\n```", command)}
 	}
 
@@ -178,21 +179,21 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	var project string
 	var verbose, autoMergeDisabled, force bool
 	var flagSet *pflag.FlagSet
-	var name models.CommandName
+	var name command.Name
 
 	// Set up the flag parsing depending on the command.
 	switch command {
-	case models.PlanCommand.String():
-		name = models.PlanCommand
-		flagSet = pflag.NewFlagSet(models.PlanCommand.String(), pflag.ContinueOnError)
+	case command.Plan.String():
+		name = command.Plan
+		flagSet = pflag.NewFlagSet(command.Plan.String(), pflag.ContinueOnError)
 		flagSet.SetOutput(ioutil.Discard)
 		flagSet.StringVarP(&workspace, workspaceFlagLong, workspaceFlagShort, "", "Switch to this Terraform workspace before planning.")
 		flagSet.StringVarP(&dir, dirFlagLong, dirFlagShort, "", "Which directory to run plan in relative to root of repo, ex. 'child/dir'.")
 		flagSet.StringVarP(&project, projectFlagLong, projectFlagShort, "", fmt.Sprintf("Which project to run plan for. Refers to the name of the project configured in %s. Cannot be used at same time as workspace or dir flags.", config.AtlantisYAMLFilename))
 		flagSet.BoolVarP(&verbose, verboseFlagLong, verboseFlagShort, false, "Append Atlantis log to comment.")
-	case models.ApplyCommand.String():
-		name = models.ApplyCommand
-		flagSet = pflag.NewFlagSet(models.ApplyCommand.String(), pflag.ContinueOnError)
+	case command.Apply.String():
+		name = command.Apply
+		flagSet = pflag.NewFlagSet(command.Apply.String(), pflag.ContinueOnError)
 		flagSet.SetOutput(ioutil.Discard)
 		flagSet.StringVarP(&workspace, workspaceFlagLong, workspaceFlagShort, "", "Apply the plan for this Terraform workspace.")
 		flagSet.StringVarP(&dir, dirFlagLong, dirFlagShort, "", "Apply the plan for this directory, relative to root of repo, ex. 'child/dir'.")
@@ -200,18 +201,18 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 		flagSet.BoolVarP(&autoMergeDisabled, autoMergeDisabledFlagLong, autoMergeDisabledFlagShort, false, "Disable automerge after apply.")
 		flagSet.BoolVarP(&verbose, verboseFlagLong, verboseFlagShort, false, "Append Atlantis log to comment.")
 		flagSet.BoolVarP(&force, forceFlagLong, forceFlagShort, false, "Force Atlantis to ignore apply requirements.")
-	case models.ApprovePoliciesCommand.String():
-		name = models.ApprovePoliciesCommand
-		flagSet = pflag.NewFlagSet(models.ApprovePoliciesCommand.String(), pflag.ContinueOnError)
+	case command.ApprovePolicies.String():
+		name = command.ApprovePolicies
+		flagSet = pflag.NewFlagSet(command.ApprovePolicies.String(), pflag.ContinueOnError)
 		flagSet.SetOutput(ioutil.Discard)
 		flagSet.BoolVarP(&verbose, verboseFlagLong, verboseFlagShort, false, "Append Atlantis log to comment.")
-	case models.UnlockCommand.String():
-		name = models.UnlockCommand
-		flagSet = pflag.NewFlagSet(models.UnlockCommand.String(), pflag.ContinueOnError)
+	case command.UnlockCommand.String():
+		name = command.UnlockCommand
+		flagSet = pflag.NewFlagSet(command.UnlockCommand.String(), pflag.ContinueOnError)
 		flagSet.SetOutput(ioutil.Discard)
-	case models.VersionCommand.String():
-		name = models.VersionCommand
-		flagSet = pflag.NewFlagSet(models.VersionCommand.String(), pflag.ContinueOnError)
+	case command.Version.String():
+		name = command.Version
+		flagSet = pflag.NewFlagSet(command.Version.String(), pflag.ContinueOnError)
 		flagSet.StringVarP(&workspace, workspaceFlagLong, workspaceFlagShort, "", "Switch to this Terraform workspace before running version.")
 		flagSet.StringVarP(&dir, dirFlagLong, dirFlagShort, "", "Which directory to run version in relative to root of repo, ex. 'child/dir'.")
 		flagSet.StringVarP(&project, projectFlagLong, projectFlagShort, "", fmt.Sprintf("Print the version for this project. Refers to the name of the project configured in %s.", config.AtlantisYAMLFilename))
@@ -227,7 +228,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 		return CommentParseResult{CommentResponse: fmt.Sprintf("```\nUsage of %s:\n%s\n```", command, flagSet.FlagUsagesWrapped(usagesCols))}
 	}
 	if err != nil {
-		if command == models.UnlockCommand.String() {
+		if command == command.UnlockCommand.String() {
 			return CommentParseResult{CommentResponse: UnlockUsage}
 		}
 		return CommentParseResult{CommentResponse: e.errMarkdown(err.Error(), command, flagSet)}
@@ -288,19 +289,19 @@ func (e *CommentParser) BuildPlanComment(repoRelDir string, workspace string, pr
 		}
 		commentFlags = fmt.Sprintf(" -- %s", strings.Join(flagsWithoutQuotes, " "))
 	}
-	return fmt.Sprintf("%s %s%s%s", atlantisExecutable, models.PlanCommand.String(), flags, commentFlags)
+	return fmt.Sprintf("%s %s%s%s", atlantisExecutable, command.Plan.String(), flags, commentFlags)
 }
 
 // BuildApplyComment builds an apply comment for the specified args.
 func (e *CommentParser) BuildApplyComment(repoRelDir string, workspace string, project string, autoMergeDisabled bool) string {
 	flags := e.buildFlags(repoRelDir, workspace, project, autoMergeDisabled)
-	return fmt.Sprintf("%s %s%s", atlantisExecutable, models.ApplyCommand.String(), flags)
+	return fmt.Sprintf("%s %s%s", atlantisExecutable, command.Apply.String(), flags)
 }
 
 // BuildVersionComment builds a version comment for the specified args.
 func (e *CommentParser) BuildVersionComment(repoRelDir string, workspace string, project string) string {
 	flags := e.buildFlags(repoRelDir, workspace, project, false)
-	return fmt.Sprintf("%s %s%s", atlantisExecutable, models.VersionCommand.String(), flags)
+	return fmt.Sprintf("%s %s%s", atlantisExecutable, command.Version.String(), flags)
 }
 
 func (e *CommentParser) buildFlags(repoRelDir string, workspace string, project string, autoMergeDisabled bool) string {

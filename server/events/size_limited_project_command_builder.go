@@ -39,7 +39,7 @@ func (b *SizeLimitedProjectCommandBuilder) CheckAgainstLimit(projects []models.P
 
 	for _, project := range projects {
 
-		if project.CommandName == models.PlanCommand {
+		if project.CommandName == command.Plan {
 			planCommands = append(planCommands, project)
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/remeh/sizedwaitgroup"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 

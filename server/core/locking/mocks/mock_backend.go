@@ -4,10 +4,12 @@
 package mocks
 
 import (
-	pegomock "github.com/petergtz/pegomock"
-	models "github.com/runatlantis/atlantis/server/events/models"
 	"reflect"
 	"time"
+
+	pegomock "github.com/petergtz/pegomock"
+	"github.com/runatlantis/atlantis/server/events/command"
+	models "github.com/runatlantis/atlantis/server/events/models"
 )
 
 type MockBackend struct {
@@ -124,7 +126,7 @@ func (mock *MockBackend) UnlockByPull(repoFullName string, pullNum int) ([]model
 	return ret0, ret1
 }
 
-func (mock *MockBackend) LockCommand(cmdName models.CommandName, lockTime time.Time) (*models.CommandLock, error) {
+func (mock *MockBackend) LockCommand(cmdName command.Name, lockTime time.Time) (*models.CommandLock, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockBackend().")
 	}
@@ -143,7 +145,7 @@ func (mock *MockBackend) LockCommand(cmdName models.CommandName, lockTime time.T
 	return ret0, ret1
 }
 
-func (mock *MockBackend) UnlockCommand(cmdName models.CommandName) error {
+func (mock *MockBackend) UnlockCommand(cmdName command.Name) error {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockBackend().")
 	}
@@ -158,7 +160,7 @@ func (mock *MockBackend) UnlockCommand(cmdName models.CommandName) error {
 	return ret0
 }
 
-func (mock *MockBackend) CheckCommandLock(cmdName models.CommandName) (*models.CommandLock, error) {
+func (mock *MockBackend) CheckCommandLock(cmdName command.Name) (*models.CommandLock, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockBackend().")
 	}
@@ -351,7 +353,7 @@ func (c *MockBackend_UnlockByPull_OngoingVerification) GetAllCapturedArguments()
 	return
 }
 
-func (verifier *VerifierMockBackend) LockCommand(cmdName models.CommandName, lockTime time.Time) *MockBackend_LockCommand_OngoingVerification {
+func (verifier *VerifierMockBackend) LockCommand(cmdName command.Name, lockTime time.Time) *MockBackend_LockCommand_OngoingVerification {
 	params := []pegomock.Param{cmdName, lockTime}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "LockCommand", params, verifier.timeout)
 	return &MockBackend_LockCommand_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -362,17 +364,17 @@ type MockBackend_LockCommand_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockBackend_LockCommand_OngoingVerification) GetCapturedArguments() (models.CommandName, time.Time) {
+func (c *MockBackend_LockCommand_OngoingVerification) GetCapturedArguments() (command.Name, time.Time) {
 	cmdName, lockTime := c.GetAllCapturedArguments()
 	return cmdName[len(cmdName)-1], lockTime[len(lockTime)-1]
 }
 
-func (c *MockBackend_LockCommand_OngoingVerification) GetAllCapturedArguments() (_param0 []models.CommandName, _param1 []time.Time) {
+func (c *MockBackend_LockCommand_OngoingVerification) GetAllCapturedArguments() (_param0 []command.Name, _param1 []time.Time) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]models.CommandName, len(c.methodInvocations))
+		_param0 = make([]command.Name, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(models.CommandName)
+			_param0[u] = param.(command.Name)
 		}
 		_param1 = make([]time.Time, len(c.methodInvocations))
 		for u, param := range params[1] {
@@ -382,7 +384,7 @@ func (c *MockBackend_LockCommand_OngoingVerification) GetAllCapturedArguments() 
 	return
 }
 
-func (verifier *VerifierMockBackend) UnlockCommand(cmdName models.CommandName) *MockBackend_UnlockCommand_OngoingVerification {
+func (verifier *VerifierMockBackend) UnlockCommand(cmdName command.Name) *MockBackend_UnlockCommand_OngoingVerification {
 	params := []pegomock.Param{cmdName}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "UnlockCommand", params, verifier.timeout)
 	return &MockBackend_UnlockCommand_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -393,23 +395,23 @@ type MockBackend_UnlockCommand_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockBackend_UnlockCommand_OngoingVerification) GetCapturedArguments() models.CommandName {
+func (c *MockBackend_UnlockCommand_OngoingVerification) GetCapturedArguments() command.Name {
 	cmdName := c.GetAllCapturedArguments()
 	return cmdName[len(cmdName)-1]
 }
 
-func (c *MockBackend_UnlockCommand_OngoingVerification) GetAllCapturedArguments() (_param0 []models.CommandName) {
+func (c *MockBackend_UnlockCommand_OngoingVerification) GetAllCapturedArguments() (_param0 []command.Name) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]models.CommandName, len(c.methodInvocations))
+		_param0 = make([]command.Name, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(models.CommandName)
+			_param0[u] = param.(command.Name)
 		}
 	}
 	return
 }
 
-func (verifier *VerifierMockBackend) CheckCommandLock(cmdName models.CommandName) *MockBackend_CheckCommandLock_OngoingVerification {
+func (verifier *VerifierMockBackend) CheckCommandLock(cmdName command.Name) *MockBackend_CheckCommandLock_OngoingVerification {
 	params := []pegomock.Param{cmdName}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "CheckCommandLock", params, verifier.timeout)
 	return &MockBackend_CheckCommandLock_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -420,17 +422,17 @@ type MockBackend_CheckCommandLock_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockBackend_CheckCommandLock_OngoingVerification) GetCapturedArguments() models.CommandName {
+func (c *MockBackend_CheckCommandLock_OngoingVerification) GetCapturedArguments() command.Name {
 	cmdName := c.GetAllCapturedArguments()
 	return cmdName[len(cmdName)-1]
 }
 
-func (c *MockBackend_CheckCommandLock_OngoingVerification) GetAllCapturedArguments() (_param0 []models.CommandName) {
+func (c *MockBackend_CheckCommandLock_OngoingVerification) GetAllCapturedArguments() (_param0 []command.Name) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]models.CommandName, len(c.methodInvocations))
+		_param0 = make([]command.Name, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(models.CommandName)
+			_param0[u] = param.(command.Name)
 		}
 	}
 	return

@@ -4,12 +4,13 @@
 package mocks
 
 import (
+	"reflect"
+	"time"
+
 	go_version "github.com/hashicorp/go-version"
 	pegomock "github.com/petergtz/pegomock"
 	models "github.com/runatlantis/atlantis/server/events/models"
 	logging "github.com/runatlantis/atlantis/server/logging"
-	"reflect"
-	"time"
 )
 
 type MockClient struct {
