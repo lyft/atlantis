@@ -145,6 +145,14 @@ func (b *Client) HidePrevCommandComments(repo models.Repo, pullNum int, command 
 	return nil
 }
 
+func (b *Client) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+	return 0, nil
+}
+
+func (b *Client) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+	return nil
+}
+
 // postComment actually posts the comment. It's a helper for CreateComment().
 func (b *Client) postComment(repo models.Repo, pullNum int, comment string) error {
 	bodyBytes, err := json.Marshal(map[string]string{"text": comment})

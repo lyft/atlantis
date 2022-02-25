@@ -53,6 +53,14 @@ func NewAzureDevopsClient(hostname string, userName string, token string) (*Azur
 	return client, nil
 }
 
+func (g *AzureDevopsClient) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+	return 0, nil
+}
+
+func (g *AzureDevopsClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+	return nil
+}
+
 // GetModifiedFiles returns the names of files that were modified in the merge request
 // relative to the repo root, e.g. parent/child/file.txt.
 func (g *AzureDevopsClient) GetModifiedFiles(repo models.Repo, pull models.PullRequest) ([]string, error) {

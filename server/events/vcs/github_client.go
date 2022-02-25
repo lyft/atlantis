@@ -196,6 +196,14 @@ func (g *GithubClient) CreateComment(repo models.Repo, pullNum int, comment stri
 	return nil
 }
 
+func (a *GithubClient) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+	return 0, nil
+}
+
+func (a *GithubClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+	return nil
+}
+
 func (g *GithubClient) HidePrevCommandComments(repo models.Repo, pullNum int, command string) error {
 	var allComments []*github.IssueComment
 	nextPage := 0

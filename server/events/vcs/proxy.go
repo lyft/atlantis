@@ -64,6 +64,14 @@ func (d *ClientProxy) HidePrevCommandComments(repo models.Repo, pullNum int, com
 	return d.clients[repo.VCSHost.Type].HidePrevCommandComments(repo, pullNum, command)
 }
 
+func (d *ClientProxy) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+	return d.clients[repo.VCSHost.Type].CreateCheckRun(repo, pull)
+}
+
+func (d *ClientProxy) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+	return d.clients[repo.VCSHost.Type].UpdateCheckRun(repo, pull, checkID, description)
+}
+
 func (d *ClientProxy) PullIsApproved(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error) {
 	return d.clients[repo.VCSHost.Type].PullIsApproved(repo, pull)
 }

@@ -35,6 +35,15 @@ func (a *NotConfiguredVCSClient) CreateComment(repo models.Repo, pullNum int, co
 func (a *NotConfiguredVCSClient) HidePrevCommandComments(repo models.Repo, pullNum int, command string) error {
 	return nil
 }
+
+func (a *NotConfiguredVCSClient) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+	return 0, nil
+}
+
+func (a *NotConfiguredVCSClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+	return nil
+}
+
 func (a *NotConfiguredVCSClient) PullIsApproved(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error) {
 	return models.ApprovalStatus{}, a.err()
 }

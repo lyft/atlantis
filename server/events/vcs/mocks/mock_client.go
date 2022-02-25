@@ -64,6 +64,7 @@ func (mock *MockClient) DownloadRepoConfigFile(_param0 models.PullRequest) (bool
 	return ret0, ret1, ret2
 }
 
+
 func (mock *MockClient) GetModifiedFiles(_param0 models.Repo, _param1 models.PullRequest) ([]string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockClient().")
@@ -81,6 +82,14 @@ func (mock *MockClient) GetModifiedFiles(_param0 models.Repo, _param1 models.Pul
 		}
 	}
 	return ret0, ret1
+}
+
+func (mock *MockClient) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+	return 0, nil
+}
+
+func (mock *MockClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+	return nil
 }
 
 func (mock *MockClient) HidePrevCommandComments(_param0 models.Repo, _param1 int, _param2 string) error {
