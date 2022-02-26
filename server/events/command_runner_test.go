@@ -51,7 +51,7 @@ var azuredevopsGetter *mocks.MockAzureDevopsPullGetter
 var githubGetter *mocks.MockGithubPullGetter
 var gitlabGetter *mocks.MockGitlabMergeRequestGetter
 var ch events.DefaultCommandRunner
-var fa events.FeatureAwareCommandRunner
+var fa events.ForceApplyCommandRunner
 var workingDir events.WorkingDir
 var pendingPlanFinder *mocks.MockPendingPlanFinder
 var drainer *events.Drainer
@@ -152,7 +152,6 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		autoMerger,
 		pullUpdater,
 		dbUpdater,
-		defaultBoltDB,
 		parallelPoolSize,
 		SilenceNoProjects,
 		false,
@@ -394,21 +393,18 @@ func TestRunCommentCommand_DisableApplyAllDisabled(t *testing.T) {
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "**Error:** Running `atlantis apply` without flags is disabled. You must specify which project to apply via the `-d <dir>`, `-w <workspace>` or `-p <project name>` flags.", "apply")
 }
 
-func TestFeatureAwareRunCommentCommandRunner_CommentWhenEnabled(t *testing.T) {
+func TestForceApplyRunCommentCommandRunner_CommentWhenEnabled(t *testing.T) {
 	t.Log("if \"atlantis apply --force\" is run and this is enabled atlantis should" +
 		" comment with a warning")
 	vcsClient := setup(t)
-	allocator := fmocks.NewMockAllocator()
 
-	fa = events.FeatureAwareCommandRunner{
-		CommandRunner:    &ch,
-		FeatureAllocator: fa.FeatureAllocator,
-		VCSClient:        vcsClient,
-		Logger:           logger,
+	fa = events.ForceApplyCommandRunner{
+		CommandRunner: &ch,
+		VCSClient:     vcsClient,
+		Logger:        logger,
 	}
 
 	modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState, Num: fixtures.Pull.Num}
-	When(allocator.ShouldAllocate(feature.ForceApply, "runatlantis/atlantis")).ThenReturn(true, nil)
 
 	fa.RunCommentCommand(fixtures.GithubRepo, nil, nil, fixtures.User, modelPull.Num, &events.CommentCommand{Name: command.Apply, ForceApply: true}, time.Now())
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, "⚠️ WARNING ⚠️\n\n You have bypassed all apply requirements for this PR 🚀 . This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘 .\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n", "")
@@ -531,7 +527,6 @@ func TestRunAutoplanCommand_DeletePlans(t *testing.T) {
 	boltDB, err := db.New(tmp)
 	Ok(t, err)
 	dbUpdater.DB = boltDB
-	applyCommandRunner.DB = boltDB
 	autoMerger.GlobalAutomerge = true
 	defer func() { autoMerger.GlobalAutomerge = false }()
 
@@ -579,7 +574,6 @@ func TestFailedApprovalCreatesFailedStatusUpdate(t *testing.T) {
 	boltDB, err := db.New(tmp)
 	Ok(t, err)
 	dbUpdater.DB = boltDB
-	applyCommandRunner.DB = boltDB
 	autoMerger.GlobalAutomerge = true
 	defer func() { autoMerger.GlobalAutomerge = false }()
 
@@ -626,7 +620,6 @@ func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
 	boltDB, err := db.New(tmp)
 	Ok(t, err)
 	dbUpdater.DB = boltDB
-	applyCommandRunner.DB = boltDB
 	autoMerger.GlobalAutomerge = true
 	defer func() { autoMerger.GlobalAutomerge = false }()
 
@@ -683,7 +676,6 @@ func TestApplyMergeablityWhenPolicyCheckFails(t *testing.T) {
 	boltDB, err := db.New(tmp)
 	Ok(t, err)
 	dbUpdater.DB = boltDB
-	applyCommandRunner.DB = boltDB
 	autoMerger.GlobalAutomerge = true
 	defer func() { autoMerger.GlobalAutomerge = false }()
 
@@ -763,7 +755,6 @@ func TestRunApply_DiscardedProjects(t *testing.T) {
 	boltDB, err := db.New(tmp)
 	Ok(t, err)
 	dbUpdater.DB = boltDB
-	applyCommandRunner.DB = boltDB
 	pull := fixtures.Pull
 	pull.BaseRepo = fixtures.GithubRepo
 	_, err = boltDB.UpdatePullWithResults(pull, []command.ProjectResult{
