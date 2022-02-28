@@ -68,7 +68,7 @@ type storageBackend struct {
 func (s *storageBackend) Read(key string) (logs []string, err error) {
 	readContainerFn := func(item stow.Item, err error) error {
 		if err != nil {
-			return errors.Wrapf(err, "reading item: %s at location: %s", item.Name(), s.location)
+			return errors.Wrapf(err, "reading item: %s", item.Name())
 		}
 
 		// Skip if not right item
@@ -78,13 +78,13 @@ func (s *storageBackend) Read(key string) (logs []string, err error) {
 
 		r, err := item.Open()
 		if err != nil {
-			return errors.Wrapf(err, "building reader for item: %s at location: %s", item.Name(), s.location)
+			return errors.Wrapf(err, "building reader for item: %s", item.Name())
 		}
 
 		buf := new(strings.Builder)
 		_, err = io.Copy(buf, r)
 		if err != nil {
-			return errors.Wrapf(err, "building buffer for item: %s at location: %s", item.Name(), s.location)
+			return errors.Wrapf(err, "building buffer for item: %s", item.Name())
 		}
 
 		logs = strings.Split(buf.String(), "\n")
@@ -93,7 +93,7 @@ func (s *storageBackend) Read(key string) (logs []string, err error) {
 
 	readLocationFn := func(container stow.Container, err error) error {
 		if err != nil {
-			return errors.Wrapf(err, "reading containers at location: %s", s.location)
+			return errors.Wrap(err, "reading containers")
 		}
 
 		// Skip if not right container
@@ -104,6 +104,7 @@ func (s *storageBackend) Read(key string) (logs []string, err error) {
 		return stow.Walk(container, key, PageSize, readContainerFn)
 	}
 
+	s.logger.Info("reading object for job: %s in container: %s", key, s.containerName)
 	err = stow.WalkContainers(s.location, s.containerName, PageSize, readLocationFn)
 	return
 }
@@ -118,7 +119,7 @@ func (s *storageBackend) Write(key string, logs []string, _ string) (bool, error
 	// Function to write to container
 	writeFn := func(container stow.Container, err error) error {
 		if err != nil {
-			return errors.Wrapf(err, "walking containers at location: %s", s.location)
+			return errors.Wrap(err, "walking containers")
 		}
 
 		// Skip if not right container
@@ -129,21 +130,21 @@ func (s *storageBackend) Write(key string, logs []string, _ string) (bool, error
 		containerFound = true
 		_, err = container.Put(key, reader, size, nil)
 		if err != nil {
-			return errors.Wrapf(err, "uploading object for job: %s to %s", key, s.location)
+			return errors.Wrapf(err, "uploading object for job: %s", key)
 		}
 
-		s.logger.Info("successfully uploaded object for job: %s at location: %s", key, s.location)
+		s.logger.Info("successfully uploaded object for job: %s", key)
 		return nil
 	}
 
-	s.logger.Info("uploading object for job: %s to container: %s at location: %s", key, s.containerName, s.location)
+	s.logger.Info("uploading object for job: %s to container: %s", key, s.containerName)
 	err := stow.WalkContainers(s.location, s.containerName, PageSize, writeFn)
 	if err != nil {
 		return false, err
 	}
 
 	if !containerFound {
-		return false, fmt.Errorf("container: %s not found at location: %s", s.containerName, s.location)
+		return false, fmt.Errorf("container: %s not found", s.containerName)
 	}
 	return true, nil
 }
