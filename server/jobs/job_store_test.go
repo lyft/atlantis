@@ -132,7 +132,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		jobsMap := make(map[string]*jobs.Job)
 		jobsMap[jobID] = job
 		storageBackendErr := fmt.Errorf("random error")
-		expecterErr := errors.Wrapf(storageBackendErr, "error persisting job: %s", jobID)
+		expecterErr := errors.Wrapf(storageBackendErr, "persisting job: %s", jobID)
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
@@ -201,7 +201,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		storageBackend := mocks.NewMockStorageBackend()
 		jobStore := jobs.NewJobStore(storageBackend)
 		jobID := "1234"
-		expectedErrString := fmt.Sprintf("updating job status to complete: job: %s does not exist", jobID)
+		expectedErrString := fmt.Sprintf("job: %s does not exist", jobID)
 
 		err := jobStore.SetJobCompleteStatus(jobID, "test-repo", jobs.Complete)
 		assert.EqualError(t, err, expectedErrString)
