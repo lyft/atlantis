@@ -38,6 +38,7 @@ import (
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
+	lyftCommands "github.com/runatlantis/atlantis/server/lyft/command"
 	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/lyft/scheduled"
@@ -58,6 +59,9 @@ import (
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/apply"
+	"github.com/runatlantis/atlantis/server/events/command/plan"
+	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
@@ -711,12 +715,27 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.SilenceNoProjects,
 	)
 
+	featuredRunner := lyftCommands.NewPlatformModeFeatureRunner(
+		featureAllocator,
+		userConfig.EnablePlatformMode,
+		logger,
+	)
+
 	commentCommandRunnerByCmd := map[command.Name]events.CommentCommandRunner{
-		command.Plan:            planCommandRunner,
-		command.Apply:           applyCommandRunner,
-		command.ApprovePolicies: approvePoliciesCommandRunner,
-		command.Unlock:          unlockCommandRunner,
-		command.Version:         versionCommandRunner,
+		command.Plan: featuredRunner.Wrap(
+			plan.NewRunner(vcsClient),
+			planCommandRunner,
+		),
+		command.Apply: featuredRunner.Wrap(
+			apply.NewRunner(vcsClient),
+			applyCommandRunner,
+		),
+		command.ApprovePolicies: featuredRunner.Wrap(
+			policies.NewRunner(vcsClient),
+			approvePoliciesCommandRunner,
+		),
+		command.Unlock:  unlockCommandRunner,
+		command.Version: versionCommandRunner,
 	}
 	cmdStatsScope := statsScope.SubScope("cmd")
 	staleCommandChecker := &events.StaleCommandHandler{
@@ -743,11 +762,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		StaleCommandChecker:           staleCommandChecker,
 	}
 
-	featureAwareCommandRunner := &events.FeatureAwareCommandRunner{
-		CommandRunner:    commandRunner,
-		FeatureAllocator: featureAllocator,
-		VCSClient:        vcsClient,
-		Logger:           logger,
+	forceApplyCommandRunner := &events.ForceApplyCommandRunner{
+		CommandRunner: commandRunner,
+		VCSClient:     vcsClient,
+		Logger:        logger,
 	}
 
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
@@ -792,7 +810,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	eventsController := &events_controllers.VCSEventsController{
-		CommandRunner:                   featureAwareCommandRunner,
+		CommandRunner:                   forceApplyCommandRunner,
 		PullCleaner:                     pullClosedExecutor,
 		Parser:                          eventParser,
 		CommentParser:                   commentParser,
