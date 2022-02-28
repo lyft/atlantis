@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
 type JobStatus int
@@ -31,33 +33,37 @@ type JobStore interface {
 
 	// Sets a job status to complete and triggers any associated workflow,
 	// e.g: if the status is complete, the job is flushed to the associated storage backend
-	SetJobCompleteStatus(jobID string, status JobStatus) error
+	SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error
 
 	// Removes a job from the store
 	RemoveJob(jobID string)
 }
 
-func NewJobStore(storageBackend StorageBackend) *LayeredJobStore {
+func NewJobStore(storageBackend StorageBackend, featureAllocator feature.Allocator) *LayeredJobStore {
 	return &LayeredJobStore{
-		jobs:           map[string]*Job{},
-		storageBackend: storageBackend,
+		jobs:             map[string]*Job{},
+		storageBackend:   storageBackend,
+		FeatureAllocator: featureAllocator,
 	}
 }
 
 // Setup job store for testing
-func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job) *LayeredJobStore {
+func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job, featureAllocator feature.Allocator) *LayeredJobStore {
 	return &LayeredJobStore{
-		jobs:           jobs,
-		storageBackend: storageBackend,
+		jobs:             jobs,
+		storageBackend:   storageBackend,
+		FeatureAllocator: featureAllocator,
 	}
 }
 
 // layeredJobStore is a job store with one or more than one layers of persistence
 // storageBackend in this case
 type LayeredJobStore struct {
-	jobs           map[string]*Job
-	storageBackend StorageBackend
-	lock           sync.RWMutex
+	jobs             map[string]*Job
+	storageBackend   StorageBackend
+	lock             sync.RWMutex
+	FeatureAllocator feature.Allocator
+	Logger           logging.SimpleLogging
 }
 
 func (j *LayeredJobStore) Get(jobID string) (Job, error) {
@@ -66,10 +72,22 @@ func (j *LayeredJobStore) Get(jobID string) (Job, error) {
 		return job, nil
 	}
 
-	// Get from storage backend if not in memory.
-	logs, err := j.storageBackend.Read(jobID)
+	logs := []string{}
+
+	// Using jobID as fullRepoName since we can't have repo specific feature allocator
+	// since this method is called when a user visits a job URL which does not have any info about
+	// the repository.
+	shouldAllocate, err := j.FeatureAllocator.ShouldAllocate(feature.LogPersistence, jobID)
 	if err != nil {
-		return Job{}, err
+		j.Logger.Err("unable to allocate for feature: %s, error: %s", feature.LogPersistence, err)
+	}
+
+	// Get from storage backend if not in memory.
+	if shouldAllocate {
+		logs, err = j.storageBackend.Read(jobID)
+		if err != nil {
+			return Job{}, err
+		}
 	}
 
 	// If read from storage backend, mark job complete so that the conn
@@ -115,7 +133,7 @@ func (j *LayeredJobStore) RemoveJob(jobID string) {
 	delete(j.jobs, jobID)
 }
 
-func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, status JobStatus) error {
+func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
@@ -132,10 +150,17 @@ func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, status JobStatus) e
 	job := j.jobs[jobID]
 	job.Status = Complete
 
-	// Persist to storage backend
-	ok, err := j.storageBackend.Write(jobID, job.Output)
+	// Writing to backend storage supports repo based feature allocator since we have the repo full name
+	shouldAllocate, err := j.FeatureAllocator.ShouldAllocate(feature.LogPersistence, fullRepoName)
 	if err != nil {
-		return errors.Wrapf(err, "error persisting job: %s", jobID)
+		j.Logger.Err("unable to allocate for feature: %s, error: %s", feature.LogPersistence, err)
+	}
+	ok := false
+	if shouldAllocate {
+		ok, err = j.storageBackend.Write(jobID, job.Output)
+		if err != nil {
+			return errors.Wrapf(err, "error persisting job: %s", jobID)
+		}
 	}
 
 	// Only remove from memory if logs are persisted successfully

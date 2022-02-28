@@ -48,7 +48,7 @@ type ProjectCommandOutputHandler interface {
 	CleanUp(pullInfo PullInfo)
 
 	// Persists job to storage backend and marks operation complete
-	CloseJob(jobID string)
+	CloseJob(ctx models.ProjectCommandContext)
 }
 
 // AsyncProjectCommandOutputHandler is a handler to transport terraform client
@@ -145,12 +145,12 @@ func (p *AsyncProjectCommandOutputHandler) Register(jobID string, connection cha
 	p.receiverRegistry.AddReceiver(jobID, connection)
 }
 
-func (p *AsyncProjectCommandOutputHandler) CloseJob(jobID string) {
+func (p *AsyncProjectCommandOutputHandler) CloseJob(ctx models.ProjectCommandContext) {
 	// Close active connections and remove receivers from registry
-	p.receiverRegistry.CloseAndRemoveReceiversForJob(jobID)
+	p.receiverRegistry.CloseAndRemoveReceiversForJob(ctx.JobID)
 
 	// Update job status and persist to storage if configured
-	if err := p.jobStore.SetJobCompleteStatus(jobID, Complete); err != nil {
+	if err := p.jobStore.SetJobCompleteStatus(ctx.JobID, ctx.BaseRepo.FullName, Complete); err != nil {
 		p.logger.Err("updating jobs status to complete", err)
 	}
 }
@@ -202,5 +202,5 @@ func (p *NoopProjectOutputHandler) Register(jobID string, receiver chan string) 
 func (p *NoopProjectOutputHandler) CleanUp(pullInfo PullInfo) {
 }
 
-func (p *NoopProjectOutputHandler) CloseJob(jobID string) {
+func (p *NoopProjectOutputHandler) CloseJob(ctx models.ProjectCommandContext) {
 }
