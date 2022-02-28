@@ -128,7 +128,7 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 
 func (p *AsyncProjectCommandOutputHandler) Register(jobID string, connection chan string) {
 	job, err := p.jobStore.Get(jobID)
-	if err != nil {
+	if err != nil || job == nil {
 		p.logger.Err(fmt.Sprintf("getting job: %s", jobID), err)
 		return
 	}
@@ -180,8 +180,10 @@ func (p *AsyncProjectCommandOutputHandler) GetReceiverBufferForPull(jobID string
 }
 
 func (p *AsyncProjectCommandOutputHandler) GetJob(jobID string) Job {
-	job, _ := p.jobStore.Get(jobID)
-	return *job
+	if job, _ := p.jobStore.Get(jobID); job != nil {
+		return *job
+	}
+	return Job{}
 }
 
 func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPull(pullInfo PullInfo) map[string]bool {
