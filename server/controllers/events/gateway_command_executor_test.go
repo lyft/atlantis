@@ -54,7 +54,7 @@ func TestExecuteCommentCommand_Failure(t *testing.T) {
 	resp := executor.ExecuteCommentCommand(req, models.Repo{}, nil, nil, models.User{}, 0, nil, time.Time{})
 	mockWriter.VerifyWasCalledOnce().Write(sns_matchers.AnySliceOfByte())
 	Assert(t, resp.err.code == 400, "response should have bad request error")
-	Assert(t, resp.body == "Writing gateway message to sns topic: marshal err", "response should be a marshal err")
+	Assert(t, resp.body == "writing gateway message to sns topic: marshal err", "response should be a marshal err")
 	Assert(t, scope.Snapshot().Counters()["test.send.failure+"].Value() == 1, "should be a failed send")
 }
 
