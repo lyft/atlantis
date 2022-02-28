@@ -1,4 +1,0 @@
-jobs:
-  storage-backend:
-    s3:
-      bucket-name: atlantis-production-jobs-test

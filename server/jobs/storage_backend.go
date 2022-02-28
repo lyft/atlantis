@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/uber-go/tally"
 )
 
 const PageSize = 100
@@ -22,6 +23,40 @@ type StorageBackend interface {
 
 	// Write logs to the storage backend
 	Write(key string, logs []string, fullRepoName string) (bool, error)
+}
+
+func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging, featureAllocator feature.Allocator, scope tally.Scope) (StorageBackend, error) {
+
+	if jobs.StorageBackend == nil {
+		return &NoopStorageBackend{}, nil
+	}
+
+	config := jobs.StorageBackend.BackendConfig.GetConfigMap()
+	backend := jobs.StorageBackend.BackendConfig.GetConfiguredBackend()
+	containerName := jobs.StorageBackend.BackendConfig.GetContainerName()
+
+	location, err := stow.Dial(backend, config)
+	if err != nil {
+		return nil, err
+	}
+
+	storageBackend := &storageBackend{
+		location:      location,
+		logger:        logger,
+		containerName: containerName,
+	}
+
+	instrumentedStorageBackend := InstrumenetedStorageBackend{
+		StorageBackend: storageBackend,
+		readFailures:   scope.SubScope("storage_backend").Counter("read_failure"),
+		writeFailures:  scope.SubScope("storage_backend").Counter("write_faulure"),
+	}
+
+	return &FeatureAwareStorageBackend{
+		StorageBackend:   &instrumentedStorageBackend,
+		FeatureAllocator: featureAllocator,
+		Logger:           logger,
+	}, nil
 }
 
 type storageBackend struct {
@@ -113,43 +148,31 @@ func (s *storageBackend) Write(key string, logs []string, _ string) (bool, error
 	return true, nil
 }
 
-func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging, featureAllocator feature.Allocator) (StorageBackend, error) {
+// Adds instrumentation to storage backend
+type InstrumenetedStorageBackend struct {
+	StorageBackend
 
-	if jobs.StorageBackend == nil {
-		return &NoopStorageBackend{}, nil
-	}
+	readFailures  tally.Counter
+	writeFailures tally.Counter
+}
 
-	config := jobs.StorageBackend.BackendConfig.GetConfigMap()
-	backend := jobs.StorageBackend.BackendConfig.GetConfiguredBackend()
-	containerName := jobs.StorageBackend.BackendConfig.GetContainerName()
-
-	location, err := stow.Dial(backend, config)
+func (i *InstrumenetedStorageBackend) Read(key string) ([]string, error) {
+	logs, err := i.StorageBackend.Read(key)
 	if err != nil {
-		return nil, err
+		i.readFailures.Inc(1)
 	}
-
-	return &FeatureAwareStorageBackend{
-		StorageBackend: &storageBackend{
-			location:      location,
-			logger:        logger,
-			containerName: containerName,
-		},
-		FeatureAllocator: featureAllocator,
-		Logger:           logger,
-	}, nil
+	return logs, err
 }
 
-// Used when log persistence is not configured
-type NoopStorageBackend struct{}
-
-func (s *NoopStorageBackend) Read(key string) ([]string, error) {
-	return []string{}, nil
+func (i *InstrumenetedStorageBackend) Write(key string, logs []string, fullRepoName string) (bool, error) {
+	ok, err := i.StorageBackend.Write(key, logs, fullRepoName)
+	if err != nil {
+		i.writeFailures.Inc(1)
+	}
+	return ok, err
 }
 
-func (s *NoopStorageBackend) Write(key string, logs []string, fullRepoName string) (bool, error) {
-	return false, nil
-}
-
+// Wraps feature flag around storage backend
 type FeatureAwareStorageBackend struct {
 	StorageBackend
 
@@ -178,5 +201,16 @@ func (f *FeatureAwareStorageBackend) Write(key string, logs []string, fullRepoNa
 	if shouldAllocate {
 		return f.StorageBackend.Write(key, logs, fullRepoName)
 	}
+	return false, nil
+}
+
+// Used when log persistence is not configured
+type NoopStorageBackend struct{}
+
+func (s *NoopStorageBackend) Read(key string) ([]string, error) {
+	return []string{}, nil
+}
+
+func (s *NoopStorageBackend) Write(key string, logs []string, fullRepoName string) (bool, error) {
 	return false, nil
 }
