@@ -54,14 +54,14 @@ func TestJobStore_Get(t *testing.T) {
 	t.Run("error when reading from storage backend fails", func(t *testing.T) {
 		// Setup job store
 		storageBackend := mocks.NewMockStorageBackend()
-		expectedError := fmt.Errorf("error")
-		When(storageBackend.Read(AnyString())).ThenReturn([]string{}, expectedError)
+		expectedError := fmt.Errorf("reading from backend storage: error")
+		When(storageBackend.Read(AnyString())).ThenReturn([]string{}, errors.New("error"))
 
 		// Assert job
 		jobStore := jobs.NewJobStore(storageBackend)
 		gotJob, err := jobStore.Get("1234")
 		assert.Empty(t, gotJob)
-		assert.ErrorIs(t, expectedError, err)
+		assert.EqualError(t, expectedError, err.Error())
 	})
 }
 
