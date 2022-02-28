@@ -34,7 +34,7 @@ func (mock *MockProjectCommandOutputHandler) CleanUp(_param0 jobs.PullInfo) {
 	pegomock.GetGenericMockFrom(mock).Invoke("CleanUp", params, []reflect.Type{})
 }
 
-func (mock *MockProjectCommandOutputHandler) CloseJob(_param0 string) {
+func (mock *MockProjectCommandOutputHandler) CloseJob(_param0 models.ProjectCommandContext) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectCommandOutputHandler().")
 	}
@@ -130,7 +130,7 @@ func (c *MockProjectCommandOutputHandler_CleanUp_OngoingVerification) GetAllCapt
 	return
 }
 
-func (verifier *VerifierMockProjectCommandOutputHandler) CloseJob(_param0 string) *MockProjectCommandOutputHandler_CloseJob_OngoingVerification {
+func (verifier *VerifierMockProjectCommandOutputHandler) CloseJob(_param0 models.ProjectCommandContext) *MockProjectCommandOutputHandler_CloseJob_OngoingVerification {
 	params := []pegomock.Param{_param0}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "CloseJob", params, verifier.timeout)
 	return &MockProjectCommandOutputHandler_CloseJob_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -141,17 +141,17 @@ type MockProjectCommandOutputHandler_CloseJob_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockProjectCommandOutputHandler_CloseJob_OngoingVerification) GetCapturedArguments() string {
+func (c *MockProjectCommandOutputHandler_CloseJob_OngoingVerification) GetCapturedArguments() models.ProjectCommandContext {
 	_param0 := c.GetAllCapturedArguments()
 	return _param0[len(_param0)-1]
 }
 
-func (c *MockProjectCommandOutputHandler_CloseJob_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
+func (c *MockProjectCommandOutputHandler_CloseJob_OngoingVerification) GetAllCapturedArguments() (_param0 []models.ProjectCommandContext) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]string, len(c.methodInvocations))
+		_param0 = make([]models.ProjectCommandContext, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(string)
+			_param0[u] = param.(models.ProjectCommandContext)
 		}
 	}
 	return
