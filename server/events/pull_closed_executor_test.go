@@ -34,7 +34,6 @@ import (
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	jobmocks "github.com/runatlantis/atlantis/server/jobs/mocks"
 	loggermocks "github.com/runatlantis/atlantis/server/logging/mocks"
-	fmocks "github.com/runatlantis/atlantis/server/lyft/feature/mocks"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -201,7 +200,7 @@ func TestCleanUpLogStreaming(t *testing.T) {
 		// Create Log streaming resources
 		prjCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
 		storageBackend := jobmocks.NewMockStorageBackend()
-		prjCmdOutHandler := jobs.NewAsyncProjectCommandOutputHandler(prjCmdOutput, logger, jobs.NewTestJobStore(storageBackend, map[string]*jobs.Job{}, fmocks.NewMockAllocator()))
+		prjCmdOutHandler := jobs.NewAsyncProjectCommandOutputHandler(prjCmdOutput, logger, jobs.NewTestJobStore(storageBackend, map[string]*jobs.Job{}))
 		ctx := models.ProjectCommandContext{
 			BaseRepo:    fixtures.GithubRepo,
 			Pull:        fixtures.Pull,

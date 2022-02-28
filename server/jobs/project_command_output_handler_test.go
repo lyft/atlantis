@@ -71,7 +71,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		var expectedMsg string
 		projectOutputHandler, jobStore := createProjectCommandOutputHandler(t)
 
-		When(jobStore.Get(AnyString())).ThenReturn(jobs.Job{}, nil)
+		When(jobStore.Get(AnyString())).ThenReturn(&jobs.Job{}, nil)
 		ch := make(chan string)
 
 		// read from channel
@@ -100,7 +100,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		var wg sync.WaitGroup
 
 		projectOutputHandler, jobStore := createProjectCommandOutputHandler(t)
-		When(jobStore.Get(AnyString())).ThenReturn(jobs.Job{
+		When(jobStore.Get(AnyString())).ThenReturn(&jobs.Job{
 			Output: []string{Msg},
 			Status: jobs.Processing,
 		}, nil)
@@ -146,7 +146,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 	t.Run("clean up all jobs when PR is closed", func(t *testing.T) {
 		var wg sync.WaitGroup
 		projectOutputHandler, jobStore := createProjectCommandOutputHandler(t)
-		When(jobStore.Get(AnyString())).ThenReturn(jobs.Job{}, nil)
+		When(jobStore.Get(AnyString())).ThenReturn(&jobs.Job{}, nil)
 
 		ch := make(chan string)
 
@@ -193,7 +193,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 			Output: []string{"a", "b"},
 			Status: jobs.Complete,
 		}
-		When(jobStore.Get(AnyString())).ThenReturn(job, nil)
+		When(jobStore.Get(AnyString())).ThenReturn(&job, nil)
 
 		ch := make(chan string)
 

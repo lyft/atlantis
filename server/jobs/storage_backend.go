@@ -2,12 +2,14 @@ package jobs
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/graymeta/stow"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
 const PageSize = 100
@@ -19,7 +21,7 @@ type StorageBackend interface {
 	Read(key string) ([]string, error)
 
 	// Write logs to the storage backend
-	Write(key string, logs []string) (bool, error)
+	Write(key string, logs []string, fullRepoName string) (bool, error)
 }
 
 type storageBackend struct {
@@ -28,11 +30,50 @@ type storageBackend struct {
 	containerName string
 }
 
-func (s *storageBackend) Read(key string) ([]string, error) {
-	return []string{}, nil
+func (s *storageBackend) Read(key string) (logs []string, err error) {
+	readContainerFn := func(item stow.Item, err error) error {
+		if err != nil {
+			return errors.Wrapf(err, "reading item: %s at location: %s", item.Name(), s.location)
+		}
+
+		// Skip if not right item
+		if item.Name() != key {
+			return nil
+		}
+
+		r, err := item.Open()
+		if err != nil {
+			return errors.Wrapf(err, "building reader for item: %s at location: %s", item.Name(), s.location)
+		}
+
+		buf := new(strings.Builder)
+		_, err = io.Copy(buf, r)
+		if err != nil {
+			return errors.Wrapf(err, "building buffer for item: %s at location: %s", item.Name(), s.location)
+		}
+
+		logs = strings.Split(buf.String(), "\n")
+		return nil
+	}
+
+	readLocationFn := func(container stow.Container, err error) error {
+		if err != nil {
+			return errors.Wrapf(err, "reading containers at location: %s", s.location)
+		}
+
+		// Skip if not right container
+		if container.Name() != s.containerName {
+			return nil
+		}
+
+		return stow.Walk(container, key, PageSize, readContainerFn)
+	}
+
+	err = stow.WalkContainers(s.location, s.containerName, PageSize, readLocationFn)
+	return
 }
 
-func (s *storageBackend) Write(key string, logs []string) (bool, error) {
+func (s *storageBackend) Write(key string, logs []string, _ string) (bool, error) {
 	containerFound := false
 
 	logString := strings.Join(logs, "\n")
@@ -72,7 +113,7 @@ func (s *storageBackend) Write(key string, logs []string) (bool, error) {
 	return true, nil
 }
 
-func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBackend, error) {
+func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging, featureAllocator feature.Allocator) (StorageBackend, error) {
 
 	if jobs.StorageBackend == nil {
 		return &NoopStorageBackend{}, nil
@@ -87,10 +128,14 @@ func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging) (StorageBa
 		return nil, err
 	}
 
-	return &storageBackend{
-		location:      location,
-		logger:        logger,
-		containerName: containerName,
+	return &FeatureAwareStorageBackend{
+		StorageBackend: &storageBackend{
+			location:      location,
+			logger:        logger,
+			containerName: containerName,
+		},
+		FeatureAllocator: featureAllocator,
+		Logger:           logger,
 	}, nil
 }
 
@@ -101,6 +146,37 @@ func (s *NoopStorageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *NoopStorageBackend) Write(key string, logs []string) (bool, error) {
+func (s *NoopStorageBackend) Write(key string, logs []string, fullRepoName string) (bool, error) {
+	return false, nil
+}
+
+type FeatureAwareStorageBackend struct {
+	StorageBackend
+
+	FeatureAllocator feature.Allocator
+	Logger           logging.SimpleLogging
+}
+
+func (f *FeatureAwareStorageBackend) Read(key string) ([]string, error) {
+	shouldAllocate, err := f.FeatureAllocator.ShouldAllocate(feature.LogPersistence, "")
+	if err != nil {
+		f.Logger.Err("unable to allocate for feature: %s, error: %s", feature.LogPersistence, err)
+	}
+
+	if shouldAllocate {
+		return f.StorageBackend.Read(key)
+	}
+	return []string{}, nil
+}
+
+func (f *FeatureAwareStorageBackend) Write(key string, logs []string, fullRepoName string) (bool, error) {
+	shouldAllocate, err := f.FeatureAllocator.ShouldAllocate(feature.LogPersistence, fullRepoName)
+	if err != nil {
+		f.Logger.Err("unable to allocate for feature: %s, error: %s", feature.LogPersistence, err)
+	}
+
+	if shouldAllocate {
+		return f.StorageBackend.Write(key, logs, fullRepoName)
+	}
 	return false, nil
 }

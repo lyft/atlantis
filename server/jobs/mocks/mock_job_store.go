@@ -40,17 +40,17 @@ func (mock *MockJobStore) AppendOutput(_param0 string, _param1 string) error {
 	return ret0
 }
 
-func (mock *MockJobStore) Get(_param0 string) (jobs.Job, error) {
+func (mock *MockJobStore) Get(_param0 string) (*jobs.Job, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockJobStore().")
 	}
 	params := []pegomock.Param{_param0}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("Get", params, []reflect.Type{reflect.TypeOf((*jobs.Job)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 jobs.Job
+	result := pegomock.GetGenericMockFrom(mock).Invoke("Get", params, []reflect.Type{reflect.TypeOf((**jobs.Job)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 *jobs.Job
 	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(jobs.Job)
+			ret0 = result[0].(*jobs.Job)
 		}
 		if result[1] != nil {
 			ret1 = result[1].(error)

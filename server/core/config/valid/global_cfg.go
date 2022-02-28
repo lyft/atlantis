@@ -76,8 +76,12 @@ type S3 struct {
 func (s *S3) GetConfigMap() stow.Config {
 	// Only supports Iam auth type for now
 	// TODO: Add accesskeys auth type
+	// return stow.ConfigMap{
+	// 	s3.ConfigAuthType: "iam",
+	// }
 	return stow.ConfigMap{
-		s3.ConfigAuthType: "iam",
+		s3.ConfigAccessKeyID: "AKIAS4MV5KQZKYREVTFF",
+		s3.ConfigSecretKey:   "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",
 	}
 }
 

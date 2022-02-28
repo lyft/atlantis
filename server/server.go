@@ -369,15 +369,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
-	storageBackend, err := jobs.NewStorageBackend(globalCfg.Jobs, logger)
+	storageBackend, err := jobs.NewStorageBackend(globalCfg.Jobs, logger, featureAllocator)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
 
-	jobStore := jobs.NewJobStore(
-		storageBackend,
-		featureAllocator,
-	)
+	jobStore := jobs.NewJobStore(storageBackend)
 
 	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.

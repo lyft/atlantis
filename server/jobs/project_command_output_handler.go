@@ -178,7 +178,7 @@ func (p *AsyncProjectCommandOutputHandler) GetReceiverBufferForPull(jobID string
 
 func (p *AsyncProjectCommandOutputHandler) GetJob(jobID string) Job {
 	job, _ := p.jobStore.Get(jobID)
-	return job
+	return *job
 }
 
 func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPull(pullInfo PullInfo) map[string]bool {

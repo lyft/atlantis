@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
 type JobStatus int
@@ -26,7 +24,7 @@ type Job struct {
 type JobStore interface {
 	// Gets the job from the in memory buffer, if available and if not, reaches to the storage backend
 	// Returns an empty job with error if not in storage backend
-	Get(jobID string) (Job, error)
+	Get(jobID string) (*Job, error)
 
 	// Appends a given string to a job's output if the job is not complete yet
 	AppendOutput(jobID string, output string) error
@@ -39,134 +37,135 @@ type JobStore interface {
 	RemoveJob(jobID string)
 }
 
-func NewJobStore(storageBackend StorageBackend, featureAllocator feature.Allocator) *LayeredJobStore {
-	return &LayeredJobStore{
-		jobs:             map[string]*Job{},
-		storageBackend:   storageBackend,
-		FeatureAllocator: featureAllocator,
+func NewJobStore(storageBackend StorageBackend) JobStore {
+	return &StorageBackendJobStore{
+		JobStore: &MemoryJobStore{
+			jobs: map[string]*Job{},
+		},
+		storageBackend: storageBackend,
 	}
 }
 
 // Setup job store for testing
-func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job, featureAllocator feature.Allocator) *LayeredJobStore {
-	return &LayeredJobStore{
-		jobs:             jobs,
-		storageBackend:   storageBackend,
-		FeatureAllocator: featureAllocator,
+func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job) JobStore {
+	return &StorageBackendJobStore{
+		JobStore: &MemoryJobStore{
+			jobs: jobs,
+		},
+		storageBackend: storageBackend,
 	}
 }
 
-// layeredJobStore is a job store with one or more than one layers of persistence
-// storageBackend in this case
-type LayeredJobStore struct {
-	jobs             map[string]*Job
-	storageBackend   StorageBackend
-	lock             sync.RWMutex
-	FeatureAllocator feature.Allocator
-	Logger           logging.SimpleLogging
+// Memory Job store deals with handling jobs in memory
+type MemoryJobStore struct {
+	jobs map[string]*Job
+	lock sync.RWMutex
 }
 
-func (j *LayeredJobStore) Get(jobID string) (Job, error) {
-	// Get from memory if available
-	if job, ok := j.GetJobFromMemory(jobID); ok {
-		return job, nil
+func (m *MemoryJobStore) Get(jobID string) (*Job, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	if m.jobs[jobID] == nil {
+		return nil, nil
+	}
+	return m.jobs[jobID], nil
+}
+
+func (m *MemoryJobStore) AppendOutput(jobID string, output string) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	// Create new job if job dne
+	if m.jobs[jobID] == nil {
+		m.jobs[jobID] = &Job{}
 	}
 
-	logs := []string{}
+	if m.jobs[jobID].Status == Complete {
+		return fmt.Errorf("cannot append to a complete job")
+	}
 
-	// Using jobID as fullRepoName since we can't have repo specific feature allocator
-	// since this method is called when a user visits a job URL which does not have any info about
-	// the repository.
-	shouldAllocate, err := j.FeatureAllocator.ShouldAllocate(feature.LogPersistence, jobID)
+	updatedOutput := append(m.jobs[jobID].Output, output)
+	m.jobs[jobID].Output = updatedOutput
+	return nil
+}
+
+func (m *MemoryJobStore) SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	// Error out when job dne
+	if m.jobs[jobID] == nil {
+		return fmt.Errorf("job: %s does not exist", jobID)
+	}
+
+	// Error when job is already set to complete
+	if job := m.jobs[jobID]; job.Status == Complete {
+		return fmt.Errorf("job: %s is already complete", jobID)
+	}
+
+	job := m.jobs[jobID]
+	job.Status = Complete
+	return nil
+}
+
+func (m *MemoryJobStore) RemoveJob(jobID string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	delete(m.jobs, jobID)
+}
+
+// Storage backend job store deals with handling jobs in backend storage
+type StorageBackendJobStore struct {
+	JobStore
+	storageBackend StorageBackend
+}
+
+func (s *StorageBackendJobStore) Get(jobID string) (*Job, error) {
+	// Get job from memory
+	if jobInMem, _ := s.JobStore.Get(jobID); jobInMem != nil {
+		return jobInMem, nil
+	}
+
+	// Get from storage backend if not in memory
+	logs, err := s.storageBackend.Read(jobID)
 	if err != nil {
-		j.Logger.Err("unable to allocate for feature: %s, error: %s", feature.LogPersistence, err)
+		return nil, err
 	}
 
-	// Get from storage backend if not in memory.
-	if shouldAllocate {
-		logs, err = j.storageBackend.Read(jobID)
-		if err != nil {
-			return Job{}, err
-		}
-	}
-
-	// If read from storage backend, mark job complete so that the conn
-	// can be closed
-	return Job{
+	return &Job{
 		Output: logs,
 		Status: Complete,
 	}, nil
 }
 
-func (j *LayeredJobStore) GetJobFromMemory(jobID string) (Job, bool) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
-
-	if j.jobs[jobID] == nil {
-		return Job{}, false
-	}
-	return *j.jobs[jobID], true
+func (s StorageBackendJobStore) AppendOutput(jobID string, output string) error {
+	return s.JobStore.AppendOutput(jobID, output)
 }
 
-func (j *LayeredJobStore) AppendOutput(jobID string, output string) error {
-	j.lock.Lock()
-	defer j.lock.Unlock()
-
-	// Create new job if job dne
-	if j.jobs[jobID] == nil {
-		j.jobs[jobID] = &Job{}
+func (s *StorageBackendJobStore) SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error {
+	if err := s.JobStore.SetJobCompleteStatus(jobID, fullRepoName, status); err != nil {
+		return errors.Wrap(err, "updating job status to complete")
 	}
 
-	if j.jobs[jobID].Status == Complete {
-		return fmt.Errorf("cannot append to a complete job")
-	}
-
-	updatedOutput := append(j.jobs[jobID].Output, output)
-	j.jobs[jobID].Output = updatedOutput
-	return nil
-}
-
-func (j *LayeredJobStore) RemoveJob(jobID string) {
-	j.lock.Lock()
-	defer j.lock.Unlock()
-
-	delete(j.jobs, jobID)
-}
-
-func (j *LayeredJobStore) SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error {
-	j.lock.Lock()
-	defer j.lock.Unlock()
-
-	// Error out when job dne
-	if j.jobs[jobID] == nil {
-		return fmt.Errorf("job: %s does not exist", jobID)
-	}
-
-	// Error when job is already set to complete
-	if job := j.jobs[jobID]; job.Status == Complete {
-		return fmt.Errorf("job: %s is already complete", jobID)
-	}
-
-	job := j.jobs[jobID]
-	job.Status = Complete
-
-	// Writing to backend storage supports repo based feature allocator since we have the repo full name
-	shouldAllocate, err := j.FeatureAllocator.ShouldAllocate(feature.LogPersistence, fullRepoName)
+	job, err := s.JobStore.Get(jobID)
 	if err != nil {
-		j.Logger.Err("unable to allocate for feature: %s, error: %s", feature.LogPersistence, err)
-	}
-	ok := false
-	if shouldAllocate {
-		ok, err = j.storageBackend.Write(jobID, job.Output)
-		if err != nil {
-			return errors.Wrapf(err, "error persisting job: %s", jobID)
-		}
+		errors.Wrapf(err, "error retrieveing job: %s for persistence", jobID)
 	}
 
-	// Only remove from memory if logs are persisted successfully
+	ok, err := s.storageBackend.Write(jobID, job.Output, fullRepoName)
+	if err != nil {
+		return errors.Wrapf(err, "error persisting job: %s", jobID)
+	}
+
+	// Remove from memory if successfully persisted
 	if ok {
-		delete(j.jobs, jobID)
+		s.JobStore.RemoveJob(jobID)
 	}
-
 	return nil
+}
+
+func (s *StorageBackendJobStore) RemoveJob(jobID string) {
+	s.JobStore.RemoveJob(jobID)
 }
