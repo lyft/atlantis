@@ -49,7 +49,7 @@ func NewStorageBackend(jobs valid.Jobs, logger logging.SimpleLogging, featureAll
 	instrumentedStorageBackend := InstrumenetedStorageBackend{
 		StorageBackend: storageBackend,
 		readFailures:   scope.SubScope("storage_backend").Counter("read_failure"),
-		writeFailures:  scope.SubScope("storage_backend").Counter("write_faulure"),
+		writeFailures:  scope.SubScope("storage_backend").Counter("write_failure"),
 	}
 
 	return &FeatureAwareStorageBackend{

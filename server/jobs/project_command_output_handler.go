@@ -119,7 +119,10 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 		}
 
 		// Append new log to the output buffer for the job
-		p.jobStore.AppendOutput(msg.JobID, msg.Line)
+		err := p.jobStore.AppendOutput(msg.JobID, msg.Line)
+		if err != nil {
+			p.logger.Warn("appending log: %s for job: %s", msg.Line, msg.JobID, err)
+		}
 	}
 }
 

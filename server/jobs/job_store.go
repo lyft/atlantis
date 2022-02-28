@@ -23,7 +23,6 @@ type Job struct {
 
 type JobStore interface {
 	// Gets the job from the in memory buffer, if available and if not, reaches to the storage backend
-	// Returns an empty job with error if not in storage backend
 	Get(jobID string) (*Job, error)
 
 	// Appends a given string to a job's output if the job is not complete yet
@@ -131,7 +130,7 @@ func (s *StorageBackendJobStore) Get(jobID string) (*Job, error) {
 	// Get from storage backend if not in memory
 	logs, err := s.storageBackend.Read(jobID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "reading from backend storage")
 	}
 
 	return &Job{
@@ -146,17 +145,17 @@ func (s StorageBackendJobStore) AppendOutput(jobID string, output string) error 
 
 func (s *StorageBackendJobStore) SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error {
 	if err := s.JobStore.SetJobCompleteStatus(jobID, fullRepoName, status); err != nil {
-		return errors.Wrap(err, "updating job status to complete")
+		return err
 	}
 
 	job, err := s.JobStore.Get(jobID)
-	if err != nil {
-		errors.Wrapf(err, "error retrieveing job: %s for persistence", jobID)
+	if err != nil || job == nil {
+		return errors.Wrapf(err, "retrieveing job: %s from memory store", jobID)
 	}
 
 	ok, err := s.storageBackend.Write(jobID, job.Output, fullRepoName)
 	if err != nil {
-		return errors.Wrapf(err, "error persisting job: %s", jobID)
+		return errors.Wrapf(err, "persisting job: %s", jobID)
 	}
 
 	// Remove from memory if successfully persisted
