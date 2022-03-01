@@ -57,10 +57,15 @@ func TestFeatureAllocatorRunner(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
 			RegisterMockTestingT(t)
+
+			allocatedRunner := mocks.NewMockCommentCommandRunner()
+			unallocatedRunner := mocks.NewMockCommentCommandRunner()
 			featuredRunner := lyftCommand.NewPlatformModeFeatureRunner(
 				featureAllocator,
 				c.platformModeEnabled,
 				testLogger,
+				allocatedRunner,
+				unallocatedRunner,
 			)
 
 			When(featureAllocator.ShouldAllocate(
@@ -68,17 +73,13 @@ func TestFeatureAllocatorRunner(t *testing.T) {
 				AnyString(),
 			)).ThenReturn(c.allocated, c.err)
 
-			allocatedRunner := mocks.NewMockCommentCommandRunner()
-			unallocatedRunner := mocks.NewMockCommentCommandRunner()
-			runner := featuredRunner.Wrap(allocatedRunner, unallocatedRunner)
-
 			ctx := &command.Context{
 				HeadRepo: models.Repo{
 					FullName: "test-repo",
 				},
 			}
 			cmd := &events.CommentCommand{}
-			runner.Run(ctx, cmd)
+			featuredRunner.Run(ctx, cmd)
 
 			if c.platformModeEnabled && c.allocated {
 				allocatedRunner.VerifyWasCalledOnce().Run(ctx, cmd)

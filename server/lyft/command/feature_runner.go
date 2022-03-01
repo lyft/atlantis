@@ -11,11 +11,15 @@ func NewPlatformModeFeatureRunner(
 	featureAllocator feature.Allocator,
 	platformModeEnabled bool,
 	logger logging.SimpleLogging,
+	allocatedRunner events.CommentCommandRunner,
+	unallocatedRunner events.CommentCommandRunner,
 ) *PlatformModeFeatureRunner {
 	return &PlatformModeFeatureRunner{
 		featureAllocator:    featureAllocator,
 		platformModeEnabled: platformModeEnabled,
 		logger:              logger,
+		allocatedRunner:     allocatedRunner,
+		unallocatedRunner:   unallocatedRunner,
 	}
 }
 
@@ -26,38 +30,29 @@ type PlatformModeFeatureRunner struct {
 	featureAllocator    feature.Allocator
 	platformModeEnabled bool
 	logger              logging.SimpleLogging
-}
-
-type featureRunnerFunc func(ctx *command.Context, cmd *events.CommentCommand)
-
-func (f featureRunnerFunc) Run(ctx *command.Context, cmd *events.CommentCommand) {
-	f(ctx, cmd)
+	allocatedRunner     events.CommentCommandRunner
+	unallocatedRunner   events.CommentCommandRunner
 }
 
 // Wrap returns CommentCommandRunner that encapsulates feature flags decision
 // inside a CommentCommandRunner interface
-func (r *PlatformModeFeatureRunner) Wrap(
-	allocatedRunner events.CommentCommandRunner,
-	unallocatedRunner events.CommentCommandRunner,
-) events.CommentCommandRunner {
-	return featureRunnerFunc(func(ctx *command.Context, cmd *events.CommentCommand) {
-		// if platform mode is not enable run unallocatedRunner runner. No need
-		// to invoke feature allocator
-		if !r.platformModeEnabled {
-			unallocatedRunner.Run(ctx, cmd)
-			return
-		}
+func (r *PlatformModeFeatureRunner) Run(ctx *command.Context, cmd *events.CommentCommand) {
+	// if platform mode is not enable run unallocatedRunner runner. No need
+	// to invoke feature allocator
+	if !r.platformModeEnabled {
+		r.unallocatedRunner.Run(ctx, cmd)
+		return
+	}
 
-		shouldAllocate, err := r.featureAllocator.ShouldAllocate(feature.PlatformMode, ctx.HeadRepo.FullName)
-		if err != nil {
-			r.logger.Err("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err)
-		}
+	shouldAllocate, err := r.featureAllocator.ShouldAllocate(feature.PlatformMode, ctx.HeadRepo.FullName)
+	if err != nil {
+		r.logger.Err("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err)
+	}
 
-		if !shouldAllocate {
-			unallocatedRunner.Run(ctx, cmd)
-			return
-		}
+	if !shouldAllocate {
+		r.unallocatedRunner.Run(ctx, cmd)
+		return
+	}
 
-		allocatedRunner.Run(ctx, cmd)
-	})
+	r.allocatedRunner.Run(ctx, cmd)
 }

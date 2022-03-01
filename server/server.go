@@ -715,27 +715,36 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.SilenceNoProjects,
 	)
 
-	featuredRunner := lyftCommands.NewPlatformModeFeatureRunner(
+	featuredPlanRunner := lyftCommands.NewPlatformModeFeatureRunner(
 		featureAllocator,
 		userConfig.EnablePlatformMode,
 		logger,
+		plan.NewRunner(vcsClient),
+		planCommandRunner,
+	)
+
+	featuredApplyRunner := lyftCommands.NewPlatformModeFeatureRunner(
+		featureAllocator,
+		userConfig.EnablePlatformMode,
+		logger,
+		apply.NewRunner(vcsClient),
+		applyCommandRunner,
+	)
+
+	featuredPolicyCheckRunner := lyftCommands.NewPlatformModeFeatureRunner(
+		featureAllocator,
+		userConfig.EnablePlatformMode,
+		logger,
+		policies.NewRunner(vcsClient),
+		approvePoliciesCommandRunner,
 	)
 
 	commentCommandRunnerByCmd := map[command.Name]events.CommentCommandRunner{
-		command.Plan: featuredRunner.Wrap(
-			plan.NewRunner(vcsClient),
-			planCommandRunner,
-		),
-		command.Apply: featuredRunner.Wrap(
-			apply.NewRunner(vcsClient),
-			applyCommandRunner,
-		),
-		command.ApprovePolicies: featuredRunner.Wrap(
-			policies.NewRunner(vcsClient),
-			approvePoliciesCommandRunner,
-		),
-		command.Unlock:  unlockCommandRunner,
-		command.Version: versionCommandRunner,
+		command.Plan:            featuredPlanRunner,
+		command.Apply:           featuredApplyRunner,
+		command.ApprovePolicies: featuredPolicyCheckRunner,
+		command.Unlock:          unlockCommandRunner,
+		command.Version:         versionCommandRunner,
 	}
 	cmdStatsScope := statsScope.SubScope("cmd")
 	staleCommandChecker := &events.StaleCommandHandler{
