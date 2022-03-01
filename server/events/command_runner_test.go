@@ -150,7 +150,6 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		autoMerger,
 		pullUpdater,
 		dbUpdater,
-		defaultBoltDB,
 		parallelPoolSize,
 		SilenceNoProjects,
 		false,
