@@ -39,8 +39,8 @@ func (f featureRunnerFunc) Run(ctx *command.Context, cmd *events.CommentCommand)
 func (r *PlatformModeFeatureRunner) Wrap(
 	allocatedRunner events.CommentCommandRunner,
 	unallocatedRunner events.CommentCommandRunner,
-) featureRunnerFunc {
-	return func(ctx *command.Context, cmd *events.CommentCommand) {
+) events.CommentCommandRunner {
+	return featureRunnerFunc(func(ctx *command.Context, cmd *events.CommentCommand) {
 		// if platform mode is not enable run unallocatedRunner runner. No need
 		// to invoke feature allocator
 		if !r.platformModeEnabled {
@@ -59,5 +59,5 @@ func (r *PlatformModeFeatureRunner) Wrap(
 		}
 
 		allocatedRunner.Run(ctx, cmd)
-	}
+	})
 }
