@@ -173,6 +173,7 @@ func (i *InstrumenetedStorageBackend) Write(key string, logs []string, fullRepoN
 	return ok, err
 }
 
+// TODO: [ORCA-4524] Remove feature flag after this feature is stable
 // Wraps feature flag around storage backend
 type FeatureAwareStorageBackend struct {
 	StorageBackend

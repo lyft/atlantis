@@ -38,7 +38,7 @@ type JobStore interface {
 
 func NewJobStore(storageBackend StorageBackend) JobStore {
 	return &StorageBackendJobStore{
-		JobStore: &MemoryJobStore{
+		JobStore: &InMemoryJobStore{
 			jobs: map[string]*Job{},
 		},
 		storageBackend: storageBackend,
@@ -48,7 +48,7 @@ func NewJobStore(storageBackend StorageBackend) JobStore {
 // Setup job store for testing
 func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job) JobStore {
 	return &StorageBackendJobStore{
-		JobStore: &MemoryJobStore{
+		JobStore: &InMemoryJobStore{
 			jobs: jobs,
 		},
 		storageBackend: storageBackend,
@@ -56,12 +56,12 @@ func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job) JobSto
 }
 
 // Memory Job store deals with handling jobs in memory
-type MemoryJobStore struct {
+type InMemoryJobStore struct {
 	jobs map[string]*Job
 	lock sync.RWMutex
 }
 
-func (m *MemoryJobStore) Get(jobID string) (*Job, error) {
+func (m *InMemoryJobStore) Get(jobID string) (*Job, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -71,7 +71,7 @@ func (m *MemoryJobStore) Get(jobID string) (*Job, error) {
 	return m.jobs[jobID], nil
 }
 
-func (m *MemoryJobStore) AppendOutput(jobID string, output string) error {
+func (m *InMemoryJobStore) AppendOutput(jobID string, output string) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -89,7 +89,7 @@ func (m *MemoryJobStore) AppendOutput(jobID string, output string) error {
 	return nil
 }
 
-func (m *MemoryJobStore) SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error {
+func (m *InMemoryJobStore) SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -108,7 +108,7 @@ func (m *MemoryJobStore) SetJobCompleteStatus(jobID string, fullRepoName string,
 	return nil
 }
 
-func (m *MemoryJobStore) RemoveJob(jobID string) {
+func (m *InMemoryJobStore) RemoveJob(jobID string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
