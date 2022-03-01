@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 )
 
@@ -37,7 +37,7 @@ type AuditProjectCommandWrapper struct {
 	events.ProjectCommandRunner
 }
 
-func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) models.ProjectResult {
+func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectContext) models.ProjectResult {
 	id := ctx.JobID
 	startTime := strconv.FormatInt(time.Now().Unix(), 10)
 
@@ -58,7 +58,7 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 
 	if err := p.emit(ctx, AtlantisJobStateRunning, atlantisJobEvent); err != nil {
 		// return an error if we are not able to write to sns
-		return models.ProjectResult{
+		return command.ProjectResult{
 			Error: errors.Wrap(err, "emitting atlantis job event"),
 		}
 	}
@@ -81,7 +81,7 @@ func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectCommandContext) mod
 }
 
 func (p *AuditProjectCommandWrapper) emit(
-	ctx models.ProjectCommandContext,
+	ctx command.ProjectContext,
 	state AtlantisJobState,
 	atlantisJobEvent *AtlantisJobEvent,
 ) error {
