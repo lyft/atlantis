@@ -29,7 +29,8 @@ type storageBackend struct {
 	containerName string
 }
 
-func (s *storageBackend) Read(key string) (logs []string, err error) {
+func (s *storageBackend) Read(key string) ([]string, error) {
+	logs := []string{}
 	readContainerFn := func(item stow.Item, err error) error {
 		if err != nil {
 			return errors.Wrapf(err, "reading item: %s at location: %s", item.Name(), s.location)
@@ -68,8 +69,8 @@ func (s *storageBackend) Read(key string) (logs []string, err error) {
 		return stow.Walk(container, key, PageSize, readContainerFn)
 	}
 
-	err = stow.WalkContainers(s.location, s.containerName, PageSize, readLocationFn)
-	return
+	err := stow.WalkContainers(s.location, s.containerName, PageSize, readLocationFn)
+	return logs, err
 }
 
 func (s *storageBackend) Write(key string, logs []string) (bool, error) {
