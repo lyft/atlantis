@@ -37,7 +37,7 @@ type AuditProjectCommandWrapper struct {
 	events.ProjectCommandRunner
 }
 
-func (p *AuditProjectCommandWrapper) Apply(ctx models.ProjectContext) models.ProjectResult {
+func (p *AuditProjectCommandWrapper) Apply(ctx command.ProjectContext) command.ProjectResult {
 	id := ctx.JobID
 	startTime := strconv.FormatInt(time.Now().Unix(), 10)
 
