@@ -182,20 +182,34 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 }
 
 func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
-	var err error
+	githubChecks, err := p.featureAllocator.ShouldAllocate(feature.GitHubChecks, ctx.HeadRepo.FullName)
+	if err != nil {
+		githubChecks = false
+		ctx.Log.Warn("unable to allocate GitHub Checks feature: %s", err)
+	}
+
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
-	if err = p.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.PendingCommitStatus, command.Plan); err != nil {
-		ctx.Log.Warn("unable to update commit status: %s", err)
+	var checkId int64
+	if githubChecks {
+		checkId = p.pullUpdater.createCheckRun(ctx, models.PendingCommitStatus, command.Plan, command.Result{})
+	} else {
+		if err = p.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.PendingCommitStatus, command.Plan); err != nil {
+			ctx.Log.Warn("unable to update commit status: %s", err)
+		}
 	}
 
 	projectCmds, err := p.prjCmdBuilder.BuildPlanCommands(ctx, cmd)
 	if err != nil {
-		if statusErr := p.commitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, command.Plan); statusErr != nil {
-			ctx.Log.Warn("unable to update commit status: %s", statusErr)
+		if githubChecks {
+			p.pullUpdater.updateCheckRun(ctx, checkId, models.FailedCommitStatus, command.Plan, command.Result{Error: err})
+		} else {
+			if statusErr := p.commitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, command.Plan); statusErr != nil {
+				ctx.Log.Warn("unable to update commit status: %s", statusErr)
+			}
+			p.pullUpdater.updatePull(ctx, cmd, command.Result{Error: err})
 		}
-		p.pullUpdater.updatePull(ctx, cmd, command.Result{Error: err})
 		return
 	}
 
@@ -206,8 +220,12 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
 			// with 0/0 projects planned successfully because some users require
 			// the Atlantis status to be passing for all pull requests.
 			ctx.Log.Debug("setting VCS status to success with no projects found")
-			if err := p.commitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, command.Plan, 0, 0); err != nil {
-				ctx.Log.Warn("unable to update commit status: %s", err)
+			if githubChecks {
+				p.pullUpdater.updateCheckRun(ctx, checkId, models.SuccessCommitStatus, command.Plan, command.Result{})
+			} else {
+				if err := p.commitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, command.Plan, 0, 0); err != nil {
+					ctx.Log.Warn("unable to update commit status: %s", err)
+				}
 			}
 		}
 		return
@@ -230,10 +248,14 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
 		result.PlansDeleted = true
 	}
 
-	p.pullUpdater.updatePull(
-		ctx,
-		cmd,
-		result)
+	if githubChecks {
+		p.pullUpdater.updateCheckRun(ctx, checkId, models.PendingCommitStatus, command.Plan, result)
+	} else {
+		p.pullUpdater.updatePull(
+			ctx,
+			cmd,
+			result)
+	}
 
 	pullStatus, err := p.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
@@ -241,7 +263,15 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
 		return
 	}
 
-	p.updateCommitStatus(ctx, pullStatus)
+	if githubChecks {
+		status := models.SuccessCommitStatus
+		if pullStatus.StatusCount(models.ErroredPlanStatus) > 0 {
+			status = models.FailedCommitStatus
+		}
+		p.pullUpdater.updateCheckRun(ctx, checkId, status, command.Plan, result)
+	} else {
+		p.updateCommitStatus(ctx, pullStatus)
+	}
 
 	// Runs policy checks step after all plans are successful.
 	// This step does not approve any policies that require approval.
