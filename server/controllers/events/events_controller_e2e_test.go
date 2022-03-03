@@ -969,7 +969,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		DB: boltdb,
 	}
 
-	pullUpdater := &events.PullUpdater{
+	pullUpdater := &events.DefaultPullUpdater{
 		HidePrevPlanComments: false,
 		VCSClient:            e2eVCSClient,
 		MarkdownRenderer:     &events.MarkdownRenderer{},

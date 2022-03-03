@@ -9,6 +9,7 @@ import (
 
 	pegomock "github.com/petergtz/pegomock"
 	models "github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/command"
 )
 
 type MockClient struct {
@@ -84,11 +85,11 @@ func (mock *MockClient) GetModifiedFiles(_param0 models.Repo, _param1 models.Pul
 	return ret0, ret1
 }
 
-func (mock *MockClient) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+func (mock *MockClient) CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error) {
 	return 0, nil
 }
 
-func (mock *MockClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+func (mock *MockClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error {
 	return nil
 }
 
