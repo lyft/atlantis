@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/vcs/common"
 
 	"github.com/pkg/errors"
@@ -145,11 +146,11 @@ func (b *Client) HidePrevCommandComments(repo models.Repo, pullNum int, command 
 	return nil
 }
 
-func (b *Client) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+func (b *Client) CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error) {
 	return 0, nil
 }
 
-func (b *Client) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+func (b *Client) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error {
 	return nil
 }
 

@@ -15,7 +15,7 @@ func NewApplyCommandRunner(
 	prjCommandBuilder ProjectApplyCommandBuilder,
 	prjCmdRunner ProjectApplyCommandRunner,
 	autoMerger *AutoMerger,
-	pullUpdater *PullUpdater,
+	pullUpdater PullUpdater,
 	dbUpdater *DBUpdater,
 	parallelPoolSize int,
 	SilenceNoProjects bool,
@@ -47,7 +47,7 @@ type ApplyCommandRunner struct {
 	prjCmdBuilder        ProjectApplyCommandBuilder
 	prjCmdRunner         ProjectApplyCommandRunner
 	autoMerger           *AutoMerger
-	pullUpdater          *PullUpdater
+	pullUpdater          PullUpdater
 	dbUpdater            *DBUpdater
 	parallelPoolSize     int
 	pullReqStatusFetcher vcs.PullReqStatusFetcher

@@ -16,6 +16,7 @@ package vcs
 import (
 	"fmt"
 
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -36,11 +37,11 @@ func (a *NotConfiguredVCSClient) HidePrevCommandComments(repo models.Repo, pullN
 	return nil
 }
 
-func (a *NotConfiguredVCSClient) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+func (a *NotConfiguredVCSClient) CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error) {
 	return 0, nil
 }
 
-func (a *NotConfiguredVCSClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+func (a *NotConfiguredVCSClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error {
 	return nil
 }
 

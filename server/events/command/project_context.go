@@ -94,6 +94,8 @@ type ProjectContext struct {
 	DeleteSourceBranchOnMerge bool
 	// UUID for atlantis logs
 	JobID string
+	// CheckID
+	CheckID int64
 }
 
 // ProjectCloneDir creates relative path to clone the repo to. If we are running

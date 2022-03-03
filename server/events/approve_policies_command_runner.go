@@ -11,7 +11,7 @@ func NewApprovePoliciesCommandRunner(
 	commitStatusUpdater CommitStatusUpdater,
 	prjCommandBuilder ProjectApprovePoliciesCommandBuilder,
 	prjCommandRunner ProjectApprovePoliciesCommandRunner,
-	pullUpdater *PullUpdater,
+	pullUpdater PullUpdater,
 	dbUpdater *DBUpdater,
 	SilenceNoProjects bool,
 	silenceVCSStatusNoProjects bool,
@@ -29,7 +29,7 @@ func NewApprovePoliciesCommandRunner(
 
 type ApprovePoliciesCommandRunner struct {
 	commitStatusUpdater CommitStatusUpdater
-	pullUpdater         *PullUpdater
+	pullUpdater         PullUpdater
 	dbUpdater           *DBUpdater
 	prjCmdBuilder       ProjectApprovePoliciesCommandBuilder
 	prjCmdRunner        ProjectApprovePoliciesCommandRunner

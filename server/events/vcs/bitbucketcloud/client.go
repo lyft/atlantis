@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	validator "gopkg.in/go-playground/validator.v9"
 )
@@ -104,11 +105,11 @@ func (b *Client) HidePrevCommandComments(repo models.Repo, pullNum int, command 
 	return nil
 }
 
-func (b *Client) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+func (b *Client) CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error) {
 	return 0, nil
 }
 
-func (b *Client) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+func (b *Client) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error {
 	return nil
 }
 

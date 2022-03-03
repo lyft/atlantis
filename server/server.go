@@ -528,7 +528,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.MaxProjectsPerPR,
 	)
 
-	commitStatusUpdater := &events.FeatureAwareCommitStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}, FeatureAllocator: featureAllocator}
+	commitStatusUpdater := &events.FeatureAwareCommitStatusUpdater{Client: vcsClient, FeatureAllocator: featureAllocator}
 
 	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTfVersion)
 
@@ -592,11 +592,20 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB: boltdb,
 	}
 
-	pullUpdater := &events.PullUpdater{
+	defaultPullUpdater := &events.DefaultPullUpdater{
 		HidePrevPlanComments: userConfig.HidePrevPlanComments,
 		VCSClient:            vcsClient,
 		MarkdownRenderer:     markdownRenderer,
 		GlobalCfg:            globalCfg,
+	}
+
+	pullUpdater := &events.FeatureAwarePullUpdater{
+		HidePrevPlanComments: userConfig.HidePrevPlanComments,
+		VCSClient:            vcsClient,
+		MarkdownRenderer:     markdownRenderer,
+		GlobalCfg:            globalCfg,
+		FeatureAllocator:     featureAllocator,
+		PullUpdater:          defaultPullUpdater,
 	}
 
 	autoMerger := &events.AutoMerger{

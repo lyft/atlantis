@@ -168,11 +168,11 @@ func (g *GitlabClient) HidePrevCommandComments(repo models.Repo, pullNum int, co
 	return nil
 }
 
-func (a *GitlabClient) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+func (a *GitlabClient) CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error) {
 	return 0, nil
 }
 
-func (a *GitlabClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+func (a *GitlabClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error {
 	return nil
 }
 

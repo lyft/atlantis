@@ -11,6 +11,7 @@ import (
 
 	"github.com/mcdafydd/go-azuredevops/azuredevops"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs/common"
 )
@@ -53,11 +54,11 @@ func NewAzureDevopsClient(hostname string, userName string, token string) (*Azur
 	return client, nil
 }
 
-func (g *AzureDevopsClient) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+func (g *AzureDevopsClient) CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error) {
 	return 0, nil
 }
 
-func (g *AzureDevopsClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+func (g *AzureDevopsClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error {
 	return nil
 }
 

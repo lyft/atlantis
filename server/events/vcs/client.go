@@ -40,8 +40,8 @@ type Client interface {
 	MergePull(pull models.PullRequest, pullOptions models.PullRequestOptions) error
 	MarkdownPullLink(pull models.PullRequest) (string, error)
 
-	CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, comment string) (int64, error)
-	UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, comment string) error
+	CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error)
+	UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error
 
 	// DownloadRepoConfigFile return `atlantis.yaml` content from VCS (which support fetch a single file from repository)
 	// The first return value indicate that repo contain atlantis.yaml or not

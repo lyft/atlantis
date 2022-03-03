@@ -14,6 +14,7 @@
 package vcs
 
 import (
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -64,12 +65,12 @@ func (d *ClientProxy) HidePrevCommandComments(repo models.Repo, pullNum int, com
 	return d.clients[repo.VCSHost.Type].HidePrevCommandComments(repo, pullNum, command)
 }
 
-func (d *ClientProxy) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
-	return d.clients[repo.VCSHost.Type].CreateCheckRun(repo, pull)
+func (d *ClientProxy) CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error) {
+	return d.clients[repo.VCSHost.Type].CreateCheckRun(repo, pull, status, cmd, url)
 }
 
-func (d *ClientProxy) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
-	return d.clients[repo.VCSHost.Type].UpdateCheckRun(repo, pull, checkID, description)
+func (d *ClientProxy) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error {
+	return d.clients[repo.VCSHost.Type].UpdateCheckRun(repo, pull, checkID, status, cmd, url, comment)
 }
 
 func (d *ClientProxy) PullIsApproved(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error) {

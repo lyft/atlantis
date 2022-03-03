@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-github/v31/github"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs/common"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -196,11 +197,11 @@ func (g *GithubClient) CreateComment(repo models.Repo, pullNum int, comment stri
 	return nil
 }
 
-func (a *GithubClient) CreateCheckRun(repo models.Repo, pull models.PullRequest) (int64, error) {
+func (a *GithubClient) CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error) {
 	return 0, nil
 }
 
-func (a *GithubClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, description string) error {
+func (a *GithubClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error {
 	return nil
 }
 
