@@ -45,21 +45,6 @@ type FeatureAwareCommitStatusUpdater struct {
 	FeatureAllocator feature.Allocator
 }
 
-// func (f *FeatureAwareCommitStatusUpdater) UpdateCombined(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName command.Name) error {
-// 	githubChecks, err := p.featureAllocator.ShouldAllocate(feature.GitHubChecks, ctx.HeadRepo.FullName)
-// 	if err != nil {
-// 		githubChecks = false
-// 	}
-// 	if !githubChecks {
-// 		return f.CommitStatusUpdater.UpdateCombined(repo, pull, status, cmdName)
-// 	}
-// 	return nil
-// }
-
-// func (f *FeatureAwareCommitStatusUpdater) UpdateCombinedCount(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName command.Name, numSuccess int, numTotal int) error {
-// 	return f.CommitStatusUpdater.UpdateCombinedCount(repo, pull, status, cmdName, numSuccess, numTotal)
-// }
-
 func (f *FeatureAwareCommitStatusUpdater) UpdateProject(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus, url string) error {
 	githubChecks, err := f.FeatureAllocator.ShouldAllocate(feature.GitHubChecks, ctx.HeadRepo.FullName)
 	if err != nil {
