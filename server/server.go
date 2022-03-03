@@ -370,7 +370,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
-	storageBackend, err := jobs.NewStorageBackend(globalCfg.Jobs, logger)
+	projectJobsScope := statsScope.SubScope("getprojectjobs")
+
+	storageBackend, err := jobs.NewStorageBackend(globalCfg.Jobs, logger, featureAllocator, projectJobsScope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
@@ -743,11 +745,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		StaleCommandChecker:           staleCommandChecker,
 	}
 
-	featureAwareCommandRunner := &events.FeatureAwareCommandRunner{
-		CommandRunner:    commandRunner,
-		FeatureAllocator: featureAllocator,
-		VCSClient:        vcsClient,
-		Logger:           logger,
+	forceApplyCommandRunner := &events.ForceApplyCommandRunner{
+		CommandRunner: commandRunner,
+		VCSClient:     vcsClient,
+		Logger:        logger,
 	}
 
 	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
@@ -767,8 +768,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB:                 boltdb,
 		DeleteLockCommand:  deleteLockCommand,
 	}
-
-	projectJobsScope := statsScope.SubScope("getprojectjobs")
 
 	wsMux := websocket.NewInstrumentedMultiplexor(
 		websocket.NewMultiplexor(
@@ -792,7 +791,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	eventsController := &events_controllers.VCSEventsController{
-		CommandRunner:                   featureAwareCommandRunner,
+		CommandRunner:                   forceApplyCommandRunner,
 		PullCleaner:                     pullClosedExecutor,
 		Parser:                          eventParser,
 		CommentParser:                   commentParser,

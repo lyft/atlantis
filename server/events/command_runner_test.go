@@ -49,7 +49,7 @@ var azuredevopsGetter *mocks.MockAzureDevopsPullGetter
 var githubGetter *mocks.MockGithubPullGetter
 var gitlabGetter *mocks.MockGitlabMergeRequestGetter
 var ch events.DefaultCommandRunner
-var fa events.FeatureAwareCommandRunner
+var fa events.ForceApplyCommandRunner
 var workingDir events.WorkingDir
 var pendingPlanFinder *mocks.MockPendingPlanFinder
 var drainer *events.Drainer
@@ -396,11 +396,10 @@ func TestFeatureAwareRunCommentCommandRunner_CommentWhenEnabled(t *testing.T) {
 		" comment with a warning")
 	vcsClient := setup(t)
 
-	fa = events.FeatureAwareCommandRunner{
-		CommandRunner:    &ch,
-		FeatureAllocator: fa.FeatureAllocator,
-		VCSClient:        vcsClient,
-		Logger:           logger,
+	fa = events.ForceApplyCommandRunner{
+		CommandRunner: &ch,
+		VCSClient:     vcsClient,
+		Logger:        logger,
 	}
 
 	modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState, Num: fixtures.Pull.Num}
