@@ -25,12 +25,12 @@ func NewMockAutoplanValidator(options ...pegomock.Option) *MockAutoplanValidator
 func (mock *MockAutoplanValidator) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockAutoplanValidator) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockAutoplanValidator) PullRequestHasTerraformChanges(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool {
+func (mock *MockAutoplanValidator) IsValid(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockAutoplanValidator().")
 	}
 	params := []pegomock.Param{baseRepo, headRepo, pull, user}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("PullRequestHasTerraformChanges", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem()})
+	result := pegomock.GetGenericMockFrom(mock).Invoke("IsValid", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem()})
 	var ret0 bool
 	if len(result) != 0 {
 		if result[0] != nil {
@@ -77,23 +77,23 @@ type VerifierMockAutoplanValidator struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockAutoplanValidator) PullRequestHasTerraformChanges(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) *MockAutoplanValidator_PullRequestHasTerraformChanges_OngoingVerification {
+func (verifier *VerifierMockAutoplanValidator) IsValid(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) *MockAutoplanValidator_IsValid_OngoingVerification {
 	params := []pegomock.Param{baseRepo, headRepo, pull, user}
-	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "PullRequestHasTerraformChanges", params, verifier.timeout)
-	return &MockAutoplanValidator_PullRequestHasTerraformChanges_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "IsValid", params, verifier.timeout)
+	return &MockAutoplanValidator_IsValid_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
 
-type MockAutoplanValidator_PullRequestHasTerraformChanges_OngoingVerification struct {
+type MockAutoplanValidator_IsValid_OngoingVerification struct {
 	mock              *MockAutoplanValidator
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockAutoplanValidator_PullRequestHasTerraformChanges_OngoingVerification) GetCapturedArguments() (models.Repo, models.Repo, models.PullRequest, models.User) {
+func (c *MockAutoplanValidator_IsValid_OngoingVerification) GetCapturedArguments() (models.Repo, models.Repo, models.PullRequest, models.User) {
 	baseRepo, headRepo, pull, user := c.GetAllCapturedArguments()
 	return baseRepo[len(baseRepo)-1], headRepo[len(headRepo)-1], pull[len(pull)-1], user[len(user)-1]
 }
 
-func (c *MockAutoplanValidator_PullRequestHasTerraformChanges_OngoingVerification) GetAllCapturedArguments() (_param0 []models.Repo, _param1 []models.Repo, _param2 []models.PullRequest, _param3 []models.User) {
+func (c *MockAutoplanValidator_IsValid_OngoingVerification) GetAllCapturedArguments() (_param0 []models.Repo, _param1 []models.Repo, _param2 []models.PullRequest, _param3 []models.User) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]models.Repo, len(c.methodInvocations))

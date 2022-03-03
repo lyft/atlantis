@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"fmt"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
@@ -14,13 +13,8 @@ import (
 	"strconv"
 )
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_autoplan_validator.go AutoplanValidator
-type AutoplanValidator interface {
-	PullRequestHasTerraformChanges(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool
-}
-
-// AutoplanBuilder handles setting up repo cloning and checking to verify of any terraform files have changed
-type AutoplanBuilder struct {
+// AutoplanValidatorBuilder handles setting up repo cloning and checking to verify of any terraform files have changed
+type AutoplanValidatorBuilder struct {
 	Logger                        logging.SimpleLogging
 	Scope                         tally.Scope
 	VCSClient                     vcs.Client
@@ -51,11 +45,10 @@ type AutoplanBuilder struct {
 	PullUpdater                *events.PullUpdater
 }
 
-func (r *AutoplanBuilder) PullRequestHasTerraformChanges(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool {
+func (r *AutoplanValidatorBuilder) IsValid(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool {
 	if opStarted := r.Drainer.StartOp(); !opStarted {
-		if commentErr := r.VCSClient.CreateComment(baseRepo, pull.Num, ShutdownComment, command.Plan.String()); commentErr != nil {
-			r.Logger.Log(logging.Error, "unable to comment that Atlantis is shutting down: %s", commentErr)
-		}
+		r.Logger.Err("Atlantis is shutting down, cannot process current event")
+		r.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 		return false
 	}
 	defer r.Drainer.OpDone()
@@ -64,24 +57,25 @@ func (r *AutoplanBuilder) PullRequestHasTerraformChanges(baseRepo models.Repo, h
 		"repository", baseRepo.FullName,
 		"pull-num", strconv.Itoa(pull.Num),
 	)
-	defer r.logPanics(baseRepo, pull.Num, log)
+	defer r.logPanics(log)
 
-	scope := r.Scope.SubScope("gateway-autoplan")
-	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
+	timer := r.Scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 
 	ctx := &command.Context{
 		User:     user,
 		Log:      log,
-		Scope:    scope,
+		Scope:    r.Scope,
 		Pull:     pull,
 		HeadRepo: headRepo,
 		Trigger:  command.AutoTrigger,
 	}
 	if !r.validateCtxAndComment(ctx) {
+		r.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 		return false
 	}
 	if r.DisableAutoplan {
+		r.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 		return false
 	}
 	err := r.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
@@ -95,6 +89,7 @@ func (r *AutoplanBuilder) PullRequestHasTerraformChanges(baseRepo models.Repo, h
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
 		r.PullUpdater.UpdatePull(ctx, events.AutoplanCommand{}, command.Result{Error: err})
+		r.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 		return false
 	}
 	if len(projectCmds) == 0 {
@@ -104,55 +99,37 @@ func (r *AutoplanBuilder) PullRequestHasTerraformChanges(baseRepo models.Repo, h
 			// with 0/0 projects planned/policy_checked/applied successfully because some users require
 			// the Atlantis status to be passing for all pull requests.
 			ctx.Log.Debug("setting VCS status to success with no projects found")
-			if err := r.CommitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, command.Plan, 0, 0); err != nil {
-				ctx.Log.Warn("unable to update commit status: %s", err)
-			}
-			if err := r.CommitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, command.PolicyCheck, 0, 0); err != nil {
-				ctx.Log.Warn("unable to update commit status: %s", err)
-			}
-			if err := r.CommitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, command.Apply, 0, 0); err != nil {
-				ctx.Log.Warn("unable to update commit status: %s", err)
+			for _, cmd := range []command.Name{command.Plan, command.Apply, command.PolicyCheck} {
+				if err := r.CommitStatusUpdater.UpdateCombinedCount(baseRepo, pull, models.SuccessCommitStatus, cmd, 0, 0); err != nil {
+					ctx.Log.Warn("unable to update commit status: %s", err)
+				}
 			}
 		}
-		ctx.Scope.Counter("tf_projects_found").Inc(1)
+		r.Scope.Counter(metrics.ExecutionFailureMetric).Inc(1)
 		return false
 	}
-	ctx.Scope.Counter("tf_projects_not_found").Inc(1)
+	r.Scope.Counter(metrics.ExecutionSuccessMetric).Inc(1)
 	return true
 }
 
-func (r *AutoplanBuilder) logPanics(baseRepo models.Repo, pullNum int, logger logging.SimpleLogging) {
+func (r *AutoplanValidatorBuilder) logPanics(logger logging.SimpleLogging) {
 	if err := recover(); err != nil {
 		stack := recovery.Stack(3)
 		logger.Err("PANIC: %s\n%s", err, stack)
-		if commentErr := r.VCSClient.CreateComment(
-			baseRepo,
-			pullNum,
-			fmt.Sprintf("**Error: goroutine panic. This is a bug.**\n```\n%s\n%s```", err, stack),
-			"",
-		); commentErr != nil {
-			logger.Err("unable to comment: %s", commentErr)
-		}
 	}
 }
 
-func (r *AutoplanBuilder) validateCtxAndComment(ctx *command.Context) bool {
+func (r *AutoplanValidatorBuilder) validateCtxAndComment(ctx *command.Context) bool {
 	if !r.AllowForkPRs && ctx.HeadRepo.Owner != ctx.Pull.BaseRepo.Owner {
 		if r.SilenceForkPRErrors {
 			return false
 		}
 		ctx.Log.Info("command was run on a fork pull request which is disallowed")
-		if err := r.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, fmt.Sprintf("Atlantis commands can't be run on fork pull requests. To enable, set --%s  or, to disable this message, set --%s", r.AllowForkPRsFlag, r.SilenceForkPRErrorsFlag), ""); err != nil {
-			ctx.Log.Err("unable to comment: %s", err)
-		}
 		return false
 	}
 
 	if ctx.Pull.State != models.OpenPullState {
 		ctx.Log.Info("command was run on closed pull request")
-		if err := r.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, "Atlantis commands can't be run on closed pull requests", ""); err != nil {
-			ctx.Log.Err("unable to comment: %s", err)
-		}
 		return false
 	}
 

@@ -113,8 +113,6 @@ func TestPost_GithubCommentNotAllowlisted(t *testing.T) {
 	body, _ := ioutil.ReadAll(w.Result().Body)
 	exp := "Repo not allowlisted"
 	Assert(t, strings.Contains(string(body), exp), "exp %q to be contained in %q", exp, string(body))
-	expRepo, _ := models.NewRepo(models.Github, "baxterthehacker/public-repo", "https://github.com/baxterthehacker/public-repo.git", "", "")
-	vcsClient.VerifyWasCalledOnce().CreateComment(expRepo, 2, "```\nError: This repo is not allowlisted for Atlantis.\n```", "")
 }
 
 func TestPost_GithubCommentNotAllowlistedWithSilenceErrors(t *testing.T) {
@@ -145,7 +143,6 @@ func TestPost_GithubCommentNotAllowlistedWithSilenceErrors(t *testing.T) {
 	body, _ := ioutil.ReadAll(w.Result().Body)
 	exp := "Repo not allowlisted"
 	Assert(t, strings.Contains(string(body), exp), "exp %q to be contained in %q", exp, string(body))
-	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
 }
 
 func TestPost_GithubCommentResponse(t *testing.T) {
@@ -308,11 +305,11 @@ func TestPost_GithubOpenPR_WithTerraformChanges(t *testing.T) {
 	repo := models.Repo{}
 	pull := models.PullRequest{State: models.OpenPullState}
 	When(p.ParseGithubPullEvent(matchers.AnyPtrToGithubPullRequestEvent())).ThenReturn(pull, models.OpenedPullEvent, repo, repo, models.User{}, nil)
-	When(av.PullRequestHasTerraformChanges(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(true)
+	When(av.IsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(true)
 	When(sns.Write(sns_matchers.AnySliceOfByte())).ThenReturn(nil)
 	w := httptest.NewRecorder()
 	e.Post(w, req)
-	av.VerifyWasCalledEventually(Once(), 500*time.Millisecond).PullRequestHasTerraformChanges(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
+	av.VerifyWasCalledEventually(Once(), 500*time.Millisecond).IsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
 	sns.VerifyWasCalledEventually(Once(), 500*time.Millisecond).Write(sns_matchers.AnySliceOfByte())
 	ResponseContains(t, w, http.StatusOK, "")
 }
@@ -327,11 +324,11 @@ func TestPost_GithubOpenPR_NoTerraformChanges(t *testing.T) {
 	repo := models.Repo{}
 	pull := models.PullRequest{State: models.OpenPullState}
 	When(p.ParseGithubPullEvent(matchers.AnyPtrToGithubPullRequestEvent())).ThenReturn(pull, models.OpenedPullEvent, repo, repo, models.User{}, nil)
-	When(av.PullRequestHasTerraformChanges(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(false)
+	When(av.IsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(false)
 	When(sns.Write(sns_matchers.AnySliceOfByte())).ThenReturn(nil)
 	w := httptest.NewRecorder()
 	e.Post(w, req)
-	av.VerifyWasCalledEventually(Once(), 500*time.Millisecond).PullRequestHasTerraformChanges(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
+	av.VerifyWasCalledEventually(Once(), 500*time.Millisecond).IsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
 	sns.VerifyWasCalledEventually(Never(), 500*time.Millisecond).Write(sns_matchers.AnySliceOfByte())
 	ResponseContains(t, w, http.StatusOK, "")
 }
