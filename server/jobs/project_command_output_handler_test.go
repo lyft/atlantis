@@ -183,7 +183,10 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		dfProjectOutputHandler, ok := projectOutputHandler.(*jobs.AsyncProjectCommandOutputHandler)
 		assert.True(t, ok)
 
-		assert.Empty(t, dfProjectOutputHandler.GetJob(ctx.JobID).Output)
+		job, err := dfProjectOutputHandler.JobStore.Get(ctx.JobID)
+		Ok(t, err)
+
+		assert.Empty(t, job.Output)
 		assert.Empty(t, dfProjectOutputHandler.GetReceiverBufferForPull(ctx.JobID))
 		assert.Empty(t, dfProjectOutputHandler.GetJobIdMapForPull(pullContext))
 	})
