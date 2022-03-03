@@ -20,6 +20,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_commit_status_updater.go CommitStatusUpdater
@@ -38,6 +39,23 @@ type CommitStatusUpdater interface {
 	UpdateProject(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus, url string) error
 }
 
+type FeatureAwareCommitStatusUpdater struct {
+	CommitStatusUpdater
+	FeatureAllocator feature.Allocator
+}
+
+func (f *FeatureAwareCommitStatusUpdater) UpdateCombined(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName command.Name) error {
+	return f.CommitStatusUpdater.UpdateCombined(repo, pull, status, cmdName)
+}
+
+func (f *FeatureAwareCommitStatusUpdater) UpdateCombinedCount(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName command.Name, numSuccess int, numTotal int) error {
+	return f.CommitStatusUpdater.UpdateCombinedCount(repo, pull, status, cmdName, numSuccess, numTotal)
+}
+
+func (f *FeatureAwareCommitStatusUpdater) UpdateProject(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus, url string) error {
+	return f.CommitStatusUpdater.UpdateProject(ctx, cmdName, status, url)
+}
+
 // DefaultCommitStatusUpdater implements CommitStatusUpdater.
 type DefaultCommitStatusUpdater struct {
 	Client       vcs.Client
@@ -45,6 +63,7 @@ type DefaultCommitStatusUpdater struct {
 }
 
 func (d *DefaultCommitStatusUpdater) UpdateCombined(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName command.Name) error {
+	// add new implementation that calls into default implementation for status.
 	src := d.TitleBuilder.Build(cmdName.String())
 	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
 	return d.Client.UpdateStatus(repo, pull, status, src, descrip, "")
