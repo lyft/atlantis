@@ -374,7 +374,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Underlying:                underlyingRouter,
 	}
 
-	storageBackend, err := jobs.NewStorageBackend(globalCfg.Jobs, logger)
+	projectJobsScope := statsScope.SubScope("getprojectjobs")
+
+	storageBackend, err := jobs.NewStorageBackend(globalCfg.Jobs, logger, featureAllocator, projectJobsScope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
@@ -794,8 +796,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB:                 boltdb,
 		DeleteLockCommand:  deleteLockCommand,
 	}
-
-	projectJobsScope := statsScope.SubScope("getprojectjobs")
 
 	wsMux := websocket.NewInstrumentedMultiplexor(
 		websocket.NewMultiplexor(
