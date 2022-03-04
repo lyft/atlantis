@@ -843,7 +843,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	gatewaySnsWriter := sns.NewWriterWithStats(session, userConfig.LyftGatewaySnsTopicArn, statsScope)
 	autoplanValidator := &gateway.AutoplanValidator{
 		Logger:                        logger,
-		Scope:                         statsScope,
+		Scope:                         statsScope.SubScope("validator"),
 		VCSClient:                     vcsClient,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		Drainer:                       drainer,
