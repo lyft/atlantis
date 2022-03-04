@@ -29,9 +29,9 @@ type HttpError struct {
 	code int
 }
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_autoplan_validator.go AutoplanValidator
-type AutoplanValidator interface {
-	IsValid(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_event_validator.go EventValidator
+type EventValidator interface {
+	InstrumentedIsValid(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool
 }
 
 // VCSEventsController handles all webhook requests which signify 'events' in the
@@ -52,7 +52,7 @@ type VCSEventsController struct {
 	SilenceAllowlistErrors bool
 	VCSClient              vcs.Client
 	SNSWriter              sns.Writer
-	AutoplanValidator      AutoplanValidator
+	AutoplanValidator      EventValidator
 }
 
 // Post handles POST webhook requests.
@@ -241,7 +241,7 @@ func (g *VCSEventsController) handlePullRequestEvent(baseRepo models.Repo, headR
 }
 
 func (g *VCSEventsController) handleOpenPullEvent(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, request *http.Request) {
-	if hasTerraformChanges := g.AutoplanValidator.IsValid(baseRepo, headRepo, pull, user); hasTerraformChanges {
+	if hasTerraformChanges := g.AutoplanValidator.InstrumentedIsValid(baseRepo, headRepo, pull, user); hasTerraformChanges {
 		if err := g.SendToWorker(request); err != nil {
 			g.Logger.With("err", err).Err("failed to send autoplan request to Atlantis worker")
 		}

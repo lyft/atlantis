@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
@@ -13,13 +14,12 @@ import (
 	"strconv"
 )
 
-// AutoplanValidatorBuilder handles setting up repo cloning and checking to verify of any terraform files have changed
-type AutoplanValidatorBuilder struct {
+// AutoplanValidator handles setting up repo cloning and checking to verify of any terraform files have changed
+type AutoplanValidator struct {
 	Logger                        logging.SimpleLogging
 	Scope                         tally.Scope
 	VCSClient                     vcs.Client
 	PreWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
-	DisableAutoplan               bool
 	Drainer                       *events.Drainer
 	GlobalCfg                     valid.GlobalCfg
 	// AllowForkPRs controls whether we operate on pull requests from forks.
@@ -45,11 +45,9 @@ type AutoplanValidatorBuilder struct {
 	PullUpdater                *events.PullUpdater
 }
 
-func (r *AutoplanValidatorBuilder) IsValid(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool {
+func (r *AutoplanValidator) isValid(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) (bool, error) {
 	if opStarted := r.Drainer.StartOp(); !opStarted {
-		r.Logger.Err("Atlantis is shutting down, cannot process current event")
-		r.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
-		return false
+		return false, errors.New("atlantis is shutting down, cannot process current event")
 	}
 	defer r.Drainer.OpDone()
 
@@ -58,9 +56,6 @@ func (r *AutoplanValidatorBuilder) IsValid(baseRepo models.Repo, headRepo models
 		"pull-num", strconv.Itoa(pull.Num),
 	)
 	defer r.logPanics(log)
-
-	timer := r.Scope.Timer(metrics.ExecutionTimeMetric).Start()
-	defer timer.Stop()
 
 	ctx := &command.Context{
 		User:     user,
@@ -71,12 +66,7 @@ func (r *AutoplanValidatorBuilder) IsValid(baseRepo models.Repo, headRepo models
 		Trigger:  command.AutoTrigger,
 	}
 	if !r.validateCtxAndComment(ctx) {
-		r.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
-		return false
-	}
-	if r.DisableAutoplan {
-		r.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
-		return false
+		return false, errors.New("invalid command context")
 	}
 	err := r.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
 	if err != nil {
@@ -89,8 +79,7 @@ func (r *AutoplanValidatorBuilder) IsValid(baseRepo models.Repo, headRepo models
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
 		r.PullUpdater.UpdatePull(ctx, events.AutoplanCommand{}, command.Result{Error: err})
-		r.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
-		return false
+		return false, errors.Wrap(err, "Failed building project command")
 	}
 	if len(projectCmds) == 0 {
 		ctx.Log.Info("determined there was no project to run plan in")
@@ -105,6 +94,21 @@ func (r *AutoplanValidatorBuilder) IsValid(baseRepo models.Repo, headRepo models
 				}
 			}
 		}
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r *AutoplanValidator) InstrumentedIsValid(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool {
+	timer := r.Scope.Timer(metrics.ExecutionTimeMetric).Start()
+	defer timer.Stop()
+	isValid, err := r.isValid(baseRepo, headRepo, pull, user)
+	if err != nil {
+		r.Logger.With("repo", baseRepo.FullName, "pull", pull.Num).Err(err.Error())
+		r.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
+		return false
+	}
+	if !isValid {
 		r.Scope.Counter(metrics.ExecutionFailureMetric).Inc(1)
 		return false
 	}
@@ -112,14 +116,14 @@ func (r *AutoplanValidatorBuilder) IsValid(baseRepo models.Repo, headRepo models
 	return true
 }
 
-func (r *AutoplanValidatorBuilder) logPanics(logger logging.SimpleLogging) {
+func (r *AutoplanValidator) logPanics(logger logging.SimpleLogging) {
 	if err := recover(); err != nil {
 		stack := recovery.Stack(3)
 		logger.Err("PANIC: %s\n%s", err, stack)
 	}
 }
 
-func (r *AutoplanValidatorBuilder) validateCtxAndComment(ctx *command.Context) bool {
+func (r *AutoplanValidator) validateCtxAndComment(ctx *command.Context) bool {
 	if !r.AllowForkPRs && ctx.HeadRepo.Owner != ctx.Pull.BaseRepo.Owner {
 		if r.SilenceForkPRErrors {
 			return false

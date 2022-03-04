@@ -15,7 +15,7 @@ import (
 	sns_mocks "github.com/runatlantis/atlantis/server/lyft/aws/sns/mocks"
 	sns_matchers "github.com/runatlantis/atlantis/server/lyft/aws/sns/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/lyft/gateway"
-	av_mocks "github.com/runatlantis/atlantis/server/lyft/gateway/mocks"
+	ev_mocks "github.com/runatlantis/atlantis/server/lyft/gateway/mocks"
 	"github.com/runatlantis/atlantis/server/metrics"
 	. "github.com/runatlantis/atlantis/testing"
 	"io/ioutil"
@@ -193,7 +193,7 @@ func TestPost_GithubPullRequestNotAllowlisted(t *testing.T) {
 	ResponseContains(t, w, http.StatusForbidden, "Pull request event from non-allowlisted repo")
 }
 
-func setup(t *testing.T) (gateway.VCSEventsController, *mocks.MockGithubRequestValidator, *mocks.MockGitlabRequestParserValidator, *emocks.MockEventParsing, *emocks.MockCommandRunner, *emocks.MockPullCleaner, *vcsmocks.MockClient, *emocks.MockCommentParsing, *sns_mocks.MockWriter, *av_mocks.MockAutoplanValidator) {
+func setup(t *testing.T) (gateway.VCSEventsController, *mocks.MockGithubRequestValidator, *mocks.MockGitlabRequestParserValidator, *emocks.MockEventParsing, *emocks.MockCommandRunner, *emocks.MockPullCleaner, *vcsmocks.MockClient, *emocks.MockCommentParsing, *sns_mocks.MockWriter, *ev_mocks.MockEventValidator) {
 	RegisterMockTestingT(t)
 	v := mocks.NewMockGithubRequestValidator()
 	gl := mocks.NewMockGitlabRequestParserValidator()
@@ -203,7 +203,7 @@ func setup(t *testing.T) (gateway.VCSEventsController, *mocks.MockGithubRequestV
 	c := emocks.NewMockPullCleaner()
 	vcsmock := vcsmocks.NewMockClient()
 	snsMock := sns_mocks.NewMockWriter()
-	avMock := av_mocks.NewMockAutoplanValidator()
+	evMock := ev_mocks.NewMockEventValidator()
 	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")
 	Ok(t, err)
 	logger := logging.NewNoopLogger(t)
@@ -218,9 +218,9 @@ func setup(t *testing.T) (gateway.VCSEventsController, *mocks.MockGithubRequestV
 		RepoAllowlistChecker:   repoAllowlistChecker,
 		VCSClient:              vcsmock,
 		SNSWriter:              snsMock,
-		AutoplanValidator:      avMock,
+		AutoplanValidator:      evMock,
 	}
-	return e, v, gl, p, cr, c, vcsmock, cp, snsMock, avMock
+	return e, v, gl, p, cr, c, vcsmock, cp, snsMock, evMock
 }
 
 func TestPost_GithubCommentSuccess(t *testing.T) {
@@ -297,7 +297,7 @@ func TestPost_GithubClosePR(t *testing.T) {
 
 func TestPost_GithubOpenPR_WithTerraformChanges(t *testing.T) {
 	t.Log("when the event is a PR opened, we send request to SNS if there are tf changes")
-	e, v, _, p, _, _, _, _, sns, av := setup(t)
+	e, v, _, p, _, _, _, _, sns, ev := setup(t)
 	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
 	req.Header.Set(gateway.GithubHeader, "pull_request")
 	event := `{"action": "open"}`
@@ -305,18 +305,18 @@ func TestPost_GithubOpenPR_WithTerraformChanges(t *testing.T) {
 	repo := models.Repo{}
 	pull := models.PullRequest{State: models.OpenPullState}
 	When(p.ParseGithubPullEvent(matchers.AnyPtrToGithubPullRequestEvent())).ThenReturn(pull, models.OpenedPullEvent, repo, repo, models.User{}, nil)
-	When(av.IsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(true)
+	When(ev.InstrumentedIsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(true)
 	When(sns.Write(sns_matchers.AnySliceOfByte())).ThenReturn(nil)
 	w := httptest.NewRecorder()
 	e.Post(w, req)
-	av.VerifyWasCalledEventually(Once(), 500*time.Millisecond).IsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
+	ev.VerifyWasCalledEventually(Once(), 500*time.Millisecond).InstrumentedIsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
 	sns.VerifyWasCalledEventually(Once(), 500*time.Millisecond).Write(sns_matchers.AnySliceOfByte())
 	ResponseContains(t, w, http.StatusOK, "")
 }
 
 func TestPost_GithubOpenPR_NoTerraformChanges(t *testing.T) {
 	t.Log("when the event is a PR opened, we don't send a request to SNS if there are no tf changes")
-	e, v, _, p, _, _, _, _, sns, av := setup(t)
+	e, v, _, p, _, _, _, _, sns, ev := setup(t)
 	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
 	req.Header.Set(gateway.GithubHeader, "pull_request")
 	event := `{"action": "open"}`
@@ -324,11 +324,11 @@ func TestPost_GithubOpenPR_NoTerraformChanges(t *testing.T) {
 	repo := models.Repo{}
 	pull := models.PullRequest{State: models.OpenPullState}
 	When(p.ParseGithubPullEvent(matchers.AnyPtrToGithubPullRequestEvent())).ThenReturn(pull, models.OpenedPullEvent, repo, repo, models.User{}, nil)
-	When(av.IsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(false)
+	When(ev.InstrumentedIsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())).ThenReturn(false)
 	When(sns.Write(sns_matchers.AnySliceOfByte())).ThenReturn(nil)
 	w := httptest.NewRecorder()
 	e.Post(w, req)
-	av.VerifyWasCalledEventually(Once(), 500*time.Millisecond).IsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
+	ev.VerifyWasCalledEventually(Once(), 500*time.Millisecond).InstrumentedIsValid(matchers.AnyModelsRepo(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsUser())
 	sns.VerifyWasCalledEventually(Never(), 500*time.Millisecond).Write(sns_matchers.AnySliceOfByte())
 	ResponseContains(t, w, http.StatusOK, "")
 }
