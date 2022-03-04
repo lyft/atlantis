@@ -79,7 +79,7 @@ func (r *AutoplanValidator) isValid(baseRepo models.Repo, headRepo models.Repo, 
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
 		r.PullUpdater.UpdatePull(ctx, events.AutoplanCommand{}, command.Result{Error: err})
-		return false, errors.Wrap(err, "Failed building project command")
+		return false, errors.Wrap(err, "Failed building autoplan commands")
 	}
 	if len(projectCmds) == 0 {
 		ctx.Log.Info("determined there was no project to run plan in")
