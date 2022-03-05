@@ -498,11 +498,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 	defaultTfVersion := terraformClient.DefaultVersion()
 	pendingPlanFinder := &events.DefaultPendingPlanFinder{}
-	runStepRunner := &runtime.RunStepRunner{
-		TerraformExecutor: terraformClient,
-		DefaultTFVersion:  defaultTfVersion,
-		TerraformBinDir:   terraformClient.TerraformBinDir(),
-	}
+
 	drainer := &events.Drainer{}
 	statusController := &controllers.StatusController{
 		Logger:  logger,
@@ -532,64 +528,25 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		logger,
 		userConfig.MaxProjectsPerPR,
 	)
-
-	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTfVersion)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing show step runner")
-	}
-
-	policyCheckRunner, err := runtime.NewPolicyCheckStepRunner(
-		defaultTfVersion,
-		policy.NewConfTestExecutorWorkflow(logger, binDir, &terraform.DefaultDownloader{}),
-	)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing policy check runner")
-	}
-
 	applyRequirementHandler := &events.AggregateApplyRequirements{
 		WorkingDir: workingDir,
 	}
 
-	planStepRunner := &runtime.PlanStepRunner{
-		TerraformExecutor:   terraformClient,
-		DefaultTFVersion:    defaultTfVersion,
-		CommitStatusUpdater: commitStatusUpdater,
-		AsyncTFExec:         terraformClient,
-	}
-	destroyPlanStepRunnerWrapper := &lyftDecorators.DestroyPlanStepRunnerWrapper{
-		StepRunner: planStepRunner,
-	}
+	stepsRunner := runtime.NewStepsRunner(
+		terraformClient,
+		defaultTfVersion,
+		commitStatusUpdater,
+		binDir,
+		logger,
+	)
 
-	projectCommandRunner := &events.DefaultProjectCommandRunner{
-		Locker:           projectLocker,
-		LockURLGenerator: router,
-		InitStepRunner: &runtime.InitStepRunner{
-			TerraformExecutor: terraformClient,
-			DefaultTFVersion:  defaultTfVersion,
-		},
-		PlanStepRunner:        destroyPlanStepRunnerWrapper,
-		ShowStepRunner:        showStepRunner,
-		PolicyCheckStepRunner: policyCheckRunner,
-		ApplyStepRunner: &runtime.ApplyStepRunner{
-			TerraformExecutor:   terraformClient,
-			CommitStatusUpdater: commitStatusUpdater,
-			AsyncTFExec:         terraformClient,
-		},
-		RunStepRunner: runStepRunner,
-		EnvStepRunner: &runtime.EnvStepRunner{
-			RunStepRunner: runStepRunner,
-		},
-		VersionStepRunner: &runtime.VersionStepRunner{
-			TerraformExecutor: terraformClient,
-			DefaultTFVersion:  defaultTfVersion,
-		},
-		WorkingDir:                 workingDir,
-		Webhooks:                   webhooksManager,
-		WorkingDirLocker:           workingDirLocker,
-		AggregateApplyRequirements: applyRequirementHandler,
-	}
+	projectCommandRunner := events.NewProjectCommandRunner(
+		stepsRunner,
+		workingDir,
+		webhooksManager,
+		workingDirLocker,
+		applyRequirementHandler,
+	)
 
 	dbUpdater := &events.DBUpdater{
 		DB: boltdb,
@@ -634,7 +591,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	} else {
 		snsWriter = sns.NewNoopWriter()
 	}
-
 	auditProjectCmdRunner := &lyftDecorators.AuditProjectCommandWrapper{
 		SnsWriter:            snsWriter,
 		ProjectCommandRunner: featureAwareProjectCommandRunner,

@@ -188,19 +188,25 @@ func (f *FeatureAwareProjectCommandRunner) Apply(ctx command.ProjectContext) com
 	return f.ProjectCommandRunner.Apply(ctx)
 }
 
+func NewProjectCommandRunner(
+	stepsRunner runtime.StepsRunner,
+	workingDir WorkingDir,
+	webhooks WebhooksSender,
+	workingDirLocker WorkingDirLocker,
+	aggregateApplyRequirements ApplyRequirement,
+) *DefaultProjectCommandRunner {
+	return &DefaultProjectCommandRunner{
+		StepsRunner:                stepsRunner,
+		WorkingDir:                 workingDir,
+		Webhooks:                   webhooks,
+		WorkingDirLocker:           workingDirLocker,
+		AggregateApplyRequirements: aggregateApplyRequirements,
+	}
+}
+
 // DefaultProjectCommandRunner implements ProjectCommandRunner.
 type DefaultProjectCommandRunner struct { //create object and test
-	Locker                     ProjectLocker
-	LockURLGenerator           LockURLGenerator
-	InitStepRunner             StepRunner
-	PlanStepRunner             StepRunner
-	ShowStepRunner             StepRunner
-	VersionStepRunner          StepRunner
-	ApplyStepRunner            StepRunner
-	PolicyCheckStepRunner      StepRunner
-	RunStepRunner              CustomStepRunner
-	EnvStepRunner              EnvStepRunner
-	PullApprovedChecker        runtime.PullApprovedChecker
+	StepsRunner                runtime.StepsRunner
 	WorkingDir                 WorkingDir
 	Webhooks                   WebhooksSender
 	WorkingDirLocker           WorkingDirLocker
@@ -286,22 +292,6 @@ func (p *DefaultProjectCommandRunner) doApprovePolicies(ctx command.ProjectConte
 }
 
 func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx command.ProjectContext) (*models.PolicyCheckSuccess, string, error) {
-	// Acquire Atlantis lock for this repo/dir/workspace.
-	// This should already be acquired from the prior plan operation.
-	// if for some reason an unlock happens between the plan and policy check step
-	// we will attempt to capture the lock here but fail to get the working directory
-	// at which point we will unlock again to preserve functionality
-	// If we fail to capture the lock here (super unlikely) then we error out and the user is forced to replan
-	lockAttempt, err := p.Locker.TryLock(ctx.Log, ctx.Pull, ctx.User, ctx.Workspace, models.NewProject(ctx.Pull.BaseRepo.FullName, ctx.RepoRelDir))
-
-	if err != nil {
-		return nil, "", errors.Wrap(err, "acquiring lock")
-	}
-	if !lockAttempt.LockAcquired {
-		return nil, lockAttempt.LockFailureReason, nil
-	}
-	ctx.Log.Debug("acquired lock for project")
-
 	// Acquire internal lock for the directory we're going to operate in.
 	// We should refactor this to keep the lock for the duration of plan and policy check since as of now
 	// there is a small gap where we don't have the lock and if we can't get this here, we should just unlock the PR.
@@ -337,7 +327,7 @@ func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx command.ProjectContext) 
 		return nil, "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	outputs, err := p.runSteps(ctx.Steps, ctx, absPath)
+	outputs, err := p.StepsRunner.Run(ctx.Steps, ctx, absPath)
 	if err != nil {
 		// Note: we are explicitly not unlocking the pr here since a failing policy check will require
 		// approval
@@ -387,7 +377,7 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx command.ProjectContext) (*model
 		return nil, "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	outputs, err := p.runSteps(ctx.Steps, ctx, projAbsPath)
+	outputs, err := p.StepsRunner.Run(ctx.Steps, ctx, projAbsPath)
 
 	if err != nil {
 		if unlockErr := lockAttempt.UnlockFn(); unlockErr != nil {
@@ -431,7 +421,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx command.ProjectContext) (apply
 	}
 	defer unlockFn()
 
-	outputs, err := p.runSteps(ctx.Steps, ctx, absPath)
+	outputs, err := p.StepsRunner.Run(ctx.Steps, ctx, absPath)
 
 	p.Webhooks.Send(ctx.Log, webhooks.ApplyResult{ // nolint: errcheck
 		Workspace: ctx.Workspace,
@@ -469,50 +459,10 @@ func (p *DefaultProjectCommandRunner) doVersion(ctx command.ProjectContext) (ver
 	}
 	defer unlockFn()
 
-	outputs, err := p.runSteps(ctx.Steps, ctx, absPath)
+	outputs, err := p.StepsRunner.Run(ctx.Steps, ctx, absPath)
 	if err != nil {
 		return "", "", fmt.Errorf("%s\n%s", err, strings.Join(outputs, "\n"))
 	}
 
 	return strings.Join(outputs, "\n"), "", nil
-}
-
-func (p *DefaultProjectCommandRunner) runSteps(steps []valid.Step, ctx command.ProjectContext, absPath string) ([]string, error) {
-	var outputs []string
-
-	envs := make(map[string]string)
-	for _, step := range steps {
-		var out string
-		var err error
-		switch step.StepName {
-		case "init":
-			out, err = p.InitStepRunner.Run(ctx, step.ExtraArgs, absPath, envs)
-		case "plan":
-			out, err = p.PlanStepRunner.Run(ctx, step.ExtraArgs, absPath, envs)
-		case "show":
-			_, err = p.ShowStepRunner.Run(ctx, step.ExtraArgs, absPath, envs)
-		case "policy_check":
-			out, err = p.PolicyCheckStepRunner.Run(ctx, step.ExtraArgs, absPath, envs)
-		case "apply":
-			out, err = p.ApplyStepRunner.Run(ctx, step.ExtraArgs, absPath, envs)
-		case "version":
-			out, err = p.VersionStepRunner.Run(ctx, step.ExtraArgs, absPath, envs)
-		case "run":
-			out, err = p.RunStepRunner.Run(ctx, step.RunCommand, absPath, envs)
-		case "env":
-			out, err = p.EnvStepRunner.Run(ctx, step.RunCommand, step.EnvVarValue, absPath, envs)
-			envs[step.EnvVarName] = out
-			// We reset out to the empty string because we don't want it to
-			// be printed to the PR, it's solely to set the environment variable.
-			out = ""
-		}
-
-		if out != "" {
-			outputs = append(outputs, out)
-		}
-		if err != nil {
-			return outputs, err
-		}
-	}
-	return outputs, nil
 }
