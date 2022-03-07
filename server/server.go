@@ -897,47 +897,47 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		SNSWriter:              gatewaySnsWriter,
 		AutoplanValidator:      autoplanValidator,
 	}
-
+	defaultEventsController := &events_controllers.VCSEventsController{
+		CommandRunner:                   forceApplyCommandRunner,
+		PullCleaner:                     pullClosedExecutor,
+		Parser:                          eventParser,
+		CommentParser:                   commentParser,
+		Logger:                          logger,
+		Scope:                           statsScope,
+		ApplyDisabled:                   userConfig.DisableApply,
+		GithubWebhookSecret:             []byte(userConfig.GithubWebhookSecret),
+		GithubRequestValidator:          &events_controllers.DefaultGithubRequestValidator{},
+		GitlabRequestParserValidator:    &events_controllers.DefaultGitlabRequestParserValidator{},
+		GitlabWebhookSecret:             []byte(userConfig.GitlabWebhookSecret),
+		RepoAllowlistChecker:            repoAllowlist,
+		SilenceAllowlistErrors:          userConfig.SilenceAllowlistErrors,
+		SupportedVCSHosts:               supportedVCSHosts,
+		VCSClient:                       vcsClient,
+		BitbucketWebhookSecret:          []byte(userConfig.BitbucketWebhookSecret),
+		AzureDevopsWebhookBasicUser:     []byte(userConfig.AzureDevopsWebhookUser),
+		AzureDevopsWebhookBasicPassword: []byte(userConfig.AzureDevopsWebhookPassword),
+		AzureDevopsRequestValidator:     &events_controllers.DefaultAzureDevopsRequestValidator{},
+	}
 	var vcsPostHandler sqs.VCSPostHandler
 	lyftMode := userConfig.ToLyftMode()
 	//TODO: remove logs after testing is complete
 	switch lyftMode {
 	case Default: // default eventsController handles POST
-		vcsPostHandler = &events_controllers.VCSEventsController{
-			CommandRunner:                   forceApplyCommandRunner,
-			PullCleaner:                     pullClosedExecutor,
-			Parser:                          eventParser,
-			CommentParser:                   commentParser,
-			Logger:                          logger,
-			Scope:                           statsScope,
-			ApplyDisabled:                   userConfig.DisableApply,
-			GithubWebhookSecret:             []byte(userConfig.GithubWebhookSecret),
-			GithubRequestValidator:          &events_controllers.DefaultGithubRequestValidator{},
-			GitlabRequestParserValidator:    &events_controllers.DefaultGitlabRequestParserValidator{},
-			GitlabWebhookSecret:             []byte(userConfig.GitlabWebhookSecret),
-			RepoAllowlistChecker:            repoAllowlist,
-			SilenceAllowlistErrors:          userConfig.SilenceAllowlistErrors,
-			SupportedVCSHosts:               supportedVCSHosts,
-			VCSClient:                       vcsClient,
-			BitbucketWebhookSecret:          []byte(userConfig.BitbucketWebhookSecret),
-			AzureDevopsWebhookBasicUser:     []byte(userConfig.AzureDevopsWebhookUser),
-			AzureDevopsWebhookBasicPassword: []byte(userConfig.AzureDevopsWebhookPassword),
-			AzureDevopsRequestValidator:     &events_controllers.DefaultAzureDevopsRequestValidator{},
-		}
+		vcsPostHandler = defaultEventsController
 		logger.Info("running Atlantis in default mode")
 	case Gateway: // gateway eventsController handles POST
 		vcsPostHandler = gatewayEventsController
 		logger.With("sns", userConfig.LyftGatewaySnsTopicArn).Info("running Atlantis in gateway mode")
-	case Hybrid: // gateway eventsController handles POST, and SQS worker is set up to handle messages
+	case Hybrid: // gateway eventsController handles POST, and SQS worker is set up to handle messages via default eventsController
 		vcsPostHandler = gatewayEventsController
-		worker, err := sqs.NewGatewaySQSWorker(statsScope, userConfig.LyftWorkerQueueURL, gatewayEventsController)
+		worker, err := sqs.NewGatewaySQSWorker(statsScope, userConfig.LyftWorkerQueueURL, defaultEventsController)
 		if err != nil {
 			return nil, errors.Wrapf(err, "setting up sqs handler for hybrid mode")
 		}
 		worker.Work(ctx)
 		logger.With("queue", userConfig.LyftWorkerQueueURL, "sns", userConfig.LyftGatewaySnsTopicArn).Info("running Atlantis in hybrid mode")
-	case Worker: // an SQS worker is set up to handle messages
-		worker, err := sqs.NewGatewaySQSWorker(statsScope, userConfig.LyftWorkerQueueURL, gatewayEventsController)
+	case Worker: // an SQS worker is set up to handle messages via default eventsController
+		worker, err := sqs.NewGatewaySQSWorker(statsScope, userConfig.LyftWorkerQueueURL, defaultEventsController)
 		if err != nil {
 			return nil, errors.Wrapf(err, "setting up sqs handler for worker mode")
 		}
