@@ -12,6 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 	"github.com/uber-go/tally"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -249,12 +250,27 @@ func (g *VCSEventsController) handleOpenPullEvent(baseRepo models.Repo, headRepo
 }
 
 func (g *VCSEventsController) SendToWorker(r *http.Request) error {
-	buffer := bytes.NewBuffer([]byte{})
-	if err := r.Write(buffer); err != nil {
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "rereading request body")
+	}
+	bodyBuffer := bytes.NewBuffer(bodyBytes)
+	copiedRequest := http.Request{
+		Method:           r.Method,
+		URL:              r.URL,
+		Header:           r.Header,
+		Body:             ioutil.NopCloser(bodyBuffer),
+		GetBody:          r.GetBody,
+		ContentLength:    r.ContentLength,
+		TransferEncoding: r.TransferEncoding,
+		Host:             r.Host,
+	}
+	requestBuffer := bytes.NewBuffer([]byte{})
+	if err := copiedRequest.Write(requestBuffer); err != nil {
 		return errors.Wrap(err, "marshalling gateway request to buffer")
 	}
-	if err := g.SNSWriter.Write(buffer.Bytes()); err != nil {
-		return errors.Wrap(err, "marshalling gateway request to buffer")
+	if err := g.SNSWriter.Write(requestBuffer.Bytes()); err != nil {
+		return errors.Wrap(err, "writing gateway request to SNS topic")
 	}
 	return nil
 }
