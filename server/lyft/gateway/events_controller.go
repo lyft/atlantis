@@ -266,7 +266,7 @@ func (g *VCSEventsController) SendToWorker(r *http.Request, body []byte) error {
 	}
 	requestBuffer := bytes.NewBuffer([]byte{})
 	if err := copiedRequest.Write(requestBuffer); err != nil {
-		return errors.Wrap(err, "marshalling gateway request to buffer")
+		return errors.Wrap(err, "marshalling gateway request into buffer")
 	}
 	if err := g.SNSWriter.Write(requestBuffer.Bytes()); err != nil {
 		return errors.Wrap(err, "writing gateway request to SNS topic")
