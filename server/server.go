@@ -123,7 +123,7 @@ type Server struct {
 	ScheduledExecutorService      *scheduled.ExecutorService
 	ProjectCmdOutputHandler       jobs.ProjectCommandOutputHandler
 	LyftMode                      Mode
-	WorkerCancelFunc              context.CancelFunc
+	CancelWorker                  context.CancelFunc
 }
 
 // Config holds config for server that isn't passed in by the user.
@@ -973,7 +973,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ScheduledExecutorService:      scheduledExecutorService,
 		ProjectCmdOutputHandler:       projectCmdOutputHandler,
 		LyftMode:                      lyftMode,
-		WorkerCancelFunc:              cancel,
+		CancelWorker:                  cancel,
 	}, nil
 }
 
@@ -1041,7 +1041,7 @@ func (s *Server) Start() error {
 	// Shutdown sqs polling. Any received messages being processed will either succeed/fail depending on if drainer started.
 	if s.LyftMode == Hybrid || s.LyftMode == Worker {
 		s.Logger.Warn("Received interrupt. Shutting down the sqs handler")
-		s.WorkerCancelFunc()
+		s.CancelWorker()
 	}
 
 	s.Logger.Warn("Received interrupt. Waiting for in-progress operations to complete")
