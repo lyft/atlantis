@@ -930,18 +930,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		logger.With("sns", userConfig.LyftGatewaySnsTopicArn).Info("running Atlantis in gateway mode")
 	case Hybrid: // gateway eventsController handles POST, and SQS worker is set up to handle messages via default eventsController
 		vcsPostHandler = gatewayEventsController
-		worker, err := sqs.NewGatewaySQSWorker(statsScope, userConfig.LyftWorkerQueueURL, defaultEventsController)
+		worker, err := sqs.NewGatewaySQSWorker(statsScope, userConfig.LyftWorkerQueueURL, defaultEventsController, ctx)
 		if err != nil {
+			logger.With("err", err).Err("unable to set up worker")
 			return nil, errors.Wrapf(err, "setting up sqs handler for hybrid mode")
 		}
-		worker.Work(ctx)
+		worker.Work()
 		logger.With("queue", userConfig.LyftWorkerQueueURL, "sns", userConfig.LyftGatewaySnsTopicArn).Info("running Atlantis in hybrid mode")
 	case Worker: // an SQS worker is set up to handle messages via default eventsController
-		worker, err := sqs.NewGatewaySQSWorker(statsScope, userConfig.LyftWorkerQueueURL, defaultEventsController)
+		worker, err := sqs.NewGatewaySQSWorker(statsScope, userConfig.LyftWorkerQueueURL, defaultEventsController, ctx)
 		if err != nil {
 			return nil, errors.Wrapf(err, "setting up sqs handler for worker mode")
 		}
-		worker.Work(ctx)
+		worker.Work()
 		logger.With("queue", userConfig.LyftWorkerQueueURL).Info("running Atlantis in worker mode")
 	}
 

@@ -87,11 +87,12 @@ func TestWorker_Success(t *testing.T) {
 		QueueURL:         "testUrl",
 		MessageProcessor: handler,
 		Scope:            testScope,
+		Context:          ctx,
 	}
 
 	wg.Add(1)
 	go func() {
-		worker.Work(ctx)
+		worker.Work()
 		wg.Done()
 	}()
 
@@ -125,11 +126,12 @@ func TestWorker_Error(t *testing.T) {
 		QueueURL:         "testUrl",
 		MessageProcessor: handler,
 		Scope:            testScope,
+		Context:          ctx,
 	}
 
 	wg.Add(1)
 	go func() {
-		worker.Work(ctx)
+		worker.Work()
 		wg.Done()
 	}()
 
@@ -170,11 +172,12 @@ func TestWorker_HandlerError(t *testing.T) {
 		QueueURL:         "testUrl",
 		MessageProcessor: handler,
 		Scope:            testScope,
+		Context:          ctx,
 	}
 
 	wg.Add(1)
 	go func() {
-		worker.Work(ctx)
+		worker.Work()
 		wg.Done()
 	}()
 
