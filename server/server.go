@@ -936,7 +936,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			cancel()
 			return nil, errors.Wrapf(err, "setting up sqs handler for hybrid mode")
 		}
-		worker.Work()
+		worker.Work(ctx)
 		logger.With("queue", userConfig.LyftWorkerQueueURL, "sns", userConfig.LyftGatewaySnsTopicArn).Info("running Atlantis in hybrid mode")
 	case Worker: // an SQS worker is set up to handle messages via default eventsController
 		worker, err := sqs.NewGatewaySQSWorker(statsScope, logger, userConfig.LyftWorkerQueueURL, defaultEventsController, ctx)
@@ -944,7 +944,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			cancel()
 			return nil, errors.Wrapf(err, "setting up sqs handler for worker mode")
 		}
-		worker.Work()
+		worker.Work(ctx)
 		logger.With("queue", userConfig.LyftWorkerQueueURL).Info("running Atlantis in worker mode")
 	}
 

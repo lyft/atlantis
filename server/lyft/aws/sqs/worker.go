@@ -27,7 +27,6 @@ type Worker struct {
 	QueueURL         string
 	MessageProcessor MessageProcessor
 	Logger           logging.SimpleLogging
-	Context          context.Context
 }
 
 func NewGatewaySQSWorker(scope tally.Scope, logger logging.SimpleLogging, queueURL string, postHandler VCSPostHandler, ctx context.Context) (*Worker, error) {
@@ -54,11 +53,10 @@ func NewGatewaySQSWorker(scope tally.Scope, logger logging.SimpleLogging, queueU
 		QueueURL:         queueURL,
 		MessageProcessor: handler,
 		Logger:           logger,
-		Context:          ctx,
 	}, nil
 }
 
-func (w *Worker) Work() {
+func (w *Worker) Work(ctx context.Context) {
 	messages := make(chan types.Message)
 	// Used to synchronize stopping message retrieval and processing
 	var wg sync.WaitGroup
@@ -66,7 +64,7 @@ func (w *Worker) Work() {
 	go func() {
 		defer wg.Done()
 		w.Logger.Info("start processing sqs messages routine")
-		w.processMessage(messages)
+		w.processMessage(ctx, messages)
 	}()
 	request := &sqs.ReceiveMessageInput{
 		QueueUrl:            &w.QueueURL,
@@ -74,19 +72,19 @@ func (w *Worker) Work() {
 		WaitTimeSeconds:     20, //max duration long polling
 	}
 	w.Logger.Info("start receiving sqs messages")
-	w.receiveMessages(messages, request)
+	w.receiveMessages(ctx, messages, request)
 	wg.Wait()
 }
 
-func (w *Worker) receiveMessages(messages chan types.Message, request *sqs.ReceiveMessageInput) {
+func (w *Worker) receiveMessages(ctx context.Context, messages chan types.Message, request *sqs.ReceiveMessageInput) {
 	for {
 		select {
-		case <-w.Context.Done():
+		case <-ctx.Done():
 			close(messages)
 			w.Logger.Info("closed sqs messages channel")
 			return
 		default:
-			response, err := w.Queue.ReceiveMessage(w.Context, request)
+			response, err := w.Queue.ReceiveMessage(ctx, request)
 			if err != nil {
 				w.Logger.With("err", err).Err("unable to receive sqs message")
 				continue
@@ -99,7 +97,7 @@ func (w *Worker) receiveMessages(messages chan types.Message, request *sqs.Recei
 	}
 }
 
-func (w *Worker) processMessage(messages chan types.Message) {
+func (w *Worker) processMessage(ctx context.Context, messages chan types.Message) {
 	// VisibilityTimeout is 30s, ideally enough time to "processMessage" < 10 messages (i.e. spin up goroutine for each)
 	for message := range messages {
 		err := w.MessageProcessor.ProcessMessage(message)
@@ -109,7 +107,7 @@ func (w *Worker) processMessage(messages chan types.Message) {
 		}
 
 		// Since we've successfully processed the message, let's go ahead and delete it from the queue
-		_, err = w.Queue.DeleteMessage(w.Context, &sqs.DeleteMessageInput{
+		_, err = w.Queue.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 			QueueUrl:      &w.QueueURL,
 			ReceiptHandle: message.ReceiptHandle,
 		})
