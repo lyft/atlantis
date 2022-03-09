@@ -92,7 +92,7 @@ func (w *Worker) receiveMessages(messages chan types.Message, request *sqs.Recei
 				continue
 			}
 			for _, message := range response.Messages {
-				w.Logger.Err("sending received sqs message through messages channel")
+				w.Logger.Info("sending received sqs message through messages channel")
 				messages <- message
 			}
 		}

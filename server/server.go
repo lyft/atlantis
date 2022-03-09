@@ -122,8 +122,8 @@ type Server struct {
 	Drainer                       *events.Drainer
 	ScheduledExecutorService      *scheduled.ExecutorService
 	ProjectCmdOutputHandler       jobs.ProjectCommandOutputHandler
-	Context                       context.Context
 	LyftMode                      Mode
+	WorkerCancelFunc              context.CancelFunc
 }
 
 // Config holds config for server that isn't passed in by the user.
@@ -867,7 +867,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		rawGithubClient,
 	)
 
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second) // nolint: vet
+	ctx, cancel := context.WithCancel(context.Background())
 	gatewaySnsWriter := sns.NewWriterWithStats(session, userConfig.LyftGatewaySnsTopicArn, statsScope)
 	autoplanValidator := &gateway.AutoplanValidator{
 		Logger:                        logger,
@@ -951,7 +951,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		AtlantisURL:                   parsedURL,
 		Router:                        underlyingRouter,
 		Port:                          userConfig.Port,
-		Context:                       ctx,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		CommandRunner:                 commandRunner,
 		Logger:                        logger,
@@ -974,6 +973,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ScheduledExecutorService:      scheduledExecutorService,
 		ProjectCmdOutputHandler:       projectCmdOutputHandler,
 		LyftMode:                      lyftMode,
+		WorkerCancelFunc:              cancel,
 	}, nil
 }
 
@@ -1038,6 +1038,12 @@ func (s *Server) Start() error {
 	}()
 	<-stop
 
+	// Shutdown sqs polling. Any received messages being processed will either succeed/fail depending on if drainer started.
+	if s.LyftMode == Hybrid || s.LyftMode == Worker {
+		s.Logger.Warn("Received interrupt. Shutting down the sqs handler")
+		s.WorkerCancelFunc()
+	}
+
 	s.Logger.Warn("Received interrupt. Waiting for in-progress operations to complete")
 	s.waitForDrain()
 
@@ -1046,7 +1052,8 @@ func (s *Server) Start() error {
 		s.Logger.Err(err.Error())
 	}
 
-	if err := server.Shutdown(s.Context); err != nil {
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second) // nolint: vet
+	if err := server.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
 	}
 	return nil
