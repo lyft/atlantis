@@ -933,6 +933,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		worker, err := sqs.NewGatewaySQSWorker(statsScope, logger, userConfig.LyftWorkerQueueURL, defaultEventsController, ctx)
 		if err != nil {
 			logger.With("err", err).Err("unable to set up worker")
+			cancel()
 			return nil, errors.Wrapf(err, "setting up sqs handler for hybrid mode")
 		}
 		worker.Work()
@@ -940,6 +941,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	case Worker: // an SQS worker is set up to handle messages via default eventsController
 		worker, err := sqs.NewGatewaySQSWorker(statsScope, logger, userConfig.LyftWorkerQueueURL, defaultEventsController, ctx)
 		if err != nil {
+			cancel()
 			return nil, errors.Wrapf(err, "setting up sqs handler for worker mode")
 		}
 		worker.Work()
