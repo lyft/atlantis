@@ -22,11 +22,13 @@ var preWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
 var projectCommandBuilder *mocks.MockProjectCommandBuilder
 var drainer *events.Drainer
 var commitStatusUpdater *mocks.MockCommitStatusUpdater
+var workingDir *mocks.MockWorkingDir
 
 func setupAutoplan(t *testing.T) *vcsmocks.MockClient {
 	RegisterMockTestingT(t)
 	projectCommandBuilder = mocks.NewMockProjectCommandBuilder()
 	commitStatusUpdater = mocks.NewMockCommitStatusUpdater()
+	workingDir = mocks.NewMockWorkingDir()
 	vcsClient := vcsmocks.NewMockClient()
 	drainer = &events.Drainer{}
 	pullUpdater := &events.PullUpdater{
@@ -50,6 +52,7 @@ func setupAutoplan(t *testing.T) *vcsmocks.MockClient {
 		PullUpdater:                   pullUpdater,
 		PrjCmdBuilder:                 projectCommandBuilder,
 		CommitStatusUpdater:           commitStatusUpdater,
+		WorkingDir:                    workingDir,
 	}
 	return vcsClient
 }
@@ -62,8 +65,16 @@ func TestIsValid_DrainOngoing(t *testing.T) {
 	Assert(t, containsTerraformChanges == false, "should be false when an error occurs")
 }
 
+func TestIsValid_DeleteCloneError(t *testing.T) {
+	t.Log("delete clone error")
+	_ = setupAutoplan(t)
+	When(workingDir.Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn(errors.New("failed to delete clone"))
+	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	Assert(t, containsTerraformChanges == false, "should be false when an error occurs")
+}
+
 func TestIsValid_ProjectBuilderError(t *testing.T) {
-	t.Log("projct builder error")
+	t.Log("project builder error")
 	vcsClient := setupAutoplan(t)
 	When(projectCommandBuilder.BuildAutoplanCommands(matchers.AnyPtrToEventsCommandContext())).
 		ThenReturn([]command.ProjectContext{}, errors.New("err"))
@@ -75,6 +86,7 @@ func TestIsValid_ProjectBuilderError(t *testing.T) {
 func TestIsValid_TerraformChanges(t *testing.T) {
 	t.Log("verify returns true if terraform changes exist")
 	_ = setupAutoplan(t)
+	When(workingDir.Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn(nil)
 	When(projectCommandBuilder.BuildAutoplanCommands(matchers.AnyPtrToEventsCommandContext())).
 		ThenReturn([]command.ProjectContext{
 			{
@@ -87,12 +99,20 @@ func TestIsValid_TerraformChanges(t *testing.T) {
 
 	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	Assert(t, containsTerraformChanges == true, "should have terraform changes")
+	commitStatusUpdater.VerifyWasCalled(Never()).UpdateCombinedCount(
+		matchers.AnyModelsRepo(),
+		matchers.AnyModelsPullRequest(),
+		matchers.AnyModelsCommitStatus(),
+		matchers.AnyModelsCommandName(),
+		AnyInt(),
+		AnyInt())
 }
 
 func TestPullRequestHasTerraformChanges_NoTerraformChanges(t *testing.T) {
 	t.Log("verify returns false if terraform changes don't exist")
 	vcsClient := setupAutoplan(t)
 	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	When(workingDir.Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn(nil)
 	Assert(t, containsTerraformChanges == false, "should have no terraform changes")
 	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
 	commitStatusUpdater.VerifyWasCalled(Times(3)).UpdateCombinedCount(
