@@ -63,6 +63,7 @@ func TestIsValid_DrainOngoing(t *testing.T) {
 	drainer.ShutdownBlocking()
 	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	Assert(t, containsTerraformChanges == false, "should be false when an error occurs")
+	workingDir.VerifyWasCalled(Never()).Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
 }
 
 func TestIsValid_DeleteCloneError(t *testing.T) {
@@ -71,6 +72,7 @@ func TestIsValid_DeleteCloneError(t *testing.T) {
 	When(workingDir.Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn(errors.New("failed to delete clone"))
 	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	Assert(t, containsTerraformChanges == false, "should be false when an error occurs")
+	workingDir.VerifyWasCalledOnce().Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
 }
 
 func TestIsValid_ProjectBuilderError(t *testing.T) {
@@ -81,6 +83,7 @@ func TestIsValid_ProjectBuilderError(t *testing.T) {
 	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "**Plan Error**\n```\nerr\n```\n", "plan")
 	Assert(t, containsTerraformChanges == false, "should be false when an error occurs")
+	workingDir.VerifyWasCalledOnce().Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
 }
 
 func TestIsValid_TerraformChanges(t *testing.T) {
@@ -106,6 +109,7 @@ func TestIsValid_TerraformChanges(t *testing.T) {
 		matchers.AnyModelsCommandName(),
 		AnyInt(),
 		AnyInt())
+	workingDir.VerifyWasCalledOnce().Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
 }
 
 func TestPullRequestHasTerraformChanges_NoTerraformChanges(t *testing.T) {
@@ -122,4 +126,5 @@ func TestPullRequestHasTerraformChanges_NoTerraformChanges(t *testing.T) {
 		matchers.AnyModelsCommandName(),
 		AnyInt(),
 		AnyInt())
+	workingDir.VerifyWasCalledOnce().Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
 }

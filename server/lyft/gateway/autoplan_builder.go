@@ -79,6 +79,10 @@ func (r *AutoplanValidator) isValid(baseRepo models.Repo, headRepo models.Repo, 
 		if statusErr := r.CommitStatusUpdater.UpdateCombined(baseRepo, pull, models.FailedCommitStatus, command.Plan); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
+		// If error happened after clone was made, we should clean it up here too
+		if cloneErr := r.WorkingDir.Delete(baseRepo, pull); cloneErr != nil {
+			ctx.Log.With("err", cloneErr).Warn("unable to delete clone after autoplan failed")
+		}
 		r.PullUpdater.UpdatePull(ctx, events.AutoplanCommand{}, command.Result{Error: err})
 		return false, errors.Wrap(err, "Failed building autoplan commands")
 	}
