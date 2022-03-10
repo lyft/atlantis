@@ -62,7 +62,7 @@ func (w *Worker) Work(ctx context.Context) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		w.Logger.Info("start processing sqs messages routine")
+		w.Logger.Info("start processing sqs messages")
 		w.processMessage(ctx, messages)
 	}()
 	request := &sqs.ReceiveMessageInput{
@@ -89,7 +89,6 @@ func (w *Worker) receiveMessages(ctx context.Context, messages chan types.Messag
 				continue
 			}
 			for _, message := range response.Messages {
-				w.Logger.Info("sending received sqs message through messages channel")
 				messages <- message
 			}
 		}
@@ -111,9 +110,7 @@ func (w *Worker) processMessage(ctx context.Context, messages chan types.Message
 			ReceiptHandle: message.ReceiptHandle,
 		})
 		if err != nil {
-			// keep it as a warning since this is not a big deal unless this is occurring frequently since
-			// we'll have already processed the message.
-			w.Logger.With("err", err).Err("unable to delete processed sqs message")
+			w.Logger.With("err", err).Warn("unable to delete processed sqs message")
 		}
 	}
 }
