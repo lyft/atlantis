@@ -85,7 +85,7 @@ func (w *Worker) receiveMessages(ctx context.Context, messages chan types.Messag
 		default:
 			response, err := w.Queue.ReceiveMessage(ctx, request)
 			if err != nil {
-				w.Logger.With("err", err).Err("unable to receive sqs message")
+				w.Logger.With("err", err).Warn("unable to receive sqs message")
 				continue
 			}
 			for _, message := range response.Messages {
