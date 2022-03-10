@@ -3,13 +3,12 @@ package sqs
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/logging"
-	"sync"
-
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally"
+	"sync"
 )
 
 const (
