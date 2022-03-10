@@ -51,6 +51,7 @@ type ProjectCommandContextBuilder interface {
 		commentFlags []string,
 		repoDir string,
 		contextFlags *ContextFlags,
+		statusID string,
 	) []command.ProjectContext
 }
 
@@ -70,11 +71,12 @@ func (cb *CommandScopedStatsProjectCommandContextBuilder) BuildProjectContext(
 	commentFlags []string,
 	repoDir string,
 	contextFlags *ContextFlags,
+	statusID string,
 ) (projectCmds []command.ProjectContext) {
 	cb.ProjectCounter.Inc(1)
 
 	cmds := cb.ProjectCommandContextBuilder.BuildProjectContext(
-		ctx, cmdName, prjCfg, commentFlags, repoDir, contextFlags,
+		ctx, cmdName, prjCfg, commentFlags, repoDir, contextFlags, statusID,
 	)
 
 	projectCmds = []command.ProjectContext{}
@@ -102,6 +104,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 	commentFlags []string,
 	repoDir string,
 	contextFlags *ContextFlags,
+	statusID string,
 ) (projectCmds []command.ProjectContext) {
 	ctx.Log.Debug("Building project command context for %s", cmdName)
 
@@ -137,6 +140,7 @@ func (cb *DefaultProjectCommandContextBuilder) BuildProjectContext(
 		contextFlags,
 		ctx.Scope,
 		ctx.PullRequestStatus,
+		statusID,
 	)
 
 	projectCmds = append(projectCmds, projectCmdContext)
@@ -156,6 +160,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 	commentFlags []string,
 	repoDir string,
 	contextFlags *ContextFlags,
+	statusID string,
 ) (projectCmds []command.ProjectContext) {
 	ctx.Log.Debug("PolicyChecks are enabled")
 
@@ -172,6 +177,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 		commentFlags,
 		repoDir,
 		contextFlags,
+		statusID,
 	)
 
 	if cmdName == command.Plan {
@@ -191,6 +197,7 @@ func (cb *PolicyCheckProjectCommandContextBuilder) BuildProjectContext(
 			contextFlags,
 			ctx.Scope,
 			ctx.PullRequestStatus,
+			statusID,
 		))
 	}
 
@@ -211,6 +218,7 @@ func newProjectCommandContext(ctx *command.Context,
 	contextFlags *ContextFlags,
 	scope tally.Scope,
 	pullStatus models.PullReqStatus,
+	statusID string,
 ) command.ProjectContext {
 
 	var projectPlanStatus models.ProjectPlanStatus
@@ -261,6 +269,7 @@ func newProjectCommandContext(ctx *command.Context,
 		Tags:                      projCfg.Tags,
 		PullReqStatus:             pullStatus,
 		JobID:                     uuid.New().String(),
+		StatusID:                  "",
 	}
 }
 

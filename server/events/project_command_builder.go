@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
@@ -161,6 +162,7 @@ type DefaultProjectCommandBuilder struct {
 	ParserValidator              *config.ParserValidator
 	ProjectFinder                ProjectFinder
 	VCSClient                    vcs.Client
+	TitleBuilder                 vcs.StatusTitleBuilder
 	WorkingDir                   WorkingDir
 	WorkingDirLocker             WorkingDirLocker
 	GlobalCfg                    valid.GlobalCfg
@@ -297,6 +299,10 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 		for _, mp := range matchingProjects {
 			ctx.Log.Debug("determining config for project at dir: %q workspace: %q", mp.Dir, mp.Workspace)
 			mergedCfg := p.GlobalCfg.MergeProjectCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp, repoCfg)
+			statusID, err := p.VCSClient.UpdateStatus(ctx.HeadRepo, ctx.Pull, models.PendingCommitStatus, *mp.Name, "", "")
+			if err != nil {
+				return nil, errors.Wrapf(err, "creating status %s", *mp.Name)
+			}
 			contextFlags := &ContextFlags{
 				Automerge:                 repoCfg.Automerge,
 				Verbose:                   verbose,
@@ -313,6 +319,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 					commentFlags,
 					repoDir,
 					contextFlags,
+					statusID,
 				)...)
 		}
 	} else {
@@ -323,10 +330,16 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding modified projects: %s", modifiedFiles)
 		}
+
 		ctx.Log.Info("automatically determined that there were %d projects modified in this pull request: %s", len(modifiedProjects), modifiedProjects)
 		for _, mp := range modifiedProjects {
 			ctx.Log.Debug("determining config for project at dir: %q", mp.Path)
 			pCfg := p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp.Path, DefaultWorkspace)
+
+			statusID, err := p.VCSClient.UpdateStatus(ctx.HeadRepo, ctx.Pull, models.PendingCommitStatus, *mp.Name, "", "")
+			if err != nil {
+				return nil, errors.Wrapf(err, "creating status %s", *&mp.RepoFullName)
+			}
 
 			contextFlags := &ContextFlags{
 				Automerge:                 DefaultAutomergeEnabled,
@@ -344,6 +357,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 					commentFlags,
 					repoDir,
 					contextFlags,
+					statusID,
 				)...)
 		}
 	}
@@ -618,6 +632,11 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 				DeleteSourceBranchOnMerge: projCfg.DeleteSourceBranchOnMerge,
 			}
 
+			statusID, err := p.VCSClient.UpdateStatus(ctx.HeadRepo, ctx.Pull, models.PendingCommitStatus, *mp.Name, "", "")
+			if err != nil {
+				return nil, errors.Wrapf(err, "creating status %s", *mp.Name)
+			}
+
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
 					ctx,
@@ -626,6 +645,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 					commentFlags,
 					repoDir,
 					contextFlags,
+					statusID,
 				)...)
 		}
 	} else {
@@ -638,6 +658,10 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 			ParallelPlan:              parallelPlan,
 			DeleteSourceBranchOnMerge: projCfg.DeleteSourceBranchOnMerge,
 		}
+		statusID, err := p.VCSClient.UpdateStatus(ctx.HeadRepo, ctx.Pull, models.PendingCommitStatus, projCfg.Name, "", "")
+		if err != nil {
+			return nil, errors.Wrapf(err, "creating status %s", projCfg.Name)
+		}
 
 		projCtxs = append(projCtxs,
 			p.ProjectCommandContextBuilder.BuildProjectContext(
@@ -647,6 +671,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 				commentFlags,
 				repoDir,
 				contextFlags,
+				statusID,
 			)...)
 	}
 
