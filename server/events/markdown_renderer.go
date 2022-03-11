@@ -125,7 +125,7 @@ func (m *MarkdownRenderer) Render(res command.Result, cmdName command.Name, log 
 }
 
 func (m *MarkdownRenderer) RenderSingleProjectResult(res command.ProjectResult, cmdName command.Name, log string, verbose bool, vcsHost models.VCSHostType, templateOverrides map[string]string) string {
-	// TODO: Implement render single project result in order to support Github checks for individual projects.
+	// ORCA-4546: Implement render single project result in order to support Github checks for individual projects.
 	return ""
 }
 
