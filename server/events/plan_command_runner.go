@@ -17,7 +17,7 @@ func NewPlanCommandRunner(
 	projectCommandBuilder ProjectPlanCommandBuilder,
 	projectCommandRunner ProjectPlanCommandRunner,
 	dbUpdater *DBUpdater,
-	pullUpdater PullUpdater,
+	pullUpdater *PullUpdater,
 	policyCheckCommandRunner *PolicyCheckCommandRunner,
 	autoMerger *AutoMerger,
 	parallelPoolSize int,
@@ -77,7 +77,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 		if statusErr := p.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.FailedCommitStatus, command.Plan); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
-		p.pullUpdater.updatePull(ctx, AutoplanCommand{}, command.Result{Error: err})
+		p.pullUpdater.updatePull(ctx, AutoplanCommand{}, command.Result{Error: err}, "")
 		return
 	}
 

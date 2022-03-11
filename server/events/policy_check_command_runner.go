@@ -7,7 +7,7 @@ import (
 
 func NewPolicyCheckCommandRunner(
 	dbUpdater *DBUpdater,
-	pullUpdater PullUpdater,
+	pullUpdater *PullUpdater,
 	commitStatusUpdater CommitStatusUpdater,
 	projectCommandRunner ProjectPolicyCheckCommandRunner,
 	parallelPoolSize int,

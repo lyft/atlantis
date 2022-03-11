@@ -177,7 +177,7 @@ func (p *ProjectOutputWrapper) updateProjectPRStatus(commandName command.Name, c
 	}
 
 	// Ensures we update the same check run with the results of the command.
-	result.CheckID = ctx.CheckID
+	result.CheckID = ctx.StatusID
 
 	return result
 }

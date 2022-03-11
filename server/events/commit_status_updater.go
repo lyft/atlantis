@@ -20,7 +20,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_commit_status_updater.go CommitStatusUpdater
@@ -39,32 +38,6 @@ type CommitStatusUpdater interface {
 	UpdateProject(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus, url string) error
 }
 
-type FeatureAwareCommitStatusUpdater struct {
-	CommitStatusUpdater
-	Client           vcs.Client
-	FeatureAllocator feature.Allocator
-}
-
-func (f *FeatureAwareCommitStatusUpdater) UpdateProject(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus, url string) error {
-	githubChecks, err := f.FeatureAllocator.ShouldAllocate(feature.GitHubChecks, ctx.HeadRepo.FullName)
-	if err != nil {
-		githubChecks = false
-	}
-	if githubChecks {
-		if status == models.PendingCommitStatus {
-			// This is a new commit or comment command so we create a new Check Run.
-			checkId, err := f.Client.CreateCheckRun(ctx.BaseRepo, ctx.Pull, status, cmdName, url)
-			if err != nil {
-				return err
-			}
-			ctx.CheckID = checkId
-		}
-		return f.Client.UpdateCheckRun(ctx.BaseRepo, ctx.Pull, ctx.CheckID, status, cmdName, url, "")
-	} else {
-		return f.CommitStatusUpdater.UpdateProject(ctx, cmdName, status, url)
-	}
-}
-
 // DefaultCommitStatusUpdater implements CommitStatusUpdater.
 type DefaultCommitStatusUpdater struct {
 	Client       vcs.Client
@@ -75,7 +48,8 @@ func (d *DefaultCommitStatusUpdater) UpdateCombined(repo models.Repo, pull model
 	// add new implementation that calls into default implementation for status.
 	src := d.TitleBuilder.Build(cmdName.String())
 	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
-	return d.Client.UpdateStatus(repo, pull, status, src, descrip, "")
+	_, err := d.Client.UpdateStatus(repo, pull, status, src, descrip, "")
+	return err
 }
 
 func (d *DefaultCommitStatusUpdater) UpdateCombinedCount(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName command.Name, numSuccess int, numTotal int) error {
@@ -90,8 +64,8 @@ func (d *DefaultCommitStatusUpdater) UpdateCombinedCount(repo models.Repo, pull 
 	case command.Apply:
 		cmdVerb = "applied"
 	}
-
-	return d.Client.UpdateStatus(repo, pull, status, src, fmt.Sprintf("%d/%d projects %s successfully.", numSuccess, numTotal, cmdVerb), "")
+	_, err := d.Client.UpdateStatus(repo, pull, status, src, fmt.Sprintf("%d/%d projects %s successfully.", numSuccess, numTotal, cmdVerb), "")
+	return err
 }
 
 func (d *DefaultCommitStatusUpdater) UpdateProject(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus, url string) error {
@@ -104,7 +78,11 @@ func (d *DefaultCommitStatusUpdater) UpdateProject(ctx command.ProjectContext, c
 	})
 
 	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
-	return d.Client.UpdateStatus(ctx.BaseRepo, ctx.Pull, status, src, descrip, url)
+	statusID, err := d.Client.UpdateStatus(ctx.BaseRepo, ctx.Pull, status, src, descrip, url)
+	if ctx.StatusID != "" {
+		ctx.StatusID = statusID
+	}
+	return err
 }
 
 func (d *DefaultCommitStatusUpdater) statusDescription(status models.CommitStatus) string {

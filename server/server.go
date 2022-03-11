@@ -329,6 +329,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing webhooks")
 	}
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
+	commitStatusUpdater := &events.DefaultCommitStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
 
@@ -530,8 +531,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.MaxProjectsPerPR,
 	)
 
-	commitStatusUpdater := &events.FeatureAwareCommitStatusUpdater{Client: vcsClient, FeatureAllocator: featureAllocator}
-
 	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTfVersion)
 
 	if err != nil {
@@ -594,20 +593,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB: boltdb,
 	}
 
-	defaultPullUpdater := &events.DefaultPullUpdater{
+	pullUpdater := &events.PullUpdater{
 		HidePrevPlanComments: userConfig.HidePrevPlanComments,
 		VCSClient:            vcsClient,
 		MarkdownRenderer:     markdownRenderer,
 		GlobalCfg:            globalCfg,
-	}
-
-	pullUpdater := &events.FeatureAwarePullUpdater{
-		HidePrevPlanComments: userConfig.HidePrevPlanComments,
-		VCSClient:            vcsClient,
-		MarkdownRenderer:     markdownRenderer,
-		GlobalCfg:            globalCfg,
-		FeatureAllocator:     featureAllocator,
-		PullUpdater:          defaultPullUpdater,
 	}
 
 	autoMerger := &events.AutoMerger{

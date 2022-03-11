@@ -14,7 +14,6 @@
 package vcs
 
 import (
-	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -25,7 +24,7 @@ type Client interface {
 	// GetModifiedFiles returns the names of files that were modified in the merge request
 	// relative to the repo root, e.g. parent/child/file.txt.
 	GetModifiedFiles(repo models.Repo, pull models.PullRequest) ([]string, error)
-	CreateComment(repo models.Repo, pullNum int, comment string, command string) error
+	CreateComment(repo models.Repo, pullNum int, comment string, command string, statusID) error
 	HidePrevCommandComments(repo models.Repo, pullNum int, command string) error
 	PullIsApproved(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error)
 	PullIsMergeable(repo models.Repo, pull models.PullRequest) (bool, error)
@@ -39,9 +38,6 @@ type Client interface {
 	UpdateStatus(repo models.Repo, pull models.PullRequest, state models.CommitStatus, src string, description string, url string) (string, error)
 	MergePull(pull models.PullRequest, pullOptions models.PullRequestOptions) error
 	MarkdownPullLink(pull models.PullRequest) (string, error)
-
-	CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error)
-	UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error
 
 	// DownloadRepoConfigFile return `atlantis.yaml` content from VCS (which support fetch a single file from repository)
 	// The first return value indicate that repo contain atlantis.yaml or not

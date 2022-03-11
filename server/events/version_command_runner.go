@@ -5,7 +5,7 @@ import (
 )
 
 func NewVersionCommandRunner(
-	pullUpdater PullUpdater,
+	pullUpdater *PullUpdater,
 	prjCmdBuilder ProjectVersionCommandBuilder,
 	prjCmdRunner ProjectVersionCommandRunner,
 	parallelPoolSize int,
