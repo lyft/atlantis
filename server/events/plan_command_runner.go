@@ -60,7 +60,7 @@ type PlanCommandRunner struct {
 	prjCmdBuilder              ProjectPlanCommandBuilder
 	prjCmdRunner               ProjectPlanCommandRunner
 	dbUpdater                  *DBUpdater
-	pullUpdater                PullUpdater
+	pullUpdater                *PullUpdater
 	policyCheckCommandRunner   *PolicyCheckCommandRunner
 	autoMerger                 *AutoMerger
 	parallelPoolSize           int
@@ -77,7 +77,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 		if statusErr := p.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.FailedCommitStatus, command.Plan); statusErr != nil {
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
-		p.pullUpdater.updatePull(ctx, AutoplanCommand{}, command.Result{Error: err}, "")
+		p.pullUpdater.updatePull(ctx, AutoplanCommand{}, command.Result{Error: err})
 		return
 	}
 
@@ -103,8 +103,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 		return
 	}
 
-	// At this point we are sure Atlantis has work to do,
-	// so set commit status to pending and store the checkId to be updated.
+	// At this point we are sure Atlantis has work to do, so set commit status to pending
 	if err := p.commitStatusUpdater.UpdateCombined(ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, command.Plan); err != nil {
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
@@ -150,10 +149,11 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 }
 
 func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
+	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
-	if err := p.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.PendingCommitStatus, command.Plan); err != nil {
+	if err = p.commitStatusUpdater.UpdateCombined(baseRepo, pull, models.PendingCommitStatus, command.Plan); err != nil {
 		ctx.Log.Warn("unable to update commit status: %s", err)
 	}
 

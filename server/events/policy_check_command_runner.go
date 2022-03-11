@@ -25,7 +25,7 @@ func NewPolicyCheckCommandRunner(
 
 type PolicyCheckCommandRunner struct {
 	dbUpdater           *DBUpdater
-	pullUpdater         PullUpdater
+	pullUpdater         *PullUpdater
 	commitStatusUpdater CommitStatusUpdater
 	prjCmdRunner        ProjectPolicyCheckCommandRunner
 	parallelPoolSize    int
