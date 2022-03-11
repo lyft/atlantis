@@ -55,6 +55,7 @@ type GithubClient struct {
 	ctx                 context.Context
 	logger              logging.SimpleLogging
 	mergeabilityChecker MergeabilityChecker
+	useChecksAPI		bool
 }
 
 // GithubAppTemporarySecrets holds app credentials obtained from github after creation.
@@ -72,7 +73,7 @@ type GithubAppTemporarySecrets struct {
 }
 
 // NewGithubClient returns a valid GitHub client.
-func NewGithubClient(hostname string, credentials GithubCredentials, logger logging.SimpleLogging, mergeabilityChecker MergeabilityChecker) (*GithubClient, error) {
+func NewGithubClient(hostname string, credentials GithubCredentials, logger logging.SimpleLogging, mergeabilityChecker MergeabilityChecker, useChecksAPI bool) (*GithubClient, error) {
 	transport, err := credentials.Client()
 	if err != nil {
 		return nil, errors.Wrap(err, "error initializing github authentication transport")
@@ -118,6 +119,7 @@ func NewGithubClient(hostname string, credentials GithubCredentials, logger logg
 		ctx:                 context.Background(),
 		logger:              logger,
 		mergeabilityChecker: mergeabilityChecker,
+		useChecksAPI: 		 useChecksAPI
 	}, nil
 }
 
@@ -172,37 +174,34 @@ func (g *GithubClient) GetModifiedFiles(repo models.Repo, pull models.PullReques
 // CreateComment creates a comment on the pull request.
 // If comment length is greater than the max comment length we split into
 // multiple comments.
-func (g *GithubClient) CreateComment(repo models.Repo, pullNum int, comment string, command string) error {
-	var sepStart string
-
-	sepEnd := "\n```\n</details>" +
-		"\n<br>\n\n**Warning**: Output length greater than max comment size. Continued in next comment."
-
-	if command != "" {
-		sepStart = fmt.Sprintf("Continued %s output from previous comment.\n<details><summary>Show Output</summary>\n\n", command) +
-			"```diff\n"
+func (g *GithubClient) CreateComment(repo models.Repo, pullNum int, comment string, command string, statusID string) error {
+	if g.useChecksAPI {
+		// ORCA-4505: TODO Implement updating the Github Checks if enabled. 
+		return nil
 	} else {
-		sepStart = "Continued from previous comment.\n<details><summary>Show Output</summary>\n\n" +
-			"```diff\n"
-	}
+		var sepStart string
 
-	comments := common.SplitComment(comment, maxCommentLength, sepEnd, sepStart)
-	for i := range comments {
-		g.logger.Debug("POST /repos/%v/%v/issues/%d/comments", repo.Owner, repo.Name, pullNum)
-		_, _, err := g.client.Issues.CreateComment(g.ctx, repo.Owner, repo.Name, pullNum, &github.IssueComment{Body: &comments[i]})
-		if err != nil {
-			return err
+		sepEnd := "\n```\n</details>" +
+			"\n<br>\n\n**Warning**: Output length greater than max comment size. Continued in next comment."
+
+		if command != "" {
+			sepStart = fmt.Sprintf("Continued %s output from previous comment.\n<details><summary>Show Output</summary>\n\n", command) +
+				"```diff\n"
+		} else {
+			sepStart = "Continued from previous comment.\n<details><summary>Show Output</summary>\n\n" +
+				"```diff\n"
 		}
+
+		comments := common.SplitComment(comment, maxCommentLength, sepEnd, sepStart)
+		for i := range comments {
+			g.logger.Debug("POST /repos/%v/%v/issues/%d/comments", repo.Owner, repo.Name, pullNum)
+			_, _, err := g.client.Issues.CreateComment(g.ctx, repo.Owner, repo.Name, pullNum, &github.IssueComment{Body: &comments[i]})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	}
-	return nil
-}
-
-func (a *GithubClient) CreateCheckRun(repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmd command.Name, url string) (int64, error) {
-	return 0, nil
-}
-
-func (a *GithubClient) UpdateCheckRun(repo models.Repo, pull models.PullRequest, checkID int64, status models.CommitStatus, cmd command.Name, url, comment string) error {
-	return nil
 }
 
 func (g *GithubClient) HidePrevCommandComments(repo models.Repo, pullNum int, command string) error {
@@ -421,25 +420,30 @@ func (g *GithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest
 
 // UpdateStatus updates the status badge on the pull request.
 // See https://github.com/blog/1227-commit-status-api.
-func (g *GithubClient) UpdateStatus(repo models.Repo, pull models.PullRequest, state models.CommitStatus, src string, description string, url string) error {
-	ghState := "error"
-	switch state {
-	case models.PendingCommitStatus:
-		ghState = "pending"
-	case models.SuccessCommitStatus:
-		ghState = "success"
-	case models.FailedCommitStatus:
-		ghState = "failure"
-	}
+func (g *GithubClient) UpdateStatus(repo models.Repo, pull models.PullRequest, state models.CommitStatus, src string, description string, url string) (string, error) {
+	if g.useChecksAPI {
+		// ORCA-4505: TODO Implement updating the Github Checks if enabled. 
+		return nil
+	} else {
+		ghState := "error"
+		switch state {
+		case models.PendingCommitStatus:
+			ghState = "pending"
+		case models.SuccessCommitStatus:
+			ghState = "success"
+		case models.FailedCommitStatus:
+			ghState = "failure"
+		}
 
-	status := &github.RepoStatus{
-		State:       github.String(ghState),
-		Description: github.String(description),
-		Context:     github.String(src),
-		TargetURL:   &url,
+		status := &github.RepoStatus{
+			State:       github.String(ghState),
+			Description: github.String(description),
+			Context:     github.String(src),
+			TargetURL:   &url,
+		}
+		_, _, err := g.client.Repositories.CreateStatus(g.ctx, repo.Owner, repo.Name, pull.HeadCommit, status)
+		return statusID, err
 	}
-	_, _, err := g.client.Repositories.CreateStatus(g.ctx, repo.Owner, repo.Name, pull.HeadCommit, status)
-	return err
 }
 
 // MergePull merges the pull request.

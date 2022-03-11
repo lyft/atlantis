@@ -24,7 +24,7 @@ type Client interface {
 	// GetModifiedFiles returns the names of files that were modified in the merge request
 	// relative to the repo root, e.g. parent/child/file.txt.
 	GetModifiedFiles(repo models.Repo, pull models.PullRequest) ([]string, error)
-	CreateComment(repo models.Repo, pullNum int, comment string, command string, statusID) error
+	CreateComment(repo models.Repo, pullNum int, comment string, command string, statusID string) error
 	HidePrevCommandComments(repo models.Repo, pullNum int, command string) error
 	PullIsApproved(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error)
 	PullIsMergeable(repo models.Repo, pull models.PullRequest) (bool, error)
