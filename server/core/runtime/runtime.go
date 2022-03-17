@@ -57,6 +57,19 @@ type Runner interface {
 	Run(ctx command.ProjectContext, extraArgs []string, path string, envs map[string]string) (string, error)
 }
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_custom_runner.go CustomRunner
+// CustomRunner runs custom run steps.
+type CustomRunner interface {
+	// Run cmd in path.
+	Run(ctx command.ProjectContext, cmd string, path string, envs map[string]string) (string, error)
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_env_runner.go EnvRunner
+// EnvRunner runs env steps.
+type EnvRunner interface {
+	Run(ctx command.ProjectContext, cmd string, value string, path string, envs map[string]string) (string, error)
+}
+
 // MustConstraint returns a constraint. It panics on error.
 func MustConstraint(constraint string) version.Constraints {
 	c, err := version.NewConstraint(constraint)

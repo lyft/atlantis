@@ -1,4 +1,4 @@
-package decorators
+package runtime
 
 import (
 	"github.com/runatlantis/atlantis/server/events/command"
@@ -12,11 +12,11 @@ type StepRunner interface {
 	Run(ctx command.ProjectContext, extraArgs []string, path string, envs map[string]string) (string, error)
 }
 
-type DestroyPlanStepRunnerWrapper struct {
+type DestroyPlanStepRunner struct {
 	StepRunner
 }
 
-func (d *DestroyPlanStepRunnerWrapper) Run(ctx command.ProjectContext, extraArgs []string, path string, envs map[string]string) (string, error) {
+func (d *DestroyPlanStepRunner) Run(ctx command.ProjectContext, extraArgs []string, path string, envs map[string]string) (string, error) {
 	// DestroyPlan tag is true when the Terraform client should construct a destroy plan given a repo config.
 	if ctx.Tags[Deprecated] == Destroy {
 		extraArgs = append(extraArgs, Destroy)

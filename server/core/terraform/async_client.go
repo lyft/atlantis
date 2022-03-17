@@ -15,6 +15,14 @@ import (
 // Setting the buffer size to 10mb
 const BufioScannerBufferSize = 10 * 1024 * 1024
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_terraform_client_async.go ClientAsync
+
+type ClientAsync interface {
+	RunCommandAsync(ctx command.ProjectContext, path string, args []string, customEnvVars map[string]string, v *version.Version, workspace string) <-chan Line
+
+	RunCommandAsyncWithInput(ctx command.ProjectContext, path string, args []string, customEnvVars map[string]string, v *version.Version, workspace string, input <-chan string) <-chan Line
+}
+
 type AsyncClient struct {
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	commandBuilder          commandBuilder

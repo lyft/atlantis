@@ -918,21 +918,19 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 		logger,
 	)
 
-	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTFVersion)
-
 	Ok(t, err)
-
-	conftestVersion, _ := version.NewVersion(ConftestVersion)
 
 	conftextExec := policy.NewConfTestExecutorWorkflow(logger, binDir, &NoopTFDownloader{})
 
-	// swapping out version cache to something that always returns local contest
-	// binary
-	conftextExec.VersionCache = &LocalConftestCache{}
+	Ok(t, err)
 
-	policyCheckRunner, err := runtime.NewPolicyCheckStepRunner(
-		conftestVersion,
+	stepsRunner, err := runtime.NewStepsRunner(
+		terraformClient,
+		terraformClient.AsyncClient,
+		defaultTFVersion,
+		e2eStatusUpdater,
 		conftextExec,
+		binDir,
 	)
 
 	Ok(t, err)
@@ -940,23 +938,7 @@ func setupE2E(t *testing.T, repoDir string) (events_controllers.VCSEventsControl
 	projectCommandRunner := &events.DefaultProjectCommandRunner{
 		Locker:           projectLocker,
 		LockURLGenerator: &mockLockURLGenerator{},
-		InitStepRunner: &runtime.InitStepRunner{
-			TerraformExecutor: terraformClient,
-			DefaultTFVersion:  defaultTFVersion,
-		},
-		PlanStepRunner: &runtime.PlanStepRunner{
-			TerraformExecutor: terraformClient,
-			DefaultTFVersion:  defaultTFVersion,
-		},
-		ShowStepRunner:        showStepRunner,
-		PolicyCheckStepRunner: policyCheckRunner,
-		ApplyStepRunner: &runtime.ApplyStepRunner{
-			TerraformExecutor: terraformClient,
-		},
-		RunStepRunner: &runtime.RunStepRunner{
-			TerraformExecutor: terraformClient,
-			DefaultTFVersion:  defaultTFVersion,
-		},
+		StepsRunner:      stepsRunner,
 		WorkingDir:       workingDir,
 		Webhooks:         &mockWebhookSender{},
 		WorkingDirLocker: locker,
