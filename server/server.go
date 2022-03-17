@@ -35,6 +35,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
+	"github.com/runatlantis/atlantis/server/core/runtime/policy"
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
@@ -537,13 +538,15 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir: workingDir,
 	}
 
+	conftestExecutor := policy.NewConfTestExecutorWorkflow(logger, binDir, &terraform.DefaultDownloader{})
+
 	stepsRunner, err := runtime.NewStepsRunner(
 		terraformClient,
 		terraformClient,
 		defaultTfVersion,
 		commitStatusUpdater,
+		conftestExecutor,
 		binDir,
-		logger,
 	)
 
 	if err != nil {

@@ -7,14 +7,14 @@ import (
 	terraform "github.com/runatlantis/atlantis/server/core/terraform"
 )
 
-func AnyRecvChanOfTerraformLine() <-chan terraform.Line {
-	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(<-chan terraform.Line))(nil)).Elem()))
-	var nullValue <-chan terraform.Line
+func AnyRecvChanOfTerraformLine() <-chan helpers.Line {
+	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(<-chan helpers.Line))(nil)).Elem()))
+	var nullValue <-chan helpers.Line
 	return nullValue
 }
 
-func EqRecvChanOfTerraformLine(value <-chan terraform.Line) <-chan terraform.Line {
+func EqRecvChanOfTerraformLine(value <-chan helpers.Line) <-chan helpers.Line {
 	pegomock.RegisterMatcher(&pegomock.EqMatcher{Value: value})
-	var nullValue <-chan terraform.Line
+	var nullValue <-chan helpers.Line
 	return nullValue
 }

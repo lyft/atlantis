@@ -6,7 +6,7 @@ package mocks
 import (
 	go_version "github.com/hashicorp/go-version"
 	pegomock "github.com/petergtz/pegomock"
-	terraform "github.com/runatlantis/atlantis/server/core/terraform"
+	helpers "github.com/runatlantis/atlantis/server/core/terraform/helpers"
 	command "github.com/runatlantis/atlantis/server/events/command"
 	"reflect"
 	"time"
@@ -27,38 +27,38 @@ func NewMockClientAsync(options ...pegomock.Option) *MockClientAsync {
 func (mock *MockClientAsync) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockClientAsync) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockClientAsync) RunCommandAsync(ctx command.ProjectContext, path string, args []string, customEnvVars map[string]string, v *go_version.Version, workspace string) <-chan terraform.Line {
+func (mock *MockClientAsync) RunCommandAsync(ctx command.ProjectContext, path string, args []string, customEnvVars map[string]string, v *go_version.Version, workspace string) <-chan helpers.Line {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockClientAsync().")
 	}
 	params := []pegomock.Param{ctx, path, args, customEnvVars, v, workspace}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("RunCommandAsync", params, []reflect.Type{reflect.TypeOf((*<-chan terraform.Line)(nil)).Elem()})
-	var ret0 <-chan terraform.Line
+	result := pegomock.GetGenericMockFrom(mock).Invoke("RunCommandAsync", params, []reflect.Type{reflect.TypeOf((*<-chan helpers.Line)(nil)).Elem()})
+	var ret0 <-chan helpers.Line
 	if len(result) != 0 {
 		if result[0] != nil {
 			var ok bool
-			ret0, ok = result[0].(chan terraform.Line)
+			ret0, ok = result[0].(chan helpers.Line)
 			if !ok {
-				ret0 = result[0].(<-chan terraform.Line)
+				ret0 = result[0].(<-chan helpers.Line)
 			}
 		}
 	}
 	return ret0
 }
 
-func (mock *MockClientAsync) RunCommandAsyncWithInput(ctx command.ProjectContext, path string, args []string, customEnvVars map[string]string, v *go_version.Version, workspace string, input <-chan string) <-chan terraform.Line {
+func (mock *MockClientAsync) RunCommandAsyncWithInput(ctx command.ProjectContext, path string, args []string, customEnvVars map[string]string, v *go_version.Version, workspace string, input <-chan string) <-chan helpers.Line {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockClientAsync().")
 	}
 	params := []pegomock.Param{ctx, path, args, customEnvVars, v, workspace, input}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("RunCommandAsyncWithInput", params, []reflect.Type{reflect.TypeOf((*<-chan terraform.Line)(nil)).Elem()})
-	var ret0 <-chan terraform.Line
+	result := pegomock.GetGenericMockFrom(mock).Invoke("RunCommandAsyncWithInput", params, []reflect.Type{reflect.TypeOf((*<-chan helpers.Line)(nil)).Elem()})
+	var ret0 <-chan helpers.Line
 	if len(result) != 0 {
 		if result[0] != nil {
 			var ok bool
-			ret0, ok = result[0].(chan terraform.Line)
+			ret0, ok = result[0].(chan helpers.Line)
 			if !ok {
-				ret0 = result[0].(<-chan terraform.Line)
+				ret0 = result[0].(<-chan helpers.Line)
 			}
 		}
 	}
