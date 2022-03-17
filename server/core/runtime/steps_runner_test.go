@@ -1,7 +1,6 @@
 package runtime_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/go-getter"
