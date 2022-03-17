@@ -4,7 +4,7 @@ package matchers
 import (
 	"reflect"
 	"github.com/petergtz/pegomock"
-	terraform "github.com/runatlantis/atlantis/server/core/terraform"
+	helpers "github.com/runatlantis/atlantis/server/core/terraform/helpers"
 )
 
 func AnyRecvChanOfTerraformLine() <-chan helpers.Line {
