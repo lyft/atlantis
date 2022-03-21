@@ -41,6 +41,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sqs"
 	lyftCommands "github.com/runatlantis/atlantis/server/lyft/command"
+	lyftRuntime "github.com/runatlantis/atlantis/server/lyft/core/runtime"
 	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/lyft/gateway"
@@ -538,20 +539,67 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir: workingDir,
 	}
 
-	conftestExecutor := policy.NewConfTestExecutorWorkflow(logger, binDir, &terraform.DefaultDownloader{})
-
-	stepsRunner, err := runtime.NewStepsRunner(
-		terraformClient,
-		terraformClient,
-		defaultTfVersion,
-		commitStatusUpdater,
-		conftestExecutor,
-		binDir,
-	)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing steps runner")
+	initStepRunner := &runtime.InitStepRunner{
+		TerraformExecutor: terraformClient,
+		DefaultTFVersion:  defaultTfVersion,
 	}
+
+	planStepRunner := &runtime.PlanStepRunner{
+		TerraformExecutor:   terraformClient,
+		DefaultTFVersion:    defaultTfVersion,
+		CommitStatusUpdater: commitStatusUpdater,
+		AsyncTFExec:         terraformClient,
+	}
+
+	destroyPlanStepRunner := &lyftRuntime.DestroyPlanStepRunner{
+		StepRunner: planStepRunner,
+	}
+
+	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTfVersion)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing show step runner")
+	}
+
+	conftestExecutor := policy.NewConfTestExecutorWorkflow(logger, binDir, &terraform.DefaultDownloader{})
+	policyCheckStepRunner, err := runtime.NewPolicyCheckStepRunner(
+		defaultTfVersion,
+		conftestExecutor,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing policy check runner")
+	}
+
+	applyStepRunner := &runtime.ApplyStepRunner{
+		TerraformExecutor:   terraformClient,
+		CommitStatusUpdater: commitStatusUpdater,
+		AsyncTFExec:         terraformClient,
+	}
+
+	versionStepRunner := &runtime.VersionStepRunner{
+		TerraformExecutor: terraformClient,
+		DefaultTFVersion:  defaultTfVersion,
+	}
+
+	runStepRunner := &runtime.RunStepRunner{
+		TerraformExecutor: terraformClient,
+		DefaultTFVersion:  defaultTfVersion,
+		TerraformBinDir:   binDir,
+	}
+
+	envStepRunner := &runtime.EnvStepRunner{
+		RunStepRunner: runStepRunner,
+	}
+
+	stepsRunner := runtime.NewStepsRunner(
+		initStepRunner,
+		destroyPlanStepRunner,
+		showStepRunner,
+		policyCheckStepRunner,
+		applyStepRunner,
+		versionStepRunner,
+		runStepRunner,
+		envStepRunner,
+	)
 
 	projectCommandRunner := events.NewProjectCommandRunner(
 		stepsRunner,

@@ -11,7 +11,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/mocks"
 	tfMocks "github.com/runatlantis/atlantis/server/core/terraform/mocks"
 	"github.com/runatlantis/atlantis/server/events/command"
-	mocks2 "github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -66,35 +65,25 @@ func TestStepsRunner_Run(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
 			RegisterMockTestingT(t)
-			terraform := tfMocks.NewMockClient()
-			terraformAsync := tfMocks.NewMockClientAsync()
-			tfVersion, _ := version.NewVersion("0.8")
-			updater := mocks2.NewMockCommitStatusUpdater()
-			executablePath := "some/path/conftest"
-			conftextExec := mocks.NewMockVersionedExecutorWorkflow()
-
-			runner, err := runtime.NewStepsRunner(
-				terraform,
-				terraformAsync,
-				tfVersion,
-				updater,
-				conftextExec,
-				executablePath,
-			)
-			Ok(t, err)
-
 			mockInit := mocks.NewMockRunner()
 			mockPlan := mocks.NewMockRunner()
+			mockShow := mocks.NewMockRunner()
 			mockApply := mocks.NewMockRunner()
 			mockRun := mocks.NewMockCustomRunner()
 			mockEnv := mocks.NewMockEnvRunner()
+			mockPolicyCheck := mocks.NewMockRunner()
+			mockVersion := mocks.NewMockRunner()
 
-			runner.InitStepRunner = mockInit
-			runner.PlanStepRunner = mockPlan
-			runner.ApplyStepRunner = mockApply
-			runner.RunStepRunner = mockRun
-			runner.EnvStepRunner = mockEnv
-
+			runner := runtime.NewStepsRunner(
+				mockInit,
+				mockPlan,
+				mockShow,
+				mockPolicyCheck,
+				mockApply,
+				mockVersion,
+				mockRun,
+				mockEnv,
+			)
 			repoDir, cleanup := TempDir(t)
 			defer cleanup()
 
@@ -141,30 +130,30 @@ func TestStepsRuinner_RunEnvSteps(t *testing.T) {
 	terraform := tfMocks.NewMockClient()
 	tfVersion, err := version.NewVersion("0.12.0")
 	Ok(t, err)
+	mockInit := mocks.NewMockRunner()
+	mockPlan := mocks.NewMockRunner()
+	mockShow := mocks.NewMockRunner()
+	mockApply := mocks.NewMockRunner()
+	mockPolicyCheck := mocks.NewMockRunner()
+	mockVersion := mocks.NewMockRunner()
 
-	terraformAsync := tfMocks.NewMockClientAsync()
-	updater := mocks2.NewMockCommitStatusUpdater()
-	executablePath := "some/path/conftest"
-	conftextExec := mocks.NewMockVersionedExecutorWorkflow()
-
-	runner, err := runtime.NewStepsRunner(
-		terraform,
-		terraformAsync,
-		tfVersion,
-		updater,
-		conftextExec,
-		executablePath,
-	)
-	Ok(t, err)
 	run := &runtime.RunStepRunner{
 		TerraformExecutor: terraform,
 		DefaultTFVersion:  tfVersion,
 	}
 
-	runner.RunStepRunner = run
-	runner.EnvStepRunner = &runtime.EnvStepRunner{
-		RunStepRunner: run,
-	}
+	runner := runtime.NewStepsRunner(
+		mockInit,
+		mockPlan,
+		mockShow,
+		mockPolicyCheck,
+		mockApply,
+		mockVersion,
+		run,
+		&runtime.EnvStepRunner{
+			RunStepRunner: run,
+		},
+	)
 
 	repoDir, cleanup := TempDir(t)
 	defer cleanup()
