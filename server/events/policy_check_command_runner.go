@@ -64,7 +64,7 @@ func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []command.Proj
 
 	p.pullUpdater.UpdatePull(ctx, PolicyCheckCommand{}, result)
 
-	pullStatus, err := p.dbUpdater.updateDB(ctx, ctx.Pull, result.ProjectResults)
+	pullStatus, err := p.dbUpdater.UpdateDB(ctx, ctx.Pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.Err("writing results: %s", err)
 	}

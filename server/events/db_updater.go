@@ -10,7 +10,7 @@ type DBUpdater struct {
 	DB *db.BoltDB
 }
 
-func (c *DBUpdater) updateDB(ctx *command.Context, pull models.PullRequest, results []command.ProjectResult) (models.PullStatus, error) {
+func (c *DBUpdater) UpdateDB(ctx *command.Context, pull models.PullRequest, results []command.ProjectResult) (models.PullStatus, error) {
 	// Filter out results that errored due to the directory not existing. We
 	// don't store these in the database because they would never be "apply-able"
 	// and so the pull request would always have errors.

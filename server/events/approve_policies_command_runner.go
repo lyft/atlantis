@@ -39,7 +39,7 @@ type ApprovePoliciesCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
-func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
+func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
@@ -78,7 +78,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *CommentCom
 		result,
 	)
 
-	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
+	pullStatus, err := a.dbUpdater.UpdateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.Err("writing results: %s", err)
 		return

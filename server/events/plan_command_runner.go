@@ -115,7 +115,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 		result = runProjectCmds(projectCmds, p.prjCmdRunner.Plan)
 	}
 
-	if p.autoMerger.automergeEnabled(projectCmds) && result.HasErrors() {
+	if p.autoMerger.AutomergeEnabled(projectCmds) && result.HasErrors() {
 		ctx.Log.Info("deleting plans because there were errors and automerge requires all plans succeed")
 		p.deletePlans(ctx)
 		result.PlansDeleted = true
@@ -123,7 +123,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 
 	p.pullUpdater.UpdatePull(ctx, AutoplanCommand{}, result)
 
-	pullStatus, err := p.dbUpdater.updateDB(ctx, ctx.Pull, result.ProjectResults)
+	pullStatus, err := p.dbUpdater.UpdateDB(ctx, ctx.Pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.Err("writing results: %s", err)
 	}
@@ -146,7 +146,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 	}
 }
 
-func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
+func (p *PlanCommandRunner) run(ctx *command.Context, cmd *command.Comment) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
@@ -189,7 +189,7 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
 		result = runProjectCmds(projectCmds, p.prjCmdRunner.Plan)
 	}
 
-	if p.autoMerger.automergeEnabled(projectCmds) && result.HasErrors() {
+	if p.autoMerger.AutomergeEnabled(projectCmds) && result.HasErrors() {
 		ctx.Log.Info("deleting plans because there were errors and automerge requires all plans succeed")
 		p.deletePlans(ctx)
 		result.PlansDeleted = true
@@ -200,7 +200,7 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
 		cmd,
 		result)
 
-	pullStatus, err := p.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
+	pullStatus, err := p.dbUpdater.UpdateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.Err("writing results: %s", err)
 		return
@@ -217,7 +217,7 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *CommentCommand) {
 	}
 }
 
-func (p *PlanCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
+func (p *PlanCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	if ctx.Trigger == command.AutoTrigger {
 		p.runAutoplan(ctx)
 	} else {

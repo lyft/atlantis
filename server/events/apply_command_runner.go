@@ -59,7 +59,7 @@ type ApplyCommandRunner struct {
 	silenceVCSStatusNoProjects bool
 }
 
-func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
+func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	var err error
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
@@ -148,7 +148,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 		cmd,
 		result)
 
-	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
+	pullStatus, err := a.dbUpdater.UpdateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.Err("writing results: %s", err)
 		return
@@ -156,8 +156,8 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *CommentCommand) {
 
 	a.updateCommitStatus(ctx, pullStatus)
 
-	if a.autoMerger.automergeEnabled(projectCmds) && !cmd.AutoMergeDisabled {
-		a.autoMerger.automerge(ctx, pullStatus, a.autoMerger.deleteSourceBranchOnMergeEnabled(projectCmds))
+	if a.autoMerger.AutomergeEnabled(projectCmds) && !cmd.AutoMergeDisabled {
+		a.autoMerger.Automerge(ctx, pullStatus, a.autoMerger.DeleteSourceBranchOnMergeEnabled(projectCmds))
 	}
 }
 
