@@ -1100,6 +1100,7 @@ func (s *Server) Index(w http.ResponseWriter, _ *http.Request) {
 	locks, err := s.Locker.List()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
+		s.Logger.With("err", err).Info("Could not retrieve locks")
 		fmt.Fprintf(w, "Could not retrieve locks: %s", err)
 		return
 	}
@@ -1123,6 +1124,7 @@ func (s *Server) Index(w http.ResponseWriter, _ *http.Request) {
 	applyCmdLock, err := s.ApplyLocker.CheckApplyLock()
 	s.Logger.Info("Apply Lock: %v", applyCmdLock)
 	if err != nil {
+		s.Logger.With("err", err).Info("Index(/) Check Apply Lock")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		fmt.Fprintf(w, "Could not retrieve global apply lock: %s", err)
 		return
