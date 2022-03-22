@@ -27,6 +27,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/initializers"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -36,27 +37,15 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
-	mockApplyReqHandler := mocks.NewMockApplyRequirement()
 	mockStepsRunner := smocks.NewMockStepsRunner()
 
-	runner := events.DefaultProjectCommandRunner{
-		Locker:                     mockLocker,
-		LockURLGenerator:           mockURLGenerator{},
-		StepsRunner:                mockStepsRunner,
-		WorkingDir:                 mockWorkingDir,
-		Webhooks:                   nil,
-		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),
-		AggregateApplyRequirements: mockApplyReqHandler,
-	}
+	runner := initializers.InitProjectCommand(
+		mockStepsRunner,
+		mockWorkingDir,
+		nil,
+		events.NewDefaultWorkingDirLocker(),
+	).WithSync(mockLocker, mockURLGenerator{})
 
-	repoDir, cleanup := TempDir(t)
-	defer cleanup()
-	When(mockWorkingDir.Clone(
-		matchers.AnyPtrToLoggingSimpleLogger(),
-		matchers.AnyModelsRepo(),
-		matchers.AnyModelsPullRequest(),
-		AnyString(),
-	)).ThenReturn(repoDir, false, nil)
 	When(mockLocker.TryLock(
 		matchers.AnyPtrToLoggingSimpleLogger(),
 		matchers.AnyModelsPullRequest(),
@@ -67,6 +56,14 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 		LockAcquired: true,
 		LockKey:      "lock-key",
 	}, nil)
+	repoDir, cleanup := TempDir(t)
+	defer cleanup()
+	When(mockWorkingDir.Clone(
+		matchers.AnyPtrToLoggingSimpleLogger(),
+		matchers.AnyModelsRepo(),
+		matchers.AnyModelsPullRequest(),
+		AnyString(),
+	)).ThenReturn(repoDir, false, nil)
 
 	ctx := command.ProjectContext{
 		Log: logging.NewNoopLogger(t),
@@ -416,15 +413,12 @@ func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 			RegisterMockTestingT(t)
 			mockStepsRunner := smocks.NewMockStepsRunner()
 			mockWorkingDir := mocks.NewMockWorkingDir()
-			mockLocker := mocks.NewMockProjectLocker()
 			mockSender := mocks.NewMockWebhooksSender()
 			applyReqHandler := &events.AggregateApplyRequirements{
 				WorkingDir: mockWorkingDir,
 			}
 
 			runner := events.DefaultProjectCommandRunner{
-				Locker:                     mockLocker,
-				LockURLGenerator:           mockURLGenerator{},
 				StepsRunner:                mockStepsRunner,
 				WorkingDir:                 mockWorkingDir,
 				Webhooks:                   mockSender,
@@ -469,15 +463,12 @@ func TestDefaultProjectCommandRunner_ApplyRunStepFailure(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockStepsRunner := smocks.NewMockStepsRunner()
 	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockLocker := mocks.NewMockProjectLocker()
 	mockSender := mocks.NewMockWebhooksSender()
 	applyReqHandler := &events.AggregateApplyRequirements{
 		WorkingDir: mockWorkingDir,
 	}
 
 	runner := events.DefaultProjectCommandRunner{
-		Locker:                     mockLocker,
-		LockURLGenerator:           mockURLGenerator{},
 		StepsRunner:                mockStepsRunner,
 		WorkingDir:                 mockWorkingDir,
 		WorkingDirLocker:           events.NewDefaultWorkingDirLocker(),

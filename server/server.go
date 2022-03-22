@@ -39,13 +39,13 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
+	"github.com/runatlantis/atlantis/server/initializers"
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sqs"
 	lyftCommands "github.com/runatlantis/atlantis/server/lyft/command"
 	lyftRuntime "github.com/runatlantis/atlantis/server/lyft/core/runtime"
-	lyftDecorators "github.com/runatlantis/atlantis/server/lyft/decorators"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/lyft/scheduled"
@@ -65,8 +65,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/command/apply"
-	"github.com/runatlantis/atlantis/server/events/command/plan"
-	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
@@ -463,6 +461,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Locker:    lockingClient,
 		VCSClient: vcsClient,
 	}
+
 	deleteLockCommand := &events.DefaultDeleteLockCommand{
 		Locker:           lockingClient,
 		Logger:           logger,
@@ -519,8 +518,16 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir:            workingDir,
 		PreWorkflowHookRunner: runtime.DefaultPreWorkflowHookRunner{},
 	}
-	projectCommandBuilder := events.NewProjectCommandBuilderWithLimit(
+
+	projectContextBuilder := events.NewProjectCommandContextBuilder(
 		policyChecksEnabled,
+		false,
+		commentParser,
+		statsScope,
+	)
+
+	projectCommandBuilder := events.NewProjectCommandBuilder(
+		projectContextBuilder,
 		validator,
 		&events.DefaultProjectFinder{},
 		vcsClient,
@@ -528,18 +535,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		workingDirLocker,
 		globalCfg,
 		pendingPlanFinder,
-		commentParser,
 		userConfig.SkipCloneNoChanges,
 		userConfig.EnableRegExpCmd,
 		userConfig.AutoplanFileList,
-		statsScope,
 		logger,
 		userConfig.MaxProjectsPerPR,
 	)
-	applyRequirementHandler := &events.AggregateApplyRequirements{
-		WorkingDir: workingDir,
-	}
-
 	initStepRunner := &runtime.InitStepRunner{
 		TerraformExecutor: terraformClient,
 		DefaultTFVersion:  defaultTfVersion,
@@ -602,16 +603,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		envStepRunner,
 	)
 
-	projectCommandRunner := events.NewProjectCommandRunner(
-		stepsRunner,
-		projectLocker,
-		router,
-		workingDir,
-		webhooksManager,
-		workingDirLocker,
-		applyRequirementHandler,
-	)
-
 	dbUpdater := &events.DBUpdater{
 		DB: boltdb,
 	}
@@ -626,12 +617,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	autoMerger := &events.AutoMerger{
 		VCSClient:       vcsClient,
 		GlobalAutomerge: userConfig.Automerge,
-	}
-
-	projectOutputWrapper := &events.ProjectOutputWrapper{
-		ProjectCommandRunner: projectCommandRunner,
-		JobURLSetter:         jobs.NewJobURLSetter(router, commitStatusUpdater),
-		JobCloser:            projectCmdOutputHandler,
 	}
 
 	session, err := aws.NewSession()
@@ -650,20 +635,49 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	} else {
 		snsWriter = sns.NewNoopWriter()
 	}
-	auditProjectCmdRunner := &lyftDecorators.AuditProjectCommandWrapper{
-		SnsWriter:            snsWriter,
-		ProjectCommandRunner: projectOutputWrapper,
-	}
 
-	instrumentedProjectCmdRunner := &events.InstrumentedProjectCommandRunner{
-		ProjectCommandRunner: auditProjectCmdRunner,
-	}
+	projectCmdRunner := initializers.
+		InitProjectCommand(
+			stepsRunner,
+			workingDir,
+			webhooksManager,
+			workingDirLocker,
+		).
+		WithSync(
+			projectLocker,
+			router,
+		).
+		WithAuditing(snsWriter).
+		WithInstrumentation().
+		WithJobs(
+			jobs.NewJobURLSetter(router, commitStatusUpdater),
+			projectCmdOutputHandler,
+		)
+
+	prPrjCmdRunner := initializers.
+		InitProjectCommand(
+			stepsRunner,
+			workingDir,
+			webhooksManager,
+			workingDirLocker,
+		).
+		WithAuditing(snsWriter).
+		WithInstrumentation().
+		WithJobs(
+			jobs.NewJobURLSetter(router, commitStatusUpdater),
+			projectCmdOutputHandler,
+		)
+
+	pullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(
+		githubClient,
+		mergeabilityChecker,
+	)
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
 		pullUpdater,
 		commitStatusUpdater,
-		instrumentedProjectCmdRunner,
+		projectCmdRunner,
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceVCSStatusNoProjects,
 	)
@@ -676,27 +690,22 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		workingDir,
 		commitStatusUpdater,
 		projectCommandBuilder,
-		instrumentedProjectCmdRunner,
+		projectCmdRunner,
 		dbUpdater,
 		pullUpdater,
 		policyCheckCommandRunner,
 		autoMerger,
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceNoProjects,
-		boltdb,
 	)
 
-	pullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(
-		githubClient,
-		mergeabilityChecker,
-	)
 	applyCommandRunner := events.NewApplyCommandRunner(
 		vcsClient,
 		userConfig.DisableApplyAll,
 		applyLockingClient,
 		commitStatusUpdater,
 		projectCommandBuilder,
-		instrumentedProjectCmdRunner,
+		projectCmdRunner,
 		autoMerger,
 		pullUpdater,
 		dbUpdater,
@@ -709,7 +718,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
-		instrumentedProjectCmdRunner,
+		projectCmdRunner,
 		pullUpdater,
 		dbUpdater,
 		userConfig.SilenceNoProjects,
@@ -725,16 +734,43 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	versionCommandRunner := events.NewVersionCommandRunner(
 		pullUpdater,
 		projectCommandBuilder,
-		projectCommandRunner,
+		projectCmdRunner,
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceNoProjects,
+	)
+
+	prPlanCommandRunner := events.NewPlanCommandRunner(
+		userConfig.SilenceVCSStatusNoPlans,
+		userConfig.SilenceVCSStatusNoProjects,
+		vcsClient,
+		pendingPlanFinder,
+		workingDir,
+		commitStatusUpdater,
+		projectCommandBuilder,
+		prPrjCmdRunner,
+		dbUpdater,
+		pullUpdater,
+		policyCheckCommandRunner,
+		autoMerger,
+		userConfig.ParallelPoolSize,
+		userConfig.SilenceNoProjects,
+	)
+
+	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
+		commitStatusUpdater,
+		projectCommandBuilder,
+		prPrjCmdRunner,
+		pullUpdater,
+		dbUpdater,
+		userConfig.SilenceNoProjects,
+		userConfig.SilenceVCSStatusNoPlans,
 	)
 
 	featuredPlanRunner := lyftCommands.NewPlatformModeFeatureRunner(
 		featureAllocator,
 		userConfig.EnablePlatformMode,
 		logger,
-		plan.NewRunner(vcsClient),
+		prPlanCommandRunner,
 		planCommandRunner,
 	)
 
@@ -742,7 +778,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		featureAllocator,
 		userConfig.EnablePlatformMode,
 		logger,
-		apply.NewRunner(vcsClient),
+		apply.NewDisabledRunner(vcsClient),
 		applyCommandRunner,
 	)
 
@@ -750,7 +786,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		featureAllocator,
 		userConfig.EnablePlatformMode,
 		logger,
-		policies.NewRunner(vcsClient),
+		prApprovePoliciesCommandRunner,
 		approvePoliciesCommandRunner,
 	)
 

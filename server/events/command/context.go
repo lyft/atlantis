@@ -8,6 +8,14 @@ import (
 	"github.com/uber-go/tally"
 )
 
+type executionMode int
+
+const (
+	DefaultExecutionMode executionMode = iota
+	PullRequestExecutionMode
+	DeploymentExecutionMode
+)
+
 // CommandTrigger represents the how the command was triggered
 type CommandTrigger int
 
@@ -42,4 +50,11 @@ type Context struct {
 
 	// Time Atlantis received VCS event, triggering command to be executed
 	TriggerTimestamp time.Time
+
+	// ExecutionMode define what mode command is running in. It can be:
+	// DefaultExecutionMode - default atlantis behaviour with plan and applying
+	// happening within the PR
+	// PullRequestExecutionMode - in platform mode PR are only used for plan and policy checks
+	// DeploymentExecutionMode - in platform mode deployment mode is post PR merge
+	ExecutionMode executionMode
 }

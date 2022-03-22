@@ -11,14 +11,18 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/stretchr/testify/assert"
+	"github.com/uber-go/tally"
 )
 
 func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 
+	scope := tally.NewTestScope("test", nil)
 	mockCommentBuilder := mocks.NewMockCommentBuilder()
-	subject := events.DefaultProjectCommandContextBuilder{
-		CommentBuilder: mockCommentBuilder,
-	}
+	subject := events.NewProjectCommandContextBuilder(
+		false,
+		mockCommentBuilder,
+		scope,
+	)
 
 	projRepoRelDir := "dir1"
 	projWorkspace := "default"
@@ -41,6 +45,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 	commandCtx := &command.Context{
 		Log:        logging.NewNoopLogger(t),
 		PullStatus: pullStatus,
+		Scope:      scope,
 	}
 
 	expectedApplyCmt := "Apply Comment"
@@ -57,7 +62,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 				RepoRelDir:  "dir1",
 			},
 		}
-		contextFlags := &events.ContextFlags{
+		contextFlags := &command.ContextFlags{
 			Automerge:                 false,
 			DeleteSourceBranchOnMerge: false,
 			ParallelApply:             false,
@@ -84,7 +89,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 				RepoRelDir: "dir1",
 			},
 		}
-		contextFlags := &events.ContextFlags{
+		contextFlags := &command.ContextFlags{
 			Automerge:                 false,
 			DeleteSourceBranchOnMerge: false,
 			ParallelApply:             false,
@@ -112,7 +117,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 				RepoRelDir: "dir1",
 			},
 		}
-		contextFlags := &events.ContextFlags{
+		contextFlags := &command.ContextFlags{
 			Automerge:                 false,
 			DeleteSourceBranchOnMerge: false,
 			ParallelApply:             true,

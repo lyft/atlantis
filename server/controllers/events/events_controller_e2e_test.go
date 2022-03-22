@@ -37,6 +37,7 @@ import (
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
+	"github.com/runatlantis/atlantis/server/initializers"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/metrics"
@@ -617,9 +618,14 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	}
 	statsScope, _, err := metrics.NewLoggingScope(logger, "atlantis")
 	Ok(t, err)
+	projectContextBuilder := events.NewProjectCommandContextBuilder(
+		userConfig.EnablePolicyChecksFlag,
+		false,
+		commentParser,
+		statsScope)
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
-		userConfig.EnablePolicyChecksFlag,
+		projectContextBuilder,
 		parser,
 		&events.DefaultProjectFinder{},
 		vcsClient,
@@ -627,12 +633,11 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		locker,
 		globalCfg,
 		&events.DefaultPendingPlanFinder{},
-		commentParser,
 		false,
 		false,
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
-		statsScope,
 		logger,
+		events.InfiniteProjectsPerPR,
 	)
 
 	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTFVersion)
@@ -695,18 +700,12 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	Ok(t, err)
 
-	projectCommandRunner := &events.DefaultProjectCommandRunner{
-		Locker:           projectLocker,
-		LockURLGenerator: lockURLGenerator,
-		StepsRunner:      stepsRunner,
-		WorkingDir:       workingDir,
-		Webhooks:         webhookSender,
-		WorkingDirLocker: locker,
-		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			WorkingDir: workingDir,
-		},
-	}
-
+	projectCommandRunner := initializers.InitProjectCommand(
+		stepsRunner,
+		workingDir,
+		&mockWebhookSender{},
+		locker,
+	).WithSync(projectLocker, &mockLockURLGenerator{})
 	dbUpdater := &events.DBUpdater{
 		DB: boltdb,
 	}
@@ -754,7 +753,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		autoMerger,
 		parallelPoolSize,
 		silenceNoProjects,
-		boltdb,
 	)
 
 	e2ePullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(ghClient, vcs.NewLyftPullMergeabilityChecker("atlantis"))

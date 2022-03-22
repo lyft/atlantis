@@ -5,18 +5,18 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
-func NewRunner(vcsClient vcs.Client) *Runner {
-	return &Runner{
+func NewDisabledRunner(vcsClient vcs.Client) *DisabledRunner {
+	return &DisabledRunner{
 		vcsClient: vcsClient,
 	}
 }
 
-type Runner struct {
+type DisabledRunner struct {
 	vcsClient vcs.Client
 }
 
-func (r *Runner) Run(ctx *command.Context, cmd *command.Comment) {
-	if err := r.vcsClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, "I'm a platform mode apply runner", command.Apply.String()); err != nil {
+func (r *DisabledRunner) Run(ctx *command.Context, cmd *command.Comment) {
+	if err := r.vcsClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, "To Apply your changed merge the PR", command.Apply.String()); err != nil {
 		ctx.Log.Errorf("unable to comment: %s", err)
 	}
 }

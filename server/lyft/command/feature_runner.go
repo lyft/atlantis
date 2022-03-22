@@ -53,5 +53,8 @@ func (r *PlatformModeFeatureRunner) Run(ctx *command.Context, cmd *command.Comme
 		return
 	}
 
+	// Allow allocatedRunner to run in PullRequestExecutionMode
+	ctx.ExecutionMode = command.PullRequestExecutionMode
+
 	r.allocatedRunner.Run(ctx, cmd)
 }

@@ -613,7 +613,7 @@ projects:
 				GlobalCfg:          globalCfg,
 				PendingPlanFinder:  &DefaultPendingPlanFinder{},
 				SkipCloneNoChanges: false,
-				ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
+				ProjectCommandContextBuilder: &projectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
 				},
 				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
@@ -808,7 +808,7 @@ projects:
 				GlobalCfg:          globalCfg,
 				PendingPlanFinder:  &DefaultPendingPlanFinder{},
 				SkipCloneNoChanges: true,
-				ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
+				ProjectCommandContextBuilder: &projectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
 				},
 				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
@@ -1032,11 +1032,9 @@ workflows:
 				GlobalCfg:          globalCfg,
 				PendingPlanFinder:  &DefaultPendingPlanFinder{},
 				SkipCloneNoChanges: true,
-				ProjectCommandContextBuilder: &PolicyCheckProjectCommandContextBuilder{
-					ProjectCommandContextBuilder: &DefaultProjectCommandContextBuilder{
-						CommentBuilder: &CommentParser{},
-					},
-					CommentBuilder: &CommentParser{},
+				ProjectCommandContextBuilder: &projectCommandContextBuilder{
+					PolicyChecksEnabled: true,
+					CommentBuilder:      &CommentParser{},
 				},
 				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 			}
