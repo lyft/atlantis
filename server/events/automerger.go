@@ -13,7 +13,7 @@ type AutoMerger struct {
 	GlobalAutomerge bool
 }
 
-func (c *AutoMerger) Automerge(ctx *command.Context, pullStatus models.PullStatus, deleteSourceBranchOnMerge bool) {
+func (c *AutoMerger) automerge(ctx *command.Context, pullStatus models.PullStatus, deleteSourceBranchOnMerge bool) {
 	// We only automerge if all projects have been successfully applied.
 	for _, p := range pullStatus.Projects {
 		if p.Status != models.AppliedPlanStatus {
@@ -45,7 +45,7 @@ func (c *AutoMerger) Automerge(ctx *command.Context, pullStatus models.PullStatu
 }
 
 // AutomergeEnabled returns true if automerging is enabled in this context.
-func (c *AutoMerger) AutomergeEnabled(projectCmds []command.ProjectContext) bool {
+func (c *AutoMerger) automergeEnabled(projectCmds []command.ProjectContext) bool {
 	// If the global automerge is set, we always automerge.
 	return c.GlobalAutomerge ||
 		// Otherwise we check if this repo is configured for automerging.
@@ -53,7 +53,7 @@ func (c *AutoMerger) AutomergeEnabled(projectCmds []command.ProjectContext) bool
 }
 
 // deleteSourceBranchOnMergeEnabled returns true if we should delete the source branch on merge in this context.
-func (c *AutoMerger) DeleteSourceBranchOnMergeEnabled(projectCmds []command.ProjectContext) bool {
+func (c *AutoMerger) deleteSourceBranchOnMergeEnabled(projectCmds []command.ProjectContext) bool {
 	//check if this repo is configured for automerging.
 	return (len(projectCmds) > 0 && projectCmds[0].DeleteSourceBranchOnMerge)
 }

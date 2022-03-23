@@ -148,7 +148,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		cmd,
 		result)
 
-	pullStatus, err := a.dbUpdater.UpdateDB(ctx, pull, result.ProjectResults)
+	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.Err("writing results: %s", err)
 		return
@@ -156,8 +156,8 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 
 	a.updateCommitStatus(ctx, pullStatus)
 
-	if a.autoMerger.AutomergeEnabled(projectCmds) && !cmd.AutoMergeDisabled {
-		a.autoMerger.Automerge(ctx, pullStatus, a.autoMerger.DeleteSourceBranchOnMergeEnabled(projectCmds))
+	if a.autoMerger.automergeEnabled(projectCmds) && !cmd.AutoMergeDisabled {
+		a.autoMerger.automerge(ctx, pullStatus, a.autoMerger.deleteSourceBranchOnMergeEnabled(projectCmds))
 	}
 }
 

@@ -78,7 +78,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 		result,
 	)
 
-	pullStatus, err := a.dbUpdater.UpdateDB(ctx, pull, result.ProjectResults)
+	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.Err("writing results: %s", err)
 		return
