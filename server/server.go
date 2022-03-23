@@ -521,7 +521,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	projectContextBuilder := events.NewProjectCommandContextBuilder(
 		policyChecksEnabled,
-		false,
 		commentParser,
 		statsScope,
 	)
@@ -541,6 +540,29 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		logger,
 		userConfig.MaxProjectsPerPR,
 	)
+
+	prProjectContextBuilder := events.NewPRProjectCommandContextBuilder(
+		policyChecksEnabled,
+		commentParser,
+		statsScope,
+	)
+
+	prProjectCommandBuilder := events.NewProjectCommandBuilder(
+		prProjectContextBuilder,
+		validator,
+		&events.DefaultProjectFinder{},
+		vcsClient,
+		workingDir,
+		workingDirLocker,
+		globalCfg,
+		pendingPlanFinder,
+		userConfig.SkipCloneNoChanges,
+		userConfig.EnableRegExpCmd,
+		userConfig.AutoplanFileList,
+		logger,
+		userConfig.MaxProjectsPerPR,
+	)
+
 	initStepRunner := &runtime.InitStepRunner{
 		TerraformExecutor: terraformClient,
 		DefaultTFVersion:  defaultTfVersion,
@@ -746,7 +768,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		pendingPlanFinder,
 		workingDir,
 		commitStatusUpdater,
-		projectCommandBuilder,
+		prProjectCommandBuilder,
 		prPrjCmdRunner,
 		dbUpdater,
 		pullUpdater,
@@ -758,7 +780,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
-		projectCommandBuilder,
+		prProjectCommandBuilder,
 		prPrjCmdRunner,
 		pullUpdater,
 		dbUpdater,

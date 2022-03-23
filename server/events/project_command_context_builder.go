@@ -24,32 +24,60 @@ type ProjectCommandContextBuilder interface {
 }
 
 func NewProjectCommandContextBuilder(
+	platformModeEnabled bool,
 	policyCheckEnabled bool,
 	commentBuilder CommentBuilder,
 	scope tally.Scope,
 ) ProjectCommandContextBuilder {
 	var builder ProjectCommandContextBuilder
 	builder = &projectCommandContextBuilder{
-		PolicyChecksEnabled: policyCheckEnabled,
-		CommentBuilder:      commentBuilder,
+		CommentBuilder: commentBuilder,
 	}
 
-	builderWithStats := &InstrumentedProjectCommandContextBuilder{
+	if policyCheckEnabled {
+		builder = &policyCheckProjectContextBuilder{
+			ProjectCommandContextBuilder: builder,
+			CommentBuilder:               commentBuilder,
+		}
+	}
+
+	builder = &InstrumentedProjectCommandContextBuilder{
 		ProjectCommandContextBuilder: builder,
 		ProjectCounter:               scope.Counter("projects"),
 	}
 
-	return builderWithStats
+	return builder
 }
 
 type projectCommandContextBuilder struct {
-	PolicyChecksEnabled bool
-	CommentBuilder      CommentBuilder
+	CommentBuilder CommentBuilder
 }
 
 func (cb *projectCommandContextBuilder) BuildProjectContext(
 	ctx *command.Context,
 	cmdName command.Name,
+	prjCfg valid.MergedProjectCfg,
+	commentArgs []string,
+	repoDir string,
+	contextFlags *command.ContextFlags,
+) []command.ProjectContext {
+	return buildContext(
+		ctx,
+		cmdName,
+		getSteps(cmdName, prjCfg.Workflow),
+		cb.CommentBuilder,
+		prjCfg,
+		commentArgs,
+		repoDir,
+		contextFlags,
+	)
+}
+
+func buildContext(
+	ctx *command.Context,
+	cmdName command.Name,
+	steps []valid.Step,
+	commentBuilder CommentBuilder,
 	prjCfg valid.MergedProjectCfg,
 	commentArgs []string,
 	repoDir string,
@@ -64,15 +92,13 @@ func (cb *projectCommandContextBuilder) BuildProjectContext(
 		prjCfg.TerraformVersion = getTfVersion(ctx, filepath.Join(repoDir, prjCfg.RepoRelDir))
 	}
 
-	steps := getWorkflows(ctx, cmdName, prjCfg)
-
 	projectCmds = append(projectCmds,
 		command.NewProjectContext(
 			ctx,
 			cmdName,
-			cb.CommentBuilder.BuildApplyComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name, prjCfg.AutoMergeDisabled),
-			cb.CommentBuilder.BuildPlanComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name, commentArgs),
-			cb.CommentBuilder.BuildVersionComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name),
+			commentBuilder.BuildApplyComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name, prjCfg.AutoMergeDisabled),
+			commentBuilder.BuildPlanComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name, commentArgs),
+			commentBuilder.BuildVersionComment(prjCfg.RepoRelDir, prjCfg.Workspace, prjCfg.Name),
 			prjCfg,
 			steps,
 			prjCfg.PolicySets,
@@ -83,41 +109,14 @@ func (cb *projectCommandContextBuilder) BuildProjectContext(
 		),
 	)
 
-	// When policy checks enabled we want to generate project context for policy
-	// check command.
-	if cb.PolicyChecksEnabled && cmdName == command.Plan {
-		policyCheckCmds := cb.BuildProjectContext(
-			ctx,
-			command.PolicyCheck,
-			prjCfg,
-			commentArgs,
-			repoDir,
-			contextFlags,
-		)
-		projectCmds = append(projectCmds,
-			policyCheckCmds...,
-		)
-	}
-
 	return projectCmds
+
 }
 
-func getWorkflows(
-	ctx *command.Context,
+func getSteps(
 	cmdName command.Name,
-	prjCfg valid.MergedProjectCfg,
+	workflow valid.Workflow,
 ) (steps []valid.Step) {
-	var workflow valid.Workflow
-
-	switch ctx.ExecutionMode {
-	case command.DefaultExecutionMode:
-		workflow = prjCfg.Workflow
-	case command.PullRequestExecutionMode:
-		workflow = prjCfg.PullRequestWorkflow
-	case command.DeploymentExecutionMode:
-		workflow = prjCfg.DeploymentWorkflow
-	}
-
 	switch cmdName {
 	case command.Plan:
 		steps = workflow.Plan.Steps
@@ -130,8 +129,7 @@ func getWorkflows(
 	case command.PolicyCheck:
 		steps = workflow.PolicyCheck.Steps
 	}
-
-	return
+	return steps
 }
 
 func escapeArgs(args []string) []string {
