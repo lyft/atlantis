@@ -618,11 +618,11 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	}
 	statsScope, _, err := metrics.NewLoggingScope(logger, "atlantis")
 	Ok(t, err)
-	projectContextBuilder := events.NewProjectCommandContextBuilder(
-		userConfig.EnablePolicyChecksFlag,
-		false,
-		commentParser,
-		statsScope)
+
+	projectContextBuilder := initializers.
+		InitProjectContext(commentParser).
+		WithPolicyChecks().
+		WithInstrumentation(statsScope)
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
 		projectContextBuilder,

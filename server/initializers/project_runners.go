@@ -23,7 +23,7 @@ func InitProjectCommand(
 	}
 
 	return &projectCommand{
-		ProjectCommandRunner: events.NewProjectCommandRunner(
+		events.NewProjectCommandRunner(
 			stepsRunner,
 			workingDir,
 			webhooksManager,

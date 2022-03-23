@@ -3,32 +3,14 @@ package events
 import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/uber-go/tally"
 )
 
 func NewPRProjectCommandContextBuilder(
-	policyCheckEnabled bool,
 	commentBuilder CommentBuilder,
-	scope tally.Scope,
 ) ProjectCommandContextBuilder {
-	var builder ProjectCommandContextBuilder
-	builder = &prProjectContextBuilder{
+	return &prProjectContextBuilder{
 		CommentBuilder: commentBuilder,
 	}
-
-	if policyCheckEnabled {
-		builder = &policyCheckProjectContextBuilder{
-			ProjectCommandContextBuilder: builder,
-			CommentBuilder:               commentBuilder,
-		}
-	}
-
-	builder = &InstrumentedProjectCommandContextBuilder{
-		ProjectCommandContextBuilder: builder,
-		ProjectCounter:               scope.Counter("projects"),
-	}
-
-	return builder
 }
 
 type prProjectContextBuilder struct {

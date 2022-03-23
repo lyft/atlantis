@@ -18,11 +18,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 
 	scope := tally.NewTestScope("test", nil)
 	mockCommentBuilder := mocks.NewMockCommentBuilder()
-	subject := events.NewProjectCommandContextBuilder(
-		false,
-		mockCommentBuilder,
-		scope,
-	)
+	subject := events.NewProjectCommandContextBuilder(mockCommentBuilder)
 
 	projRepoRelDir := "dir1"
 	projWorkspace := "default"

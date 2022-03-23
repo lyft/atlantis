@@ -519,11 +519,18 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHookRunner: runtime.DefaultPreWorkflowHookRunner{},
 	}
 
-	projectContextBuilder := events.NewProjectCommandContextBuilder(
-		policyChecksEnabled,
-		commentParser,
-		statsScope,
-	)
+	projectContextBuilder := initializers.
+		InitProjectContext(commentParser).
+		WithInstrumentation(statsScope)
+
+	prProjectContextBuilder := initializers.
+		InitPRProjectContext(commentParser).
+		WithInstrumentation(statsScope)
+
+	if policyChecksEnabled {
+		projectContextBuilder = projectContextBuilder.WithPolicyChecks()
+		prProjectContextBuilder = prProjectContextBuilder.WithPolicyChecks()
+	}
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
 		projectContextBuilder,
@@ -539,12 +546,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.AutoplanFileList,
 		logger,
 		userConfig.MaxProjectsPerPR,
-	)
-
-	prProjectContextBuilder := events.NewPRProjectCommandContextBuilder(
-		policyChecksEnabled,
-		commentParser,
-		statsScope,
 	)
 
 	prProjectCommandBuilder := events.NewProjectCommandBuilder(

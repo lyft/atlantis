@@ -1022,21 +1022,22 @@ workflows:
 			if c.repoCfg != "" {
 				Ok(t, ioutil.WriteFile(filepath.Join(tmp, "atlantis.yaml"), []byte(c.repoCfg), 0600))
 			}
-
+			contextBuilder := NewProjectCommandContextBuilder(&CommentParser{})
+			contextBuilder = &PolicyCheckProjectContextBuilder{
+				contextBuilder,
+				&CommentParser{},
+			}
 			builder := &DefaultProjectCommandBuilder{
-				ParserValidator:    &config.ParserValidator{},
-				ProjectFinder:      &DefaultProjectFinder{},
-				VCSClient:          vcsClient,
-				WorkingDir:         workingDir,
-				WorkingDirLocker:   NewDefaultWorkingDirLocker(),
-				GlobalCfg:          globalCfg,
-				PendingPlanFinder:  &DefaultPendingPlanFinder{},
-				SkipCloneNoChanges: true,
-				ProjectCommandContextBuilder: &projectCommandContextBuilder{
-					PolicyChecksEnabled: true,
-					CommentBuilder:      &CommentParser{},
-				},
-				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+				ParserValidator:              &config.ParserValidator{},
+				ProjectFinder:                &DefaultProjectFinder{},
+				VCSClient:                    vcsClient,
+				WorkingDir:                   workingDir,
+				WorkingDirLocker:             NewDefaultWorkingDirLocker(),
+				GlobalCfg:                    globalCfg,
+				PendingPlanFinder:            &DefaultPendingPlanFinder{},
+				SkipCloneNoChanges:           true,
+				ProjectCommandContextBuilder: contextBuilder,
+				AutoplanFileList:             "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 			}
 
 			cmd := command.PolicyCheck

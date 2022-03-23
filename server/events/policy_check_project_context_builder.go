@@ -5,12 +5,12 @@ import (
 	"github.com/runatlantis/atlantis/server/events/command"
 )
 
-type policyCheckProjectContextBuilder struct {
+type PolicyCheckProjectContextBuilder struct {
 	ProjectCommandContextBuilder
 	CommentBuilder CommentBuilder
 }
 
-func (p *policyCheckProjectContextBuilder) BuildProjectContext(
+func (p *PolicyCheckProjectContextBuilder) BuildProjectContext(
 	ctx *command.Context,
 	cmdName command.Name,
 	prjCfg valid.MergedProjectCfg,
@@ -23,7 +23,7 @@ func (p *policyCheckProjectContextBuilder) BuildProjectContext(
 		prjCmds = append(prjCmds,
 			buildContext(
 				ctx,
-				cmdName,
+				command.PolicyCheck,
 				getSteps(command.PolicyCheck, prjCfg.Workflow),
 				p.CommentBuilder,
 				prjCfg,

@@ -16,6 +16,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/models"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
+	"github.com/runatlantis/atlantis/server/initializers"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
 	. "github.com/runatlantis/atlantis/testing"
@@ -148,7 +149,7 @@ projects:
 			}
 
 			builder := events.NewProjectCommandBuilder(
-				events.NewProjectCommandContextBuilder(false, &events.CommentParser{}, scope),
+				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 				&config.ParserValidator{},
 				&events.DefaultProjectFinder{},
 				vcsClient,
@@ -415,7 +416,7 @@ projects:
 				}
 
 				builder := events.NewProjectCommandBuilder(
-					events.NewProjectCommandContextBuilder(false, &events.CommentParser{}, scope),
+					events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 					&config.ParserValidator{},
 					&events.DefaultProjectFinder{},
 					vcsClient,
@@ -569,7 +570,7 @@ projects:
 			}
 
 			builder := events.NewProjectCommandBuilder(
-				events.NewProjectCommandContextBuilder(false, &events.CommentParser{}, scope),
+				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 				&config.ParserValidator{},
 				&events.DefaultProjectFinder{},
 				vcsClient,
@@ -659,7 +660,7 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
 	builder := events.NewProjectCommandBuilder(
-		events.NewProjectCommandContextBuilder(false, &events.CommentParser{}, scope),
+		events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 		&config.ParserValidator{},
 		&events.DefaultProjectFinder{},
 		nil,
@@ -743,7 +744,7 @@ projects:
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
 	builder := events.NewProjectCommandBuilder(
-		events.NewProjectCommandContextBuilder(false, &events.CommentParser{}, scope),
+		events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 		&config.ParserValidator{},
 		&events.DefaultProjectFinder{},
 		nil,
@@ -821,7 +822,7 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 			}
 
 			builder := events.NewProjectCommandBuilder(
-				events.NewProjectCommandContextBuilder(false, &events.CommentParser{}, scope),
+				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 				&config.ParserValidator{},
 				&events.DefaultProjectFinder{},
 				vcsClient,
@@ -1003,7 +1004,7 @@ projects:
 			}
 
 			builder := events.NewProjectCommandBuilder(
-				events.NewProjectCommandContextBuilder(false, &events.CommentParser{}, scope),
+				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 				&config.ParserValidator{},
 				&events.DefaultProjectFinder{},
 				vcsClient,
@@ -1069,7 +1070,7 @@ projects:
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
 	builder := events.NewProjectCommandBuilder(
-		events.NewProjectCommandContextBuilder(false, &events.CommentParser{}, scope),
+		events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 		&config.ParserValidator{},
 		&events.DefaultProjectFinder{},
 		vcsClient,
@@ -1125,8 +1126,11 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 
 	globalCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
 
+	contextBuilder := initializers.
+		InitProjectContext(&events.CommentParser{}).
+		WithPolicyChecks()
 	builder := events.NewProjectCommandBuilder(
-		events.NewProjectCommandContextBuilder(true, &events.CommentParser{}, scope),
+		contextBuilder,
 		&config.ParserValidator{},
 		&events.DefaultProjectFinder{},
 		vcsClient,
@@ -1207,7 +1211,7 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 	}
 
 	builder := events.NewProjectCommandBuilder(
-		events.NewProjectCommandContextBuilder(false, &events.CommentParser{}, scope),
+		events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 		&config.ParserValidator{},
 		&events.DefaultProjectFinder{},
 		nil,

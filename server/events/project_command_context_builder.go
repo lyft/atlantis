@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/uber-go/tally"
 )
 
 type ProjectCommandContextBuilder interface {
@@ -24,29 +23,11 @@ type ProjectCommandContextBuilder interface {
 }
 
 func NewProjectCommandContextBuilder(
-	platformModeEnabled bool,
-	policyCheckEnabled bool,
 	commentBuilder CommentBuilder,
-	scope tally.Scope,
 ) ProjectCommandContextBuilder {
-	var builder ProjectCommandContextBuilder
-	builder = &projectCommandContextBuilder{
+	return &projectCommandContextBuilder{
 		CommentBuilder: commentBuilder,
 	}
-
-	if policyCheckEnabled {
-		builder = &policyCheckProjectContextBuilder{
-			ProjectCommandContextBuilder: builder,
-			CommentBuilder:               commentBuilder,
-		}
-	}
-
-	builder = &InstrumentedProjectCommandContextBuilder{
-		ProjectCommandContextBuilder: builder,
-		ProjectCounter:               scope.Counter("projects"),
-	}
-
-	return builder
 }
 
 type projectCommandContextBuilder struct {
