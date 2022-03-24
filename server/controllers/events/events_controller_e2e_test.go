@@ -621,8 +621,11 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	projectContextBuilder := initializers.
 		InitProjectContext(commentParser).
-		WithPolicyChecks().
 		WithInstrumentation(statsScope)
+
+	if userConfig.EnablePolicyChecksFlag {
+		projectContextBuilder = projectContextBuilder.WithPolicyChecks()
+	}
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
 		projectContextBuilder,
