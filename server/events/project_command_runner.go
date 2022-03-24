@@ -235,9 +235,11 @@ func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx command.ProjectContext) 
 
 	outputs, err := p.StepsRunner.Run(ctx, absPath)
 	if err != nil {
-		// Note: we are explicitly not unlocking the pr here since a failing policy check will require
-		// approval
-		return nil, "", fmt.Errorf("%s\n%s", err, outputs)
+		// Note: we are explicitly not unlocking the pr here since a failing
+		// policy check will require approval. This is a bit tricky and hacky
+		// solution because we will be missing legitimate failures and assume
+		// any failure is a policy check failure.
+		return nil, fmt.Sprintf("%s\n%s", err, outputs), nil
 	}
 
 	return &models.PolicyCheckSuccess{
