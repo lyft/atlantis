@@ -47,6 +47,8 @@ type AutoplanValidator struct {
 	WorkingDirLocker           events.WorkingDirLocker
 }
 
+const DefaultWorkspace = "default"
+
 func (r *AutoplanValidator) isValid(baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) (bool, error) {
 	if opStarted := r.Drainer.StartOp(); !opStarted {
 		return false, errors.New("atlantis is shutting down, cannot process current event")
@@ -81,7 +83,7 @@ func (r *AutoplanValidator) isValid(baseRepo models.Repo, headRepo models.Repo, 
 			ctx.Log.Warn("unable to update commit status: %s", statusErr)
 		}
 		// If error happened after clone was made, we should clean it up here too
-		unlockFn, lockErr := r.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, "default")
+		unlockFn, lockErr := r.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
 		if lockErr != nil {
 			ctx.Log.Warn("workspace was locked")
 			return false, errors.Wrap(err, lockErr.Error())
@@ -93,7 +95,7 @@ func (r *AutoplanValidator) isValid(baseRepo models.Repo, headRepo models.Repo, 
 		r.PullUpdater.UpdatePull(ctx, events.AutoplanCommand{}, command.Result{Error: err})
 		return false, errors.Wrap(err, "Failed building autoplan commands")
 	}
-	unlockFn, err := r.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, "default")
+	unlockFn, err := r.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
 	if err != nil {
 		ctx.Log.Warn("workspace was locked")
 		return false, err
