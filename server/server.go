@@ -889,6 +889,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		AllowForkPRsFlag:              config.AllowForkPRsFlag,
 		SilenceForkPRErrors:           userConfig.SilenceForkPRErrors,
 		SilenceForkPRErrorsFlag:       config.SilenceForkPRErrorsFlag,
+		SilenceVCSStatusNoPlans:       userConfig.SilenceVCSStatusNoProjects,
+		SilenceVCSStatusNoProjects:    userConfig.SilenceNoProjects,
 		CommitStatusUpdater:           commitStatusUpdater,
 		PrjCmdBuilder:                 projectCommandBuilder,
 		PullUpdater:                   pullUpdater,
