@@ -809,7 +809,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		EventParser:                   eventParser,
 		VCSClient:                     vcsClient,
 		GithubPullGetter:              ghClient,
-		Logger:                        logger,
 		GlobalCfg:                     globalCfg,
 		StatsScope:                    statsScope,
 		AllowForkPRs:                  allowForkPRs,
