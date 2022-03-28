@@ -1,22 +1,26 @@
 package apply
 
 import (
+	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
-func NewDisabledRunner(vcsClient vcs.Client) *DisabledRunner {
+func NewDisabledRunner(pullUpdater *events.PullUpdater) *DisabledRunner {
 	return &DisabledRunner{
-		vcsClient: vcsClient,
+		pullUpdater: pullUpdater,
 	}
 }
 
 type DisabledRunner struct {
-	vcsClient vcs.Client
+	pullUpdater *events.PullUpdater
 }
 
 func (r *DisabledRunner) Run(ctx *command.Context, cmd *command.Comment) {
-	if err := r.vcsClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, "To Apply your changed merge the PR", command.Apply.String()); err != nil {
-		ctx.Log.Errorf("unable to comment: %s", err)
-	}
+	r.pullUpdater.UpdatePull(
+		ctx,
+		cmd,
+		command.Result{
+			Failure: "Atlantis apply is not supported, please merge the PR to apply your changes",
+		},
+	)
 }

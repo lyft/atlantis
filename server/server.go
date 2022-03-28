@@ -801,7 +801,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		featureAllocator,
 		userConfig.EnablePlatformMode,
 		logger,
-		apply.NewDisabledRunner(vcsClient),
+		apply.NewDisabledRunner(pullUpdater),
 		applyCommandRunner,
 	)
 
