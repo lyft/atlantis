@@ -39,7 +39,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
-	"github.com/runatlantis/atlantis/server/initializers"
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
@@ -50,6 +49,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/lyft/scheduled"
 	"github.com/runatlantis/atlantis/server/metrics"
+	"github.com/runatlantis/atlantis/server/wrappers"
 	"github.com/uber-go/tally"
 
 	"github.com/gorilla/mux"
@@ -519,17 +519,17 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHookRunner: runtime.DefaultPreWorkflowHookRunner{},
 	}
 
-	projectContextBuilder := initializers.
-		InitProjectContext(commentParser).
+	projectContextBuilder := wrappers.
+		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
 		WithInstrumentation(statsScope)
 
-	prProjectContextBuilder := initializers.
-		InitPRProjectContext(commentParser).
+	prProjectContextBuilder := wrappers.
+		WrapProjectContext(events.NewPRProjectCommandContextBuilder(commentParser)).
 		WithInstrumentation(statsScope)
 
 	if policyChecksEnabled {
-		projectContextBuilder = projectContextBuilder.WithPolicyChecks()
-		prProjectContextBuilder = prProjectContextBuilder.WithPolicyChecks()
+		projectContextBuilder = projectContextBuilder.WithPolicyChecks(commentParser)
+		prProjectContextBuilder = prProjectContextBuilder.WithPolicyChecks(commentParser)
 	}
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
@@ -659,13 +659,20 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		snsWriter = sns.NewNoopWriter()
 	}
 
-	projectCmdRunner := initializers.
-		InitProjectCommand(
-			stepsRunner,
-			workingDir,
-			webhooksManager,
-			workingDirLocker,
-		).
+	applyRequirementHandler := &events.AggregateApplyRequirements{
+		WorkingDir: workingDir,
+	}
+
+	unwrappedPrjCmdRunner := events.NewProjectCommandRunner(
+		stepsRunner,
+		workingDir,
+		webhooksManager,
+		workingDirLocker,
+		applyRequirementHandler,
+	)
+
+	prjCmdRunner := wrappers.
+		WrapProjectRunner(unwrappedPrjCmdRunner).
 		WithSync(
 			projectLocker,
 			router,
@@ -677,13 +684,16 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			projectCmdOutputHandler,
 		)
 
-	prPrjCmdRunner := initializers.
-		InitProjectCommand(
-			stepsRunner,
-			workingDir,
-			webhooksManager,
-			workingDirLocker,
-		).
+	unwrappedPRPrjCmdRunner := events.NewProjectCommandRunner(
+		stepsRunner,
+		workingDir,
+		webhooksManager,
+		workingDirLocker,
+		applyRequirementHandler,
+	)
+
+	prPrjCmdRunner := wrappers.
+		WrapProjectRunner(unwrappedPRPrjCmdRunner).
 		WithAuditing(snsWriter).
 		WithInstrumentation().
 		WithJobs(
@@ -700,7 +710,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		dbUpdater,
 		pullUpdater,
 		commitStatusUpdater,
-		projectCmdRunner,
+		prjCmdRunner,
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceVCSStatusNoProjects,
 	)
@@ -713,7 +723,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		workingDir,
 		commitStatusUpdater,
 		projectCommandBuilder,
-		projectCmdRunner,
+		prjCmdRunner,
 		dbUpdater,
 		pullUpdater,
 		policyCheckCommandRunner,
@@ -728,7 +738,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		applyLockingClient,
 		commitStatusUpdater,
 		projectCommandBuilder,
-		projectCmdRunner,
+		prjCmdRunner,
 		autoMerger,
 		pullUpdater,
 		dbUpdater,
@@ -741,7 +751,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
-		projectCmdRunner,
+		prjCmdRunner,
 		pullUpdater,
 		dbUpdater,
 		userConfig.SilenceNoProjects,
@@ -757,7 +767,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	versionCommandRunner := events.NewVersionCommandRunner(
 		pullUpdater,
 		projectCommandBuilder,
-		projectCmdRunner,
+		prjCmdRunner,
 		userConfig.ParallelPoolSize,
 		userConfig.SilenceNoProjects,
 	)

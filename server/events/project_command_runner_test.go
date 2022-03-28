@@ -27,8 +27,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/mocks/matchers"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/initializers"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/wrappers"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -38,13 +38,21 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	mockWorkingDir := mocks.NewMockWorkingDir()
 	mockLocker := mocks.NewMockProjectLocker()
 	mockStepsRunner := smocks.NewMockStepsRunner()
+	applyRequirementHandler := &events.AggregateApplyRequirements{
+		WorkingDir: workingDir,
+	}
 
-	runner := initializers.InitProjectCommand(
+	runner := events.NewProjectCommandRunner(
 		mockStepsRunner,
 		mockWorkingDir,
 		nil,
 		events.NewDefaultWorkingDirLocker(),
-	).WithSync(mockLocker, mockURLGenerator{})
+		applyRequirementHandler,
+	)
+
+	wrappedRunner := wrappers.
+		WrapProjectRunner(runner).
+		WithSync(mockLocker, mockURLGenerator{})
 
 	When(mockLocker.TryLock(
 		matchers.AnyPtrToLoggingSimpleLogger(),
@@ -91,7 +99,7 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 	}
 
 	When(mockStepsRunner.Run(ctx, repoDir)).ThenReturn("run\napply\nplan\ninit", nil)
-	res := runner.Plan(ctx)
+	res := wrappedRunner.Plan(ctx)
 
 	Assert(t, res.PlanSuccess != nil, "exp plan success")
 	Equals(t, "https://lock-key", res.PlanSuccess.LockURL)

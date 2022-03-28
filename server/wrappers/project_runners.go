@@ -1,7 +1,6 @@
-package initializers
+package wrappers
 
 import (
-	"github.com/runatlantis/atlantis/server/core/runtime"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
 	"github.com/runatlantis/atlantis/server/lyft/decorators"
@@ -12,24 +11,9 @@ type projectCommand struct {
 	events.ProjectCommandRunner
 }
 
-func InitProjectCommand(
-	stepsRunner runtime.StepsRunner,
-	workingDir events.WorkingDir,
-	webhooksManager events.WebhooksSender,
-	workingDirLocker events.WorkingDirLocker,
-) *projectCommand {
-	applyRequirementHandler := &events.AggregateApplyRequirements{
-		WorkingDir: workingDir,
-	}
-
+func WrapProjectRunner(projectRunner events.ProjectCommandRunner) *projectCommand {
 	return &projectCommand{
-		events.NewProjectCommandRunner(
-			stepsRunner,
-			workingDir,
-			webhooksManager,
-			workingDirLocker,
-			applyRequirementHandler,
-		),
+		projectRunner,
 	}
 }
 

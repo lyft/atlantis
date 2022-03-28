@@ -1,4 +1,4 @@
-package initializers
+package wrappers
 
 import (
 	"github.com/runatlantis/atlantis/server/events"
@@ -7,33 +7,22 @@ import (
 
 type projectContext struct {
 	events.ProjectCommandContextBuilder
-	commentBuilder events.CommentBuilder
 }
 
-func InitProjectContext(
-	commentBuilder events.CommentBuilder,
+func WrapProjectContext(
+	projectCtxBuilder events.ProjectCommandContextBuilder,
 ) *projectContext {
 	return &projectContext{
-		events.NewProjectCommandContextBuilder(commentBuilder),
-		commentBuilder,
+		projectCtxBuilder,
 	}
 }
 
-// InitPRProjectContext initializes context builder that uses
-// pull_request_workflows used by platform mode
-func InitPRProjectContext(
+func (p *projectContext) WithPolicyChecks(
 	commentBuilder events.CommentBuilder,
 ) *projectContext {
-	return &projectContext{
-		events.NewPRProjectCommandContextBuilder(commentBuilder),
-		commentBuilder,
-	}
-}
-
-func (p *projectContext) WithPolicyChecks() *projectContext {
 	p.ProjectCommandContextBuilder = &events.PolicyCheckProjectContextBuilder{
 		ProjectCommandContextBuilder: p.ProjectCommandContextBuilder,
-		CommentBuilder:               p.commentBuilder,
+		CommentBuilder:               commentBuilder,
 	}
 	return p
 }

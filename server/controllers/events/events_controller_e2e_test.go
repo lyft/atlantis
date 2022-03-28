@@ -37,10 +37,10 @@ import (
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
-	"github.com/runatlantis/atlantis/server/initializers"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/metrics"
+	"github.com/runatlantis/atlantis/server/wrappers"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -619,12 +619,12 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	statsScope, _, err := metrics.NewLoggingScope(logger, "atlantis")
 	Ok(t, err)
 
-	projectContextBuilder := initializers.
-		InitProjectContext(commentParser).
+	projectContextBuilder := wrappers.
+		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
 		WithInstrumentation(statsScope)
 
 	if userConfig.EnablePolicyChecksFlag {
-		projectContextBuilder = projectContextBuilder.WithPolicyChecks()
+		projectContextBuilder = projectContextBuilder.WithPolicyChecks(commentParser)
 	}
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
@@ -703,12 +703,22 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	Ok(t, err)
 
-	projectCommandRunner := initializers.InitProjectCommand(
+	applyRequirementHandler := &events.AggregateApplyRequirements{
+		WorkingDir: workingDir,
+	}
+
+	prjRunner := events.NewProjectCommandRunner(
 		stepsRunner,
 		workingDir,
-		&mockWebhookSender{},
+		webhookSender,
 		locker,
-	).WithSync(projectLocker, &mockLockURLGenerator{})
+		applyRequirementHandler,
+	)
+
+	projectCommandRunner := wrappers.
+		WrapProjectRunner(prjRunner).
+		WithSync(projectLocker, lockURLGenerator)
+
 	dbUpdater := &events.DBUpdater{
 		DB: boltdb,
 	}

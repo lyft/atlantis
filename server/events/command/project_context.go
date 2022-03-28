@@ -31,7 +31,6 @@ func NewProjectContext(
 	cmd Name,
 	applyCmd string,
 	planCmd string,
-	versionCmd string,
 	projCfg valid.MergedProjectCfg,
 	steps []valid.Step,
 	policySets valid.PolicySets,

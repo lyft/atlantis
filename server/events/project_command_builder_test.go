@@ -16,9 +16,9 @@ import (
 	"github.com/runatlantis/atlantis/server/events/mocks"
 	"github.com/runatlantis/atlantis/server/events/models"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
-	"github.com/runatlantis/atlantis/server/initializers"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
+	"github.com/runatlantis/atlantis/server/wrappers"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/uber-go/tally"
 )
@@ -1125,10 +1125,11 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 	}
 
 	globalCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+	commentParser := &events.CommentParser{}
+	contextBuilder := wrappers.
+		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
+		WithPolicyChecks(commentParser)
 
-	contextBuilder := initializers.
-		InitProjectContext(&events.CommentParser{}).
-		WithPolicyChecks()
 	builder := events.NewProjectCommandBuilder(
 		contextBuilder,
 		&config.ParserValidator{},
