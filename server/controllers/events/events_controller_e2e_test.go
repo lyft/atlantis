@@ -332,7 +332,8 @@ func TestGitHubWorkflow(t *testing.T) {
 			userConfig.DisableApply = c.DisableApply
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
-			headSHA, ctrl, applyLocker := setupE2E(t, "simple", userConfig, ghClient)
+
+			headSHA, ctrl, applyLocker := setupE2E(t, c.RepoDir, userConfig, ghClient)
 
 			// Set expected pull from github
 			ghClient.ExpectedPull = GitHubPullRequestParsed(headSHA)
