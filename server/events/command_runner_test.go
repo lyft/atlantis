@@ -299,8 +299,29 @@ func TestRunCommentCommand_ForkPRDisabled_SilenceEnabled(t *testing.T) {
 	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
 }
 
+func TestRunCommentCommand_PreWorkflowHookError(t *testing.T) {
+	t.Log("if pre workflow hook errors out stop the execution")
+	vcsClient := setup(t)
+	log := logging.NewNoopLogger(t)
+	var pull github.PullRequest
+	modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, Num: fixtures.Pull.Num, State: models.OpenPullState}
+	preWorkflowHooksCommandRunner = mocks.NewMockPreWorkflowHooksCommandRunner()
+
+	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(&pull, nil)
+	When(eventParsing.ParseGithubPull(&pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
+	When(staleCommandChecker.CommandIsStale(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
+	When(preWorkflowHooksCommandRunner.RunPreHooks(matchers.AnyPtrToEventsCommandContext())).ThenReturn(fmt.Errorf("catastrophic error"))
+	When(projectCommandRunner.Plan(matchers.AnyCommandProjectContext())).ThenReturn(command.ProjectResult{PlanSuccess: &models.PlanSuccess{}})
+
+	ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
+
+	ch.RunCommentCommand(log, fixtures.GithubRepo, nil, nil, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: command.Plan}, time.Now())
+	_, _, msg, cmdName := vcsClient.VerifyWasCalledOnce().CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString()).GetCapturedArguments()
+	Equals(t, "Encountered an error during pre-workflow-hook execution: catastrophic error", msg)
+	Equals(t, "plan", cmdName)
+}
+
 func TestRunCommentCommandPlan_NoProjects_SilenceEnabled(t *testing.T) {
-	t.Log("if a plan command is run on a pull request and SilenceNoProjects is enabled and we are silencing all comments if the modified files don't have a matching project")
 	vcsClient := setup(t)
 	log := logging.NewNoopLogger(t)
 	planCommandRunner.SilenceNoProjects = true
@@ -532,6 +553,28 @@ func TestRunUnlockCommandFail_VCSComment(t *testing.T) {
 	ch.RunCommentCommand(log, fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: command.Unlock}, time.Now())
 
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "Failed to delete PR locks", "unlock")
+}
+
+func TestRunAutoplanCommand_PreWorkflowHookError(t *testing.T) {
+	t.Log("if pre workflow hook errors out stop the execution")
+	vcsClient := setup(t)
+	log := logging.NewNoopLogger(t)
+	var pull github.PullRequest
+	modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, Num: fixtures.Pull.Num, State: models.OpenPullState}
+	preWorkflowHooksCommandRunner = mocks.NewMockPreWorkflowHooksCommandRunner()
+
+	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(&pull, nil)
+	When(eventParsing.ParseGithubPull(&pull)).ThenReturn(modelPull, modelPull.BaseRepo, fixtures.GithubRepo, nil)
+	When(staleCommandChecker.CommandIsStale(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
+	When(preWorkflowHooksCommandRunner.RunPreHooks(matchers.AnyPtrToEventsCommandContext())).ThenReturn(fmt.Errorf("catastrophic error"))
+	When(projectCommandRunner.Plan(matchers.AnyCommandProjectContext())).ThenReturn(command.ProjectResult{PlanSuccess: &models.PlanSuccess{}})
+
+	ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
+
+	ch.RunAutoplanCommand(log, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, time.Now())
+	_, _, msg, cmdName := vcsClient.VerifyWasCalledOnce().CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString()).GetCapturedArguments()
+	Equals(t, "Encountered an error during pre-workflow-hook execution: catastrophic error", msg)
+	Equals(t, "plan", cmdName)
 }
 
 // Test that if one plan fails and we are using automerge, that

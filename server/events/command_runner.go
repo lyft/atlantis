@@ -177,9 +177,12 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(logger logging.SimpleLogging, 
 	}
 
 	err = c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
-
 	if err != nil {
 		ctx.Log.Errorf("Error running pre-workflow hooks %s. Proceeding with %s command.", err, command.Plan)
+		if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, fmt.Sprintf("Encountered an error during pre-workflow-hook execution: %s", err), command.Plan.String()); err != nil {
+			ctx.Log.Errorf("unable to comment: %s", err)
+		}
+		return
 	}
 
 	autoPlanRunner := buildCommentCommandRunner(c, command.Plan)
@@ -246,7 +249,11 @@ func (c *DefaultCommandRunner) RunCommentCommand(logger logging.SimpleLogging, b
 	err = c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
 
 	if err != nil {
-		ctx.Log.Errorf("Error running pre-workflow hooks %s. Proceeding with %s command.", err, cmd.Name.String())
+		ctx.Log.Errorf("Error running pre-workflow hooks %s. Aborting %s command.", err, cmd.Name.String())
+		if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, fmt.Sprintf("Encountered an error during pre-workflow-hook execution: %s", err), cmd.Name.String()); err != nil {
+			ctx.Log.Errorf("unable to comment: %s", err)
+		}
+		return
 	}
 
 	cmdRunner := buildCommentCommandRunner(c, cmd.CommandName())
