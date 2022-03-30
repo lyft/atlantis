@@ -973,6 +973,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		CommandRunner:                 commandRunner,
 		Logger:                        logger,
+		CtxLogger:                     ctxLogger,
 		StatsScope:                    statsScope,
 		StatsCloser:                   closer,
 		Locker:                        lockingClient,
@@ -1028,6 +1029,7 @@ func (s *Server) Start() error {
 	n.UseHandler(s.Router)
 
 	defer s.Logger.Close()
+	defer s.CtxLogger.Close()
 
 	// Ensure server gracefully drains connections when stopped.
 	stop := make(chan os.Signal, 1)
