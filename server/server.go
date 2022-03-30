@@ -33,6 +33,7 @@ import (
 	"time"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
+	"github.com/runatlantis/atlantis/server/instrumentation"
 	"github.com/runatlantis/atlantis/server/static"
 
 	"github.com/mitchellh/go-homedir"
@@ -517,13 +518,16 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Logger:  logger,
 		Drainer: drainer,
 	}
-	preWorkflowHooksCommandRunner := &events.DefaultPreWorkflowHooksCommandRunner{
+
+	var preWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
+	preWorkflowHooksCommandRunner = &events.DefaultPreWorkflowHooksCommandRunner{
 		VCSClient:             vcsClient,
 		GlobalCfg:             globalCfg,
 		WorkingDirLocker:      workingDirLocker,
 		WorkingDir:            workingDir,
 		PreWorkflowHookRunner: runtime.DefaultPreWorkflowHookRunner{},
 	}
+	preWorkflowHooksCommandRunner = &instrumentation.PreWorkflowHookRunner{preWorkflowHooksCommandRunner}
 
 	projectContextBuilder := wrappers.
 		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
