@@ -71,34 +71,6 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 		assert.Equal(t, models.ErroredPolicyCheckStatus, result[0].ProjectPlanStatus)
 	})
 
-	t.Run("with no project name defined", func(t *testing.T) {
-		projCfg.Name = ""
-		When(mockCommentBuilder.BuildPlanComment(projRepoRelDir, projWorkspace, "", []string{})).ThenReturn(expectedPlanCmt)
-		When(mockCommentBuilder.BuildApplyComment(projRepoRelDir, projWorkspace, "", false)).ThenReturn(expectedApplyCmt)
-		pullStatus.Projects = []models.ProjectStatus{
-			{
-				Status:     models.ErroredPlanStatus,
-				RepoRelDir: "dir2",
-			},
-			{
-				Status:     models.ErroredPolicyCheckStatus,
-				RepoRelDir: "dir1",
-			},
-		}
-		contextFlags := &command.ContextFlags{
-			Automerge:                 false,
-			DeleteSourceBranchOnMerge: false,
-			ParallelApply:             false,
-			ParallelPlan:              false,
-			Verbose:                   false,
-			ForceApply:                false,
-		}
-
-		result := subject.BuildProjectContext(commandCtx, command.Plan, projCfg, []string{}, "some/dir", contextFlags)
-
-		assert.Equal(t, models.ErroredPolicyCheckStatus, result[0].ProjectPlanStatus)
-	})
-
 	t.Run("when ParallelApply is set to true", func(t *testing.T) {
 		projCfg.Name = "Apply Comment"
 		When(mockCommentBuilder.BuildPlanComment(projRepoRelDir, projWorkspace, "", []string{})).ThenReturn(expectedPlanCmt)
