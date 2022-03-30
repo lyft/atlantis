@@ -104,8 +104,8 @@ func TestGitHubWorkflow(t *testing.T) {
 				"atlantis apply",
 			},
 			ExpReplies: [][]string{
-				{"exp-output-apply.txt"},
 				{"exp-output-autoplan.txt"},
+				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
 			},
 		},
@@ -620,12 +620,7 @@ func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 	}
 }
 
-func setupE2E(
-	t *testing.T,
-	repoFixtureDir string,
-	userConfig *server.UserConfig,
-	ghClient vcs.IGithubClient,
-) (string, events_controllers.VCSEventsController, locking.ApplyLocker) {
+func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig, ghClient vcs.IGithubClient) (string, events_controllers.VCSEventsController, locking.ApplyLocker) {
 	// env vars
 	// need this to be set or we'll fail the policy check step
 	os.Setenv(policy.DefaultConftestVersionEnvKey, "0.25.0")
@@ -636,9 +631,7 @@ func setupE2E(
 	// unclear how these are used in conjunction with the above?
 	// TODO: investigate unifying this code with the above
 	dataDir, binDir, cacheDir := mkSubDirs(t)
-	boltdb, err := db.New(dataDir)
 
-	Ok(t, err)
 	// Set up test dependencies, this is where the code path would diverge from the the standard server
 	// initialization for testing purposes
 	// ! We should try to keep this as minimal as possible
@@ -673,6 +666,9 @@ func setupE2E(
 		GithubUser: "github-user",
 		GitlabUser: "gitlab-user",
 	}
+
+	boltdb, err := db.New(dataDir)
+	Ok(t, err)
 
 	lockingClient := locking.NewClient(boltdb)
 	applyLocker := locking.NewApplyClient(boltdb, userConfig.DisableApply)
