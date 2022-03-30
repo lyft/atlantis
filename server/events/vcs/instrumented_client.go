@@ -20,7 +20,7 @@ func NewInstrumentedGithubClient(client *GithubClient, statsScope tally.Scope, l
 	instrumentedGHClient := &InstrumentedClient{
 		Client:     client,
 		StatsScope: scope,
-		Logger: logger,
+		Logger:     logger,
 	}
 
 	return &InstrumentedGithubClient{
@@ -309,7 +309,7 @@ func (c *InstrumentedClient) UpdateStatus(ctx context.Context, request types.Upd
 	c.Logger.Info("updated vcs status", map[string]interface{}{
 		logging.RepositoryKey: request.Repo.FullName,
 		logging.PullNumKey:    strconv.Itoa(request.PullNum),
-		logging.SHA:           request.Ref,
+		logging.SHAKey:        request.Ref,
 		"status-name":         request.StatusName,
 		"state":               request.State.String(),
 	})
@@ -345,6 +345,6 @@ func logKVs(repo models.Repo, pull models.PullRequest) map[string]interface{} {
 	return map[string]interface{}{
 		logging.RepositoryKey: repo.FullName,
 		logging.PullNumKey:    strconv.Itoa(pull.Num),
-		logging.SHA:           pull.HeadCommit,
+		logging.SHAKey:        pull.HeadCommit,
 	}
 }

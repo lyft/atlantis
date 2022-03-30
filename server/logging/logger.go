@@ -29,7 +29,7 @@ import (
 const (
 	RequestIDKey  = "gh-request-id"
 	RepositoryKey = "repository"
-	SHA           = "sha"
+	SHAKey        = "sha"
 	PullNumKey    = "pull-num"
 	ProjectKey    = "project"
 )
@@ -75,7 +75,7 @@ func NewLoggerFromLevel(lvl LogLevel) (*logger, error) {
 func extractFields(ctx context.Context) map[string]interface{} {
 	args := make(map[string]interface{})
 
-	for _, k := range []string{RequestIDKey, RepositoryKey, PullNumKey, ProjectKey} {
+	for _, k := range []string{RequestIDKey, RepositoryKey, PullNumKey, ProjectKey, SHAKey} {
 		if v, ok := ctx.Value(k).(string); ok {
 			args[k] = v
 		}
