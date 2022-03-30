@@ -102,7 +102,7 @@ type Server struct {
 	AtlantisURL                   *url.URL
 	Router                        *mux.Router
 	Port                          int
-	PreWorkflowHooksCommandRunner *events.DefaultPreWorkflowHooksCommandRunner
+	PreWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
 	CommandRunner                 *events.DefaultCommandRunner
 	Logger                        logging.SimpleLogging
 	CtxLogger                     logging.Logger
