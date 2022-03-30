@@ -376,150 +376,150 @@ func TestGitHubWorkflow(t *testing.T) {
 	}
 }
 
-// func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
-// 	if testing.Short() {
-// 		t.SkipNow()
-// 	}
-// 	// Ensure we have >= TF 0.14 locally.
-// 	ensureRunning014(t)
-// 	// Ensure we have >= Conftest 0.21 locally.
-// 	ensureRunningConftest(t)
+func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	// Ensure we have >= TF 0.14 locally.
+	ensureRunning014(t)
+	// Ensure we have >= Conftest 0.21 locally.
+	ensureRunningConftest(t)
 
-// 	cases := []struct {
-// 		Description string
-// 		// RepoDir is relative to testfixtures/test-repos.
-// 		RepoDir string
-// 		// ModifiedFiles are the list of files that have been modified in this
-// 		// pull request.
-// 		ModifiedFiles []string
-// 		// Comments are what our mock user writes to the pull request.
-// 		Comments []string
-// 		// ExpReplies is a list of files containing the expected replies that
-// 		// Atlantis writes to the pull request in order. A reply from a parallel operation
-// 		// will be matched using a substring check.
-// 		ExpReplies [][]string
-// 	}{
-// 		{
-// 			Description:   "1 failing policy and 1 passing policy ",
-// 			RepoDir:       "policy-checks-multi-projects",
-// 			ModifiedFiles: []string{"dir1/main.tf,", "dir2/main.tf"},
-// 			Comments: []string{
-// 				"atlantis apply",
-// 			},
-// 			ExpReplies: [][]string{
-// 				{"exp-output-autoplan.txt"},
-// 				{"exp-output-auto-policy-check.txt"},
-// 				{"exp-output-apply.txt"},
-// 				{"exp-output-merge.txt"},
-// 			},
-// 		},
-// 		{
-// 			Description:   "failing policy without policies passing using extra args",
-// 			RepoDir:       "policy-checks-extra-args",
-// 			ModifiedFiles: []string{"main.tf"},
-// 			Comments: []string{
-// 				"atlantis apply",
-// 			},
-// 			ExpReplies: [][]string{
-// 				{"exp-output-autoplan.txt"},
-// 				{"exp-output-auto-policy-check.txt"},
-// 				{"exp-output-apply-failed.txt"},
-// 				{"exp-output-merge.txt"},
-// 			},
-// 		},
-// 		{
-// 			Description:   "failing policy without policies passing",
-// 			RepoDir:       "policy-checks",
-// 			ModifiedFiles: []string{"main.tf"},
-// 			Comments: []string{
-// 				"atlantis apply",
-// 			},
-// 			ExpReplies: [][]string{
-// 				{"exp-output-autoplan.txt"},
-// 				{"exp-output-auto-policy-check.txt"},
-// 				{"exp-output-apply-failed.txt"},
-// 				{"exp-output-merge.txt"},
-// 			},
-// 		},
-// 		{
-// 			Description:   "failing policy additional apply requirements specified",
-// 			RepoDir:       "policy-checks-apply-reqs",
-// 			ModifiedFiles: []string{"main.tf"},
-// 			Comments: []string{
-// 				"atlantis apply",
-// 			},
-// 			ExpReplies: [][]string{
-// 				{"exp-output-autoplan.txt"},
-// 				{"exp-output-auto-policy-check.txt"},
-// 				{"exp-output-apply-failed.txt"},
-// 				{"exp-output-merge.txt"},
-// 			},
-// 		},
-// 		{
-// 			Description:   "failing policy approved by non owner",
-// 			RepoDir:       "policy-checks-diff-owner",
-// 			ModifiedFiles: []string{"main.tf"},
-// 			Comments: []string{
-// 				"atlantis approve_policies",
-// 				"atlantis apply",
-// 			},
-// 			ExpReplies: [][]string{
-// 				{"exp-output-autoplan.txt"},
-// 				{"exp-output-auto-policy-check.txt"},
-// 				{"exp-output-approve-policies.txt"},
-// 				{"exp-output-apply-failed.txt"},
-// 				{"exp-output-merge.txt"},
-// 			},
-// 		},
-// 	}
+	cases := []struct {
+		Description string
+		// RepoDir is relative to testfixtures/test-repos.
+		RepoDir string
+		// ModifiedFiles are the list of files that have been modified in this
+		// pull request.
+		ModifiedFiles []string
+		// Comments are what our mock user writes to the pull request.
+		Comments []string
+		// ExpReplies is a list of files containing the expected replies that
+		// Atlantis writes to the pull request in order. A reply from a parallel operation
+		// will be matched using a substring check.
+		ExpReplies [][]string
+	}{
+		{
+			Description:   "1 failing policy and 1 passing policy ",
+			RepoDir:       "policy-checks-multi-projects",
+			ModifiedFiles: []string{"dir1/main.tf,", "dir2/main.tf"},
+			Comments: []string{
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-apply.txt"},
+				{"exp-output-merge.txt"},
+			},
+		},
+		{
+			Description:   "failing policy without policies passing using extra args",
+			RepoDir:       "policy-checks-extra-args",
+			ModifiedFiles: []string{"main.tf"},
+			Comments: []string{
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-apply-failed.txt"},
+				{"exp-output-merge.txt"},
+			},
+		},
+		{
+			Description:   "failing policy without policies passing",
+			RepoDir:       "policy-checks",
+			ModifiedFiles: []string{"main.tf"},
+			Comments: []string{
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-apply-failed.txt"},
+				{"exp-output-merge.txt"},
+			},
+		},
+		{
+			Description:   "failing policy additional apply requirements specified",
+			RepoDir:       "policy-checks-apply-reqs",
+			ModifiedFiles: []string{"main.tf"},
+			Comments: []string{
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-apply-failed.txt"},
+				{"exp-output-merge.txt"},
+			},
+		},
+		{
+			Description:   "failing policy approved by non owner",
+			RepoDir:       "policy-checks-diff-owner",
+			ModifiedFiles: []string{"main.tf"},
+			Comments: []string{
+				"atlantis approve_policies",
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-approve-policies.txt"},
+				{"exp-output-apply-failed.txt"},
+				{"exp-output-merge.txt"},
+			},
+		},
+	}
 
-// 	for _, c := range cases {
-// 		t.Run(c.Description, func(t *testing.T) {
-// 			t.Parallel()
+	for _, c := range cases {
+		t.Run(c.Description, func(t *testing.T) {
+			t.Parallel()
 
-// 			// reset userConfig
-// 			userConfig := &server.UserConfig{}
-// 			userConfig.EnablePolicyChecksFlag = true
+			// reset userConfig
+			userConfig := &server.UserConfig{}
+			userConfig.EnablePolicyChecksFlag = true
 
-// 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
+			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
-// 			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient)
+			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient)
 
-// 			// Setup test dependencies.
-// 			w := httptest.NewRecorder()
+			// Setup test dependencies.
+			w := httptest.NewRecorder()
 
-// 			ghClient.ExpectedPull = GitHubPullRequestParsed(headSHA)
-// 			ghClient.ExpectedApprovalStatus = models.ApprovalStatus{IsApproved: true}
+			ghClient.ExpectedPull = GitHubPullRequestParsed(headSHA)
+			ghClient.ExpectedApprovalStatus = models.ApprovalStatus{IsApproved: true}
 
-// 			// First, send the open pull request event which triggers autoplan.
-// 			pullOpenedReq := GitHubPullRequestOpenedEvent(t, headSHA)
-// 			ctrl.Post(w, pullOpenedReq)
-// 			ResponseContains(t, w, 200, "Processing...")
+			// First, send the open pull request event which triggers autoplan.
+			pullOpenedReq := GitHubPullRequestOpenedEvent(t, headSHA)
+			ctrl.Post(w, pullOpenedReq)
+			ResponseContains(t, w, 200, "Processing...")
 
-// 			// Now send any other comments.
-// 			for _, comment := range c.Comments {
-// 				commentReq := GitHubCommentEvent(t, comment)
-// 				w = httptest.NewRecorder()
-// 				ctrl.Post(w, commentReq)
-// 				ResponseContains(t, w, 200, "Processing...")
-// 			}
+			// Now send any other comments.
+			for _, comment := range c.Comments {
+				commentReq := GitHubCommentEvent(t, comment)
+				w = httptest.NewRecorder()
+				ctrl.Post(w, commentReq)
+				ResponseContains(t, w, 200, "Processing...")
+			}
 
-// 			// Send the "pull closed" event which would be triggered by the
-// 			// automerge or a manual merge.
-// 			pullClosedReq := GitHubPullRequestClosedEvent(t)
-// 			w = httptest.NewRecorder()
-// 			ctrl.Post(w, pullClosedReq)
-// 			ResponseContains(t, w, 200, "Pull request cleaned successfully")
+			// Send the "pull closed" event which would be triggered by the
+			// automerge or a manual merge.
+			pullClosedReq := GitHubPullRequestClosedEvent(t)
+			w = httptest.NewRecorder()
+			ctrl.Post(w, pullClosedReq)
+			ResponseContains(t, w, 200, "Pull request cleaned successfully")
 
-// 			// Verify
-// 			actReplies := ghClient.CapturedComments
-// 			Assert(t, len(c.ExpReplies) == len(actReplies), "missing expected replies, got %d but expected %d", len(actReplies), len(c.ExpReplies))
-// 			for i, expReply := range c.ExpReplies {
-// 				assertCommentEquals(t, expReply, actReplies[i], c.RepoDir, false)
-// 			}
-// 		})
-// 	}
-// }
+			// Verify
+			actReplies := ghClient.CapturedComments
+			Assert(t, len(c.ExpReplies) == len(actReplies), "missing expected replies, got %d but expected %d", len(actReplies), len(c.ExpReplies))
+			for i, expReply := range c.ExpReplies {
+				assertCommentEquals(t, expReply, actReplies[i], c.RepoDir, false)
+			}
+		})
+	}
+}
 
 func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 	if testing.Short() {
@@ -557,7 +557,7 @@ func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 			},
 		},
 		{
-			Description:   "policy check approval",
+			Description:   "autoplan and policy check approvals",
 			RepoDir:       "platform-mode/policy-check-approval",
 			ModifiedFiles: []string{"main.tf"},
 			Comments: []string{

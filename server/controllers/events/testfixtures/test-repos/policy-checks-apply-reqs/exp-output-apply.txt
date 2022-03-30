@@ -1,1 +1,1 @@
-**Apply Failed**: Atlantis apply is not supported, please merge the PR to apply your changes
+**Apply Failed**: Atlantis apply is being deprecated, please merge the PR to apply your changes
