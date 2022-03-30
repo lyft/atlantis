@@ -177,8 +177,9 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(logger logging.SimpleLogging, 
 	}
 
 	err = c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
+
 	if err != nil {
-		ctx.Log.Errorf("Error running pre-workflow hooks %s. Proceeding with %s command.", err, command.Plan)
+		ctx.Log.Errorf("Error running pre-workflow hooks %s. Aborting %s command.", err, command.Plan.String())
 		if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, fmt.Sprintf("Encountered an error during pre-workflow-hook execution: %s", err), command.Plan.String()); err != nil {
 			ctx.Log.Errorf("unable to comment: %s", err)
 		}

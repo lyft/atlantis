@@ -322,6 +322,7 @@ func TestRunCommentCommand_PreWorkflowHookError(t *testing.T) {
 }
 
 func TestRunCommentCommandPlan_NoProjects_SilenceEnabled(t *testing.T) {
+	t.Log("if a plan command is run on a pull request and SilenceNoProjects is enabled and we are silencing all comments if the modified files don't have a matching project")
 	vcsClient := setup(t)
 	log := logging.NewNoopLogger(t)
 	planCommandRunner.SilenceNoProjects = true
