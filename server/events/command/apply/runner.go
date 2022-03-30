@@ -20,7 +20,7 @@ func (r *DisabledRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		ctx,
 		cmd,
 		command.Result{
-			Failure: "Atlantis apply is not supported, please merge the PR to apply your changes",
+			Failure: "Atlantis apply is being deprecated, please merge the PR to apply your changes",
 		},
 	)
 }
