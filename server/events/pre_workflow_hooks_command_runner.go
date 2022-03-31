@@ -1,6 +1,7 @@
 package events
 
 import (
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime"
 	"github.com/runatlantis/atlantis/server/events/command"
@@ -49,14 +50,14 @@ func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks(
 
 	unlockFn, err := w.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "locking working dir")
 	}
 	log.Debugf("got workspace lock")
 	defer unlockFn()
 
 	repoDir, _, err := w.WorkingDir.Clone(log, headRepo, pull, DefaultWorkspace)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cloning repository")
 	}
 
 	err = w.runHooks(
@@ -71,7 +72,7 @@ func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks(
 		preWorkflowHooks, repoDir)
 
 	if err != nil {
-		return err
+		return errors.Wrap(err, "running pre workflow hooks")
 	}
 
 	return nil
