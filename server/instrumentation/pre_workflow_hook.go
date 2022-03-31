@@ -22,6 +22,7 @@ func (r *PreWorkflowHookRunner) RunPreHooks(ctx *command.Context) error {
 		return err
 	}
 
+	ctx.Log.Infof("pre-workflow-hook success")
 	executionSuccess.Inc(1)
 	return nil
 }

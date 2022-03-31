@@ -14,6 +14,7 @@
 package events
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -129,6 +130,7 @@ type DefaultCommandRunner struct {
 	CommentCommandRunnerByCmd     map[command.Name]command.Runner
 	Drainer                       *Drainer
 	PreWorkflowHooksCommandRunner PreWorkflowHooksCommandRunner
+	CommitStatusUpdater           CommitStatusUpdater
 	PullStatusFetcher             PullStatusFetcher
 	StaleCommandChecker           StaleCommandChecker
 }
@@ -176,13 +178,9 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(logger logging.SimpleLogging, 
 		return
 	}
 
-	err = c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
-
-	if err != nil {
-		ctx.Log.Errorf("Error running pre-workflow hooks %s. Aborting %s command.", err, command.Plan.String())
-		if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, fmt.Sprintf("Encountered an error during pre-workflow-hook execution: %s", err), command.Plan.String()); err != nil {
-			ctx.Log.Errorf("unable to comment: %s", err)
-		}
+	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx); err != nil {
+		log.Errorf("Error running pre-workflow hooks", err)
+		c.CommitStatusUpdater.UpdateCombined(context.TODO(), ctx.HeadRepo, ctx.Pull, models.FailedCommitStatus, command.Plan)
 		return
 	}
 
@@ -247,13 +245,9 @@ func (c *DefaultCommandRunner) RunCommentCommand(logger logging.SimpleLogging, b
 		return
 	}
 
-	err = c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
-
-	if err != nil {
-		ctx.Log.Errorf("Error running pre-workflow hooks %s. Aborting %s command.", err, cmd.Name.String())
-		if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, fmt.Sprintf("Encountered an error during pre-workflow-hook execution: %s", err), cmd.Name.String()); err != nil {
-			ctx.Log.Errorf("unable to comment: %s", err)
-		}
+	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx); err != nil {
+		log.Errorf("Error running pre-workflow hooks", err)
+		c.CommitStatusUpdater.UpdateCombined(context.TODO(), ctx.HeadRepo, ctx.Pull, models.FailedCommitStatus, cmd.Name)
 		return
 	}
 

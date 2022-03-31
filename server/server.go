@@ -862,6 +862,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
 		StaleCommandChecker:           staleCommandChecker,
+		CommitStatusUpdater:           commitStatusUpdater,
 	}
 
 	forceApplyCommandRunner := &events.ForceApplyCommandRunner{
