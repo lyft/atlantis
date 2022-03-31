@@ -11,7 +11,7 @@ type PreWorkflowHookRunner struct {
 }
 
 func (r *PreWorkflowHookRunner) RunPreHooks(ctx *command.Context) error {
-	scope := ctx.Scope.SubScope("pre-workflow-hook")
+	scope := ctx.Scope.SubScope("pre_workflow_hook")
 
 	executionSuccess := scope.Counter(metrics.ExecutionSuccessMetric)
 	executionError := scope.Counter(metrics.ExecutionErrorMetric)
