@@ -199,6 +199,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	ch = events.DefaultCommandRunner{
 		VCSClient:                     vcsClient,
 		CommentCommandRunnerByCmd:     commentCommandRunnerByCmd,
+		Logger:                        logging.NewNoopCtxLogger(t),
 		EventParser:                   eventParsing,
 		GithubPullGetter:              githubGetter,
 		GitlabMergeRequestGetter:      gitlabGetter,
