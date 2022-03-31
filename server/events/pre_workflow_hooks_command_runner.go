@@ -1,6 +1,8 @@
 package events
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime"
@@ -12,7 +14,7 @@ import (
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_pre_workflows_hooks_command_runner.go PreWorkflowHooksCommandRunner
 
 type PreWorkflowHooksCommandRunner interface {
-	RunPreHooks(ctx *command.Context) error
+	RunPreHooks(ctx context.Context, cmdCtx *command.Context) error
 }
 
 // DefaultPreWorkflowHooksCommandRunner is the first step when processing a workflow hook commands.
@@ -26,13 +28,14 @@ type DefaultPreWorkflowHooksCommandRunner struct {
 
 // RunPreHooks runs pre_workflow_hooks when PR is opened or updated.
 func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks(
-	ctx *command.Context,
+	ctx context.Context,
+	cmdCtx *command.Context,
 ) error {
-	pull := ctx.Pull
+	pull := cmdCtx.Pull
 	baseRepo := pull.BaseRepo
-	headRepo := ctx.HeadRepo
-	user := ctx.User
-	log := ctx.Log
+	headRepo := cmdCtx.HeadRepo
+	user := cmdCtx.User
+	log := cmdCtx.Log
 
 	preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
 	for _, repo := range w.GlobalCfg.Repos {
@@ -79,13 +82,13 @@ func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks(
 }
 
 func (w *DefaultPreWorkflowHooksCommandRunner) runHooks(
-	ctx models.PreWorkflowHookCommandContext,
+	cmdCtx models.PreWorkflowHookCommandContext,
 	preWorkflowHooks []*valid.PreWorkflowHook,
 	repoDir string,
 ) error {
 
 	for _, hook := range preWorkflowHooks {
-		_, err := w.PreWorkflowHookRunner.Run(ctx, hook.RunCommand, repoDir)
+		_, err := w.PreWorkflowHookRunner.Run(cmdCtx, hook.RunCommand, repoDir)
 
 		if err != nil {
 			return err

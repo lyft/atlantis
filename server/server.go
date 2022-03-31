@@ -527,7 +527,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDir:            workingDir,
 		PreWorkflowHookRunner: runtime.DefaultPreWorkflowHookRunner{},
 	}
-	preWorkflowHooksCommandRunner = &instrumentation.PreWorkflowHookRunner{preWorkflowHooksCommandRunner}
+	preWorkflowHooksCommandRunner = &instrumentation.PreWorkflowHookRunner{
+		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
+	}
 
 	projectContextBuilder := wrappers.
 		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
@@ -863,6 +865,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PullStatusFetcher:             boltdb,
 		StaleCommandChecker:           staleCommandChecker,
 		CommitStatusUpdater:           commitStatusUpdater,
+		Logger:                        ctxLogger,
 	}
 
 	forceApplyCommandRunner := &events.ForceApplyCommandRunner{

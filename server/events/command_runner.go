@@ -133,6 +133,7 @@ type DefaultCommandRunner struct {
 	CommitStatusUpdater           CommitStatusUpdater
 	PullStatusFetcher             PullStatusFetcher
 	StaleCommandChecker           StaleCommandChecker
+	Logger                        logging.Logger
 }
 
 // RunAutoplanCommand runs plan and policy_checks when a pull request is opened or updated.
@@ -160,6 +161,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(logger logging.SimpleLogging, 
 	ctx := &command.Context{
 		User:             user,
 		Log:              log,
+		CtxLog:           c.Logger,
 		Scope:            scope,
 		Pull:             pull,
 		HeadRepo:         headRepo,
@@ -178,8 +180,10 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(logger logging.SimpleLogging, 
 		return
 	}
 
-	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx); err != nil {
-		log.Errorf("Error running pre-workflow hooks", err)
+	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), ctx); err != nil {
+		c.Logger.ErrorContext(context.TODO(), "Error running pre-workflow hooks", map[string]interface{}{
+			"err": err,
+		})
 		c.CommitStatusUpdater.UpdateCombined(context.TODO(), ctx.HeadRepo, ctx.Pull, models.FailedCommitStatus, command.Plan)
 		return
 	}
@@ -228,6 +232,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(logger logging.SimpleLogging, b
 	ctx := &command.Context{
 		User:             user,
 		Log:              log,
+		CtxLog:           c.Logger,
 		Pull:             pull,
 		PullStatus:       status,
 		HeadRepo:         headRepo,
@@ -245,8 +250,11 @@ func (c *DefaultCommandRunner) RunCommentCommand(logger logging.SimpleLogging, b
 		return
 	}
 
-	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx); err != nil {
-		log.Errorf("Error running pre-workflow hooks", err)
+	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), ctx); err != nil {
+		c.Logger.ErrorContext(context.TODO(), "Error running pre-workflow hooks", map[string]interface{}{
+			"err": err,
+		})
+
 		c.CommitStatusUpdater.UpdateCombined(context.TODO(), ctx.HeadRepo, ctx.Pull, models.FailedCommitStatus, cmd.Name)
 		return
 	}

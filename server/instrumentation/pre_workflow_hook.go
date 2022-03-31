@@ -1,6 +1,8 @@
 package instrumentation
 
 import (
+	"context"
+
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/metrics"
@@ -10,19 +12,19 @@ type PreWorkflowHookRunner struct {
 	events.PreWorkflowHooksCommandRunner
 }
 
-func (r *PreWorkflowHookRunner) RunPreHooks(ctx *command.Context) error {
-	scope := ctx.Scope.SubScope("pre_workflow_hook")
+func (r *PreWorkflowHookRunner) RunPreHooks(ctx context.Context, cmdCtx *command.Context) error {
+	scope := cmdCtx.Scope.SubScope("pre_workflow_hook")
 
 	executionSuccess := scope.Counter(metrics.ExecutionSuccessMetric)
 	executionError := scope.Counter(metrics.ExecutionErrorMetric)
 
-	err := r.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
+	err := r.PreWorkflowHooksCommandRunner.RunPreHooks(ctx, cmdCtx)
 	if err != nil {
 		executionError.Inc(1)
 		return err
 	}
 
-	ctx.Log.Infof("pre-workflow-hook success")
+	cmdCtx.CtxLog.InfoContext(ctx, "pre-workflow-hook success")
 	executionSuccess.Inc(1)
 	return nil
 }
