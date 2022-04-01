@@ -1,7 +1,8 @@
-// Consolidating helper functions for the new logger interface
+// Consolidating fields helper functions for the new logger interface
 // Once we move to context.Context we can remove this helpers package
+// TODO: Remove this package once we fully move to context.Context
 
-package helpers
+package fields
 
 import (
 	"strconv"

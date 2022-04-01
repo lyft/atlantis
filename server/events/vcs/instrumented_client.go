@@ -10,7 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 	"github.com/runatlantis/atlantis/server/logging"
-	logHelpers "github.com/runatlantis/atlantis/server/logging/helpers"
+	"github.com/runatlantis/atlantis/server/logging/fields"
 	"github.com/uber-go/tally"
 )
 
@@ -136,7 +136,7 @@ func (c *InstrumentedGithubClient) GetRepoChecks(repo models.Repo, pull models.P
 	executionSuccess.Inc(1)
 
 	//TODO: thread context and use related logging methods.
-	c.Logger.Debug("fetched vcs repo checks", logHelpers.PullRequest(pull))
+	c.Logger.Debug("fetched vcs repo checks", fields.PullRequest(pull))
 
 	return statuses, err
 }
@@ -160,7 +160,7 @@ func (c *InstrumentedGithubClient) GetRepoStatuses(repo models.Repo, pull models
 	executionSuccess.Inc(1)
 
 	//TODO: thread context and use related logging methods.
-	c.Logger.Debug("fetched vcs repo statuses", logHelpers.PullRequest(pull))
+	c.Logger.Debug("fetched vcs repo statuses", fields.PullRequest(pull))
 
 	return statuses, err
 }
@@ -190,7 +190,7 @@ func (c *InstrumentedClient) GetModifiedFiles(repo models.Repo, pull models.Pull
 	executionSuccess.Inc(1)
 
 	//TODO: thread context and use related logging methods.
-	c.Logger.Debug("fetched pull request modified files", logHelpers.PullRequest(pull))
+	c.Logger.Debug("fetched pull request modified files", fields.PullRequest(pull))
 
 	return files, err
 
@@ -261,7 +261,7 @@ func (c *InstrumentedClient) PullIsApproved(repo models.Repo, pull models.PullRe
 	executionSuccess.Inc(1)
 
 	//TODO: thread context and use related logging methods.
-	c.Logger.Debug("fetched pull request approval status", logHelpers.PullRequest(pull))
+	c.Logger.Debug("fetched pull request approval status", fields.PullRequest(pull))
 
 	return approvalStatus, err
 
@@ -284,7 +284,7 @@ func (c *InstrumentedClient) PullIsMergeable(repo models.Repo, pull models.PullR
 
 	executionSuccess.Inc(1)
 	//TODO: thread context and use related logging methods.
-	c.Logger.Debug("fetched pull request mergeability", logHelpers.PullRequest(pull))
+	c.Logger.Debug("fetched pull request mergeability", fields.PullRequest(pull))
 
 	return mergeable, err
 }
@@ -334,7 +334,7 @@ func (c *InstrumentedClient) MergePull(pull models.PullRequest, pullOptions mode
 	executionSuccess.Inc(1)
 
 	//TODO: thread context and use related logging methods.
-	c.Logger.Debug("merged pull request", logHelpers.PullRequest(pull))
+	c.Logger.Debug("merged pull request", fields.PullRequest(pull))
 
 	return nil
 

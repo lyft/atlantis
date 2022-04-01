@@ -204,8 +204,19 @@ func NewNoopLogger(t *testing.T) SimpleLogging {
 // NewNoopLogger creates a logger instance that discards all logs and never
 // writes them. Used for testing.
 func NewNoopCtxLogger(t *testing.T) Logger {
+	level := zap.DebugLevel
+	zapLogger := zaptest.NewLogger(t, zaptest.Level(level))
+	sLogger := &StructuredLogger{
+		z:      zapLogger.Sugar(),
+		level:  zap.NewAtomicLevelAt(level),
+		Logger: logurzap.New(zapLogger),
+	}
+
 	return &logger{
-		LoggerFacade: logur.NoopLogger{},
+		LoggerFacade: logur.WithContextExtractor(
+			sLogger,
+			extractFields,
+		),
 	}
 }
 
