@@ -6,10 +6,13 @@ import (
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/metrics"
+	"github.com/runatlantis/atlantis/server/logging"
+	logHelpers "github.com/runatlantis/atlantis/server/logging/helpers"
 )
 
 type PreWorkflowHookRunner struct {
 	events.PreWorkflowHooksCommandRunner
+	Logger logging.Logger
 }
 
 func (r *PreWorkflowHookRunner) RunPreHooks(ctx context.Context, cmdCtx *command.Context) error {
@@ -24,7 +27,7 @@ func (r *PreWorkflowHookRunner) RunPreHooks(ctx context.Context, cmdCtx *command
 		return err
 	}
 
-	cmdCtx.CtxLog.InfoContext(ctx, "pre-workflow-hook success")
+	r.Logger.InfoContext(ctx, "pre-workflow-hook success", logHelpers.PullRequest(cmdCtx.Pull))
 	executionSuccess.Inc(1)
 	return nil
 }

@@ -32,6 +32,7 @@ const (
 	SHAKey        = "sha"
 	PullNumKey    = "pull-num"
 	ProjectKey    = "project"
+	Err           = "err"
 )
 
 // Logger is the logging interface used throughout the code.

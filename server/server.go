@@ -529,6 +529,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 	preWorkflowHooksCommandRunner = &instrumentation.PreWorkflowHookRunner{
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
+		Logger:                        ctxLogger,
 	}
 
 	projectContextBuilder := wrappers.

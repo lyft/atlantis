@@ -28,6 +28,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
+	logHelpers "github.com/runatlantis/atlantis/server/logging/helpers"
 	"github.com/runatlantis/atlantis/server/recovery"
 	"github.com/uber-go/tally"
 	gitlab "github.com/xanzy/go-gitlab"
@@ -161,7 +162,6 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(logger logging.SimpleLogging, 
 	ctx := &command.Context{
 		User:             user,
 		Log:              log,
-		CtxLog:           c.Logger,
 		Scope:            scope,
 		Pull:             pull,
 		HeadRepo:         headRepo,
@@ -181,9 +181,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(logger logging.SimpleLogging, 
 	}
 
 	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), ctx); err != nil {
-		c.Logger.ErrorContext(context.TODO(), "Error running pre-workflow hooks", map[string]interface{}{
-			"err": err,
-		})
+		c.Logger.ErrorContext(context.TODO(), "Error running pre-workflow hooks", logHelpers.PullRequestWithErr(pull, err))
 		c.CommitStatusUpdater.UpdateCombined(context.TODO(), ctx.HeadRepo, ctx.Pull, models.FailedCommitStatus, command.Plan)
 		return
 	}
@@ -232,7 +230,6 @@ func (c *DefaultCommandRunner) RunCommentCommand(logger logging.SimpleLogging, b
 	ctx := &command.Context{
 		User:             user,
 		Log:              log,
-		CtxLog:           c.Logger,
 		Pull:             pull,
 		PullStatus:       status,
 		HeadRepo:         headRepo,
@@ -251,9 +248,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(logger logging.SimpleLogging, b
 	}
 
 	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), ctx); err != nil {
-		c.Logger.ErrorContext(context.TODO(), "Error running pre-workflow hooks", map[string]interface{}{
-			"err": err,
-		})
+		c.Logger.ErrorContext(context.TODO(), "Error running pre-workflow hooks", logHelpers.PullRequestWithErr(pull, err))
 
 		c.CommitStatusUpdater.UpdateCombined(context.TODO(), ctx.HeadRepo, ctx.Pull, models.FailedCommitStatus, cmd.Name)
 		return
