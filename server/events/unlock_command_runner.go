@@ -8,21 +8,16 @@ import (
 func NewUnlockCommandRunner(
 	deleteLockCommand DeleteLockCommand,
 	vcsClient vcs.Client,
-	SilenceNoProjects bool,
 ) *UnlockCommandRunner {
 	return &UnlockCommandRunner{
 		deleteLockCommand: deleteLockCommand,
 		vcsClient:         vcsClient,
-		SilenceNoProjects: SilenceNoProjects,
 	}
 }
 
 type UnlockCommandRunner struct {
 	vcsClient         vcs.Client
 	deleteLockCommand DeleteLockCommand
-	// SilenceNoProjects is whether Atlantis should respond to PRs if no projects
-	// are found
-	SilenceNoProjects bool
 }
 
 func (u *UnlockCommandRunner) Run(
@@ -40,7 +35,7 @@ func (u *UnlockCommandRunner) Run(
 	}
 
 	// if there are no locks to delete, no errors, and SilenceNoProjects is enabled, don't comment
-	if err == nil && numLocks == 0 && u.SilenceNoProjects {
+	if err == nil && numLocks == 0 {
 		return
 	}
 

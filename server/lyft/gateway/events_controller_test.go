@@ -132,7 +132,6 @@ func TestPost_GithubCommentNotAllowlistedWithSilenceErrors(t *testing.T) {
 		Parser:                 &events.EventParser{},
 		RepoAllowlistChecker:   &events.RepoAllowlistChecker{},
 		VCSClient:              vcsClient,
-		SilenceAllowlistErrors: true,
 	}
 	requestJSON, err := ioutil.ReadFile(filepath.Join("../../controllers/events/testfixtures", "githubIssueCommentEvent_notAllowlisted.json"))
 	Ok(t, err)
