@@ -90,14 +90,11 @@ const (
 	RepoConfigFlag             = "repo-config"
 	RepoConfigJSONFlag         = "repo-config-json"
 	// RepoWhitelistFlag is deprecated for RepoAllowlistFlag.
-	RepoWhitelistFlag          = "repo-whitelist"
-	RepoAllowlistFlag          = "repo-allowlist"
-	RequireApprovalFlag        = "require-approval"
-	RequireSQUnlockedFlag      = "require-unlocked"
-	RequireMergeableFlag       = "require-mergeable"
-	SilenceAllowlistErrorsFlag = "silence-allowlist-errors"
-	// SilenceWhitelistErrorsFlag is deprecated for SilenceAllowlistErrorsFlag.
-	SilenceWhitelistErrorsFlag   = "silence-whitelist-errors"
+	RepoWhitelistFlag            = "repo-whitelist"
+	RepoAllowlistFlag            = "repo-allowlist"
+	RequireApprovalFlag          = "require-approval"
+	RequireSQUnlockedFlag        = "require-unlocked"
+	RequireMergeableFlag         = "require-mergeable"
 	SkipCloneNoChanges           = "skip-clone-no-changes"
 	SlackTokenFlag               = "slack-token"
 	SSLCertFileFlag              = "ssl-cert-file"
@@ -394,15 +391,6 @@ var boolFlags = map[string]boolFlag{
 	RequireSQUnlockedFlag: {
 		description:  "Require pull requests to be \"Unlocked\" before allowing the apply command to be run.",
 		defaultValue: false,
-	},
-	SilenceAllowlistErrorsFlag: {
-		description:  "Silences the posting of allowlist error comments.",
-		defaultValue: false,
-	},
-	SilenceWhitelistErrorsFlag: {
-		description:  "[Deprecated for --silence-allowlist-errors].",
-		defaultValue: false,
-		hidden:       true,
 	},
 	DisableMarkdownFoldingFlag: {
 		description:  "Toggle off folding in markdown output.",

@@ -264,23 +264,6 @@ func TestRunCommentCommand_ForkPRDisabled(t *testing.T) {
 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, modelPull.Num, commentMessage, "")
 }
 
-func TestRunCommentCommand_ForkPRDisabled_SilenceEnabled(t *testing.T) {
-	t.Log("if a command is run on a forked pull request and forks are disabled and we are silencing errors do not comment with error")
-	vcsClient := setup(t)
-	log := logging.NewNoopLogger(t)
-	var pull github.PullRequest
-	modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState}
-	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(&pull, nil)
-
-	headRepo := fixtures.GithubRepo
-	headRepo.FullName = "forkrepo/atlantis"
-	headRepo.Owner = "forkrepo"
-	When(eventParsing.ParseGithubPull(&pull)).ThenReturn(modelPull, modelPull.BaseRepo, headRepo, nil)
-
-	ch.RunCommentCommand(log, fixtures.GithubRepo, nil, nil, fixtures.User, fixtures.Pull.Num, nil, time.Now())
-	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
-}
-
 func TestRunCommentCommandPlan_NoProjects_SilenceEnabled(t *testing.T) {
 	t.Log("if a plan command is run on a pull request and SilenceNoProjects is enabled and we are silencing all comments if the modified files don't have a matching project")
 	vcsClient := setup(t)

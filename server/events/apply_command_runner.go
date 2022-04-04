@@ -111,19 +111,6 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	// If there are no projects to apply, don't respond to the PR and ignore
-	if len(projectCmds) == 0 {
-		ctx.Log.Infof("determined there was no project to run apply in.")
-		// If there were no projects modified, we set successful commit statuses
-		// with 0/0 projects applied successfully because some users require
-		// the Atlantis status to be passing for all pull requests.
-		ctx.Log.Debugf("setting VCS status to success with no projects found")
-		if err := a.commitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, command.Apply, 0, 0); err != nil {
-			ctx.Log.Warnf("unable to update commit status: %s", err)
-		}
-		return
-	}
-
 	// Only run commands in parallel if enabled
 	var result command.Result
 	if a.isParallelEnabled(projectCmds) {
