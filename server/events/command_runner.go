@@ -14,6 +14,7 @@
 package events
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/logging/fields"
 	"github.com/runatlantis/atlantis/server/recovery"
 	"github.com/uber-go/tally"
 	gitlab "github.com/xanzy/go-gitlab"
@@ -117,8 +119,10 @@ type DefaultCommandRunner struct {
 	CommentCommandRunnerByCmd     map[command.Name]command.Runner
 	Drainer                       *Drainer
 	PreWorkflowHooksCommandRunner PreWorkflowHooksCommandRunner
+	CommitStatusUpdater           CommitStatusUpdater
 	PullStatusFetcher             PullStatusFetcher
 	StaleCommandChecker           StaleCommandChecker
+	Logger                        logging.Logger
 }
 
 // RunAutoplanCommand runs plan and policy_checks when a pull request is opened or updated.
@@ -164,10 +168,11 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(logger logging.SimpleLogging, 
 		return
 	}
 
-	err = c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
-
-	if err != nil {
-		ctx.Log.Errorf("Error running pre-workflow hooks %s. Proceeding with %s command.", err, command.Plan)
+	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), ctx); err != nil {
+		//TODO: thread context and use related logging methods.
+		c.Logger.ErrorContext(context.TODO(), "Error running pre-workflow hooks", fields.PullRequestWithErr(pull, err))
+		c.CommitStatusUpdater.UpdateCombined(context.TODO(), ctx.HeadRepo, ctx.Pull, models.FailedCommitStatus, command.Plan)
+		return
 	}
 
 	autoPlanRunner := buildCommentCommandRunner(c, command.Plan)
@@ -231,10 +236,11 @@ func (c *DefaultCommandRunner) RunCommentCommand(logger logging.SimpleLogging, b
 		return
 	}
 
-	err = c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx)
-
-	if err != nil {
-		ctx.Log.Errorf("Error running pre-workflow hooks %s. Proceeding with %s command.", err, cmd.Name.String())
+	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), ctx); err != nil {
+		//TODO: thread context and use related logging methods.
+		c.Logger.ErrorContext(context.TODO(), "Error running pre-workflow hooks", fields.PullRequestWithErr(pull, err))
+		c.CommitStatusUpdater.UpdateCombined(context.TODO(), ctx.HeadRepo, ctx.Pull, models.FailedCommitStatus, cmd.Name)
+		return
 	}
 
 	cmdRunner := buildCommentCommandRunner(c, cmd.CommandName())
