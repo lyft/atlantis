@@ -28,15 +28,10 @@ func (u *UnlockCommandRunner) Run(
 	pullNum := ctx.Pull.Num
 
 	vcsMessage := "All Atlantis locks for this PR have been unlocked and plans discarded"
-	numLocks, err := u.deleteLockCommand.DeleteLocksByPull(baseRepo.FullName, pullNum)
+	_, err := u.deleteLockCommand.DeleteLocksByPull(baseRepo.FullName, pullNum)
 	if err != nil {
 		vcsMessage = "Failed to delete PR locks"
 		ctx.Log.Errorf("failed to delete locks by pull %s", err.Error())
-	}
-
-	// if there are no locks to delete, no errors, and SilenceNoProjects is enabled, don't comment
-	if err == nil && numLocks == 0 {
-		return
 	}
 
 	if commentErr := u.vcsClient.CreateComment(baseRepo, pullNum, vcsMessage, command.Unlock.String()); commentErr != nil {
