@@ -1474,7 +1474,6 @@ $$$diff
 ` + c.Output + `
 $$$
 </details>
-
 `
 						} else {
 							exp = `Ran Apply for dir: $.$ workspace: $default$
@@ -1482,7 +1481,6 @@ $$$
 $$$diff
 ` + c.Output + `
 $$$
-
 `
 						}
 					}
