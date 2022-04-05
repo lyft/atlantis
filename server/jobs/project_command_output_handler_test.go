@@ -3,7 +3,6 @@ package jobs_test
 import (
 	"sync"
 	"testing"
-	"time"
 
 	. "github.com/petergtz/pegomock"
 	"github.com/stretchr/testify/assert"
@@ -106,26 +105,17 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 			Status: jobs.Processing,
 		}, nil)
 
-		// send first message to populate the buffer
-		projectOutputHandler.Send(ctx, Msg)
-		time.Sleep(10 * time.Millisecond)
-
-		ch := make(chan string)
-
-		receivedMsgs := []string{}
-
-		wg.Add(1)
 		// read from channel asynchronously
+		ch := make(chan string)
 		go func() {
 			for msg := range ch {
-				receivedMsgs = append(receivedMsgs, msg)
-
-				// we're only expecting two messages here.
-				if len(receivedMsgs) >= 2 {
+				if msg == Msg {
 					wg.Done()
 				}
 			}
 		}()
+
+		wg.Add(1)
 
 		// register channel and backfill from buffer
 		// Note: We call this synchronously because otherwise
@@ -133,15 +123,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// before sending messages due to the way we lock our buffer memory cache
 		projectOutputHandler.Register(ctx.JobID, ch)
 
-		projectOutputHandler.Send(ctx, Msg)
 		wg.Wait()
-		close(ch)
-
-		expectedMsgs := []string{Msg, Msg}
-		assert.Equal(t, len(expectedMsgs), len(receivedMsgs))
-		for i := range expectedMsgs {
-			assert.Equal(t, expectedMsgs[i], receivedMsgs[i])
-		}
 	})
 
 	t.Run("clean up all jobs when PR is closed", func(t *testing.T) {
