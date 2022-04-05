@@ -147,7 +147,6 @@ workflows:
      steps: []`,
 			exp: raw.RepoCfg{
 				Version:       Int(3),
-				Automerge:     Bool(true),
 				ParallelApply: Bool(true),
 				ParallelPlan:  Bool(false),
 				Projects: []raw.Project{
@@ -261,7 +260,6 @@ func TestConfig_ToValid(t *testing.T) {
 			},
 			exp: valid.RepoCfg{
 				Version:       2,
-				Automerge:     false,
 				ParallelApply: false,
 				Workflows:     map[string]valid.Workflow{},
 			},
@@ -270,12 +268,10 @@ func TestConfig_ToValid(t *testing.T) {
 			description: "automerge and parallel_apply true",
 			input: raw.RepoCfg{
 				Version:       Int(2),
-				Automerge:     Bool(true),
 				ParallelApply: Bool(true),
 			},
 			exp: valid.RepoCfg{
 				Version:       2,
-				Automerge:     true,
 				ParallelApply: true,
 				Workflows:     map[string]valid.Workflow{},
 			},
@@ -284,12 +280,10 @@ func TestConfig_ToValid(t *testing.T) {
 			description: "automerge and parallel_apply false",
 			input: raw.RepoCfg{
 				Version:       Int(2),
-				Automerge:     Bool(false),
 				ParallelApply: Bool(false),
 			},
 			exp: valid.RepoCfg{
 				Version:       2,
-				Automerge:     false,
 				ParallelApply: false,
 				Workflows:     map[string]valid.Workflow{},
 			},
@@ -308,7 +302,6 @@ func TestConfig_ToValid(t *testing.T) {
 			},
 			exp: valid.RepoCfg{
 				Version:       2,
-				Automerge:     false,
 				ParallelApply: false,
 				Workflows: map[string]valid.Workflow{
 					"myworkflow": {
@@ -339,7 +332,6 @@ func TestConfig_ToValid(t *testing.T) {
 			description: "everything set",
 			input: raw.RepoCfg{
 				Version:       Int(2),
-				Automerge:     Bool(true),
 				ParallelApply: Bool(true),
 				Workflows: map[string]raw.Workflow{
 					"myworkflow": {
@@ -374,7 +366,6 @@ func TestConfig_ToValid(t *testing.T) {
 			},
 			exp: valid.RepoCfg{
 				Version:       2,
-				Automerge:     true,
 				ParallelApply: true,
 				Workflows: map[string]valid.Workflow{
 					"myworkflow": {

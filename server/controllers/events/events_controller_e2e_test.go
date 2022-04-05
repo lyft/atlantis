@@ -843,11 +843,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		DB:               boltdb,
 	}
 
-	autoMerger := &events.AutoMerger{
-		VCSClient:       vcsClient,
-		GlobalAutomerge: false,
-	}
-
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
 		pullUpdater,
@@ -866,7 +861,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		dbUpdater,
 		pullUpdater,
 		policyCheckCommandRunner,
-		autoMerger,
 		parallelPoolSize,
 	)
 
@@ -902,7 +896,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 			e2eStatusUpdater,
 			projectCommandBuilder,
 			prjCmdRunner,
-			autoMerger,
 			pullUpdater,
 			dbUpdater,
 			parallelPoolSize,
@@ -1265,9 +1258,6 @@ func (t *testGithubClient) PullIsMergeable(repo models.Repo, pull models.PullReq
 	return false, nil
 }
 func (t *testGithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	return nil
-}
-func (t *testGithubClient) MergePull(pull models.PullRequest, pullOptions models.PullRequestOptions) error {
 	return nil
 }
 func (t *testGithubClient) MarkdownPullLink(pull models.PullRequest) (string, error) {

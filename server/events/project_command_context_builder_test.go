@@ -59,7 +59,6 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 			},
 		}
 		contextFlags := &command.ContextFlags{
-			Automerge:                 false,
 			DeleteSourceBranchOnMerge: false,
 			ParallelApply:             false,
 			ParallelPlan:              false,
@@ -86,7 +85,6 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 			},
 		}
 		contextFlags := &command.ContextFlags{
-			Automerge:                 false,
 			DeleteSourceBranchOnMerge: false,
 			ParallelApply:             true,
 			ParallelPlan:              false,

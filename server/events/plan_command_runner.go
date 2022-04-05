@@ -18,7 +18,6 @@ func NewPlanCommandRunner(
 	dbUpdater *DBUpdater,
 	pullUpdater *PullUpdater,
 	policyCheckCommandRunner *PolicyCheckCommandRunner,
-	autoMerger *AutoMerger,
 	parallelPoolSize int,
 ) *PlanCommandRunner {
 	return &PlanCommandRunner{
@@ -31,7 +30,6 @@ func NewPlanCommandRunner(
 		dbUpdater:                dbUpdater,
 		pullUpdater:              pullUpdater,
 		policyCheckCommandRunner: policyCheckCommandRunner,
-		autoMerger:               autoMerger,
 		parallelPoolSize:         parallelPoolSize,
 	}
 }
@@ -46,7 +44,6 @@ type PlanCommandRunner struct {
 	dbUpdater                *DBUpdater
 	pullUpdater              *PullUpdater
 	policyCheckCommandRunner *PolicyCheckCommandRunner
-	autoMerger               *AutoMerger
 	parallelPoolSize         int
 }
 
@@ -95,12 +92,6 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunner.Plan, p.parallelPoolSize)
 	} else {
 		result = runProjectCmds(projectCmds, p.prjCmdRunner.Plan)
-	}
-
-	if p.autoMerger.automergeEnabled(projectCmds) && result.HasErrors() {
-		ctx.Log.Infof("deleting plans because there were errors and automerge requires all plans succeed")
-		p.deletePlans(ctx)
-		result.PlansDeleted = true
 	}
 
 	p.pullUpdater.UpdatePull(ctx, AutoplanCommand{}, result)
@@ -155,12 +146,6 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *command.Comment) {
 		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunner.Plan, p.parallelPoolSize)
 	} else {
 		result = runProjectCmds(projectCmds, p.prjCmdRunner.Plan)
-	}
-
-	if p.autoMerger.automergeEnabled(projectCmds) && result.HasErrors() {
-		ctx.Log.Infof("deleting plans because there were errors and automerge requires all plans succeed")
-		p.deletePlans(ctx)
-		result.PlansDeleted = true
 	}
 
 	p.pullUpdater.UpdatePull(
