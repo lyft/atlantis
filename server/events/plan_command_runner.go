@@ -104,8 +104,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 	p.updateCommitStatus(ctx, pullStatus)
 
 	// Check if there are any planned projects and if there are any errors or if plans are being deleted
-	if len(policyCheckCmds) > 0 &&
-		!(result.HasErrors() || result.PlansDeleted) {
+	if len(policyCheckCmds) > 0 && !result.HasErrors() {
 		// Run policy_check command
 		ctx.Log.Infof("Running policy_checks for all plans")
 
@@ -163,8 +162,7 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *command.Comment) {
 
 	// Runs policy checks step after all plans are successful.
 	// This step does not approve any policies that require approval.
-	if len(result.ProjectResults) > 0 &&
-		!(result.HasErrors() || result.PlansDeleted) {
+	if len(result.ProjectResults) > 0 && !result.HasErrors() {
 		ctx.Log.Infof("Running policy check for %s", cmd.String())
 		p.policyCheckCommandRunner.Run(ctx, policyCheckCmds)
 	}

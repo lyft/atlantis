@@ -360,7 +360,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			}
 
 			// Send the "pull closed" event which would be triggered by the
-			// automerge or a manual merge.
+			// manual merge.
 			pullClosedReq := GitHubPullRequestClosedEvent(t)
 			w = httptest.NewRecorder()
 			ctrl.Post(w, pullClosedReq)
@@ -506,7 +506,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 			}
 
 			// Send the "pull closed" event which would be triggered by the
-			// automerge or a manual merge.
+			// a manual merge.
 			pullClosedReq := GitHubPullRequestClosedEvent(t)
 			w = httptest.NewRecorder()
 			ctrl.Post(w, pullClosedReq)
@@ -605,7 +605,7 @@ func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 			}
 
 			// Send the "pull closed" event which would be triggered by the
-			// automerge or a manual merge.
+			// a manual merge.
 			pullClosedReq := GitHubPullRequestClosedEvent(t)
 			w = httptest.NewRecorder()
 			ctrl.Post(w, pullClosedReq)

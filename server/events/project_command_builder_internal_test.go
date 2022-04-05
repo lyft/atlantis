@@ -102,7 +102,6 @@ workflows:
       - apply`,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace
@@ -155,7 +154,6 @@ workflows:
       - apply`,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace
@@ -216,7 +214,6 @@ workflows:
       steps: []`,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace
@@ -270,7 +267,6 @@ workflows:
       - apply`,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace
@@ -297,7 +293,6 @@ workflows:
       - apply`,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace
@@ -325,7 +320,6 @@ workflows:
       - apply`,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace
@@ -354,7 +348,6 @@ workflows:
 `,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace
@@ -420,7 +413,6 @@ workflows:
 `,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace
@@ -474,7 +466,6 @@ workflows:
 `,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace
@@ -709,7 +700,6 @@ workflows:
       - apply`,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - name: myproject_1
   dir: project1
@@ -933,7 +923,6 @@ workflows:
 `,
 			repoCfg: `
 version: 3
-automerge: true
 projects:
 - dir: project1
   workspace: myworkspace

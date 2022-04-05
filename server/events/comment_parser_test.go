@@ -579,14 +579,13 @@ func TestParse_Parsing(t *testing.T) {
 
 func TestBuildPlanApplyVersionComment(t *testing.T) {
 	cases := []struct {
-		repoRelDir        string
-		workspace         string
-		project           string
-		autoMergeDisabled bool
-		commentArgs       []string
-		expPlanFlags      string
-		expApplyFlags     string
-		expVersionFlags   string
+		repoRelDir      string
+		workspace       string
+		project         string
+		commentArgs     []string
+		expPlanFlags    string
+		expApplyFlags   string
+		expVersionFlags string
 	}{
 		{
 			repoRelDir:      ".",
@@ -668,16 +667,6 @@ func TestBuildPlanApplyVersionComment(t *testing.T) {
 			expApplyFlags:   "-d \"dir with spaces\"",
 			expVersionFlags: "-d \"dir with spaces\"",
 		},
-		{
-			repoRelDir:        "dir",
-			workspace:         "workspace",
-			project:           "",
-			autoMergeDisabled: true,
-			commentArgs:       []string{`"arg1"`, `"arg2"`, `arg3`},
-			expPlanFlags:      "-d dir -w workspace -- arg1 arg2 arg3",
-			expApplyFlags:     "-d dir -w workspace --auto-merge-disabled",
-			expVersionFlags:   "-d dir -w workspace",
-		},
 	}
 
 	for _, c := range cases {
@@ -688,7 +677,7 @@ func TestBuildPlanApplyVersionComment(t *testing.T) {
 					actComment := commentParser.BuildPlanComment(c.repoRelDir, c.workspace, c.project, c.commentArgs)
 					Equals(t, fmt.Sprintf("atlantis plan %s", c.expPlanFlags), actComment)
 				case command.Apply:
-					actComment := commentParser.BuildApplyComment(c.repoRelDir, c.workspace, c.project, c.autoMergeDisabled)
+					actComment := commentParser.BuildApplyComment(c.repoRelDir, c.workspace, c.project)
 					Equals(t, fmt.Sprintf("atlantis apply %s", c.expApplyFlags), actComment)
 				case command.Version:
 					actComment := commentParser.BuildVersionComment(c.repoRelDir, c.workspace, c.project)
@@ -827,7 +816,6 @@ var PlanUsage = `Usage of plan:
 `
 
 var ApplyUsage = `Usage of apply:
-      --auto-merge-disabled   Disable automerge after apply.
   -d, --dir string            Apply the plan for this directory, relative to root of
                               repo, ex. 'child/dir'.
   -f, --force                 Force Atlantis to ignore apply requirements.
