@@ -816,14 +816,14 @@ var PlanUsage = `Usage of plan:
 `
 
 var ApplyUsage = `Usage of apply:
-  -d, --dir string            Apply the plan for this directory, relative to root of
-                              repo, ex. 'child/dir'.
-  -f, --force                 Force Atlantis to ignore apply requirements.
-  -p, --project string        Apply the plan for this project. Refers to the name of
-                              the project configured in atlantis.yaml. Cannot be
-                              used at same time as workspace or dir flags.
-      --verbose               Append Atlantis log to comment.
-  -w, --workspace string      Apply the plan for this Terraform workspace.
+  -d, --dir string         Apply the plan for this directory, relative to root of
+                           repo, ex. 'child/dir'.
+  -f, --force              Force Atlantis to ignore apply requirements.
+  -p, --project string     Apply the plan for this project. Refers to the name of
+                           the project configured in atlantis.yaml. Cannot be used
+                           at same time as workspace or dir flags.
+      --verbose            Append Atlantis log to comment.
+  -w, --workspace string   Apply the plan for this Terraform workspace.
 `
 
 var ApprovePolicyUsage = `Usage of approve_policies:
