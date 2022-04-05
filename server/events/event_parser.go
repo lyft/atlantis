@@ -38,8 +38,6 @@ const usagesCols = 90
 type PullCommand interface {
 	// CommandName is the name of the command we're running.
 	CommandName() command.Name
-	// IsVerbose is true if the output of this command should be verbose.
-	IsVerbose() bool
 	// IsAutoplan is true if this is an autoplan command vs. a comment command.
 	IsAutoplan() bool
 }
@@ -51,11 +49,6 @@ type PolicyCheckCommand struct{}
 // CommandName is policy_check.
 func (c PolicyCheckCommand) CommandName() command.Name {
 	return command.PolicyCheck
-}
-
-// IsVerbose is false for policy_check commands.
-func (c PolicyCheckCommand) IsVerbose() bool {
-	return false
 }
 
 // IsAutoplan is true for policy_check commands.
@@ -70,11 +63,6 @@ type AutoplanCommand struct{}
 // CommandName is plan.
 func (c AutoplanCommand) CommandName() command.Name {
 	return command.Plan
-}
-
-// IsVerbose is false for autoplan commands.
-func (c AutoplanCommand) IsVerbose() bool {
-	return false
 }
 
 // IsAutoplan is true for autoplan commands (obviously).
@@ -92,8 +80,6 @@ type CommentCommand struct {
 	Flags []string
 	// Name is the name of the command the comment specified.
 	Name command.Name
-	// Verbose is true if the command should output verbosely.
-	Verbose bool
 	//ForceApply is true of the command should ignore apply_requirments.
 	ForceApply bool
 	// Workspace is the name of the Terraform workspace to run the command in.
@@ -115,11 +101,6 @@ func (c CommentCommand) IsForSpecificProject() bool {
 // CommandName returns the name of this command.
 func (c CommentCommand) CommandName() command.Name {
 	return c.Name
-}
-
-// IsVerbose is true if the command should give verbose output.
-func (c CommentCommand) IsVerbose() bool {
-	return c.Verbose
 }
 
 // IsAutoplan will be false for comment commands.
@@ -146,7 +127,6 @@ func NewCommentCommand(repoRelDir string, flags []string, name command.Name, ver
 		RepoRelDir:  repoRelDir,
 		Flags:       flags,
 		Name:        name,
-		Verbose:     verbose,
 		Workspace:   workspace,
 		ProjectName: project,
 		ForceApply:  forceApply,

@@ -663,7 +663,6 @@ func TestNewCommand_EmptyDirWorkspaceProject(t *testing.T) {
 		RepoRelDir:  "",
 		Flags:       nil,
 		Name:        command.Plan,
-		Verbose:     false,
 		Workspace:   "",
 		ProjectName: "",
 	}, *cmd)
@@ -674,7 +673,6 @@ func TestNewCommand_AllFieldsSet(t *testing.T) {
 	Equals(t, command.Comment{
 		Workspace:   "workspace",
 		RepoRelDir:  "dir",
-		Verbose:     true,
 		Flags:       []string{"a", "b"},
 		Name:        command.Plan,
 		ProjectName: "project",
@@ -683,10 +681,6 @@ func TestNewCommand_AllFieldsSet(t *testing.T) {
 
 func TestAutoplanCommand_CommandName(t *testing.T) {
 	Equals(t, command.Plan, (events.AutoplanCommand{}).CommandName())
-}
-
-func TestAutoplanCommand_IsVerbose(t *testing.T) {
-	Equals(t, false, (events.AutoplanCommand{}).IsVerbose())
 }
 
 func TestAutoplanCommand_IsAutoplan(t *testing.T) {
@@ -702,15 +696,6 @@ func TestCommentCommand_CommandName(t *testing.T) {
 	}).CommandName())
 }
 
-func TestCommentCommand_IsVerbose(t *testing.T) {
-	Equals(t, false, (command.Comment{
-		Verbose: false,
-	}).IsVerbose())
-	Equals(t, true, (command.Comment{
-		Verbose: true,
-	}).IsVerbose())
-}
-
 func TestCommentCommand_IsAutoplan(t *testing.T) {
 	Equals(t, false, (command.Comment{}).IsAutoplan())
 }
@@ -721,7 +706,6 @@ func TestCommentCommand_String(t *testing.T) {
 		RepoRelDir:  "mydir",
 		Flags:       []string{"flag1", "flag2"},
 		Name:        command.Plan,
-		Verbose:     true,
 		Workspace:   "myworkspace",
 		ProjectName: "myproject",
 	}).String())
