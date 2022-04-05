@@ -21,7 +21,6 @@ type ContextFlags struct {
 	DeleteSourceBranchOnMerge,
 	ParallelApply,
 	ParallelPlan,
-	Verbose,
 	ForceApply bool
 }
 

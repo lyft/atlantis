@@ -7,7 +7,7 @@ import (
 )
 
 // NewComment constructs a Command, setting all missing fields to defaults.
-func NewComment(repoRelDir string, flags []string, name Name, verbose, forceApply bool, workspace string, project string) *Comment {
+func NewComment(repoRelDir string, flags []string, name Name, forceApply bool, workspace string, project string) *Comment {
 	// If repoRelDir was empty we want to keep it that way to indicate that it
 	// wasn't specified in the comment.
 	if repoRelDir != "" {

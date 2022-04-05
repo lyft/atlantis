@@ -131,11 +131,6 @@ func TestParse_UnusedArguments(t *testing.T) {
 			"arg arg2 --",
 			"arg arg2",
 		},
-		{
-			command.ApprovePolicies,
-			"arg arg2 --",
-			"arg arg2",
-		},
 	}
 	for _, c := range cases {
 		comment := fmt.Sprintf("atlantis %s %s", c.Command.String(), c.Args)
@@ -147,8 +142,6 @@ func TestParse_UnusedArguments(t *testing.T) {
 				usage = PlanUsage
 			case command.Apply:
 				usage = ApplyUsage
-			case command.ApprovePolicies:
-				usage = ApprovePolicyUsage
 			}
 			Equals(t, fmt.Sprintf("```\nError: unknown argument(s) – %s.\n%s```", c.Unused, usage), r.CommentResponse)
 		})
@@ -337,7 +330,6 @@ func TestParse_Parsing(t *testing.T) {
 		flags        string
 		expWorkspace string
 		expDir       string
-		expVerbose   bool
 		expExtraArgs string
 		expProject   string
 	}{
@@ -346,7 +338,6 @@ func TestParse_Parsing(t *testing.T) {
 			"",
 			"",
 			"",
-			false,
 			"",
 			"",
 		},
@@ -355,7 +346,6 @@ func TestParse_Parsing(t *testing.T) {
 			"-w workspace",
 			"workspace",
 			"",
-			false,
 			"",
 			"",
 		},
@@ -363,7 +353,6 @@ func TestParse_Parsing(t *testing.T) {
 			"-d dir",
 			"",
 			"dir",
-			false,
 			"",
 			"",
 		},
@@ -371,24 +360,14 @@ func TestParse_Parsing(t *testing.T) {
 			"-p project",
 			"",
 			"",
-			false,
 			"",
 			"project",
-		},
-		{
-			"--verbose",
-			"",
-			"",
-			true,
-			"",
-			"",
 		},
 		// Test each long flag individually.
 		{
 			"--workspace workspace",
 			"workspace",
 			"",
-			false,
 			"",
 			"",
 		},
@@ -396,7 +375,6 @@ func TestParse_Parsing(t *testing.T) {
 			"--dir dir",
 			"",
 			"dir",
-			false,
 			"",
 			"",
 		},
@@ -404,66 +382,22 @@ func TestParse_Parsing(t *testing.T) {
 			"--project project",
 			"",
 			"",
-			false,
 			"",
 			"project",
 		},
 		// Test all of them with different permutations.
 		{
-			"-w workspace -d dir --verbose",
+			"-w workspace -d dir",
 			"workspace",
 			"dir",
-			true,
 			"",
 			"",
 		},
 		{
-			"-d dir -w workspace --verbose",
-			"workspace",
-			"dir",
-			true,
-			"",
-			"",
-		},
-		{
-			"--verbose -w workspace -d dir",
-			"workspace",
-			"dir",
-			true,
-			"",
-			"",
-		},
-		{
-			"-p project --verbose",
-			"",
-			"",
-			true,
-			"",
-			"project",
-		},
-		{
-			"--verbose -p project",
-			"",
-			"",
-			true,
-			"",
-			"project",
-		},
-		// Test that flags after -- are ignored
-		{
-			"-w workspace -d dir -- --verbose",
-			"workspace",
-			"dir",
-			false,
-			"--verbose",
-			"",
-		},
-		{
-			"-w workspace -- -d dir --verbose",
+			"-w workspace -- -d dir",
 			"workspace",
 			"",
-			false,
-			"-d dir --verbose",
+			"-d dir",
 			"",
 		},
 		// Test the extra args parsing.
@@ -471,32 +405,28 @@ func TestParse_Parsing(t *testing.T) {
 			"--",
 			"",
 			"",
-			false,
 			"",
 			"",
 		},
 		{
-			"-w workspace -d dir --verbose -- arg one -two --three &&",
+			"-w workspace -d dir -- arg one -two --three &&",
 			"workspace",
 			"dir",
-			true,
 			"arg one -two --three &&",
 			"",
 		},
 		// Test whitespace.
 		{
-			"\t-w\tworkspace\t-d\tdir\t--verbose\t--\targ\tone\t-two\t--three\t&&",
+			"\t-w\tworkspace\t-d\tdir\t--\targ\tone\t-two\t--three\t&&",
 			"workspace",
 			"dir",
-			true,
 			"arg one -two --three &&",
 			"",
 		},
 		{
-			"   -w   workspace   -d   dir   --verbose   --   arg   one   -two   --three   &&",
+			"   -w   workspace   -d   dir   --   arg   one   -two   --three   &&",
 			"workspace",
 			"dir",
-			true,
 			"arg one -two --three &&",
 			"",
 		},
@@ -505,7 +435,6 @@ func TestParse_Parsing(t *testing.T) {
 			"-d /",
 			"",
 			".",
-			false,
 			"",
 			"",
 		},
@@ -513,7 +442,6 @@ func TestParse_Parsing(t *testing.T) {
 			"-d /adir",
 			"",
 			"adir",
-			false,
 			"",
 			"",
 		},
@@ -521,7 +449,6 @@ func TestParse_Parsing(t *testing.T) {
 			"-d .",
 			"",
 			".",
-			false,
 			"",
 			"",
 		},
@@ -529,7 +456,6 @@ func TestParse_Parsing(t *testing.T) {
 			"-d ./",
 			"",
 			".",
-			false,
 			"",
 			"",
 		},
@@ -537,7 +463,6 @@ func TestParse_Parsing(t *testing.T) {
 			"-d ./adir",
 			"",
 			"adir",
-			false,
 			"",
 			"",
 		},
@@ -545,7 +470,6 @@ func TestParse_Parsing(t *testing.T) {
 			"-d \"dir with space\"",
 			"",
 			"dir with space",
-			false,
 			"",
 			"",
 		},
@@ -809,7 +733,6 @@ var PlanUsage = `Usage of plan:
   -p, --project string     Which project to run plan for. Refers to the name of the
                            project configured in atlantis.yaml. Cannot be used at
                            same time as workspace or dir flags.
-      --verbose            Append Atlantis log to comment.
   -w, --workspace string   Switch to this Terraform workspace before planning.
 `
 
@@ -820,13 +743,9 @@ var ApplyUsage = `Usage of apply:
   -p, --project string     Apply the plan for this project. Refers to the name of
                            the project configured in atlantis.yaml. Cannot be used
                            at same time as workspace or dir flags.
-      --verbose            Append Atlantis log to comment.
   -w, --workspace string   Apply the plan for this Terraform workspace.
 `
 
-var ApprovePolicyUsage = `Usage of approve_policies:
-      --verbose   Append Atlantis log to comment.
-`
 var UnlockUsage = "`Usage of unlock:`\n\n ```cmake\n" +
 	`atlantis unlock	
 

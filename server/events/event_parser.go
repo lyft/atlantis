@@ -110,11 +110,11 @@ func (c CommentCommand) IsAutoplan() bool {
 
 // String returns a string representation of the command.
 func (c CommentCommand) String() string {
-	return fmt.Sprintf("command=%q verbose=%t dir=%q workspace=%q project=%q flags=%q", c.Name.String(), c.Verbose, c.RepoRelDir, c.Workspace, c.ProjectName, strings.Join(c.Flags, ","))
+	return fmt.Sprintf("command=%q dir=%q workspace=%q project=%q flags=%q", c.Name.String(), c.RepoRelDir, c.Workspace, c.ProjectName, strings.Join(c.Flags, ","))
 }
 
 // NewCommentCommand constructs a CommentCommand, setting all missing fields to defaults.
-func NewCommentCommand(repoRelDir string, flags []string, name command.Name, verbose, forceApply bool, workspace string, project string) *command.Comment {
+func NewCommentCommand(repoRelDir string, flags []string, name command.Name, forceApply bool, workspace string, project string) *command.Comment {
 	// If repoRelDir was empty we want to keep it that way to indicate that it
 	// wasn't specified in the comment.
 	if repoRelDir != "" {
