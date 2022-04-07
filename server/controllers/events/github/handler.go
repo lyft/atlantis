@@ -11,10 +11,10 @@ import (
 
 	"github.com/google/go-github/v31/github"
 	"github.com/runatlantis/atlantis/server/controllers/events/errors"
+	converters "github.com/runatlantis/atlantis/server/converters/github"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	converters "github.com/runatlantis/atlantis/server/converters/github"
 	"github.com/uber-go/tally"
 )
 

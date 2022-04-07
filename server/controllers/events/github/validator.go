@@ -16,8 +16,9 @@ package github
 import (
 	"errors"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/http"
 	"io/ioutil"
+
+	"github.com/runatlantis/atlantis/server/http"
 
 	"github.com/google/go-github/v31/github"
 )

@@ -7,7 +7,7 @@ import (
 
 // RepoConverter converts a github repository to our internal model.
 type RepoConverter struct {
-	GithubUser string
+	GithubUser  string
 	GithubToken string
 }
 

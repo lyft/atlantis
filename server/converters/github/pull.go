@@ -64,7 +64,7 @@ func (p *PullConverter) Convert(pull *github.PullRequest) (models.PullRequest, e
 		Num:        num,
 		State:      pullState,
 		BaseRepo:   baseRepo,
-		HeadRepo: headRepo,
+		HeadRepo:   headRepo,
 		BaseBranch: baseBranch,
 		ClosedAt:   closedAt,
 		UpdatedAt:  updatedAt,

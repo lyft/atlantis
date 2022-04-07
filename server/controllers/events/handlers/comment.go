@@ -14,8 +14,8 @@ import (
 )
 
 func NewCommentEvent(
-	commentParser events.CommentParsing, 
-	repoAllowlistChecker *events.RepoAllowlistChecker, 
+	commentParser events.CommentParsing,
+	repoAllowlistChecker *events.RepoAllowlistChecker,
 	vcsClient vcs.Client,
 	CommandRunner events.CommandRunner,
 ) *CommentEvent {
@@ -25,24 +25,24 @@ func NewCommentEvent(
 			CommandRunner: CommandRunner,
 		},
 		RepoAllowlistChecker: repoAllowlistChecker,
-		VCSClient: vcsClient,
+		VCSClient:            vcsClient,
 	}
-	
+
 }
 
 func NewCommentEventWithCommandHandler(
-	commentParser events.CommentParsing, 
-	repoAllowlistChecker *events.RepoAllowlistChecker, 
+	commentParser events.CommentParsing,
+	repoAllowlistChecker *events.RepoAllowlistChecker,
 	vcsClient vcs.Client,
 	commandHandler commandHandler,
 ) *CommentEvent {
 	return &CommentEvent{
-		CommentParser: commentParser,
-		CommandHandler: commandHandler,
+		CommentParser:        commentParser,
+		CommandHandler:       commandHandler,
 		RepoAllowlistChecker: repoAllowlistChecker,
-		VCSClient: vcsClient,
+		VCSClient:            vcsClient,
 	}
-	
+
 }
 
 // commandHandler is the handler responsible for running a specific command
