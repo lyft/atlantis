@@ -376,6 +376,7 @@ func (e *EventParser) parseCommonBitbucketCloudEventData(event bitbucketcloud.Co
 		Author:     *event.Actor.Nickname,
 		State:      prState,
 		BaseRepo:   baseRepo,
+		HeadRepo:   headRepo,
 	}
 	user = models.User{
 		Username: *event.Actor.Nickname,
@@ -574,6 +575,7 @@ func (e *EventParser) ParseGitlabMergeRequestEvent(event gitlab.MergeEvent) (pul
 		BaseBranch: event.ObjectAttributes.TargetBranch,
 		State:      modelState,
 		BaseRepo:   baseRepo,
+		HeadRepo:   headRepo,
 	}
 
 	switch event.ObjectAttributes.Action {
@@ -719,6 +721,7 @@ func (e *EventParser) parseCommonBitbucketServerEventData(event bitbucketserver.
 		Author:     *event.Actor.Username,
 		State:      prState,
 		BaseRepo:   baseRepo,
+		HeadRepo:   headRepo,
 	}
 	user = models.User{
 		Username: *event.Actor.Username,
@@ -841,6 +844,7 @@ func (e *EventParser) ParseAzureDevopsPull(pull *azuredevops.GitPullRequest) (pu
 		Num:        num,
 		State:      pullState,
 		BaseRepo:   baseRepo,
+		HeadRepo:   headRepo,
 		BaseBranch: strings.Replace(baseBranch, "refs/heads/", "", 1),
 	}
 	return
