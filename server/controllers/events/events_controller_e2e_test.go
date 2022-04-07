@@ -480,7 +480,7 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 
 			// reset userConfig
 			userConfig := &server.UserConfig{}
-			userConfig.EnablePolicyChecksFlag = true
+			userConfig.EnablePolicyChecks = true
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
@@ -582,7 +582,7 @@ func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 			// reset userConfig
 			userConfig := &server.UserConfig{}
 			userConfig.EnablePlatformMode = true
-			userConfig.EnablePolicyChecksFlag = true
+			userConfig.EnablePolicyChecks = true
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
@@ -695,7 +695,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 				RunCommand: "echo 'hello world'",
 			},
 		},
-		PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
+		PolicyCheckEnabled: userConfig.EnablePolicyChecks,
 	}
 	globalCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
 	expCfgPath := filepath.Join(absRepoPath(t, repoFixtureDir), "repos.yaml")
@@ -727,7 +727,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 			WithInstrumentation(statsScope)
 	}
 
-	if userConfig.EnablePolicyChecksFlag {
+	if userConfig.EnablePolicyChecks {
 		projectContextBuilder = projectContextBuilder.WithPolicyChecks(commentParser)
 	}
 

@@ -36,7 +36,7 @@ type UserConfig struct {
 	DisableMarkdownFolding     bool   `mapstructure:"disable-markdown-folding"`
 	DisableRepoLocking         bool   `mapstructure:"disable-repo-locking"`
 	EnablePlatformMode         bool   `mapstructure:"enable-platform-mode"`
-	EnablePolicyChecksFlag     bool   `mapstructure:"enable-policy-checks"`
+	EnablePolicyChecks         bool   `mapstructure:"enable-policy-checks"`
 	EnableRegExpCmd            bool   `mapstructure:"enable-regexp-cmd"`
 	EnableDiffMarkdownFormat   bool   `mapstructure:"enable-diff-markdown-format"`
 	FFOwner                    string `mapstructure:"ff-owner"`

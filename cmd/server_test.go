@@ -102,7 +102,7 @@ var testFlags = map[string]interface{}{
 	LyftWorkerQueueUrlFlag:       "",
 	DisableAutoplanFlag:          true,
 	EnablePlatformModeFlag:       false,
-	EnablePolicyChecksFlag:       false,
+	EnablePolicyChecks:           false,
 	EnableRegExpCmdFlag:          false,
 	EnableDiffMarkdownFormat:     false,
 }

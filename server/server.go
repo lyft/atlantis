@@ -182,12 +182,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(userConfig.VCSStatusName)
 
-	policyChecksEnabled := false
-	if userConfig.EnablePolicyChecksFlag {
-		logger.Infof("Policy Checks are enabled")
-		policyChecksEnabled = true
-	}
-
 	validator := &cfgParser.ParserValidator{}
 
 	globalCfg := valid.NewGlobalCfgFromArgs(
@@ -197,7 +191,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			ApprovedReq:         userConfig.RequireApproval,
 			UnDivergedReq:       userConfig.RequireUnDiverged,
 			SQUnLockedReq:       userConfig.RequireSQUnlocked,
-			PolicyCheckEnabled:  userConfig.EnablePolicyChecksFlag,
+			PolicyCheckEnabled:  userConfig.EnablePolicyChecks,
 			PlatformModeEnabled: userConfig.EnablePlatformMode,
 		})
 	if userConfig.RepoConfig != "" {
@@ -532,7 +526,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WrapProjectContext(events.NewPRProjectCommandContextBuilder(commentParser)).
 		WithInstrumentation(statsScope)
 
-	if policyChecksEnabled {
+	if userConfig.EnablePolicyChecks {
 		projectContextBuilder = projectContextBuilder.WithPolicyChecks(commentParser)
 		prProjectContextBuilder = prProjectContextBuilder.WithPolicyChecks(commentParser)
 	}
