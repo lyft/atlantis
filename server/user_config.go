@@ -34,7 +34,6 @@ type UserConfig struct {
 	DisableApply               bool   `mapstructure:"disable-apply"`
 	DisableAutoplan            bool   `mapstructure:"disable-autoplan"`
 	DisableMarkdownFolding     bool   `mapstructure:"disable-markdown-folding"`
-	DisableRepoLocking         bool   `mapstructure:"disable-repo-locking"`
 	EnablePlatformMode         bool   `mapstructure:"enable-platform-mode"`
 	EnablePolicyChecks         bool   `mapstructure:"enable-policy-checks"`
 	EnableRegExpCmd            bool   `mapstructure:"enable-regexp-cmd"`

@@ -57,7 +57,6 @@ const (
 	DisableApplyFlag           = "disable-apply"
 	DisableAutoplanFlag        = "disable-autoplan"
 	DisableMarkdownFoldingFlag = "disable-markdown-folding"
-	DisableRepoLockingFlag     = "disable-repo-locking"
 	EnablePlatformModeFlag     = "enable-platform-mode"
 	EnablePolicyChecks         = "enable-policy-checks"
 	EnableRegExpCmdFlag        = "enable-regexp-cmd"
@@ -331,9 +330,6 @@ var boolFlags = map[string]boolFlag{
 	DisableAutoplanFlag: {
 		description:  "Disable atlantis auto planning feature",
 		defaultValue: false,
-	},
-	DisableRepoLockingFlag: {
-		description: "Disable atlantis locking repos",
 	},
 	EnablePlatformModeFlag: {
 		description:  "Enable Atlantis to run in platform mode, where it will run plan and policy checks inside the PR and run plan and apply after PR is merged.",

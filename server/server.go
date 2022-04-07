@@ -416,7 +416,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DisableApplyAll:          userConfig.DisableApplyAll,
 		DisableMarkdownFolding:   userConfig.DisableMarkdownFolding,
 		DisableApply:             userConfig.DisableApply,
-		DisableRepoLocking:       userConfig.DisableRepoLocking,
 		EnableDiffMarkdownFormat: userConfig.EnableDiffMarkdownFormat,
 	}
 
@@ -426,11 +425,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 	var lockingClient locking.Locker
 	var applyLockingClient locking.ApplyLocker
-	if userConfig.DisableRepoLocking {
-		lockingClient = locking.NewNoOpLocker()
-	} else {
-		lockingClient = locking.NewClient(boltdb)
-	}
+
+	lockingClient = locking.NewClient(boltdb)
 	applyLockingClient = locking.NewApplyClient(boltdb, userConfig.DisableApply)
 	workingDirLocker := events.NewDefaultWorkingDirLocker()
 

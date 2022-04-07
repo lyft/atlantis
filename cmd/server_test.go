@@ -68,7 +68,6 @@ var testFlags = map[string]interface{}{
 	DisableApplyAllFlag:          true,
 	DisableApplyFlag:             true,
 	DisableMarkdownFoldingFlag:   true,
-	DisableRepoLockingFlag:       true,
 	GHHostnameFlag:               "ghhostname",
 	GHTokenFlag:                  "token",
 	GHUserFlag:                   "user",
