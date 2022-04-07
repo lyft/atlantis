@@ -24,12 +24,10 @@ import (
 
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-version"
-	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	runtime_models "github.com/runatlantis/atlantis/server/core/runtime/models"
-	"github.com/runatlantis/atlantis/server/core/terraform/cloud"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/terraform/ansi"
 	"github.com/runatlantis/atlantis/server/jobs"
@@ -88,8 +86,6 @@ func NewClientWithVersionCache(
 	log logging.SimpleLogging,
 	binDir string,
 	cacheDir string,
-	tfeToken string,
-	tfeHostname string,
 	defaultVersionStr string,
 	defaultVersionFlagName string,
 	tfDownloadURL string,
@@ -126,16 +122,6 @@ func NewClientWithVersionCache(
 		commandBuilder:          builder,
 	}
 
-	// If tfeToken is set, we try to create a ~/.terraformrc file.
-	if tfeToken != "" {
-		home, err := homedir.Dir()
-		if err != nil {
-			return nil, errors.Wrap(err, "getting home dir")
-		}
-		if err := cloud.GenerateConfigFile(tfeToken, tfeHostname, home); err != nil {
-			return nil, errors.Wrapf(err, "generating Terraform Cloud config file")
-		}
-	}
 	return &DefaultClient{
 		defaultVersion:   version,
 		binDir:           binDir,
@@ -168,8 +154,6 @@ func NewE2ETestClient(
 		log,
 		binDir,
 		cacheDir,
-		tfeToken,
-		tfeHostname,
 		defaultVersionStr,
 		defaultVersionFlagName,
 		tfDownloadURL,
@@ -185,8 +169,6 @@ func NewClient(
 	log logging.SimpleLogging,
 	binDir string,
 	cacheDir string,
-	tfeToken string,
-	tfeHostname string,
 	defaultVersionStr string,
 	defaultVersionFlagName string,
 	tfDownloadURL string,
@@ -209,8 +191,6 @@ func NewClient(
 		log,
 		binDir,
 		cacheDir,
-		tfeToken,
-		tfeHostname,
 		defaultVersionStr,
 		defaultVersionFlagName,
 		tfDownloadURL,

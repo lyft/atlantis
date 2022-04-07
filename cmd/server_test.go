@@ -94,8 +94,6 @@ var testFlags = map[string]interface{}{
 	SSLCertFileFlag:              "cert-file",
 	SSLKeyFileFlag:               "key-file",
 	TFDownloadURLFlag:            "https://my-hostname.com",
-	TFEHostnameFlag:              "my-hostname",
-	TFETokenFlag:                 "my-token",
 	VCSStatusName:                "my-status",
 	WriteGitCredsFlag:            true,
 	LyftAuditJobsSnsTopicArnFlag: "",
@@ -691,18 +689,6 @@ func TestExecute_RepoCfgFlags(t *testing.T) {
 	}, t)
 	err := c.Execute()
 	ErrEquals(t, "cannot use --repo-config and --repo-config-json at the same time", err)
-}
-
-// Can't use both --tfe-hostname flag without --tfe-token.
-func TestExecute_TFEHostnameOnly(t *testing.T) {
-	c := setup(map[string]interface{}{
-		GHUserFlag:        "user",
-		GHTokenFlag:       "token",
-		RepoAllowlistFlag: "github.com",
-		TFEHostnameFlag:   "not-app.terraform.io",
-	}, t)
-	err := c.Execute()
-	ErrEquals(t, "if setting --tfe-hostname, must set --tfe-token", err)
 }
 
 // Can't use both --repo-allowlist and --repo-whitelist

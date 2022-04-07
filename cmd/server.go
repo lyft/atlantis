@@ -100,8 +100,6 @@ const (
 	SSLKeyFileFlag               = "ssl-key-file"
 	TFDownloadURLFlag            = "tf-download-url"
 	VCSStatusName                = "vcs-status-name"
-	TFEHostnameFlag              = "tfe-hostname"
-	TFETokenFlag                 = "tfe-token"
 	WriteGitCredsFlag            = "write-git-creds"
 	LyftAuditJobsSnsTopicArnFlag = "lyft-audit-jobs-sns-topic-arn"
 	LyftGatewaySnsTopicArnFlag   = "lyft-gateway-sns-topic-arn"
@@ -122,7 +120,6 @@ const (
 	DefaultStatsNamespace   = "atlantis"
 	DefaultPort             = 4141
 	DefaultTFDownloadURL    = "https://releases.hashicorp.com"
-	DefaultTFEHostname      = "app.terraform.io"
 	DefaultVCSStatusName    = "atlantis"
 )
 
@@ -285,15 +282,6 @@ var stringFlags = map[string]stringFlag{
 	TFDownloadURLFlag: {
 		description:  "Base URL to download Terraform versions from.",
 		defaultValue: DefaultTFDownloadURL,
-	},
-	TFEHostnameFlag: {
-		description:  "Hostname of your Terraform Enterprise installation. If using Terraform Cloud no need to set.",
-		defaultValue: DefaultTFEHostname,
-	},
-	TFETokenFlag: {
-		description: "API token for Terraform Cloud/Enterprise. This will be used to generate a ~/.terraformrc file." +
-			" Only set if using TFC/E as a remote backend." +
-			" Should be specified via the ATLANTIS_TFE_TOKEN environment variable for security.",
 	},
 	DefaultTFVersionFlag: {
 		description: "Terraform version to default to (ex. v0.12.0). Will download if not yet on disk." +
@@ -649,9 +637,6 @@ func (s *ServerCmd) setDefaults(c *server.UserConfig) {
 	if c.VCSStatusName == "" {
 		c.VCSStatusName = DefaultVCSStatusName
 	}
-	if c.TFEHostname == "" {
-		c.TFEHostname = DefaultTFEHostname
-	}
 	if c.MaxProjectsPerPR == 0 {
 		c.MaxProjectsPerPR = events.InfiniteProjectsPerPR
 	}
@@ -737,10 +722,6 @@ func (s *ServerCmd) validate(userConfig server.UserConfig, logger logging.Logger
 		if strings.Contains(token, "\n") {
 			logger.Warn(fmt.Sprintf("--%s contains a newline which is usually unintentional", name))
 		}
-	}
-
-	if userConfig.TFEHostname != DefaultTFEHostname && userConfig.TFEToken == "" {
-		return fmt.Errorf("if setting --%s, must set --%s", TFEHostnameFlag, TFETokenFlag)
 	}
 
 	_, patternErr := fileutils.NewPatternMatcher(strings.Split(userConfig.AutoplanFileList, ","))

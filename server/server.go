@@ -395,23 +395,17 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
 
-	if userConfig.TFEToken != "" {
-		projectCmdOutputHandler = &jobs.NoopProjectOutputHandler{}
-	} else {
-		projectCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
-		projectCmdOutputHandler = jobs.NewAsyncProjectCommandOutputHandler(
-			projectCmdOutput,
-			logger,
-			jobStore,
-		)
-	}
+	projectCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
+	projectCmdOutputHandler = jobs.NewAsyncProjectCommandOutputHandler(
+		projectCmdOutput,
+		logger,
+		jobStore,
+	)
 
 	terraformClient, err := terraform.NewClient(
 		logger,
 		binDir,
 		cacheDir,
-		userConfig.TFEToken,
-		userConfig.TFEHostname,
 		userConfig.DefaultTFVersion,
 		config.DefaultTFVersionFlag,
 		userConfig.TFDownloadURL,
