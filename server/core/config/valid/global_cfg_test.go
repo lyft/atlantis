@@ -1,7 +1,6 @@
 package valid_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"regexp"
@@ -65,133 +64,30 @@ func TestNewGlobalCfg(t *testing.T) {
 		},
 	}
 
-	cases := []struct {
-		allowRepoCfg  bool
-		approvedReq   bool
-		mergeableReq  bool
-		unDivergedReq bool
-	}{
-		{
-			allowRepoCfg:  false,
-			approvedReq:   false,
-			mergeableReq:  false,
-			unDivergedReq: false,
-		},
-		{
-			allowRepoCfg:  true,
-			approvedReq:   false,
-			mergeableReq:  false,
-			unDivergedReq: false,
-		},
-		{
-			allowRepoCfg:  false,
-			approvedReq:   true,
-			mergeableReq:  false,
-			unDivergedReq: false,
-		},
-		{
-			allowRepoCfg:  false,
-			approvedReq:   false,
-			mergeableReq:  true,
-			unDivergedReq: false,
-		},
-		{
-			allowRepoCfg:  false,
-			approvedReq:   true,
-			mergeableReq:  true,
-			unDivergedReq: false,
-		},
-		{
-			allowRepoCfg:  true,
-			approvedReq:   true,
-			mergeableReq:  true,
-			unDivergedReq: false,
-		},
-		{
-			allowRepoCfg:  false,
-			approvedReq:   false,
-			mergeableReq:  false,
-			unDivergedReq: true,
-		},
-		{
-			allowRepoCfg:  true,
-			approvedReq:   false,
-			mergeableReq:  false,
-			unDivergedReq: true,
-		},
-		{
-			allowRepoCfg:  false,
-			approvedReq:   true,
-			mergeableReq:  false,
-			unDivergedReq: true,
-		},
-		{
-			allowRepoCfg:  false,
-			approvedReq:   false,
-			mergeableReq:  true,
-			unDivergedReq: true,
-		},
-		{
-			allowRepoCfg:  false,
-			approvedReq:   true,
-			mergeableReq:  true,
-			unDivergedReq: true,
-		},
-		{
-			allowRepoCfg:  true,
-			approvedReq:   true,
-			mergeableReq:  true,
-			unDivergedReq: true,
-		},
-	}
+	t.Run("new global config", func(t *testing.T) {
+		globalCfgArgs := valid.GlobalCfgArgs{}
+		act := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+		// For each test, we change our expected cfg based on the parameters.
+		var exp valid.GlobalCfg
+		exp = deepcopy.Copy(baseCfg).(valid.GlobalCfg)
+		exp.Repos[0].IDRegex = regexp.MustCompile(".*") // deepcopy doesn't copy the regex.
+		exp.Repos[0].BranchRegex = regexp.MustCompile(".*")
 
-	for _, c := range cases {
-		caseName := fmt.Sprintf("allow_repo: %t, approved: %t, mergeable: %t, undiverged: %t",
-			c.allowRepoCfg, c.approvedReq, c.mergeableReq, c.unDivergedReq)
-		t.Run(caseName, func(t *testing.T) {
-			globalCfgArgs := valid.GlobalCfgArgs{
-				AllowRepoCfg:  c.allowRepoCfg,
-				MergeableReq:  c.mergeableReq,
-				ApprovedReq:   c.approvedReq,
-				UnDivergedReq: c.unDivergedReq,
-			}
-			act := valid.NewGlobalCfgFromArgs(globalCfgArgs)
-			// For each test, we change our expected cfg based on the parameters.
-			var exp valid.GlobalCfg
-			exp = deepcopy.Copy(baseCfg).(valid.GlobalCfg)
-			exp.Repos[0].IDRegex = regexp.MustCompile(".*") // deepcopy doesn't copy the regex.
-			exp.Repos[0].BranchRegex = regexp.MustCompile(".*")
+		Equals(t, exp, act)
 
-			if c.allowRepoCfg {
-				exp.Repos[0].AllowCustomWorkflows = Bool(true)
-				exp.Repos[0].AllowedOverrides = []string{"apply_requirements", "workflow", "delete_source_branch_on_merge"}
+		// Have to hand-compare regexes because Equals doesn't do it.
+		for i, actRepo := range act.Repos {
+			expRepo := exp.Repos[i]
+			if expRepo.IDRegex != nil {
+				Assert(t, expRepo.IDRegex.String() == actRepo.IDRegex.String(),
+					"%q != %q for repos[%d]", expRepo.IDRegex.String(), actRepo.IDRegex.String(), i)
 			}
-			if c.mergeableReq {
-				exp.Repos[0].ApplyRequirements = append(exp.Repos[0].ApplyRequirements, "mergeable")
+			if expRepo.BranchRegex != nil {
+				Assert(t, expRepo.BranchRegex.String() == actRepo.BranchRegex.String(),
+					"%q != %q for repos[%d]", expRepo.BranchRegex.String(), actRepo.BranchRegex.String(), i)
 			}
-			if c.approvedReq {
-				exp.Repos[0].ApplyRequirements = append(exp.Repos[0].ApplyRequirements, "approved")
-			}
-			if c.unDivergedReq {
-				exp.Repos[0].ApplyRequirements = append(exp.Repos[0].ApplyRequirements, "undiverged")
-			}
-
-			Equals(t, exp, act)
-
-			// Have to hand-compare regexes because Equals doesn't do it.
-			for i, actRepo := range act.Repos {
-				expRepo := exp.Repos[i]
-				if expRepo.IDRegex != nil {
-					Assert(t, expRepo.IDRegex.String() == actRepo.IDRegex.String(),
-						"%q != %q for repos[%d]", expRepo.IDRegex.String(), actRepo.IDRegex.String(), i)
-				}
-				if expRepo.BranchRegex != nil {
-					Assert(t, expRepo.BranchRegex.String() == actRepo.BranchRegex.String(),
-						"%q != %q for repos[%d]", expRepo.BranchRegex.String(), actRepo.BranchRegex.String(), i)
-				}
-			}
-		})
-	}
+		}
+	})
 }
 
 func TestPlatformModeNewGlobalCfg(t *testing.T) {
@@ -298,52 +194,29 @@ func TestPlatformModeNewGlobalCfg(t *testing.T) {
 		},
 	}
 
-	cases := []struct {
-		allowRepoCfg bool
-	}{
-		{
-			allowRepoCfg: false,
-		},
-		{
-			allowRepoCfg: true,
-		},
+	globalCfgArgs := valid.GlobalCfgArgs{
+		PlatformModeEnabled: true,
 	}
+	act := valid.NewGlobalCfgFromArgs(globalCfgArgs)
 
-	for _, c := range cases {
-		caseName := fmt.Sprintf("allow_repo: %t",
-			c.allowRepoCfg)
-		t.Run(caseName, func(t *testing.T) {
-			globalCfgArgs := valid.GlobalCfgArgs{
-				AllowRepoCfg:        c.allowRepoCfg,
-				PlatformModeEnabled: true,
-			}
-			act := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+	// For each test, we change our expected cfg based on the parameters.
+	exp := deepcopy.Copy(baseCfg).(valid.GlobalCfg)
+	exp.Repos[0].IDRegex = regexp.MustCompile(".*") // deepcopy doesn't copy the regex.
+	exp.Repos[0].BranchRegex = regexp.MustCompile(".*")
 
-			// For each test, we change our expected cfg based on the parameters.
-			exp := deepcopy.Copy(baseCfg).(valid.GlobalCfg)
-			exp.Repos[0].IDRegex = regexp.MustCompile(".*") // deepcopy doesn't copy the regex.
-			exp.Repos[0].BranchRegex = regexp.MustCompile(".*")
+	Equals(t, exp, act)
 
-			if c.allowRepoCfg {
-				exp.Repos[0].AllowCustomWorkflows = Bool(true)
-				exp.Repos[0].AllowedOverrides = []string{"apply_requirements", "workflow", "delete_source_branch_on_merge", "pull_request_workflow", "deployment_workflow"}
-			}
-
-			Equals(t, exp, act)
-
-			// Have to hand-compare regexes because Equals doesn't do it.
-			for i, actRepo := range act.Repos {
-				expRepo := exp.Repos[i]
-				if expRepo.IDRegex != nil {
-					Assert(t, expRepo.IDRegex.String() == actRepo.IDRegex.String(),
-						"%q != %q for repos[%d]", expRepo.IDRegex.String(), actRepo.IDRegex.String(), i)
-				}
-				if expRepo.BranchRegex != nil {
-					Assert(t, expRepo.BranchRegex.String() == actRepo.BranchRegex.String(),
-						"%q != %q for repos[%d]", expRepo.BranchRegex.String(), actRepo.BranchRegex.String(), i)
-				}
-			}
-		})
+	// Have to hand-compare regexes because Equals doesn't do it.
+	for i, actRepo := range act.Repos {
+		expRepo := exp.Repos[i]
+		if expRepo.IDRegex != nil {
+			Assert(t, expRepo.IDRegex.String() == actRepo.IDRegex.String(),
+				"%q != %q for repos[%d]", expRepo.IDRegex.String(), actRepo.IDRegex.String(), i)
+		}
+		if expRepo.BranchRegex != nil {
+			Assert(t, expRepo.BranchRegex.String() == actRepo.BranchRegex.String(),
+				"%q != %q for repos[%d]", expRepo.BranchRegex.String(), actRepo.BranchRegex.String(), i)
+		}
 	}
 }
 
@@ -357,12 +230,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side but not allowed (with custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-						AllowRepoCfg:  true,
-						MergeableReq:  false,
-						ApprovedReq:   false,
-						UnDivergedReq: false,
-					}).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -390,12 +258,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side but not allowed (without custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-						AllowRepoCfg:  true,
-						MergeableReq:  false,
-						ApprovedReq:   false,
-						UnDivergedReq: false,
-					}).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(false),
@@ -423,12 +286,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined in both places with same name (without custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-						AllowRepoCfg:  true,
-						MergeableReq:  false,
-						ApprovedReq:   false,
-						UnDivergedReq: false,
-					}).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(false),
@@ -458,12 +316,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined repo side, but not allowed (with custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-						AllowRepoCfg:  true,
-						MergeableReq:  false,
-						ApprovedReq:   false,
-						UnDivergedReq: false,
-					}).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -493,12 +346,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side and allowed (without custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-						AllowRepoCfg:  true,
-						MergeableReq:  false,
-						ApprovedReq:   false,
-						UnDivergedReq: false,
-					}).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(false),
@@ -526,12 +374,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side and allowed (with custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-						AllowRepoCfg:  true,
-						MergeableReq:  false,
-						ApprovedReq:   false,
-						UnDivergedReq: false,
-					}).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -557,12 +400,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "",
 		},
 		"workflow not allowed": {
-			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-				AllowRepoCfg:  false,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}),
+			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}),
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -574,12 +412,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "repo config not allowed to set 'workflow' key: server-side config needs 'allowed_overrides: [workflow]'",
 		},
 		"custom workflows not allowed": {
-			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-				AllowRepoCfg:  false,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}),
+			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}),
 			rCfg: valid.RepoCfg{
 				Workflows: map[string]valid.Workflow{
 					"custom": {},
@@ -589,12 +422,15 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "repo config not allowed to define custom workflows: server-side config needs 'allow_custom_workflows: true'",
 		},
 		"custom workflows allowed": {
-			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-				AllowRepoCfg:  true,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}),
+			gCfg: valid.GlobalCfg{
+				Repos: []valid.Repo{
+					{
+						IDRegex:              regexp.MustCompile(".*"),
+						BranchRegex:          regexp.MustCompile(".*"),
+						AllowCustomWorkflows: Bool(true),
+					},
+				},
+			},
 			rCfg: valid.RepoCfg{
 				Workflows: map[string]valid.Workflow{
 					"custom": {},
@@ -604,12 +440,16 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "",
 		},
 		"repo uses custom workflow defined on repo": {
-			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-				AllowRepoCfg:  true,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}),
+			gCfg: valid.GlobalCfg{
+				Repos: []valid.Repo{
+					{
+						IDRegex:              regexp.MustCompile(".*"),
+						AllowCustomWorkflows: Bool(true),
+						AllowedOverrides:     []string{"workflow"},
+					},
+				},
+			},
+
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -628,12 +468,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"custom workflows allowed for this repo only": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-						AllowRepoCfg:  false,
-						MergeableReq:  false,
-						ApprovedReq:   false,
-						UnDivergedReq: false,
-					}).Repos[0],
+					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -649,12 +484,24 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "",
 		},
 		"repo uses global workflow": {
-			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-				AllowRepoCfg:  true,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}),
+			gCfg: valid.GlobalCfg{
+				Repos: []valid.Repo{
+					{
+						IDRegex:              regexp.MustCompile(".*"),
+						BranchRegex:          regexp.MustCompile(".*"),
+						AllowedOverrides:     []string{"workflow"},
+						AllowCustomWorkflows: Bool(false),
+					},
+				},
+				Workflows: map[string]valid.Workflow{
+					"default": {
+						Name:        valid.DefaultWorkflowName,
+						Apply:       valid.DefaultApplyStage,
+						Plan:        valid.DefaultPlanStage,
+						PolicyCheck: valid.DefaultPolicyCheckStage,
+					},
+				},
+			},
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -668,12 +515,14 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "",
 		},
 		"apply_reqs not allowed": {
-			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-				AllowRepoCfg:  false,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}),
+			gCfg: valid.GlobalCfg{
+				Repos: []valid.Repo{
+					{
+						IDRegex:     regexp.MustCompile(".*"),
+						BranchRegex: regexp.MustCompile(".*"),
+					},
+				},
+			},
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -687,12 +536,15 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "repo config not allowed to set 'apply_requirements' key: server-side config needs 'allowed_overrides: [apply_requirements]'",
 		},
 		"repo workflow doesn't exist": {
-			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{
-				AllowRepoCfg:  true,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}),
+			gCfg: valid.GlobalCfg{
+				Repos: []valid.Repo{
+					{
+						IDRegex:              regexp.MustCompile(".*"),
+						AllowCustomWorkflows: Bool(true),
+						AllowedOverrides:     []string{"workflow"},
+					},
+				},
+			},
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -817,21 +669,11 @@ policies:
 				path := filepath.Join(tmp, "config.yaml")
 				Ok(t, ioutil.WriteFile(path, []byte(c.gCfg), 0600))
 				var err error
-				globalCfgArgs := valid.GlobalCfgArgs{
-					AllowRepoCfg:  false,
-					MergeableReq:  false,
-					ApprovedReq:   false,
-					UnDivergedReq: false,
-				}
+				globalCfgArgs := valid.GlobalCfgArgs{}
 				global, err = (&config.ParserValidator{}).ParseGlobalCfg(path, valid.NewGlobalCfgFromArgs(globalCfgArgs))
 				Ok(t, err)
 			} else {
-				globalCfgArgs := valid.GlobalCfgArgs{
-					AllowRepoCfg:  false,
-					MergeableReq:  false,
-					ApprovedReq:   false,
-					UnDivergedReq: false,
-				}
+				globalCfgArgs := valid.GlobalCfgArgs{}
 				global = valid.NewGlobalCfgFromArgs(globalCfgArgs)
 			}
 
@@ -1024,10 +866,6 @@ repos:
 			defer cleanup()
 			var global valid.GlobalCfg
 			globalCfgArgs := valid.GlobalCfgArgs{
-				AllowRepoCfg:        false,
-				MergeableReq:        false,
-				ApprovedReq:         false,
-				UnDivergedReq:       false,
 				PlatformModeEnabled: c.platformMode,
 			}
 
@@ -1142,11 +980,3 @@ func TestGlobalCfg_MatchingRepo(t *testing.T) {
 		})
 	}
 }
-
-// String is a helper routine that allocates a new string value
-// to store v and returns a pointer to it.
-func String(v string) *string { return &v }
-
-// Bool is a helper routine that allocates a new bool value
-// to store v and returns a pointer to it.
-func Bool(v bool) *bool { return &v }

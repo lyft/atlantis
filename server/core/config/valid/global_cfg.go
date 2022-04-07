@@ -169,11 +169,6 @@ var DefaultLocklessPlanStage = Stage{
 }
 
 type GlobalCfgArgs struct {
-	AllowRepoCfg        bool
-	MergeableReq        bool
-	ApprovedReq         bool
-	UnDivergedReq       bool
-	SQUnLockedReq       bool
 	PolicyCheckEnabled  bool
 	PlatformModeEnabled bool
 	PreWorkflowHooks    []*PreWorkflowHook
@@ -190,29 +185,11 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 	// Must construct slices here instead of using a `var` declaration because
 	// we treat nil slices differently.
 	applyReqs := []string{}
-	if args.MergeableReq {
-		applyReqs = append(applyReqs, MergeableApplyReq)
-	}
-	if args.ApprovedReq {
-		applyReqs = append(applyReqs, ApprovedApplyReq)
-	}
-	if args.UnDivergedReq {
-		applyReqs = append(applyReqs, UnDivergedApplyReq)
-	}
-	if args.SQUnLockedReq {
-		applyReqs = append(applyReqs, SQUnlockedApplyReq)
-	}
 	if args.PolicyCheckEnabled {
 		applyReqs = append(applyReqs, PoliciesPassedApplyReq)
 	}
 
 	var deleteSourceBranchOnMerge, allowCustomWorkflows bool
-	allowedOverrides := []string{}
-	if args.AllowRepoCfg {
-		allowedOverrides = []string{ApplyRequirementsKey, WorkflowKey, DeleteSourceBranchOnMergeKey}
-		allowCustomWorkflows = true
-	}
-
 	repo := Repo{
 		IDRegex:                   regexp.MustCompile(".*"),
 		BranchRegex:               regexp.MustCompile(".*"),
@@ -221,7 +198,7 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 		Workflow:                  &defaultWorkflow,
 		AllowedWorkflows:          []string{},
 		AllowCustomWorkflows:      &allowCustomWorkflows,
-		AllowedOverrides:          allowedOverrides,
+		AllowedOverrides:          []string{},
 		DeleteSourceBranchOnMerge: &deleteSourceBranchOnMerge,
 	}
 
@@ -247,10 +224,6 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 			Name:  DefaultWorkflowName,
 			Apply: DefaultApplyStage,
 			Plan:  DefaultPlanStage,
-		}
-
-		if args.AllowRepoCfg {
-			repo.AllowedOverrides = append(repo.AllowedOverrides, PullRequestWorkflowKey, DeploymentWorkflowKey)
 		}
 
 		globalCfg.PullRequestWorkflows = map[string]Workflow{

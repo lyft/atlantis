@@ -24,7 +24,6 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -42,7 +41,6 @@ const (
 	ADWebhookUserFlag          = "azuredevops-webhook-user"
 	ADTokenFlag                = "azuredevops-token" // nolint: gosec
 	ADUserFlag                 = "azuredevops-user"
-	AllowRepoConfigFlag        = "allow-repo-config"
 	AtlantisURLFlag            = "atlantis-url"
 	AutoplanFileListFlag       = "autoplan-file-list"
 	BitbucketBaseURLFlag       = "bitbucket-base-url"
@@ -90,9 +88,6 @@ const (
 	// RepoWhitelistFlag is deprecated for RepoAllowlistFlag.
 	RepoWhitelistFlag            = "repo-whitelist"
 	RepoAllowlistFlag            = "repo-allowlist"
-	RequireApprovalFlag          = "require-approval"
-	RequireSQUnlockedFlag        = "require-unlocked"
-	RequireMergeableFlag         = "require-mergeable"
 	SlackTokenFlag               = "slack-token"
 	SSLCertFileFlag              = "ssl-cert-file"
 	SSLKeyFileFlag               = "ssl-key-file"
@@ -312,13 +307,6 @@ var stringFlags = map[string]stringFlag{
 }
 
 var boolFlags = map[string]boolFlag{
-	AllowRepoConfigFlag: {
-		description: "Allow repositories to use atlantis.yaml files to customize the commands Atlantis runs." +
-			" Should only be enabled in a trusted environment since it enables a pull request to run arbitrary commands" +
-			" on the Atlantis server.",
-		defaultValue: false,
-		hidden:       true,
-	},
 	DisableApplyAllFlag: {
 		description:  "Disable \"atlantis apply\" command without any flags (i.e. apply all). A specific project/workspace/directory has to be specified for applies.",
 		defaultValue: false,
@@ -354,20 +342,6 @@ var boolFlags = map[string]boolFlag{
 	HidePrevPlanComments: {
 		description: "Hide previous plan comments to reduce clutter in the PR. " +
 			"VCS support is limited to: GitHub.",
-		defaultValue: false,
-	},
-	RequireApprovalFlag: {
-		description:  "Require pull requests to be \"Approved\" before allowing the apply command to be run.",
-		defaultValue: false,
-		hidden:       true,
-	},
-	RequireMergeableFlag: {
-		description:  "Require pull requests to be mergeable before allowing the apply command to be run.",
-		defaultValue: false,
-		hidden:       true,
-	},
-	RequireSQUnlockedFlag: {
-		description:  "Require pull requests to be \"Unlocked\" before allowing the apply command to be run.",
 		defaultValue: false,
 	},
 	DisableMarkdownFoldingFlag: {
@@ -791,14 +765,6 @@ func (s *ServerCmd) securityWarnings(userConfig *server.UserConfig, logger loggi
 func (s *ServerCmd) deprecationWarnings(userConfig *server.UserConfig) error {
 	var applyReqs []string
 	var deprecatedFlags []string
-	if userConfig.RequireApproval {
-		deprecatedFlags = append(deprecatedFlags, RequireApprovalFlag)
-		applyReqs = append(applyReqs, valid.ApprovedApplyReq)
-	}
-	if userConfig.RequireMergeable {
-		deprecatedFlags = append(deprecatedFlags, RequireMergeableFlag)
-		applyReqs = append(applyReqs, valid.MergeableApplyReq)
-	}
 
 	// Build up strings with what the recommended yaml and json config should
 	// be instead of using the deprecated flags.
@@ -808,11 +774,6 @@ func (s *ServerCmd) deprecationWarnings(userConfig *server.UserConfig) error {
 		yamlCfg += fmt.Sprintf("\n  apply_requirements: [%s]", strings.Join(applyReqs, ", "))
 		jsonCfg += fmt.Sprintf(`, "apply_requirements":["%s"]`, strings.Join(applyReqs, "\", \""))
 
-	}
-	if userConfig.AllowRepoConfig {
-		deprecatedFlags = append(deprecatedFlags, AllowRepoConfigFlag)
-		yamlCfg += "\n  allowed_overrides: [apply_requirements, workflow]\n  allow_custom_workflows: true"
-		jsonCfg += `, "allowed_overrides":["apply_requirements","workflow"], "allow_custom_workflows":true`
 	}
 	jsonCfg += "}]}"
 

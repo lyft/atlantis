@@ -141,12 +141,7 @@ projects:
 				Ok(t, err)
 			}
 
-			globalCfgArgs := valid.GlobalCfgArgs{
-				AllowRepoCfg:  false,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}
+			globalCfgArgs := valid.GlobalCfgArgs{}
 
 			builder := events.NewProjectCommandBuilder(
 				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
@@ -407,12 +402,8 @@ projects:
 					Ok(t, err)
 				}
 
-				globalCfgArgs := valid.GlobalCfgArgs{
-					AllowRepoCfg:  true,
-					MergeableReq:  false,
-					ApprovedReq:   false,
-					UnDivergedReq: false,
-				}
+				globalCfg := valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{})
+				globalCfg.Repos[0].AllowedOverrides = []string{"apply_requirements"}
 
 				builder := events.NewProjectCommandBuilder(
 					events.NewProjectCommandContextBuilder(&events.CommentParser{}),
@@ -421,7 +412,7 @@ projects:
 					vcsClient,
 					workingDir,
 					events.NewDefaultWorkingDirLocker(),
-					valid.NewGlobalCfgFromArgs(globalCfgArgs),
+					globalCfg,
 					&events.DefaultPendingPlanFinder{},
 					true,
 					"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
@@ -560,12 +551,7 @@ projects:
 				Ok(t, err)
 			}
 
-			globalCfgArgs := valid.GlobalCfgArgs{
-				AllowRepoCfg:  true,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}
+			globalCfgArgs := valid.GlobalCfgArgs{}
 
 			builder := events.NewProjectCommandBuilder(
 				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
@@ -647,12 +633,7 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 
 	logger := logging.NewNoopLogger(t)
 
-	globalCfgArgs := valid.GlobalCfgArgs{
-		AllowRepoCfg:  false,
-		MergeableReq:  false,
-		ApprovedReq:   false,
-		UnDivergedReq: false,
-	}
+	globalCfgArgs := valid.GlobalCfgArgs{}
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
 	builder := events.NewProjectCommandBuilder(
@@ -728,12 +709,7 @@ projects:
 		matchers.AnyModelsPullRequest(),
 		AnyString())).ThenReturn(repoDir, nil)
 
-	globalCfgArgs := valid.GlobalCfgArgs{
-		AllowRepoCfg:  true,
-		MergeableReq:  false,
-		ApprovedReq:   false,
-		UnDivergedReq: false,
-	}
+	globalCfgArgs := valid.GlobalCfgArgs{}
 	logger := logging.NewNoopLogger(t)
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
@@ -806,12 +782,7 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 			vcsClient := vcsmocks.NewMockClient()
 			When(vcsClient.GetModifiedFiles(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn([]string{"main.tf"}, nil)
 
-			globalCfgArgs := valid.GlobalCfgArgs{
-				AllowRepoCfg:  true,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}
+			globalCfgArgs := valid.GlobalCfgArgs{}
 
 			builder := events.NewProjectCommandBuilder(
 				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
@@ -986,12 +957,7 @@ projects:
 				matchers.AnyModelsPullRequest(),
 				AnyString())).ThenReturn(tmpDir, nil)
 
-			globalCfgArgs := valid.GlobalCfgArgs{
-				AllowRepoCfg:  true,
-				MergeableReq:  false,
-				ApprovedReq:   false,
-				UnDivergedReq: false,
-			}
+			globalCfgArgs := valid.GlobalCfgArgs{}
 
 			builder := events.NewProjectCommandBuilder(
 				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
@@ -1048,12 +1014,7 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 	vcsClient := vcsmocks.NewMockClient()
 	When(vcsClient.GetModifiedFiles(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn([]string{"main.tf"}, nil)
 
-	globalCfgArgs := valid.GlobalCfgArgs{
-		AllowRepoCfg:  false,
-		MergeableReq:  false,
-		ApprovedReq:   false,
-		UnDivergedReq: false,
-	}
+	globalCfgArgs := valid.GlobalCfgArgs{}
 
 	globalCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
 	commentParser := &events.CommentParser{}
@@ -1134,12 +1095,7 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 	logger := logging.NewNoopLogger(t)
 	scope := tally.NewTestScope("test", nil)
 
-	globalCfgArgs := valid.GlobalCfgArgs{
-		AllowRepoCfg:  false,
-		MergeableReq:  false,
-		ApprovedReq:   false,
-		UnDivergedReq: false,
-	}
+	globalCfgArgs := valid.GlobalCfgArgs{}
 
 	builder := events.NewProjectCommandBuilder(
 		events.NewProjectCommandContextBuilder(&events.CommentParser{}),

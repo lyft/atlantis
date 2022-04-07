@@ -686,9 +686,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	parser := &config.ParserValidator{}
 
 	globalCfgArgs := valid.GlobalCfgArgs{
-		AllowRepoCfg: true,
-		MergeableReq: false,
-		ApprovedReq:  false,
 		PreWorkflowHooks: []*valid.PreWorkflowHook{
 			{
 				StepName:   "global_hook",
@@ -701,6 +698,9 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	expCfgPath := filepath.Join(absRepoPath(t, repoFixtureDir), "repos.yaml")
 	if _, err := os.Stat(expCfgPath); err == nil {
 		globalCfg, err = parser.ParseGlobalCfg(expCfgPath, globalCfg)
+		Ok(t, err)
+	} else {
+		globalCfg, err = parser.ParseGlobalCfgJSON(`{"repos": [{"id":"/.*/", "allow_custom_workflows": true, "allowed_overrides": ["workflow"]}]}`, globalCfg)
 		Ok(t, err)
 	}
 	drainer := &events.Drainer{}

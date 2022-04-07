@@ -17,7 +17,6 @@ const (
 // The mapstructure tags correspond to flags in cmd/server.go and are used when
 // the config is parsed from a YAML file.
 type UserConfig struct {
-	AllowRepoConfig            bool   `mapstructure:"allow-repo-config"`
 	AtlantisURL                string `mapstructure:"atlantis-url"`
 	AutoplanFileList           string `mapstructure:"autoplan-file-list"`
 	AzureDevopsToken           string `mapstructure:"azuredevops-token"`
@@ -68,12 +67,6 @@ type UserConfig struct {
 	// RepoWhitelist is deprecated in favour of RepoAllowlist.
 	RepoWhitelist string `mapstructure:"repo-whitelist"`
 
-	// RequireApproval is whether to require pull request approval before
-	// allowing terraform apply's to be run.
-	RequireApproval bool `mapstructure:"require-approval"`
-	// RequireMergeable is whether to require pull requests to be mergeable before
-	// allowing terraform apply's to run.
-	RequireMergeable bool `mapstructure:"require-mergeable"`
 	// RequireUnDiverged is whether to require pull requests to rebase default branch before
 	// allowing terraform apply's to run.
 	RequireUnDiverged bool `mapstructure:"require-undiverged"`
