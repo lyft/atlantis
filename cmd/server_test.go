@@ -89,7 +89,6 @@ var testFlags = map[string]interface{}{
 	RepoAllowlistFlag:            "github.com/runatlantis/atlantis",
 	RequireApprovalFlag:          true,
 	RequireMergeableFlag:         true,
-	SkipCloneNoChanges:           true,
 	SlackTokenFlag:               "slack-token",
 	SSLCertFileFlag:              "cert-file",
 	SSLKeyFileFlag:               "key-file",

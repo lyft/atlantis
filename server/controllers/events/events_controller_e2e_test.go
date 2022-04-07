@@ -741,7 +741,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		globalCfg,
 		&events.DefaultPendingPlanFinder{},
 		false,
-		false,
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		logger,
 		events.InfiniteProjectsPerPR,

@@ -158,7 +158,6 @@ projects:
 				valid.NewGlobalCfgFromArgs(globalCfgArgs),
 				&events.DefaultPendingPlanFinder{},
 				false,
-				false,
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				logger,
 				events.InfiniteProjectsPerPR,
@@ -424,7 +423,6 @@ projects:
 					events.NewDefaultWorkingDirLocker(),
 					valid.NewGlobalCfgFromArgs(globalCfgArgs),
 					&events.DefaultPendingPlanFinder{},
-					false,
 					true,
 					"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 					logger,
@@ -579,7 +577,6 @@ projects:
 				valid.NewGlobalCfgFromArgs(globalCfgArgs),
 				&events.DefaultPendingPlanFinder{},
 				false,
-				false,
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				logger,
 				events.InfiniteProjectsPerPR,
@@ -668,7 +665,6 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 		valid.NewGlobalCfgFromArgs(globalCfgArgs),
 		&events.DefaultPendingPlanFinder{},
 		false,
-		false,
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		logger,
 		events.InfiniteProjectsPerPR,
@@ -751,7 +747,6 @@ projects:
 		valid.NewGlobalCfgFromArgs(globalCfgArgs),
 		&events.DefaultPendingPlanFinder{},
 		false,
-		false,
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		logger,
 		events.InfiniteProjectsPerPR,
@@ -827,7 +822,6 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 				events.NewDefaultWorkingDirLocker(),
 				valid.NewGlobalCfgFromArgs(globalCfgArgs),
 				&events.DefaultPendingPlanFinder{},
-				false,
 				false,
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				logger,
@@ -1009,7 +1003,6 @@ projects:
 				valid.NewGlobalCfgFromArgs(globalCfgArgs),
 				&events.DefaultPendingPlanFinder{},
 				false,
-				false,
 				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 				logger,
 				events.InfiniteProjectsPerPR,
@@ -1038,63 +1031,6 @@ projects:
 			}
 		})
 	}
-}
-
-// Test that we don't clone the repo if there were no changes based on the atlantis.yaml file.
-func TestDefaultProjectCommandBuilder_SkipCloneNoChanges(t *testing.T) {
-	atlantisYAML := `
-version: 3
-projects:
-- dir: dir1`
-
-	RegisterMockTestingT(t)
-	vcsClient := vcsmocks.NewMockClient()
-	When(vcsClient.GetModifiedFiles(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn([]string{"main.tf"}, nil)
-	When(vcsClient.SupportsSingleFileDownload(matchers.AnyModelsRepo())).ThenReturn(true)
-	When(vcsClient.DownloadRepoConfigFile(matchers.AnyModelsPullRequest())).ThenReturn(true, []byte(atlantisYAML), nil)
-	workingDir := mocks.NewMockWorkingDir()
-
-	logger := logging.NewNoopLogger(t)
-
-	globalCfgArgs := valid.GlobalCfgArgs{
-		AllowRepoCfg:  true,
-		MergeableReq:  false,
-		ApprovedReq:   false,
-		UnDivergedReq: false,
-	}
-	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
-
-	builder := events.NewProjectCommandBuilder(
-		events.NewProjectCommandContextBuilder(&events.CommentParser{}),
-		&config.ParserValidator{},
-		&events.DefaultProjectFinder{},
-		vcsClient,
-		workingDir,
-		events.NewDefaultWorkingDirLocker(),
-		valid.NewGlobalCfgFromArgs(globalCfgArgs),
-		&events.DefaultPendingPlanFinder{},
-		true,
-		false,
-		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
-		logger,
-		events.InfiniteProjectsPerPR,
-	)
-
-	var actCtxs []command.ProjectContext
-	var err error
-	actCtxs, err = builder.BuildAutoplanCommands(&command.Context{
-		HeadRepo: models.Repo{},
-		Pull:     models.PullRequest{},
-		User:     models.User{},
-		Log:      logger,
-		PullRequestStatus: models.PullReqStatus{
-			Mergeable: true,
-		},
-		Scope: scope,
-	})
-	Ok(t, err)
-	Equals(t, 0, len(actCtxs))
-	workingDir.VerifyWasCalled(Never()).Clone(matchers.AnyPtrToLoggingSimpleLogger(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), AnyString())
 }
 
 func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanCommand(t *testing.T) {
@@ -1134,7 +1070,6 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 		events.NewDefaultWorkingDirLocker(),
 		globalCfg,
 		&events.DefaultPendingPlanFinder{},
-		false,
 		false,
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		logger,
@@ -1215,7 +1150,6 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 		events.NewDefaultWorkingDirLocker(),
 		valid.NewGlobalCfgFromArgs(globalCfgArgs),
 		&events.DefaultPendingPlanFinder{},
-		false,
 		false,
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		logger,

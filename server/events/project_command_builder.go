@@ -40,7 +40,6 @@ func NewProjectCommandBuilder(
 	workingDirLocker WorkingDirLocker,
 	globalCfg valid.GlobalCfg,
 	pendingPlanFinder *DefaultPendingPlanFinder,
-	skipCloneNoChanges bool,
 	EnableRegExpCmd bool,
 	AutoplanFileList string,
 	logger logging.SimpleLogging,
@@ -54,7 +53,6 @@ func NewProjectCommandBuilder(
 		WorkingDirLocker:             workingDirLocker,
 		GlobalCfg:                    globalCfg,
 		PendingPlanFinder:            pendingPlanFinder,
-		SkipCloneNoChanges:           skipCloneNoChanges,
 		EnableRegExpCmd:              EnableRegExpCmd,
 		AutoplanFileList:             AutoplanFileList,
 		ProjectCommandContextBuilder: projectContextBuilder,
@@ -122,7 +120,6 @@ type DefaultProjectCommandBuilder struct {
 	GlobalCfg                    valid.GlobalCfg
 	PendingPlanFinder            *DefaultPendingPlanFinder
 	ProjectCommandContextBuilder ProjectCommandContextBuilder
-	SkipCloneNoChanges           bool
 	EnableRegExpCmd              bool
 	AutoplanFileList             string
 	EnableDiffMarkdownFormat     bool
@@ -184,33 +181,6 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 		return nil, err
 	}
 	ctx.Log.Debugf("%d files were modified in this pull request", len(modifiedFiles))
-
-	if p.SkipCloneNoChanges && p.VCSClient.SupportsSingleFileDownload(ctx.Pull.BaseRepo) {
-		hasRepoCfg, repoCfgData, err := p.VCSClient.DownloadRepoConfigFile(ctx.Pull)
-		if err != nil {
-			return nil, errors.Wrapf(err, "downloading %s", config.AtlantisYAMLFilename)
-		}
-
-		if hasRepoCfg {
-			repoCfg, err := p.ParserValidator.ParseRepoCfgData(repoCfgData, p.GlobalCfg, ctx.Pull.BaseRepo.ID())
-			if err != nil {
-				return nil, errors.Wrapf(err, "parsing %s", config.AtlantisYAMLFilename)
-			}
-			ctx.Log.Infof("successfully parsed remote %s file", config.AtlantisYAMLFilename)
-			matchingProjects, err := p.ProjectFinder.DetermineProjectsViaConfig(ctx.Log, modifiedFiles, repoCfg, "")
-			if err != nil {
-				return nil, err
-			}
-			ctx.Log.Infof("%d projects are changed on MR %q based on their when_modified config", len(matchingProjects), ctx.Pull.Num)
-			if len(matchingProjects) == 0 {
-				ctx.Log.Infof("skipping repo clone since no project was modified")
-				return []command.ProjectContext{}, nil
-			}
-			// NOTE: We discard this work here and end up doing it again after
-			// cloning to ensure all the return values are set properly with
-			// the actual clone directory.
-		}
-	}
 
 	// Need to lock the workspace we're about to clone to.
 	workspace := DefaultWorkspace

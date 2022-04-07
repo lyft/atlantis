@@ -81,7 +81,6 @@ type UserConfig struct {
 	// RequireSQUnlocked is whether to require pull requests to be unlocked before running
 	// terraform apply.
 	RequireSQUnlocked        bool            `mapstructure:"require-unlocked"`
-	SkipCloneNoChanges       bool            `mapstructure:"skip-clone-no-changes"`
 	SlackToken               string          `mapstructure:"slack-token"`
 	SSLCertFile              string          `mapstructure:"ssl-cert-file"`
 	SSLKeyFile               string          `mapstructure:"ssl-key-file"`

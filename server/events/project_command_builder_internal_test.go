@@ -580,14 +580,13 @@ projects:
 			}
 
 			builder := &DefaultProjectCommandBuilder{
-				ParserValidator:    &config.ParserValidator{},
-				ProjectFinder:      &DefaultProjectFinder{},
-				VCSClient:          vcsClient,
-				WorkingDir:         workingDir,
-				WorkingDirLocker:   NewDefaultWorkingDirLocker(),
-				GlobalCfg:          globalCfg,
-				PendingPlanFinder:  &DefaultPendingPlanFinder{},
-				SkipCloneNoChanges: false,
+				ParserValidator:   &config.ParserValidator{},
+				ProjectFinder:     &DefaultProjectFinder{},
+				VCSClient:         vcsClient,
+				WorkingDir:        workingDir,
+				WorkingDirLocker:  NewDefaultWorkingDirLocker(),
+				GlobalCfg:         globalCfg,
+				PendingPlanFinder: &DefaultPendingPlanFinder{},
 				ProjectCommandContextBuilder: &projectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
 				},
@@ -772,14 +771,13 @@ projects:
 			}
 
 			builder := &DefaultProjectCommandBuilder{
-				ParserValidator:    &config.ParserValidator{},
-				ProjectFinder:      &DefaultProjectFinder{},
-				VCSClient:          vcsClient,
-				WorkingDir:         workingDir,
-				WorkingDirLocker:   NewDefaultWorkingDirLocker(),
-				GlobalCfg:          globalCfg,
-				PendingPlanFinder:  &DefaultPendingPlanFinder{},
-				SkipCloneNoChanges: true,
+				ParserValidator:   &config.ParserValidator{},
+				ProjectFinder:     &DefaultProjectFinder{},
+				VCSClient:         vcsClient,
+				WorkingDir:        workingDir,
+				WorkingDirLocker:  NewDefaultWorkingDirLocker(),
+				GlobalCfg:         globalCfg,
+				PendingPlanFinder: &DefaultPendingPlanFinder{},
 				ProjectCommandContextBuilder: &projectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
 				},
@@ -1002,7 +1000,6 @@ workflows:
 				WorkingDirLocker:             NewDefaultWorkingDirLocker(),
 				GlobalCfg:                    globalCfg,
 				PendingPlanFinder:            &DefaultPendingPlanFinder{},
-				SkipCloneNoChanges:           true,
 				ProjectCommandContextBuilder: contextBuilder,
 				AutoplanFileList:             "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 			}

@@ -94,7 +94,6 @@ const (
 	RequireApprovalFlag          = "require-approval"
 	RequireSQUnlockedFlag        = "require-unlocked"
 	RequireMergeableFlag         = "require-mergeable"
-	SkipCloneNoChanges           = "skip-clone-no-changes"
 	SlackTokenFlag               = "slack-token"
 	SSLCertFileFlag              = "ssl-cert-file"
 	SSLKeyFileFlag               = "ssl-key-file"
@@ -382,10 +381,6 @@ var boolFlags = map[string]boolFlag{
 	WriteGitCredsFlag: {
 		description: "Write out a .git-credentials file with the provider user and token to allow cloning private modules over HTTPS or SSH." +
 			" This writes secrets to disk and should only be enabled in a secure environment.",
-		defaultValue: false,
-	},
-	SkipCloneNoChanges: {
-		description:  "Skips cloning the PR repo if there are no projects were changed in the PR.",
 		defaultValue: false,
 	},
 }
