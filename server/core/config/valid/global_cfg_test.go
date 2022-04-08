@@ -589,7 +589,7 @@ policies:
 				WorkflowName: String("custom"),
 			},
 			exp: valid.MergedProjectCfg{
-				ApplyRequirements: []string{},
+				ApplyRequirements: []string{"policies_passed"},
 				Workflow: valid.Workflow{
 					Name:        "default",
 					Apply:       valid.DefaultApplyStage,
@@ -630,7 +630,7 @@ policies:
 				WorkflowName: String("custom"),
 			},
 			exp: valid.MergedProjectCfg{
-				ApplyRequirements: []string{},
+				ApplyRequirements: []string{"policies_passed"},
 				Workflow: valid.Workflow{
 					Name:        "default",
 					Apply:       valid.DefaultApplyStage,

@@ -56,7 +56,6 @@ const (
 	DisableAutoplanFlag        = "disable-autoplan"
 	DisableMarkdownFoldingFlag = "disable-markdown-folding"
 	EnablePlatformModeFlag     = "enable-platform-mode"
-	EnablePolicyChecks         = "enable-policy-checks"
 	EnableRegExpCmdFlag        = "enable-regexp-cmd"
 	EnableDiffMarkdownFormat   = "enable-diff-markdown-format"
 	FFOwnerFlag                = "ff-owner"
@@ -321,10 +320,6 @@ var boolFlags = map[string]boolFlag{
 	},
 	EnablePlatformModeFlag: {
 		description:  "Enable Atlantis to run in platform mode, where it will run plan and policy checks inside the PR and run plan and apply after PR is merged.",
-		defaultValue: false,
-	},
-	EnablePolicyChecks: {
-		description:  "Enable atlantis to run user defined policy checks.",
 		defaultValue: false,
 	},
 	EnableRegExpCmdFlag: {

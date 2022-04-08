@@ -197,12 +197,6 @@ func NewGlobalCfg() GlobalCfg {
 	return globalCfg
 }
 
-func (g GlobalCfg) EnablePolicyChecks() GlobalCfg {
-	repo := &g.Repos[0]
-	repo.ApplyRequirements = append(repo.ApplyRequirements, PoliciesPassedApplyReq)
-	return g
-}
-
 func (g GlobalCfg) EnablePlatformMode() GlobalCfg {
 	g.WorkflowMode = PlatformWorkflowMode
 

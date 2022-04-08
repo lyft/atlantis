@@ -107,17 +107,11 @@ func (g GlobalCfg) Validate() error {
 }
 
 func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
-	// assumes: globalcfg is always initialized with one repo .*
-	applyReqs := defaultCfg.Repos[0].ApplyRequirements
-
 	var globalApplyReqs []string
 
-	for _, req := range applyReqs {
-		for _, nonOverrideableReq := range valid.NonOverrideableApplyReqs {
-			if req == nonOverrideableReq {
-				globalApplyReqs = append(globalApplyReqs, req)
-			}
-		}
+	policySets := g.PolicySets.ToValid()
+	if policySets.HasPolicies() {
+		globalApplyReqs = append(globalApplyReqs, valid.PoliciesPassedApplyReq)
 	}
 
 	defaultRepo := &defaultCfg.Repos[0]
@@ -160,7 +154,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		Workflows:            validWorkflows,
 		PullRequestWorkflows: validPullRequestWorkflows,
 		DeploymentWorkflows:  validDeploymentWorkflows,
-		PolicySets:           g.PolicySets.ToValid(),
+		PolicySets:           policySets,
 		Metrics:              g.Metrics.ToValid(),
 		Jobs:                 g.Jobs.ToValid(),
 	}

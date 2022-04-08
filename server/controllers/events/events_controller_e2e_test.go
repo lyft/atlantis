@@ -687,10 +687,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	globalCfg := valid.NewGlobalCfg()
 
-	if userConfig.EnablePolicyChecks {
-		globalCfg = globalCfg.EnablePolicyChecks()
-	}
-
 	if userConfig.EnablePlatformMode {
 		globalCfg = globalCfg.EnablePlatformMode()
 	}

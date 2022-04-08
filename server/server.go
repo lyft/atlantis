@@ -186,10 +186,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	globalCfg := valid.NewGlobalCfg()
 
-	if userConfig.EnablePolicyChecks {
-		globalCfg = globalCfg.EnablePolicyChecks()
-	}
-
 	if userConfig.EnablePlatformMode {
 		globalCfg = globalCfg.EnablePlatformMode()
 	}

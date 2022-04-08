@@ -1320,16 +1320,17 @@ policies:
 					defaultCfg.Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
-						ApplyRequirements:    []string{"approved", "mergeable"},
+						ApplyRequirements:    []string{"approved", "mergeable", "policies_passed"},
 						PreWorkflowHooks:     preWorkflowHooks,
 						Workflow:             &customWorkflow1,
 						AllowedOverrides:     []string{"apply_requirements", "workflow"},
 						AllowCustomWorkflows: Bool(true),
 					},
 					{
-						IDRegex:          regexp.MustCompile(".*"),
-						BranchRegex:      regexp.MustCompile("(master|main)"),
-						PreWorkflowHooks: preWorkflowHooks,
+						IDRegex:           regexp.MustCompile(".*"),
+						BranchRegex:       regexp.MustCompile("(master|main)"),
+						ApplyRequirements: []string{"policies_passed"},
+						PreWorkflowHooks:  preWorkflowHooks,
 					},
 				},
 				Workflows: map[string]valid.Workflow{
@@ -1628,13 +1629,15 @@ policies:
 						PreWorkflowHooks:     preWorkflowHooks,
 						PullRequestWorkflow:  &customPulRequestWorkflow1,
 						DeploymentWorkflow:   &customDeploymentWorkflow1,
+						ApplyRequirements:    []string{"policies_passed"},
 						AllowedOverrides:     []string{"apply_requirements", "pull_request_workflow", "deployment_workflow", "workflow"},
 						AllowCustomWorkflows: Bool(true),
 					},
 					{
-						IDRegex:          regexp.MustCompile(".*"),
-						BranchRegex:      regexp.MustCompile("(master|main)"),
-						PreWorkflowHooks: preWorkflowHooks,
+						IDRegex:           regexp.MustCompile(".*"),
+						BranchRegex:       regexp.MustCompile("(master|main)"),
+						ApplyRequirements: []string{"policies_passed"},
+						PreWorkflowHooks:  preWorkflowHooks,
 					},
 				},
 				Workflows: defaultCfg.Workflows,
@@ -1900,7 +1903,7 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 					valid.NewGlobalCfg().Repos[0],
 					{
 						IDRegex:              regexp.MustCompile(".*"),
-						ApplyRequirements:    []string{"mergeable", "approved"},
+						ApplyRequirements:    []string{"mergeable", "approved", "policies_passed"},
 						Workflow:             &customWorkflow,
 						AllowedWorkflows:     []string{"custom"},
 						AllowedOverrides:     []string{"workflow", "apply_requirements"},
@@ -1909,7 +1912,7 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 					{
 						ID:                   "github.com/owner/repo",
 						IDRegex:              nil,
-						ApplyRequirements:    nil,
+						ApplyRequirements:    []string{"policies_passed"},
 						AllowedOverrides:     nil,
 						AllowCustomWorkflows: nil,
 					},
@@ -2092,8 +2095,8 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 				Repos: []valid.Repo{
 					globalCfg.Repos[0],
 					{
-						IDRegex: regexp.MustCompile(".*"),
-						// ApplyRequirements:           []string{"mergeable", "approved"},
+						IDRegex:                     regexp.MustCompile(".*"),
+						ApplyRequirements:           []string{"policies_passed"},
 						PullRequestWorkflow:         &customPullRequestWorkflow,
 						DeploymentWorkflow:          &customDeploymentWorkflow,
 						AllowedPullRequestWorkflows: []string{"custom"},
@@ -2104,7 +2107,7 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 					{
 						ID:                          "github.com/owner/repo",
 						IDRegex:                     nil,
-						ApplyRequirements:           nil,
+						ApplyRequirements:           []string{"policies_passed"},
 						AllowedOverrides:            nil,
 						AllowedPullRequestWorkflows: nil,
 						AllowedDeploymentWorkflows:  nil,
