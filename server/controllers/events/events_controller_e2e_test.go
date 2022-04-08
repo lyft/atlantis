@@ -685,22 +685,22 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	locker := events.NewDefaultWorkingDirLocker()
 	parser := &config.ParserValidator{}
 
-	globalCfgArgs := valid.GlobalCfgArgs{
-		PreWorkflowHooks: []*valid.PreWorkflowHook{
-			{
-				StepName:   "global_hook",
-				RunCommand: "echo 'hello world'",
-			},
-		},
-		PolicyCheckEnabled: userConfig.EnablePolicyChecks,
+	globalCfg := valid.NewGlobalCfg()
+
+	if userConfig.EnablePolicyChecks {
+		globalCfg = globalCfg.EnablePolicyChecks()
 	}
-	globalCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+
+	if userConfig.EnablePlatformMode {
+		globalCfg = globalCfg.EnablePlatformMode()
+	}
+
 	expCfgPath := filepath.Join(absRepoPath(t, repoFixtureDir), "repos.yaml")
 	if _, err := os.Stat(expCfgPath); err == nil {
 		globalCfg, err = parser.ParseGlobalCfg(expCfgPath, globalCfg)
 		Ok(t, err)
 	} else {
-		globalCfg, err = parser.ParseGlobalCfgJSON(`{"repos": [{"id":"/.*/", "allow_custom_workflows": true, "allowed_overrides": ["workflow"]}]}`, globalCfg)
+		globalCfg, err = parser.ParseGlobalCfgJSON(`{"repos": [{"id":"/.*/", "allow_custom_workflows": true, "allowed_overrides": ["workflow"], "pre_workflow_hooks":[{"run": "echo 'hello world'"}]}]}`, globalCfg)
 		Ok(t, err)
 	}
 	drainer := &events.Drainer{}
@@ -728,7 +728,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	}
 
 	if userConfig.EnablePolicyChecks {
-		projectContextBuilder = projectContextBuilder.WithPolicyChecks(commentParser)
+		projectContextBuilder = projectContextBuilder.EnablePolicyChecks(commentParser)
 	}
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(

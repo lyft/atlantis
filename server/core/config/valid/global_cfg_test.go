@@ -65,8 +65,7 @@ func TestNewGlobalCfg(t *testing.T) {
 	}
 
 	t.Run("new global config", func(t *testing.T) {
-		globalCfgArgs := valid.GlobalCfgArgs{}
-		act := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+		act := valid.NewGlobalCfg()
 		// For each test, we change our expected cfg based on the parameters.
 		var exp valid.GlobalCfg
 		exp = deepcopy.Copy(baseCfg).(valid.GlobalCfg)
@@ -194,10 +193,7 @@ func TestPlatformModeNewGlobalCfg(t *testing.T) {
 		},
 	}
 
-	globalCfgArgs := valid.GlobalCfgArgs{
-		PlatformModeEnabled: true,
-	}
-	act := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+	act := valid.NewGlobalCfg().EnablePlatformMode()
 
 	// For each test, we change our expected cfg based on the parameters.
 	exp := deepcopy.Copy(baseCfg).(valid.GlobalCfg)
@@ -230,7 +226,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side but not allowed (with custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
+					valid.NewGlobalCfg().Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -258,7 +254,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side but not allowed (without custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
+					valid.NewGlobalCfg().Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(false),
@@ -286,7 +282,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined in both places with same name (without custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
+					valid.NewGlobalCfg().Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(false),
@@ -316,7 +312,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined repo side, but not allowed (with custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
+					valid.NewGlobalCfg().Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -346,7 +342,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side and allowed (without custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
+					valid.NewGlobalCfg().Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(false),
@@ -374,7 +370,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"repo uses workflow that is defined server side and allowed (with custom workflows)": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
+					valid.NewGlobalCfg().Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -400,7 +396,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "",
 		},
 		"workflow not allowed": {
-			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}),
+			gCfg: valid.NewGlobalCfg(),
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
@@ -412,7 +408,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			expErr: "repo config not allowed to set 'workflow' key: server-side config needs 'allowed_overrides: [workflow]'",
 		},
 		"custom workflows not allowed": {
-			gCfg: valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}),
+			gCfg: valid.NewGlobalCfg(),
 			rCfg: valid.RepoCfg{
 				Workflows: map[string]valid.Workflow{
 					"custom": {},
@@ -468,7 +464,7 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		"custom workflows allowed for this repo only": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(valid.GlobalCfgArgs{}).Repos[0],
+					valid.NewGlobalCfg().Repos[0],
 					{
 						ID:                   "github.com/owner/repo",
 						AllowCustomWorkflows: Bool(true),
@@ -669,12 +665,10 @@ policies:
 				path := filepath.Join(tmp, "config.yaml")
 				Ok(t, ioutil.WriteFile(path, []byte(c.gCfg), 0600))
 				var err error
-				globalCfgArgs := valid.GlobalCfgArgs{}
-				global, err = (&config.ParserValidator{}).ParseGlobalCfg(path, valid.NewGlobalCfgFromArgs(globalCfgArgs))
+				global, err = (&config.ParserValidator{}).ParseGlobalCfg(path, valid.NewGlobalCfg())
 				Ok(t, err)
 			} else {
-				globalCfgArgs := valid.GlobalCfgArgs{}
-				global = valid.NewGlobalCfgFromArgs(globalCfgArgs)
+				global = valid.NewGlobalCfg()
 			}
 
 			Equals(t,
@@ -864,19 +858,17 @@ repos:
 		t.Run(name, func(t *testing.T) {
 			tmp, cleanup := TempDir(t)
 			defer cleanup()
-			var global valid.GlobalCfg
-			globalCfgArgs := valid.GlobalCfgArgs{
-				PlatformModeEnabled: c.platformMode,
+			global := valid.NewGlobalCfg()
+			if c.platformMode {
+				global = global.EnablePlatformMode()
 			}
 
 			if c.gCfg != "" {
 				path := filepath.Join(tmp, "config.yaml")
 				Ok(t, ioutil.WriteFile(path, []byte(c.gCfg), 0600))
 				var err error
-				global, err = (&config.ParserValidator{}).ParseGlobalCfg(path, valid.NewGlobalCfgFromArgs(globalCfgArgs))
+				global, err = (&config.ParserValidator{}).ParseGlobalCfg(path, global)
 				Ok(t, err)
-			} else {
-				global = valid.NewGlobalCfgFromArgs(globalCfgArgs)
 			}
 
 			global.PolicySets = emptyPolicySets

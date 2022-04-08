@@ -168,13 +168,7 @@ var DefaultLocklessPlanStage = Stage{
 	},
 }
 
-type GlobalCfgArgs struct {
-	PolicyCheckEnabled  bool
-	PlatformModeEnabled bool
-	PreWorkflowHooks    []*PreWorkflowHook
-}
-
-func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
+func NewGlobalCfg() GlobalCfg {
 	defaultWorkflow := Workflow{
 		Name:        DefaultWorkflowName,
 		Apply:       DefaultApplyStage,
@@ -182,21 +176,13 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 		PolicyCheck: DefaultPolicyCheckStage,
 	}
 
-	// Must construct slices here instead of using a `var` declaration because
-	// we treat nil slices differently.
-	applyReqs := []string{}
-	if args.PolicyCheckEnabled {
-		applyReqs = append(applyReqs, PoliciesPassedApplyReq)
-	}
-
 	var deleteSourceBranchOnMerge, allowCustomWorkflows bool
 	repo := Repo{
 		IDRegex:                   regexp.MustCompile(".*"),
 		BranchRegex:               regexp.MustCompile(".*"),
-		ApplyRequirements:         applyReqs,
-		PreWorkflowHooks:          args.PreWorkflowHooks,
 		Workflow:                  &defaultWorkflow,
 		AllowedWorkflows:          []string{},
+		ApplyRequirements:         []string{},
 		AllowCustomWorkflows:      &allowCustomWorkflows,
 		AllowedOverrides:          []string{},
 		DeleteSourceBranchOnMerge: &deleteSourceBranchOnMerge,
@@ -209,37 +195,47 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 		},
 	}
 
-	if args.PlatformModeEnabled {
-		globalCfg.WorkflowMode = PlatformWorkflowMode
-
-		// defaultPullRequstWorkflow is only used in platform mode. By default it does not
-		// support apply stage, and plan stage run with -lock=false flag
-		pullRequestWorkflow := Workflow{
-			Name:        DefaultWorkflowName,
-			Plan:        DefaultLocklessPlanStage,
-			PolicyCheck: DefaultPolicyCheckStage,
-		}
-
-		deploymentWorkflow := Workflow{
-			Name:  DefaultWorkflowName,
-			Apply: DefaultApplyStage,
-			Plan:  DefaultPlanStage,
-		}
-
-		globalCfg.PullRequestWorkflows = map[string]Workflow{
-			DefaultWorkflowName: pullRequestWorkflow,
-		}
-		globalCfg.DeploymentWorkflows = map[string]Workflow{
-			DefaultWorkflowName: deploymentWorkflow,
-		}
-
-		repo.DeploymentWorkflow = &deploymentWorkflow
-		repo.PullRequestWorkflow = &pullRequestWorkflow
-	}
-
 	globalCfg.Repos = []Repo{repo}
 
 	return globalCfg
+}
+
+func (g GlobalCfg) EnablePolicyChecks() GlobalCfg {
+	repo := &g.Repos[0]
+	repo.ApplyRequirements = append(repo.ApplyRequirements, PoliciesPassedApplyReq)
+	return g
+}
+
+func (g GlobalCfg) EnablePlatformMode() GlobalCfg {
+	g.WorkflowMode = PlatformWorkflowMode
+
+	// defaultPullRequstWorkflow is only used in platform mode. By default it does not
+	// support apply stage, and plan stage run with -lock=false flag
+	pullRequestWorkflow := Workflow{
+		Name:        DefaultWorkflowName,
+		Plan:        DefaultLocklessPlanStage,
+		PolicyCheck: DefaultPolicyCheckStage,
+	}
+
+	deploymentWorkflow := Workflow{
+		Name:  DefaultWorkflowName,
+		Apply: DefaultApplyStage,
+		Plan:  DefaultPlanStage,
+	}
+
+	g.PullRequestWorkflows = map[string]Workflow{
+		DefaultWorkflowName: pullRequestWorkflow,
+	}
+	g.DeploymentWorkflows = map[string]Workflow{
+		DefaultWorkflowName: deploymentWorkflow,
+	}
+
+	repo := &g.Repos[0]
+
+	repo.DeploymentWorkflow = &deploymentWorkflow
+	repo.PullRequestWorkflow = &pullRequestWorkflow
+
+	return g
 }
 
 func (g GlobalCfg) PlatformModeEnabled() bool {

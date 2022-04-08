@@ -15,8 +15,6 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
-var globalCfgArgs = valid.GlobalCfgArgs{}
-
 var globalCfg = valid.GlobalCfg{
 	Repos: []valid.Repo{
 		{
@@ -111,8 +109,7 @@ func TestParseCfgs_InvalidYAML(t *testing.T) {
 			r := config.ParserValidator{}
 			_, err = r.ParseRepoCfg(tmpDir, globalCfg, "")
 			ErrContains(t, c.expErr, err)
-			globalCfgArgs := valid.GlobalCfgArgs{}
-			_, err = r.ParseGlobalCfg(confPath, valid.NewGlobalCfgFromArgs(globalCfgArgs))
+			_, err = r.ParseGlobalCfg(confPath, valid.NewGlobalCfg())
 			ErrContains(t, c.expErr, err)
 		})
 	}
@@ -1098,23 +1095,20 @@ workflows:
 	Ok(t, err)
 
 	r := config.ParserValidator{}
-	globalCfgArgs := valid.GlobalCfgArgs{}
 
-	_, err = r.ParseRepoCfg(tmpDir, valid.NewGlobalCfgFromArgs(globalCfgArgs), "repo_id")
+	_, err = r.ParseRepoCfg(tmpDir, valid.NewGlobalCfg(), "repo_id")
 	ErrEquals(t, "repo config not allowed to set 'workflow' key: server-side config needs 'allowed_overrides: [workflow]'", err)
 }
 
 func TestParseGlobalCfg_NotExist(t *testing.T) {
 	r := config.ParserValidator{}
-	globalCfgArgs := valid.GlobalCfgArgs{}
-	_, err := r.ParseGlobalCfg("/not/exist", valid.NewGlobalCfgFromArgs(globalCfgArgs))
+	_, err := r.ParseGlobalCfg("/not/exist", valid.NewGlobalCfg())
 	ErrEquals(t, "unable to read /not/exist file: open /not/exist: no such file or directory", err)
 }
 
 func TestParseGlobalCfg(t *testing.T) {
-	globalCfgArgs := valid.GlobalCfgArgs{}
 
-	defaultCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+	defaultCfg := valid.NewGlobalCfg()
 	preWorkflowHook := &valid.PreWorkflowHook{
 		StepName:   "run",
 		RunCommand: "custom workflow command",
@@ -1459,9 +1453,7 @@ workflows:
 			path := filepath.Join(tmp, "conf.yaml")
 			Ok(t, ioutil.WriteFile(path, []byte(c.input), 0600))
 
-			globalCfgArgs := valid.GlobalCfgArgs{}
-
-			act, err := r.ParseGlobalCfg(path, valid.NewGlobalCfgFromArgs(globalCfgArgs))
+			act, err := r.ParseGlobalCfg(path, valid.NewGlobalCfg())
 
 			if c.expErr != "" {
 				expErr := strings.Replace(c.expErr, "<tmp>", path, -1)
@@ -1492,11 +1484,7 @@ workflows:
 }
 
 func TestParseGlobalCfg_PlatformMode(t *testing.T) {
-	globalCfgArgs := valid.GlobalCfgArgs{
-		PlatformModeEnabled: true,
-	}
-
-	defaultCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+	defaultCfg := valid.NewGlobalCfg().EnablePlatformMode()
 	preWorkflowHook := &valid.PreWorkflowHook{
 		StepName:   "run",
 		RunCommand: "custom workflow command",
@@ -1774,7 +1762,7 @@ deployment_workflows:
 			path := filepath.Join(tmp, "conf.yaml")
 			Ok(t, ioutil.WriteFile(path, []byte(c.input), 0600))
 
-			act, err := r.ParseGlobalCfg(path, valid.NewGlobalCfgFromArgs(globalCfgArgs))
+			act, err := r.ParseGlobalCfg(path, valid.NewGlobalCfg().EnablePlatformMode())
 
 			if c.expErr != "" {
 				expErr := strings.Replace(c.expErr, "<tmp>", path, -1)
@@ -1845,7 +1833,6 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 	}
 
 	conftestVersion, _ := version.NewVersion("v1.0.0")
-	globalCfgArgs := valid.GlobalCfgArgs{}
 
 	cases := map[string]struct {
 		json   string
@@ -1858,7 +1845,7 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 		},
 		"empty object": {
 			json: "{}",
-			exp:  valid.NewGlobalCfgFromArgs(globalCfgArgs),
+			exp:  valid.NewGlobalCfg(),
 		},
 		"setting all keys": {
 			json: `
@@ -1912,7 +1899,7 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 `,
 			exp: valid.GlobalCfg{
 				Repos: []valid.Repo{
-					valid.NewGlobalCfgFromArgs(globalCfgArgs).Repos[0],
+					valid.NewGlobalCfg().Repos[0],
 					{
 						IDRegex:              regexp.MustCompile(".*"),
 						ApplyRequirements:    []string{"mergeable", "approved"},
@@ -1930,7 +1917,7 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 					},
 				},
 				Workflows: map[string]valid.Workflow{
-					"default": valid.NewGlobalCfgFromArgs(globalCfgArgs).Workflows["default"],
+					"default": valid.NewGlobalCfg().Workflows["default"],
 					"custom":  customWorkflow,
 				},
 				PolicySets: valid.PolicySets{
@@ -1949,8 +1936,7 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			pv := &config.ParserValidator{}
-			globalCfgArgs := valid.GlobalCfgArgs{}
-			cfg, err := pv.ParseGlobalCfgJSON(c.json, valid.NewGlobalCfgFromArgs(globalCfgArgs))
+			cfg, err := pv.ParseGlobalCfgJSON(c.json, valid.NewGlobalCfg())
 			if c.expErr != "" {
 				ErrEquals(t, c.expErr, err)
 				return
@@ -2026,8 +2012,7 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 	}
 
 	conftestVersion, _ := version.NewVersion("v1.0.0")
-	globalCfgArgs := valid.GlobalCfgArgs{PlatformModeEnabled: true}
-	globalCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+	globalCfg := valid.NewGlobalCfg().EnablePlatformMode()
 
 	cases := map[string]struct {
 		json   string

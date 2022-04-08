@@ -184,11 +184,16 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	validator := &cfgParser.ParserValidator{}
 
-	globalCfg := valid.NewGlobalCfgFromArgs(
-		valid.GlobalCfgArgs{
-			PolicyCheckEnabled:  userConfig.EnablePolicyChecks,
-			PlatformModeEnabled: userConfig.EnablePlatformMode,
-		})
+	globalCfg := valid.NewGlobalCfg()
+
+	if userConfig.EnablePolicyChecks {
+		globalCfg = globalCfg.EnablePolicyChecks()
+	}
+
+	if userConfig.EnablePlatformMode {
+		globalCfg = globalCfg.EnablePlatformMode()
+	}
+
 	if userConfig.RepoConfig != "" {
 		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
 		if err != nil {
@@ -518,8 +523,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WithInstrumentation(statsScope)
 
 	if userConfig.EnablePolicyChecks {
-		projectContextBuilder = projectContextBuilder.WithPolicyChecks(commentParser)
-		prProjectContextBuilder = prProjectContextBuilder.WithPolicyChecks(commentParser)
+		projectContextBuilder = projectContextBuilder.EnablePolicyChecks(commentParser)
+		prProjectContextBuilder = prProjectContextBuilder.EnablePolicyChecks(commentParser)
 	}
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
