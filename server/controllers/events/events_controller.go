@@ -155,44 +155,6 @@ func NewVCSEventsController(
 	}
 }
 
-// VCSEventsController handles all webhook requests which signify 'events' in the
-// VCS host, ex. GitHub.
-// TODO: migrate all provider specific request handling into packaged resolver similar to github
-type VCSEventsController struct {
-	Logger                       logging.SimpleLogging
-	Scope                        tally.Scope
-	CommentParser                events.CommentParsing
-	Parser                       events.EventParsing
-	PREventHandler               prEventHandler
-	CommentEventHandler          commentEventHandler
-	RequestRouter                *RequestRouter
-	ApplyDisabled                bool
-	GitlabRequestParserValidator GitlabRequestParserValidator
-	// GitlabWebhookSecret is the secret added to this webhook via the GitLab
-	// UI that identifies this call as coming from GitLab. If empty, no
-	// request validation is done.
-	GitlabWebhookSecret  []byte
-	RepoAllowlistChecker *events.RepoAllowlistChecker
-	// SupportedVCSHosts is which VCS hosts Atlantis was configured upon
-	// startup to support.
-	SupportedVCSHosts []models.VCSHostType
-	VCSClient         vcs.Client
-	// BitbucketWebhookSecret is the secret added to this webhook via the Bitbucket
-	// UI that identifies this call as coming from Bitbucket. If empty, no
-	// request validation is done.
-	BitbucketWebhookSecret []byte
-	// AzureDevopsWebhookUser is the Basic authentication username added to this
-	// webhook via the Azure DevOps UI that identifies this call as coming from your
-	// Azure DevOps Team Project. If empty, no request validation is done.
-	// For more information, see https://docs.microsoft.com/en-us/azure/devops/service-hooks/services/webhooks?view=azure-devops
-	AzureDevopsWebhookBasicUser []byte
-	// AzureDevopsWebhookPassword is the Basic authentication password added to this
-	// webhook via the Azure DevOps UI that identifies this call as coming from your
-	// Azure DevOps Team Project. If empty, no request validation is done.
-	AzureDevopsWebhookBasicPassword []byte
-	AzureDevopsRequestValidator     AzureDevopsRequestValidator
-}
-
 type RequestHandler interface {
 	Handle(request *httputils.CloneableRequest) error
 }
@@ -205,6 +167,8 @@ type RequestResolver interface {
 	RequestHandler
 	RequestMatcher
 }
+
+// TODO: once VCSEventsController is fully broken down this implementation can just live in there.
 type RequestRouter struct {
 	Resolvers []RequestResolver
 }
@@ -264,6 +228,44 @@ func (p *RequestRouter) Route(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusInternalServerError)
 	fmt.Fprintln(w, "no resolver configured for request")
+}
+
+// VCSEventsController handles all webhook requests which signify 'events' in the
+// VCS host, ex. GitHub.
+// TODO: migrate all provider specific request handling into packaged resolver similar to github
+type VCSEventsController struct {
+	Logger                       logging.SimpleLogging
+	Scope                        tally.Scope
+	CommentParser                events.CommentParsing
+	Parser                       events.EventParsing
+	PREventHandler               prEventHandler
+	CommentEventHandler          commentEventHandler
+	RequestRouter                *RequestRouter
+	ApplyDisabled                bool
+	GitlabRequestParserValidator GitlabRequestParserValidator
+	// GitlabWebhookSecret is the secret added to this webhook via the GitLab
+	// UI that identifies this call as coming from GitLab. If empty, no
+	// request validation is done.
+	GitlabWebhookSecret  []byte
+	RepoAllowlistChecker *events.RepoAllowlistChecker
+	// SupportedVCSHosts is which VCS hosts Atlantis was configured upon
+	// startup to support.
+	SupportedVCSHosts []models.VCSHostType
+	VCSClient         vcs.Client
+	// BitbucketWebhookSecret is the secret added to this webhook via the Bitbucket
+	// UI that identifies this call as coming from Bitbucket. If empty, no
+	// request validation is done.
+	BitbucketWebhookSecret []byte
+	// AzureDevopsWebhookUser is the Basic authentication username added to this
+	// webhook via the Azure DevOps UI that identifies this call as coming from your
+	// Azure DevOps Team Project. If empty, no request validation is done.
+	// For more information, see https://docs.microsoft.com/en-us/azure/devops/service-hooks/services/webhooks?view=azure-devops
+	AzureDevopsWebhookBasicUser []byte
+	// AzureDevopsWebhookPassword is the Basic authentication password added to this
+	// webhook via the Azure DevOps UI that identifies this call as coming from your
+	// Azure DevOps Team Project. If empty, no request validation is done.
+	AzureDevopsWebhookBasicPassword []byte
+	AzureDevopsRequestValidator     AzureDevopsRequestValidator
 }
 
 // Post handles POST webhook requests.
