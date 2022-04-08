@@ -5,15 +5,16 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/http"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/vcs/types/event"
 )
 
 func NewAsynchronousAutoplannerWorkerProxy(
 	autoplanValidator EventValidator,
 	logger logging.Logger,
+	legacyLogger logging.SimpleLogging,
 	workerProxy *PullEventWorkerProxy,
 ) *AsyncAutoplannerWorkerProxy {
 	return &AsyncAutoplannerWorkerProxy{
@@ -21,6 +22,7 @@ func NewAsynchronousAutoplannerWorkerProxy(
 			autoplanValidator: autoplanValidator,
 			workerProxy:       workerProxy,
 			logger:            logger,
+			legacyLogger:      legacyLogger,
 		},
 		logger: logger,
 	}
@@ -39,9 +41,9 @@ type AsyncAutoplannerWorkerProxy struct {
 	logger logging.Logger
 }
 
-func (p *AsyncAutoplannerWorkerProxy) Handle(ctx context.Context, request *http.CloneableRequest, input handlers.PullRequestEventInput) error {
+func (p *AsyncAutoplannerWorkerProxy) Handle(ctx context.Context, request *http.CloneableRequest, event event.PullRequest) error {
 	go func() {
-		err := p.proxy.Handle(ctx, request, input)
+		err := p.proxy.Handle(ctx, request, event)
 
 		if err != nil {
 			p.logger.ErrorContext(ctx, err.Error())
@@ -54,17 +56,18 @@ type SynchronousAutoplannerWorkerProxy struct {
 	autoplanValidator EventValidator
 	workerProxy       *PullEventWorkerProxy
 	logger            logging.Logger
+	legacyLogger      logging.SimpleLogging
 }
 
-func (p *SynchronousAutoplannerWorkerProxy) Handle(ctx context.Context, request *http.CloneableRequest, input handlers.PullRequestEventInput) error {
+func (p *SynchronousAutoplannerWorkerProxy) Handle(ctx context.Context, request *http.CloneableRequest, event event.PullRequest) error {
 	if ok := p.autoplanValidator.InstrumentedIsValid(
-		input.Logger,
-		input.Pull.BaseRepo,
-		input.Pull.HeadRepo,
-		input.Pull,
-		input.User); ok {
+		p.legacyLogger,
+		event.Pull.BaseRepo,
+		event.Pull.HeadRepo,
+		event.Pull,
+		event.User); ok {
 
-		return p.workerProxy.Handle(ctx, request, input)
+		return p.workerProxy.Handle(ctx, request, event)
 	}
 
 	p.logger.WarnContext(ctx, "request isn't valid and will not be proxied to sns")
@@ -87,7 +90,7 @@ type PullEventWorkerProxy struct {
 	logger    logging.Logger
 }
 
-func (p *PullEventWorkerProxy) Handle(ctx context.Context, request *http.CloneableRequest, input handlers.PullRequestEventInput) error {
+func (p *PullEventWorkerProxy) Handle(ctx context.Context, request *http.CloneableRequest, event event.PullRequest) error {
 	buffer := bytes.NewBuffer([]byte{})
 
 	if err := request.GetRequest().Write(buffer); err != nil {

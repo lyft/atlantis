@@ -27,15 +27,16 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/pkg/errors"
 	requestErrors "github.com/runatlantis/atlantis/server/controllers/events/errors"
-	"github.com/runatlantis/atlantis/server/controllers/events/github"
 	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
-	github_converters "github.com/runatlantis/atlantis/server/converters/github"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
 	"github.com/runatlantis/atlantis/server/logging"
+	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
+	github_request "github.com/runatlantis/atlantis/server/vcs/provider/github/request"
+	event_types "github.com/runatlantis/atlantis/server/vcs/types/event"
 	"github.com/uber-go/tally"
 	gitlab "github.com/xanzy/go-gitlab"
 )
@@ -49,6 +50,14 @@ const bitbucketEventTypeHeader = "X-Event-Key"
 const bitbucketCloudRequestIDHeader = "X-Request-UUID"
 const bitbucketServerRequestIDHeader = "X-Request-ID"
 const bitbucketServerSignatureHeader = "X-Hub-Signature"
+
+type commentEventHandler interface {
+	Handle(ctx context.Context, request *httputils.CloneableRequest, event event_types.Comment) error
+}
+
+type prEventHandler interface {
+	Handle(ctx context.Context, request *httputils.CloneableRequest, event event_types.PullRequest) error
+}
 
 func NewRequestResolvers(
 	providerResolverInitializer map[models.VCSHostType]func() RequestResolver,
@@ -87,12 +96,12 @@ func NewVCSEventsController(
 	bitbucketWebhookSecret []byte,
 	azureDevopsWebhookBasicUser []byte,
 	azureDevopsWebhookBasicPassword []byte,
-	repoConverter github_converters.RepoConverter,
-	pullConverter github_converters.PullConverter,
+	repoConverter github_converter.RepoConverter,
+	pullConverter github_converter.PullConverter,
 ) *VCSEventsController {
 
 	prHandler := handlers.NewPullRequestEvent(
-		repoAllowlistChecker, vcsClient, pullCleaner, commandRunner,
+		repoAllowlistChecker, pullCleaner, logger, commandRunner,
 	)
 
 	commentHandler := handlers.NewCommentEvent(
@@ -100,13 +109,15 @@ func NewVCSEventsController(
 		repoAllowlistChecker,
 		vcsClient,
 		commandRunner,
+		logger,
+		legacyLogger,
 	)
 
 	// lazy map of resolver providers to their resolver
 	// laziness ensures we only instantiate the providers we support.
 	providerResolverInitializer := map[models.VCSHostType]func() RequestResolver{
 		models.Github: func() RequestResolver {
-			return github.NewRequestHandler(
+			return github_request.NewHandler(
 				legacyLogger,
 				scope,
 				githubWebhookSecret,
@@ -125,8 +136,6 @@ func NewVCSEventsController(
 
 	return &VCSEventsController{
 		RequestRouter:                   router,
-		CommandRunner:                   commandRunner,
-		PullCleaner:                     pullCleaner,
 		Logger:                          legacyLogger,
 		Scope:                           scope,
 		Parser:                          eventParser,
@@ -150,14 +159,12 @@ func NewVCSEventsController(
 // VCS host, ex. GitHub.
 // TODO: migrate all provider specific request handling into packaged resolver similar to github
 type VCSEventsController struct {
-	CommandRunner                events.CommandRunner
-	PullCleaner                  events.PullCleaner
 	Logger                       logging.SimpleLogging
 	Scope                        tally.Scope
 	CommentParser                events.CommentParsing
 	Parser                       events.EventParsing
-	PREventHandler               *handlers.PullRequestEvent
-	CommentEventHandler          *handlers.CommentEvent
+	PREventHandler               prEventHandler
+	CommentEventHandler          commentEventHandler
 	RequestRouter                *RequestRouter
 	ApplyDisabled                bool
 	GitlabRequestParserValidator GitlabRequestParserValidator
@@ -209,6 +216,7 @@ func (p *RequestRouter) Route(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, err.Error())
+		return
 	}
 
 	for _, resolver := range p.Resolvers {
@@ -219,28 +227,39 @@ func (p *RequestRouter) Route(w http.ResponseWriter, r *http.Request) {
 		err := resolver.Handle(request)
 
 		if e, ok := err.(*requestErrors.RequestValidationError); ok {
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprintln(w, e.Error())
+			return
+		}
+
+		if e, ok := err.(*requestErrors.WebhookParsingError); ok {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintln(w, e.Error())
+			return
 		}
 
 		if e, ok := err.(*requestErrors.EventParsingError); ok {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintln(w, e.Error())
+			return
 		}
 
 		if e, ok := err.(*requestErrors.UnsupportedEventTypeError); ok {
 			// historically we've just ignored these so for now let's just do that.
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprintln(w, e.Error())
+			return
 		}
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintln(w, err.Error())
+			return
 		}
 
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "Processing...")
+		return
 	}
 
 	w.WriteHeader(http.StatusInternalServerError)
@@ -415,7 +434,7 @@ func (e *VCSEventsController) HandleBitbucketCloudCommentEvent(w http.ResponseWr
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, handlers.CommentEventInput{
+	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:      baseRepo,
 		MaybeHeadRepo: &headRepo,
 		MaybePull:     &pull,
@@ -448,7 +467,7 @@ func (e *VCSEventsController) HandleBitbucketServerCommentEvent(w http.ResponseW
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, handlers.CommentEventInput{
+	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:      baseRepo,
 		MaybeHeadRepo: &headRepo,
 		MaybePull:     &pull,
@@ -484,8 +503,8 @@ func (e *VCSEventsController) handleBitbucketCloudPullRequestEvent(w http.Respon
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, handlers.PullRequestEventInput{
-		Logger:    e.Logger,
+	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, event_types.PullRequest{
+
 		Pull:      pull,
 		User:      user,
 		EventType: pullEventType,
@@ -514,8 +533,7 @@ func (e *VCSEventsController) handleBitbucketServerPullRequestEvent(w http.Respo
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, handlers.PullRequestEventInput{
-		Logger:    e.Logger,
+	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, event_types.PullRequest{
 		Pull:      pull,
 		User:      user,
 		EventType: pullEventType,
@@ -526,7 +544,7 @@ func (e *VCSEventsController) handleBitbucketServerPullRequestEvent(w http.Respo
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	e.respond(w, lvl, http.StatusOK, "")
+	e.respond(w, lvl, http.StatusOK, "Processing...")
 }
 
 func (e *VCSEventsController) handleGitlabPost(w http.ResponseWriter, r *http.Request) {
@@ -569,7 +587,7 @@ func (e *VCSEventsController) HandleGitlabCommentEvent(w http.ResponseWriter, ev
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, handlers.CommentEventInput{
+	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:      baseRepo,
 		MaybeHeadRepo: &headRepo,
 		MaybePull:     nil,
@@ -585,7 +603,7 @@ func (e *VCSEventsController) HandleGitlabCommentEvent(w http.ResponseWriter, ev
 		return
 	}
 
-	e.respond(w, lvl, http.StatusOK, err.Error())
+	e.respond(w, lvl, http.StatusOK, "Processing...")
 }
 
 // HandleGitlabMergeRequestEvent will delete any locks associated with the pull
@@ -606,8 +624,7 @@ func (e *VCSEventsController) HandleGitlabMergeRequestEvent(w http.ResponseWrite
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, handlers.PullRequestEventInput{
-		Logger:    e.Logger,
+	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, event_types.PullRequest{
 		Pull:      pull,
 		User:      user,
 		EventType: pullEventType,
@@ -618,7 +635,7 @@ func (e *VCSEventsController) HandleGitlabMergeRequestEvent(w http.ResponseWrite
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	e.respond(w, lvl, http.StatusOK, "")
+	e.respond(w, lvl, http.StatusOK, "Processing...")
 }
 
 // HandleAzureDevopsPullRequestCommentedEvent handles comment events from Azure DevOps where Atlantis
@@ -657,7 +674,7 @@ func (e *VCSEventsController) HandleAzureDevopsPullRequestCommentedEvent(w http.
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, handlers.CommentEventInput{
+	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:      baseRepo,
 		MaybeHeadRepo: nil,
 		MaybePull:     nil,
@@ -673,7 +690,7 @@ func (e *VCSEventsController) HandleAzureDevopsPullRequestCommentedEvent(w http.
 		return
 	}
 
-	e.respond(w, lvl, http.StatusOK, err.Error())
+	e.respond(w, lvl, http.StatusOK, "Processing...")
 }
 
 // HandleAzureDevopsPullRequestEvent will delete any locks associated with the pull
@@ -710,8 +727,7 @@ func (e *VCSEventsController) HandleAzureDevopsPullRequestEvent(w http.ResponseW
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, handlers.PullRequestEventInput{
-		Logger:    e.Logger,
+	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, event_types.PullRequest{
 		Pull:      pull,
 		User:      user,
 		EventType: pullEventType,
@@ -722,7 +738,7 @@ func (e *VCSEventsController) HandleAzureDevopsPullRequestEvent(w http.ResponseW
 		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
 		return
 	}
-	e.respond(w, lvl, http.StatusOK, "")
+	e.respond(w, lvl, http.StatusOK, "Processing...")
 }
 
 // supportsHost returns true if h is in e.SupportedVCSHosts and false otherwise.
@@ -740,13 +756,4 @@ func (e *VCSEventsController) respond(w http.ResponseWriter, lvl logging.LogLeve
 	e.Logger.Log(lvl, response)
 	w.WriteHeader(code)
 	fmt.Fprintln(w, response)
-}
-
-// commentNotAllowlisted comments on the pull request that the repo is not
-// allowlisted unless allowlist error comments are disabled.
-func (e *VCSEventsController) commentNotAllowlisted(baseRepo models.Repo, pullNum int) {
-	errMsg := "```\nError: This repo is not allowlisted for Atlantis.\n```"
-	if err := e.VCSClient.CreateComment(baseRepo, pullNum, errMsg, ""); err != nil {
-		e.Logger.Errorf("unable to comment on pull request: %s", err)
-	}
 }

@@ -4,14 +4,14 @@ import (
 	"net/http"
 
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
-	"github.com/runatlantis/atlantis/server/controllers/events/github"
 	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
-	converters "github.com/runatlantis/atlantis/server/converters/github"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
 	gateway_handlers "github.com/runatlantis/atlantis/server/lyft/gateway/events/handlers"
+	converters "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github/request"
 	"github.com/uber-go/tally"
 )
 
@@ -37,11 +37,11 @@ func NewVCSEventsController(
 	)
 
 	asyncAutoplannerWorkerProxy := gateway_handlers.NewAsynchronousAutoplannerWorkerProxy(
-		autoplanValidator, logger, pullEventWorkerProxy,
+		autoplanValidator, logger, legacyLogger, pullEventWorkerProxy,
 	)
 
 	prHandler := handlers.NewPullRequestEventWithEventTypeHandlers(
-		repoAllowlistChecker, vcsClient,
+		repoAllowlistChecker,
 		asyncAutoplannerWorkerProxy,
 		asyncAutoplannerWorkerProxy,
 		pullEventWorkerProxy,
@@ -52,13 +52,14 @@ func NewVCSEventsController(
 		repoAllowlistChecker,
 		vcsClient,
 		gateway_handlers.NewCommentEventWorkerProxy(logger, snsWriter),
+		logger,
 	)
 
 	// lazy map of resolver providers to their resolver
 	// laziness ensures we only instantiate the providers we support.
 	providerResolverInitializer := map[models.VCSHostType]func() events_controllers.RequestResolver{
 		models.Github: func() events_controllers.RequestResolver {
-			return github.NewRequestHandler(
+			return request.NewHandler(
 				legacyLogger,
 				scope,
 				webhookSecret,

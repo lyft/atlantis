@@ -37,7 +37,6 @@ import (
 	"github.com/runatlantis/atlantis/server/static"
 
 	"github.com/mitchellh/go-homedir"
-	github_converters "github.com/runatlantis/atlantis/server/converters/github"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
@@ -51,6 +50,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/lyft/scheduled"
 	"github.com/runatlantis/atlantis/server/metrics"
+	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/runatlantis/atlantis/server/wrappers"
 	"github.com/uber-go/tally"
 
@@ -953,12 +953,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDirLocker:              workingDirLocker,
 	}
 
-	repoConverter := github_converters.RepoConverter{
+	repoConverter := github_converter.RepoConverter{
 		GithubUser:  userConfig.GithubUser,
 		GithubToken: userConfig.GithubToken,
 	}
 
-	pullConverter := github_converters.PullConverter{
+	pullConverter := github_converter.PullConverter{
 		RepoConverter: repoConverter,
 	}
 

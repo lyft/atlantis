@@ -5,10 +5,10 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/http"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/vcs/types/event"
 )
 
 func NewCommentEventWorkerProxy(
@@ -23,7 +23,7 @@ type CommentEventWorkerProxy struct {
 	snsWriter Writer
 }
 
-func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.CloneableRequest, _ handlers.CommentEventInput, _ *command.Comment) error {
+func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.CloneableRequest, _ event.Comment, _ *command.Comment) error {
 	buffer := bytes.NewBuffer([]byte{})
 
 	if err := request.GetRequest().Write(buffer); err != nil {

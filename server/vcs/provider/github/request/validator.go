@@ -11,7 +11,7 @@
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
 
-package github
+package request
 
 import (
 	"errors"
@@ -23,22 +23,26 @@ import (
 	"github.com/google/go-github/v31/github"
 )
 
-// RequestValidator handles checking if GitHub requests are signed
+type requestValidator interface {
+	Validate(r *http.CloneableRequest, secret []byte) ([]byte, error)
+}
+
+// validator handles checking if GitHub requests are signed
 // properly by the secret.
-type RequestValidator struct{}
+type validator struct{}
 
 // Validate returns the JSON payload of the request.
 // If secret is not empty, it checks that the request was signed
 // by secret and returns an error if it was not.
 // If secret is empty, it does not check if the request was signed.
-func (d *RequestValidator) Validate(r *http.CloneableRequest, secret []byte) ([]byte, error) {
+func (d validator) Validate(r *http.CloneableRequest, secret []byte) ([]byte, error) {
 	if len(secret) != 0 {
 		return d.validateAgainstSecret(r, secret)
 	}
 	return d.validateWithoutSecret(r)
 }
 
-func (d *RequestValidator) validateAgainstSecret(r *http.CloneableRequest, secret []byte) ([]byte, error) {
+func (d validator) validateAgainstSecret(r *http.CloneableRequest, secret []byte) ([]byte, error) {
 	payload, err := github.ValidatePayload(r.GetRequest(), secret)
 	if err != nil {
 		return nil, err
@@ -46,7 +50,7 @@ func (d *RequestValidator) validateAgainstSecret(r *http.CloneableRequest, secre
 	return payload, nil
 }
 
-func (d *RequestValidator) validateWithoutSecret(r *http.CloneableRequest) ([]byte, error) {
+func (d validator) validateWithoutSecret(r *http.CloneableRequest) ([]byte, error) {
 	switch ct := r.GetHeader("Content-Type"); ct {
 	case "application/json":
 		body, err := r.GetBody()

@@ -11,6 +11,17 @@ func (e *RequestValidationError) Error() string {
 	return e.Err.Error()
 }
 
+// WebhookParsingError is it's own unique type
+// in order to allow us to type assert and return custom http
+// error codes accordingly
+type WebhookParsingError struct {
+	Err error
+}
+
+func (e *WebhookParsingError) Error() string {
+	return e.Err.Error()
+}
+
 // EventParsingError is it's own unique type
 // in order to allow us to type assert and return custom http
 // error codes accordingly

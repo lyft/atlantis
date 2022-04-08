@@ -1,4 +1,4 @@
-package github
+package converter
 
 import (
 	"github.com/google/go-github/v31/github"
