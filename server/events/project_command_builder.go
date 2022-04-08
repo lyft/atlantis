@@ -24,8 +24,6 @@ const (
 	DefaultParallelApplyEnabled = false
 	// DefaultParallelPlanEnabled is the default for the parallel plan setting.
 	DefaultParallelPlanEnabled = false
-	// DefaultDeleteSourceBranchOnMerge being false is the default setting whether or not to remove a source branch on merge
-	DefaultDeleteSourceBranchOnMerge = false
 	// InfiniteProjectLimitPerPR is the default setting for number of projects per PR.
 	// this is set to -1 to signify no limit.
 	InfiniteProjectsPerPR = -1
@@ -223,10 +221,9 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 			ctx.Log.Debugf("determining config for project at dir: %q workspace: %q", mp.Dir, mp.Workspace)
 			mergedCfg := p.GlobalCfg.MergeProjectCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp, repoCfg)
 			contextFlags := &command.ContextFlags{
-				ForceApply:                forceApply,
-				ParallelApply:             repoCfg.ParallelApply,
-				ParallelPlan:              repoCfg.ParallelPlan,
-				DeleteSourceBranchOnMerge: mergedCfg.DeleteSourceBranchOnMerge,
+				ForceApply:    forceApply,
+				ParallelApply: repoCfg.ParallelApply,
+				ParallelPlan:  repoCfg.ParallelPlan,
 			}
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
@@ -252,10 +249,9 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 			pCfg := p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp.Path, DefaultWorkspace)
 
 			contextFlags := &command.ContextFlags{
-				ForceApply:                forceApply,
-				ParallelApply:             DefaultParallelApplyEnabled,
-				ParallelPlan:              DefaultParallelPlanEnabled,
-				DeleteSourceBranchOnMerge: pCfg.DeleteSourceBranchOnMerge,
+				ForceApply:    forceApply,
+				ParallelApply: DefaultParallelApplyEnabled,
+				ParallelPlan:  DefaultParallelPlanEnabled,
 			}
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
@@ -535,7 +531,6 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 				mp,
 				*repoCfgPtr,
 			)
-			contextFlags.DeleteSourceBranchOnMerge = projCfg.DeleteSourceBranchOnMerge
 
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
@@ -554,8 +549,6 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 			repoRelDir,
 			workspace,
 		)
-
-		contextFlags.DeleteSourceBranchOnMerge = projCfg.DeleteSourceBranchOnMerge
 
 		projCtxs = append(projCtxs,
 			p.ProjectCommandContextBuilder.BuildProjectContext(

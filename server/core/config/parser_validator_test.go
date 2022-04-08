@@ -1201,7 +1201,7 @@ func TestParseGlobalCfg(t *testing.T) {
 			input: `repos:
 - id: /.*/
   allowed_overrides: [invalid]`,
-			expErr: "repos: (0: (allowed_overrides: \"invalid\" is not a valid override, only \"apply_requirements\", \"workflow\" and \"delete_source_branch_on_merge\" are supported.).).",
+			expErr: "repos: (0: (allowed_overrides: \"invalid\" is not a valid override, only \"apply_requirements\" and \"workflow\" are supported.).).",
 		},
 		"invalid apply_requirement": {
 			input: `repos:
@@ -1284,7 +1284,7 @@ repos:
   pre_workflow_hooks:
     - run: custom workflow command
   workflow: custom1
-  allowed_overrides: [apply_requirements, workflow, delete_source_branch_on_merge]
+  allowed_overrides: [apply_requirements, workflow]
   allow_custom_workflows: true
 - id: /.*/
   branch: /(master|main)/
@@ -1323,7 +1323,7 @@ policies:
 						ApplyRequirements:    []string{"approved", "mergeable"},
 						PreWorkflowHooks:     preWorkflowHooks,
 						Workflow:             &customWorkflow1,
-						AllowedOverrides:     []string{"apply_requirements", "workflow", "delete_source_branch_on_merge"},
+						AllowedOverrides:     []string{"apply_requirements", "workflow"},
 						AllowCustomWorkflows: Bool(true),
 					},
 					{
@@ -1419,10 +1419,9 @@ workflows:
 								},
 							},
 						},
-						AllowedWorkflows:          []string{},
-						AllowedOverrides:          []string{},
-						AllowCustomWorkflows:      Bool(false),
-						DeleteSourceBranchOnMerge: Bool(false),
+						AllowedWorkflows:     []string{},
+						AllowedOverrides:     []string{},
+						AllowCustomWorkflows: Bool(false),
 					},
 				},
 				Workflows: map[string]valid.Workflow{
@@ -1581,7 +1580,7 @@ repos:
     - run: custom workflow command
   pull_request_workflow: custom1
   deployment_workflow: custom1
-  allowed_overrides: [apply_requirements, pull_request_workflow, deployment_workflow, workflow, delete_source_branch_on_merge]
+  allowed_overrides: [apply_requirements, pull_request_workflow, deployment_workflow, workflow]
   allow_custom_workflows: true
 - id: /.*/
   branch: /(master|main)/
@@ -1629,7 +1628,7 @@ policies:
 						PreWorkflowHooks:     preWorkflowHooks,
 						PullRequestWorkflow:  &customPulRequestWorkflow1,
 						DeploymentWorkflow:   &customDeploymentWorkflow1,
-						AllowedOverrides:     []string{"apply_requirements", "pull_request_workflow", "deployment_workflow", "workflow", "delete_source_branch_on_merge"},
+						AllowedOverrides:     []string{"apply_requirements", "pull_request_workflow", "deployment_workflow", "workflow"},
 						AllowCustomWorkflows: Bool(true),
 					},
 					{
@@ -1718,10 +1717,9 @@ deployment_workflows:
 								Steps: nil,
 							},
 						},
-						AllowedWorkflows:          []string{},
-						AllowedOverrides:          []string{},
-						AllowCustomWorkflows:      Bool(false),
-						DeleteSourceBranchOnMerge: Bool(false),
+						AllowedWorkflows:     []string{},
+						AllowedOverrides:     []string{},
+						AllowCustomWorkflows: Bool(false),
 					},
 				},
 				Workflows: defaultCfg.Workflows,

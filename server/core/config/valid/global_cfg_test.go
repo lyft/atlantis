@@ -49,14 +49,13 @@ func TestNewGlobalCfg(t *testing.T) {
 	baseCfg := valid.GlobalCfg{
 		Repos: []valid.Repo{
 			{
-				IDRegex:                   regexp.MustCompile(".*"),
-				BranchRegex:               regexp.MustCompile(".*"),
-				ApplyRequirements:         []string{},
-				Workflow:                  &expDefaultWorkflow,
-				AllowedWorkflows:          []string{},
-				AllowedOverrides:          []string{},
-				AllowCustomWorkflows:      Bool(false),
-				DeleteSourceBranchOnMerge: Bool(false),
+				IDRegex:              regexp.MustCompile(".*"),
+				BranchRegex:          regexp.MustCompile(".*"),
+				ApplyRequirements:    []string{},
+				Workflow:             &expDefaultWorkflow,
+				AllowedWorkflows:     []string{},
+				AllowedOverrides:     []string{},
+				AllowCustomWorkflows: Bool(false),
 			},
 		},
 		Workflows: map[string]valid.Workflow{
@@ -170,16 +169,15 @@ func TestPlatformModeNewGlobalCfg(t *testing.T) {
 		WorkflowMode: valid.PlatformWorkflowMode,
 		Repos: []valid.Repo{
 			{
-				IDRegex:                   regexp.MustCompile(".*"),
-				BranchRegex:               regexp.MustCompile(".*"),
-				ApplyRequirements:         []string{},
-				Workflow:                  &expDefaultWorkflow,
-				PullRequestWorkflow:       &expDefaultPRWorkflow,
-				DeploymentWorkflow:        &expDefaultDeploymentWorkflow,
-				AllowedWorkflows:          []string{},
-				AllowedOverrides:          []string{},
-				AllowCustomWorkflows:      Bool(false),
-				DeleteSourceBranchOnMerge: Bool(false),
+				IDRegex:              regexp.MustCompile(".*"),
+				BranchRegex:          regexp.MustCompile(".*"),
+				ApplyRequirements:    []string{},
+				Workflow:             &expDefaultWorkflow,
+				PullRequestWorkflow:  &expDefaultPRWorkflow,
+				DeploymentWorkflow:   &expDefaultDeploymentWorkflow,
+				AllowedWorkflows:     []string{},
+				AllowedOverrides:     []string{},
+				AllowCustomWorkflows: Bool(false),
 			},
 		},
 		Workflows: map[string]valid.Workflow{
