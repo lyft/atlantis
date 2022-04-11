@@ -17,7 +17,7 @@ type commentCreator interface {
 	CreateComment(repo models.Repo, pullNum int, comment string, command string) error
 }
 
-// commentPraser parsers a vcs pull request comment and returns the result
+// commentParser parsers a vcs pull request comment and returns the result
 type commentParser interface {
 	Parse(comment string, vcsHost models.VCSHostType) events.CommentParseResult
 }

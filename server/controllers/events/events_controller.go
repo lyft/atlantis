@@ -399,29 +399,6 @@ func (e *VCSEventsController) handleAzureDevopsPost(w http.ResponseWriter, r *ht
 	}
 }
 
-type EventParser interface {
-	ParsePullEvent()
-}
-
-type PullEvent struct {
-	BaseRepo  models.Repo
-	HeadRepo  models.Repo
-	Pull      models.PullRequest
-	User      models.User
-	Type      models.PullRequestEventType
-	Timestamp time.Time
-}
-
-type CommentEvent struct {
-	BaseRepo  models.Repo
-	HeadRepo  models.Repo
-	Pull      models.PullRequest
-	Provider  models.VCSHostType
-	Comment   string
-	User      models.User
-	Timestamp time.Time
-}
-
 // HandleBitbucketCloudCommentEvent handles comment events from Bitbucket.
 func (e *VCSEventsController) HandleBitbucketCloudCommentEvent(w http.ResponseWriter, body []byte, reqID string, request *http.Request) {
 	pull, baseRepo, headRepo, user, comment, err := e.Parser.ParseBitbucketCloudPullCommentEvent(body)
