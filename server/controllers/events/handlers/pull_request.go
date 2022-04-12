@@ -73,6 +73,7 @@ func NewPullRequestEvent(
 		autoplanner: &Autoplanner{
 			CommandRunner: commandRunner,
 		},
+		logger: logger,
 	}
 	return &PullRequestEvent{
 		RepoAllowlistChecker:    repoAllowlistChecker,
