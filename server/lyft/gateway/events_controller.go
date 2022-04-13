@@ -31,6 +31,8 @@ func NewVCSEventsController(
 	supportedVCSProviders []models.VCSHostType,
 	repoConverter converters.RepoConverter,
 	pullConverter converters.PullConverter,
+	githubClient events.GithubPullGetter,
+	eventParser events.EventParsing,
 ) *VCSEventsController {
 	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
 		snsWriter, logger,
@@ -68,6 +70,8 @@ func NewVCSEventsController(
 				allowDraftPRs,
 				repoConverter,
 				pullConverter,
+				eventParser,
+				githubClient,
 			)
 		},
 	}

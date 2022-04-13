@@ -98,6 +98,7 @@ func NewVCSEventsController(
 	azureDevopsWebhookBasicPassword []byte,
 	repoConverter github_converter.RepoConverter,
 	pullConverter github_converter.PullConverter,
+	githubClient events.GithubPullGetter,
 ) *VCSEventsController {
 
 	prHandler := handlers.NewPullRequestEvent(
@@ -125,6 +126,8 @@ func NewVCSEventsController(
 				allowDraftPRs,
 				repoConverter,
 				pullConverter,
+				eventParser,
+				githubClient,
 			)
 		},
 	}
@@ -413,14 +416,14 @@ func (e *VCSEventsController) HandleBitbucketCloudCommentEvent(w http.ResponseWr
 		return
 	}
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
-		BaseRepo:      baseRepo,
-		MaybeHeadRepo: &headRepo,
-		MaybePull:     &pull,
-		User:          user,
-		PullNum:       pull.Num,
-		Comment:       comment,
-		VCSHost:       models.BitbucketCloud,
-		Timestamp:     eventTimestamp,
+		BaseRepo:  baseRepo,
+		HeadRepo:  &headRepo,
+		Pull:      &pull,
+		User:      user,
+		PullNum:   pull.Num,
+		Comment:   comment,
+		VCSHost:   models.BitbucketCloud,
+		Timestamp: eventTimestamp,
 	})
 
 	if err != nil {
@@ -446,14 +449,14 @@ func (e *VCSEventsController) HandleBitbucketServerCommentEvent(w http.ResponseW
 		return
 	}
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
-		BaseRepo:      baseRepo,
-		MaybeHeadRepo: &headRepo,
-		MaybePull:     &pull,
-		User:          user,
-		PullNum:       pull.Num,
-		Comment:       comment,
-		VCSHost:       models.BitbucketServer,
-		Timestamp:     eventTimestamp,
+		BaseRepo:  baseRepo,
+		HeadRepo:  &headRepo,
+		Pull:      &pull,
+		User:      user,
+		PullNum:   pull.Num,
+		Comment:   comment,
+		VCSHost:   models.BitbucketServer,
+		Timestamp: eventTimestamp,
 	})
 
 	if err != nil {
@@ -566,14 +569,14 @@ func (e *VCSEventsController) HandleGitlabCommentEvent(w http.ResponseWriter, ev
 		return
 	}
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
-		BaseRepo:      baseRepo,
-		MaybeHeadRepo: &headRepo,
-		MaybePull:     nil,
-		User:          user,
-		PullNum:       event.MergeRequest.IID,
-		Comment:       event.ObjectAttributes.Note,
-		VCSHost:       models.Gitlab,
-		Timestamp:     eventTimestamp,
+		BaseRepo:  baseRepo,
+		HeadRepo:  &headRepo,
+		Pull:      nil,
+		User:      user,
+		PullNum:   event.MergeRequest.IID,
+		Comment:   event.ObjectAttributes.Note,
+		VCSHost:   models.Gitlab,
+		Timestamp: eventTimestamp,
 	})
 
 	if err != nil {
@@ -653,14 +656,14 @@ func (e *VCSEventsController) HandleAzureDevopsPullRequestCommentedEvent(w http.
 		return
 	}
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
-		BaseRepo:      baseRepo,
-		MaybeHeadRepo: nil,
-		MaybePull:     nil,
-		User:          user,
-		PullNum:       resource.PullRequest.GetPullRequestID(),
-		Comment:       string(strippedComment),
-		VCSHost:       models.AzureDevops,
-		Timestamp:     eventTimestamp,
+		BaseRepo:  baseRepo,
+		HeadRepo:  nil,
+		Pull:      nil,
+		User:      user,
+		PullNum:   resource.PullRequest.GetPullRequestID(),
+		Comment:   string(strippedComment),
+		VCSHost:   models.AzureDevops,
+		Timestamp: eventTimestamp,
 	})
 
 	if err != nil {

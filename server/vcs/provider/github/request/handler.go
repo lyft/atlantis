@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/http"
 
 	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
@@ -58,6 +59,8 @@ func NewHandler(
 	allowDraftPRs bool,
 	repoConverter converter.RepoConverter,
 	pullConverter converter.PullConverter,
+	eventParser events.EventParsing,
+	pullGetter events.GithubPullGetter,
 ) *Handler {
 	return &Handler{
 		Matcher:        Matcher{},
@@ -70,7 +73,9 @@ func NewHandler(
 			AllowDraftPRs: allowDraftPRs,
 		},
 		commentEventConverter: converter.CommentEventConverter{
-			RepoConverter: repoConverter,
+			RepoConverter:    repoConverter,
+			EventParser:      eventParser,
+			GithubPullGetter: pullGetter,
 		},
 		webhookSecret: webhookSecret,
 		logger:        logger,

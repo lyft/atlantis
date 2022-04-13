@@ -969,6 +969,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		supportedVCSHosts,
 		repoConverter,
 		pullConverter,
+		githubClient,
+		eventParser,
 	)
 
 	defaultEventsController := events_controllers.NewVCSEventsController(
@@ -991,6 +993,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		[]byte(userConfig.AzureDevopsWebhookPassword),
 		repoConverter,
 		pullConverter,
+		githubClient,
 	)
 
 	var vcsPostHandler sqs.VCSPostHandler

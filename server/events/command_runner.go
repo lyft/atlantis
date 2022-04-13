@@ -180,6 +180,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 	autoPlanRunner.Run(cmdCtx, nil)
 }
 
+// TODO: Make pass actual pull and repo
 // RunCommentCommand executes the command.
 // We take in a pointer for maybeHeadRepo because for some events there isn't
 // enough data to construct the Repo model and callers might want to wait until
@@ -322,7 +323,8 @@ func (c *DefaultCommandRunner) ensureValidRepoMetadata(
 
 	switch baseRepo.VCSHost.Type {
 	case models.Github:
-		pull, headRepo, err = c.getGithubData(baseRepo, pullNum)
+		// Should already populated by github comment event converter
+		pull, headRepo = *maybePull, *maybeHeadRepo
 	case models.Gitlab:
 		pull, err = c.getGitlabData(baseRepo, pullNum)
 	case models.BitbucketCloud, models.BitbucketServer:
