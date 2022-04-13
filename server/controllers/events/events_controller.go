@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/go-github/v31/github"
 	httputils "github.com/runatlantis/atlantis/server/http"
 
 	"github.com/mcdafydd/go-azuredevops/azuredevops"
@@ -50,6 +51,30 @@ const bitbucketEventTypeHeader = "X-Event-Key"
 const bitbucketCloudRequestIDHeader = "X-Request-UUID"
 const bitbucketServerRequestIDHeader = "X-Request-ID"
 const bitbucketServerSignatureHeader = "X-Hub-Signature"
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_getter.go GithubPullGetter
+
+// GithubPullGetter makes API calls to get pull requests.
+type GithubPullGetter interface {
+	// GetPullRequest gets the pull request with id pullNum for the repo.
+	GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error)
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_azuredevops_pull_getter.go AzureDevopsPullGetter
+
+// AzureDevopsPullGetter makes API calls to get pull requests.
+type AzureDevopsPullGetter interface {
+	// GetPullRequest gets the pull request with id pullNum for the repo.
+	GetPullRequest(repo models.Repo, pullNum int) (*azuredevops.GitPullRequest, error)
+}
+
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_gitlab_merge_request_getter.go GitlabMergeRequestGetter
+
+// GitlabMergeRequestGetter makes API calls to get merge requests.
+type GitlabMergeRequestGetter interface {
+	// GetMergeRequest gets the pull request with the id pullNum for the repo.
+	GetMergeRequest(repoFullName string, pullNum int) (*gitlab.MergeRequest, error)
+}
 
 type commentEventHandler interface {
 	Handle(ctx context.Context, request *httputils.CloneableRequest, event event_types.Comment) error
@@ -98,7 +123,9 @@ func NewVCSEventsController(
 	azureDevopsWebhookBasicPassword []byte,
 	repoConverter github_converter.RepoConverter,
 	pullConverter github_converter.PullConverter,
-	githubClient events.GithubPullGetter,
+	githubPullGetter GithubPullGetter,
+	azureDevopsPullGetter AzureDevopsPullGetter,
+	gitlabMergeRequestGetter GitlabMergeRequestGetter,
 ) *VCSEventsController {
 
 	prHandler := handlers.NewPullRequestEvent(
@@ -127,7 +154,7 @@ func NewVCSEventsController(
 				repoConverter,
 				pullConverter,
 				eventParser,
-				githubClient,
+				githubPullGetter,
 			)
 		},
 	}
@@ -154,6 +181,8 @@ func NewVCSEventsController(
 		AzureDevopsWebhookBasicUser:     azureDevopsWebhookBasicUser,
 		AzureDevopsWebhookBasicPassword: azureDevopsWebhookBasicPassword,
 		AzureDevopsRequestValidator:     &DefaultAzureDevopsRequestValidator{},
+		AzureDevopsPullGetter:           azureDevopsPullGetter,
+		GitlabMergeRequestGetter:        gitlabMergeRequestGetter,
 	}
 }
 
@@ -268,6 +297,10 @@ type VCSEventsController struct {
 	// Azure DevOps Team Project. If empty, no request validation is done.
 	AzureDevopsWebhookBasicPassword []byte
 	AzureDevopsRequestValidator     AzureDevopsRequestValidator
+
+	GitlabMergeRequestGetter GitlabMergeRequestGetter
+	AzureDevopsPullGetter    AzureDevopsPullGetter
+	EventParser              events.EventParsing
 }
 
 // Post handles POST webhook requests.
@@ -561,6 +594,12 @@ func (e *VCSEventsController) HandleGitlabCommentEvent(w http.ResponseWriter, ev
 		e.respond(w, logging.Error, http.StatusBadRequest, "Error parsing webhook: %s", err)
 		return
 	}
+
+	pull, err := e.getGitlabData(baseRepo, event.MergeRequest.ID)
+	if err != nil {
+		e.respond(w, logging.Error, http.StatusBadRequest, "Error getting merge request: %s", err)
+		return
+	}
 	eventTimestamp := time.Now()
 	lvl := logging.Debug
 	cloneableRequest, err := httputils.NewCloneableRequest(request)
@@ -571,7 +610,7 @@ func (e *VCSEventsController) HandleGitlabCommentEvent(w http.ResponseWriter, ev
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:  baseRepo,
 		HeadRepo:  &headRepo,
-		Pull:      nil,
+		Pull:      &pull,
 		User:      user,
 		PullNum:   event.MergeRequest.IID,
 		Comment:   event.ObjectAttributes.Note,
@@ -648,6 +687,12 @@ func (e *VCSEventsController) HandleAzureDevopsPullRequestCommentedEvent(w http.
 		e.respond(w, logging.Error, http.StatusBadRequest, "Error parsing pull request repository field: %s; %s", err, azuredevopsReqID)
 		return
 	}
+	pull, headRepo, err := e.getAzureDevopsData(baseRepo, resource.PullRequest.GetPullRequestID())
+	if err != nil {
+		e.respond(w, logging.Error, http.StatusBadRequest, "Error getting pull request %s", err)
+		return
+	}
+
 	eventTimestamp := time.Now()
 	lvl := logging.Debug
 	cloneableRequest, err := httputils.NewCloneableRequest(request)
@@ -657,8 +702,8 @@ func (e *VCSEventsController) HandleAzureDevopsPullRequestCommentedEvent(w http.
 	}
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:  baseRepo,
-		HeadRepo:  nil,
-		Pull:      nil,
+		HeadRepo:  &headRepo,
+		Pull:      &pull,
 		User:      user,
 		PullNum:   resource.PullRequest.GetPullRequestID(),
 		Comment:   string(strippedComment),
@@ -737,4 +782,31 @@ func (e *VCSEventsController) respond(w http.ResponseWriter, lvl logging.LogLeve
 	e.Logger.Log(lvl, response)
 	w.WriteHeader(code)
 	fmt.Fprintln(w, response)
+}
+
+func (c *VCSEventsController) getGitlabData(baseRepo models.Repo, pullNum int) (models.PullRequest, error) {
+	if c.GitlabMergeRequestGetter == nil {
+		return models.PullRequest{}, errors.New("Atlantis not configured to support GitLab")
+	}
+	mr, err := c.GitlabMergeRequestGetter.GetMergeRequest(baseRepo.FullName, pullNum)
+	if err != nil {
+		return models.PullRequest{}, errors.Wrap(err, "making merge request API call to GitLab")
+	}
+	pull := c.EventParser.ParseGitlabMergeRequest(mr, baseRepo)
+	return pull, nil
+}
+
+func (c *VCSEventsController) getAzureDevopsData(baseRepo models.Repo, pullNum int) (models.PullRequest, models.Repo, error) {
+	if c.AzureDevopsPullGetter == nil {
+		return models.PullRequest{}, models.Repo{}, errors.New("atlantis not configured to support Azure DevOps")
+	}
+	adPull, err := c.AzureDevopsPullGetter.GetPullRequest(baseRepo, pullNum)
+	if err != nil {
+		return models.PullRequest{}, models.Repo{}, errors.Wrap(err, "making pull request API call to Azure DevOps")
+	}
+	pull, _, headRepo, err := c.EventParser.ParseAzureDevopsPull(adPull)
+	if err != nil {
+		return pull, headRepo, errors.Wrap(err, "extracting required fields from comment data")
+	}
+	return pull, headRepo, nil
 }
