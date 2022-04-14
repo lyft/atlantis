@@ -967,7 +967,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		repoConverter,
 		pullConverter,
 		githubClient,
-		eventParser,
 	)
 
 	defaultEventsController := events_controllers.NewVCSEventsController(

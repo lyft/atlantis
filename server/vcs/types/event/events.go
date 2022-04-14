@@ -8,9 +8,9 @@ import (
 
 // Comment is our internal representation of a vcs based comment event.
 type Comment struct {
-	Pull      *models.PullRequest
+	Pull      models.PullRequest
 	BaseRepo  models.Repo
-	HeadRepo  *models.Repo
+	HeadRepo  models.Repo
 	User      models.User
 	PullNum   int
 	Comment   string

@@ -114,7 +114,7 @@ func NewVCSEventsController(
 	azureDevopsWebhookBasicPassword []byte,
 	repoConverter github_converter.RepoConverter,
 	pullConverter github_converter.PullConverter,
-	githubPullGetter github_converter.GithubPullGetter,
+	githubPullGetter github_converter.PullGetter,
 	azureDevopsPullGetter AzureDevopsPullGetter,
 	gitlabMergeRequestGetter GitlabMergeRequestGetter,
 ) *VCSEventsController {
@@ -144,7 +144,6 @@ func NewVCSEventsController(
 				allowDraftPRs,
 				repoConverter,
 				pullConverter,
-				eventParser,
 				githubPullGetter,
 			)
 		},
@@ -440,8 +439,8 @@ func (e *VCSEventsController) HandleBitbucketCloudCommentEvent(w http.ResponseWr
 	}
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:  baseRepo,
-		HeadRepo:  &headRepo,
-		Pull:      &pull,
+		HeadRepo:  headRepo,
+		Pull:      pull,
 		User:      user,
 		PullNum:   pull.Num,
 		Comment:   comment,
@@ -473,8 +472,8 @@ func (e *VCSEventsController) HandleBitbucketServerCommentEvent(w http.ResponseW
 	}
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:  baseRepo,
-		HeadRepo:  &headRepo,
-		Pull:      &pull,
+		HeadRepo:  headRepo,
+		Pull:      pull,
 		User:      user,
 		PullNum:   pull.Num,
 		Comment:   comment,
@@ -599,8 +598,8 @@ func (e *VCSEventsController) HandleGitlabCommentEvent(w http.ResponseWriter, ev
 	}
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:  baseRepo,
-		HeadRepo:  &headRepo,
-		Pull:      &pull,
+		HeadRepo:  headRepo,
+		Pull:      pull,
 		User:      user,
 		PullNum:   event.MergeRequest.IID,
 		Comment:   event.ObjectAttributes.Note,
@@ -692,8 +691,8 @@ func (e *VCSEventsController) HandleAzureDevopsPullRequestCommentedEvent(w http.
 	}
 	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
 		BaseRepo:  baseRepo,
-		HeadRepo:  &headRepo,
-		Pull:      &pull,
+		HeadRepo:  headRepo,
+		Pull:      pull,
 		User:      user,
 		PullNum:   resource.PullRequest.GetPullRequestID(),
 		Comment:   string(strippedComment),
