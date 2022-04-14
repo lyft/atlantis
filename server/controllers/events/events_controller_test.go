@@ -272,6 +272,8 @@ func TestPost_PullOpenedOrUpdated(t *testing.T) {
 
 func setup(t *testing.T) (events_controllers.VCSEventsController, *mocks.MockGitlabRequestParserValidator, *emocks.MockEventParsing, *emocks.MockPullCleaner, *vcsmocks.MockClient, *emocks.MockCommentParsing) {
 	RegisterMockTestingT(t)
+	gitLabMock := mocks.NewMockGitlabMergeRequestGetter()
+	azureDevopsMock := mocks.NewMockAzureDevopsPullGetter()
 	gl := mocks.NewMockGitlabRequestParserValidator()
 	p := emocks.NewMockEventParsing()
 	cp := emocks.NewMockCommentParsing()
@@ -294,6 +296,9 @@ func setup(t *testing.T) (events_controllers.VCSEventsController, *mocks.MockGit
 		GitlabRequestParserValidator: gl,
 		RepoAllowlistChecker:         repoAllowlistChecker,
 		VCSClient:                    vcsmock,
+
+		GitlabMergeRequestGetter: gitLabMock,
+		AzureDevopsPullGetter:    azureDevopsMock,
 	}
 	return e, gl, p, c, vcsmock, cp
 }
@@ -313,3 +318,12 @@ type noopCommentHandler struct{}
 func (h noopCommentHandler) Handle(ctx context.Context, request *httputils.CloneableRequest, event event_types.Comment) error {
 	return nil
 }
+
+// func TestRunCommentCommand_GitlabMergeRequestErrorf(t *testing.T) {
+// 	t.Log("if getting the gitlab merge request fails an error should be logged")
+// 	vcsClient := setup(t)
+// 	ctx := context.Background()
+// 	When(gitlabGetter.GetMergeRequest(fixtures.GitlabRepo.FullName, fixtures.Pull.Num)).ThenReturn(nil, errors.New("err"))
+// 	ch.RunCommentCommand(ctx, fixtures.GitlabRepo, &fixtures.GitlabRepo, nil, fixtures.User, fixtures.Pull.Num, nil, time.Now())
+// 	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GitlabRepo, fixtures.Pull.Num, "`Error: making merge request API call to GitLab: err`", "")
+// }

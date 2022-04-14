@@ -825,9 +825,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 	commandRunner := &events.DefaultCommandRunner{
 		VCSClient:                     vcsClient,
-		GithubPullGetter:              githubClient,
-		GitlabMergeRequestGetter:      gitlabClient,
-		AzureDevopsPullGetter:         azuredevopsClient,
 		CommentCommandRunnerByCmd:     commentCommandRunnerByCmd,
 		EventParser:                   eventParser,
 		GlobalCfg:                     globalCfg,
@@ -994,6 +991,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		repoConverter,
 		pullConverter,
 		githubClient,
+		azuredevopsClient,
+		gitlabClient,
 	)
 
 	var vcsPostHandler sqs.VCSPostHandler

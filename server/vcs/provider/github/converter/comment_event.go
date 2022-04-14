@@ -11,9 +11,17 @@ import (
 	"github.com/runatlantis/atlantis/server/vcs/types/event"
 )
 
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_getter.go GithubPullGetter
+
+// GithubPullGetter makes API calls to get pull requests.
+type GithubPullGetter interface {
+	// GetPullRequest gets the pull request with id pullNum for the repo.
+	GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error)
+}
+
 type CommentEventConverter struct {
 	RepoConverter    RepoConverter
-	GithubPullGetter events.GithubPullGetter
+	GithubPullGetter GithubPullGetter
 	EventParser      events.EventParsing
 }
 
@@ -70,37 +78,3 @@ func (c *CommentEventConverter) getGithubData(baseRepo models.Repo, pullNum int)
 	}
 	return pull, headRepo, nil
 }
-
-/*
-
-func TestRunCommentCommand_GithubPullErrorf(t *testing.T) {
-	t.Log("if getting the github pull request fails an error should be logged")
-	vcsClient := setup(t)
-	ctx := context.Background()
-	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(nil, errors.New("err"))
-	ch.RunCommentCommand(ctx, fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, fixtures.Pull.Num, nil, time.Now())
-	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "`Error: making pull request API call to GitHub: err`", "")
-}
-
-func TestRunCommentCommand_GitlabMergeRequestErrorf(t *testing.T) {
-	t.Log("if getting the gitlab merge request fails an error should be logged")
-	vcsClient := setup(t)
-	ctx := context.Background()
-	When(gitlabGetter.GetMergeRequest(fixtures.GitlabRepo.FullName, fixtures.Pull.Num)).ThenReturn(nil, errors.New("err"))
-	ch.RunCommentCommand(ctx, fixtures.GitlabRepo, &fixtures.GitlabRepo, nil, fixtures.User, fixtures.Pull.Num, nil, time.Now())
-	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GitlabRepo, fixtures.Pull.Num, "`Error: making merge request API call to GitLab: err`", "")
-}
-
-func TestRunCommentCommand_GithubPullParseErrorf(t *testing.T) {
-	t.Log("if parsing the returned github pull request fails an error should be logged")
-	vcsClient := setup(t)
-	ctx := context.Background()
-	var pull github.PullRequest
-	When(githubGetter.GetPullRequest(fixtures.GithubRepo, fixtures.Pull.Num)).ThenReturn(&pull, nil)
-	When(eventParsing.ParseGithubPull(&pull)).ThenReturn(fixtures.Pull, fixtures.GithubRepo, fixtures.GitlabRepo, errors.New("err"))
-
-	ch.RunCommentCommand(ctx, fixtures.GithubRepo, &fixtures.GithubRepo, nil, fixtures.User, fixtures.Pull.Num, nil, time.Now())
-	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "`Error: extracting required fields from comment data: err`", "")
-}
-
-*/

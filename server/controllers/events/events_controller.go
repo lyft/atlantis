@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v31/github"
 	httputils "github.com/runatlantis/atlantis/server/http"
 
 	"github.com/mcdafydd/go-azuredevops/azuredevops"
@@ -51,14 +50,6 @@ const bitbucketEventTypeHeader = "X-Event-Key"
 const bitbucketCloudRequestIDHeader = "X-Request-UUID"
 const bitbucketServerRequestIDHeader = "X-Request-ID"
 const bitbucketServerSignatureHeader = "X-Hub-Signature"
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_github_pull_getter.go GithubPullGetter
-
-// GithubPullGetter makes API calls to get pull requests.
-type GithubPullGetter interface {
-	// GetPullRequest gets the pull request with id pullNum for the repo.
-	GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error)
-}
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_azuredevops_pull_getter.go AzureDevopsPullGetter
 
@@ -123,7 +114,7 @@ func NewVCSEventsController(
 	azureDevopsWebhookBasicPassword []byte,
 	repoConverter github_converter.RepoConverter,
 	pullConverter github_converter.PullConverter,
-	githubPullGetter GithubPullGetter,
+	githubPullGetter github_converter.GithubPullGetter,
 	azureDevopsPullGetter AzureDevopsPullGetter,
 	gitlabMergeRequestGetter GitlabMergeRequestGetter,
 ) *VCSEventsController {
@@ -300,7 +291,6 @@ type VCSEventsController struct {
 
 	GitlabMergeRequestGetter GitlabMergeRequestGetter
 	AzureDevopsPullGetter    AzureDevopsPullGetter
-	EventParser              events.EventParsing
 }
 
 // Post handles POST webhook requests.
@@ -792,7 +782,7 @@ func (c *VCSEventsController) getGitlabData(baseRepo models.Repo, pullNum int) (
 	if err != nil {
 		return models.PullRequest{}, errors.Wrap(err, "making merge request API call to GitLab")
 	}
-	pull := c.EventParser.ParseGitlabMergeRequest(mr, baseRepo)
+	pull := c.Parser.ParseGitlabMergeRequest(mr, baseRepo)
 	return pull, nil
 }
 
@@ -804,7 +794,7 @@ func (c *VCSEventsController) getAzureDevopsData(baseRepo models.Repo, pullNum i
 	if err != nil {
 		return models.PullRequest{}, models.Repo{}, errors.Wrap(err, "making pull request API call to Azure DevOps")
 	}
-	pull, _, headRepo, err := c.EventParser.ParseAzureDevopsPull(adPull)
+	pull, _, headRepo, err := c.Parser.ParseAzureDevopsPull(adPull)
 	if err != nil {
 		return pull, headRepo, errors.Wrap(err, "extracting required fields from comment data")
 	}

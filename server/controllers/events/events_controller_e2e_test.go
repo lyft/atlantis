@@ -919,7 +919,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	commandRunner := &events.DefaultCommandRunner{
 		EventParser:                   eventParser,
 		VCSClient:                     vcsClient,
-		GithubPullGetter:              ghClient,
 		GlobalCfg:                     globalCfg,
 		StatsScope:                    statsScope,
 		CommentCommandRunnerByCmd:     commentCommandRunnerByCmd,

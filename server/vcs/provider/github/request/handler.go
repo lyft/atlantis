@@ -60,7 +60,7 @@ func NewHandler(
 	repoConverter converter.RepoConverter,
 	pullConverter converter.PullConverter,
 	eventParser events.EventParsing,
-	pullGetter events.GithubPullGetter,
+	pullGetter converter.GithubPullGetter,
 ) *Handler {
 	return &Handler{
 		Matcher:        Matcher{},
