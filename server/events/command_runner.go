@@ -41,7 +41,7 @@ type CommandRunner interface {
 	// RunCommentCommand is the first step after a command request has been parsed.
 	// It handles gathering additional information needed to execute the command
 	// and then calling the appropriate services to finish executing the command.
-	RunCommentCommand(ctx context.Context, baseRepo models.Repo, headRepo *models.Repo, pull *models.PullRequest, user models.User, pullNum int, cmd *command.Comment, timestamp time.Time)
+	RunCommentCommand(ctx context.Context, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, pullNum int, cmd *command.Comment, timestamp time.Time)
 	RunAutoplanCommand(ctx context.Context, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time)
 }
 
@@ -79,7 +79,6 @@ func buildCommentCommandRunner(
 type DefaultCommandRunner struct {
 	VCSClient       vcs.Client
 	DisableAutoplan bool
-	EventParser     EventParsing
 	GlobalCfg       valid.GlobalCfg
 	StatsScope      tally.Scope
 	// ParallelPoolSize controls the size of the wait group used to run
@@ -154,7 +153,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 // enough data to construct the Repo model and callers might want to wait until
 // the event is further validated before making an additional (potentially
 // wasteful) call to get the necessary data.
-func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo models.Repo, headRepo *models.Repo, pull *models.PullRequest, user models.User, pullNum int, cmd *command.Comment, timestamp time.Time) {
+func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, pullNum int, cmd *command.Comment, timestamp time.Time) {
 	if opStarted := c.Drainer.StartOp(); !opStarted {
 		if commentErr := c.VCSClient.CreateComment(baseRepo, pullNum, ShutdownComment, ""); commentErr != nil {
 			c.Logger.ErrorContext(ctx, commentErr.Error())
@@ -174,7 +173,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 
-	status, err := c.PullStatusFetcher.GetPullStatus(*pull)
+	status, err := c.PullStatusFetcher.GetPullStatus(pull)
 
 	if err != nil {
 		c.Logger.ErrorContext(ctx, err.Error())
@@ -183,9 +182,9 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 	cmdCtx := &command.Context{
 		User:             user,
 		Log:              c.buildLegacyLogger(ctx, c.LegacyLogger, baseRepo.FullName, pull.Num),
-		Pull:             *pull,
+		Pull:             pull,
 		PullStatus:       status,
-		HeadRepo:         *headRepo,
+		HeadRepo:         headRepo,
 		Trigger:          command.CommentTrigger,
 		Scope:            scope,
 		TriggerTimestamp: timestamp,
@@ -201,7 +200,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 	}
 
 	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx, cmdCtx); err != nil {
-		c.Logger.ErrorContext(ctx, "Error running pre-workflow hooks", fields.PullRequestWithErr(*pull, err))
+		c.Logger.ErrorContext(ctx, "Error running pre-workflow hooks", fields.PullRequestWithErr(pull, err))
 		c.CommitStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedCommitStatus, cmd.Name)
 		return
 	}
@@ -270,7 +269,7 @@ type ForceApplyCommandRunner struct {
 	Logger    logging.Logger
 }
 
-func (f *ForceApplyCommandRunner) RunCommentCommand(ctx context.Context, baseRepo models.Repo, headRepo *models.Repo, pull *models.PullRequest, user models.User, pullNum int, cmd *command.Comment, timestamp time.Time) {
+func (f *ForceApplyCommandRunner) RunCommentCommand(ctx context.Context, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, pullNum int, cmd *command.Comment, timestamp time.Time) {
 	if cmd.ForceApply {
 		warningMessage := "⚠️ WARNING ⚠️\n\n You have bypassed all apply requirements for this PR 🚀 . This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘 .\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
 		if commentErr := f.VCSClient.CreateComment(baseRepo, pullNum, warningMessage, ""); commentErr != nil {

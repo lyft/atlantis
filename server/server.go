@@ -826,7 +826,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	commandRunner := &events.DefaultCommandRunner{
 		VCSClient:                     vcsClient,
 		CommentCommandRunnerByCmd:     commentCommandRunnerByCmd,
-		EventParser:                   eventParser,
 		GlobalCfg:                     globalCfg,
 		StatsScope:                    cmdStatsScope,
 		DisableAutoplan:               userConfig.DisableAutoplan,

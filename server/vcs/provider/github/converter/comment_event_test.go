@@ -7,7 +7,6 @@ import (
 	"github.com/mohae/deepcopy"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
-	. "github.com/runatlantis/atlantis/testing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,10 +24,12 @@ func (p MockPullGetter) GetPullRequest(_ models.Repo, _ int) (*github.PullReques
 	return p.pull, p.err
 }
 
-func setup(t *testing.T) (github.IssueCommentEvent, models.Repo, models.PullRequest, RepoConverter) {
-	repoConverter := RepoConverter{
-		GithubUser:  GithubUser,
-		GithubToken: GithubToken,
+func setup(t *testing.T) (github.IssueCommentEvent, models.Repo, models.PullRequest, PullConverter) {
+	pullConverter := PullConverter{
+		RepoConverter: RepoConverter{
+			GithubUser:  GithubUser,
+			GithubToken: GithubToken,
+		},
 	}
 
 	comment := github.IssueCommentEvent{
@@ -65,15 +66,16 @@ func setup(t *testing.T) (github.IssueCommentEvent, models.Repo, models.PullRequ
 		Author:     *Pull.User.Login,
 		State:      models.OpenPullState,
 		BaseRepo:   modelRepo,
+		HeadRepo:   modelRepo,
 		UpdatedAt:  *Pull.UpdatedAt,
 	}
 
-	return comment, modelRepo, modelPull, repoConverter
+	return comment, modelRepo, modelPull, pullConverter
 }
 
 func TestCommentEvent_Convert_Success(t *testing.T) {
 	// setup
-	comment, modelRepo, modelPull, repoConverter := setup(t)
+	comment, modelRepo, modelPull, pullConverter := setup(t)
 	githubPullGetter := MockPullGetter{
 		pull: &Pull,
 		err:  nil,
@@ -81,7 +83,7 @@ func TestCommentEvent_Convert_Success(t *testing.T) {
 
 	// act
 	subject := CommentEventConverter{
-		RepoConverter: repoConverter,
+		PullConverter: pullConverter,
 		PullGetter:    githubPullGetter,
 	}
 	commentEvent, err := subject.Convert(&comment)
@@ -98,36 +100,36 @@ func TestCommentEvent_Convert_Success(t *testing.T) {
 
 func TestCommentEvent_Convert_Fail(t *testing.T) {
 	// setup
-	comment, _, _, repoConverter := setup(t)
+	comment, _, _, pullConverter := setup(t)
 	subject := CommentEventConverter{
-		RepoConverter: repoConverter,
+		PullConverter: pullConverter,
 	}
 
 	// act and assert
 	testComment := deepcopy.Copy(comment).(github.IssueCommentEvent)
 	testComment.Comment = nil
 	_, err := subject.Convert(&testComment)
-	ErrEquals(t, "comment.user.login is null", err)
+	assert.EqualError(t, err, "comment.user.login is null")
 
 	testComment = deepcopy.Copy(comment).(github.IssueCommentEvent)
 	testComment.Comment.User = nil
 	_, err = subject.Convert(&testComment)
-	ErrEquals(t, "comment.user.login is null", err)
+	assert.EqualError(t, err, "comment.user.login is null")
 
 	testComment = deepcopy.Copy(comment).(github.IssueCommentEvent)
 	testComment.Comment.User.Login = nil
 	_, err = subject.Convert(&testComment)
-	ErrEquals(t, "comment.user.login is null", err)
+	assert.EqualError(t, err, "comment.user.login is null")
 
 	testComment = deepcopy.Copy(comment).(github.IssueCommentEvent)
 	testComment.Issue = nil
 	_, err = subject.Convert(&testComment)
-	ErrEquals(t, "issue.number is null", err)
+	assert.EqualError(t, err, "issue.number is null")
 }
 
 func TestRunCommentCommand_GithubPullError(t *testing.T) {
 	// setup
-	comment, _, _, repoConverter := setup(t)
+	comment, _, _, pullConverter := setup(t)
 	githubPullGetter := MockPullGetter{
 		pull: nil,
 		err:  errors.New("err"),
@@ -135,18 +137,18 @@ func TestRunCommentCommand_GithubPullError(t *testing.T) {
 
 	// act
 	subject := CommentEventConverter{
-		RepoConverter: repoConverter,
+		PullConverter: pullConverter,
 		PullGetter:    githubPullGetter,
 	}
 	_, err := subject.Convert(&comment)
 
 	// assert
-	ErrContains(t, "getting pull from github", err)
+	assert.EqualError(t, err, "getting pull from github: err")
 }
 
 func TestRunCommentCommand_GithubPullParseError(t *testing.T) {
 	// setup
-	comment, _, _, repoConverter := setup(t)
+	comment, _, _, pullConverter := setup(t)
 	githubPullGetter := MockPullGetter{
 		pull: &github.PullRequest{},
 		err:  nil,
@@ -154,11 +156,11 @@ func TestRunCommentCommand_GithubPullParseError(t *testing.T) {
 
 	// act
 	subject := CommentEventConverter{
-		RepoConverter: repoConverter,
+		PullConverter: pullConverter,
 		PullGetter:    githubPullGetter,
 	}
 	_, err := subject.Convert(&comment)
 
 	// assert
-	ErrContains(t, "converting pull request type", err)
+	assert.EqualError(t, err, "converting pull request type: head.sha is null")
 }
