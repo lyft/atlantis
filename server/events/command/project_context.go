@@ -38,11 +38,13 @@ func NewProjectContext(
 	pullStatus models.PullReqStatus,
 ) ProjectContext {
 	var projectPlanStatus models.ProjectPlanStatus
+	var policyChecksApproved bool
 
 	if ctx.PullStatus != nil {
 		for _, project := range ctx.PullStatus.Projects {
 			if project.ProjectName == projCfg.Name {
 				projectPlanStatus = project.Status
+				policyChecksApproved = project.PolicyChecksApproved
 				break
 			}
 		}
@@ -62,6 +64,7 @@ func NewProjectContext(
 		Log:                       ctx.Log,
 		Scope:                     scope,
 		ProjectPlanStatus:         projectPlanStatus,
+		PolicyChecksApproved:      policyChecksApproved,
 		Pull:                      ctx.Pull,
 		ProjectName:               projCfg.Name,
 		ApplyRequirements:         projCfg.ApplyRequirements,
@@ -116,6 +119,8 @@ type ProjectContext struct {
 	PullReqStatus models.PullReqStatus
 	// CurrentProjectPlanStatus is the status of the current project prior to this command.
 	ProjectPlanStatus models.ProjectPlanStatus
+	// PolicyChecksApproved is true when project has passed all policy checks.
+	PolicyChecksApproved bool
 	// Pull is the pull request we're responding to.
 	Pull models.PullRequest
 	// ProjectName is the name of the project set in atlantis.yaml. If there was

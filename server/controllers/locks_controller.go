@@ -137,7 +137,7 @@ func (l *LocksController) DeleteLock(w http.ResponseWriter, r *http.Request) {
 				l.Logger.Errorf("unable to delete workspace: %s", err)
 			}
 		}
-		if err := l.DB.UpdateProjectStatus(lock.Pull, lock.Workspace, lock.Project.Path, models.DiscardedPlanStatus); err != nil {
+		if err := l.DB.UpdateProjectStatus(lock.Pull, lock.Workspace, lock.Project.Path, models.DiscardedPlanStatus, false); err != nil {
 			l.Logger.Errorf("unable to update project status: %s", err)
 		}
 

@@ -526,6 +526,85 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 	}
 }
 
+func TestGitHubWorkflowWithPolicyCheckAfterApply(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	// Ensure we have >= TF 0.14 locally.
+	ensureRunning014(t)
+	// Ensure we have >= Conftest 0.21 locally.
+	ensureRunningConftest(t)
+	t.Run("approve policies after failed mergeable apply", func(t *testing.T) {
+		t.Parallel()
+		repoDir := "policy-checks-mergeability"
+
+		// reset userConfig
+		userConfig := &server.UserConfig{}
+		userConfig.EnablePolicyChecksFlag = true
+		userConfig.RequireMergeable = true
+
+		ghClient := &testGithubClient{ExpectedModifiedFiles: []string{"main.tf"}}
+
+		headSHA, ctrl, _ := setupE2E(t, repoDir, userConfig, ghClient)
+
+		// Setup test dependencies.
+		w := httptest.NewRecorder()
+
+		ghClient.ExpectedPull = GitHubPullRequestParsed(headSHA)
+		ghClient.ExpectedApprovalStatus = models.ApprovalStatus{IsApproved: true}
+		mergeableState := "false"
+		ghClient.ExpectedPull.MergeableState = &mergeableState
+
+		// First, send the open pull request event which triggers autoplan.
+		pullOpenedReq := GitHubPullRequestOpenedEvent(t, headSHA)
+		ctrl.Post(w, pullOpenedReq)
+		ResponseContains(t, w, 200, "Processing...")
+
+		// Now send initial comments while PR not mergeable.
+		initialComments := []string{
+			"atlantis approve_policies",
+			"atlantis apply",
+		}
+		for _, comment := range initialComments {
+			commentReq := GitHubCommentEvent(t, comment)
+			w = httptest.NewRecorder()
+			ctrl.Post(w, commentReq)
+			ResponseContains(t, w, 200, "Processing...")
+		}
+
+		// Mark PR as mergeable
+		mergeableState = "clean"
+
+		// Now attempt to run atlantis apply
+		commentReq := GitHubCommentEvent(t, "atlantis apply")
+		w = httptest.NewRecorder()
+		ctrl.Post(w, commentReq)
+		ResponseContains(t, w, 200, "Processing...")
+
+		// Send the "pull closed" event which would be triggered by the
+		// a manual merge.
+		pullClosedReq := GitHubPullRequestClosedEvent(t)
+		w = httptest.NewRecorder()
+		ctrl.Post(w, pullClosedReq)
+		ResponseContains(t, w, 200, "Processing...")
+
+		// Verify
+		expReplies := []string{
+			"exp-output-autoplan.txt",
+			"exp-output-auto-policy-check.txt",
+			"exp-output-approve-policies.txt",
+			"exp-output-apply-failed-mergeable.txt",
+			"exp-output-apply.txt",
+			"exp-output-merge.txt",
+		}
+		actReplies := ghClient.CapturedComments
+		Assert(t, len(expReplies) == len(actReplies), "missing expected replies, got %d but expected %d", len(actReplies), len(expReplies))
+		for i, expReply := range expReplies {
+			assertCommentEquals(t, []string{expReply}, actReplies[i], repoDir, false)
+		}
+	})
+}
+
 func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
@@ -692,7 +771,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	globalCfgArgs := valid.GlobalCfgArgs{
 		AllowRepoCfg: true,
-		MergeableReq: false,
+		MergeableReq: userConfig.RequireMergeable,
 		ApprovedReq:  false,
 		PreWorkflowHooks: []*valid.PreWorkflowHook{
 			{

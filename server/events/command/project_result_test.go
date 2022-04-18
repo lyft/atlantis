@@ -53,6 +53,65 @@ func TestProjectResult_IsSuccessful(t *testing.T) {
 	}
 }
 
+func TestProjectResult_PoliciesApproved(t *testing.T) {
+	cases := map[string]struct {
+		pr                 command.ProjectResult
+		previouslyApproved bool
+		exp                bool
+	}{
+		"successful policy check, not previously approved": {
+			command.ProjectResult{
+				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
+			},
+			false,
+			true,
+		},
+		"successful policy check, previously approved": {
+			command.ProjectResult{
+				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
+			},
+			true,
+			true,
+		},
+		"unsuccessful policy check, not previously approved": {
+			command.ProjectResult{
+				Error: errors.New("error"),
+			},
+			false,
+			false,
+		},
+		"unsuccessful policy check, previously approved": {
+			command.ProjectResult{
+				Failure: "failure",
+			},
+			true,
+			true,
+		},
+		"malformed policy check result, not previously approved": {
+			command.ProjectResult{
+				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
+				Error:              errors.New("error"),
+			},
+			false,
+			false,
+		},
+		"malformed policy check result, previously approved": {
+			command.ProjectResult{
+				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
+				Failure:            "failure",
+			},
+			true,
+			false,
+		},
+	}
+
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			Equals(t, c.exp, c.pr.PoliciesApproved(c.previouslyApproved))
+		})
+	}
+}
+
 func TestProjectResult_PlanStatus(t *testing.T) {
 	cases := []struct {
 		p         command.ProjectResult

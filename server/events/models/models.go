@@ -422,9 +422,10 @@ func (p PullStatus) StatusCount(status ProjectPlanStatus) int {
 
 // ProjectStatus is the status of a specific project.
 type ProjectStatus struct {
-	Workspace   string
-	RepoRelDir  string
-	ProjectName string
+	Workspace            string
+	RepoRelDir           string
+	ProjectName          string
+	PolicyChecksApproved bool
 	// Status is the status of where this project is at in the planning cycle.
 	Status ProjectPlanStatus
 }

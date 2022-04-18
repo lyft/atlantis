@@ -359,6 +359,7 @@ func (b *BoltDB) UpdatePullWithResults(pull models.PullRequest, newResults []com
 						res.ProjectName == proj.ProjectName {
 
 						proj.Status = res.PlanStatus()
+						proj.PolicyChecksApproved = res.PoliciesApproved(proj.PolicyChecksApproved)
 						updatedExisting = true
 						break
 					}
@@ -409,7 +410,7 @@ func (b *BoltDB) DeletePullStatus(pull models.PullRequest) error {
 }
 
 // UpdateProjectStatus updates project status.
-func (b *BoltDB) UpdateProjectStatus(pull models.PullRequest, workspace string, repoRelDir string, newStatus models.ProjectPlanStatus) error {
+func (b *BoltDB) UpdateProjectStatus(pull models.PullRequest, workspace string, repoRelDir string, newStatus models.ProjectPlanStatus, policyChecksApproved bool) error {
 	key, err := b.pullKey(pull)
 	if err != nil {
 		return err
@@ -432,6 +433,7 @@ func (b *BoltDB) UpdateProjectStatus(pull models.PullRequest, workspace string, 
 			proj := &currStatus.Projects[i]
 			if proj.Workspace == workspace && proj.RepoRelDir == repoRelDir {
 				proj.Status = newStatus
+				proj.PolicyChecksApproved = policyChecksApproved
 				break
 			}
 		}
@@ -485,9 +487,10 @@ func (b *BoltDB) writePullToBucket(bucket *bolt.Bucket, key []byte, pull models.
 
 func (b *BoltDB) projectResultToProject(p command.ProjectResult) models.ProjectStatus {
 	return models.ProjectStatus{
-		Workspace:   p.Workspace,
-		RepoRelDir:  p.RepoRelDir,
-		ProjectName: p.ProjectName,
-		Status:      p.PlanStatus(),
+		Workspace:            p.Workspace,
+		RepoRelDir:           p.RepoRelDir,
+		ProjectName:          p.ProjectName,
+		Status:               p.PlanStatus(),
+		PolicyChecksApproved: p.PoliciesApproved(false),
 	}
 }

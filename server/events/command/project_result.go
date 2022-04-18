@@ -63,3 +63,11 @@ func (p ProjectResult) PlanStatus() models.ProjectPlanStatus {
 func (p ProjectResult) IsSuccessful() bool {
 	return p.PlanSuccess != nil || p.PolicyCheckSuccess != nil || p.ApplySuccess != ""
 }
+
+func (p ProjectResult) PoliciesApproved(projectPoliciesPreviouslyApproved bool) bool {
+	// If we are dealing with a new policy check result (success policy returns non-nil PolicyCheckSuccess field)
+	if p.PolicyCheckSuccess != nil {
+		return p.Error == nil && p.Failure == ""
+	}
+	return projectPoliciesPreviouslyApproved
+}
