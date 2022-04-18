@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/core/config/raw"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -23,6 +23,7 @@ import (
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
 	"github.com/runatlantis/atlantis/server/core/config"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/locking"
 	"github.com/runatlantis/atlantis/server/core/runtime"
@@ -560,7 +561,6 @@ func TestGitHubWorkflowWithPolicyCheckAfterApply(t *testing.T) {
 		// reset userConfig
 		userConfig := &server.UserConfig{}
 		userConfig.EnablePolicyChecks = true
-		//userConfig.RequireMergeable = true
 
 		ghClient := &testGithubClient{ExpectedModifiedFiles: []string{"main.tf"}}
 
@@ -787,13 +787,15 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	defaultTFVersion := terraformClient.DefaultVersion()
 	locker := events.NewDefaultWorkingDirLocker()
 	parser := &config.ParserValidator{}
+
 	globalCfg := valid.NewGlobalCfg()
+
 	if userConfig.EnablePlatformMode {
 		globalCfg = globalCfg.EnablePlatformMode()
 	}
-	//if mergeableRequired {
-	//	globalCfg.Repos[0].ApplyRequirements = append(globalCfg.Repos[0].ApplyRequirements, raw.MergeableApplyRequirement)
-	//}
+	if mergeableRequired {
+		globalCfg.Repos[0].ApplyRequirements = append(globalCfg.Repos[0].ApplyRequirements, raw.MergeableApplyRequirement)
+	}
 
 	expCfgPath := filepath.Join(absRepoPath(t, repoFixtureDir), "repos.yaml")
 	if _, err := os.Stat(expCfgPath); err == nil {
