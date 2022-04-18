@@ -61,46 +61,60 @@ func TestProjectResult_PoliciesApproved(t *testing.T) {
 	}{
 		"successful policy check, not previously approved": {
 			command.ProjectResult{
-				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
+				Command: command.PolicyCheck,
 			},
 			false,
 			true,
 		},
 		"successful policy check, previously approved": {
 			command.ProjectResult{
-				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
+				Command: command.ApprovePolicies,
 			},
 			true,
 			true,
 		},
 		"unsuccessful policy check, not previously approved": {
 			command.ProjectResult{
-				Error: errors.New("error"),
+				Command: command.PolicyCheck,
+				Error:   errors.New("error"),
 			},
 			false,
 			false,
 		},
 		"unsuccessful policy check, previously approved": {
 			command.ProjectResult{
+				Command: command.ApprovePolicies,
 				Failure: "failure",
 			},
 			true,
-			true,
+			false,
 		},
-		"malformed policy check result, not previously approved": {
+		"non policy check result, not previously approved": {
 			command.ProjectResult{
-				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
-				Error:              errors.New("error"),
+				Command: command.Apply,
 			},
 			false,
 			false,
 		},
-		"malformed policy check result, previously approved": {
+		"non policy check result, previously approved": {
 			command.ProjectResult{
-				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
-				Failure:            "failure",
+				Command: command.Apply,
 			},
 			true,
+			true,
+		},
+		"plan result, previously approved": {
+			command.ProjectResult{
+				Command: command.Plan,
+			},
+			true,
+			false,
+		},
+		"plan result, not previously approved": {
+			command.ProjectResult{
+				Command: command.Plan,
+			},
+			false,
 			false,
 		},
 	}

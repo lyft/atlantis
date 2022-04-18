@@ -66,8 +66,12 @@ func (p ProjectResult) IsSuccessful() bool {
 
 func (p ProjectResult) PoliciesApproved(projectPoliciesPreviouslyApproved bool) bool {
 	// If we are dealing with a new policy check result (success policy returns non-nil PolicyCheckSuccess field)
-	if p.PolicyCheckSuccess != nil {
+	switch p.Command {
+	case PolicyCheck, ApprovePolicies:
 		return p.Error == nil && p.Failure == ""
+	// though policy checks always follow a plan, set this now in case there was an issue completing the policy check
+	case Plan:
+		return false
 	}
 	return projectPoliciesPreviouslyApproved
 }
