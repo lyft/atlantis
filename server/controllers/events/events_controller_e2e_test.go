@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +23,6 @@ import (
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
 	"github.com/runatlantis/atlantis/server/core/config"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/locking"
 	"github.com/runatlantis/atlantis/server/core/runtime"
@@ -48,7 +48,7 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
-const ConftestVersion = "0.25.0"
+const ConftestVersion = "0.30.0"
 const githubHeader = "X-Github-Event"
 
 type NoopTFDownloader struct{}
@@ -65,7 +65,7 @@ type LocalConftestCache struct {
 }
 
 func (m *LocalConftestCache) Get(key *version.Version) (string, error) {
-	return exec.LookPath(fmt.Sprintf("conftest%s", ConftestVersion))
+	return exec.LookPath(fmt.Sprintf("conftest"))
 }
 
 func TestGitHubWorkflow(t *testing.T) {
@@ -337,7 +337,7 @@ func TestGitHubWorkflow(t *testing.T) {
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
-			headSHA, ctrl, applyLocker := setupE2E(t, c.RepoDir, userConfig, ghClient)
+			headSHA, ctrl, applyLocker := setupE2E(t, c.RepoDir, userConfig, ghClient, false)
 
 			// Set expected pull from github
 			ghClient.ExpectedPull = GitHubPullRequestParsed(headSHA)
@@ -503,11 +503,11 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 
 			// reset userConfig
 			userConfig := &server.UserConfig{}
-			userConfig.EnablePolicyChecksFlag = true
+			userConfig.EnablePolicyChecks = true
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
-			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient)
+			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient, false)
 
 			// Setup test dependencies.
 			w := httptest.NewRecorder()
@@ -559,12 +559,12 @@ func TestGitHubWorkflowWithPolicyCheckAfterApply(t *testing.T) {
 
 		// reset userConfig
 		userConfig := &server.UserConfig{}
-		userConfig.EnablePolicyChecksFlag = true
-		userConfig.RequireMergeable = true
+		userConfig.EnablePolicyChecks = true
+		//userConfig.RequireMergeable = true
 
 		ghClient := &testGithubClient{ExpectedModifiedFiles: []string{"main.tf"}}
 
-		headSHA, ctrl, _ := setupE2E(t, repoDir, userConfig, ghClient)
+		headSHA, ctrl, _ := setupE2E(t, repoDir, userConfig, ghClient, true)
 
 		// Setup test dependencies.
 		w := httptest.NewRecorder()
@@ -684,11 +684,11 @@ func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 			// reset userConfig
 			userConfig := &server.UserConfig{}
 			userConfig.EnablePlatformMode = true
-			userConfig.EnablePolicyChecksFlag = true
+			userConfig.EnablePolicyChecks = true
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
-			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient)
+			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient, false)
 
 			ghClient.ExpectedPull = GitHubPullRequestParsed(headSHA)
 			ghClient.ExpectedApprovalStatus = models.ApprovalStatus{IsApproved: true}
@@ -723,7 +723,7 @@ func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 	}
 }
 
-func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig, ghClient vcs.IGithubClient) (string, events_controllers.VCSEventsController, locking.ApplyLocker) {
+func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig, ghClient vcs.IGithubClient, mergeableRequired bool) (string, events_controllers.VCSEventsController, locking.ApplyLocker) {
 	// env vars
 	// need this to be set or we'll fail the policy check step
 	os.Setenv(policy.DefaultConftestVersionEnvKey, "0.25.0")
@@ -787,23 +787,20 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	defaultTFVersion := terraformClient.DefaultVersion()
 	locker := events.NewDefaultWorkingDirLocker()
 	parser := &config.ParserValidator{}
-
-	globalCfgArgs := valid.GlobalCfgArgs{
-		AllowRepoCfg: true,
-		MergeableReq: userConfig.RequireMergeable,
-		ApprovedReq:  false,
-		PreWorkflowHooks: []*valid.PreWorkflowHook{
-			{
-				StepName:   "global_hook",
-				RunCommand: "echo 'hello world'",
-			},
-		},
-		PolicyCheckEnabled: userConfig.EnablePolicyChecksFlag,
+	globalCfg := valid.NewGlobalCfg()
+	if userConfig.EnablePlatformMode {
+		globalCfg = globalCfg.EnablePlatformMode()
 	}
-	globalCfg := valid.NewGlobalCfgFromArgs(globalCfgArgs)
+	//if mergeableRequired {
+	//	globalCfg.Repos[0].ApplyRequirements = append(globalCfg.Repos[0].ApplyRequirements, raw.MergeableApplyRequirement)
+	//}
+
 	expCfgPath := filepath.Join(absRepoPath(t, repoFixtureDir), "repos.yaml")
 	if _, err := os.Stat(expCfgPath); err == nil {
 		globalCfg, err = parser.ParseGlobalCfg(expCfgPath, globalCfg)
+		Ok(t, err)
+	} else {
+		globalCfg, err = parser.ParseGlobalCfgJSON(`{"repos": [{"id":"/.*/", "allow_custom_workflows": true, "allowed_overrides": ["workflow"], "pre_workflow_hooks":[{"run": "echo 'hello world'"}]}]}`, globalCfg)
 		Ok(t, err)
 	}
 	drainer := &events.Drainer{}
@@ -830,8 +827,8 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 			WithInstrumentation(statsScope)
 	}
 
-	if userConfig.EnablePolicyChecksFlag {
-		projectContextBuilder = projectContextBuilder.WithPolicyChecks(commentParser)
+	if userConfig.EnablePolicyChecks {
+		projectContextBuilder = projectContextBuilder.EnablePolicyChecks(commentParser)
 	}
 
 	projectCommandBuilder := events.NewProjectCommandBuilder(
@@ -843,7 +840,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		locker,
 		globalCfg,
 		&events.DefaultPendingPlanFinder{},
-		false,
 		false,
 		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
 		logger,
@@ -1015,9 +1011,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	}
 	staleCommandChecker := &testStaleCommandChecker{}
 	commandRunner := &events.DefaultCommandRunner{
-		EventParser:                   eventParser,
 		VCSClient:                     vcsClient,
-		GithubPullGetter:              ghClient,
 		GlobalCfg:                     globalCfg,
 		StatsScope:                    statsScope,
 		CommentCommandRunnerByCmd:     commentCommandRunnerByCmd,
@@ -1089,6 +1083,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 				false,
 				repoConverter,
 				pullConverter,
+				ghClient,
 			),
 		},
 	}
@@ -1307,7 +1302,7 @@ func mkSubDirs(t *testing.T) (string, string, string) {
 
 // Will fail test if conftest isn't in path and isn't version >= 0.25.0
 func ensureRunningConftest(t *testing.T) {
-	localPath, err := exec.LookPath(fmt.Sprintf("conftest%s", ConftestVersion))
+	localPath, err := exec.LookPath(fmt.Sprintf("conftest"))
 	if err != nil {
 		t.Logf("conftest >= %s must be installed to run this test", ConftestVersion)
 		t.FailNow()
