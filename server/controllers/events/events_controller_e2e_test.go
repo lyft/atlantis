@@ -476,6 +476,25 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 				{"exp-output-merge.txt"},
 			},
 		},
+		{
+			Description:   "subsequent plan/policies fail regardless of initial policy approval",
+			RepoDir:       "policy-checks-mergeability",
+			ModifiedFiles: []string{"main.tf"},
+			Comments: []string{
+				"atlantis approve_policies",
+				"atlantis plan",
+				"atlantis apply",
+			},
+			ExpReplies: [][]string{
+				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-approve-policies.txt"},
+				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-apply-failed.txt"},
+				{"exp-output-merge.txt"},
+			},
+		},
 	}
 
 	for _, c := range cases {
