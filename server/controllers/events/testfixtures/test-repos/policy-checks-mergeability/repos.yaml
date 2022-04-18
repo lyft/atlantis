@@ -1,3 +1,6 @@
+repos:
+  - id: /.*/
+    apply_requirements: [mergeable]
 policies:
   owners:
     users:
