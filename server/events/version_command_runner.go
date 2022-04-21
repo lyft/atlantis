@@ -5,7 +5,7 @@ import (
 )
 
 func NewVersionCommandRunner(
-	pullUpdater *PullUpdater,
+	pullUpdater PullUpdater,
 	prjCmdBuilder ProjectVersionCommandBuilder,
 	prjCmdRunner ProjectVersionCommandRunner,
 	parallelPoolSize int,
@@ -19,7 +19,7 @@ func NewVersionCommandRunner(
 }
 
 type VersionCommandRunner struct {
-	pullUpdater      *PullUpdater
+	pullUpdater      PullUpdater
 	prjCmdBuilder    ProjectVersionCommandBuilder
 	prjCmdRunner     ProjectVersionCommandRunner
 	parallelPoolSize int

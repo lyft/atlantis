@@ -6,14 +6,23 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
 
-type PullUpdater struct {
+type PullUpdater interface {
+	UpdatePull(ctx *command.Context, cmd PullCommand, res command.Result)
+}
+
+// Used when using github checks to write operation output
+type NoopPullUpdater struct{}
+
+func (n *NoopPullUpdater) UpdatePull(ctx *command.Context, cmd PullCommand, res command.Result) {}
+
+type DefaultPullUpdater struct {
 	HidePrevPlanComments bool
 	VCSClient            vcs.Client
 	MarkdownRenderer     *MarkdownRenderer
 	GlobalCfg            valid.GlobalCfg
 }
 
-func (c *PullUpdater) UpdatePull(ctx *command.Context, cmd PullCommand, res command.Result) {
+func (c *DefaultPullUpdater) UpdatePull(ctx *command.Context, cmd PullCommand, res command.Result) {
 	// Log if we got any errors or failures.
 	if res.Error != nil {
 		ctx.Log.Errorf(res.Error.Error())

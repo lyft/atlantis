@@ -34,12 +34,14 @@ func (d *projectCommand) WithSync(
 // WithJobs adds streaming capabilities to terraform output. With it end user
 // can see their terraform command's execution in real time.
 func (d *projectCommand) WithJobs(
-	projectJobUrl events.JobURLSetter,
+	projectJobUrlGenerator events.ProjectJobURLGenerator,
+	projectStatusUpdater events.CommitStatusUpdater,
 	projectJobCloser events.JobCloser,
 ) *projectCommand {
-	d.ProjectCommandRunner = &events.ProjectOutputWrapper{
+	d.ProjectCommandRunner = &events.JobsEnabledProjectCommandRunner{
 		ProjectCommandRunner: d.ProjectCommandRunner,
-		JobURLSetter:         projectJobUrl,
+		JobUrlGenerator:      projectJobUrlGenerator,
+		StatusUpdater:        projectStatusUpdater,
 		JobCloser:            projectJobCloser,
 	}
 	return d

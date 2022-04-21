@@ -87,7 +87,7 @@ func (c *GithubCheckStatusUpdater) UpdateStatus(ctx context.Context, request typ
 	// If checkRunId is nil, it is a new check run
 	// If not nil, we update the existing check run
 
-	return "", nil
+	return "1234", nil
 }
 
 // GithubClient is used to perform GitHub actions.

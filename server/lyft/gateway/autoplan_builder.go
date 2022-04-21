@@ -25,7 +25,7 @@ type AutoplanValidator struct {
 	GlobalCfg                     valid.GlobalCfg
 	CommitStatusUpdater           events.CommitStatusUpdater
 	PrjCmdBuilder                 events.ProjectPlanCommandBuilder
-	PullUpdater                   *events.PullUpdater
+	PullUpdater                   events.PullUpdater
 	WorkingDir                    events.WorkingDir
 	WorkingDirLocker              events.WorkingDirLocker
 }

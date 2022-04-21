@@ -16,7 +16,7 @@ func NewPlanCommandRunner(
 	projectCommandBuilder ProjectPlanCommandBuilder,
 	projectCommandRunner ProjectPlanCommandRunner,
 	dbUpdater *DBUpdater,
-	pullUpdater *PullUpdater,
+	pullUpdater PullUpdater,
 	policyCheckCommandRunner *PolicyCheckCommandRunner,
 	parallelPoolSize int,
 ) *PlanCommandRunner {
@@ -42,7 +42,7 @@ type PlanCommandRunner struct {
 	prjCmdBuilder            ProjectPlanCommandBuilder
 	prjCmdRunner             ProjectPlanCommandRunner
 	dbUpdater                *DBUpdater
-	pullUpdater              *PullUpdater
+	pullUpdater              PullUpdater
 	policyCheckCommandRunner *PolicyCheckCommandRunner
 	parallelPoolSize         int
 }

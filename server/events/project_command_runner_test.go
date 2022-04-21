@@ -264,7 +264,7 @@ func TestProjectOutputWrapper(t *testing.T) {
 			mockJobCloser := mocks.NewMockJobCloser()
 			mockProjectCommandRunner := mocks.NewMockProjectCommandRunner()
 
-			runner := &events.ProjectOutputWrapper{
+			runner := &events.JobsEnabledProjectCommandRunner{
 				JobURLSetter:         mockJobURLSetter,
 				JobCloser:            mockJobCloser,
 				ProjectCommandRunner: mockProjectCommandRunner,

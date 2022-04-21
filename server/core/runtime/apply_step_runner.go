@@ -128,7 +128,7 @@ func (a *ApplyStepRunner) runRemoteApply(
 
 	// updateStatusF will update the commit status and log any error.
 	updateStatusF := func(status models.CommitStatus, url string) {
-		if _, err := a.CommitStatusUpdater.UpdateProject(ctx, prjCtx, command.Apply, status, url); err != nil {
+		if _, err := a.CommitStatusUpdater.UpdateProject(ctx, prjCtx, command.Apply, status, url, ""); err != nil {
 			prjCtx.Log.Errorf("unable to update status: %s", err)
 		}
 	}

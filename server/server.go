@@ -95,6 +95,9 @@ const (
 	// terraformPluginCacheDir is the name of the dir inside our data dir
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
+
+	// TODO: Replace with server flag
+	UseCheckRun = false
 )
 
 // Server runs the Atlantis web server.
@@ -240,7 +243,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 		// TODO: Add server flags and feature flags
 		var err error
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker, false)
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker, UseCheckRun)
 		if err != nil {
 			return nil, err
 		}
@@ -334,7 +337,34 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing webhooks")
 	}
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
-	commitStatusUpdater := &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
+
+	markdownRenderer := &events.MarkdownRenderer{
+		GitlabSupportsCommonMark: gitlabClient.SupportsCommonMark(),
+		DisableApplyAll:          userConfig.DisableApplyAll,
+		DisableMarkdownFolding:   userConfig.DisableMarkdownFolding,
+		DisableApply:             userConfig.DisableApply,
+		EnableDiffMarkdownFormat: userConfig.EnableDiffMarkdownFormat,
+	}
+
+	var commitStatusUpdater events.CommitStatusUpdater
+	var pullUpdater events.PullUpdater
+
+	if !UseCheckRun {
+		// Default approach
+		pullUpdater = &events.DefaultPullUpdater{
+			HidePrevPlanComments: userConfig.HidePrevPlanComments,
+			VCSClient:            vcsClient,
+			MarkdownRenderer:     markdownRenderer,
+			GlobalCfg:            globalCfg,
+		}
+		commitStatusUpdater = &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
+	} else {
+		// No need to write to pull when using check run (Github Status check for github)
+		pullUpdater = &events.NoopPullUpdater{}
+
+		// ChecksStatusUpdater updates the checks with the pull
+		commitStatusUpdater = &command.ChecksStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
+	}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
 
@@ -408,13 +438,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform")
-	}
-	markdownRenderer := &events.MarkdownRenderer{
-		GitlabSupportsCommonMark: gitlabClient.SupportsCommonMark(),
-		DisableApplyAll:          userConfig.DisableApplyAll,
-		DisableMarkdownFolding:   userConfig.DisableMarkdownFolding,
-		DisableApply:             userConfig.DisableApply,
-		EnableDiffMarkdownFormat: userConfig.EnableDiffMarkdownFormat,
 	}
 
 	boltdb, err := db.New(userConfig.DataDir)
@@ -621,13 +644,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB: boltdb,
 	}
 
-	pullUpdater := &events.PullUpdater{
-		HidePrevPlanComments: userConfig.HidePrevPlanComments,
-		VCSClient:            vcsClient,
-		MarkdownRenderer:     markdownRenderer,
-		GlobalCfg:            globalCfg,
-	}
-
 	session, err := aws.NewSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing new aws session")
@@ -666,7 +682,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WithAuditing(snsWriter).
 		WithInstrumentation().
 		WithJobs(
-			jobs.NewJobURLSetter(router, commitStatusUpdater),
+			router,
+			commitStatusUpdater,
 			projectCmdOutputHandler,
 		)
 
@@ -683,7 +700,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WithAuditing(snsWriter).
 		WithInstrumentation().
 		WithJobs(
-			jobs.NewJobURLSetter(router, commitStatusUpdater),
+			router,
+			commitStatusUpdater,
 			projectCmdOutputHandler,
 		)
 
