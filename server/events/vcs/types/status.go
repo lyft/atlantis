@@ -11,4 +11,13 @@ type UpdateStatusRequest struct {
 	StatusName  string
 	Description string
 	DetailsURL  string
+
+	// Job Output
+	Output JobOutput
+}
+
+type JobOutput struct {
+	Title   string
+	Summary string
+	Text    string
 }

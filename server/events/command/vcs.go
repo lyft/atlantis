@@ -18,48 +18,52 @@ type VCSStatusUpdater struct {
 }
 
 func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer) error {
-	src := d.TitleBuilder.Build(cmdName.String())
-	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
+	// src := d.TitleBuilder.Build(cmdName.String())
+	// descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
 
-	request := types.UpdateStatusRequest{
-		Repo:        repo,
-		PullNum:     pull.Num,
-		Ref:         pull.HeadCommit,
-		StatusName:  src,
-		State:       status,
-		Description: descrip,
-		DetailsURL:  "",
-	}
-	return d.Client.UpdateStatus(ctx, request)
+	// request := types.UpdateStatusRequest{
+	// 	Repo:        repo,
+	// 	PullNum:     pull.Num,
+	// 	Ref:         pull.HeadCommit,
+	// 	StatusName:  src,
+	// 	State:       status,
+	// 	Description: descrip,
+	// 	DetailsURL:  "",
+	// }
+	// _, err := d.Client.UpdateStatus(ctx, request, "")
+	// return err
+	return nil
 }
 
 func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, numSuccess int, numTotal int) error {
-	src := d.TitleBuilder.Build(cmdName.String())
-	cmdVerb := "unknown"
+	// src := d.TitleBuilder.Build(cmdName.String())
+	// cmdVerb := "unknown"
 
-	switch cmdName {
-	case Plan:
-		cmdVerb = "planned"
-	case PolicyCheck:
-		cmdVerb = "policies checked"
-	case Apply:
-		cmdVerb = "applied"
-	}
+	// switch cmdName {
+	// case Plan:
+	// 	cmdVerb = "planned"
+	// case PolicyCheck:
+	// 	cmdVerb = "policies checked"
+	// case Apply:
+	// 	cmdVerb = "applied"
+	// }
 
-	request := types.UpdateStatusRequest{
-		Repo:        repo,
-		PullNum:     pull.Num,
-		Ref:         pull.HeadCommit,
-		StatusName:  src,
-		State:       status,
-		Description: fmt.Sprintf("%d/%d projects %s successfully.", numSuccess, numTotal, cmdVerb),
-		DetailsURL:  "",
-	}
+	// request := types.UpdateStatusRequest{
+	// 	Repo:        repo,
+	// 	PullNum:     pull.Num,
+	// 	Ref:         pull.HeadCommit,
+	// 	StatusName:  src,
+	// 	State:       status,
+	// 	Description: fmt.Sprintf("%d/%d projects %s successfully.", numSuccess, numTotal, cmdVerb),
+	// 	DetailsURL:  "",
+	// }
 
-	return d.Client.UpdateStatus(ctx, request)
+	// _, err := d.Client.UpdateStatus(ctx, request, "")
+	// return err
+	return nil
 }
 
-func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string) error {
+func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string) (string, error) {
 	projectID := projectCtx.ProjectName
 	if projectID == "" {
 		projectID = fmt.Sprintf("%s/%s", projectCtx.RepoRelDir, projectCtx.Workspace)
@@ -79,7 +83,7 @@ func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx Project
 		DetailsURL:  url,
 	}
 
-	return d.Client.UpdateStatus(ctx, request)
+	return d.Client.UpdateStatus(ctx, request, projectCtx.CheckRunId)
 }
 
 func (d *VCSStatusUpdater) statusDescription(status models.CommitStatus) string {

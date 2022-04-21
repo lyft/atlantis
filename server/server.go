@@ -238,8 +238,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			githubAppEnabled = true
 		}
 
+		// TODO: Add server flags and feature flags
 		var err error
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker)
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker, false)
 		if err != nil {
 			return nil, err
 		}
