@@ -27,7 +27,6 @@ func (cb *StatusCheckCommandContextBuilder) BuildProjectContext(
 	)
 
 	for _, cmd := range cmds {
-		// TODO: Log error
 		statusID, _ := cb.CommitStatusUpdater.CreateProjectStatus(context.TODO(), cmd, cmdName, models.PendingCommitStatus)
 		cmd.StatusID = statusID
 	}

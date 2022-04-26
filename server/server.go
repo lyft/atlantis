@@ -97,7 +97,7 @@ const (
 	TerraformPluginCacheDirName = "plugin-cache"
 
 	// TODO: Replace with server flag
-	UseChecksApi = true
+	ChecksEnabled = true
 )
 
 // Server runs the Atlantis web server.
@@ -339,10 +339,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	var commitStatusUpdater events.CommitStatusUpdater
 	commitStatusUpdater = &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
-	if UseChecksApi {
+	if ChecksEnabled {
+		cm := commitStatusUpdater.(*command.VCSStatusUpdater)
 		commitStatusUpdater = &command.ChecksEnabledVCSStatusUpdater{
-			Client:       vcsClient,
-			TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName},
+			VCSStatusUpdater: *cm,
+			Client:           vcsClient,
+			TitleBuilder:     vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName},
 		}
 	}
 

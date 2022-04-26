@@ -116,7 +116,8 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 
-	// Create a in_progress status check for this operation and build the CmdContext with the statusID
+	// Create a pending status check for the plan and build the CmdContext with the statusID
+	// Note: We set the pending status in the here instead of in the Plan Command runner
 	statusID, err := c.CommitStatusUpdater.CreateCommandStatus(ctx, pull, headRepo, command.Plan, models.PendingCommitStatus)
 	if err != nil {
 		c.Logger.ErrorContext(ctx, err.Error())
@@ -186,8 +187,9 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 		c.Logger.ErrorContext(ctx, err.Error())
 	}
 
-	// Create a in_progress status check for this operation
-	statusID, err := c.CommitStatusUpdater.CreateCommandStatus(ctx, pull, headRepo, cmd.Name, models.PendingCommitStatus)
+	// Create a pending status check for the command and build the CmdContext with the statusID
+	// Note: We set the pending status in the here instead of in the Plan, Apply, and Policy Check Command runner
+	statusID, err := c.CommitStatusUpdater.CreateCommandStatus(ctx, pull, headRepo, cmd.CommandName(), models.PendingCommitStatus)
 	if err != nil {
 		c.Logger.ErrorContext(ctx, err.Error())
 	}

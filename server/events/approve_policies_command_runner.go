@@ -33,12 +33,7 @@ type ApprovePoliciesCommandRunner struct {
 }
 
 func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
-	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
-
-	if err := a.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.PendingCommitStatus, command.PolicyCheck, ctx.StatusID); err != nil {
-		ctx.Log.Warnf("unable to update commit status: %s", err)
-	}
 
 	projectCmds, err := a.prjCmdBuilder.BuildApprovePoliciesCommands(ctx, cmd)
 	if err != nil {
