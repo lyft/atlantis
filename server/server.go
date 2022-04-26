@@ -337,6 +337,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
 
 	var commitStatusUpdater events.CommitStatusUpdater
+	commitStatusUpdater = &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
 	if UseChecksApi {
 		commitStatusUpdater = &command.ChecksEnabledVCSStatusUpdater{
 			Client:       vcsClient,

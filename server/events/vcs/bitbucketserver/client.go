@@ -215,7 +215,7 @@ func (b *Client) PullIsMergeable(repo models.Repo, pull models.PullRequest) (boo
 }
 
 // UpdateStatus updates the status of a commit.
-func (b *Client) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
+func (b *Client) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
 	bbState := "FAILED"
 
 	switch request.State {
@@ -243,10 +243,10 @@ func (b *Client) UpdateStatus(ctx context.Context, request types.UpdateStatusReq
 
 	path := fmt.Sprintf("%s/rest/build-status/1.0/commits/%s", b.BaseURL, request.Ref)
 	if err != nil {
-		return "", errors.Wrap(err, "json encoding")
+		return errors.Wrap(err, "json encoding")
 	}
 	_, err = b.makeRequest("POST", path, bytes.NewBuffer(bodyBytes))
-	return "", err
+	return err
 }
 
 // MarkdownPullLink specifies the character used in a pull request comment.
@@ -302,4 +302,8 @@ func (b *Client) SupportsSingleFileDownload(repo models.Repo) bool {
 // if BaseRepo had one repo config file, its content will placed on the second return value
 func (b *Client) DownloadRepoConfigFile(pull models.PullRequest) (bool, []byte, error) {
 	return false, []byte{}, fmt.Errorf("not implemented")
+}
+
+func (g *Client) CreateStatus(ctx context.Context, request types.CreateStatusRequest) (string, error) {
+	return "", errors.New("not implemented")
 }

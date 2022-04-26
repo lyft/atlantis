@@ -37,8 +37,7 @@ type Client interface {
 	// change across runs.
 	// url is an optional link that users should click on for more information
 	// about this status.
-	// Returns a statusID if the
-	UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error)
+	UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error
 	MarkdownPullLink(pull models.PullRequest) (string, error)
 
 	// DownloadRepoConfigFile return `atlantis.yaml` content from VCS (which support fetch a single file from repository)
@@ -46,4 +45,6 @@ type Client interface {
 	// if BaseRepo had one repo config file, its content will placed on the second return value
 	DownloadRepoConfigFile(pull models.PullRequest) (bool, []byte, error)
 	SupportsSingleFileDownload(repo models.Repo) bool
+
+	CreateStatus(ctx context.Context, request types.CreateStatusRequest) (string, error)
 }

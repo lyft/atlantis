@@ -16,6 +16,7 @@ package vcs
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 )
@@ -75,7 +76,7 @@ func (d *ClientProxy) PullIsMergeable(repo models.Repo, pull models.PullRequest)
 	return d.clients[repo.VCSHost.Type].PullIsMergeable(repo, pull)
 }
 
-func (d *ClientProxy) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
+func (d *ClientProxy) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
 	return d.clients[request.Repo.VCSHost.Type].UpdateStatus(ctx, request)
 }
 
@@ -89,4 +90,8 @@ func (d *ClientProxy) DownloadRepoConfigFile(pull models.PullRequest) (bool, []b
 
 func (d *ClientProxy) SupportsSingleFileDownload(repo models.Repo) bool {
 	return d.clients[repo.VCSHost.Type].SupportsSingleFileDownload(repo)
+}
+
+func (g *ClientProxy) CreateStatus(ctx context.Context, request types.CreateStatusRequest) (string, error) {
+	return "", errors.New("not implemented")
 }

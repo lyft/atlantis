@@ -10,22 +10,10 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 )
 
-// ChecksEnabledVCSStatusUpdater has custom implementation for CreateProjectStatus and CreateCommandStatus that creates a status check and returns a statusID which can be used to update the status
 type ChecksEnabledVCSStatusUpdater struct {
+	VCSStatusUpdater
 	Client       vcs.Client
 	TitleBuilder vcs.StatusTitleBuilder
-}
-
-func (d *ChecksEnabledVCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, statusID string) error {
-	return updateCombined(ctx, repo, pull, status, cmdName, d.Client, d.TitleBuilder, statusID)
-}
-
-func (d *ChecksEnabledVCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, numSuccess int, numTotal int, statusID string) error {
-	return updateCombinedCount(ctx, repo, pull, status, cmdName, d.Client, d.TitleBuilder, numSuccess, numTotal, statusID)
-}
-
-func (d *ChecksEnabledVCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string) error {
-	return updateProject(ctx, projectCtx, cmdName, status, d.Client, d.TitleBuilder, url)
 }
 
 func (d *ChecksEnabledVCSStatusUpdater) CreateProjectStatus(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus) (string, error) {
@@ -37,7 +25,7 @@ func (d *ChecksEnabledVCSStatusUpdater) CreateProjectStatus(ctx context.Context,
 		ProjectName: projectID,
 	})
 
-	request := types.UpdateStatusRequest{
+	request := types.CreateStatusRequest{
 		Repo:       projectCtx.BaseRepo,
 		PullNum:    projectCtx.Pull.Num,
 		Ref:        projectCtx.Pull.HeadCommit,
@@ -45,11 +33,11 @@ func (d *ChecksEnabledVCSStatusUpdater) CreateProjectStatus(ctx context.Context,
 		State:      status,
 	}
 
-	return d.Client.UpdateStatus(ctx, request)
+	return d.Client.CreateStatus(ctx, request)
 }
 
 func (d *ChecksEnabledVCSStatusUpdater) CreateCommandStatus(ctx context.Context, pull models.PullRequest, repo models.Repo, cmdName fmt.Stringer, status models.CommitStatus) (string, error) {
-	request := types.UpdateStatusRequest{
+	request := types.CreateStatusRequest{
 		Repo:       repo,
 		PullNum:    pull.Num,
 		Ref:        pull.HeadCommit,
@@ -57,7 +45,7 @@ func (d *ChecksEnabledVCSStatusUpdater) CreateCommandStatus(ctx context.Context,
 		State:      status,
 	}
 
-	return d.Client.UpdateStatus(ctx, request)
+	return d.Client.CreateStatus(ctx, request)
 }
 
 // VCSStatusUpdater updates the status of a commit with the VCS host. We set
@@ -68,54 +56,24 @@ type VCSStatusUpdater struct {
 }
 
 func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, statusID string) error {
-	return updateCombined(ctx, repo, pull, status, cmdName, d.Client, d.TitleBuilder, statusID)
+	src := d.TitleBuilder.Build(cmdName.String())
+	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
+
+	request := types.UpdateStatusRequest{
+		Repo:        repo,
+		PullNum:     pull.Num,
+		Ref:         pull.HeadCommit,
+		StatusName:  src,
+		State:       status,
+		Description: descrip,
+		DetailsURL:  "",
+		StatusId:    statusID,
+	}
+	return d.Client.UpdateStatus(ctx, request)
 }
 
 func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, numSuccess int, numTotal int, statusID string) error {
-	return updateCombinedCount(ctx, repo, pull, status, cmdName, d.Client, d.TitleBuilder, numSuccess, numTotal, statusID)
-}
-
-func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string) error {
-	return updateProject(ctx, projectCtx, cmdName, status, d.Client, d.TitleBuilder, url)
-}
-
-// VCSStatusUpdater relays this call to UpdateProject since statusID is not generated
-func (d *VCSStatusUpdater) CreateProjectStatus(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus) (string, error) {
-	err := d.UpdateProject(ctx, projectCtx, cmdName, status, "")
-	return "", err
-}
-
-// VCSStatusUpdater relays this call to UpdateCombined since statusID is not generated
-func (d *VCSStatusUpdater) CreateCommandStatus(ctx context.Context, pull models.PullRequest, repo models.Repo, cmdName fmt.Stringer, status models.CommitStatus) (string, error) {
-	err := d.UpdateCombined(ctx, repo, pull, status, cmdName, "")
-	return "", err
-}
-
-func updateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, client vcs.Client, titleBuilder vcs.StatusTitleBuilder, url string) error {
-	projectID := projectCtx.ProjectName
-	if projectID == "" {
-		projectID = fmt.Sprintf("%s/%s", projectCtx.RepoRelDir, projectCtx.Workspace)
-	}
-	statusName := titleBuilder.Build(cmdName.String(), vcs.StatusTitleOptions{
-		ProjectName: projectID,
-	})
-
-	description := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), statusDescription(status))
-	request := types.UpdateStatusRequest{
-		Repo:        projectCtx.BaseRepo,
-		PullNum:     projectCtx.Pull.Num,
-		Ref:         projectCtx.Pull.HeadCommit,
-		StatusName:  statusName,
-		State:       status,
-		Description: description,
-		DetailsURL:  url,
-	}
-	_, err := client.UpdateStatus(ctx, request)
-	return err
-}
-
-func updateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, client vcs.Client, titleBuilder vcs.StatusTitleBuilder, numSuccess int, numTotal int, statusID string) error {
-	src := titleBuilder.Build(cmdName.String())
+	src := d.TitleBuilder.Build(cmdName.String())
 	cmdVerb := "unknown"
 
 	switch cmdName {
@@ -135,29 +93,49 @@ func updateCombinedCount(ctx context.Context, repo models.Repo, pull models.Pull
 		State:       status,
 		Description: fmt.Sprintf("%d/%d projects %s successfully.", numSuccess, numTotal, cmdVerb),
 		DetailsURL:  "",
+		StatusId:    statusID,
 	}
-	_, err := client.UpdateStatus(ctx, request)
-	return err
+
+	return d.Client.UpdateStatus(ctx, request)
 }
 
-func updateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, client vcs.Client, titleBuilder vcs.StatusTitleBuilder, statusID string) error {
-	src := titleBuilder.Build(cmdName.String())
-	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), statusDescription(status))
+func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string) error {
+	projectID := projectCtx.ProjectName
+	if projectID == "" {
+		projectID = fmt.Sprintf("%s/%s", projectCtx.RepoRelDir, projectCtx.Workspace)
+	}
+	statusName := d.TitleBuilder.Build(cmdName.String(), vcs.StatusTitleOptions{
+		ProjectName: projectID,
+	})
 
+	description := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
 	request := types.UpdateStatusRequest{
-		Repo:        repo,
-		PullNum:     pull.Num,
-		Ref:         pull.HeadCommit,
-		StatusName:  src,
+		Repo:        projectCtx.BaseRepo,
+		PullNum:     projectCtx.Pull.Num,
+		Ref:         projectCtx.Pull.HeadCommit,
+		StatusName:  statusName,
 		State:       status,
-		Description: descrip,
-		DetailsURL:  "",
+		Description: description,
+		DetailsURL:  url,
+		StatusId:    projectCtx.StatusID,
 	}
-	_, err := client.UpdateStatus(ctx, request)
-	return err
+
+	return d.Client.UpdateStatus(ctx, request)
 }
 
-func statusDescription(status models.CommitStatus) string {
+// VCSStatusUpdater relays this call to UpdateProject since statusID is not generated
+func (d *VCSStatusUpdater) CreateProjectStatus(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus) (string, error) {
+	err := d.UpdateProject(ctx, projectCtx, cmdName, status, "")
+	return "", err
+}
+
+// VCSStatusUpdater relays this call to UpdateCombined since statusID is not generated
+func (d *VCSStatusUpdater) CreateCommandStatus(ctx context.Context, pull models.PullRequest, repo models.Repo, cmdName fmt.Stringer, status models.CommitStatus) (string, error) {
+	err := d.UpdateCombined(ctx, repo, pull, status, cmdName, "")
+	return "", err
+}
+
+func (d *VCSStatusUpdater) statusDescription(status models.CommitStatus) string {
 	var description string
 	switch status {
 	case models.PendingCommitStatus:

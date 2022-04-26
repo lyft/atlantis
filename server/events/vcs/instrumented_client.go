@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/google/go-github/v31/github"
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
@@ -289,7 +290,7 @@ func (c *InstrumentedClient) PullIsMergeable(repo models.Repo, pull models.PullR
 	return mergeable, err
 }
 
-func (c *InstrumentedClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
+func (c *InstrumentedClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
 	scope := c.StatsScope.SubScope("update_status")
 
 	executionTime := scope.Timer(metrics.ExecutionTimeMetric).Start()
@@ -298,9 +299,9 @@ func (c *InstrumentedClient) UpdateStatus(ctx context.Context, request types.Upd
 	executionSuccess := scope.Counter(metrics.ExecutionSuccessMetric)
 	executionError := scope.Counter(metrics.ExecutionErrorMetric)
 
-	if statusId, err := c.Client.UpdateStatus(ctx, request); err != nil {
+	if err := c.Client.UpdateStatus(ctx, request); err != nil {
 		executionError.Inc(1)
-		return statusId, err
+		return err
 	}
 
 	//TODO: thread context and use related logging methods.
@@ -315,6 +316,9 @@ func (c *InstrumentedClient) UpdateStatus(ctx context.Context, request types.Upd
 	})
 
 	executionSuccess.Inc(1)
-	return "", nil
+	return nil
+}
 
+func (c *InstrumentedClient) CreateStatus(ctx context.Context, request types.CreateStatusRequest) (string, error) {
+	return "", errors.New("not implemented")
 }

@@ -232,7 +232,7 @@ func (g *GitlabClient) PullIsMergeable(repo models.Repo, pull models.PullRequest
 }
 
 // UpdateStatus updates the build status of a commit.
-func (g *GitlabClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
+func (g *GitlabClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
 	gitlabState := gitlab.Failed
 	switch request.State {
 	case models.PendingCommitStatus:
@@ -248,7 +248,7 @@ func (g *GitlabClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 		Description: gitlab.String(request.Description),
 		TargetURL:   &request.DetailsURL,
 	})
-	return "", err
+	return err
 }
 
 func (g *GitlabClient) GetMergeRequest(repoFullName string, pullNum int) (*gitlab.MergeRequest, error) {
@@ -346,4 +346,8 @@ func (g *GitlabClient) DownloadRepoConfigFile(pull models.PullRequest) (bool, []
 
 func (g *GitlabClient) SupportsSingleFileDownload(repo models.Repo) bool {
 	return true
+}
+
+func (g *GitlabClient) CreateStatus(ctx context.Context, request types.CreateStatusRequest) (string, error) {
+	return "", errors.New("not implemented")
 }
