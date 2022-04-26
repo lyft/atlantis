@@ -17,9 +17,8 @@ type UpdateStatusRequest struct {
 type CreateStatusRequest struct {
 	Repo models.Repo
 	// if not present, should be -1
-	PullNum     int
-	Ref         string
-	State       models.CommitStatus
-	StatusName  string
-	Description string
+	PullNum    int
+	Ref        string
+	State      models.CommitStatus
+	StatusName string
 }

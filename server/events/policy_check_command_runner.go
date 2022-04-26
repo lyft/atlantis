@@ -44,11 +44,6 @@ func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []command.Proj
 		return
 	}
 
-	// So set policy_check commit status to pending
-	if err := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, command.PolicyCheck, ctx.StatusID); err != nil {
-		ctx.Log.Warnf("unable to update commit status: %s", err)
-	}
-
 	var result command.Result
 	if p.isParallelEnabled(cmds) {
 		ctx.Log.Infof("Running policy_checks in parallel")

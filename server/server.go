@@ -96,6 +96,7 @@ const (
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
 
+	// TODO: Replace with server flag
 	UseChecksApi = true
 )
 
@@ -343,8 +344,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			Client:       vcsClient,
 			TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName},
 		}
-	} else {
-		commitStatusUpdater = &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
 	}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
@@ -525,16 +524,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	projectContextBuilder := wrappers.
 		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
+		EnableStatusChecks(commitStatusUpdater).
 		WithInstrumentation(statsScope)
 
 	prProjectContextBuilder := wrappers.
 		WrapProjectContext(events.NewPRProjectCommandContextBuilder(commentParser)).
+		EnableStatusChecks(commitStatusUpdater).
 		WithInstrumentation(statsScope)
-
-	if UseChecksApi {
-		projectContextBuilder = projectContextBuilder.EnableStatusChecks(commitStatusUpdater)
-		prProjectContextBuilder = prProjectContextBuilder.EnableStatusChecks(commitStatusUpdater)
-	}
 
 	if userConfig.EnablePolicyChecks {
 		projectContextBuilder = projectContextBuilder.EnablePolicyChecks(commentParser)

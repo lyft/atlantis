@@ -50,7 +50,6 @@ func (r *AutoplanValidator) isValid(logger logging.SimpleLogging, baseRepo model
 
 	// Create a in_progress status check for this operation
 	statusID, err := r.CommitStatusUpdater.CreateCommandStatus(context.TODO(), pull, headRepo, command.Plan, models.PendingCommitStatus)
-	// TODO: Log error properly
 
 	ctx := &command.Context{
 		User:     user,

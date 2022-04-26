@@ -187,7 +187,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 	}
 
 	// Create a in_progress status check for this operation
-	statusID, err := c.CommitStatusUpdater.CreateCommandStatus(ctx, pull, headRepo, command.Plan, models.PendingCommitStatus)
+	statusID, err := c.CommitStatusUpdater.CreateCommandStatus(ctx, pull, headRepo, cmd.Name, models.PendingCommitStatus)
 	if err != nil {
 		c.Logger.ErrorContext(ctx, err.Error())
 	}

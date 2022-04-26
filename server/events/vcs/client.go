@@ -46,5 +46,6 @@ type Client interface {
 	DownloadRepoConfigFile(pull models.PullRequest) (bool, []byte, error)
 	SupportsSingleFileDownload(repo models.Repo) bool
 
+	// Used to create status check
 	CreateStatus(ctx context.Context, request types.CreateStatusRequest) (string, error)
 }

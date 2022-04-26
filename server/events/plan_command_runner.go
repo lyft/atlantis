@@ -80,11 +80,6 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 		return
 	}
 
-	// At this point we are sure Atlantis has work to do, so set commit status to pending
-	if err := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, command.Plan, ctx.StatusID); err != nil {
-		ctx.Log.Warnf("unable to update commit status: %s", err)
-	}
-
 	// Only run commands in parallel if enabled
 	var result command.Result
 	if p.isParallelEnabled(projectCmds) {
