@@ -174,7 +174,3 @@ func (m *MockCSU) UpdateCombined(ctx context.Context, repo models.Repo, pull mod
 func (m *MockCSU) UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string) error {
 	return nil
 }
-
-func (m *MockCSU) CreateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.CommitStatus) (string, error) {
-	return "", nil
-}

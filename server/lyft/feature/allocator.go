@@ -64,24 +64,23 @@ type PercentageBasedAllocator struct {
 func NewGHSourcedAllocator(repoConfig RepoConfig, githubClient vcs.IGithubClient, logger logging.SimpleLogging) (Allocator, error) {
 
 	// default to local config if no github client is provided.
-	// if githubClient == nil {
-	// 	logger.Warnf("no github client provided, defaulting to local config for feature allocation.")
-	// 	return NoopAllocator{}, nil
-	// }
+	if githubClient == nil {
+		logger.Warnf("no github client provided, defaulting to local config for feature allocation.")
+		return NoopAllocator{}, nil
+	}
 
-	// err := ffclient.Init(
-	// 	ffclient.Config{
-	// 		Context:   context.Background(),
-	// 		Retriever: &CustomGithubRetriever{client: githubClient, cfg: repoConfig},
-	// 	},
-	// )
+	err := ffclient.Init(
+		ffclient.Config{
+			Context:   context.Background(),
+			Retriever: &CustomGithubRetriever{client: githubClient, cfg: repoConfig},
+		},
+	)
 
-	// if err != nil {
-	// 	return nil, errors.Wrapf(err, "initializing feature allocator")
-	// }
+	if err != nil {
+		return nil, errors.Wrapf(err, "initializing feature allocator")
+	}
 
-	// return &PercentageBasedAllocator{logger: logger}, err
-	return NoopAllocator{}, nil
+	return &PercentageBasedAllocator{logger: logger}, err
 
 }
 
@@ -125,5 +124,5 @@ func (r *PercentageBasedAllocator) ShouldAllocate(featureID Name, fullRepoName s
 type NoopAllocator struct{}
 
 func (r NoopAllocator) ShouldAllocate(featureID Name, fullRepoName string) (bool, error) {
-	return true, nil
+	return false, nil
 }
