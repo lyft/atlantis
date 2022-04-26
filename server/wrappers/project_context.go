@@ -34,3 +34,11 @@ func (p *projectContext) WithInstrumentation(scope tally.Scope) *projectContext 
 	}
 	return p
 }
+
+func (p *projectContext) EnableStatusChecks(commitStatusUpdater events.CommitStatusUpdater) *projectContext {
+	p.ProjectCommandContextBuilder = &events.StatusCheckCommandContextBuilder{
+		ProjectCommandContextBuilder: p.ProjectCommandContextBuilder,
+		CommitStatusUpdater:          commitStatusUpdater,
+	}
+	return p
+}

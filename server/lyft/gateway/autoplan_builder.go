@@ -48,6 +48,10 @@ func (r *AutoplanValidator) isValid(logger logging.SimpleLogging, baseRepo model
 	log := r.createLogger(logger, baseRepo.FullName, pull.Num)
 	defer r.logPanics(log)
 
+	// Create a in_progress status check for this operation
+	statusID, err := r.CommitStatusUpdater.CreateCommandStatus(context.TODO(), pull, headRepo, command.Plan, models.PendingCommitStatus)
+	// TODO: Log error properly
+
 	ctx := &command.Context{
 		User:     user,
 		Log:      log,
@@ -55,18 +59,19 @@ func (r *AutoplanValidator) isValid(logger logging.SimpleLogging, baseRepo model
 		Pull:     pull,
 		HeadRepo: headRepo,
 		Trigger:  command.AutoTrigger,
+		StatusID: statusID,
 	}
 	if !r.validateCtxAndComment(ctx) {
 		return false, errors.New("invalid command context")
 	}
-	err := r.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), ctx)
+	err = r.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), ctx)
 	if err != nil {
 		ctx.Log.Errorf("Error running pre-workflow hooks %s. Proceeding with %s command.", err, command.Plan)
 	}
 
 	projectCmds, err := r.PrjCmdBuilder.BuildAutoplanCommands(ctx)
 	if err != nil {
-		if statusErr := r.CommitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.FailedCommitStatus, command.Plan); statusErr != nil {
+		if statusErr := r.CommitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.FailedCommitStatus, command.Plan, ctx.StatusID); statusErr != nil {
 			ctx.Log.Warnf("unable to update commit status: %w", statusErr)
 		}
 		// If error happened after clone was made, we should clean it up here too
@@ -95,7 +100,7 @@ func (r *AutoplanValidator) isValid(logger logging.SimpleLogging, baseRepo model
 	if len(projectCmds) == 0 {
 		ctx.Log.Infof("no modified projects have been found")
 		for _, cmd := range []command.Name{command.Plan, command.Apply, command.PolicyCheck} {
-			if err := r.CommitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, cmd, 0, 0); err != nil {
+			if err := r.CommitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, cmd, 0, 0, ctx.StatusID); err != nil {
 				ctx.Log.Warnf("unable to update commit status: %s", err)
 			}
 		}

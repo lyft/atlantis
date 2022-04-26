@@ -95,6 +95,8 @@ const (
 	// terraformPluginCacheDir is the name of the dir inside our data dir
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
+
+	UseChecksApi = true
 )
 
 // Server runs the Atlantis web server.
@@ -333,7 +335,16 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing webhooks")
 	}
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
-	commitStatusUpdater := &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
+
+	var commitStatusUpdater events.CommitStatusUpdater
+	if UseChecksApi {
+		commitStatusUpdater = &command.ChecksEnabledVCSStatusUpdater{
+			Client:       vcsClient,
+			TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName},
+		}
+	} else {
+		commitStatusUpdater = &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName}}
+	}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
 
@@ -518,6 +529,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	prProjectContextBuilder := wrappers.
 		WrapProjectContext(events.NewPRProjectCommandContextBuilder(commentParser)).
 		WithInstrumentation(statsScope)
+
+	if UseChecksApi {
+		projectContextBuilder = projectContextBuilder.EnableStatusChecks(commitStatusUpdater)
+		prProjectContextBuilder = prProjectContextBuilder.EnableStatusChecks(commitStatusUpdater)
+	}
 
 	if userConfig.EnablePolicyChecks {
 		projectContextBuilder = projectContextBuilder.EnablePolicyChecks(commentParser)

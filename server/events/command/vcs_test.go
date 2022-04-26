@@ -74,7 +74,7 @@ func TestUpdateCombined(t *testing.T) {
 			s := command.VCSStatusUpdater{Client: client, TitleBuilder: titleBuilder}
 			ctx := context.Background()
 
-			err := s.UpdateCombined(ctx, models.Repo{}, models.PullRequest{}, c.status, c.command)
+			err := s.UpdateCombined(ctx, models.Repo{}, models.PullRequest{}, c.status, c.command, "")
 			Ok(t, err)
 
 			expSrc := fmt.Sprintf("atlantis/%s", c.command)
@@ -148,7 +148,7 @@ func TestUpdateCombinedCount(t *testing.T) {
 			titleBuilder := vcs.StatusTitleBuilder{TitlePrefix: "atlantis-test"}
 			s := command.VCSStatusUpdater{Client: client, TitleBuilder: titleBuilder}
 			ctx := context.Background()
-			err := s.UpdateCombinedCount(ctx, models.Repo{}, models.PullRequest{}, c.status, c.command, c.numSuccess, c.numTotal)
+			err := s.UpdateCombinedCount(ctx, models.Repo{}, models.PullRequest{}, c.status, c.command, c.numSuccess, c.numTotal, "")
 			Ok(t, err)
 
 			expSrc := fmt.Sprintf("%s/%s", titleBuilder.TitlePrefix, c.command)

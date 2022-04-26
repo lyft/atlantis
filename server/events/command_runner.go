@@ -116,6 +116,12 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 
+	// Create a in_progress status check for this operation and build the CmdContext with the statusID
+	statusID, err := c.CommitStatusUpdater.CreateCommandStatus(ctx, pull, headRepo, command.Plan, models.PendingCommitStatus)
+	if err != nil {
+		c.Logger.ErrorContext(ctx, err.Error())
+	}
+
 	cmdCtx := &command.Context{
 		User:             user,
 		Log:              c.buildLegacyLogger(ctx, c.LegacyLogger, baseRepo.FullName, pull.Num),
@@ -125,6 +131,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 		PullStatus:       status,
 		Trigger:          command.AutoTrigger,
 		TriggerTimestamp: timestamp,
+		StatusID:         statusID,
 	}
 	if !c.validateCtxAndComment(ctx, cmdCtx) {
 		return
@@ -139,7 +146,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 
 	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx, cmdCtx); err != nil {
 		c.Logger.ErrorContext(ctx, "Error running pre-workflow hooks", fields.PullRequestWithErr(pull, err))
-		c.CommitStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedCommitStatus, command.Plan)
+		c.CommitStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedCommitStatus, command.Plan, cmdCtx.StatusID)
 		return
 	}
 
@@ -179,6 +186,12 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 		c.Logger.ErrorContext(ctx, err.Error())
 	}
 
+	// Create a in_progress status check for this operation
+	statusID, err := c.CommitStatusUpdater.CreateCommandStatus(ctx, pull, headRepo, command.Plan, models.PendingCommitStatus)
+	if err != nil {
+		c.Logger.ErrorContext(ctx, err.Error())
+	}
+
 	cmdCtx := &command.Context{
 		User:             user,
 		Log:              c.buildLegacyLogger(ctx, c.LegacyLogger, baseRepo.FullName, pull.Num),
@@ -188,6 +201,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 		Trigger:          command.CommentTrigger,
 		Scope:            scope,
 		TriggerTimestamp: timestamp,
+		StatusID:         statusID,
 	}
 
 	if !c.validateCtxAndComment(ctx, cmdCtx) {
@@ -201,7 +215,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 
 	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx, cmdCtx); err != nil {
 		c.Logger.ErrorContext(ctx, "Error running pre-workflow hooks", fields.PullRequestWithErr(pull, err))
-		c.CommitStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedCommitStatus, cmd.Name)
+		c.CommitStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedCommitStatus, cmd.Name, cmdCtx.StatusID)
 		return
 	}
 

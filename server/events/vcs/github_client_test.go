@@ -377,7 +377,7 @@ func TestGithubClient_UpdateStatus(t *testing.T) {
 			Ok(t, err)
 			defer disableSSLVerification()()
 
-			err = client.UpdateStatus(context.TODO(), types.UpdateStatusRequest{
+			_, err = client.UpdateStatus(context.TODO(), types.UpdateStatusRequest{
 				Repo: models.Repo{
 					FullName:          "owner/repo",
 					Owner:             "owner",

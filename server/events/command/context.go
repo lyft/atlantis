@@ -42,4 +42,7 @@ type Context struct {
 
 	// Time Atlantis received VCS event, triggering command to be executed
 	TriggerTimestamp time.Time
+
+	// StatusID is used for status checks that require identifier for updates
+	StatusID string
 }

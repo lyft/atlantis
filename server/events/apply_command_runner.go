@@ -79,7 +79,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	if err = a.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.PendingCommitStatus, cmd.CommandName()); err != nil {
+	if err = a.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.PendingCommitStatus, cmd.CommandName(), ctx.StatusID); err != nil {
 		ctx.Log.Warnf("unable to update commit status: %s", err)
 	}
 
@@ -101,7 +101,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	projectCmds, err = a.prjCmdBuilder.BuildApplyCommands(ctx, cmd)
 
 	if err != nil {
-		if statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName()); statusErr != nil {
+		if statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName(), ctx.StatusID); statusErr != nil {
 			ctx.Log.Warnf("unable to update commit status: %s", statusErr)
 		}
 		a.pullUpdater.UpdatePull(ctx, cmd, command.Result{Error: err})
@@ -165,6 +165,7 @@ func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus
 		command.Apply,
 		numSuccess,
 		len(pullStatus.Projects),
+		ctx.StatusID,
 	); err != nil {
 		ctx.Log.Warnf("unable to update commit status: %s", err)
 	}

@@ -148,6 +148,9 @@ type ProjectContext struct {
 	PolicySets valid.PolicySets
 	// UUID for atlantis logs
 	JobID string
+
+	// Status ID for status type with ID
+	StatusID string
 }
 
 // ProjectCloneDir creates relative path to clone the repo to. If we are running
