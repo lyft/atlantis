@@ -118,7 +118,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 
 	cmdCtx := &command.Context{
 		User:             user,
-		Log:              c.buildLegacyLogger(ctx, c.LegacyLogger, baseRepo.FullName, pull.Num),
+		Log:              c.Logger,
 		Scope:            scope,
 		Pull:             pull,
 		HeadRepo:         headRepo,
@@ -181,7 +181,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 
 	cmdCtx := &command.Context{
 		User:             user,
-		Log:              c.buildLegacyLogger(ctx, c.LegacyLogger, baseRepo.FullName, pull.Num),
+		Log:              c.Logger,
 		Pull:             pull,
 		PullStatus:       status,
 		HeadRepo:         headRepo,
@@ -208,20 +208,6 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 	cmdRunner := buildCommentCommandRunner(c, cmd.CommandName())
 
 	cmdRunner.Run(cmdCtx, cmd)
-}
-
-func (c *DefaultCommandRunner) buildLegacyLogger(ctx context.Context, log logging.SimpleLogging, repoFullName string, pullNum int) logging.SimpleLogging {
-
-	args := []interface{}{
-		"repository", repoFullName,
-		"pull-num", strconv.Itoa(pullNum),
-	}
-	// remove this once we drop support for this legacy logger
-	if requestId, ok := ctx.Value(logging.RequestIDKey).(string); ok {
-		args = append(args, "gh-request-id", requestId)
-	}
-
-	return log.With(args...)
 }
 
 func newCtx(ctx context.Context, repoFullName string, pullNum int) context.Context {
