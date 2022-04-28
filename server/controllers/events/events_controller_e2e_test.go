@@ -921,7 +921,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		PullStatusFetcher:             boltdb,
 		StaleCommandChecker:           staleCommandChecker,
 		Logger:                        ctxLogger,
-		LegacyLogger:                  logger,
 	}
 
 	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")

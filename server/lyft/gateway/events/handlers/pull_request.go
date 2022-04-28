@@ -14,7 +14,6 @@ import (
 func NewAsynchronousAutoplannerWorkerProxy(
 	autoplanValidator EventValidator,
 	logger logging.Logger,
-	legacyLogger logging.SimpleLogging,
 	workerProxy *PullEventWorkerProxy,
 ) *AsyncAutoplannerWorkerProxy {
 	return &AsyncAutoplannerWorkerProxy{
@@ -22,7 +21,6 @@ func NewAsynchronousAutoplannerWorkerProxy(
 			autoplanValidator: autoplanValidator,
 			workerProxy:       workerProxy,
 			logger:            logger,
-			legacyLogger:      legacyLogger,
 		},
 		logger: logger,
 	}
@@ -56,7 +54,6 @@ type SynchronousAutoplannerWorkerProxy struct {
 	autoplanValidator EventValidator
 	workerProxy       *PullEventWorkerProxy
 	logger            logging.Logger
-	legacyLogger      logging.SimpleLogging
 }
 
 func (p *SynchronousAutoplannerWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event event.PullRequest) error {

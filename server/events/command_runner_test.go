@@ -173,7 +173,6 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		VCSClient:                     vcsClient,
 		CommentCommandRunnerByCmd:     commentCommandRunnerByCmd,
 		Logger:                        logging.NewNoopCtxLogger(t),
-		LegacyLogger:                  logging.NewNoopLogger(t),
 		GlobalCfg:                     globalCfg,
 		StatsScope:                    scope,
 		Drainer:                       drainer,
