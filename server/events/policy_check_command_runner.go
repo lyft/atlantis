@@ -51,7 +51,7 @@ func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []command.Proj
 
 	var result command.Result
 	if p.isParallelEnabled(cmds) {
-		ctx.Log.Info("Running policy_checks in parallel")
+		ctx.Log.InfoContext(ctx.RequestCtx, "Running policy_checks in parallel")
 		result = runProjectCmdsParallel(cmds, p.prjCmdRunner.PolicyCheck, p.parallelPoolSize)
 	} else {
 		result = runProjectCmds(cmds, p.prjCmdRunner.PolicyCheck)
@@ -61,7 +61,7 @@ func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []command.Proj
 
 	pullStatus, err := p.dbUpdater.updateDB(ctx, ctx.Pull, result.ProjectResults)
 	if err != nil {
-		ctx.Log.Error(fmt.Sprintf("writing results: %s", err))
+		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("writing results: %s", err))
 	}
 
 	p.updateCommitStatus(ctx, pullStatus)
@@ -80,7 +80,7 @@ func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *command.Context, pull
 	}
 
 	if err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, status, command.PolicyCheck, numSuccess, len(pullStatus.Projects)); err != nil {
-		ctx.Log.Warn(fmt.Sprintf("unable to update commit status: %s", err))
+		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
 }
 
