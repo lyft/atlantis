@@ -215,6 +215,7 @@ func (b *Client) PullIsMergeable(repo models.Repo, pull models.PullRequest) (boo
 }
 
 // UpdateStatus updates the status of a commit.
+// returns an empty statusId since bitbucketserver does not need the status id for later updates
 func (b *Client) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	bbState := "FAILED"
 

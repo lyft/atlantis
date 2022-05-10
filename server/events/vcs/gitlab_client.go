@@ -232,6 +232,7 @@ func (g *GitlabClient) PullIsMergeable(repo models.Repo, pull models.PullRequest
 }
 
 // UpdateStatus updates the build status of a commit.
+// returns an empty statusId since gitlab does not need the status id for later updates
 func (g *GitlabClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	gitlabState := gitlab.Failed
 	switch request.State {

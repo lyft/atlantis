@@ -229,6 +229,7 @@ func (g *AzureDevopsClient) GetPullRequest(repo models.Repo, num int) (*azuredev
 }
 
 // UpdateStatus updates the build status of a commit.
+// returns an empty statusId since azuredevopsclient does not need the status id for later updates
 func (g *AzureDevopsClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	adState := azuredevops.GitError.String()
 	switch request.State {
