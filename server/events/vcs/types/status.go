@@ -11,4 +11,8 @@ type UpdateStatusRequest struct {
 	StatusName  string
 	Description string
 	DetailsURL  string
+
+	// StatusId is an empty string if status checks with statusId is not supported
+	// Currently, only used by github client to suuport github checks
+	StatusId string
 }

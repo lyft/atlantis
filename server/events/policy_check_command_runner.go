@@ -32,19 +32,22 @@ type PolicyCheckCommandRunner struct {
 }
 
 func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []command.ProjectContext) {
+	var statusId string
+	var err error
+
 	if len(cmds) == 0 {
 		ctx.Log.Infof("no projects to run policy_check in")
 		// If there were no projects modified, we set successful commit statuses
 		// with 0/0 projects policy_checked successfully because some users require
 		// the Atlantis status to be passing for all pull requests.
-		if err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.SuccessCommitStatus, command.PolicyCheck, 0, 0); err != nil {
+		if _, err = p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.SuccessCommitStatus, command.PolicyCheck, statusId, 0, 0); err != nil {
 			ctx.Log.Warnf("unable to update commit status: %s", err)
 		}
 		return
 	}
 
 	// So set policy_check commit status to pending
-	if err := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, command.PolicyCheck); err != nil {
+	if statusId, err = p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, command.PolicyCheck, statusId); err != nil {
 		ctx.Log.Warnf("unable to update commit status: %s", err)
 	}
 
@@ -63,10 +66,10 @@ func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []command.Proj
 		ctx.Log.Errorf("writing results: %s", err)
 	}
 
-	p.updateCommitStatus(ctx, pullStatus)
+	p.updateCommitStatus(ctx, pullStatus, statusId)
 }
 
-func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus) {
+func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus, statusId string) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus
@@ -78,7 +81,7 @@ func (p *PolicyCheckCommandRunner) updateCommitStatus(ctx *command.Context, pull
 		status = models.FailedCommitStatus
 	}
 
-	if err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, status, command.PolicyCheck, numSuccess, len(pullStatus.Projects)); err != nil {
+	if _, err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, status, command.PolicyCheck, statusId, numSuccess, len(pullStatus.Projects)); err != nil {
 		ctx.Log.Warnf("unable to update commit status: %s", err)
 	}
 }

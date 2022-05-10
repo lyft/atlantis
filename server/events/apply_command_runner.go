@@ -50,6 +50,8 @@ type ApplyCommandRunner struct {
 
 func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	var err error
+	var statusId string
+
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
@@ -79,7 +81,8 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	if err = a.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.PendingCommitStatus, cmd.CommandName()); err != nil {
+	statusId, err = a.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.PendingCommitStatus, cmd.CommandName(), statusId)
+	if err != nil {
 		ctx.Log.Warnf("unable to update commit status: %s", err)
 	}
 
@@ -101,7 +104,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	projectCmds, err = a.prjCmdBuilder.BuildApplyCommands(ctx, cmd)
 
 	if err != nil {
-		if statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName()); statusErr != nil {
+		if _, statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName(), statusId); statusErr != nil {
 			ctx.Log.Warnf("unable to update commit status: %s", statusErr)
 		}
 		a.pullUpdater.UpdatePull(ctx, cmd, command.Result{Error: err})
@@ -128,7 +131,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	a.updateCommitStatus(ctx, pullStatus)
+	a.updateCommitStatus(ctx, pullStatus, statusId)
 }
 
 func (a *ApplyCommandRunner) IsLocked() (bool, error) {
@@ -141,7 +144,7 @@ func (a *ApplyCommandRunner) isParallelEnabled(projectCmds []command.ProjectCont
 	return len(projectCmds) > 0 && projectCmds[0].ParallelApplyEnabled
 }
 
-func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus) {
+func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus, statusId string) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus
@@ -157,12 +160,13 @@ func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus
 		status = models.PendingCommitStatus
 	}
 
-	if err := a.commitStatusUpdater.UpdateCombinedCount(
+	if _, err := a.commitStatusUpdater.UpdateCombinedCount(
 		context.TODO(),
 		ctx.Pull.BaseRepo,
 		ctx.Pull,
 		status,
 		command.Apply,
+		statusId,
 		numSuccess,
 		len(pullStatus.Projects),
 	); err != nil {

@@ -126,9 +126,11 @@ func (a *ApplyStepRunner) runRemoteApply(
 		return "", errors.Wrap(err, "reading planfile")
 	}
 
+	var statusId string
 	// updateStatusF will update the commit status and log any error.
 	updateStatusF := func(status models.CommitStatus, url string) {
-		if err := a.CommitStatusUpdater.UpdateProject(ctx, prjCtx, command.Apply, status, url); err != nil {
+		statusId, err = a.CommitStatusUpdater.UpdateProject(ctx, prjCtx, command.Apply, status, url, statusId)
+		if err != nil {
 			prjCtx.Log.Errorf("unable to update status: %s", err)
 		}
 	}

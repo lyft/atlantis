@@ -408,7 +408,7 @@ func (g *GithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest
 
 // UpdateStatus updates the status badge on the pull request.
 // See https://github.com/blog/1227-commit-status-api.
-func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
+func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	ghState := "error"
 	switch request.State {
 	case models.PendingCommitStatus:
@@ -425,8 +425,17 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 		Context:     github.String(request.StatusName),
 		TargetURL:   &request.DetailsURL,
 	}
-	_, _, err := g.client.Repositories.CreateStatus(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, status)
-	return err
+
+	if request.StatusId == "" {
+		_, _, err := g.client.Repositories.CreateStatus(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, status)
+		fmt.Printf("DEBUG: Creating status check: %v", status)
+		return "1", err
+	} else {
+		fmt.Printf("DEBUG: Updating status check for: %v", status)
+		_, _, err := g.client.Repositories.CreateStatus(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, status)
+		return request.StatusId, err
+	}
+
 }
 
 // MarkdownPullLink specifies the string used in a pull request comment to reference another pull request.

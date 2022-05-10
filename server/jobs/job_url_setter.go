@@ -20,7 +20,7 @@ type ProjectJobURLGenerator interface {
 type ProjectStatusUpdater interface {
 	// UpdateProject sets the commit status for the project represented by
 	// ctx.
-	UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string) error
+	UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string, statusId string) (string, error)
 }
 
 type JobURLSetter struct {
@@ -35,11 +35,11 @@ func NewJobURLSetter(projectJobURLGenerator ProjectJobURLGenerator, projectStatu
 	}
 }
 
-func (j *JobURLSetter) SetJobURLWithStatus(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus) error {
+func (j *JobURLSetter) SetJobURLWithStatus(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus, statusId string) (string, error) {
 	url, err := j.projectJobURLGenerator.GenerateProjectJobURL(ctx)
 
 	if err != nil {
-		return err
+		return statusId, err
 	}
-	return j.projectStatusUpdater.UpdateProject(context.TODO(), ctx, cmdName, status, url)
+	return j.projectStatusUpdater.UpdateProject(context.TODO(), ctx, cmdName, status, url, statusId)
 }

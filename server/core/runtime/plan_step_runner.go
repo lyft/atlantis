@@ -246,9 +246,12 @@ func (p *PlanStepRunner) runRemotePlan(
 	tfVersion *version.Version,
 	envs map[string]string) (string, error) {
 
+	var statusId string
+	var err error
 	// updateStatusF will update the commit status and log any error.
 	updateStatusF := func(status models.CommitStatus, url string) {
-		if err := p.CommitStatusUpdater.UpdateProject(ctx, prjCtx, command.Plan, status, url); err != nil {
+		statusId, err = p.CommitStatusUpdater.UpdateProject(ctx, prjCtx, command.Plan, status, url, statusId)
+		if err != nil {
 			prjCtx.Log.Errorf("unable to update status: %s", err)
 		}
 	}
@@ -258,7 +261,6 @@ func (p *PlanStepRunner) runRemotePlan(
 	var lines []string
 	nextLineIsRunURL := false
 	var runURL string
-	var err error
 
 	for line := range outCh {
 		if line.Err != nil {

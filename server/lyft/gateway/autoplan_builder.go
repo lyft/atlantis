@@ -66,7 +66,8 @@ func (r *AutoplanValidator) isValid(logger logging.SimpleLogging, baseRepo model
 
 	projectCmds, err := r.PrjCmdBuilder.BuildAutoplanCommands(ctx)
 	if err != nil {
-		if statusErr := r.CommitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.FailedCommitStatus, command.Plan); statusErr != nil {
+		// no need to persist status Id
+		if _, statusErr := r.CommitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.FailedCommitStatus, command.Plan, ""); statusErr != nil {
 			ctx.Log.Warnf("unable to update commit status: %w", statusErr)
 		}
 		// If error happened after clone was made, we should clean it up here too
@@ -95,7 +96,8 @@ func (r *AutoplanValidator) isValid(logger logging.SimpleLogging, baseRepo model
 	if len(projectCmds) == 0 {
 		ctx.Log.Infof("no modified projects have been found")
 		for _, cmd := range []command.Name{command.Plan, command.Apply, command.PolicyCheck} {
-			if err := r.CommitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, cmd, 0, 0); err != nil {
+			// no need to persist statsu id
+			if _, err := r.CommitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, cmd, "", 0, 0); err != nil {
 				ctx.Log.Warnf("unable to update commit status: %s", err)
 			}
 		}

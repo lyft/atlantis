@@ -17,7 +17,7 @@ type VCSStatusUpdater struct {
 	TitleBuilder vcs.StatusTitleBuilder
 }
 
-func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer) error {
+func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, statusId string) (string, error) {
 	src := d.TitleBuilder.Build(cmdName.String())
 	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
 
@@ -29,11 +29,12 @@ func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo,
 		State:       status,
 		Description: descrip,
 		DetailsURL:  "",
+		StatusId:    statusId,
 	}
 	return d.Client.UpdateStatus(ctx, request)
 }
 
-func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, numSuccess int, numTotal int) error {
+func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, statusId string, numSuccess int, numTotal int) (string, error) {
 	src := d.TitleBuilder.Build(cmdName.String())
 	cmdVerb := "unknown"
 
@@ -54,12 +55,13 @@ func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.
 		State:       status,
 		Description: fmt.Sprintf("%d/%d projects %s successfully.", numSuccess, numTotal, cmdVerb),
 		DetailsURL:  "",
+		StatusId:    statusId,
 	}
 
 	return d.Client.UpdateStatus(ctx, request)
 }
 
-func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string) error {
+func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string, statusId string) (string, error) {
 	projectID := projectCtx.ProjectName
 	if projectID == "" {
 		projectID = fmt.Sprintf("%s/%s", projectCtx.RepoRelDir, projectCtx.Workspace)
@@ -77,6 +79,7 @@ func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx Project
 		State:       status,
 		Description: description,
 		DetailsURL:  url,
+		StatusId:    statusId,
 	}
 
 	return d.Client.UpdateStatus(ctx, request)
