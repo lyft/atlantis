@@ -620,12 +620,18 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB: boltdb,
 	}
 
-	pullUpdater := &events.PullUpdater{
-		HidePrevPlanComments: userConfig.HidePrevPlanComments,
+	pullOutputUpdater := &events.PullOutputUpdater{
 		VCSClient:            vcsClient,
 		MarkdownRenderer:     markdownRenderer,
 		GlobalCfg:            globalCfg,
+		HidePrevPlanComments: userConfig.HidePrevPlanComments,
 	}
+
+	checksOutputUpdater := &events.ChecksOutputUpdater{
+		VCSClient: vcsClient,
+	}
+
+	outputUpdater := events.NewOutputUpdaterProxy(pullOutputUpdater, checksOutputUpdater, true)
 
 	session, err := aws.NewSession()
 	if err != nil {
@@ -693,7 +699,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
-		pullUpdater,
+		outputUpdater,
 		commitStatusUpdater,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -707,7 +713,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectCommandBuilder,
 		prjCmdRunner,
 		dbUpdater,
-		pullUpdater,
+		outputUpdater,
 		policyCheckCommandRunner,
 		userConfig.ParallelPoolSize,
 	)
@@ -719,7 +725,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		pullUpdater,
+		outputUpdater,
 		dbUpdater,
 		userConfig.ParallelPoolSize,
 		pullReqStatusFetcher,
@@ -729,7 +735,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		pullUpdater,
+		pullOutputUpdater,
 		dbUpdater,
 	)
 
@@ -738,8 +744,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 	)
 
+	// TODO: should we default version commands to pull comments or use proxy as other command runners
 	versionCommandRunner := events.NewVersionCommandRunner(
-		pullUpdater,
+		pullOutputUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -753,7 +760,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
 		dbUpdater,
-		pullUpdater,
+		outputUpdater,
 		policyCheckCommandRunner,
 		userConfig.ParallelPoolSize,
 	)
@@ -762,7 +769,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
-		pullUpdater,
+		pullOutputUpdater,
 		dbUpdater,
 	)
 
@@ -778,7 +785,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		featureAllocator,
 		userConfig.EnablePlatformMode,
 		logger,
-		apply.NewDisabledRunner(pullUpdater),
+		apply.NewDisabledRunner(outputUpdater),
 		applyCommandRunner,
 	)
 
@@ -916,7 +923,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GlobalCfg:                     globalCfg,
 		CommitStatusUpdater:           commitStatusUpdater,
 		PrjCmdBuilder:                 projectCommandBuilder,
-		PullUpdater:                   pullUpdater,
+		OutputUpdater:                 outputUpdater,
 		WorkingDir:                    workingDir,
 		WorkingDirLocker:              workingDirLocker,
 	}
