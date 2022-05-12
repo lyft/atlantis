@@ -96,7 +96,7 @@ func TestPlanUpdateCommitStatus(t *testing.T) {
 		expStatus     models.CommitStatus
 		expNumSuccess int
 		expNumTotal   int
-		statudId      string
+		statusId      string
 	}{
 		"single plan success": {
 			cmd: command.Plan,
@@ -141,7 +141,7 @@ func TestPlanUpdateCommitStatus(t *testing.T) {
 			cr := &PlanCommandRunner{
 				commitStatusUpdater: csu,
 			}
-			cr.updateCommitStatus(&command.Context{}, c.pullStatus, c.statudId)
+			cr.updateCommitStatus(&command.Context{}, c.pullStatus, c.statusId)
 			Equals(t, models.Repo{}, csu.CalledRepo)
 			Equals(t, models.PullRequest{}, csu.CalledPull)
 			Equals(t, c.expStatus, csu.CalledStatus)
