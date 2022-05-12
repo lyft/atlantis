@@ -18,7 +18,7 @@ func TestGithubClient_GetUser_AppSlug(t *testing.T) {
 	anonCreds := &vcs.GithubAnonymousCredentials{}
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
 
-	internalClient, err := vcs.NewGithubInternalClient(testServer, &vcs.GithubUserCredentials{"user", "pass"})
+	internalClient, err := vcs.NewGithubInternalClient(testServer, anonCreds)
 	assert.NoError(t, err)
 
 	anonClient, err := vcs.NewGithubClient(testServer, anonCreds, logging.NewNoopLogger(t), mergeabilityChecker, internalClient, &mockStatusUpdater{})

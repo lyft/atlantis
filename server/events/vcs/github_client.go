@@ -122,6 +122,7 @@ func NewGithubClient(hostname string, credentials GithubCredentials, logger logg
 	}, nil
 }
 
+// building internal client in its own constructor to inject StatusUpdater which uses this internal client
 func NewGithubInternalClient(hostName string, githubCredentials GithubCredentials) (*github.Client, error) {
 	transport, err := githubCredentials.Client()
 	if err != nil {

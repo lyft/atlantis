@@ -18,6 +18,7 @@ func NewVersionCommandRunner(
 	}
 }
 
+// TODO: Checks output updater or use PullOutputUpdater?
 type VersionCommandRunner struct {
 	pullUpdater      *PullOutputUpdater
 	prjCmdBuilder    ProjectVersionCommandBuilder

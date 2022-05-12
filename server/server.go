@@ -184,6 +184,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var bitbucketCloudClient *bitbucketcloud.Client
 	var bitbucketServerClient *bitbucketserver.Client
 	var azuredevopsClient *vcs.AzureDevopsClient
+	var ghStatusUpdater gh.StatusUpdater
 
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(userConfig.VCSStatusName)
 
@@ -261,20 +262,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
-		var statusUpdater gh.StatusUpdater
 		pullStatusUpdater := gh.PullStatusUpdater{Client: internalClient}
 		if EnableGithubChecks {
-			statusUpdater = &gh.FeatureAwareStatusUpdater{
+			ghStatusUpdater = &gh.FeatureAwareStatusUpdater{
 				Pull:             &pullStatusUpdater,
 				Check:            &gh.ChecksStatusUpdater{Client: internalClient},
 				Logger:           logger,
 				FeatureAllocator: featureAllocator,
 			}
 		} else {
-			statusUpdater = &pullStatusUpdater
+			ghStatusUpdater = &pullStatusUpdater
 		}
 
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker, internalClient, statusUpdater)
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker, internalClient, ghStatusUpdater)
 		if err != nil {
 			return nil, err
 		}
@@ -897,7 +897,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubHostname:      userConfig.GithubHostname,
 		GithubOrg:           userConfig.GithubOrg,
 		GithubStatusName:    userConfig.VCSStatusName,
-		EnableGithubChecks:  EnableGithubChecks,
+		StatusUpdater:       ghStatusUpdater,
 	}
 
 	scheduledExecutorService := scheduled.NewExecutorService(
