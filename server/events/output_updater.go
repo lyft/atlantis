@@ -7,6 +7,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
 // TODO: Move these new structs into it's own package
@@ -26,7 +28,7 @@ func (c *OutputUpdaterProxy) UpdateOutput(ctx *command.Context, cmd PullCommand,
 	c.outputUpdater[ctx.HeadRepo.VCSHost.Type].UpdateOutput(ctx, cmd, res)
 }
 
-func NewOutputUpdaterProxy(pullOutputUpdater OutputUpdater, checksOutputUpdater OutputUpdater, enableGithubChecks bool) OutputUpdater {
+func NewOutputUpdaterProxy(pullOutputUpdater OutputUpdater, checksOutputUpdater OutputUpdater, logger logging.Logger, featureAllocator feature.Allocator, enableGithubChecks bool) OutputUpdater {
 	// All vcs host have comment output updater configured by default.
 	ouputUpdater := map[models.VCSHostType]OutputUpdater{
 		models.Github:          pullOutputUpdater,
@@ -37,12 +39,38 @@ func NewOutputUpdaterProxy(pullOutputUpdater OutputUpdater, checksOutputUpdater 
 	}
 
 	if enableGithubChecks {
-		ouputUpdater[models.Github] = checksOutputUpdater
+		ouputUpdater[models.Github] = &FeatureAwareChecksOutputUpdater{
+			checks:           checksOutputUpdater,
+			pull:             pullOutputUpdater,
+			Logger:           logger,
+			featureAllocator: featureAllocator,
+		}
 	}
 
 	return &OutputUpdaterProxy{
 		outputUpdater: ouputUpdater,
 	}
+}
+
+// defaults to pull comments if checks is turned off
+type FeatureAwareChecksOutputUpdater struct {
+	checks           OutputUpdater
+	pull             OutputUpdater
+	featureAllocator feature.Allocator
+	Logger           logging.Logger
+}
+
+func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
+	shouldAllocate, err := c.featureAllocator.ShouldAllocate(feature.GithubChecks, "")
+	if err != nil {
+		c.Logger.Error(fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.LogPersistence, err))
+	}
+
+	if shouldAllocate {
+		c.checks.UpdateOutput(ctx, cmd, res)
+		return
+	}
+	c.pull.UpdateOutput(ctx, cmd, res)
 }
 
 // Used to support checks type output (Github checks for example)

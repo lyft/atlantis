@@ -74,6 +74,7 @@ import (
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
+	gh "github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
 )
@@ -95,6 +96,9 @@ const (
 	// terraformPluginCacheDir is the name of the dir inside our data dir
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
+
+	// TODO: Move to server flag
+	EnableGithubChecks = false
 )
 
 // Server runs the Atlantis web server.
@@ -209,6 +213,18 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrapf(err, "instantiating metrics scope")
 	}
 
+	featureAllocator, err := feature.NewGHSourcedAllocator(
+		feature.RepoConfig{
+			Owner:  userConfig.FFOwner,
+			Repo:   userConfig.FFRepo,
+			Branch: userConfig.FFBranch,
+			Path:   userConfig.FFPath,
+		}, githubClient, logger)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing feature allocator")
+	}
+
 	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
 		supportedVCSHosts = append(supportedVCSHosts, models.Github)
 		if userConfig.GithubUser != "" {
@@ -239,7 +255,26 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		}
 
 		var err error
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker)
+
+		// Extracting internal client creation into its own function to allow for injecting Status Updater
+		internalClient, err := vcs.NewGithubInternalClient(userConfig.GithubHostname, githubCredentials)
+		if err != nil {
+			return nil, err
+		}
+		var statusUpdater gh.StatusUpdater
+		pullStatusUpdater := gh.PullStatusUpdater{Client: internalClient}
+		if EnableGithubChecks {
+			statusUpdater = &gh.FeatureAwareStatusUpdater{
+				Pull:             &pullStatusUpdater,
+				Check:            &gh.ChecksStatusUpdater{Client: internalClient},
+				Logger:           logger,
+				FeatureAllocator: featureAllocator,
+			}
+		} else {
+			statusUpdater = &pullStatusUpdater
+		}
+
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker, internalClient, statusUpdater)
 		if err != nil {
 			return nil, err
 		}
@@ -345,18 +380,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	if err != nil {
 		return nil, err
-	}
-
-	featureAllocator, err := feature.NewGHSourcedAllocator(
-		feature.RepoConfig{
-			Owner:  userConfig.FFOwner,
-			Repo:   userConfig.FFRepo,
-			Branch: userConfig.FFBranch,
-			Path:   userConfig.FFPath,
-		}, githubClient, logger)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing feature allocator")
 	}
 
 	parsedURL, err := ParseAtlantisURL(userConfig.AtlantisURL)
@@ -631,7 +654,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		VCSClient: vcsClient,
 	}
 
-	outputUpdater := events.NewOutputUpdaterProxy(pullOutputUpdater, checksOutputUpdater, true)
+	outputUpdater := events.NewOutputUpdaterProxy(pullOutputUpdater, checksOutputUpdater, ctxLogger, featureAllocator, EnableGithubChecks)
 
 	session, err := aws.NewSession()
 	if err != nil {
@@ -874,6 +897,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubHostname:      userConfig.GithubHostname,
 		GithubOrg:           userConfig.GithubOrg,
 		GithubStatusName:    userConfig.VCSStatusName,
+		EnableGithubChecks:  EnableGithubChecks,
 	}
 
 	scheduledExecutorService := scheduled.NewExecutorService(

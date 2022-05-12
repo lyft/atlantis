@@ -6,9 +6,12 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/google/go-github/v31/github"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
+	gh "github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 
 // GithubAppController handles the creation and setup of a new GitHub app
@@ -19,6 +22,8 @@ type GithubAppController struct {
 	GithubHostname      string
 	GithubOrg           string
 	GithubStatusName    string
+	EnableGithubChecks  bool
+	FeatureAllocator    feature.Allocator
 }
 
 type githubWebhook struct {
@@ -58,14 +63,44 @@ func (g *GithubAppController) ExchangeCode(w http.ResponseWriter, r *http.Reques
 
 	// TODO: unify this in a single inject.go file
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(g.GithubStatusName)
-	client, err := vcs.NewGithubClient(g.GithubHostname, creds, g.Logger, mergeabilityChecker)
+
+	// Extracting internal client creation to allow for injecting Status Updater
+	transport, err := creds.Client()
+	if err != nil {
+		g.respond(w, logging.Error, http.StatusInternalServerError, "Failed to initialize github authentication transport for github app: %s", err)
+		return
+	}
+
+	var client *github.Client
+	if g.GithubHostname == "github.com" {
+		client = github.NewClient(transport)
+	} else {
+		apiURL := vcs.ResolveGithubAPIURL(g.GithubHostname)
+		client, err = github.NewEnterpriseClient(apiURL.String(), apiURL.String(), transport)
+		if err != nil {
+			g.respond(w, logging.Error, http.StatusInternalServerError, "Failed to initialize enterprise client for github app: %s", err)
+			return
+		}
+	}
+
+	var statusUpdater gh.StatusUpdater
+	pullStatusUpdater := gh.PullStatusUpdater{Client: client}
+	if g.EnableGithubChecks {
+		statusUpdater = &gh.FeatureAwareStatusUpdater{
+			Pull:             &pullStatusUpdater,
+			Check:            &gh.ChecksStatusUpdater{Client: client},
+			Logger:           g.Logger,
+			FeatureAllocator: g.FeatureAllocator,
+		}
+	}
+	ghClient, err := vcs.NewGithubClient(g.GithubHostname, creds, g.Logger, mergeabilityChecker, client, statusUpdater)
 
 	if err != nil {
 		g.respond(w, logging.Error, http.StatusInternalServerError, "Failed to exchange code for github app: %s", err)
 		return
 	}
 
-	app, err := client.ExchangeCode(code)
+	app, err := ghClient.ExchangeCode(code)
 	if err != nil {
 		g.respond(w, logging.Error, http.StatusInternalServerError, "Failed to exchange code for github app: %s", err)
 		return
