@@ -2,10 +2,11 @@ package jobs_test
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"testing"
 
 	. "github.com/petergtz/pegomock"
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/jobs"
@@ -20,27 +21,49 @@ func TestJobURLSetter(t *testing.T) {
 
 	t.Run("update project status with project jobs url", func(t *testing.T) {
 		RegisterMockTestingT(t)
-		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
+		projectStatusUpdater := &mockProjectStatusUpdater{}
 		projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
 		url := "url-to-project-jobs"
 		jobURLSetter := jobs.NewJobURLSetter(projectJobURLGenerator, projectStatusUpdater)
 
 		When(projectJobURLGenerator.GenerateProjectJobURL(matchers.EqModelsProjectCommandContext(ctx))).ThenReturn(url, nil)
-		When(projectStatusUpdater.UpdateProject(context.TODO(), ctx, command.Plan, models.PendingCommitStatus, url)).ThenReturn(nil)
-		err := jobURLSetter.SetJobURLWithStatus(ctx, command.Plan, models.PendingCommitStatus)
+		_, err := jobURLSetter.SetJobURLWithStatus(ctx, command.Plan, models.PendingCommitStatus, "")
 		Ok(t, err)
 
-		projectStatusUpdater.VerifyWasCalledOnce().UpdateProject(context.TODO(), ctx, command.Plan, models.PendingCommitStatus, "url-to-project-jobs")
+		assert.Equal(t, ctx, projectStatusUpdater.CalledPrjCtx)
+		assert.Equal(t, command.Plan, projectStatusUpdater.CalledCmdName)
+		assert.Equal(t, models.PendingCommitStatus, projectStatusUpdater.CalledStatus)
+		assert.Equal(t, url, projectStatusUpdater.CalledUrl)
+
 	})
 
 	t.Run("update project status with project jobs url error", func(t *testing.T) {
 		RegisterMockTestingT(t)
-		projectStatusUpdater := mocks.NewMockProjectStatusUpdater()
+		projectStatusUpdater := &mockProjectStatusUpdater{}
 		projectJobURLGenerator := mocks.NewMockProjectJobURLGenerator()
 		jobURLSetter := jobs.NewJobURLSetter(projectJobURLGenerator, projectStatusUpdater)
 
 		When(projectJobURLGenerator.GenerateProjectJobURL(matchers.EqModelsProjectCommandContext(ctx))).ThenReturn("url-to-project-jobs", errors.New("some error"))
-		err := jobURLSetter.SetJobURLWithStatus(ctx, command.Plan, models.PendingCommitStatus)
+		_, err := jobURLSetter.SetJobURLWithStatus(ctx, command.Plan, models.PendingCommitStatus, "")
 		assert.Error(t, err)
 	})
+}
+
+type mockProjectStatusUpdater struct {
+	CalledCtx      context.Context
+	CalledPrjCtx   command.ProjectContext
+	CalledCmdName  fmt.Stringer
+	CalledStatus   models.CommitStatus
+	CalledUrl      string
+	CalledStatusId string
+}
+
+func (t *mockProjectStatusUpdater) UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string, statusId string) (string, error) {
+	t.CalledCtx = ctx
+	t.CalledPrjCtx = projectCtx
+	t.CalledCmdName = cmdName
+	t.CalledStatus = status
+	t.CalledUrl = url
+	t.CalledStatusId = statusId
+	return "", nil
 }

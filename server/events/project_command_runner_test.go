@@ -260,7 +260,7 @@ func TestProjectOutputWrapper(t *testing.T) {
 			var prjResult command.ProjectResult
 			var expCommitStatus models.CommitStatus
 
-			mockJobURLSetter := mocks.NewMockJobURLSetter()
+			mockJobURLSetter := &mockJobURLSetter{}
 			mockJobCloser := mocks.NewMockJobCloser()
 			mockProjectCommandRunner := mocks.NewMockProjectCommandRunner()
 
@@ -298,8 +298,13 @@ func TestProjectOutputWrapper(t *testing.T) {
 				runner.Apply(prjCtx)
 			}
 
-			mockJobURLSetter.VerifyWasCalled(Once()).SetJobURLWithStatus(prjCtx, c.CommandName, models.PendingCommitStatus)
-			mockJobURLSetter.VerifyWasCalled(Once()).SetJobURLWithStatus(prjCtx, c.CommandName, expCommitStatus)
+			Equals(t, mockJobURLSetter.calls[0].CalledPrjCtx, prjCtx)
+			Equals(t, mockJobURLSetter.calls[0].CalledCmdName, c.CommandName)
+			Equals(t, mockJobURLSetter.calls[0].CalledStatus, models.PendingCommitStatus)
+
+			Equals(t, mockJobURLSetter.calls[1].CalledPrjCtx, prjCtx)
+			Equals(t, mockJobURLSetter.calls[1].CalledCmdName, c.CommandName)
+			Equals(t, mockJobURLSetter.calls[1].CalledStatus, expCommitStatus)
 
 			switch c.CommandName {
 			case command.Plan:
@@ -615,4 +620,26 @@ type mockURLGenerator struct{}
 
 func (m mockURLGenerator) GenerateLockURL(lockID string) string {
 	return "https://" + lockID
+}
+
+type inner struct {
+	CalledPrjCtx   command.ProjectContext
+	CalledCmdName  command.Name
+	CalledStatus   models.CommitStatus
+	CalledStatusId string
+}
+
+type mockJobURLSetter struct {
+	calls []*inner
+}
+
+func (j *mockJobURLSetter) SetJobURLWithStatus(ctx command.ProjectContext, cmdName command.Name, status models.CommitStatus, statusId string) (string, error) {
+	inner := &inner{
+		CalledPrjCtx:   ctx,
+		CalledCmdName:  cmdName,
+		CalledStatus:   status,
+		CalledStatusId: statusId,
+	}
+	j.calls = append(j.calls, inner)
+	return "", nil
 }

@@ -57,7 +57,7 @@ var staleCommandChecker *mocks.MockStaleCommandChecker
 // these were all split out from default command runner in an effort to improve
 // readability however the tests were kept as is.
 var dbUpdater *events.DBUpdater
-var pullUpdater *events.PullUpdater
+var pullUpdater *events.PullOutputUpdater
 var policyCheckCommandRunner *events.PolicyCheckCommandRunner
 var approvePoliciesCommandRunner *events.ApprovePoliciesCommandRunner
 var planCommandRunner *events.PlanCommandRunner
@@ -89,7 +89,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		DB: defaultBoltDB,
 	}
 
-	pullUpdater = &events.PullUpdater{
+	pullUpdater = &events.PullOutputUpdater{
 		HidePrevPlanComments: false,
 		VCSClient:            vcsClient,
 		MarkdownRenderer:     &events.MarkdownRenderer{},
@@ -219,7 +219,7 @@ func TestRunCommentCommand_PreWorkflowHookError(t *testing.T) {
 			ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
 
 			ch.RunCommentCommand(ctx, fixtures.GithubRepo, modelPull.BaseRepo, modelPull, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: cmd}, time.Now())
-			_, _, _, status, cmdName := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName()).GetCapturedArguments()
+			_, _, _, status, cmdName, _ := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName(), AnyString()).GetCapturedArguments()
 			Equals(t, models.FailedCommitStatus, status)
 			Equals(t, cmd, cmdName)
 		})
@@ -241,6 +241,7 @@ func TestRunCommentCommandApprovePolicy_NoProjects_SilenceEnabled(t *testing.T) 
 		matchers.AnyModelsPullRequest(),
 		matchers.EqModelsCommitStatus(models.SuccessCommitStatus),
 		matchers.EqModelsCommandName(command.PolicyCheck),
+		AnyString(),
 		EqInt(0),
 		EqInt(0),
 	)
@@ -381,7 +382,7 @@ func TestRunAutoplanCommand_PreWorkflowHookError(t *testing.T) {
 	ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
 
 	ch.RunAutoplanCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, time.Now())
-	_, _, _, status, cmdName := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName()).GetCapturedArguments()
+	_, _, _, status, cmdName, _ := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName(), AnyString()).GetCapturedArguments()
 	Equals(t, models.FailedCommitStatus, status)
 	Equals(t, command.Plan, cmdName)
 }
@@ -415,6 +416,7 @@ func TestFailedApprovalCreatesFailedStatusUpdate(t *testing.T) {
 		matchers.AnyModelsPullRequest(),
 		matchers.EqModelsCommitStatus(models.SuccessCommitStatus),
 		matchers.EqModelsCommandName(command.PolicyCheck),
+		AnyString(),
 		EqInt(0),
 		EqInt(0),
 	)
@@ -459,6 +461,7 @@ func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
 		matchers.AnyModelsPullRequest(),
 		matchers.EqModelsCommitStatus(models.SuccessCommitStatus),
 		matchers.EqModelsCommandName(command.PolicyCheck),
+		AnyString(),
 		EqInt(1),
 		EqInt(1),
 	)
