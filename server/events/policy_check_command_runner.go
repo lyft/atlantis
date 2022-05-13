@@ -34,19 +34,19 @@ type PolicyCheckCommandRunner struct {
 
 func (p *PolicyCheckCommandRunner) Run(ctx *command.Context, cmds []command.ProjectContext) {
 	if len(cmds) == 0 {
-		ctx.Log.Info("no projects to run policy_check in")
+		ctx.Log.InfoContext(ctx.RequestCtx, "no projects to run policy_check in")
 		// If there were no projects modified, we set successful commit statuses
 		// with 0/0 projects policy_checked successfully because some users require
 		// the Atlantis status to be passing for all pull requests.
 		if err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.SuccessCommitStatus, command.PolicyCheck, 0, 0); err != nil {
-			ctx.Log.Warn(fmt.Sprintf("unable to update commit status: %s", err))
+			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 		}
 		return
 	}
 
 	// So set policy_check commit status to pending
 	if err := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, command.PolicyCheck); err != nil {
-		ctx.Log.Warn(fmt.Sprintf("unable to update commit status: %s", err))
+		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
 
 	var result command.Result
