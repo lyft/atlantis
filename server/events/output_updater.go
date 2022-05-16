@@ -60,9 +60,9 @@ type FeatureAwareChecksOutputUpdater struct {
 }
 
 func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
-	shouldAllocate, err := c.featureAllocator.ShouldAllocate(feature.GithubChecks, "")
+	shouldAllocate, err := c.featureAllocator.ShouldAllocate(feature.GithubChecks, ctx.HeadRepo.FullName)
 	if err != nil {
-		c.Logger.Error(fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.LogPersistence, err))
+		c.Logger.Error(fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.GithubChecks, err))
 	}
 
 	if shouldAllocate {
@@ -89,18 +89,12 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 		templateOverrides = repoCfg.TemplateOverrides
 	}
 
-	// iterate through all project results and the update the status check
+	// iterate through all project results and the update the github check
 	for _, projectResult := range res.ProjectResults {
 		statusName := c.TitleBuilder.Build(cmd.CommandName().String(), vcs.StatusTitleOptions{
 			ProjectName: projectResult.ProjectName,
 		})
 
-		var state models.CommitStatus
-		if projectResult.Error != nil || projectResult.Failure != "" {
-			state = models.FailedCommitStatus
-		} else {
-			state = models.SuccessCommitStatus
-		}
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
 		updateStatusReq := types.UpdateStatusRequest{
 			UpdateReqIdentifier: types.UpdateReqIdentifier{
@@ -109,12 +103,11 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 				StatusName: statusName,
 			},
 			PullNum:     ctx.Pull.Num,
-			State:       state,
 			Description: output,
 		}
 
 		if err := c.VCSClient.UpdateStatus(context.TODO(), updateStatusReq); err != nil {
-			ctx.Log.ErrorContext(context.TODO(), "updable to update check run", map[string]interface{}{
+			ctx.Log.Error("updable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
 		}

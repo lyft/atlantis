@@ -320,7 +320,7 @@ var boolFlags = map[string]boolFlag{
 		defaultValue: false,
 	},
 	EnableGithubChecks: {
-		description:  "Enable checks for github vcs provider",
+		description:  "Enable Atlantis to use github checks for status updates",
 		defaultValue: false,
 	},
 	EnablePlatformModeFlag: {
