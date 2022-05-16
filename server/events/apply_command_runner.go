@@ -16,7 +16,7 @@ func NewApplyCommandRunner(
 	commitStatusUpdater CommitStatusUpdater,
 	prjCommandBuilder ProjectApplyCommandBuilder,
 	prjCmdRunner ProjectApplyCommandRunner,
-	pullUpdater *PullUpdater,
+	outputUpdater OutputUpdater,
 	dbUpdater *DBUpdater,
 	parallelPoolSize int,
 	pullReqStatusFetcher vcs.PullReqStatusFetcher,
@@ -28,7 +28,7 @@ func NewApplyCommandRunner(
 		commitStatusUpdater:  commitStatusUpdater,
 		prjCmdBuilder:        prjCommandBuilder,
 		prjCmdRunner:         prjCmdRunner,
-		pullUpdater:          pullUpdater,
+		outputUpdater:        outputUpdater,
 		dbUpdater:            dbUpdater,
 		parallelPoolSize:     parallelPoolSize,
 		pullReqStatusFetcher: pullReqStatusFetcher,
@@ -42,7 +42,7 @@ type ApplyCommandRunner struct {
 	commitStatusUpdater  CommitStatusUpdater
 	prjCmdBuilder        ProjectApplyCommandBuilder
 	prjCmdRunner         ProjectApplyCommandRunner
-	pullUpdater          *PullUpdater
+	outputUpdater        OutputUpdater
 	dbUpdater            *DBUpdater
 	parallelPoolSize     int
 	pullReqStatusFetcher vcs.PullReqStatusFetcher
@@ -104,7 +104,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		if statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName()); statusErr != nil {
 			ctx.Log.Warnf("unable to update commit status: %s", statusErr)
 		}
-		a.pullUpdater.UpdatePull(ctx, cmd, command.Result{Error: err})
+		a.outputUpdater.UpdateOutput(ctx, cmd, command.Result{Error: err})
 		return
 	}
 
@@ -117,7 +117,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		result = runProjectCmds(projectCmds, a.prjCmdRunner.Apply)
 	}
 
-	a.pullUpdater.UpdatePull(
+	a.outputUpdater.UpdateOutput(
 		ctx,
 		cmd,
 		result)

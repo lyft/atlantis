@@ -14,16 +14,23 @@
 package vcs
 
 import (
+	"context"
 	"testing"
 
+	"github.com/runatlantis/atlantis/server/events/vcs/types"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
 // If the hostname is github.com, should use normal BaseURL.
 func TestNewGithubClient_GithubCom(t *testing.T) {
+
 	mergeabilityChecker := NewPullMergeabilityChecker("atlantis")
-	client, err := NewGithubClient("github.com", &GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t), mergeabilityChecker)
+	internalClient, err := NewGithubInternalClient("github.com", &GithubUserCredentials{"user", "pass"})
+	Ok(t, err)
+
+	var client *GithubClient
+	client, err = NewGithubClient("github.com", &GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t), mergeabilityChecker, internalClient, &mockStatusUpdater{})
 	Ok(t, err)
 	Equals(t, "https://api.github.com/", client.client.BaseURL.String())
 }
@@ -31,9 +38,19 @@ func TestNewGithubClient_GithubCom(t *testing.T) {
 // If the hostname is a non-github hostname should use the right BaseURL.
 func TestNewGithubClient_NonGithub(t *testing.T) {
 	mergeabilityChecker := NewPullMergeabilityChecker("atlantis")
-	client, err := NewGithubClient("example.com", &GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t), mergeabilityChecker)
+
+	internalClient, err := NewGithubInternalClient("example.com", &GithubUserCredentials{"user", "pass"})
+	Ok(t, err)
+
+	client, err := NewGithubClient("example.com", &GithubUserCredentials{"user", "pass"}, logging.NewNoopLogger(t), mergeabilityChecker, internalClient, &mockStatusUpdater{})
 	Ok(t, err)
 	Equals(t, "https://example.com/api/v3/", client.client.BaseURL.String())
 	// If possible in the future, test the GraphQL client's URL as well. But at the
 	// moment the shurcooL library doesn't expose it.
+}
+
+type mockStatusUpdater struct{}
+
+func (m *mockStatusUpdater) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
+	return nil
 }

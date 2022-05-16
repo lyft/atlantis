@@ -38,6 +38,11 @@ const (
 	maxCommentLength = 65536
 )
 
+// Copying over from github_status_updater.go to avoid import cycle
+type StatusUpdater interface {
+	UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error
+}
+
 // allows for custom handling of github 404s
 type PullRequestNotFound struct {
 	Err error
@@ -49,6 +54,8 @@ func (p *PullRequestNotFound) Error() string {
 
 // GithubClient is used to perform GitHub actions.
 type GithubClient struct {
+	StatusUpdater
+
 	user                string
 	client              *github.Client
 	v4MutateClient      *graphql.Client
@@ -72,23 +79,17 @@ type GithubAppTemporarySecrets struct {
 }
 
 // NewGithubClient returns a valid GitHub client.
-func NewGithubClient(hostname string, credentials GithubCredentials, logger logging.SimpleLogging, mergeabilityChecker MergeabilityChecker) (*GithubClient, error) {
+func NewGithubClient(hostname string, credentials GithubCredentials, logger logging.SimpleLogging, mergeabilityChecker MergeabilityChecker, client *github.Client, statusUpdater StatusUpdater) (*GithubClient, error) {
 	transport, err := credentials.Client()
 	if err != nil {
 		return nil, errors.Wrap(err, "error initializing github authentication transport")
 	}
 
 	var graphqlURL string
-	var client *github.Client
 	if hostname == "github.com" {
-		client = github.NewClient(transport)
 		graphqlURL = "https://api.github.com/graphql"
 	} else {
-		apiURL := resolveGithubAPIURL(hostname)
-		client, err = github.NewEnterpriseClient(apiURL.String(), apiURL.String(), transport)
-		if err != nil {
-			return nil, err
-		}
+		apiURL := ResolveGithubAPIURL(hostname)
 		graphqlURL = fmt.Sprintf("https://%s/api/graphql", apiURL.Host)
 	}
 
@@ -117,7 +118,29 @@ func NewGithubClient(hostname string, credentials GithubCredentials, logger logg
 		ctx:                 context.Background(),
 		logger:              logger,
 		mergeabilityChecker: mergeabilityChecker,
+		StatusUpdater:       statusUpdater,
 	}, nil
+}
+
+// building internal client in its own constructor to inject StatusUpdater which uses this internal client
+func NewGithubInternalClient(hostName string, githubCredentials GithubCredentials) (*github.Client, error) {
+	transport, err := githubCredentials.Client()
+	if err != nil {
+		return nil, errors.Wrap(err, "error initializing github authentication transport")
+	}
+
+	var client *github.Client
+	if hostName == "github.com" {
+		client = github.NewClient(transport)
+	} else {
+		apiURL := ResolveGithubAPIURL(hostName)
+		client, err = github.NewEnterpriseClient(apiURL.String(), apiURL.String(), transport)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return client, nil
 }
 
 func (g *GithubClient) GetRateLimits() (*github.RateLimits, error) {
@@ -404,29 +427,6 @@ func (g *GithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest
 	}
 
 	return result, nil
-}
-
-// UpdateStatus updates the status badge on the pull request.
-// See https://github.com/blog/1227-commit-status-api.
-func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	ghState := "error"
-	switch request.State {
-	case models.PendingCommitStatus:
-		ghState = "pending"
-	case models.SuccessCommitStatus:
-		ghState = "success"
-	case models.FailedCommitStatus:
-		ghState = "failure"
-	}
-
-	status := &github.RepoStatus{
-		State:       github.String(ghState),
-		Description: github.String(request.Description),
-		Context:     github.String(request.StatusName),
-		TargetURL:   &request.DetailsURL,
-	}
-	_, _, err := g.client.Repositories.CreateStatus(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, status)
-	return err
 }
 
 // MarkdownPullLink specifies the string used in a pull request comment to reference another pull request.

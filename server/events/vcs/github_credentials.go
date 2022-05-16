@@ -177,11 +177,11 @@ func (c *GithubAppCredentials) getAPIURL() *url.URL {
 		return c.apiURL
 	}
 
-	c.apiURL = resolveGithubAPIURL(c.Hostname)
+	c.apiURL = ResolveGithubAPIURL(c.Hostname)
 	return c.apiURL
 }
 
-func resolveGithubAPIURL(hostname string) *url.URL {
+func ResolveGithubAPIURL(hostname string) *url.URL {
 	// If we're using github.com then we don't need to do any additional configuration
 	// for the client. It we're using Github Enterprise, then we need to manually
 	// set the base url for the API.

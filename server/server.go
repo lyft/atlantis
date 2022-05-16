@@ -74,6 +74,7 @@ import (
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
+	gh "github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
 )
@@ -95,6 +96,9 @@ const (
 	// terraformPluginCacheDir is the name of the dir inside our data dir
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
+
+	// TODO: Move to server flag
+	EnableGithubChecks = true
 )
 
 // Server runs the Atlantis web server.
@@ -180,6 +184,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var bitbucketCloudClient *bitbucketcloud.Client
 	var bitbucketServerClient *bitbucketserver.Client
 	var azuredevopsClient *vcs.AzureDevopsClient
+	var ghStatusUpdater gh.StatusUpdater
 
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(userConfig.VCSStatusName)
 
@@ -207,6 +212,18 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "instantiating metrics scope")
+	}
+
+	featureAllocator, err := feature.NewGHSourcedAllocator(
+		feature.RepoConfig{
+			Owner:  userConfig.FFOwner,
+			Repo:   userConfig.FFRepo,
+			Branch: userConfig.FFBranch,
+			Path:   userConfig.FFPath,
+		}, githubClient, logger)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing feature allocator")
 	}
 
 	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
@@ -239,7 +256,25 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		}
 
 		var err error
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker)
+
+		// Extracting internal client creation into its own function to allow for injecting Status Updater
+		internalClient, err := vcs.NewGithubInternalClient(userConfig.GithubHostname, githubCredentials)
+		if err != nil {
+			return nil, err
+		}
+		pullStatusUpdater := gh.PullStatusUpdater{Client: internalClient}
+		if EnableGithubChecks {
+			ghStatusUpdater = &gh.FeatureAwareStatusUpdater{
+				Pull:             &pullStatusUpdater,
+				Check:            &gh.ChecksStatusUpdater{Client: internalClient},
+				Logger:           logger,
+				FeatureAllocator: featureAllocator,
+			}
+		} else {
+			ghStatusUpdater = &pullStatusUpdater
+		}
+
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker, internalClient, ghStatusUpdater)
 		if err != nil {
 			return nil, err
 		}
@@ -345,18 +380,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	if err != nil {
 		return nil, err
-	}
-
-	featureAllocator, err := feature.NewGHSourcedAllocator(
-		feature.RepoConfig{
-			Owner:  userConfig.FFOwner,
-			Repo:   userConfig.FFRepo,
-			Branch: userConfig.FFBranch,
-			Path:   userConfig.FFPath,
-		}, githubClient, logger)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing feature allocator")
 	}
 
 	parsedURL, err := ParseAtlantisURL(userConfig.AtlantisURL)
@@ -620,12 +643,21 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB: boltdb,
 	}
 
-	pullUpdater := &events.PullUpdater{
-		HidePrevPlanComments: userConfig.HidePrevPlanComments,
+	pullOutputUpdater := &events.PullOutputUpdater{
 		VCSClient:            vcsClient,
 		MarkdownRenderer:     markdownRenderer,
 		GlobalCfg:            globalCfg,
+		HidePrevPlanComments: userConfig.HidePrevPlanComments,
 	}
+
+	checksOutputUpdater := &events.ChecksOutputUpdater{
+		VCSClient:        vcsClient,
+		MarkdownRenderer: markdownRenderer,
+		TitleBuilder:     vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName},
+		GlobalCfg:        globalCfg,
+	}
+
+	outputUpdater := events.NewOutputUpdaterProxy(pullOutputUpdater, checksOutputUpdater, ctxLogger, featureAllocator, EnableGithubChecks)
 
 	session, err := aws.NewSession()
 	if err != nil {
@@ -693,7 +725,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
-		pullUpdater,
+		outputUpdater,
 		commitStatusUpdater,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -707,7 +739,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectCommandBuilder,
 		prjCmdRunner,
 		dbUpdater,
-		pullUpdater,
+		outputUpdater,
 		policyCheckCommandRunner,
 		userConfig.ParallelPoolSize,
 	)
@@ -719,7 +751,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		pullUpdater,
+		outputUpdater,
 		dbUpdater,
 		userConfig.ParallelPoolSize,
 		pullReqStatusFetcher,
@@ -729,7 +761,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		pullUpdater,
+		pullOutputUpdater,
 		dbUpdater,
 	)
 
@@ -738,8 +770,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 	)
 
+	// TODO: should we default version commands to pull comments or use proxy as other command runners
 	versionCommandRunner := events.NewVersionCommandRunner(
-		pullUpdater,
+		pullOutputUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -753,7 +786,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
 		dbUpdater,
-		pullUpdater,
+		outputUpdater,
 		policyCheckCommandRunner,
 		userConfig.ParallelPoolSize,
 	)
@@ -762,7 +795,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
-		pullUpdater,
+		pullOutputUpdater,
 		dbUpdater,
 	)
 
@@ -778,7 +811,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		featureAllocator,
 		userConfig.EnablePlatformMode,
 		logger,
-		apply.NewDisabledRunner(pullUpdater),
+		apply.NewDisabledRunner(outputUpdater),
 		applyCommandRunner,
 	)
 
@@ -867,6 +900,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubHostname:      userConfig.GithubHostname,
 		GithubOrg:           userConfig.GithubOrg,
 		GithubStatusName:    userConfig.VCSStatusName,
+		StatusUpdater:       ghStatusUpdater,
 	}
 
 	scheduledExecutorService := scheduled.NewExecutorService(
@@ -916,7 +950,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GlobalCfg:                     globalCfg,
 		CommitStatusUpdater:           commitStatusUpdater,
 		PrjCmdBuilder:                 projectCommandBuilder,
-		PullUpdater:                   pullUpdater,
+		OutputUpdater:                 outputUpdater,
 		WorkingDir:                    workingDir,
 		WorkingDirLocker:              workingDirLocker,
 	}
