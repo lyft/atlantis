@@ -96,9 +96,6 @@ const (
 	// terraformPluginCacheDir is the name of the dir inside our data dir
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
-
-	// TODO: Move to server flag
-	EnableGithubChecks = true
 )
 
 // Server runs the Atlantis web server.
@@ -262,16 +259,17 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
-		pullStatusUpdater := gh.PullStatusUpdater{Client: internalClient}
-		if EnableGithubChecks {
+		pullStatusUpdater := &gh.PullStatusUpdater{Client: internalClient}
+		checksStatusUpdater := &gh.ChecksStatusUpdater{Client: internalClient}
+		if userConfig.EnableGithubChecks {
 			ghStatusUpdater = &gh.FeatureAwareStatusUpdater{
-				Pull:             &pullStatusUpdater,
-				Check:            &gh.ChecksStatusUpdater{Client: internalClient},
+				Pull:             pullStatusUpdater,
+				Check:            checksStatusUpdater,
 				Logger:           logger,
 				FeatureAllocator: featureAllocator,
 			}
 		} else {
-			ghStatusUpdater = &pullStatusUpdater
+			ghStatusUpdater = pullStatusUpdater
 		}
 
 		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, logger, mergeabilityChecker, internalClient, ghStatusUpdater)
@@ -657,7 +655,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GlobalCfg:        globalCfg,
 	}
 
-	outputUpdater := events.NewOutputUpdaterProxy(pullOutputUpdater, checksOutputUpdater, ctxLogger, featureAllocator, EnableGithubChecks)
+	outputUpdater := events.NewOutputUpdaterProxy(pullOutputUpdater, checksOutputUpdater, ctxLogger, featureAllocator, userConfig.EnableGithubChecks)
 
 	session, err := aws.NewSession()
 	if err != nil {
@@ -770,7 +768,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 	)
 
-	// TODO: should we default version commands to pull comments or use proxy as other command runners
 	versionCommandRunner := events.NewVersionCommandRunner(
 		pullOutputUpdater,
 		projectCommandBuilder,
@@ -900,7 +897,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubHostname:      userConfig.GithubHostname,
 		GithubOrg:           userConfig.GithubOrg,
 		GithubStatusName:    userConfig.VCSStatusName,
-		StatusUpdater:       ghStatusUpdater,
+		GithubStatusUpdater: ghStatusUpdater,
 	}
 
 	scheduledExecutorService := scheduled.NewExecutorService(

@@ -55,6 +55,7 @@ const (
 	DisableApplyFlag           = "disable-apply"
 	DisableAutoplanFlag        = "disable-autoplan"
 	DisableMarkdownFoldingFlag = "disable-markdown-folding"
+	EnableGithubChecks         = "enable-github-checks"
 	EnablePlatformModeFlag     = "enable-platform-mode"
 	EnableRegExpCmdFlag        = "enable-regexp-cmd"
 	EnableDiffMarkdownFormat   = "enable-diff-markdown-format"
@@ -316,6 +317,10 @@ var boolFlags = map[string]boolFlag{
 	},
 	DisableAutoplanFlag: {
 		description:  "Disable atlantis auto planning feature",
+		defaultValue: false,
+	},
+	EnableGithubChecks: {
+		description:  "Enable github checks for github vcs provider",
 		defaultValue: false,
 	},
 	EnablePlatformModeFlag: {

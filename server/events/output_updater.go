@@ -13,15 +13,12 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
-// TODO: Move these new structs into it's own package
-// server/events/ouptut maybe?
-
-// used to update output for a project
 type OutputUpdater interface {
 	UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result)
 }
 
-// proxy that forwards req to apprpriate output updater based on VCSHost type
+// proxy that forwards req to configured output updater based on VCSHost type
+// need to add this proxy since output_updater is vcs provider agnostic
 type OutputUpdaterProxy struct {
 	outputUpdater map[models.VCSHostType]OutputUpdater
 }
@@ -31,7 +28,7 @@ func (c *OutputUpdaterProxy) UpdateOutput(ctx *command.Context, cmd PullCommand,
 }
 
 func NewOutputUpdaterProxy(pullOutputUpdater OutputUpdater, checksOutputUpdater OutputUpdater, logger logging.Logger, featureAllocator feature.Allocator, enableGithubChecks bool) OutputUpdater {
-	// All vcs host have comment output updater configured by default.
+	// All vcs host have pull output updater configured by default.
 	ouputUpdater := map[models.VCSHostType]OutputUpdater{
 		models.Github:          pullOutputUpdater,
 		models.Gitlab:          pullOutputUpdater,
@@ -84,20 +81,26 @@ type ChecksOutputUpdater struct {
 }
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
-	// TODO: Update status checks output using vcsClient
-	// vcsClient.UpdateStatus() which updates the github status check
-	// ideally, we would want to checks specific methods but since we're only supporting github for now, this is fine.
 	var templateOverrides map[string]string
+
+	// retrieve template override if configured
 	repoCfg := c.GlobalCfg.MatchingRepo(ctx.Pull.BaseRepo.ID())
 	if repoCfg != nil {
 		templateOverrides = repoCfg.TemplateOverrides
 	}
 
+	// iterate through all project results and the update the status check
 	for _, projectResult := range res.ProjectResults {
 		statusName := c.TitleBuilder.Build(cmd.CommandName().String(), vcs.StatusTitleOptions{
 			ProjectName: projectResult.ProjectName,
 		})
 
+		var state models.CommitStatus
+		if projectResult.Error != nil || projectResult.Failure != "" {
+			state = models.FailedCommitStatus
+		} else {
+			state = models.SuccessCommitStatus
+		}
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
 		updateStatusReq := types.UpdateStatusRequest{
 			UpdateReqIdentifier: types.UpdateReqIdentifier{
@@ -106,7 +109,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 				StatusName: statusName,
 			},
 			PullNum:     ctx.Pull.Num,
-			State:       models.SuccessCommitStatus,
+			State:       state,
 			Description: output,
 		}
 

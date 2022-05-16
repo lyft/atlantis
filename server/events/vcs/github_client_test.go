@@ -394,20 +394,22 @@ func TestGithubClient_UpdateStatus(t *testing.T) {
 			defer disableSSLVerification()()
 
 			err = client.UpdateStatus(context.TODO(), types.UpdateStatusRequest{
-				Repo: models.Repo{
-					FullName:          "owner/repo",
-					Owner:             "owner",
-					Name:              "repo",
-					CloneURL:          "",
-					SanitizedCloneURL: "",
-					VCSHost: models.VCSHost{
-						Type:     models.Github,
-						Hostname: "github.com",
+				UpdateReqIdentifier: types.UpdateReqIdentifier{
+					Repo: models.Repo{
+						FullName:          "owner/repo",
+						Owner:             "owner",
+						Name:              "repo",
+						CloneURL:          "",
+						SanitizedCloneURL: "",
+						VCSHost: models.VCSHost{
+							Type:     models.Github,
+							Hostname: "github.com",
+						},
 					},
+					StatusName: "src",
 				},
 				PullNum:     1,
 				State:       c.status,
-				StatusName:  "src",
 				Description: "description",
 				DetailsURL:  "https://google.com",
 			})
