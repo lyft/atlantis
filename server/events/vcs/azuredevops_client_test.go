@@ -103,8 +103,8 @@ func TestAzureDevopsClient_UpdateStatus(t *testing.T) {
 			err = client.UpdateStatus(context.TODO(), types.UpdateStatusRequest{
 				UpdateReqIdentifier: types.UpdateReqIdentifier{
 					Repo:       repo,
-					StatusName: "src",
 					Ref:        "sha",
+					StatusName: "src",
 				},
 				PullNum:     22,
 				State:       c.status,
