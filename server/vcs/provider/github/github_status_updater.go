@@ -25,7 +25,7 @@ type FeatureAwareStatusUpdater struct {
 }
 
 func (f *FeatureAwareStatusUpdater) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	shouldAllocate, err := f.FeatureAllocator.ShouldAllocate(feature.GithubChecks, "")
+	shouldAllocate, err := f.FeatureAllocator.ShouldAllocate(feature.GithubChecks, request.Repo.FullName)
 	if err != nil {
 		f.Logger.ErrorContext(ctx, fmt.Sprintf("unable to allocate for feature: %s", feature.GithubChecks), map[string]interface{}{
 			"error": err.Error(),
@@ -70,93 +70,13 @@ type ChecksStatusUpdater struct {
 	Client *github.Client
 }
 
-// status -> queued, in_progress, completed
-// "failure", "neutral", "cancelled", "timed_out", or "action_required". (Optional. Required if you provide a status of "completed".)
 func (c *ChecksStatusUpdater) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
+	// TODO: Implement updating github checks
+	// - Get all checkruns for this SHA
+	// - Match the UpdateReqIdentifier with the check run. If it exists, update the checkrun. If it does not, create a new check run.
 
-	status := "queued"
-	conclusion := ""
-
-	// TODO: Fix status of checks
-	switch request.State {
-	case models.SuccessCommitStatus:
-		status = "completed"
-		conclusion = "success"
-
-	case models.PendingCommitStatus:
-		status = "in_progress"
-
-	case models.FailedCommitStatus:
-		status = "completed"
-		conclusion = "failure"
-	}
-
-	result, _, err := c.Client.Checks.ListCheckRunsForRef(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, &github.ListCheckRunsOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, checkRun := range result.CheckRuns {
-		// Update status check if checkRun exists
-		if DoesCheckRunExist(*checkRun, request) {
-			updateCheckRunOpts := github.UpdateCheckRunOptions{
-				Name:    request.StatusName,
-				HeadSHA: &request.Ref,
-				Status:  &status,
-			}
-
-			if request.DetailsURL != "" {
-				updateCheckRunOpts.DetailsURL = &request.DetailsURL
-			}
-
-			if request.Description != "" {
-				updateCheckRunOpts.Output = &github.CheckRunOutput{
-					Title:   &request.StatusName,
-					Summary: &request.Description,
-				}
-			}
-
-			// Add conclusion if not pending state
-			if request.State != models.PendingCommitStatus {
-				updateCheckRunOpts.Conclusion = &conclusion
-			}
-
-			_, _, err := c.Client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, *checkRun.ID, updateCheckRunOpts)
-			return err
-		}
-	}
-
-	// Create check run if dne
-	createCheckRunOpts := github.CreateCheckRunOptions{
-		Name:    request.StatusName,
-		HeadSHA: request.Ref,
-		Status:  &status,
-	}
-
-	if request.DetailsURL != "" {
-		createCheckRunOpts.DetailsURL = &request.DetailsURL
-	}
-
-	if request.Description != "" {
-		createCheckRunOpts.Output = &github.CheckRunOutput{
-			Title:   &request.StatusName,
-			Summary: &request.Description,
-		}
-	}
-
-	// Add conclusion if not pending state
-	if request.State != models.PendingCommitStatus {
-		createCheckRunOpts.Conclusion = &conclusion
-	}
-
-	_, _, err = c.Client.Checks.CreateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, createCheckRunOpts)
-	if err != nil {
-		return err
-	}
-
+	// Checks uses Status and Conlusion. Need to map models.CommitStatus to Status and Conclusion
+	// Status -> queued, in_progress, completed
+	// Conclusion -> failure, neutral, cancelled, timed_out, or action_required. (Optional. Required if you provide a status of "completed".)
 	return nil
-}
-
-func DoesCheckRunExist(checkRun github.CheckRun, updateRequest types.UpdateStatusRequest) bool {
-	return *checkRun.App.Owner.Login == updateRequest.Repo.Owner && *checkRun.HeadSHA == updateRequest.Ref && *checkRun.Name == updateRequest.StatusName
 }

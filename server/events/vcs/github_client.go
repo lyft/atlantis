@@ -89,7 +89,7 @@ func NewGithubClient(hostname string, credentials GithubCredentials, logger logg
 	if hostname == "github.com" {
 		graphqlURL = "https://api.github.com/graphql"
 	} else {
-		apiURL := ResolveGithubAPIURL(hostname)
+		apiURL := resolveGithubAPIURL(hostname)
 		graphqlURL = fmt.Sprintf("https://%s/api/graphql", apiURL.Host)
 	}
 
@@ -133,7 +133,7 @@ func NewGithubInternalClient(hostName string, githubCredentials GithubCredential
 	if hostName == "github.com" {
 		client = github.NewClient(transport)
 	} else {
-		apiURL := ResolveGithubAPIURL(hostName)
+		apiURL := resolveGithubAPIURL(hostName)
 		client, err = github.NewEnterpriseClient(apiURL.String(), apiURL.String(), transport)
 		if err != nil {
 			return nil, err

@@ -9,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	gh "github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 
@@ -21,9 +20,7 @@ type GithubAppController struct {
 	GithubHostname      string
 	GithubOrg           string
 	GithubStatusName    string
-	EnableGithubChecks  bool
-	FeatureAllocator    feature.Allocator
-	StatusUpdater       gh.StatusUpdater
+	GithubStatusUpdater gh.StatusUpdater
 }
 
 type githubWebhook struct {
@@ -70,7 +67,7 @@ func (g *GithubAppController) ExchangeCode(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	client, err := vcs.NewGithubClient(g.GithubHostname, creds, g.Logger, mergeabilityChecker, internalClient, g.StatusUpdater)
+	client, err := vcs.NewGithubClient(g.GithubHostname, creds, g.Logger, mergeabilityChecker, internalClient, g.GithubStatusUpdater)
 	if err != nil {
 		g.respond(w, http.StatusInternalServerError, "Failed to exchange code for github app: %s", err)
 		return
