@@ -6,21 +6,22 @@ import (
 )
 
 func NewVersionCommandRunner(
-	pullUpdater *PullUpdater,
+	outputUpdater OutputUpdater,
 	prjCmdBuilder ProjectVersionCommandBuilder,
 	prjCmdRunner ProjectVersionCommandRunner,
 	parallelPoolSize int,
 ) *VersionCommandRunner {
 	return &VersionCommandRunner{
-		pullUpdater:      pullUpdater,
+		outputUpdater:    outputUpdater,
 		prjCmdBuilder:    prjCmdBuilder,
 		prjCmdRunner:     prjCmdRunner,
 		parallelPoolSize: parallelPoolSize,
 	}
 }
 
+// TODO: Checks output updater or use PullOutputUpdater?
 type VersionCommandRunner struct {
-	pullUpdater      *PullUpdater
+	outputUpdater    OutputUpdater
 	prjCmdBuilder    ProjectVersionCommandBuilder
 	prjCmdRunner     ProjectVersionCommandRunner
 	parallelPoolSize int
@@ -48,7 +49,7 @@ func (v *VersionCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		result = runProjectCmds(projectCmds, v.prjCmdRunner.Version)
 	}
 
-	v.pullUpdater.UpdatePull(ctx, cmd, result)
+	v.outputUpdater.UpdateOutput(ctx, cmd, result)
 }
 
 func (v *VersionCommandRunner) isParallelEnabled(cmds []command.ProjectContext) bool {

@@ -9,6 +9,8 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
+	gh "github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 
 // GithubAppController handles the creation and setup of a new GitHub app
@@ -19,6 +21,9 @@ type GithubAppController struct {
 	GithubHostname      string
 	GithubOrg           string
 	GithubStatusName    string
+	EnableGithubChecks  bool
+	FeatureAllocator    feature.Allocator
+	StatusUpdater       gh.StatusUpdater
 }
 
 type githubWebhook struct {
@@ -58,8 +63,14 @@ func (g *GithubAppController) ExchangeCode(w http.ResponseWriter, r *http.Reques
 
 	// TODO: unify this in a single inject.go file
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(g.GithubStatusName)
-	client, err := vcs.NewGithubClient(g.GithubHostname, creds, g.Logger, mergeabilityChecker)
 
+	internalClient, err := vcs.NewGithubInternalClient(g.GithubHostname, creds)
+	if err != nil {
+		g.respond(w, http.StatusInternalServerError, "Failed to setup internal client for github app: %s", err)
+		return
+	}
+
+	client, err := vcs.NewGithubClient(g.GithubHostname, creds, g.Logger, mergeabilityChecker, internalClient, g.StatusUpdater)
 	if err != nil {
 		g.respond(w, http.StatusInternalServerError, "Failed to exchange code for github app: %s", err)
 		return
