@@ -74,7 +74,7 @@ import (
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
-	gh "github.com/runatlantis/atlantis/server/vcs/provider/github"
+	gh_provider "github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
 )
@@ -174,7 +174,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var bitbucketCloudClient *bitbucketcloud.Client
 	var bitbucketServerClient *bitbucketserver.Client
 	var azuredevopsClient *vcs.AzureDevopsClient
-	var ghStatusUpdater gh.StatusUpdater
+	var ghStatusUpdater gh_provider.StatusUpdater
 
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(userConfig.VCSStatusName)
 
@@ -252,10 +252,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
-		pullStatusUpdater := &gh.PullStatusUpdater{Client: internalClient}
-		checksStatusUpdater := &gh.ChecksStatusUpdater{Client: internalClient}
+		pullStatusUpdater := &gh_provider.PullStatusUpdater{Client: internalClient}
+		checksStatusUpdater := &gh_provider.ChecksStatusUpdater{Client: internalClient}
 		if userConfig.EnableGithubChecks {
-			ghStatusUpdater = &gh.FeatureAwareStatusUpdater{
+			ghStatusUpdater = &gh_provider.FeatureAwareStatusUpdater{
 				Pull:             pullStatusUpdater,
 				Check:            checksStatusUpdater,
 				Logger:           ctxLogger,

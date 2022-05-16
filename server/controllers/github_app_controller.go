@@ -9,7 +9,7 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
-	gh "github.com/runatlantis/atlantis/server/vcs/provider/github"
+	gh_provider "github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 
 // GithubAppController handles the creation and setup of a new GitHub app
@@ -20,7 +20,7 @@ type GithubAppController struct {
 	GithubHostname      string
 	GithubOrg           string
 	GithubStatusName    string
-	GithubStatusUpdater gh.StatusUpdater
+	GithubStatusUpdater gh_provider.StatusUpdater
 }
 
 type githubWebhook struct {

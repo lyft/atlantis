@@ -320,7 +320,7 @@ var boolFlags = map[string]boolFlag{
 		defaultValue: false,
 	},
 	EnableGithubChecks: {
-		description:  "Enable github checks for github vcs provider",
+		description:  "Enable checks for github vcs provider",
 		defaultValue: false,
 	},
 	EnablePlatformModeFlag: {

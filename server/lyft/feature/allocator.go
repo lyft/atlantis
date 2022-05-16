@@ -80,9 +80,7 @@ func NewGHSourcedAllocator(repoConfig RepoConfig, githubClient vcs.IGithubClient
 		return nil, errors.Wrapf(err, "initializing feature allocator")
 	}
 
-	// return &PercentageBasedAllocator{logger: logger}, err
-	return NoopAllocator{}, nil
-
+	return &PercentageBasedAllocator{logger: logger}, err
 }
 
 // NewStringSourcedAllocator uses a string constant for the feature configuration
@@ -123,5 +121,5 @@ func (r *PercentageBasedAllocator) ShouldAllocate(featureID Name, fullRepoName s
 type NoopAllocator struct{}
 
 func (r NoopAllocator) ShouldAllocate(featureID Name, fullRepoName string) (bool, error) {
-	return true, nil
+	return false, nil
 }
