@@ -308,7 +308,7 @@ func TestProjectOutputWrapper(t *testing.T) {
 			mockJobURLSetter.VerifyWasCalled(Once()).SetJobURLWithStatus(prjCtx, c.CommandName, expCommitStatus)
 
 			if !c.Error && !c.Failure {
-				mockJobCloser.VerifyWasCalled(Once()).CloseJob(ctx.JobID, ctx.BaseRepo)
+				mockJobCloser.VerifyWasCalled(Once()).CloseJob(prjCtx.JobID, prjCtx.BaseRepo)
 			}
 
 			switch c.CommandName {

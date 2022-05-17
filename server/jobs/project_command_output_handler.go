@@ -155,7 +155,7 @@ func (p *AsyncProjectCommandOutputHandler) CloseJob(jobID string, repo models.Re
 
 	// Update job status and persist to storage if configured
 	if err := p.JobStore.SetJobCompleteStatus(jobID, repo.FullName, Complete); err != nil {
-		p.logger.Error(fmt.Sprintf("updating jobs status to complete, %v", err))
+		p.logger.Error(fmt.Sprintf("updating jobs status to complete, %s", err))
 	}
 }
 
