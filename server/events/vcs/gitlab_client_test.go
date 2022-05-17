@@ -162,13 +162,11 @@ func TestGitlabClient_UpdateStatus(t *testing.T) {
 				Name:     "atlantis",
 			}
 			err = client.UpdateStatus(context.TODO(), types.UpdateStatusRequest{
-				UpdateReqIdentifier: types.UpdateReqIdentifier{
-					Repo:       repo,
-					StatusName: "src",
-					Ref:        "sha",
-				},
+				Repo:        repo,
 				PullNum:     1,
+				Ref:         "sha",
 				State:       c.status,
+				StatusName:  "src",
 				Description: "description",
 				DetailsURL:  "https://google.com",
 			})

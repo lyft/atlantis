@@ -18,8 +18,9 @@ type StatusUpdater interface {
 
 // Defaults to pull status updater if checks is turned off
 type FeatureAwareStatusUpdater struct {
-	Pull             StatusUpdater
-	Check            StatusUpdater
+	PullStatusUpdater
+	ChecksStatusUpdater
+
 	FeatureAllocator feature.Allocator
 	Logger           logging.Logger
 }
@@ -33,11 +34,12 @@ func (f *FeatureAwareStatusUpdater) UpdateStatus(ctx context.Context, request ty
 	}
 
 	if shouldAllocate {
-		return f.Check.UpdateStatus(ctx, request)
+		return f.ChecksStatusUpdater.UpdateStatus(ctx, request)
 	}
-	return f.Pull.UpdateStatus(ctx, request)
+	return f.PullStatusUpdater.UpdateStatus(ctx, request)
 }
 
+// Used to update status checks in the pull request
 type PullStatusUpdater struct {
 	Client *github.Client
 }
@@ -66,6 +68,7 @@ func (g *PullStatusUpdater) UpdateStatus(ctx context.Context, request types.Upda
 	return err
 }
 
+// Used to update github checks in the pull request
 type ChecksStatusUpdater struct {
 	Client *github.Client
 }

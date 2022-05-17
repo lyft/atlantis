@@ -22,12 +22,10 @@ func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo,
 	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
 
 	request := types.UpdateStatusRequest{
-		UpdateReqIdentifier: types.UpdateReqIdentifier{
-			Repo:       repo,
-			Ref:        pull.HeadCommit,
-			StatusName: src,
-		},
+		Repo:        repo,
 		PullNum:     pull.Num,
+		Ref:         pull.HeadCommit,
+		StatusName:  src,
 		State:       status,
 		Description: descrip,
 		DetailsURL:  "",
@@ -49,12 +47,10 @@ func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.
 	}
 
 	request := types.UpdateStatusRequest{
-		UpdateReqIdentifier: types.UpdateReqIdentifier{
-			Repo:       repo,
-			Ref:        pull.HeadCommit,
-			StatusName: src,
-		},
+		Repo:        repo,
 		PullNum:     pull.Num,
+		Ref:         pull.HeadCommit,
+		StatusName:  src,
 		State:       status,
 		Description: fmt.Sprintf("%d/%d projects %s successfully.", numSuccess, numTotal, cmdVerb),
 		DetailsURL:  "",
@@ -74,12 +70,10 @@ func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx Project
 
 	description := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
 	request := types.UpdateStatusRequest{
-		UpdateReqIdentifier: types.UpdateReqIdentifier{
-			Repo:       projectCtx.BaseRepo,
-			Ref:        projectCtx.Pull.HeadCommit,
-			StatusName: statusName,
-		},
+		Repo:        projectCtx.BaseRepo,
 		PullNum:     projectCtx.Pull.Num,
+		Ref:         projectCtx.Pull.HeadCommit,
+		StatusName:  statusName,
 		State:       status,
 		Description: description,
 		DetailsURL:  url,

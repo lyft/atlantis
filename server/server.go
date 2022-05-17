@@ -252,17 +252,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
-		pullStatusUpdater := &gh_provider.PullStatusUpdater{Client: internalClient}
-		checksStatusUpdater := &gh_provider.ChecksStatusUpdater{Client: internalClient}
-		if userConfig.EnableGithubChecks {
-			ghStatusUpdater = &gh_provider.FeatureAwareStatusUpdater{
-				Pull:             pullStatusUpdater,
-				Check:            checksStatusUpdater,
-				Logger:           ctxLogger,
-				FeatureAllocator: featureAllocator,
-			}
-		} else {
-			ghStatusUpdater = pullStatusUpdater
+
+		// Uses feature flags to turn on checks status updater, defaults to pull
+		ghStatusUpdater = &gh_provider.FeatureAwareStatusUpdater{
+			PullStatusUpdater:   gh_provider.PullStatusUpdater{Client: internalClient},
+			ChecksStatusUpdater: gh_provider.ChecksStatusUpdater{Client: internalClient},
+			Logger:              ctxLogger,
+			FeatureAllocator:    featureAllocator,
 		}
 
 		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, ctxLogger, mergeabilityChecker, internalClient, ghStatusUpdater)
@@ -633,21 +629,26 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB: boltdb,
 	}
 
-	pullOutputUpdater := &events.PullOutputUpdater{
+	pullOutputUpdater := events.PullOutputUpdater{
 		VCSClient:            vcsClient,
 		MarkdownRenderer:     markdownRenderer,
 		GlobalCfg:            globalCfg,
 		HidePrevPlanComments: userConfig.HidePrevPlanComments,
 	}
 
-	checksOutputUpdater := &events.ChecksOutputUpdater{
+	checksOutputUpdater := events.ChecksOutputUpdater{
 		VCSClient:        vcsClient,
 		MarkdownRenderer: markdownRenderer,
 		TitleBuilder:     vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName},
 		GlobalCfg:        globalCfg,
 	}
 
-	outputUpdater := events.NewOutputUpdaterProxy(pullOutputUpdater, checksOutputUpdater, ctxLogger, featureAllocator, userConfig.EnableGithubChecks)
+	outputUpdater := &events.FeatureAwareChecksOutputUpdater{
+		ChecksOutputUpdater: checksOutputUpdater,
+		PullOutputUpdater:   pullOutputUpdater,
+		FeatureAllocator:    featureAllocator,
+		Logger:              ctxLogger,
+	}
 
 	session, err := aws.NewSession()
 	if err != nil {
@@ -747,11 +748,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		pullReqStatusFetcher,
 	)
 
+	// Using pull updater for approving policies until we move off of PR comments entirely
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		pullOutputUpdater,
+		&pullOutputUpdater,
 		dbUpdater,
 	)
 
@@ -760,8 +762,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 	)
 
+	// Using pull updater for version commands until we move off of PR comments entirely
 	versionCommandRunner := events.NewVersionCommandRunner(
-		pullOutputUpdater,
+		&pullOutputUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -780,11 +783,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
+	// Using pull updater for approving policies until we move off of PR comments entirely
 	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
-		pullOutputUpdater,
+		&pullOutputUpdater,
 		dbUpdater,
 	)
 

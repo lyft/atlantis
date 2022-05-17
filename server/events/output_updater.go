@@ -17,59 +17,27 @@ type OutputUpdater interface {
 	UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result)
 }
 
-// proxy that forwards req to configured output updater based on VCSHost type
-// need to add this proxy since output_updater is vcs provider agnostic
-type OutputUpdaterProxy struct {
-	outputUpdater map[models.VCSHostType]OutputUpdater
-}
-
-func (c *OutputUpdaterProxy) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
-	c.outputUpdater[ctx.HeadRepo.VCSHost.Type].UpdateOutput(ctx, cmd, res)
-}
-
-func NewOutputUpdaterProxy(pullOutputUpdater OutputUpdater, checksOutputUpdater OutputUpdater, logger logging.Logger, featureAllocator feature.Allocator, enableGithubChecks bool) OutputUpdater {
-	// All vcs host have pull output updater configured by default.
-	ouputUpdater := map[models.VCSHostType]OutputUpdater{
-		models.Github:          pullOutputUpdater,
-		models.Gitlab:          pullOutputUpdater,
-		models.AzureDevops:     pullOutputUpdater,
-		models.BitbucketCloud:  pullOutputUpdater,
-		models.BitbucketServer: pullOutputUpdater,
-	}
-
-	if enableGithubChecks {
-		ouputUpdater[models.Github] = &FeatureAwareChecksOutputUpdater{
-			checks:           checksOutputUpdater,
-			pull:             pullOutputUpdater,
-			Logger:           logger,
-			featureAllocator: featureAllocator,
-		}
-	}
-
-	return &OutputUpdaterProxy{
-		outputUpdater: ouputUpdater,
-	}
-}
-
 // defaults to pull comments if checks is turned off
 type FeatureAwareChecksOutputUpdater struct {
-	checks           OutputUpdater
-	pull             OutputUpdater
-	featureAllocator feature.Allocator
+	PullOutputUpdater
+	ChecksOutputUpdater
+
+	FeatureAllocator feature.Allocator
 	Logger           logging.Logger
 }
 
 func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
-	shouldAllocate, err := c.featureAllocator.ShouldAllocate(feature.GithubChecks, ctx.HeadRepo.FullName)
+	shouldAllocate, err := c.FeatureAllocator.ShouldAllocate(feature.GithubChecks, ctx.HeadRepo.FullName)
 	if err != nil {
 		c.Logger.Error(fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.GithubChecks, err))
 	}
 
-	if shouldAllocate {
-		c.checks.UpdateOutput(ctx, cmd, res)
+	// Github Checks turned on and github provider
+	if ctx.HeadRepo.VCSHost.Type == models.Github && shouldAllocate {
+		c.ChecksOutputUpdater.UpdateOutput(ctx, cmd, res)
 		return
 	}
-	c.pull.UpdateOutput(ctx, cmd, res)
+	c.PullOutputUpdater.UpdateOutput(ctx, cmd, res)
 }
 
 // Used to support checks type output (Github checks for example)
@@ -97,11 +65,9 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
 		updateStatusReq := types.UpdateStatusRequest{
-			UpdateReqIdentifier: types.UpdateReqIdentifier{
-				Repo:       ctx.HeadRepo,
-				Ref:        ctx.Pull.HeadCommit,
-				StatusName: statusName,
-			},
+			Repo:        ctx.HeadRepo,
+			Ref:         ctx.Pull.HeadCommit,
+			StatusName:  statusName,
 			PullNum:     ctx.Pull.Num,
 			Description: output,
 		}

@@ -2,6 +2,7 @@ package events
 
 import (
 	"fmt"
+
 	"github.com/runatlantis/atlantis/server/events/command"
 )
 
@@ -19,7 +20,6 @@ func NewVersionCommandRunner(
 	}
 }
 
-// TODO: Checks output updater or use PullOutputUpdater?
 type VersionCommandRunner struct {
 	outputUpdater    OutputUpdater
 	prjCmdBuilder    ProjectVersionCommandBuilder

@@ -85,7 +85,6 @@ type UserConfig struct {
 	LyftGatewaySnsTopicArn   string          `mapstructure:"lyft-gateway-sns-topic-arn"`
 	LyftMode                 string          `mapstructure:"lyft-mode"`
 	LyftWorkerQueueURL       string          `mapstructure:"lyft-worker-queue-url"`
-	EnableGithubChecks       bool            `mapstructure:"enable-github-checks"`
 }
 
 // ToLogLevel returns the LogLevel object corresponding to the user-passed

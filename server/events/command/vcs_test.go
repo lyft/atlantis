@@ -79,12 +79,10 @@ func TestUpdateCombined(t *testing.T) {
 
 			expSrc := fmt.Sprintf("atlantis/%s", c.command)
 			client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
-				UpdateReqIdentifier: types.UpdateReqIdentifier{
-					Repo:       models.Repo{},
-					StatusName: expSrc,
-				},
+				Repo:        models.Repo{},
 				PullNum:     0,
 				State:       c.status,
+				StatusName:  expSrc,
 				Description: c.expDescrip,
 			})
 		})
@@ -155,12 +153,10 @@ func TestUpdateCombinedCount(t *testing.T) {
 
 			expSrc := fmt.Sprintf("%s/%s", titleBuilder.TitlePrefix, c.command)
 			client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
-				UpdateReqIdentifier: types.UpdateReqIdentifier{
-					Repo:       models.Repo{},
-					StatusName: expSrc,
-				},
+				Repo:        models.Repo{},
 				PullNum:     0,
 				State:       c.status,
+				StatusName:  expSrc,
 				Description: c.expDescrip,
 			})
 		})
@@ -207,12 +203,10 @@ func TestDefaultCommitStatusUpdater_UpdateProjectSrc(t *testing.T) {
 				"url")
 			Ok(t, err)
 			client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
-				UpdateReqIdentifier: types.UpdateReqIdentifier{
-					Repo:       models.Repo{},
-					StatusName: c.expSrc,
-				},
+				Repo:        models.Repo{},
 				PullNum:     0,
 				State:       models.PendingCommitStatus,
+				StatusName:  c.expSrc,
 				Description: "Plan in progress...",
 				DetailsURL:  "url",
 			})
@@ -275,12 +269,10 @@ func TestDefaultCommitStatusUpdater_UpdateProject(t *testing.T) {
 				"url")
 			Ok(t, err)
 			client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
-				UpdateReqIdentifier: types.UpdateReqIdentifier{
-					Repo:       models.Repo{},
-					StatusName: fmt.Sprintf("atlantis/%s: ./default", c.cmd.String()),
-				},
+				Repo:        models.Repo{},
 				PullNum:     0,
 				State:       c.status,
+				StatusName:  fmt.Sprintf("atlantis/%s: ./default", c.cmd.String()),
 				Description: c.expDescrip,
 				DetailsURL:  "url",
 			})
@@ -304,12 +296,10 @@ func TestDefaultCommitStatusUpdater_UpdateProjectCustomStatusName(t *testing.T) 
 		"url")
 	Ok(t, err)
 	client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
-		UpdateReqIdentifier: types.UpdateReqIdentifier{
-			Repo:       models.Repo{},
-			StatusName: "custom/apply: ./default",
-		},
+		Repo:        models.Repo{},
 		PullNum:     0,
 		State:       models.SuccessCommitStatus,
+		StatusName:  "custom/apply: ./default",
 		Description: "Apply succeeded.",
 		DetailsURL:  "url",
 	})
