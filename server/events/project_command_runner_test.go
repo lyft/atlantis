@@ -216,10 +216,6 @@ func TestProjectOutputWrapper(t *testing.T) {
 		},
 		Workspace:  "default",
 		RepoRelDir: ".",
-		JobID:      "1234",
-		BaseRepo: models.Repo{
-			FullName: "test/test-repo",
-		},
 	}
 
 	cases := []struct {
@@ -306,7 +302,6 @@ func TestProjectOutputWrapper(t *testing.T) {
 
 			mockJobURLSetter.VerifyWasCalled(Once()).SetJobURLWithStatus(prjCtx, c.CommandName, models.PendingCommitStatus)
 			mockJobURLSetter.VerifyWasCalled(Once()).SetJobURLWithStatus(prjCtx, c.CommandName, expCommitStatus)
-			mockJobCloser.VerifyWasCalled(Once()).CloseJob(prjCtx.JobID, prjCtx.BaseRepo)
 
 			switch c.CommandName {
 			case command.Plan:
