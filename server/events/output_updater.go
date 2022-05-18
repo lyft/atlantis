@@ -1,7 +1,6 @@
 package events
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -73,7 +72,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Description: output,
 		}
 
-		if err := c.VCSClient.UpdateStatus(context.TODO(), updateStatusReq); err != nil {
+		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
 			ctx.Log.Error("updable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
