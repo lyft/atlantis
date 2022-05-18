@@ -10,16 +10,8 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
-// Wrapping github client with a struct to allow for method resolution
-type GithubClient struct {
-	*vcs.GithubClient
-}
-
-// ChecksClientWrapper uses a wrapped GithubClient to allow for method resoltion
-// Usiing vcs.GithubClient directly did not allow to assign a client when initializing ChecksClientWrapper unless it's a named field which is not
-// possible since using githubClient as an attribute means this struct does not implement the Client interface.
 type ChecksClientWrapper struct {
-	GithubClient
+	*vcs.GithubClient
 	FeatureAllocator feature.Allocator
 	Logger           logging.Logger
 }
@@ -36,6 +28,5 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 		return c.GithubClient.UpdateStatus(ctx, request)
 	}
 
-	// Checks
 	return c.GithubClient.UpdateChecksStatus(ctx, request)
 }

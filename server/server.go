@@ -255,7 +255,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		checksWrapperGhClient := &lyft_checks.ChecksClientWrapper{
 			FeatureAllocator: featureAllocator,
 			Logger:           ctxLogger,
-			GithubClient:     lyft_checks.GithubClient{rawGithubClient},
+			GithubClient:     rawGithubClient,
 		}
 
 		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, checksWrapperGhClient, statsScope, ctxLogger)
@@ -745,7 +745,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		&pullOutputUpdater,
+		outputUpdater,
 		dbUpdater,
 	)
 
@@ -756,7 +756,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	// Using pull updater for version commands until we move off of PR comments entirely
 	versionCommandRunner := events.NewVersionCommandRunner(
-		&pullOutputUpdater,
+		outputUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -780,7 +780,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
-		&pullOutputUpdater,
+		outputUpdater,
 		dbUpdater,
 	)
 
