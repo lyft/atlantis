@@ -1,7 +1,6 @@
 package vcs_test
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
-	"github.com/runatlantis/atlantis/server/events/vcs/types"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -163,11 +161,7 @@ func TestLyftGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 			testServerURL, err := url.Parse(testServer.URL)
 			assert.NoError(t, err)
 			mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker("atlantis")
-
-			internalClient, err := vcs.NewGithubInternalClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"})
-			assert.NoError(t, err)
-
-			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker, internalClient, &mockStatusUpdater{})
+			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
 			assert.NoError(t, err)
 			defer disableSSLVerification()()
 
@@ -190,10 +184,4 @@ func TestLyftGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 		})
 	}
 
-}
-
-type mockStatusUpdater struct{}
-
-func (m *mockStatusUpdater) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	return nil
 }

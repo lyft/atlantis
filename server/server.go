@@ -74,7 +74,7 @@ import (
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
-	gh_provider "github.com/runatlantis/atlantis/server/vcs/provider/github"
+	lyft_checks "github.com/runatlantis/atlantis/server/lyft/checks"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
 )
@@ -174,7 +174,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var bitbucketCloudClient *bitbucketcloud.Client
 	var bitbucketServerClient *bitbucketserver.Client
 	var azuredevopsClient *vcs.AzureDevopsClient
-	var ghStatusUpdater gh_provider.StatusUpdater
 
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(userConfig.VCSStatusName)
 
@@ -247,26 +246,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 		var err error
 
-		// Extracting internal client creation into its own function to allow for injecting Status Updater
-		internalClient, err := vcs.NewGithubInternalClient(userConfig.GithubHostname, githubCredentials)
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, ctxLogger, mergeabilityChecker)
 		if err != nil {
 			return nil, err
 		}
 
-		// Uses feature flags to turn on checks status updater, defaults to pull
-		ghStatusUpdater = &gh_provider.FeatureAwareStatusUpdater{
-			PullStatusUpdater:   gh_provider.PullStatusUpdater{Client: internalClient},
-			ChecksStatusUpdater: gh_provider.ChecksStatusUpdater{Client: internalClient},
-			Logger:              ctxLogger,
-			FeatureAllocator:    featureAllocator,
+		// TODO: Remove this wrapped client once github checks is stable
+		checksWrapperGhClient := &lyft_checks.ChecksClientWrapper{
+			FeatureAllocator: featureAllocator,
+			Logger:           ctxLogger,
+			GithubClient:     lyft_checks.GithubClient{rawGithubClient},
 		}
 
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, ctxLogger, mergeabilityChecker, internalClient, ghStatusUpdater)
-		if err != nil {
-			return nil, err
-		}
-
-		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
+		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, checksWrapperGhClient, statsScope, ctxLogger)
 	}
 	if userConfig.GitlabUser != "" {
 		supportedVCSHosts = append(supportedVCSHosts, models.Gitlab)
@@ -892,7 +884,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubHostname:      userConfig.GithubHostname,
 		GithubOrg:           userConfig.GithubOrg,
 		GithubStatusName:    userConfig.VCSStatusName,
-		GithubStatusUpdater: ghStatusUpdater,
 	}
 
 	scheduledExecutorService := scheduled.NewExecutorService(

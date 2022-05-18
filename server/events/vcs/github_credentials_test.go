@@ -7,7 +7,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGithubClient_GetUser_AppSlug(t *testing.T) {
@@ -17,11 +16,7 @@ func TestGithubClient_GetUser_AppSlug(t *testing.T) {
 
 	anonCreds := &vcs.GithubAnonymousCredentials{}
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-
-	internalClient, err := vcs.NewGithubInternalClient(testServer, anonCreds)
-	assert.NoError(t, err)
-
-	anonClient, err := vcs.NewGithubClient(testServer, anonCreds, logging.NewNoopCtxLogger(t), mergeabilityChecker, internalClient, &mockStatusUpdater{})
+	anonClient, err := vcs.NewGithubClient(testServer, anonCreds, logging.NewNoopCtxLogger(t), mergeabilityChecker)
 	Ok(t, err)
 	tempSecrets, err := anonClient.ExchangeCode("good-code")
 	Ok(t, err)
@@ -46,11 +41,7 @@ func TestGithubClient_AppAuthentication(t *testing.T) {
 
 	anonCreds := &vcs.GithubAnonymousCredentials{}
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-
-	internalClient, err := vcs.NewGithubInternalClient(testServer, anonCreds)
-	assert.NoError(t, err)
-
-	anonClient, err := vcs.NewGithubClient(testServer, anonCreds, logging.NewNoopCtxLogger(t), mergeabilityChecker, internalClient, &mockStatusUpdater{})
+	anonClient, err := vcs.NewGithubClient(testServer, anonCreds, logging.NewNoopCtxLogger(t), mergeabilityChecker)
 	Ok(t, err)
 	tempSecrets, err := anonClient.ExchangeCode("good-code")
 	Ok(t, err)
@@ -60,11 +51,7 @@ func TestGithubClient_AppAuthentication(t *testing.T) {
 		Key:      []byte(fixtures.GithubPrivateKey),
 		Hostname: testServer,
 	}
-
-	internalClient, err = vcs.NewGithubInternalClient(testServer, appCreds)
-	assert.NoError(t, err)
-
-	_, err = vcs.NewGithubClient(testServer, appCreds, logging.NewNoopCtxLogger(t), mergeabilityChecker, internalClient, &mockStatusUpdater{})
+	_, err = vcs.NewGithubClient(testServer, appCreds, logging.NewNoopCtxLogger(t), mergeabilityChecker)
 	Ok(t, err)
 
 	token, err := appCreds.GetToken()
