@@ -251,7 +251,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			return nil, err
 		}
 
-		// TODO: Remove this wrapped client once github checks is stable
+		// [WENGINES-4643] TODO: Remove this wrapped client once github checks is stable
 		checksWrapperGhClient := &lyft_checks.ChecksClientWrapper{
 			FeatureAllocator: featureAllocator,
 			Logger:           ctxLogger,
@@ -635,6 +635,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GlobalCfg:        globalCfg,
 	}
 
+	// [WENGINES-4643] TODO: Remove pullOutputUpdater once github checks is stable
 	outputUpdater := &events.FeatureAwareChecksOutputUpdater{
 		ChecksOutputUpdater: checksOutputUpdater,
 		PullOutputUpdater:   pullOutputUpdater,

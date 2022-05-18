@@ -429,6 +429,7 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 	return err
 }
 
+// [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
 // UpdateChecksStatus updates the status check
 func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
 	// TODO: Implement updating github checks

@@ -18,7 +18,7 @@ import (
 func NewInstrumentedGithubClient(client *GithubClient, checksEnabledGHClient Client, statsScope tally.Scope, logger logging.Logger) IGithubClient {
 	scope := statsScope.SubScope("github")
 
-	// TODO: Remove checksEnabledGHClient with client once gitub checks is stable.
+	// [WENGINES-4643] TODO: Remove checksEnabledGHClient with client once gitub checks is stable.
 	instrumentedGHClient := &InstrumentedClient{
 		Client:     checksEnabledGHClient,
 		StatsScope: scope,

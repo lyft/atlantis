@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
+// [WENGINES-4643] TODO: Remove this wrapper and add checks implementation to UpdateStatus() directly after github checks is stable
 type ChecksClientWrapper struct {
 	*vcs.GithubClient
 	FeatureAllocator feature.Allocator

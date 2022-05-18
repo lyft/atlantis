@@ -17,6 +17,7 @@ type OutputUpdater interface {
 	UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result)
 }
 
+// [WENGINES-4643] TODO: Remove PullOutputUpdater and default to checks once github checks is stable
 // defaults to pull comments if checks is turned off
 type FeatureAwareChecksOutputUpdater struct {
 	PullOutputUpdater
