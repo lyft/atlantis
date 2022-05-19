@@ -429,17 +429,113 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 	return err
 }
 
+// https://github.com/Altlantis-Dev/Test/pull/92/checks?check_run_id=6499919707
+
+// Checks uses Status and Conlusion. Need to map models.CommitStatus to Status and Conclusion
+// Status -> queued, in_progress, completed
+// Conclusion -> failure, neutral, cancelled, timed_out, or action_required. (Optional. Required if you provide a status of "completed".)
+func (g *GithubClient) resolveChecksStatus(state models.CommitStatus) (string, string) {
+	status := "queued"
+	conclusion := ""
+
+	switch state {
+	case models.SuccessCommitStatus:
+		status = "completed"
+		conclusion = "success"
+
+	case models.PendingCommitStatus:
+		status = "in_progress"
+
+	case models.FailedCommitStatus:
+		status = "completed"
+		conclusion = "failure"
+	}
+
+	return status, conclusion
+}
+
+func (g *GithubClient) UpdateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunId int64) error {
+	// Resolve status and conclusion
+	status, conclusion := g.resolveChecksStatus(request.State)
+
+	updateCheckRunOpts := github.UpdateCheckRunOptions{
+		Name:    request.StatusName,
+		HeadSHA: &request.Ref,
+		Status:  &status,
+	}
+
+	if request.DetailsURL != "" {
+		updateCheckRunOpts.DetailsURL = &request.DetailsURL
+	}
+
+	if request.Description != "" {
+		updateCheckRunOpts.Output = &github.CheckRunOutput{
+			Title:   &request.StatusName,
+			Summary: &request.Description,
+		}
+	}
+
+	// Add Conclusion is status is completed
+	if status == "completed" {
+		updateCheckRunOpts.Conclusion = &conclusion
+	}
+
+	_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, checkRunId, updateCheckRunOpts)
+	return err
+}
+
+func (g *GithubClient) CreateCheckRun(ctx context.Context, request types.UpdateStatusRequest) error {
+	// Resolve status and conclusion
+	status, conclusion := g.resolveChecksStatus(request.State)
+
+	createCheckRunOpts := github.CreateCheckRunOptions{
+		Name:    request.StatusName,
+		HeadSHA: request.Ref,
+		Status:  &status,
+	}
+
+	if request.DetailsURL != "" {
+		createCheckRunOpts.DetailsURL = &request.DetailsURL
+	}
+
+	if request.Description != "" {
+		createCheckRunOpts.Output = &github.CheckRunOutput{
+			Title:   &request.StatusName,
+			Summary: &request.Description,
+		}
+	}
+
+	// Add conclusion if not pending state
+	if status == "completed" {
+		createCheckRunOpts.Conclusion = &conclusion
+	}
+
+	_, _, err := g.client.Checks.CreateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, createCheckRunOpts)
+	return err
+}
+
 // [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
 // UpdateChecksStatus updates the status check
 func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	// TODO: Implement updating github checks
-	// - Get all checkruns for this SHA
-	// - Match the UpdateReqIdentifier with the check run. If it exists, update the checkrun. If it does not, create a new check run.
 
-	// Checks uses Status and Conlusion. Need to map models.CommitStatus to Status and Conclusion
-	// Status -> queued, in_progress, completed
-	// Conclusion -> failure, neutral, cancelled, timed_out, or action_required. (Optional. Required if you provide a status of "completed".)
-	return nil
+	// get all check runs for this repo at commit sha
+	result, _, err := g.client.Checks.ListCheckRunsForRef(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, &github.ListCheckRunsOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, checkRun := range result.CheckRuns {
+		if *checkRun.Name == request.StatusName {
+			// rerun, need to comment out the check run id before updating the check run
+			// if *checkRun.Status == "completed" && *checkRun.Conclusion == "success" && request.State == models.PendingCommitStatus {
+			// 	comment := fmt.Sprintf("https://github.com/%s/%s/pull/%d/checks?check_suite_id=%d", request.Repo.Owner, request.Repo.Name, request.PullNum, *checkRun.CheckSuite.ID)
+			// 	g.CreateComment(request.Repo, request.PullNum, comment, request.StatusName)
+			// }
+			return g.UpdateCheckRun(ctx, request, *checkRun.ID)
+		}
+	}
+
+	return g.CreateCheckRun(ctx, request)
 }
 
 // MarkdownPullLink specifies the string used in a pull request comment to reference another pull request.

@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -57,6 +58,26 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 		templateOverrides = repoCfg.TemplateOverrides
 	}
 
+	// Error or failure
+	if len(res.ProjectResults) == 0 {
+		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
+		updateStatusReq := types.UpdateStatusRequest{
+			Repo:        ctx.HeadRepo,
+			Ref:         ctx.Pull.HeadCommit,
+			StatusName:  c.TitleBuilder.Build(cmd.CommandName().String()),
+			PullNum:     ctx.Pull.Num,
+			Description: output,
+			State:       models.FailedCommitStatus,
+		}
+
+		if err := c.VCSClient.UpdateStatus(context.TODO(), updateStatusReq); err != nil {
+			ctx.Log.Error("updable to update check run", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+		return
+	}
+
 	// iterate through all project results and the update the github check
 	for _, projectResult := range res.ProjectResults {
 		statusName := c.TitleBuilder.Build(cmd.CommandName().String(), vcs.StatusTitleOptions{
@@ -70,9 +91,10 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			StatusName:  statusName,
 			PullNum:     ctx.Pull.Num,
 			Description: output,
+			State:       models.SuccessCommitStatus,
 		}
 
-		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
+		if err := c.VCSClient.UpdateStatus(context.TODO(), updateStatusReq); err != nil {
 			ctx.Log.Error("updable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
