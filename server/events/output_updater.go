@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
@@ -84,13 +85,22 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			ProjectName: projectResult.ProjectName,
 		})
 
+		// Description is a required field
+		var description string
+		if projectResult.Error != nil || projectResult.Failure != "" {
+			description = fmt.Sprintf("%s failed", strings.Title(projectResult.Command.String()))
+		} else {
+			description = fmt.Sprintf("%s succeeded", strings.Title(projectResult.Command.String()))
+		}
+
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:        ctx.HeadRepo,
 			Ref:         ctx.Pull.HeadCommit,
 			StatusName:  statusName,
 			PullNum:     ctx.Pull.Num,
-			Description: output,
+			Description: description,
+			Output:      output,
 			State:       models.SuccessCommitStatus,
 		}
 

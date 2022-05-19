@@ -35,7 +35,12 @@ import (
 // maxCommentLength is the maximum number of chars allowed in a single comment
 // by GitHub.
 const (
-	maxCommentLength = 65536
+	maxCommentLength        = 65536
+	ChecksStatusQueued      = "queued"
+	ChecksStatusInProgress  = "in_progress"
+	ChecksStatusCompleted   = "completed"
+	ChecksConclusionSuccess = "success"
+	ChecksConclsionFailure  = "failure"
 )
 
 // allows for custom handling of github 404s
@@ -429,63 +434,23 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 	return err
 }
 
-// https://github.com/Altlantis-Dev/Test/pull/92/checks?check_run_id=6499919707
-
-// Checks uses Status and Conlusion. Need to map models.CommitStatus to Status and Conclusion
-// Status -> queued, in_progress, completed
-// Conclusion -> failure, neutral, cancelled, timed_out, or action_required. (Optional. Required if you provide a status of "completed".)
-func (g *GithubClient) resolveChecksStatus(state models.CommitStatus) (string, string) {
-	status := "queued"
-	conclusion := ""
-
-	switch state {
-	case models.SuccessCommitStatus:
-		status = "completed"
-		conclusion = "success"
-
-	case models.PendingCommitStatus:
-		status = "in_progress"
-
-	case models.FailedCommitStatus:
-		status = "completed"
-		conclusion = "failure"
+// [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
+func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
+	result, _, err := g.client.Checks.ListCheckRunsForRef(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, &github.ListCheckRunsOptions{})
+	if err != nil {
+		return err
 	}
 
-	return status, conclusion
-}
-
-func (g *GithubClient) UpdateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunId int64) error {
-	// Resolve status and conclusion
-	status, conclusion := g.resolveChecksStatus(request.State)
-
-	updateCheckRunOpts := github.UpdateCheckRunOptions{
-		Name:    request.StatusName,
-		HeadSHA: &request.Ref,
-		Status:  &status,
-	}
-
-	if request.DetailsURL != "" {
-		updateCheckRunOpts.DetailsURL = &request.DetailsURL
-	}
-
-	if request.Description != "" {
-		updateCheckRunOpts.Output = &github.CheckRunOutput{
-			Title:   &request.StatusName,
-			Summary: &request.Description,
+	for _, checkRun := range result.CheckRuns {
+		if *checkRun.Name == request.StatusName {
+			return g.UpdateCheckRun(ctx, request, *checkRun.ID)
 		}
 	}
 
-	// Add Conclusion is status is completed
-	if status == "completed" {
-		updateCheckRunOpts.Conclusion = &conclusion
-	}
-
-	_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, checkRunId, updateCheckRunOpts)
-	return err
+	return g.CreateCheckRun(ctx, request)
 }
 
 func (g *GithubClient) CreateCheckRun(ctx context.Context, request types.UpdateStatusRequest) error {
-	// Resolve status and conclusion
 	status, conclusion := g.resolveChecksStatus(request.State)
 
 	createCheckRunOpts := github.CreateCheckRunOptions{
@@ -494,19 +459,22 @@ func (g *GithubClient) CreateCheckRun(ctx context.Context, request types.UpdateS
 		Status:  &status,
 	}
 
+	checkRunOutput := github.CheckRunOutput{
+		Title:   &request.StatusName,
+		Summary: &request.Description,
+	}
+
 	if request.DetailsURL != "" {
 		createCheckRunOpts.DetailsURL = &request.DetailsURL
 	}
 
-	if request.Description != "" {
-		createCheckRunOpts.Output = &github.CheckRunOutput{
-			Title:   &request.StatusName,
-			Summary: &request.Description,
-		}
+	if request.Output != "" {
+		checkRunOutput.Text = &request.Output
 	}
+	createCheckRunOpts.Output = &checkRunOutput
 
-	// Add conclusion if not pending state
-	if status == "completed" {
+	// Conclusion is required if status is Completed
+	if status == ChecksStatusCompleted {
 		createCheckRunOpts.Conclusion = &conclusion
 	}
 
@@ -514,28 +482,59 @@ func (g *GithubClient) CreateCheckRun(ctx context.Context, request types.UpdateS
 	return err
 }
 
-// [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
-// UpdateChecksStatus updates the status check
-func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
+func (g *GithubClient) UpdateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunId int64) error {
+	status, conclusion := g.resolveChecksStatus(request.State)
 
-	// get all check runs for this repo at commit sha
-	result, _, err := g.client.Checks.ListCheckRunsForRef(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, &github.ListCheckRunsOptions{})
-	if err != nil {
-		return err
+	updateCheckRunOpts := github.UpdateCheckRunOptions{
+		Name:    request.StatusName,
+		HeadSHA: &request.Ref,
+		Status:  &status,
 	}
 
-	for _, checkRun := range result.CheckRuns {
-		if *checkRun.Name == request.StatusName {
-			// rerun, need to comment out the check run id before updating the check run
-			// if *checkRun.Status == "completed" && *checkRun.Conclusion == "success" && request.State == models.PendingCommitStatus {
-			// 	comment := fmt.Sprintf("https://github.com/%s/%s/pull/%d/checks?check_suite_id=%d", request.Repo.Owner, request.Repo.Name, request.PullNum, *checkRun.CheckSuite.ID)
-			// 	g.CreateComment(request.Repo, request.PullNum, comment, request.StatusName)
-			// }
-			return g.UpdateCheckRun(ctx, request, *checkRun.ID)
-		}
+	checkRunOutput := github.CheckRunOutput{
+		Title:   &request.StatusName,
+		Summary: &request.Description,
 	}
 
-	return g.CreateCheckRun(ctx, request)
+	if request.DetailsURL != "" {
+		updateCheckRunOpts.DetailsURL = &request.DetailsURL
+	}
+
+	if request.Output != "" {
+		checkRunOutput.Text = &request.Output
+	}
+	updateCheckRunOpts.Output = &checkRunOutput
+
+	// Conclusion is required if status is Completed
+	if status == ChecksStatusCompleted {
+		updateCheckRunOpts.Conclusion = &conclusion
+	}
+
+	_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, checkRunId, updateCheckRunOpts)
+	return err
+}
+
+// Github Checks uses Status and Conlusion to report status of the check run. Need to map models.CommitStatus to Status and Conclusion
+// Status -> queued, in_progress, completed
+// Conclusion -> failure, neutral, cancelled, timed_out, or action_required. (Optional. Required if you provide a status of "completed".)
+func (g *GithubClient) resolveChecksStatus(state models.CommitStatus) (string, string) {
+	status := ChecksStatusQueued
+	conclusion := ""
+
+	switch state {
+	case models.SuccessCommitStatus:
+		status = ChecksStatusCompleted
+		conclusion = ChecksConclusionSuccess
+
+	case models.PendingCommitStatus:
+		status = ChecksStatusInProgress
+
+	case models.FailedCommitStatus:
+		status = ChecksStatusCompleted
+		conclusion = ChecksConclsionFailure
+	}
+
+	return status, conclusion
 }
 
 // MarkdownPullLink specifies the string used in a pull request comment to reference another pull request.
