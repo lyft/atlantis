@@ -67,7 +67,8 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Ref:         ctx.Pull.HeadCommit,
 			StatusName:  c.TitleBuilder.Build(cmd.CommandName().String()),
 			PullNum:     ctx.Pull.Num,
-			Description: output,
+			Description: fmt.Sprintf("%s failed", strings.Title(cmd.CommandName().String())),
+			Output:      output,
 			State:       models.FailedCommitStatus,
 		}
 
