@@ -59,8 +59,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 		templateOverrides = repoCfg.TemplateOverrides
 	}
 
-	// Assue error or failure if empty project results
-	if len(res.ProjectResults) == 0 {
+	if res.Error != nil || res.Failure != "" {
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:        ctx.HeadRepo,

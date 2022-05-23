@@ -2,7 +2,6 @@ package events
 
 import (
 	"fmt"
-
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -12,7 +11,8 @@ func NewUnlockCommandRunner(
 	vcsClient vcs.Client,
 ) *UnlockCommandRunner {
 	return &UnlockCommandRunner{
-		vcsClient: vcsClient,
+		deleteLockCommand: deleteLockCommand,
+		vcsClient:         vcsClient,
 	}
 }
 

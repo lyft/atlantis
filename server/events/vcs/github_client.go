@@ -350,7 +350,7 @@ func (g *GithubClient) PullIsMergeable(repo models.Repo, pull models.PullRequest
 		return false, errors.Wrap(err, "getting commit statuses")
 	}
 
-	checks, err := g.GetRepoChecks(repo, pull)
+	checks, err := g.GetRepoChecksForRef(repo, pull.HeadCommit)
 
 	if err != nil {
 		return false, errors.Wrapf(err, "getting check runs")
@@ -392,7 +392,7 @@ func (g *GithubClient) GetPullRequest(repo models.Repo, num int) (*github.PullRe
 	return g.GetPullRequestFromName(repo.Name, repo.Owner, num)
 }
 
-func (g *GithubClient) GetRepoChecks(repo models.Repo, pull models.PullRequest) ([]*github.CheckRun, error) {
+func (g *GithubClient) GetRepoChecksForRef(repo models.Repo, commitSHA string) ([]*github.CheckRun, error) {
 	nextPage := 0
 
 	var results []*github.CheckRun
@@ -408,7 +408,7 @@ func (g *GithubClient) GetRepoChecks(repo models.Repo, pull models.PullRequest) 
 			opts.Page = nextPage
 		}
 
-		result, response, err := g.client.Checks.ListCheckRunsForRef(g.ctx, repo.Owner, repo.Name, pull.HeadCommit, opts)
+		result, response, err := g.client.Checks.ListCheckRunsForRef(g.ctx, repo.Owner, repo.Name, commitSHA, opts)
 
 		if err != nil {
 			return results, errors.Wrapf(err, "getting check runs for page %d", nextPage)
@@ -482,21 +482,21 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 
 // [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
 func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	result, _, err := g.client.Checks.ListCheckRunsForRef(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, &github.ListCheckRunsOptions{})
+	checkRuns, err := g.GetRepoChecksForRef(request.Repo, request.Ref)
 	if err != nil {
 		return err
 	}
 
-	for _, checkRun := range result.CheckRuns {
+	for _, checkRun := range checkRuns {
 		if *checkRun.Name == request.StatusName {
-			return g.UpdateCheckRun(ctx, request, *checkRun.ID)
+			return g.updateCheckRun(ctx, request, *checkRun.ID)
 		}
 	}
 
-	return g.CreateCheckRun(ctx, request)
+	return g.createCheckRun(ctx, request)
 }
 
-func (g *GithubClient) CreateCheckRun(ctx context.Context, request types.UpdateStatusRequest) error {
+func (g *GithubClient) createCheckRun(ctx context.Context, request types.UpdateStatusRequest) error {
 	status, conclusion := g.resolveChecksStatus(request.State)
 
 	createCheckRunOpts := github.CreateCheckRunOptions{
@@ -528,7 +528,7 @@ func (g *GithubClient) CreateCheckRun(ctx context.Context, request types.UpdateS
 	return err
 }
 
-func (g *GithubClient) UpdateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunId int64) error {
+func (g *GithubClient) updateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunId int64) error {
 	status, conclusion := g.resolveChecksStatus(request.State)
 
 	updateCheckRunOpts := github.UpdateCheckRunOptions{
