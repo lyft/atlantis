@@ -378,7 +378,7 @@ func TestGithubClient_UpdateChecksStatus(t *testing.T) {
 			testServer := httptest.NewTLSServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.RequestURI {
-					case "/api/v3/repos/owner/repo/commits/sha/check-runs":
+					case "/api/v3/repos/owner/repo/commits/sha/check-runs?per_page=100":
 						_, err := w.Write([]byte(c.listCheckRunResp))
 						Ok(t, err)
 
@@ -467,7 +467,7 @@ func TestGithubClient_UpdateChecksStatus_ConclusionWhenStatusComplete(t *testing
 	testServer := httptest.NewTLSServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.RequestURI {
-			case "/api/v3/repos/owner/repo/commits/sha/check-runs":
+			case "/api/v3/repos/owner/repo/commits/sha/check-runs?per_page=100":
 				_, err := w.Write([]byte(fmt.Sprintf(listCheckRunResp, checkRunName)))
 				Ok(t, err)
 			case "/api/v3/repos/owner/repo/check-runs/1":
@@ -523,7 +523,7 @@ func TestGithubClient_UpdateChecksStatus_ErrorWhenListCheckRunsFails(t *testing.
 	testServer := httptest.NewTLSServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.RequestURI {
-			case "/api/v3/repos/owner/repo/commits/sha/check-runs":
+			case "/api/v3/repos/owner/repo/commits/sha/check-runs?per_page=100":
 				_, err := w.Write([]byte(listCheckRunResp))
 				Ok(t, err)
 			default:
