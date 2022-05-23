@@ -32,15 +32,61 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
+// github checks conclusion
+type ChecksConclusion int
+
+const (
+	Neutral ChecksConclusion = iota
+	TimedOut
+	ActionRequired
+	Cancelled
+	Failure
+	Success
+)
+
+func (e ChecksConclusion) String() string {
+	switch e {
+	case Neutral:
+		return "neutral"
+	case TimedOut:
+		return "timed_out"
+	case ActionRequired:
+		return "action_required"
+	case Cancelled:
+		return "cancelled"
+	case Failure:
+		return "failure"
+	case Success:
+		return "success"
+	}
+	return ""
+}
+
+// github checks status
+type CheckStatus int
+
+const (
+	Queued CheckStatus = iota
+	InProgress
+	Completed
+)
+
+func (e CheckStatus) String() string {
+	switch e {
+	case Queued:
+		return "queued"
+	case InProgress:
+		return "in_progress"
+	case Completed:
+		return "completed"
+	}
+	return ""
+}
+
 // maxCommentLength is the maximum number of chars allowed in a single comment
 // by GitHub.
 const (
-	maxCommentLength        = 65536
-	ChecksStatusQueued      = "queued"
-	ChecksStatusInProgress  = "in_progress"
-	ChecksStatusCompleted   = "completed"
-	ChecksConclusionSuccess = "success"
-	ChecksConclsionFailure  = "failure"
+	maxCommentLength = 65536
 )
 
 // allows for custom handling of github 404s
@@ -464,17 +510,17 @@ func (g *GithubClient) CreateCheckRun(ctx context.Context, request types.UpdateS
 		Summary: &request.Description,
 	}
 
-	if request.DetailsURL != "" {
-		createCheckRunOpts.DetailsURL = &request.DetailsURL
-	}
-
 	if request.Output != "" {
 		checkRunOutput.Text = &request.Output
 	}
 	createCheckRunOpts.Output = &checkRunOutput
 
+	if request.DetailsURL != "" {
+		createCheckRunOpts.DetailsURL = &request.DetailsURL
+	}
+
 	// Conclusion is required if status is Completed
-	if status == ChecksStatusCompleted {
+	if status == Completed.String() {
 		createCheckRunOpts.Conclusion = &conclusion
 	}
 
@@ -496,17 +542,17 @@ func (g *GithubClient) UpdateCheckRun(ctx context.Context, request types.UpdateS
 		Summary: &request.Description,
 	}
 
-	if request.DetailsURL != "" {
-		updateCheckRunOpts.DetailsURL = &request.DetailsURL
-	}
-
 	if request.Output != "" {
 		checkRunOutput.Text = &request.Output
 	}
 	updateCheckRunOpts.Output = &checkRunOutput
 
+	if request.DetailsURL != "" {
+		updateCheckRunOpts.DetailsURL = &request.DetailsURL
+	}
+
 	// Conclusion is required if status is Completed
-	if status == ChecksStatusCompleted {
+	if status == Completed.String() {
 		updateCheckRunOpts.Conclusion = &conclusion
 	}
 
@@ -514,27 +560,27 @@ func (g *GithubClient) UpdateCheckRun(ctx context.Context, request types.UpdateS
 	return err
 }
 
-// Github Checks uses Status and Conlusion to report status of the check run. Need to map models.CommitStatus to Status and Conclusion
+// Github Checks uses Status and Conclusion to report status of the check run. Need to map models.CommitStatus to Status and Conclusion
 // Status -> queued, in_progress, completed
 // Conclusion -> failure, neutral, cancelled, timed_out, or action_required. (Optional. Required if you provide a status of "completed".)
 func (g *GithubClient) resolveChecksStatus(state models.CommitStatus) (string, string) {
-	status := ChecksStatusQueued
-	conclusion := ""
+	status := Queued
+	conclusion := Neutral
 
 	switch state {
 	case models.SuccessCommitStatus:
-		status = ChecksStatusCompleted
-		conclusion = ChecksConclusionSuccess
+		status = Completed
+		conclusion = Success
 
 	case models.PendingCommitStatus:
-		status = ChecksStatusInProgress
+		status = InProgress
 
 	case models.FailedCommitStatus:
-		status = ChecksStatusCompleted
-		conclusion = ChecksConclsionFailure
+		status = Completed
+		conclusion = Failure
 	}
 
-	return status, conclusion
+	return status.String(), conclusion.String()
 }
 
 // MarkdownPullLink specifies the string used in a pull request comment to reference another pull request.

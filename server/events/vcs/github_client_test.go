@@ -356,19 +356,20 @@ func TestGithubClient_UpdateChecksStatus(t *testing.T) {
 	`
 
 	cases := []struct {
-		name             string
-		checkRunName     string
-		listCheckRunResp string
+		name                 string
+		newCheckRunName      string
+		existingCheckRunName string
+		listCheckRunResp     string
 	}{
 		{
 			name:             "create new check run when check run dne",
-			checkRunName:     "atlantis/apply",
+			newCheckRunName:  "atlantis/apply",
 			listCheckRunResp: fmt.Sprintf(listCheckRunRespFormat, "atlantis/plan"),
 		},
 		{
-			name:             "update check run when check run exists",
-			checkRunName:     "atlantis/apply",
-			listCheckRunResp: fmt.Sprintf(listCheckRunRespFormat, "atlantis/apply"),
+			name:                 "update check run when check run exists",
+			existingCheckRunName: "atlantis/apply",
+			listCheckRunResp:     fmt.Sprintf(listCheckRunRespFormat, "atlantis/apply"),
 		},
 	}
 
@@ -388,7 +389,7 @@ func TestGithubClient_UpdateChecksStatus(t *testing.T) {
 						m := make(map[string]interface{})
 						err = json.Unmarshal(body, &m)
 						Ok(t, err)
-						assert.Equal(t, c.checkRunName, m["name"])
+						assert.Equal(t, c.newCheckRunName, m["name"])
 					case "/api/v3/repos/owner/repo/check-runs/1":
 						// parse req and assert UpdateCheckRun was called for existing check run
 						body, err := ioutil.ReadAll(r.Body)
@@ -396,7 +397,7 @@ func TestGithubClient_UpdateChecksStatus(t *testing.T) {
 						m := make(map[string]interface{})
 						err = json.Unmarshal(body, &m)
 						Ok(t, err)
-						assert.Equal(t, c.checkRunName, m["name"])
+						assert.Equal(t, c.existingCheckRunName, m["name"])
 					default:
 						t.Errorf("got unexpected request at %q", r.RequestURI)
 						http.Error(w, "not found", http.StatusNotFound)
@@ -411,7 +412,7 @@ func TestGithubClient_UpdateChecksStatus(t *testing.T) {
 			Ok(t, err)
 			defer disableSSLVerification()()
 
-			err = client.UpdateChecksStatus(context.TODO(), types.UpdateStatusRequest{
+			req := types.UpdateStatusRequest{
 				Repo: models.Repo{
 					FullName:          "owner/repo",
 					Owner:             "owner",
@@ -425,11 +426,18 @@ func TestGithubClient_UpdateChecksStatus(t *testing.T) {
 				},
 				PullNum:     1,
 				State:       models.PendingCommitStatus,
-				StatusName:  c.checkRunName,
 				Description: "description",
 				DetailsURL:  "https://google.com",
 				Ref:         "sha",
-			})
+			}
+
+			if c.newCheckRunName != "" {
+				req.StatusName = c.newCheckRunName
+			} else {
+				req.StatusName = c.existingCheckRunName
+			}
+
+			err = client.UpdateChecksStatus(context.TODO(), req)
 			Ok(t, err)
 		})
 	}
@@ -469,7 +477,7 @@ func TestGithubClient_UpdateChecksStatus_ConclusionWhenStatusComplete(t *testing
 				err = json.Unmarshal(body, &m)
 				Ok(t, err)
 
-				// assert conclusion was set to complete when status is complete
+				// assert conclusion was set to success when status is complete
 				assert.Equal(t, checkRunName, m["name"])
 				assert.Equal(t, "success", m["conclusion"])
 

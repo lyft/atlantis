@@ -59,7 +59,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 		templateOverrides = repoCfg.TemplateOverrides
 	}
 
-	// Error or failure
+	// Assue error or failure if empty project results
 	if len(res.ProjectResults) == 0 {
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
 		updateStatusReq := types.UpdateStatusRequest{
@@ -94,6 +94,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			description = fmt.Sprintf("%s succeeded", strings.Title(projectResult.Command.String()))
 		}
 
+		// TODO: Make the mark down rendered project specific
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:        ctx.HeadRepo,

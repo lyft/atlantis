@@ -12,8 +12,7 @@ func NewUnlockCommandRunner(
 	vcsClient vcs.Client,
 ) *UnlockCommandRunner {
 	return &UnlockCommandRunner{
-		deleteLockCommand: deleteLockCommand,
-		vcsClient:         vcsClient,
+		vcsClient: vcsClient,
 	}
 }
 
