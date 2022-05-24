@@ -2,7 +2,7 @@ package events
 
 import (
 	"fmt"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 )
@@ -11,7 +11,6 @@ type PullUpdater struct {
 	HidePrevPlanComments bool
 	VCSClient            vcs.Client
 	MarkdownRenderer     *MarkdownRenderer
-	GlobalCfg            valid.GlobalCfg
 }
 
 func (c *PullUpdater) UpdatePull(ctx *command.Context, cmd PullCommand, res command.Result) {
@@ -31,13 +30,7 @@ func (c *PullUpdater) UpdatePull(ctx *command.Context, cmd PullCommand, res comm
 		}
 	}
 
-	var templateOverrides map[string]string
-	repoCfg := c.GlobalCfg.MatchingRepo(ctx.Pull.BaseRepo.ID())
-	if repoCfg != nil {
-		templateOverrides = repoCfg.TemplateOverrides
-	}
-
-	comment := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
+	comment := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
 	if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, comment, cmd.CommandName().String()); err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to comment: %s", err))
 	}
