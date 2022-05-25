@@ -11,7 +11,7 @@
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
 
-package events_test
+package markdown_test
 
 import (
 	"errors"
@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
+	. "github.com/runatlantis/atlantis/server/vcs/markdown"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -172,7 +172,7 @@ $$$
 	}
 	for _, c := range cases {
 
-		templateResolver := events.TemplateResolver{
+		templateResolver := TemplateResolver{
 			GlobalCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
 					{
@@ -182,7 +182,7 @@ $$$
 				},
 			},
 		}
-		r := events.MarkdownRenderer{
+		r := Renderer{
 			TemplateResolver: templateResolver,
 		}
 		res := command.Result{
@@ -224,7 +224,7 @@ func TestRenderErrorf(t *testing.T) {
 			"**Policy Check Error**\n```\nerr\n```\n",
 		},
 	}
-	r := events.MarkdownRenderer{}
+	r := Renderer{}
 	for _, c := range cases {
 		res := command.Result{
 			Error: c.Error,
@@ -263,7 +263,7 @@ func TestRenderFailure(t *testing.T) {
 				"\n* :heavy_check_mark: To **approve** failing policies either request an approval from approvers or address the failure by modifying the codebase.\n\n",
 		},
 	}
-	r := events.MarkdownRenderer{}
+	r := Renderer{}
 	for _, c := range cases {
 		res := command.Result{
 			Failure: c.Failure,
@@ -276,7 +276,7 @@ func TestRenderFailure(t *testing.T) {
 }
 
 func TestRenderErrAndFailure(t *testing.T) {
-	r := events.MarkdownRenderer{}
+	r := Renderer{}
 	res := command.Result{
 		Error:   errors.New("error"),
 		Failure: "failure",
@@ -916,7 +916,7 @@ $$$
 		},
 	}
 
-	r := events.MarkdownRenderer{}
+	r := Renderer{}
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
 			res := command.Result{
@@ -1066,7 +1066,7 @@ $$$
 `,
 		},
 	}
-	r := events.MarkdownRenderer{
+	r := Renderer{
 		DisableApplyAll: true,
 	}
 	for _, c := range cases {
@@ -1209,7 +1209,7 @@ $$$
 `,
 		},
 	}
-	r := events.MarkdownRenderer{
+	r := Renderer{
 		DisableApplyAll: true,
 		DisableApply:    true,
 	}
@@ -1229,8 +1229,8 @@ $$$
 
 // Test that if folding is disabled that it's not used.
 func TestRenderProjectResults_DisableFolding(t *testing.T) {
-	mr := events.MarkdownRenderer{
-		TemplateResolver: events.TemplateResolver{
+	mr := Renderer{
+		TemplateResolver: TemplateResolver{
 			DisableMarkdownFolding: true,
 		},
 	}
@@ -1315,8 +1315,8 @@ func TestRenderProjectResults_WrappedErrorf(t *testing.T) {
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("%s_%v", c.VCSHost.String(), c.ShouldWrap),
 			func(t *testing.T) {
-				mr := events.MarkdownRenderer{
-					TemplateResolver: events.TemplateResolver{
+				mr := Renderer{
+					TemplateResolver: TemplateResolver{
 						GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
 					},
 				}
@@ -1431,8 +1431,8 @@ func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 		for _, cmd := range []command.Name{command.Plan, command.Apply} {
 			t.Run(fmt.Sprintf("%s_%s_%v", c.VCSHost.String(), cmd.String(), c.ShouldWrap),
 				func(t *testing.T) {
-					mr := events.MarkdownRenderer{
-						TemplateResolver: events.TemplateResolver{
+					mr := Renderer{
+						TemplateResolver: TemplateResolver{
 							GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
 						},
 					}
@@ -1542,7 +1542,7 @@ $$$
 }
 
 func TestRenderProjectResults_MultiProjectApplyWrapped(t *testing.T) {
-	mr := events.MarkdownRenderer{}
+	mr := Renderer{}
 	tfOut := strings.Repeat("line\n", 13)
 	rendered := mr.Render(command.Result{
 		ProjectResults: []command.ProjectResult{
@@ -1588,7 +1588,7 @@ $$$
 }
 
 func TestRenderProjectResults_MultiProjectPlanWrapped(t *testing.T) {
-	mr := events.MarkdownRenderer{}
+	mr := Renderer{}
 	tfOut := strings.Repeat("line\n", 13) + "Plan: 1 to add, 0 to change, 0 to destroy."
 	rendered := mr.Render(command.Result{
 		ProjectResults: []command.ProjectResult{
@@ -1920,7 +1920,7 @@ Plan: 1 to add, 1 to change, 1 to destroy.
 `,
 		},
 	}
-	r := events.MarkdownRenderer{
+	r := Renderer{
 		DisableApplyAll:          true,
 		DisableApply:             true,
 		EnableDiffMarkdownFormat: true,

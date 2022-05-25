@@ -9,6 +9,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/vcs/markdown"
 )
 
 type OutputUpdater interface {
@@ -42,7 +43,7 @@ func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd
 // Used to support checks type output (Github checks for example)
 type ChecksOutputUpdater struct {
 	VCSClient        vcs.Client
-	MarkdownRenderer *MarkdownRenderer
+	MarkdownRenderer *markdown.Renderer
 	TitleBuilder     vcs.StatusTitleBuilder
 }
 
@@ -76,7 +77,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 type PullOutputUpdater struct {
 	HidePrevPlanComments bool
 	VCSClient            vcs.Client
-	MarkdownRenderer     *MarkdownRenderer
+	MarkdownRenderer     *markdown.Renderer
 }
 
 func (c *PullOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {

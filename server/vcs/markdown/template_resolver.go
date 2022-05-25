@@ -1,4 +1,4 @@
-package events
+package markdown
 
 import (
 	"io/ioutil"

@@ -11,7 +11,7 @@
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
 
-package events
+package markdown
 
 import (
 	"bytes"
@@ -25,8 +25,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-// MarkdownRenderer renders responses as markdown.
-type MarkdownRenderer struct {
+// Renderer renders responses as markdown.
+type Renderer struct {
 	TemplateResolver TemplateResolver
 
 	DisableApplyAll          bool
@@ -69,7 +69,7 @@ type projectResultTmplData struct {
 
 // Render formats the data into a markdown string.
 // nolint: interfacer
-func (m *MarkdownRenderer) Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string {
+func (m *Renderer) Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string {
 	commandStr := strings.Title(strings.Replace(cmdName.String(), "_", " ", -1))
 	common := commonData{
 		Command:                  commandStr,
@@ -86,7 +86,7 @@ func (m *MarkdownRenderer) Render(res command.Result, cmdName command.Name, base
 	return m.renderProjectResults(res.ProjectResults, common, baseRepo)
 }
 
-func (m *MarkdownRenderer) renderProjectResults(results []command.ProjectResult, common commonData, baseRepo models.Repo) string {
+func (m *Renderer) renderProjectResults(results []command.ProjectResult, common commonData, baseRepo models.Repo) string {
 	// render project results
 	var prjResultTmplData []projectResultTmplData
 	for _, result := range results {
@@ -109,7 +109,7 @@ func (m *MarkdownRenderer) renderProjectResults(results []command.ProjectResult,
 	return m.renderTemplate(tmpl, resultData{prjResultTmplData, common})
 }
 
-func (m *MarkdownRenderer) countSuccesses(results []command.ProjectResult) (numPlanSuccesses, numPolicyCheckSuccesses, numVersionSuccesses int) {
+func (m *Renderer) countSuccesses(results []command.ProjectResult) (numPlanSuccesses, numPolicyCheckSuccesses, numVersionSuccesses int) {
 	for _, result := range results {
 		switch {
 		case result.PlanSuccess != nil:
@@ -123,7 +123,7 @@ func (m *MarkdownRenderer) countSuccesses(results []command.ProjectResult) (numP
 	return
 }
 
-func (m *MarkdownRenderer) renderTemplate(tmpl *template.Template, data interface{}) string {
+func (m *Renderer) renderTemplate(tmpl *template.Template, data interface{}) string {
 	buf := &bytes.Buffer{}
 	if err := tmpl.Execute(buf, data); err != nil {
 		return fmt.Sprintf("Failed to render template, this is a bug: %v", err)

@@ -75,6 +75,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
 	lyft_checks "github.com/runatlantis/atlantis/server/lyft/checks"
+	"github.com/runatlantis/atlantis/server/vcs/markdown"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
 )
@@ -410,12 +411,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing terraform")
 	}
 
-	templateResolver := events.TemplateResolver{
+	templateResolver := markdown.TemplateResolver{
 		DisableMarkdownFolding:   userConfig.DisableMarkdownFolding,
 		GitlabSupportsCommonMark: gitlabClient.SupportsCommonMark(),
 		GlobalCfg:                globalCfg,
 	}
-	markdownRenderer := &events.MarkdownRenderer{
+	markdownRenderer := &markdown.Renderer{
 		DisableApplyAll:          userConfig.DisableApplyAll,
 		DisableApply:             userConfig.DisableApply,
 		EnableDiffMarkdownFormat: userConfig.EnableDiffMarkdownFormat,
