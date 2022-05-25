@@ -19,11 +19,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	. "github.com/runatlantis/atlantis/testing"
 )
+
+var testRepo = models.Repo{
+	VCSHost: models.VCSHost{
+		Hostname: models.Github.String(),
+	},
+	FullName: "test-repo",
+}
 
 func TestCustomTemplates(t *testing.T) {
 	cases := []struct {
@@ -162,14 +170,27 @@ $$$
 			map[string]string{"project_plan_success": "testdata/custom_template.tmpl"},
 		},
 	}
-	r := events.MarkdownRenderer{}
 	for _, c := range cases {
+
+		templateResolver := events.TemplateResolver{
+			GlobalCfg: valid.GlobalCfg{
+				Repos: []valid.Repo{
+					{
+						ID:                testRepo.ID(),
+						TemplateOverrides: c.TemplateOverrides,
+					},
+				},
+			},
+		}
+		r := events.MarkdownRenderer{
+			TemplateResolver: templateResolver,
+		}
 		res := command.Result{
 			ProjectResults: c.ProjectResults,
 		}
 		expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
 		t.Run(fmt.Sprintf("%s_%t", c.Description, false), func(t *testing.T) {
-			s := r.Render(res, c.Command, models.Github, c.TemplateOverrides)
+			s := r.Render(res, c.Command, testRepo)
 			Equals(t, expWithBackticks, s)
 		})
 	}
@@ -203,14 +224,13 @@ func TestRenderErrorf(t *testing.T) {
 			"**Policy Check Error**\n```\nerr\n```\n",
 		},
 	}
-
 	r := events.MarkdownRenderer{}
 	for _, c := range cases {
 		res := command.Result{
 			Error: c.Error,
 		}
 		t.Run(c.Description, func(t *testing.T) {
-			s := r.Render(res, c.Command, models.Github, make(map[string]string))
+			s := r.Render(res, c.Command, testRepo)
 			Equals(t, c.Expected, s)
 		})
 	}
@@ -243,14 +263,13 @@ func TestRenderFailure(t *testing.T) {
 				"\n* :heavy_check_mark: To **approve** failing policies either request an approval from approvers or address the failure by modifying the codebase.\n\n",
 		},
 	}
-
 	r := events.MarkdownRenderer{}
 	for _, c := range cases {
 		res := command.Result{
 			Failure: c.Failure,
 		}
 		t.Run(c.Description, func(t *testing.T) {
-			s := r.Render(res, c.Command, models.Github, make(map[string]string))
+			s := r.Render(res, c.Command, testRepo)
 			Equals(t, c.Expected, s)
 		})
 	}
@@ -262,7 +281,7 @@ func TestRenderErrAndFailure(t *testing.T) {
 		Error:   errors.New("error"),
 		Failure: "failure",
 	}
-	s := r.Render(res, command.Plan, models.Github, make(map[string]string))
+	s := r.Render(res, command.Plan, testRepo)
 	Equals(t, "**Plan Error**\n```\nerror\n```\n", s)
 }
 
@@ -904,7 +923,7 @@ $$$
 				ProjectResults: c.ProjectResults,
 			}
 			t.Run(c.Description, func(t *testing.T) {
-				s := r.Render(res, c.Command, c.VCSHost, make(map[string]string))
+				s := r.Render(res, c.Command, testRepo)
 				expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
 				Equals(t, expWithBackticks, s)
 
@@ -1056,7 +1075,7 @@ $$$
 				ProjectResults: c.ProjectResults,
 			}
 			t.Run(c.Description, func(t *testing.T) {
-				s := r.Render(res, c.Command, c.VCSHost, make(map[string]string))
+				s := r.Render(res, c.Command, testRepo)
 				expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
 				Equals(t, expWithBackticks, s)
 			})
@@ -1200,7 +1219,7 @@ $$$
 				ProjectResults: c.ProjectResults,
 			}
 			t.Run(c.Description, func(t *testing.T) {
-				s := r.Render(res, c.Command, c.VCSHost, make(map[string]string))
+				s := r.Render(res, c.Command, testRepo)
 				expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
 				Equals(t, expWithBackticks, s)
 			})
@@ -1211,7 +1230,9 @@ $$$
 // Test that if folding is disabled that it's not used.
 func TestRenderProjectResults_DisableFolding(t *testing.T) {
 	mr := events.MarkdownRenderer{
-		DisableMarkdownFolding: true,
+		TemplateResolver: events.TemplateResolver{
+			DisableMarkdownFolding: true,
+		},
 	}
 
 	rendered := mr.Render(command.Result{
@@ -1222,7 +1243,7 @@ func TestRenderProjectResults_DisableFolding(t *testing.T) {
 				Error:      errors.New(strings.Repeat("line\n", 13)),
 			},
 		},
-	}, command.Plan, models.Github, make(map[string]string))
+	}, command.Plan, testRepo)
 	Equals(t, false, strings.Contains(rendered, "<details>"))
 }
 
@@ -1295,7 +1316,9 @@ func TestRenderProjectResults_WrappedErrorf(t *testing.T) {
 		t.Run(fmt.Sprintf("%s_%v", c.VCSHost.String(), c.ShouldWrap),
 			func(t *testing.T) {
 				mr := events.MarkdownRenderer{
-					GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
+					TemplateResolver: events.TemplateResolver{
+						GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
+					},
 				}
 
 				rendered := mr.Render(command.Result{
@@ -1306,7 +1329,11 @@ func TestRenderProjectResults_WrappedErrorf(t *testing.T) {
 							Error:      errors.New(c.Output),
 						},
 					},
-				}, command.Plan, c.VCSHost, make(map[string]string))
+				}, command.Plan, models.Repo{
+					VCSHost: models.VCSHost{
+						Type: c.VCSHost,
+					},
+				})
 				var exp string
 				if c.ShouldWrap {
 					exp = `Ran Plan for dir: $.$ workspace: $default$
@@ -1405,7 +1432,9 @@ func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 			t.Run(fmt.Sprintf("%s_%s_%v", c.VCSHost.String(), cmd.String(), c.ShouldWrap),
 				func(t *testing.T) {
 					mr := events.MarkdownRenderer{
-						GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
+						TemplateResolver: events.TemplateResolver{
+							GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
+						},
 					}
 					var pr command.ProjectResult
 					switch cmd {
@@ -1429,7 +1458,11 @@ func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 					}
 					rendered := mr.Render(command.Result{
 						ProjectResults: []command.ProjectResult{pr},
-					}, cmd, c.VCSHost, make(map[string]string))
+					}, cmd, models.Repo{
+						VCSHost: models.VCSHost{
+							Type: c.VCSHost,
+						},
+					})
 
 					// Check result.
 					var exp string
@@ -1524,7 +1557,7 @@ func TestRenderProjectResults_MultiProjectApplyWrapped(t *testing.T) {
 				ApplySuccess: tfOut,
 			},
 		},
-	}, command.Apply, models.Github, make(map[string]string))
+	}, command.Apply, testRepo)
 	exp := `Ran Apply for 2 projects:
 
 1. dir: $.$ workspace: $staging$
@@ -1580,7 +1613,7 @@ func TestRenderProjectResults_MultiProjectPlanWrapped(t *testing.T) {
 				},
 			},
 		},
-	}, command.Plan, models.Github, make(map[string]string))
+	}, command.Plan, testRepo)
 	exp := `Ran Plan for 2 projects:
 
 1. dir: $.$ workspace: $staging$
@@ -1898,7 +1931,11 @@ Plan: 1 to add, 1 to change, 1 to destroy.
 				ProjectResults: c.ProjectResults,
 			}
 			t.Run(c.Description, func(t *testing.T) {
-				s := r.Render(res, c.Command, c.VCSHost, make(map[string]string))
+				s := r.Render(res, c.Command, models.Repo{
+					VCSHost: models.VCSHost{
+						Type: c.VCSHost,
+					},
+				})
 				expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
 				Equals(t, expWithBackticks, s)
 			})
