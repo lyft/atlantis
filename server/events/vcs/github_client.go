@@ -350,7 +350,7 @@ func (g *GithubClient) PullIsMergeable(repo models.Repo, pull models.PullRequest
 		return false, errors.Wrap(err, "getting commit statuses")
 	}
 
-	checks, err := g.GetRepoChecksForRef(repo, pull.HeadCommit)
+	checks, err := g.GetRepoChecks(repo, pull.HeadCommit)
 
 	if err != nil {
 		return false, errors.Wrapf(err, "getting check runs")
@@ -392,7 +392,7 @@ func (g *GithubClient) GetPullRequest(repo models.Repo, num int) (*github.PullRe
 	return g.GetPullRequestFromName(repo.Name, repo.Owner, num)
 }
 
-func (g *GithubClient) GetRepoChecksForRef(repo models.Repo, commitSHA string) ([]*github.CheckRun, error) {
+func (g *GithubClient) GetRepoChecks(repo models.Repo, commitSHA string) ([]*github.CheckRun, error) {
 	nextPage := 0
 
 	var results []*github.CheckRun
@@ -482,36 +482,47 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 
 // [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
 func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	checkRuns, err := g.GetRepoChecksForRef(request.Repo, request.Ref)
+	checkRuns, err := g.GetRepoChecks(request.Repo, request.Ref)
 	if err != nil {
 		return err
 	}
 
-	for _, checkRun := range checkRuns {
-		if *checkRun.Name == request.StatusName {
-			return g.updateCheckRun(ctx, request, *checkRun.ID)
-		}
+	status, conclusion := g.resolveChecksStatus(request.State)
+	checkRunOutput := github.CheckRunOutput{
+		Title:   &request.StatusName,
+		Summary: &request.Description,
+	}
+	if request.Output != "" {
+		checkRunOutput.Text = &request.Output
 	}
 
-	return g.createCheckRun(ctx, request)
-}
+	for _, checkRun := range checkRuns {
+		if *checkRun.Name == request.StatusName {
 
-func (g *GithubClient) createCheckRun(ctx context.Context, request types.UpdateStatusRequest) error {
-	status, conclusion := g.resolveChecksStatus(request.State)
+			updateCheckRunOpts := github.UpdateCheckRunOptions{
+				Name:    request.StatusName,
+				HeadSHA: &request.Ref,
+				Status:  &status,
+			}
+			updateCheckRunOpts.Output = &checkRunOutput
+
+			if request.DetailsURL != "" {
+				updateCheckRunOpts.DetailsURL = &request.DetailsURL
+			}
+
+			// Conclusion is required if status is Completed
+			if status == Completed.String() {
+				updateCheckRunOpts.Conclusion = &conclusion
+			}
+			_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, *checkRun.ID, updateCheckRunOpts)
+			return err
+		}
+	}
 
 	createCheckRunOpts := github.CreateCheckRunOptions{
 		Name:    request.StatusName,
 		HeadSHA: request.Ref,
 		Status:  &status,
-	}
-
-	checkRunOutput := github.CheckRunOutput{
-		Title:   &request.StatusName,
-		Summary: &request.Description,
-	}
-
-	if request.Output != "" {
-		checkRunOutput.Text = &request.Output
 	}
 	createCheckRunOpts.Output = &checkRunOutput
 
@@ -524,39 +535,7 @@ func (g *GithubClient) createCheckRun(ctx context.Context, request types.UpdateS
 		createCheckRunOpts.Conclusion = &conclusion
 	}
 
-	_, _, err := g.client.Checks.CreateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, createCheckRunOpts)
-	return err
-}
-
-func (g *GithubClient) updateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunId int64) error {
-	status, conclusion := g.resolveChecksStatus(request.State)
-
-	updateCheckRunOpts := github.UpdateCheckRunOptions{
-		Name:    request.StatusName,
-		HeadSHA: &request.Ref,
-		Status:  &status,
-	}
-
-	checkRunOutput := github.CheckRunOutput{
-		Title:   &request.StatusName,
-		Summary: &request.Description,
-	}
-
-	if request.Output != "" {
-		checkRunOutput.Text = &request.Output
-	}
-	updateCheckRunOpts.Output = &checkRunOutput
-
-	if request.DetailsURL != "" {
-		updateCheckRunOpts.DetailsURL = &request.DetailsURL
-	}
-
-	// Conclusion is required if status is Completed
-	if status == Completed.String() {
-		updateCheckRunOpts.Conclusion = &conclusion
-	}
-
-	_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, checkRunId, updateCheckRunOpts)
+	_, _, err = g.client.Checks.CreateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, createCheckRunOpts)
 	return err
 }
 
