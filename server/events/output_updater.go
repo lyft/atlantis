@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/vcs/markdown"
 )
 
 type OutputUpdater interface {
@@ -44,19 +44,11 @@ func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd
 // Used to support checks type output (Github checks for example)
 type ChecksOutputUpdater struct {
 	VCSClient        vcs.Client
-	MarkdownRenderer *MarkdownRenderer
+	MarkdownRenderer *markdown.Renderer
 	TitleBuilder     vcs.StatusTitleBuilder
-	GlobalCfg        valid.GlobalCfg
 }
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
-	var templateOverrides map[string]string
-
-	// retrieve template override if configured
-	repoCfg := c.GlobalCfg.MatchingRepo(ctx.Pull.BaseRepo.ID())
-	if repoCfg != nil {
-		templateOverrides = repoCfg.TemplateOverrides
-	}
 
 	if res.Error != nil || res.Failure != "" {
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
@@ -84,16 +76,8 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			ProjectName: projectResult.ProjectName,
 		})
 
-		// Description is a required field
-		var description string
-		if projectResult.Error != nil || projectResult.Failure != "" {
-			description = fmt.Sprintf("%s failed", strings.Title(projectResult.Command.String()))
-		} else {
-			description = fmt.Sprintf("%s succeeded", strings.Title(projectResult.Command.String()))
-		}
-
 		// TODO: Make the mark down rendered project specific
-		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
+		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:        ctx.HeadRepo,
 			Ref:         ctx.Pull.HeadCommit,
@@ -117,8 +101,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 type PullOutputUpdater struct {
 	HidePrevPlanComments bool
 	VCSClient            vcs.Client
-	MarkdownRenderer     *MarkdownRenderer
-	GlobalCfg            valid.GlobalCfg
+	MarkdownRenderer     *markdown.Renderer
 }
 
 func (c *PullOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
@@ -144,13 +127,7 @@ func (c *PullOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, 
 		}
 	}
 
-	var templateOverrides map[string]string
-	repoCfg := c.GlobalCfg.MatchingRepo(ctx.Pull.BaseRepo.ID())
-	if repoCfg != nil {
-		templateOverrides = repoCfg.TemplateOverrides
-	}
-
-	comment := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
+	comment := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
 	if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, comment, cmd.CommandName().String()); err != nil {
 		ctx.Log.Error("unable to comment", map[string]interface{}{
 			"error": err.Error(),
