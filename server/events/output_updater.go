@@ -51,7 +51,7 @@ type ChecksOutputUpdater struct {
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
 
 	if res.Error != nil || res.Failure != "" {
-		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo.VCSHost.Type, templateOverrides)
+		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:        ctx.HeadRepo,
 			Ref:         ctx.Pull.HeadCommit,
@@ -76,6 +76,17 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			ProjectName: projectResult.ProjectName,
 		})
 
+		// Description is a required field
+		var description string
+		var state models.CommitStatus
+		if projectResult.Error != nil || projectResult.Failure != "" {
+			description = fmt.Sprintf("%s failed for %s", strings.Title(projectResult.Command.String()), projectResult.ProjectName)
+			state = models.FailedCommitStatus
+		} else {
+			description = fmt.Sprintf("%s succeeded for %s", strings.Title(projectResult.Command.String()), projectResult.ProjectName)
+			state = models.SuccessCommitStatus
+		}
+
 		// TODO: Make the mark down rendered project specific
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
 		updateStatusReq := types.UpdateStatusRequest{
@@ -85,7 +96,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			PullNum:     ctx.Pull.Num,
 			Description: description,
 			Output:      output,
-			State:       models.SuccessCommitStatus,
+			State:       state,
 		}
 
 		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
