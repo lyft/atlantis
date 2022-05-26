@@ -92,6 +92,7 @@ type asyncHandler struct {
 
 func (h *asyncHandler) Handle(ctx context.Context, request *http.BufferedRequest, event event_types.Comment, command *command.Comment) error {
 	go func() {
+		// Passing background context to avoid context cancellation since the parent goroutine does not wait for this goroutine to finish execution.
 		err := h.commandHandler.Handle(context.Background(), request, event, command)
 
 		if err != nil {
