@@ -92,10 +92,10 @@ type asyncHandler struct {
 
 func (h *asyncHandler) Handle(ctx context.Context, request *http.BufferedRequest, event event_types.Comment, command *command.Comment) error {
 	go func() {
-		err := h.commandHandler.Handle(ctx, request, event, command)
+		err := h.commandHandler.Handle(context.Background(), request, event, command)
 
 		if err != nil {
-			h.logger.ErrorContext(ctx, err.Error())
+			h.logger.ErrorContext(context.Background(), err.Error())
 		}
 	}()
 	return nil

@@ -40,10 +40,10 @@ type asyncAutoplanner struct {
 
 func (p *asyncAutoplanner) Handle(ctx context.Context, request *http.BufferedRequest, event event_types.PullRequest) error {
 	go func() {
-		err := p.autoplanner.Handle(ctx, request, event)
+		err := p.autoplanner.Handle(context.Background(), request, event)
 
 		if err != nil {
-			p.logger.ErrorContext(ctx, err.Error())
+			p.logger.ErrorContext(context.Background(), err.Error())
 		}
 	}()
 	return nil
