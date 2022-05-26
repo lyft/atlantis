@@ -480,6 +480,15 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 	return err
 }
 
+func (g *GithubClient) findCheckRun(statusName string, checkRuns []*github.CheckRun) *github.CheckRun {
+	for _, checkRun := range checkRuns {
+		if *checkRun.Name == statusName {
+			return checkRun
+		}
+	}
+	return nil
+}
+
 // [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
 func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
 	checkRuns, err := g.GetRepoChecks(request.Repo, request.Ref)
@@ -496,35 +505,32 @@ func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.Upd
 		checkRunOutput.Text = &request.Output
 	}
 
-	for _, checkRun := range checkRuns {
-		if *checkRun.Name == request.StatusName {
-
-			updateCheckRunOpts := github.UpdateCheckRunOptions{
-				Name:    request.StatusName,
-				HeadSHA: &request.Ref,
-				Status:  &status,
-			}
-			updateCheckRunOpts.Output = &checkRunOutput
-
-			if request.DetailsURL != "" {
-				updateCheckRunOpts.DetailsURL = &request.DetailsURL
-			}
-
-			// Conclusion is required if status is Completed
-			if status == Completed.String() {
-				updateCheckRunOpts.Conclusion = &conclusion
-			}
-			_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, *checkRun.ID, updateCheckRunOpts)
-			return err
+	if checkRun := g.findCheckRun(request.StatusName, checkRuns); checkRun != nil {
+		updateCheckRunOpts := github.UpdateCheckRunOptions{
+			Name:    request.StatusName,
+			HeadSHA: &request.Ref,
+			Status:  &status,
+			Output:  &checkRunOutput,
 		}
+
+		if request.DetailsURL != "" {
+			updateCheckRunOpts.DetailsURL = &request.DetailsURL
+		}
+
+		// Conclusion is required if status is Completed
+		if status == Completed.String() {
+			updateCheckRunOpts.Conclusion = &conclusion
+		}
+		_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, *checkRun.ID, updateCheckRunOpts)
+		return err
 	}
 
 	createCheckRunOpts := github.CreateCheckRunOptions{
 		Name:    request.StatusName,
 		HeadSHA: request.Ref,
 		Status:  &status,
+		Output:  &checkRunOutput,
 	}
-	createCheckRunOpts.Output = &checkRunOutput
 
 	if request.DetailsURL != "" {
 		createCheckRunOpts.DetailsURL = &request.DetailsURL

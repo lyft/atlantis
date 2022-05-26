@@ -1,7 +1,6 @@
 package events
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -71,7 +70,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			State:       models.FailedCommitStatus,
 		}
 
-		if err := c.VCSClient.UpdateStatus(context.TODO(), updateStatusReq); err != nil {
+		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
 			ctx.Log.Error("updable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
