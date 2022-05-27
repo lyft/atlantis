@@ -83,7 +83,8 @@ func (m *Renderer) Render(res command.Result, cmdName command.Name, baseRepo mod
 	if res.Failure != "" {
 		return m.renderTemplate(template.Must(template.New("").Parse(failureWithLogTmpl)), failureData{res.Failure, common})
 	}
-	return m.renderProjectResults(res.ProjectResults, common, baseRepo)
+
+	return m.renderProjectResults(res.ProjectResults, common, cmdName, baseRepo)
 }
 
 // RenderProject formats the data into a markdown string for a project
@@ -100,17 +101,15 @@ func (m *Renderer) RenderProject(prjRes command.ProjectResult, cmdName command.N
 	return m.renderTemplate(template, templateData)
 }
 
-func (m *Renderer) renderProjectResults(results []command.ProjectResult, common commonData, baseRepo models.Repo) string {
+func (m *Renderer) renderProjectResults(results []command.ProjectResult, common commonData, cmdName command.Name, baseRepo models.Repo) string {
 	// render project results
 	var prjResultTmplData []projectResultTmplData
 	for _, result := range results {
-		template, templateData := m.TemplateResolver.ResolveProject(result, baseRepo, common)
-		renderedOutput := m.renderTemplate(template, templateData)
 		prjResultTmplData = append(prjResultTmplData, projectResultTmplData{
 			Workspace:   result.Workspace,
 			RepoRelDir:  result.RepoRelDir,
 			ProjectName: result.ProjectName,
-			Rendered:    renderedOutput,
+			Rendered:    m.RenderProject(result, cmdName, baseRepo),
 		})
 	}
 
