@@ -87,6 +87,7 @@ func (m *Renderer) Render(res command.Result, cmdName command.Name, baseRepo mod
 }
 
 // RenderProject formats the data into a markdown string for a project
+// This method relies on the underlying methods used by Render() so skipping tests since it's indirectly tested using the existing tests for Render()
 func (m *Renderer) RenderProject(prjRes command.ProjectResult, cmdName command.Name, baseRepo models.Repo) string {
 	commandStr := strings.Title(strings.Replace(cmdName.String(), "_", " ", -1))
 	common := commonData{
