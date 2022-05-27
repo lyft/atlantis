@@ -67,7 +67,7 @@ type projectResultTmplData struct {
 	Rendered    string
 }
 
-// Render formats the data into a markdown string.
+// Render formats the data into a markdown string for a command.
 // nolint: interfacer
 func (m *Renderer) Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string {
 	commandStr := strings.Title(strings.Replace(cmdName.String(), "_", " ", -1))
@@ -84,6 +84,19 @@ func (m *Renderer) Render(res command.Result, cmdName command.Name, baseRepo mod
 		return m.renderTemplate(template.Must(template.New("").Parse(failureWithLogTmpl)), failureData{res.Failure, common})
 	}
 	return m.renderProjectResults(res.ProjectResults, common, baseRepo)
+}
+
+// RenderProject formats the data into a markdown string for a project
+func (m *Renderer) RenderProject(prjRes command.ProjectResult, cmdName command.Name, baseRepo models.Repo) string {
+	commandStr := strings.Title(strings.Replace(cmdName.String(), "_", " ", -1))
+	common := commonData{
+		Command:                  commandStr,
+		DisableApplyAll:          m.DisableApplyAll || m.DisableApply,
+		DisableApply:             m.DisableApply,
+		EnableDiffMarkdownFormat: m.EnableDiffMarkdownFormat,
+	}
+	template, templateData := m.TemplateResolver.ResolveProject(prjRes, baseRepo, common)
+	return m.renderTemplate(template, templateData)
 }
 
 func (m *Renderer) renderProjectResults(results []command.ProjectResult, common commonData, baseRepo models.Repo) string {
