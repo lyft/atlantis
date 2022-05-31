@@ -70,7 +70,7 @@ type projectResultTmplData struct {
 // Render formats the data into a markdown string for a command.
 // nolint: interfacer
 func (m *Renderer) Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string {
-	commandStr := strings.Title(strings.Replace(cmdName.String(), "_", " ", -1))
+	commandStr := strings.Title(strings.ReplaceAll(cmdName.String(), "_", " "))
 	common := commonData{
 		Command:                  commandStr,
 		DisableApplyAll:          m.DisableApplyAll || m.DisableApply,
@@ -88,12 +88,10 @@ func (m *Renderer) Render(res command.Result, cmdName command.Name, baseRepo mod
 }
 
 // RenderProject formats the data into a markdown string for a project
-// This method relies on the underlying methods used by Render() so skipping tests since it's indirectly tested using the existing tests for Render()
 func (m *Renderer) RenderProject(prjRes command.ProjectResult, cmdName command.Name, baseRepo models.Repo) string {
-	commandStr := strings.Title(strings.Replace(cmdName.String(), "_", " ", -1))
+	commandStr := strings.Title(strings.ReplaceAll(cmdName.String(), "_", " "))
 	common := commonData{
 		Command:                  commandStr,
-		DisableApplyAll:          m.DisableApplyAll || m.DisableApply,
 		DisableApply:             m.DisableApply,
 		EnableDiffMarkdownFormat: m.EnableDiffMarkdownFormat,
 	}
