@@ -31,6 +31,7 @@ import (
 
 const (
 	ShutdownComment = "Atlantis server is shutting down, please try again later."
+	CmdTypeTag      = "type"
 )
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_command_runner.go CommandRunner
@@ -109,7 +110,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 		c.Logger.ErrorContext(ctx, err.Error())
 	}
 
-	scope := c.StatsScope.Tagged(map[string]string{"type": "autoplan"})
+	scope := c.StatsScope.Tagged(map[string]string{CmdTypeTag: "autoplan"})
 	scope.Counter(metrics.ExecutionAttemptMetric).Inc(1)
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
@@ -165,7 +166,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 
 	scope := c.StatsScope
 	if cmd != nil {
-		scope = c.StatsScope.Tagged(map[string]string{"type": cmd.Name.String()})
+		scope = c.StatsScope.Tagged(map[string]string{CmdTypeTag: cmd.Name.String()})
 	}
 	scope.Counter(metrics.ExecutionAttemptMetric).Inc(1)
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
