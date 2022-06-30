@@ -16,7 +16,6 @@ package events
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -103,7 +102,6 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 	}
 	defer c.Drainer.OpDone()
 
-	//ctx = newCtx(ctx, baseRepo.FullName, pull.Num)
 	defer c.logPanics(ctx)
 	status, err := c.PullStatusFetcher.GetPullStatus(pull)
 
@@ -111,7 +109,8 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 		c.Logger.ErrorContext(ctx, err.Error())
 	}
 
-	scope := c.StatsScope.SubScope("autoplan")
+	scope := c.StatsScope.Tagged(map[string]string{"type": "autoplan"})
+	scope.Counter(metrics.ExecutionAttemptMetric).Inc(1)
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 
@@ -162,14 +161,13 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 	}
 	defer c.Drainer.OpDone()
 
-	//ctx = newCtx(ctx, baseRepo.FullName, pullNum)
 	defer c.logPanics(ctx)
 
-	scope := c.StatsScope.SubScope("comment")
-
+	scope := c.StatsScope
 	if cmd != nil {
-		scope = scope.SubScope(cmd.Name.String())
+		scope = c.StatsScope.Tagged(map[string]string{"type": cmd.Name.String()})
 	}
+	scope.Counter(metrics.ExecutionAttemptMetric).Inc(1)
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 
@@ -209,11 +207,6 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 	cmdRunner := buildCommentCommandRunner(c, cmd.CommandName())
 
 	cmdRunner.Run(cmdCtx, cmd)
-}
-
-func newCtx(ctx context.Context, repoFullName string, pullNum int) context.Context {
-	ctx = context.WithValue(ctx, logging.RepositoryKey, repoFullName)
-	return context.WithValue(ctx, logging.PullNumKey, strconv.Itoa(pullNum))
 }
 
 func (c *DefaultCommandRunner) validateCtxAndComment(cmdCtx *command.Context) bool {
