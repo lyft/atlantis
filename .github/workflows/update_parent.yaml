@@ -42,7 +42,7 @@ jobs:
           issue-number: ${{ steps.cpr.outputs.pull-request-number }}"
           body: |
             /ptal #workflow-engines-prs
-      - name: pull request / tag channel
+      - name: pull request / merge
         uses: peter-evans/create-or-update-comment@v1
         with:
           token: ${{ secrets.PARENT_REPO_TOKEN }}
