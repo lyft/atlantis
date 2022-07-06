@@ -436,7 +436,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	workingDirLocker := events.NewDefaultWorkingDirLocker()
 
 	var workingDir events.WorkingDir = &events.FileWorkspace{
-		DataDir:       userConfig.DataDir,
+		DataDir:   userConfig.DataDir,
 		GlobalCfg: globalCfg,
 	}
 	// provide fresh tokens before clone from the GitHub Apps integration, proxy workingDir
