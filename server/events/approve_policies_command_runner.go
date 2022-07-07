@@ -62,6 +62,9 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 
 	result := a.buildApprovePolicyCommandResults(ctx, projectCmds)
 
+	// Replace the ApprovePolicies command with PolicyCheck since the ChecksOutputUpdater creates a policy check checkrun for every project
+	// So, need to set the PolicyCheck per project to green when using github checks
+	// When using pull output updater, this will modify the comment output which should not affect the operation.
 	a.outputUpdater.UpdateOutput(
 		ctx,
 		PolicyCheckCommand{},
