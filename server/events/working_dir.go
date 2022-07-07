@@ -83,9 +83,6 @@ func (w *FileWorkspace) Clone(
 	matchingRepo := w.GlobalCfg.MatchingRepo(p.BaseRepo.ID())
 	checkoutMerge := matchingRepo.CheckoutStrategy == "merge"
 
-	// TODO: Remove once staging testing is complete
-	log.Info(fmt.Sprintf("checkout strategy set to: %s", matchingRepo.CheckoutStrategy))
-
 	// If the directory already exists, check if it's at the right commit.
 	// If so, then we do nothing.
 	if _, err := os.Stat(cloneDir); err == nil {
