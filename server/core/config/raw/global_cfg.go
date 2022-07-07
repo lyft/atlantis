@@ -10,7 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 )
 
-var validCheckoutStrategies = []string{"merge", "branch"}
+var validCheckoutStrategies = []interface{}{"merge", "branch"}
 
 // GlobalCfg is the raw schema for server-side repo config.
 type GlobalCfg struct {
@@ -224,7 +224,7 @@ func (r Repo) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.ID, validation.Required, validation.By(idValid)),
 		validation.Field(&r.Branch, validation.By(branchValid)),
-		validation.Field(&r.CheckoutStrategy, validation.In(validCheckoutStrategies)),
+		validation.Field(&r.CheckoutStrategy, validation.In(validCheckoutStrategies...)),
 		validation.Field(&r.AllowedOverrides, validation.By(overridesValid)),
 		validation.Field(&r.ApplyRequirements, validation.By(validApplyReq)),
 		validation.Field(&r.Workflow, validation.By(workflowExists)),
