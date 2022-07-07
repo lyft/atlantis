@@ -4,7 +4,7 @@ package vcs
 
 func NewPullMergeabilityChecker(commitStatusPrefix string) MergeabilityChecker {
 	statusFilters := newValidStatusFilters(commitStatusPrefix)
-	checksFilters := newValidChecksFilters()
+	checksFilters := newValidChecksFilters(commitStatusPrefix)
 
 	return &PullMergeabilityChecker{
 		supplementalChecker: newSupplementalMergeabilityChecker(statusFilters, checksFilters),
@@ -22,9 +22,13 @@ func newValidStatusFilters(commitStatusPrefix string) []ValidStatusFilter {
 	}
 }
 
-func newValidChecksFilters() []ValidChecksFilter {
+func newValidChecksFilters(commitStatusPrefix string) []ValidChecksFilter {
+	titleMatcher := StatusTitleMatcher{TitlePrefix: commitStatusPrefix}
+	applyChecksFilter := &ApplyChecksFilter{
+		statusTitleMatcher: titleMatcher,
+	}
 	return []ValidChecksFilter{
-		SuccessConclusionFilter,
+		SuccessConclusionFilter, applyChecksFilter,
 	}
 }
 

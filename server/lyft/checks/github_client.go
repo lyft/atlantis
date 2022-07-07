@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -29,5 +31,24 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 		return c.GithubClient.UpdateStatus(ctx, request)
 	}
 
+	// TODO: Get all commit statuses and check if the commit status for this operation is pending
+	// This is possible when PRs are in-flight during rollout.
+	statuses, err := c.GithubClient.GetRepoStatuses(request.Repo, models.PullRequest{
+		HeadCommit: request.Ref,
+	})
+	if err != nil {
+		return errors.Wrap(err, "retrieving repo statuses")
+	}
+
+	for _, status := range statuses {
+		if *status.Context != request.StatusName {
+			continue
+		}
+
+		// Check if it's pending
+		if *status.State == models.PendingCommitStatus.String() {
+			c.GithubClient.UpdateStatus(ctx, request)
+		}
+	}
 	return c.GithubClient.UpdateChecksStatus(ctx, request)
 }
