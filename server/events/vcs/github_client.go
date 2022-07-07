@@ -548,7 +548,6 @@ func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.Upd
 		if status == Completed.String() {
 			updateCheckRunOpts.Conclusion = &conclusion
 		}
-
 		_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, *checkRun.ID, updateCheckRunOpts)
 		return err
 	}

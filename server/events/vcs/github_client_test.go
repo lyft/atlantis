@@ -425,7 +425,7 @@ func TestGithubClient_UpdateChecksStatus(t *testing.T) {
 					},
 				},
 				PullNum:     1,
-				State:       models.PendingCommitStatus,
+				State:       models.SuccessCommitStatus,
 				Description: "description",
 				DetailsURL:  "https://google.com",
 				Ref:         "sha",
@@ -554,7 +554,7 @@ func TestGithubClient_UpdateChecksStatus_CreateNewCheckRunWhenPendingStatus(t *t
 				err = json.Unmarshal(body, &m)
 				Ok(t, err)
 
-				// assert conclusion was set to success when status is complete
+				// assert new checkrun was created
 				assert.Equal(t, checkRunName, m["name"])
 
 			default:
