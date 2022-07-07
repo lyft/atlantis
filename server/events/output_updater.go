@@ -50,6 +50,13 @@ type ChecksOutputUpdater struct {
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
 
+	// ChecksOutputUpdater creates policy_check checkruns per project level when running policy_check command
+	// So, when approving policies, all the project level checkruns need to be set to green in order to unblock the apply operation
+	// This is a temporary fix for how policy approval works for commit status API vs github checks, which can be removed once github checks is stable.
+	if cmd.CommandName() == command.ApprovePolicies {
+		cmd = PolicyCheckCommand{}
+	}
+
 	if res.Error != nil || res.Failure != "" {
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
 		updateStatusReq := types.UpdateStatusRequest{
