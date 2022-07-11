@@ -68,6 +68,14 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 		result,
 	)
 
+	// Update project level atlantis/policy_check checkrun
+	// This is a noop for PullOutputUpdater
+	a.outputUpdater.UpdateOutput(
+		ctx,
+		PolicyCheckCommand{},
+		result,
+	)
+
 	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("writing results: %s", err))
