@@ -529,8 +529,7 @@ func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.Upd
 
 		// Append job URL if it is a project plan/apply command
 		if strings.Contains(request.StatusName, ":") &&
-			strings.Contains(request.StatusName, "plan") &&
-			strings.Contains(request.StatusName, "apply") {
+			(strings.Contains(request.StatusName, "plan") || strings.Contains(request.StatusName, "apply")) {
 
 			// URL in update request takes precedence over the URL in the check run
 			// checkrun URL could be stale from previous operation
