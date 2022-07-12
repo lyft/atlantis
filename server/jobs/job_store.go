@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"fmt"
+	"github.com/uber-go/tally"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -36,12 +37,13 @@ type JobStore interface {
 	RemoveJob(jobID string)
 }
 
-func NewJobStore(storageBackend StorageBackend) JobStore {
+func NewJobStore(storageBackend StorageBackend, scope tally.Scope) JobStore {
 	return &StorageBackendJobStore{
 		JobStore: &InMemoryJobStore{
 			jobs: map[string]*Job{},
 		},
 		storageBackend: storageBackend,
+		scope:          scope,
 	}
 }
 
@@ -119,6 +121,7 @@ func (m *InMemoryJobStore) RemoveJob(jobID string) {
 type StorageBackendJobStore struct {
 	JobStore
 	storageBackend StorageBackend
+	scope          tally.Scope
 }
 
 func (s *StorageBackendJobStore) Get(jobID string) (*Job, error) {
@@ -150,9 +153,10 @@ func (s *StorageBackendJobStore) SetJobCompleteStatus(jobID string, fullRepoName
 
 	job, err := s.JobStore.Get(jobID)
 	if err != nil || job == nil {
-		return errors.Wrapf(err, "retrieveing job: %s from memory store", jobID)
+		return errors.Wrapf(err, "retrieving job: %s from memory store", jobID)
 	}
-
+	subScope := s.scope.SubScope("set_job_complete_status")
+	subScope.Counter("write_attempt").Inc(1)
 	ok, err := s.storageBackend.Write(jobID, job.Output, fullRepoName)
 	if err != nil {
 		return errors.Wrapf(err, "persisting job: %s", jobID)
