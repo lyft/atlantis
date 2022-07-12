@@ -70,10 +70,26 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 		return
 	}
 
-	// Temporary fix for updating project level atlantis/policy_check status when running atlantis approve_policies
-	if cmd.CommandName() == command.PolicyCheck && res.ProjectResults[0].Command == command.ApprovePolicies {
+	// Handle ApprovePolicies command separately
+	if cmd.CommandName() == command.ApprovePolicies {
+		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
+		updateStatusReq := types.UpdateStatusRequest{
+			Repo:        ctx.HeadRepo,
+			Ref:         ctx.Pull.HeadCommit,
+			StatusName:  c.TitleBuilder.Build(cmd.CommandName().String()),
+			PullNum:     ctx.Pull.Num,
+			Description: fmt.Sprintf("%s succeded", strings.Title(cmd.CommandName().String())),
+			Output:      output,
+			State:       models.SuccessCommitStatus,
+		}
 
-		// iterate through all project results and the update the github check
+		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
+			ctx.Log.Error("updable to update check run", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+
+		// In addition, update project level atlantis/policy_check checkruns
 		for _, projectResult := range res.ProjectResults {
 			statusName := c.TitleBuilder.Build(command.PolicyCheck.String(), vcs.StatusTitleOptions{
 				ProjectName: projectResult.ProjectName,
@@ -100,26 +116,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 				})
 			}
 		}
-	}
 
-	// No need to make project level checkruns for Approve Policies
-	if cmd.CommandName() == command.ApprovePolicies {
-		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
-		updateStatusReq := types.UpdateStatusRequest{
-			Repo:        ctx.HeadRepo,
-			Ref:         ctx.Pull.HeadCommit,
-			StatusName:  c.TitleBuilder.Build(cmd.CommandName().String()),
-			PullNum:     ctx.Pull.Num,
-			Description: fmt.Sprintf("%s succeded", strings.Title(cmd.CommandName().String())),
-			Output:      output,
-			State:       models.SuccessCommitStatus,
-		}
-
-		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-			ctx.Log.Error("updable to update check run", map[string]interface{}{
-				"error": err.Error(),
-			})
-		}
 		return
 	}
 
