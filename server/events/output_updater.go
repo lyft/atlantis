@@ -164,12 +164,6 @@ type PullOutputUpdater struct {
 }
 
 func (c *PullOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
-
-	// Temporary fix to handle approve_policies
-	if cmd.CommandName() == command.PolicyCheck && res.ProjectResults[0].Command == command.ApprovePolicies {
-		return
-	}
-
 	// Log if we got any errors or failures.
 	if res.Error != nil {
 		ctx.Log.Error("", map[string]interface{}{
