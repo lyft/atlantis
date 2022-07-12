@@ -75,7 +75,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 
 		// iterate through all project results and the update the github check
 		for _, projectResult := range res.ProjectResults {
-			statusName := c.TitleBuilder.Build(command.ApprovePolicies.String(), vcs.StatusTitleOptions{
+			statusName := c.TitleBuilder.Build(command.PolicyCheck.String(), vcs.StatusTitleOptions{
 				ProjectName: projectResult.ProjectName,
 			})
 

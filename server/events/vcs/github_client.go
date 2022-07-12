@@ -509,19 +509,28 @@ func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.Upd
 	}
 
 	status, conclusion := g.resolveChecksStatus(request.State)
-	checkRunOutput := github.CheckRunOutput{
-		Title: &request.StatusName,
-	}
-	if request.Output != "" {
-		checkRunOutput.Text = &output
-	}
 
 	// Update checkrun if it exists and if it's not a rerun
 	// request.state is pending only when an operation starts. So, if the checkrun exists and the state is pending, it is a rerun.
 	if checkRun := g.findCheckRun(request.StatusName, checkRuns); checkRun != nil && request.State != models.PendingCommitStatus {
+
+		// Copy the checkrun output if not passed in.
+		var checkRunOutput github.CheckRunOutput
+		if output != "" {
+			checkRunOutput = github.CheckRunOutput{
+				Title: &request.StatusName,
+				Text:  &output,
+			}
+		} else {
+			checkRunOutput = *checkRun.Output
+		}
+
 		summary := request.Description
-		// Append job URL if project command
-		if strings.Contains(request.StatusName, ":") {
+
+		// Append job URL if it is a project plan/apply command
+		if strings.Contains(request.StatusName, ":") &&
+			strings.Contains(request.StatusName, "plan") &&
+			strings.Contains(request.StatusName, "apply") {
 
 			// URL in update request takes precedence over the URL in the check run
 			// checkrun URL could be stale from previous operation
@@ -550,6 +559,14 @@ func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.Upd
 		}
 		_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, *checkRun.ID, updateCheckRunOpts)
 		return err
+	}
+
+	checkRunOutput := github.CheckRunOutput{
+		Title: &request.StatusName,
+	}
+
+	if output != "" {
+		checkRunOutput.Text = &output
 	}
 
 	createCheckRunOpts := github.CreateCheckRunOptions{
