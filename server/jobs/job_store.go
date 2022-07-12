@@ -54,7 +54,7 @@ func NewTestJobStore(storageBackend StorageBackend, jobs map[string]*Job) JobSto
 			jobs: jobs,
 		},
 		storageBackend: storageBackend,
-		scope:          tally.NewTestScope("test_jobstore", nil),
+		scope:          tally.NewTestScope("test_jobstore", map[string]string{}),
 	}
 }
 
