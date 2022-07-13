@@ -30,7 +30,7 @@ type FeatureAwareChecksOutputUpdater struct {
 func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
 	shouldAllocate, err := c.FeatureAllocator.ShouldAllocate(feature.GithubChecks, ctx.HeadRepo.FullName)
 	if err != nil {
-		c.Logger.Error(fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.GithubChecks, err))
+		c.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.GithubChecks, err))
 	}
 
 	// Github Checks turned on and github provider
@@ -63,7 +63,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 		}
 
 		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-			ctx.Log.Error("updable to update check run", map[string]interface{}{
+			ctx.Log.ErrorContext(ctx.RequestCtx, "updable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
 		}
@@ -104,7 +104,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 		}
 
 		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-			ctx.Log.Error("unable to update check run", map[string]interface{}{
+			ctx.Log.ErrorContext(ctx.RequestCtx, "unable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
 		}
@@ -125,7 +125,7 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 	}
 
 	if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-		ctx.Log.Error("updable to update check run", map[string]interface{}{
+		ctx.Log.ErrorContext(ctx.RequestCtx, "updable to update check run", map[string]interface{}{
 			"error": err.Error(),
 		})
 	}
@@ -152,7 +152,7 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 		}
 
 		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-			ctx.Log.Error("updable to update check run", map[string]interface{}{
+			ctx.Log.ErrorContext(ctx.RequestCtx, "updable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
 		}
@@ -171,11 +171,11 @@ type PullOutputUpdater struct {
 func (c *PullOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
 	// Log if we got any errors or failures.
 	if res.Error != nil {
-		ctx.Log.Error("", map[string]interface{}{
+		ctx.Log.ErrorContext(ctx.RequestCtx, "", map[string]interface{}{
 			"error": res.Error.Error(),
 		})
 	} else if res.Failure != "" {
-		ctx.Log.Warn("", map[string]interface{}{
+		ctx.Log.WarnContext(ctx.RequestCtx, "", map[string]interface{}{
 			"failiure": res.Failure,
 		})
 	}
@@ -185,7 +185,7 @@ func (c *PullOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, 
 	// comment trail may be useful in auditing or backtracing problems.
 	if c.HidePrevPlanComments {
 		if err := c.VCSClient.HidePrevCommandComments(ctx.Pull.BaseRepo, ctx.Pull.Num, cmd.CommandName().TitleString()); err != nil {
-			ctx.Log.Error("unable to hide old comments", map[string]interface{}{
+			ctx.Log.ErrorContext(ctx.RequestCtx, "unable to hide old comments", map[string]interface{}{
 				"error": err.Error(),
 			})
 		}
@@ -193,7 +193,7 @@ func (c *PullOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, 
 
 	comment := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
 	if err := c.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, comment, cmd.CommandName().String()); err != nil {
-		ctx.Log.Error("unable to comment", map[string]interface{}{
+		ctx.Log.ErrorContext(ctx.RequestCtx, "unable to comment", map[string]interface{}{
 			"error": err.Error(),
 		})
 	}
