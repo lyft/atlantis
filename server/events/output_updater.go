@@ -72,51 +72,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 
 	// Handle ApprovePolicies command separately
 	if cmd.CommandName() == command.ApprovePolicies {
-		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
-		updateStatusReq := types.UpdateStatusRequest{
-			Repo:        ctx.HeadRepo,
-			Ref:         ctx.Pull.HeadCommit,
-			StatusName:  c.TitleBuilder.Build(cmd.CommandName().String()),
-			PullNum:     ctx.Pull.Num,
-			Description: fmt.Sprintf("%s succeded", strings.Title(cmd.CommandName().String())),
-			Output:      output,
-			State:       models.SuccessCommitStatus,
-		}
-
-		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-			ctx.Log.Error("updable to update check run", map[string]interface{}{
-				"error": err.Error(),
-			})
-		}
-
-		// In addition, update project level atlantis/policy_check checkruns
-		for _, projectResult := range res.ProjectResults {
-			statusName := c.TitleBuilder.Build(command.PolicyCheck.String(), vcs.StatusTitleOptions{
-				ProjectName: projectResult.ProjectName,
-			})
-
-			var state models.CommitStatus
-			if projectResult.Error != nil || projectResult.Failure != "" {
-				state = models.FailedCommitStatus
-			} else {
-				state = models.SuccessCommitStatus
-			}
-
-			updateStatusReq := types.UpdateStatusRequest{
-				Repo:       ctx.HeadRepo,
-				Ref:        ctx.Pull.HeadCommit,
-				StatusName: statusName,
-				PullNum:    ctx.Pull.Num,
-				State:      state,
-			}
-
-			if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-				ctx.Log.Error("updable to update check run", map[string]interface{}{
-					"error": err.Error(),
-				})
-			}
-		}
-
+		c.handleApprovePolicies(ctx, cmd, res)
 		return
 	}
 
@@ -148,12 +104,61 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 		}
 
 		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
+			ctx.Log.Error("unable to update check run", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+	}
+
+}
+
+func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd PullCommand, res command.Result) {
+	output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
+	updateStatusReq := types.UpdateStatusRequest{
+		Repo:        ctx.HeadRepo,
+		Ref:         ctx.Pull.HeadCommit,
+		StatusName:  c.TitleBuilder.Build(cmd.CommandName().String()),
+		PullNum:     ctx.Pull.Num,
+		Description: fmt.Sprintf("%s succeded", strings.Title(cmd.CommandName().String())),
+		Output:      output,
+		State:       models.SuccessCommitStatus,
+	}
+
+	if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
+		ctx.Log.Error("updable to update check run", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	// In addition, update project level atlantis/policy_check checkruns
+	for _, projectResult := range res.ProjectResults {
+		statusName := c.TitleBuilder.Build(command.PolicyCheck.String(), vcs.StatusTitleOptions{
+			ProjectName: projectResult.ProjectName,
+		})
+
+		var state models.CommitStatus
+		if projectResult.Error != nil || projectResult.Failure != "" {
+			state = models.FailedCommitStatus
+		} else {
+			state = models.SuccessCommitStatus
+		}
+
+		updateStatusReq := types.UpdateStatusRequest{
+			Repo:       ctx.HeadRepo,
+			Ref:        ctx.Pull.HeadCommit,
+			StatusName: statusName,
+			PullNum:    ctx.Pull.Num,
+			State:      state,
+		}
+
+		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
 			ctx.Log.Error("updable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
 		}
 	}
 
+	return
 }
 
 // Default prj output updater which writes to the pull req comment
