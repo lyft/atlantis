@@ -20,6 +20,7 @@ type ProjectCommandContextBuilder interface {
 		commentArgs []string,
 		repoDir string,
 		contextFlags *command.ContextFlags,
+		logLevel string,
 	) []command.ProjectContext
 }
 
@@ -42,11 +43,12 @@ func (cb *projectCommandContextBuilder) BuildProjectContext(
 	commentArgs []string,
 	repoDir string,
 	contextFlags *command.ContextFlags,
+	logLevel string,
 ) []command.ProjectContext {
 	return buildContext(
 		ctx,
 		cmdName,
-		getSteps(cmdName, prjCfg.Workflow),
+		getSteps(cmdName, prjCfg.Workflow, logLevel),
 		cb.CommentBuilder,
 		prjCfg,
 		commentArgs,
@@ -96,12 +98,19 @@ func buildContext(
 func getSteps(
 	cmdName command.Name,
 	workflow valid.Workflow,
+	logLevel string,
 ) (steps []valid.Step) {
 	switch cmdName {
 	case command.Plan:
 		steps = workflow.Plan.Steps
+		if logLevel != "" {
+			steps = valid.PrependLogEnvSteps(steps, logLevel)
+		}
 	case command.Apply:
 		steps = workflow.Apply.Steps
+		if logLevel != "" {
+			steps = valid.PrependLogEnvSteps(steps, logLevel)
+		}
 	case command.Version:
 		steps = []valid.Step{{
 			StepName: "version",

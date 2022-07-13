@@ -39,6 +39,8 @@ const (
 	projectFlagShort   = "p"
 	forceFlagLong      = "force"
 	forceFlagShort     = "f"
+	logFlagLong        = "log-level"
+	logFlagShort       = "l"
 	atlantisExecutable = "atlantis"
 )
 
@@ -174,6 +176,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	var dir string
 	var project string
 	var force bool
+	var logLevel string
 	var flagSet *pflag.FlagSet
 	var name command.Name
 
@@ -186,6 +189,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 		flagSet.StringVarP(&workspace, workspaceFlagLong, workspaceFlagShort, "", "Switch to this Terraform workspace before planning.")
 		flagSet.StringVarP(&dir, dirFlagLong, dirFlagShort, "", "Which directory to run plan in relative to root of repo, ex. 'child/dir'.")
 		flagSet.StringVarP(&project, projectFlagLong, projectFlagShort, "", fmt.Sprintf("Which project to run plan for. Refers to the name of the project configured in %s. Cannot be used at same time as workspace or dir flags.", config.AtlantisYAMLFilename))
+		flagSet.StringVarP(&logLevel, logFlagLong, logFlagShort, "", "Which log level to use when emitting terraform results, ex. 'trace'.")
 	case command.Apply.String():
 		name = command.Apply
 		flagSet = pflag.NewFlagSet(command.Apply.String(), pflag.ContinueOnError)
@@ -194,6 +198,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 		flagSet.StringVarP(&dir, dirFlagLong, dirFlagShort, "", "Apply the plan for this directory, relative to root of repo, ex. 'child/dir'.")
 		flagSet.StringVarP(&project, projectFlagLong, projectFlagShort, "", fmt.Sprintf("Apply the plan for this project. Refers to the name of the project configured in %s. Cannot be used at same time as workspace or dir flags.", config.AtlantisYAMLFilename))
 		flagSet.BoolVarP(&force, forceFlagLong, forceFlagShort, false, "Force Atlantis to ignore apply requirements.")
+		flagSet.StringVarP(&logLevel, logFlagLong, logFlagShort, "", "Which log level to use when emitting terraform results, ex. 'trace'.")
 	case command.ApprovePolicies.String():
 		name = command.ApprovePolicies
 		flagSet = pflag.NewFlagSet(command.ApprovePolicies.String(), pflag.ContinueOnError)
@@ -262,9 +267,21 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 		return CommentParseResult{CommentResponse: e.errMarkdown(err, cmd, flagSet)}
 	}
 
-	return CommentParseResult{
-		Command: command.NewComment(dir, extraArgs, name, force, workspace, project),
+	caseInsensitiveLogLevel := strings.ToLower(logLevel)
+	if e.invalidLogLevel(caseInsensitiveLogLevel) {
+		return CommentParseResult{CommentResponse: e.errMarkdown(fmt.Sprintf("invalid log level: %q", logLevel), cmd, flagSet)}
 	}
+
+	return CommentParseResult{
+		Command: command.NewComment(dir, extraArgs, name, force, workspace, project, caseInsensitiveLogLevel),
+	}
+}
+
+func (e *CommentParser) invalidLogLevel(logLevel string) bool {
+	if logLevel == "" {
+		return false
+	}
+	return !e.stringInSlice(logLevel, []string{"trace", "debug", "info", "warn", "error"})
 }
 
 // BuildPlanComment builds a plan comment for the specified args.

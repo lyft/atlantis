@@ -25,11 +25,12 @@ func (p *prProjectContextBuilder) BuildProjectContext(
 	commentArgs []string,
 	repoDir string,
 	contextFlags *command.ContextFlags,
+	logLevel string,
 ) []command.ProjectContext {
 	return buildContext(
 		ctx,
 		cmdName,
-		getSteps(cmdName, prjCfg.Workflow),
+		getSteps(cmdName, prjCfg.Workflow, logLevel),
 		p.CommentBuilder,
 		prjCfg,
 		commentArgs,

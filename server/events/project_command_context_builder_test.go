@@ -65,7 +65,7 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 			ParallelPlan:  false,
 			ForceApply:    false,
 		}
-		result := subject.BuildProjectContext(commandCtx, command.Plan, projCfg, []string{}, "some/dir", contextFlags)
+		result := subject.BuildProjectContext(commandCtx, command.Plan, projCfg, []string{}, "some/dir", contextFlags, "")
 
 		assert.Equal(t, models.ErroredPolicyCheckStatus, result[0].ProjectPlanStatus)
 	})
@@ -89,9 +89,18 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 			ParallelPlan:  false,
 			ForceApply:    false,
 		}
-		result := subject.BuildProjectContext(commandCtx, command.Plan, projCfg, []string{}, "some/dir", contextFlags)
+		result := subject.BuildProjectContext(commandCtx, command.Plan, projCfg, []string{}, "some/dir", contextFlags, "")
 
 		assert.True(t, result[0].ParallelApplyEnabled)
 		assert.False(t, result[0].ParallelPlanEnabled)
+	})
+
+	t.Run("when log level is set to warn", func(t *testing.T) {
+		result := subject.BuildProjectContext(commandCtx, command.Plan, projCfg, []string{}, "some/dir", &command.ContextFlags{}, "warn")
+		assert.Contains(t, result[0].Steps, valid.Step{
+			StepName:    "env",
+			EnvVarName:  valid.TF_LOG_ENV_VAR,
+			EnvVarValue: "warn",
+		})
 	})
 }
