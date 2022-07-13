@@ -107,6 +107,9 @@ func (c *AsyncClient) RunCommandAsyncWithInput(ctx context.Context, prjCtx comma
 		}()
 		go func() {
 			s := bufio.NewScanner(stderr)
+			buf := []byte{}
+			s.Buffer(buf, BufioScannerBufferSize)
+
 			for s.Scan() {
 				message := s.Text()
 				outCh <- helpers.Line{Line: message}
