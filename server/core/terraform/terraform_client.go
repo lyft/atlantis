@@ -94,6 +94,7 @@ func NewClientWithVersionCache(
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
 	versionCache cache.ExecutionVersionCache,
+	logPrefixToStrip string,
 ) (*DefaultClient, error) {
 	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 
@@ -116,10 +117,12 @@ func NewClientWithVersionCache(
 	if usePluginCache {
 		builder.terraformPluginCacheDir = cacheDir
 	}
+	logPrefixesToStrip := strings.Split(logPrefixToStrip, ",")
 
 	asyncClient := &AsyncClient{
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          builder,
+		logPrefixesToStrip:      logPrefixesToStrip,
 	}
 
 	return &DefaultClient{
@@ -160,6 +163,7 @@ func NewE2ETestClient(
 		projectCmdOutputHandler,
 		featureAllocator,
 		versionCache,
+		"",
 	)
 }
 
@@ -173,6 +177,7 @@ func NewClient(
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
+	logPrefixToStrip string,
 ) (*DefaultClient, error) {
 	loader := VersionLoader{
 		downloader:  tfDownloader,
@@ -195,6 +200,7 @@ func NewClient(
 		projectCmdOutputHandler,
 		featureAllocator,
 		versionCache,
+		logPrefixToStrip,
 	)
 }
 

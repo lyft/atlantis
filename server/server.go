@@ -406,7 +406,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		&terraform.DefaultDownloader{},
 		true,
 		projectCmdOutputHandler,
-		featureAllocator)
+		featureAllocator,
+		userConfig.LogPrefixToStrip)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform")
