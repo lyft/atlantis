@@ -146,7 +146,7 @@ func (c *AsyncClient) RunCommandAsyncWithInput(ctx context.Context, prjCtx comma
 func (c *AsyncClient) logLineShouldBeStripped(message string) bool {
 	for _, line := range c.logPrefixesToStrip {
 		if strings.HasPrefix(message, line) {
-			continue
+			return true
 		}
 	}
 	return false
