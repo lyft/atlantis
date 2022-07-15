@@ -104,12 +104,12 @@ func getSteps(
 	case command.Plan:
 		steps = workflow.Plan.Steps
 		if logLevel != "" {
-			steps = valid.PrependLogEnvSteps(steps, logLevel)
+			steps = valid.PrependLogEnvStep(steps, logLevel)
 		}
 	case command.Apply:
 		steps = workflow.Apply.Steps
 		if logLevel != "" {
-			steps = valid.PrependLogEnvSteps(steps, logLevel)
+			steps = valid.PrependLogEnvStep(steps, logLevel)
 		}
 	case command.Version:
 		steps = []valid.Step{{

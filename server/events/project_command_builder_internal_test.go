@@ -653,7 +653,7 @@ projects:
 	}
 }
 
-func TestBuildProjectCmdCtx_Logging(t *testing.T) {
+func TestBuildProjectCmdCtx_LogLevel(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	emptyPolicySets := valid.PolicySets{
 		Version:    nil,

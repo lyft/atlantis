@@ -219,7 +219,7 @@ type Workflow struct {
 }
 
 // If logLevel is passed in a comment, we will prepend an env step to export it
-func PrependLogEnvSteps(steps []Step, logLevel string) []Step {
+func PrependLogEnvStep(steps []Step, logLevel string) []Step {
 	envStep := Step{
 		StepName:    "env",
 		EnvVarName:  TF_LOG_ENV_VAR,

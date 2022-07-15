@@ -50,6 +50,7 @@ const (
 // paste it again, GitHub adds two newlines and so we wanted to allow copying
 // and pasting GitHub comments.
 var multiLineRegex = regexp.MustCompile(`.*\r?\n[^\r\n]+`)
+var ValidLogLevels = []string{"trace", "debug", "info", "warn", "error"}
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_comment_parsing.go CommentParsing
 
@@ -281,7 +282,7 @@ func (e *CommentParser) invalidLogLevel(logLevel string) bool {
 	if logLevel == "" {
 		return false
 	}
-	return !e.stringInSlice(logLevel, []string{"trace", "debug", "info", "warn", "error"})
+	return !e.stringInSlice(logLevel, ValidLogLevels)
 }
 
 // BuildPlanComment builds a plan comment for the specified args.
