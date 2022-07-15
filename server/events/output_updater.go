@@ -47,7 +47,9 @@ func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd
 
 	// Github Checks turned on and github provider and atlantis status does not exist
 	if ctx.HeadRepo.VCSHost.Type == models.Github && shouldAllocate && !atlantisStatusExists {
-		c.ChecksOutputUpdater.UpdateOutput(ctx, cmd, res)
+
+		// Set useGithubChecks to true if all requirements are met
+		c.ChecksOutputUpdater.UpdateOutput(ctx, cmd, res, true)
 		return
 	}
 
@@ -76,18 +78,19 @@ type ChecksOutputUpdater struct {
 	TitleBuilder     vcs.StatusTitleBuilder
 }
 
-func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
+func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result, useGithubChecks bool) {
 
 	if res.Error != nil || res.Failure != "" {
 		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
 		updateStatusReq := types.UpdateStatusRequest{
-			Repo:        ctx.HeadRepo,
-			Ref:         ctx.Pull.HeadCommit,
-			StatusName:  c.TitleBuilder.Build(cmd.CommandName().String()),
-			PullNum:     ctx.Pull.Num,
-			Description: fmt.Sprintf("%s failed", strings.Title(cmd.CommandName().String())),
-			Output:      output,
-			State:       models.FailedCommitStatus,
+			Repo:            ctx.HeadRepo,
+			Ref:             ctx.Pull.HeadCommit,
+			StatusName:      c.TitleBuilder.Build(cmd.CommandName().String()),
+			PullNum:         ctx.Pull.Num,
+			Description:     fmt.Sprintf("%s failed", strings.Title(cmd.CommandName().String())),
+			Output:          output,
+			State:           models.FailedCommitStatus,
+			UseGithubChecks: useGithubChecks,
 		}
 
 		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
@@ -116,13 +119,14 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 
 		output := c.MarkdownRenderer.RenderProject(projectResult, cmd.CommandName(), ctx.Pull.BaseRepo)
 		updateStatusReq := types.UpdateStatusRequest{
-			Repo:        ctx.HeadRepo,
-			Ref:         ctx.Pull.HeadCommit,
-			StatusName:  statusName,
-			PullNum:     ctx.Pull.Num,
-			Description: description,
-			Output:      output,
-			State:       state,
+			Repo:            ctx.HeadRepo,
+			Ref:             ctx.Pull.HeadCommit,
+			StatusName:      statusName,
+			PullNum:         ctx.Pull.Num,
+			Description:     description,
+			Output:          output,
+			State:           state,
+			UseGithubChecks: useGithubChecks,
 		}
 
 		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {

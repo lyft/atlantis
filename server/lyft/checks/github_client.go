@@ -22,6 +22,13 @@ type ChecksClientWrapper struct {
 
 // [WENGINES-4643] - Clean up after github checks is stable.
 func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
+
+	// UseGithubChecks is set by outputUpdater if feature flag and repo status has already been evaluated.
+	// false by default, check the feature flag and existing statuses if this flag is not set.
+	if request.UseGithubChecks {
+		return c.GithubClient.UpdateChecksStatus(ctx, request)
+	}
+
 	shouldAllocate, err := c.FeatureAllocator.ShouldAllocate(feature.GithubChecks, request.Repo.FullName)
 	if err != nil {
 		c.Logger.ErrorContext(ctx, fmt.Sprintf("unable to allocate for feature: %s", feature.GithubChecks), map[string]interface{}{

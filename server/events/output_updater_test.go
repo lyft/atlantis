@@ -79,41 +79,47 @@ func TestUpdateOutput(t *testing.T) {
 	`
 
 	cases := []struct {
-		statusNames   []string
-		desription    string
-		checksEnabled bool
-		expType       StatusType
+		statusNames             []string
+		desription              string
+		checksEnabled           bool
+		numCallsGetRepoStatuses int
+		expStatusType           StatusType
 	}{
 		{
-			statusNames:   []string{"atlantis/plan", "atlantis/apply"},
-			desription:    "all atlantis statuses when checks is enabled",
-			checksEnabled: true,
-			expType:       CommitStatus,
+			statusNames:             []string{"atlantis/plan", "atlantis/apply"},
+			desription:              "all atlantis statuses when checks is enabled",
+			checksEnabled:           true,
+			expStatusType:           CommitStatus,
+			numCallsGetRepoStatuses: 1,
 		},
 		{
-			statusNames:   []string{"terraform-fmt", "terraform-checks"},
-			desription:    "no atlantis status when checks is enabled",
-			checksEnabled: true,
-			expType:       ChecksStatus,
+			statusNames:             []string{"terraform-fmt", "terraform-checks"},
+			desription:              "no atlantis status when checks is enabled, ensure no duplicate API call to get repo status",
+			checksEnabled:           true,
+			expStatusType:           ChecksStatus,
+			numCallsGetRepoStatuses: 1,
 		},
 		{
-			statusNames:   []string{"atlantis/plan", "terraform-fmt"},
-			desription:    "at least one atlantis status when checks is enabled",
-			checksEnabled: true,
-			expType:       CommitStatus,
+			statusNames:             []string{"atlantis/plan", "terraform-fmt"},
+			desription:              "at least one atlantis status when checks is enabled",
+			checksEnabled:           true,
+			expStatusType:           CommitStatus,
+			numCallsGetRepoStatuses: 1,
 		},
 		{
-			statusNames:   []string{"terraform-checks", "terraform-fmt"},
-			desription:    "no atlantis status when checks is disabled",
-			checksEnabled: false,
-			expType:       CommitStatus,
+			statusNames:             []string{"terraform-checks", "terraform-fmt"},
+			desription:              "no atlantis status when checks is disabled",
+			checksEnabled:           false,
+			expStatusType:           CommitStatus,
+			numCallsGetRepoStatuses: 1,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.desription, func(t *testing.T) {
 
-			var callType StatusType
+			var numCallsGetRepoStatuses int
+			var statusType StatusType
 			testServer := httptest.NewTLSServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.RequestURI {
@@ -125,15 +131,16 @@ func TestUpdateOutput(t *testing.T) {
 
 					// Create status
 					case "/api/v3/repos/owner/repo/issues/0/comments":
-						callType = CommitStatus
+						statusType = CommitStatus
 						w.WriteHeader(http.StatusOK)
 
 					case "/api/v3/repos/owner/repo/check-runs":
-						callType = ChecksStatus
+						statusType = ChecksStatus
 						w.WriteHeader(http.StatusOK)
 
 					// Get statuses
 					case "/api/v3/repos/owner/repo/commits/sha/status?per_page=100":
+						numCallsGetRepoStatuses += 1
 						_, err := w.Write([]byte(fmt.Sprintf(listStatusesResp, c.statusNames[0], c.statusNames[1])))
 						assert.NoError(t, err)
 
@@ -190,11 +197,11 @@ func TestUpdateOutput(t *testing.T) {
 				},
 			})
 
-			assert.Equal(t, c.expType, callType)
+			assert.Equal(t, c.numCallsGetRepoStatuses, numCallsGetRepoStatuses)
+			assert.Equal(t, c.expStatusType, statusType)
 		})
 
 	}
-
 }
 
 type mockFeatureAllocator struct {

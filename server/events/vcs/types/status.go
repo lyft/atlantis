@@ -12,4 +12,9 @@ type UpdateStatusRequest struct {
 	Description string
 	DetailsURL  string
 	Output      string
+
+	// [WENGINES-4643] TODO: Remove UseGithubChecks flag when github checks is stable.
+	// UseGithubChecks is false by default. It is set to true if the output updater determines that there's no existing atlantis status
+	// Used to avoid duplicate API call to determine if github checks needs to be used in checks client wrapper
+	UseGithubChecks bool
 }

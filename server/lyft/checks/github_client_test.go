@@ -57,40 +57,55 @@ func TestGithubClient_UpdateStatus(t *testing.T) {
 	`
 
 	cases := []struct {
-		statusNames   []string
-		desription    string
-		checksEnabled bool
-		expType       StatusType
+		statusNames             []string
+		desription              string
+		checksEnabled           bool
+		numCallsGetRepoStatuses int
+		expStatusType           StatusType
+		// bool flag to enable github check determined by output updater before call to client.UpdateStatus
+		updateReqEnableGithubChecks bool
 	}{
 		{
-			statusNames:   []string{"atlantis/plan", "atlantis/apply"},
-			desription:    "all atlantis statuses when checks is enabled",
-			checksEnabled: true,
-			expType:       CommitStatus,
+			statusNames:             []string{"atlantis/plan", "atlantis/apply"},
+			desription:              "all atlantis statuses when checks is enabled",
+			checksEnabled:           true,
+			expStatusType:           CommitStatus,
+			numCallsGetRepoStatuses: 1,
 		},
 		{
-			statusNames:   []string{"terraform-fmt", "terraform-checks"},
-			desription:    "no atlantis status when checks is enabled",
-			checksEnabled: true,
-			expType:       ChecksStatus,
+			statusNames:             []string{"terraform-fmt", "terraform-checks"},
+			desription:              "no atlantis status when checks is enabled",
+			checksEnabled:           true,
+			expStatusType:           ChecksStatus,
+			numCallsGetRepoStatuses: 1,
 		},
 		{
-			statusNames:   []string{"atlantis/plan", "terraform-fmt"},
-			desription:    "at least one atlantis status when checks is enabled",
-			checksEnabled: true,
-			expType:       CommitStatus,
+			desription:                  "github checks is enabled in the update request",
+			checksEnabled:               true,
+			expStatusType:               ChecksStatus,
+			numCallsGetRepoStatuses:     0, // No need to get repo statuses if updateReq.useGithubChecks is true
+			updateReqEnableGithubChecks: true,
 		},
 		{
-			statusNames:   []string{"terraform-checks", "terraform-fmt"},
-			desription:    "no atlantis status when checks is disabled",
-			checksEnabled: false,
-			expType:       CommitStatus,
+			statusNames:             []string{"atlantis/plan", "terraform-fmt"},
+			desription:              "at least one atlantis status when checks is enabled",
+			checksEnabled:           true,
+			expStatusType:           CommitStatus,
+			numCallsGetRepoStatuses: 1,
+		},
+		{
+			statusNames:             []string{"terraform-checks", "terraform-fmt"},
+			desription:              "no atlantis status when checks is disabled",
+			checksEnabled:           false,
+			expStatusType:           CommitStatus,
+			numCallsGetRepoStatuses: 1,
 		},
 	}
 
-	var statusType StatusType
 	for _, c := range cases {
 		t.Run(c.desription, func(t *testing.T) {
+			var statusType StatusType
+			var numCallsGetRepoStatuses int
 			testServer := httptest.NewTLSServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.RequestURI {
@@ -110,6 +125,7 @@ func TestGithubClient_UpdateStatus(t *testing.T) {
 
 					// Get statuses
 					case "/api/v3/repos/owner/repo/commits/sha/status?per_page=100":
+						numCallsGetRepoStatuses += 1
 						_, err := w.Write([]byte(fmt.Sprintf(listStatusesResp, c.statusNames[0], c.statusNames[1])))
 						assert.NoError(t, err)
 
@@ -142,10 +158,12 @@ func TestGithubClient_UpdateStatus(t *testing.T) {
 					Owner: "owner",
 					Name:  "repo",
 				},
-				State: models.SuccessCommitStatus,
+				State:           models.SuccessCommitStatus,
+				UseGithubChecks: c.updateReqEnableGithubChecks,
 			})
 
-			assert.Equal(t, c.expType, statusType)
+			assert.Equal(t, c.expStatusType, statusType)
+			assert.Equal(t, c.numCallsGetRepoStatuses, numCallsGetRepoStatuses)
 
 		})
 	}
