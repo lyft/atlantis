@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/checks"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 	"github.com/stretchr/testify/assert"
@@ -36,6 +38,22 @@ const (
 )
 
 func TestUpdateOutput(t *testing.T) {
+	repo := models.Repo{
+		Owner: "owner",
+		Name:  "repo",
+		VCSHost: models.VCSHost{
+			Type: models.Github,
+		},
+	}
+
+	listCheckRunRespFormat := `
+	{
+		"total_count": 1,
+		"check_runs": [
+		]
+	  }
+	`
+
 	listStatusesResp := `
 	{
 		"state": "pending",
@@ -87,7 +105,7 @@ func TestUpdateOutput(t *testing.T) {
 		{
 			statusNames:   []string{"terraform-checks", "terraform-fmt"},
 			desription:    "no atlantis status when checks is disabled",
-			checksEnabled: true,
+			checksEnabled: false,
 			expType:       CommitStatus,
 		},
 	}
@@ -99,6 +117,11 @@ func TestUpdateOutput(t *testing.T) {
 			testServer := httptest.NewTLSServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.RequestURI {
+
+					// list checkruns
+					case "/api/v3/repos/owner/repo/commits/sha/check-runs?per_page=100":
+						_, err := w.Write([]byte(listCheckRunRespFormat))
+						assert.NoError(t, err)
 
 					// Create status
 					case "/api/v3/repos/owner/repo/issues/0/comments":
@@ -126,17 +149,23 @@ func TestUpdateOutput(t *testing.T) {
 
 			mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
 			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+
+			checksClientWrapper := checks.ChecksClientWrapper{
+				GithubClient:     client,
+				FeatureAllocator: &mockFeatureAllocator{shouldAllocate: c.checksEnabled},
+				Logger:           logging.NewNoopCtxLogger(t),
+			}
 			assert.NoError(t, err)
 
 			defer disableSSLVerification()()
 
 			outputUpdater := FeatureAwareChecksOutputUpdater{
 				PullOutputUpdater: PullOutputUpdater{
-					VCSClient:        client,
+					VCSClient:        &checksClientWrapper,
 					MarkdownRenderer: &markdown.Renderer{},
 				},
 				ChecksOutputUpdater: ChecksOutputUpdater{
-					VCSClient:        client,
+					VCSClient:        &checksClientWrapper,
 					MarkdownRenderer: &markdown.Renderer{},
 					TitleBuilder:     vcs.StatusTitleBuilder{TitlePrefix: "atlantis"},
 				},
@@ -146,23 +175,12 @@ func TestUpdateOutput(t *testing.T) {
 			}
 
 			outputUpdater.UpdateOutput(&command.Context{
-				HeadRepo: models.Repo{
-					Owner: "owner",
-					Name:  "repo",
-					VCSHost: models.VCSHost{
-						Type: models.Github,
-					},
-				},
+				HeadRepo: repo,
 				Pull: models.PullRequest{
 					HeadCommit: "sha",
-					BaseRepo: models.Repo{
-						Owner: "owner",
-						Name:  "repo",
-						VCSHost: models.VCSHost{
-							Type: models.Github,
-						},
-					},
+					BaseRepo:   repo,
 				},
+				RequestCtx: context.TODO(),
 			}, PolicyCheckCommand{}, command.Result{
 				ProjectResults: []command.ProjectResult{
 					{
