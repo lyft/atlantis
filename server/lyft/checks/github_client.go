@@ -3,6 +3,7 @@ package checks
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -19,6 +20,7 @@ type ChecksClientWrapper struct {
 	Logger           logging.Logger
 }
 
+// [WENGINES-4643] - Clean up after github checks is stable.
 func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
 	shouldAllocate, err := c.FeatureAllocator.ShouldAllocate(feature.GithubChecks, request.Repo.FullName)
 	if err != nil {
@@ -27,36 +29,35 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 		})
 	}
 
-	if !shouldAllocate {
-		return c.GithubClient.UpdateStatus(ctx, request)
+	// Do not update status if this op fails bc this can cause mix of statuses
+	atlantisStatusExists, err := c.doesAtlantisStatusExist(request)
+	if err != nil {
+		c.Logger.ErrorContext(ctx, err.Error(), map[string]interface{}{})
+		return err
 	}
 
-	// Get all commit statuses and check if the commit status for this operation is pending
-	// and mirror the checks status. This is possible when PRs are in-flight during rollout.
-	// [WENGINES-4643] - Clean up after github checks is stable.
+	if shouldAllocate && !atlantisStatusExists {
+		return c.GithubClient.UpdateChecksStatus(ctx, request)
+	}
+
+	return c.GithubClient.UpdateStatus(ctx, request)
+}
+
+// Get all commit statuses and check if it already has an atlantis commit status; use commit statuses if it exists
+// If not, it means this PR was created after checks was rolled out so, we use github checks for status updates
+func (c *ChecksClientWrapper) doesAtlantisStatusExist(request types.UpdateStatusRequest) (bool, error) {
 	statuses, err := c.GithubClient.GetRepoStatuses(request.Repo, models.PullRequest{
 		HeadCommit: request.Ref,
 	})
 	if err != nil {
-		return errors.Wrap(err, "retrieving repo statuses")
+		return false, errors.Wrap(err, "retrieving repo statuses")
 	}
 
 	for _, status := range statuses {
-		// Skip if name does not match or the state is same
-		if *status.Context != request.StatusName || isSameState(*status.State, request.State) {
-			continue
+		if strings.Contains(*status.Context, "atlantis") {
+			return true, nil
 		}
-		c.GithubClient.UpdateStatus(ctx, request)
 	}
 
-	return c.GithubClient.UpdateChecksStatus(ctx, request)
-}
-
-func isSameState(statusState string, requestState models.CommitStatus) bool {
-	if requestState == models.PendingCommitStatus && statusState == "pending" ||
-		requestState == models.FailedCommitStatus && statusState == "failure" ||
-		requestState == models.SuccessCommitStatus && statusState == "success" {
-		return true
-	}
-	return false
+	return false, nil
 }

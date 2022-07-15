@@ -646,6 +646,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PullOutputUpdater:   pullOutputUpdater,
 		FeatureAllocator:    featureAllocator,
 		Logger:              ctxLogger,
+		GithubClient:        *rawGithubClient,
 	}
 
 	session, err := aws.NewSession()

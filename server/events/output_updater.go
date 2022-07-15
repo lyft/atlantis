@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
@@ -17,7 +18,7 @@ type OutputUpdater interface {
 	UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result)
 }
 
-// [WENGINES-4643] TODO: Remove PullOutputUpdater and default to checks once github checks is stable
+// [WENGINES-4643] TODO: Remove PullOutputUpdater and FeatureAwareChecksOutputUpdater and use ChecksOutputUpdater when it's stable.
 // defaults to pull comments if checks is turned off
 type FeatureAwareChecksOutputUpdater struct {
 	PullOutputUpdater
@@ -25,6 +26,10 @@ type FeatureAwareChecksOutputUpdater struct {
 
 	FeatureAllocator feature.Allocator
 	Logger           logging.Logger
+
+	// Provider specific logic wrapped inside a conditional check for vcsHost.
+	// Temporary fix to handle in-flight PRs during github checks rollout.
+	GithubClient vcs.GithubClient
 }
 
 func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
@@ -33,12 +38,35 @@ func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd
 		c.Logger.Error(fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.GithubChecks, err))
 	}
 
-	// Github Checks turned on and github provider
-	if ctx.HeadRepo.VCSHost.Type == models.Github && shouldAllocate {
+	// Get all commit statuses and check if it already has an atlantis commit status; use commit statuses if it exists
+	// If not, it means this PR was created after checks was rolled out so, we use github checks for status updates
+	atlantisStatusExists, err := c.doesAtlantisStatusExist(ctx.HeadRepo, ctx.Pull)
+	if err != nil {
+		c.Logger.ErrorContext(ctx.RequestCtx, err.Error(), map[string]interface{}{})
+	}
+
+	// Github Checks turned on and github provider and atlantis status does not exist
+	if ctx.HeadRepo.VCSHost.Type == models.Github && shouldAllocate && !atlantisStatusExists {
 		c.ChecksOutputUpdater.UpdateOutput(ctx, cmd, res)
 		return
 	}
+
 	c.PullOutputUpdater.UpdateOutput(ctx, cmd, res)
+}
+
+func (c *FeatureAwareChecksOutputUpdater) doesAtlantisStatusExist(repo models.Repo, pull models.PullRequest) (bool, error) {
+	statuses, err := c.GithubClient.GetRepoStatuses(repo, pull)
+	if err != nil {
+		return false, errors.Wrap(err, "retrieving repo statuses")
+	}
+
+	for _, status := range statuses {
+		if strings.Contains(*status.Context, "atlantis") {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // Used to support checks type output (Github checks for example)
