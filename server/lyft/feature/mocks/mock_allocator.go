@@ -4,11 +4,10 @@
 package mocks
 
 import (
-	"reflect"
-	"time"
-
 	pegomock "github.com/petergtz/pegomock"
 	feature "github.com/runatlantis/atlantis/server/lyft/feature"
+	"reflect"
+	"time"
 )
 
 type MockAllocator struct {
@@ -26,11 +25,11 @@ func NewMockAllocator(options ...pegomock.Option) *MockAllocator {
 func (mock *MockAllocator) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockAllocator) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockAllocator) ShouldAllocate(featureID feature.Name, fullRepoName string) (bool, error) {
+func (mock *MockAllocator) ShouldAllocate(_param0 feature.Name, _param1 string, _param2 time.Time) (bool, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockAllocator().")
 	}
-	params := []pegomock.Param{featureID, fullRepoName}
+	params := []pegomock.Param{_param0, _param1, _param2}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("ShouldAllocate", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 bool
 	var ret1 error
@@ -82,8 +81,8 @@ type VerifierMockAllocator struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockAllocator) ShouldAllocate(featureID feature.Name, fullRepoName string) *MockAllocator_ShouldAllocate_OngoingVerification {
-	params := []pegomock.Param{featureID, fullRepoName}
+func (verifier *VerifierMockAllocator) ShouldAllocate(_param0 feature.Name, _param1 string, _param2 time.Time) *MockAllocator_ShouldAllocate_OngoingVerification {
+	params := []pegomock.Param{_param0, _param1, _param2}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "ShouldAllocate", params, verifier.timeout)
 	return &MockAllocator_ShouldAllocate_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
@@ -93,12 +92,12 @@ type MockAllocator_ShouldAllocate_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockAllocator_ShouldAllocate_OngoingVerification) GetCapturedArguments() (feature.Name, string) {
-	featureID, fullRepoName := c.GetAllCapturedArguments()
-	return featureID[len(featureID)-1], fullRepoName[len(fullRepoName)-1]
+func (c *MockAllocator_ShouldAllocate_OngoingVerification) GetCapturedArguments() (feature.Name, string, time.Time) {
+	_param0, _param1, _param2 := c.GetAllCapturedArguments()
+	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1]
 }
 
-func (c *MockAllocator_ShouldAllocate_OngoingVerification) GetAllCapturedArguments() (_param0 []feature.Name, _param1 []string) {
+func (c *MockAllocator_ShouldAllocate_OngoingVerification) GetAllCapturedArguments() (_param0 []feature.Name, _param1 []string, _param2 []time.Time) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]feature.Name, len(c.methodInvocations))
@@ -108,6 +107,10 @@ func (c *MockAllocator_ShouldAllocate_OngoingVerification) GetAllCapturedArgumen
 		_param1 = make([]string, len(c.methodInvocations))
 		for u, param := range params[1] {
 			_param1[u] = param.(string)
+		}
+		_param2 = make([]time.Time, len(c.methodInvocations))
+		for u, param := range params[2] {
+			_param2[u] = param.(time.Time)
 		}
 	}
 	return

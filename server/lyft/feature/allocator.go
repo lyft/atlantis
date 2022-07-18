@@ -2,6 +2,7 @@ package feature
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/vcs"
@@ -51,7 +52,7 @@ func (c *CustomGithubRetriever) Retrieve(ctx context.Context) ([]byte, error) {
 // Additionally, implementations are assumed to provide deterministic results.
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_allocator.go Allocator
 type Allocator interface {
-	ShouldAllocate(featureID Name, fullRepoName string) (bool, error)
+	ShouldAllocate(featureID Name, fullRepoName string, prCreationTime time.Time) (bool, error)
 }
 
 // PercentageBasedAllocator allocates features based on a percentage of the total repositories
@@ -101,8 +102,13 @@ func NewStringSourcedAllocator(logger logging.Logger) (Allocator, error) {
 	return &PercentageBasedAllocator{logger: logger}, err
 }
 
-func (r *PercentageBasedAllocator) ShouldAllocate(featureID Name, fullRepoName string) (bool, error) {
-	repo := ffuser.NewUser(fullRepoName)
+func (r *PercentageBasedAllocator) ShouldAllocate(featureID Name, fullRepoName string, prCreationTime time.Time) (bool, error) {
+	// rule defintion used by this ff definition is not smart enough to understand different time formats
+	// so we use the Unix() time in seconds to evaluate if this feature should be allocated
+	repo := ffuser.NewUserBuilder(fullRepoName).
+		AddCustom("prCreationTime", prCreationTime.Unix()).
+		Build()
+
 	shouldAllocate, err := ffclient.BoolVariation(string(featureID), repo, false)
 
 	// if we error out we shouldn't enable the feature, could be risky

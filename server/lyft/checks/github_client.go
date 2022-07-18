@@ -18,7 +18,7 @@ type ChecksClientWrapper struct {
 }
 
 func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	shouldAllocate, err := c.FeatureAllocator.ShouldAllocate(feature.GithubChecks, request.Repo.FullName)
+	shouldAllocate, err := c.FeatureAllocator.ShouldAllocate(feature.GithubChecks, request.Repo.FullName, request.PrCreationTime)
 	if err != nil {
 		c.Logger.ErrorContext(ctx, fmt.Sprintf("unable to allocate for feature: %s", feature.GithubChecks), map[string]interface{}{
 			"error": err.Error(),
