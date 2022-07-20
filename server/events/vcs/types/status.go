@@ -7,14 +7,14 @@ import (
 )
 
 type UpdateStatusRequest struct {
-	Repo models.Repo
+	Repo        models.Repo
+	Ref         string
+	State       models.CommitStatus
+	StatusName  string
+	Description string
+	DetailsURL  string
+	Output      string
 	// if not present, should be -1
-	PullNum        int
-	Ref            string
-	State          models.CommitStatus
-	StatusName     string
-	Description    string
-	DetailsURL     string
-	Output         string
-	PrCreationTime time.Time
+	PullNum          int
+	PullCreationTime time.Time
 }

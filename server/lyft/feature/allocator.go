@@ -11,6 +11,12 @@ import (
 	"github.com/thomaspoignant/go-feature-flag/ffuser"
 )
 
+// Add more attributes as needed to determine eligibility of a feature
+type FeatureContext struct {
+	RepoName         string
+	PullCreationTime time.Time
+}
+
 // If keys are missing, the default is respected, so we don't need to have
 // real configuration here.
 const Configuration StringRetriever = `some-key:
@@ -52,7 +58,7 @@ func (c *CustomGithubRetriever) Retrieve(ctx context.Context) ([]byte, error) {
 // Additionally, implementations are assumed to provide deterministic results.
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_allocator.go Allocator
 type Allocator interface {
-	ShouldAllocate(featureID Name, fullRepoName string, prCreationTime time.Time) (bool, error)
+	ShouldAllocate(featureID Name, featureCtx FeatureContext) (bool, error)
 }
 
 // PercentageBasedAllocator allocates features based on a percentage of the total repositories
@@ -102,11 +108,11 @@ func NewStringSourcedAllocator(logger logging.Logger) (Allocator, error) {
 	return &PercentageBasedAllocator{logger: logger}, err
 }
 
-func (r *PercentageBasedAllocator) ShouldAllocate(featureID Name, fullRepoName string, prCreationTime time.Time) (bool, error) {
+func (r *PercentageBasedAllocator) ShouldAllocate(featureID Name, featureContext FeatureContext) (bool, error) {
 	// rule defintion used by this ff definition is not smart enough to understand different time formats
 	// so we use the Unix() time in seconds to evaluate if this feature should be allocated
-	repo := ffuser.NewUserBuilder(fullRepoName).
-		AddCustom("prCreationTime", prCreationTime.Unix()).
+	repo := ffuser.NewUserBuilder(featureContext.RepoName).
+		AddCustom("prCreationTime", featureContext.PullCreationTime.Unix()).
 		Build()
 
 	shouldAllocate, err := ffclient.BoolVariation(string(featureID), repo, false)
