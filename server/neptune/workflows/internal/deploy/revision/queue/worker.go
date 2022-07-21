@@ -63,17 +63,6 @@ func (w *Worker) Work(ctx workflow.Context) {
 		if err != nil {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
 		}
-
-		// do all the rest of the work
-
-		// fetch deployments
-
-		// generate deployment id
-
-		// validate things
-
-		// prompt for approval if invalid and lock future deploys if need be
-		// we'll need to update the status of everything in the queue somehow
 	}
 }
 
@@ -99,6 +88,8 @@ func (w *Worker) work(ctx workflow.Context, revision string) error {
 	}
 
 	logger.Info(ctx, fmt.Sprintf("latest deployed revision %s", deployedRevision))
+
+	// TODO: fill in the rest
 
 	return nil
 }

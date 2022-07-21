@@ -30,6 +30,7 @@ type Job struct {
 	Steps []Step
 }
 
+// Step was taken from the Atlantis OG config, we might be able to clean this up/remove it
 type Step struct {
 	StepName  string
 	ExtraArgs []string
