@@ -39,7 +39,6 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 	client := &AsyncClient{
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          mockBuilder,
-		logPrefixesToStrip:      []string{},
 	}
 
 	When(mockBuilder.Build(nil, workspace, path, args)).ThenReturn(echoCommand, nil)
@@ -69,7 +68,6 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 	client := &AsyncClient{
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          mockBuilder,
-		logPrefixesToStrip:      []string{},
 	}
 
 	// set up big file to test limitations.
@@ -119,7 +117,6 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	client := &AsyncClient{
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          mockBuilder,
-		logPrefixesToStrip:      []string{},
 	}
 	When(mockBuilder.Build(nil, workspace, path, args)).ThenReturn(echoCommand, nil)
 	outCh := client.RunCommandAsync(ctx, prjCtx, path, args, map[string]string{}, nil, workspace)
@@ -127,37 +124,6 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	out, err := waitCh(outCh)
 	Ok(t, err)
 	Equals(t, "stderr", out)
-}
-
-func TestDefaultClient_RunCommandAsync_StderrOutput_LogsStripped(t *testing.T) {
-	path := "some/path"
-	args := []string{
-		"ARG1=$ARG1",
-	}
-	workspace := "workspace"
-	echoCommand := exec.Command("sh", "-c", "echo stderr >&2")
-
-	logger := logging.NewNoopCtxLogger(t)
-
-	ctx := context.Background()
-	prjCtx := command.ProjectContext{
-		Log:        logger,
-		RequestCtx: context.TODO(),
-	}
-	mockBuilder := mocks.NewMockcommandBuilder()
-	projectCmdOutputHandler := jobmocks.NewMockProjectCommandOutputHandler()
-	client := &AsyncClient{
-		projectCmdOutputHandler: projectCmdOutputHandler,
-		commandBuilder:          mockBuilder,
-		logPrefixesToStrip:      []string{"stder"},
-	}
-	When(mockBuilder.Build(nil, workspace, path, args)).ThenReturn(echoCommand, nil)
-	outCh := client.RunCommandAsync(ctx, prjCtx, path, args, map[string]string{}, nil, workspace)
-
-	out, err := waitCh(outCh)
-	Ok(t, err)
-	// should have no output
-	Equals(t, "", out)
 }
 
 func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
@@ -179,7 +145,6 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 	client := &AsyncClient{
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          mockBuilder,
-		logPrefixesToStrip:      []string{},
 	}
 	When(mockBuilder.Build(nil, workspace, path, args)).ThenReturn(echoCommand, nil)
 	outCh := client.RunCommandAsync(ctx, prjCtx, path, args, map[string]string{}, nil, workspace)
@@ -209,7 +174,6 @@ func TestDefaultClient_RunCommandAsync_Input(t *testing.T) {
 	client := &AsyncClient{
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          mockBuilder,
-		logPrefixesToStrip:      []string{},
 	}
 
 	inCh := make(chan string)

@@ -20,7 +20,6 @@ type ProjectCommandContextBuilder interface {
 		commentArgs []string,
 		repoDir string,
 		contextFlags *command.ContextFlags,
-		logLevel string,
 	) []command.ProjectContext
 }
 
@@ -43,12 +42,11 @@ func (cb *projectCommandContextBuilder) BuildProjectContext(
 	commentArgs []string,
 	repoDir string,
 	contextFlags *command.ContextFlags,
-	logLevel string,
 ) []command.ProjectContext {
 	return buildContext(
 		ctx,
 		cmdName,
-		getSteps(cmdName, prjCfg.Workflow, logLevel),
+		getSteps(cmdName, prjCfg.Workflow, contextFlags.LogLevel),
 		cb.CommentBuilder,
 		prjCfg,
 		commentArgs,

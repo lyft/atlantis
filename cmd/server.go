@@ -77,7 +77,6 @@ const (
 	GitlabWebhookSecretFlag    = "gitlab-webhook-secret" // nolint: gosec
 	HidePrevPlanComments       = "hide-prev-plan-comments"
 	LogLevelFlag               = "log-level"
-	LogPrefixToStrip           = "log-prefix-to-strip"
 	ParallelPoolSize           = "parallel-pool-size"
 	MaxProjectsPerPR           = "max-projects-per-pr"
 	StatsNamespace             = "stats-namespace"
@@ -242,9 +241,6 @@ var stringFlags = map[string]stringFlag{
 	LogLevelFlag: {
 		description:  "Log level. Either debug, info, warn, or error.",
 		defaultValue: DefaultLogLevel,
-	},
-	LogPrefixToStrip: {
-		description: "Prefix used by Terraform client when determining if a log line should be stripped from the output.",
 	},
 	StatsNamespace: {
 		description:  "Namespace for aggregating stats.",

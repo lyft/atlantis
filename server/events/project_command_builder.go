@@ -220,6 +220,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 				ForceApply:    forceApply,
 				ParallelApply: repoCfg.ParallelApply,
 				ParallelPlan:  repoCfg.ParallelPlan,
+				LogLevel:      logLevel,
 			}
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
@@ -229,7 +230,6 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 					commentFlags,
 					repoDir,
 					contextFlags,
-					logLevel,
 				)...)
 		}
 	} else {
@@ -248,6 +248,7 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 				ForceApply:    forceApply,
 				ParallelApply: DefaultParallelApplyEnabled,
 				ParallelPlan:  DefaultParallelPlanEnabled,
+				LogLevel:      logLevel,
 			}
 			projCtxs = append(projCtxs,
 				p.ProjectCommandContextBuilder.BuildProjectContext(
@@ -257,7 +258,6 @@ func (p *DefaultProjectCommandBuilder) buildPlanAllCommands(ctx *command.Context
 					commentFlags,
 					repoDir,
 					contextFlags,
-					logLevel,
 				)...)
 		}
 	}
@@ -514,6 +514,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 		ForceApply:    forceApply,
 		ParallelApply: parallelApply,
 		ParallelPlan:  parallelPlan,
+		LogLevel:      logLevel,
 	}
 
 	if len(matchingProjects) > 0 {
@@ -538,7 +539,6 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 					commentFlags,
 					repoDir,
 					contextFlags,
-					logLevel,
 				)...)
 		}
 	} else {
@@ -557,7 +557,6 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 				commentFlags,
 				repoDir,
 				contextFlags,
-				logLevel,
 			)...)
 	}
 

@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -32,13 +33,14 @@ type multiplexor struct {
 	registry     PartitionRegistry
 }
 
-func NewMultiplexor(log logging.Logger, keyGenerator PartitionKeyGenerator, registry PartitionRegistry) Multiplexor {
+func NewMultiplexor(log logging.Logger, keyGenerator PartitionKeyGenerator, registry PartitionRegistry, logFilter filter.LogFilter) Multiplexor {
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	return &multiplexor{
 		writer: &Writer{
-			upgrader: upgrader,
-			log:      log,
+			upgrader:  upgrader,
+			log:       log,
+			logFilter: logFilter,
 		},
 		keyGenerator: keyGenerator,
 		registry:     registry,

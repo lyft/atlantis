@@ -17,6 +17,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -63,6 +64,7 @@ type DefaultClient struct {
 	commandBuilder commandBuilder
 
 	featureAllocator feature.Allocator
+	logFilter        filter.LogFilter
 	*AsyncClient
 }
 
@@ -94,7 +96,7 @@ func NewClientWithVersionCache(
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
 	versionCache cache.ExecutionVersionCache,
-	logPrefixToStrip string,
+	logFilter filter.LogFilter,
 ) (*DefaultClient, error) {
 	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 
@@ -117,12 +119,10 @@ func NewClientWithVersionCache(
 	if usePluginCache {
 		builder.terraformPluginCacheDir = cacheDir
 	}
-	logPrefixesToStrip := strings.Split(logPrefixToStrip, ",")
 
 	asyncClient := &AsyncClient{
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          builder,
-		logPrefixesToStrip:      logPrefixesToStrip,
 	}
 
 	return &DefaultClient{
@@ -134,6 +134,7 @@ func NewClientWithVersionCache(
 		AsyncClient:      asyncClient,
 		commandBuilder:   builder,
 		versionCache:     versionCache,
+		logFilter:        logFilter,
 	}, nil
 
 }
@@ -150,6 +151,7 @@ func NewE2ETestClient(
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
+	logFilter filter.LogFilter,
 ) (*DefaultClient, error) {
 	versionCache := cache.NewLocalBinaryCache("terraform")
 	return NewClientWithVersionCache(
@@ -163,22 +165,11 @@ func NewE2ETestClient(
 		projectCmdOutputHandler,
 		featureAllocator,
 		versionCache,
-		"",
+		logFilter,
 	)
 }
 
-func NewClient(
-	binDir string,
-	cacheDir string,
-	defaultVersionStr string,
-	defaultVersionFlagName string,
-	tfDownloadURL string,
-	tfDownloader Downloader,
-	usePluginCache bool,
-	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
-	featureAllocator feature.Allocator,
-	logPrefixToStrip string,
-) (*DefaultClient, error) {
+func NewClient(binDir string, cacheDir string, defaultVersionStr string, defaultVersionFlagName string, tfDownloadURL string, tfDownloader Downloader, usePluginCache bool, projectCmdOutputHandler jobs.ProjectCommandOutputHandler, featureAllocator feature.Allocator, logFilter filter.LogFilter) (*DefaultClient, error) {
 	loader := VersionLoader{
 		downloader:  tfDownloader,
 		downloadURL: tfDownloadURL,
@@ -200,7 +191,7 @@ func NewClient(
 		projectCmdOutputHandler,
 		featureAllocator,
 		versionCache,
-		logPrefixToStrip,
+		logFilter,
 	)
 }
 
@@ -243,7 +234,10 @@ func (c *DefaultClient) RunCommandWithVersion(ctx context.Context, prjCtx comman
 				err = line.Err
 				break
 			}
-			lines = append(lines, line.Line)
+			// sanitize output by stripping out logs matching config filter
+			if !c.logFilter.LogLineShouldBeFiltered(line.Line) {
+				lines = append(lines, line.Line)
+			}
 		}
 		output := strings.Join(lines, "\n")
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 
 	"github.com/hashicorp/go-version"
@@ -29,7 +28,6 @@ type ClientAsync interface {
 type AsyncClient struct {
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	commandBuilder          commandBuilder
-	logPrefixesToStrip      []string
 }
 
 // RunCommandAsync runs terraform with args. It immediately returns an
@@ -114,9 +112,6 @@ func (c *AsyncClient) RunCommandAsyncWithInput(ctx context.Context, prjCtx comma
 
 			for s.Scan() {
 				message := s.Text()
-				if c.logLineShouldBeStripped(message) {
-					continue
-				}
 				outCh <- helpers.Line{Line: message}
 				c.projectCmdOutputHandler.Send(prjCtx, message)
 			}
@@ -141,13 +136,4 @@ func (c *AsyncClient) RunCommandAsyncWithInput(ctx context.Context, prjCtx comma
 	}()
 
 	return outCh
-}
-
-func (c *AsyncClient) logLineShouldBeStripped(message string) bool {
-	for _, line := range c.logPrefixesToStrip {
-		if strings.HasPrefix(message, line) {
-			return true
-		}
-	}
-	return false
 }

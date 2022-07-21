@@ -17,15 +17,14 @@ func (p *PolicyCheckProjectContextBuilder) BuildProjectContext(
 	commentArgs []string,
 	repoDir string,
 	contextFlags *command.ContextFlags,
-	logLevel string,
 ) []command.ProjectContext {
-	prjCmds := p.ProjectCommandContextBuilder.BuildProjectContext(ctx, cmdName, prjCfg, commentArgs, repoDir, contextFlags, logLevel)
+	prjCmds := p.ProjectCommandContextBuilder.BuildProjectContext(ctx, cmdName, prjCfg, commentArgs, repoDir, contextFlags)
 	if cmdName == command.Plan {
 		prjCmds = append(prjCmds,
 			buildContext(
 				ctx,
 				command.PolicyCheck,
-				getSteps(command.PolicyCheck, prjCfg.Workflow, logLevel),
+				getSteps(command.PolicyCheck, prjCfg.Workflow, contextFlags.LogLevel),
 				p.CommentBuilder,
 				prjCfg,
 				commentArgs,

@@ -2,19 +2,20 @@ package websocket
 
 import (
 	"fmt"
-	"net/http"
-
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
+	"net/http"
 )
 
-func NewWriter(log logging.Logger) *Writer {
+func NewWriter(log logging.Logger, logFilter filter.LogFilter) *Writer {
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	return &Writer{
-		upgrader: upgrader,
-		log:      log,
+		upgrader:  upgrader,
+		log:       log,
+		logFilter: logFilter,
 	}
 }
 
@@ -22,7 +23,8 @@ type Writer struct {
 	upgrader websocket.Upgrader
 
 	//TODO: Remove dependency on atlantis logger here if we upstream this.
-	log logging.Logger
+	log       logging.Logger
+	logFilter filter.LogFilter
 }
 
 func (w *Writer) Write(rw http.ResponseWriter, r *http.Request, input chan string) error {
@@ -34,6 +36,9 @@ func (w *Writer) Write(rw http.ResponseWriter, r *http.Request, input chan strin
 
 	// block on reading our input channel
 	for msg := range input {
+		if w.logFilter.LogLineShouldBeFiltered(msg) {
+			continue
+		}
 		if err := conn.WriteMessage(websocket.BinaryMessage, []byte("\r"+msg+"\n")); err != nil {
 			w.log.Warn(fmt.Sprintf("Failed to write ws message: %s", err))
 			return err

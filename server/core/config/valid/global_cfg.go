@@ -39,14 +39,15 @@ const (
 
 // GlobalCfg is the final parsed version of server-side repo config.
 type GlobalCfg struct {
-	WorkflowMode         WorkflowModeType
-	Repos                []Repo
-	Workflows            map[string]Workflow
-	PullRequestWorkflows map[string]Workflow
-	DeploymentWorkflows  map[string]Workflow
-	PolicySets           PolicySets
-	Metrics              Metrics
-	Jobs                 Jobs
+	WorkflowMode              WorkflowModeType
+	Repos                     []Repo
+	Workflows                 map[string]Workflow
+	PullRequestWorkflows      map[string]Workflow
+	DeploymentWorkflows       map[string]Workflow
+	PolicySets                PolicySets
+	Metrics                   Metrics
+	Jobs                      Jobs
+	TerraformLogFilterRegexes TerraformLogFilters
 }
 
 // Interface to configure the storage backends
@@ -93,6 +94,10 @@ type Metrics struct {
 type Statsd struct {
 	Port string
 	Host string
+}
+
+type TerraformLogFilters struct {
+	Regexes []*regexp.Regexp
 }
 
 type MergedProjectCfg struct {

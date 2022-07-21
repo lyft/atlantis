@@ -16,6 +16,7 @@ package terraform_test
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -42,7 +43,7 @@ func TestNewClient_NoTF(t *testing.T) {
 	defer tempSetEnv(t, "PATH", tmp)()
 
 	allocator := fmocks.NewMockAllocator()
-	_, err := terraform.NewClient(binDir, cacheDir, "", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator, "")
+	_, err := terraform.NewClient(binDir, cacheDir, "", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator, filter.LogFilter{})
 	ErrEquals(t, "getting default version: terraform not found in $PATH. Set --default-tf-version or download terraform from https://www.terraform.io/downloads.html", err)
 }
 
@@ -70,7 +71,7 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 
 	allocator := fmocks.NewMockAllocator()
 
-	c, err := terraform.NewClient(binDir, cacheDir, "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator, "")
+	c, err := terraform.NewClient(binDir, cacheDir, "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator, filter.LogFilter{})
 	Ok(t, err)
 
 	Ok(t, err)
@@ -81,8 +82,6 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	Equals(t, fakeBinOut+"\n", output)
 }
 
-// Test that if the default-tf flag is set and that binary is in our download
-// bin dir that we use it.
 func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	fakeBinOut := "Terraform v0.11.10\n"
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
@@ -104,7 +103,7 @@ func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 
 	allocator := fmocks.NewMockAllocator()
 
-	c, err := terraform.NewClient(binDir, cacheDir, "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator, "")
+	c, err := terraform.NewClient(binDir, cacheDir, "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator, filter.LogFilter{})
 	Ok(t, err)
 
 	Ok(t, err)
@@ -122,7 +121,7 @@ func TestNewClient_BadVersion(t *testing.T) {
 	defer cleanup()
 	allocator := fmocks.NewMockAllocator()
 
-	_, err := terraform.NewClient(binDir, cacheDir, "malformed", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator, "")
+	_, err := terraform.NewClient(binDir, cacheDir, "malformed", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler, allocator, filter.LogFilter{})
 	ErrEquals(t, "getting default version: parsing version malformed: Malformed version: malformed", err)
 }
 

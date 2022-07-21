@@ -80,7 +80,6 @@ var testFlags = map[string]interface{}{
 	GitlabUserFlag:               "gitlab-user",
 	GitlabWebhookSecretFlag:      "gitlab-secret",
 	LogLevelFlag:                 "debug",
-	LogPrefixToStrip:             "",
 	StatsNamespace:               "atlantis",
 	AllowDraftPRs:                true,
 	PortFlag:                     8181,

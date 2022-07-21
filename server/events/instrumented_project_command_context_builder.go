@@ -22,12 +22,11 @@ func (cb *InstrumentedProjectCommandContextBuilder) BuildProjectContext(
 	commentFlags []string,
 	repoDir string,
 	contextFlags *command.ContextFlags,
-	logLevel string,
 ) (projectCmds []command.ProjectContext) {
 	cb.ProjectCounter.Inc(1)
 
 	cmds := cb.ProjectCommandContextBuilder.BuildProjectContext(
-		ctx, cmdName, prjCfg, commentFlags, repoDir, contextFlags, logLevel,
+		ctx, cmdName, prjCfg, commentFlags, repoDir, contextFlags,
 	)
 
 	projectCmds = []command.ProjectContext{}
