@@ -31,12 +31,12 @@ type Worker struct {
 	RootName   string
 
 	// mutable
-	State WorkerState
+	state WorkerState
 }
 
 func (w *Worker) Work(ctx workflow.Context) {
 	for {
-		w.State = WaitingWorkerState
+		w.state = WaitingWorkerState
 
 		err := workflow.Await(ctx, func() bool {
 			return !w.Queue.IsEmpty()
@@ -51,7 +51,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 			logger.Error(ctx, "failed to wait for valid condition, going to retry")
 		}
 
-		w.State = WorkingWorkerState
+		w.state = WorkingWorkerState
 
 		msg := w.Queue.Pop()
 
@@ -75,6 +75,10 @@ func (w *Worker) Work(ctx workflow.Context) {
 		// prompt for approval if invalid and lock future deploys if need be
 		// we'll need to update the status of everything in the queue somehow
 	}
+}
+
+func (w *Worker) GetState() WorkerState {
+	return w.state
 }
 
 func (w *Worker) work(ctx workflow.Context, revision string) error {

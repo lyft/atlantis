@@ -1,21 +1,35 @@
 package queue
 
+import (
+	"container/list"
+)
+
 type Message struct {
 	Revision string
 }
 
 // Queue is a standard queue implementation
-// TODO: fill me in
-type Queue struct{}
+type Queue struct {
+	queue *list.List
+}
+
+func NewQueue() *Queue {
+	return &Queue{
+		queue: list.New(),
+	}
+}
 
 func (q *Queue) IsEmpty() bool {
-	return false
+	return q.queue.Len() == 0
 }
 
 func (q *Queue) Push(msg Message) {
-
+	q.queue.PushBack(msg)
 }
 
 func (q *Queue) Pop() Message {
-	return Message{}
+	result := q.queue.Remove(q.queue.Front())
+
+	// naughty casting
+	return result.(Message)
 }

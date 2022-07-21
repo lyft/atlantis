@@ -102,7 +102,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		r.Selector.Select(ctx)
 
 		// if we're waiting around doing nothing, let's just break
-		if !r.Selector.HasPending() && (r.QueueWorker.State == queue.WaitingWorkerState) {
+		if !r.Selector.HasPending() && (r.QueueWorker.GetState() == queue.WaitingWorkerState) {
 
 			// calling cancel here is assumed to be fine since if our queue worker is waiting,
 			// no deployments are in-progress
