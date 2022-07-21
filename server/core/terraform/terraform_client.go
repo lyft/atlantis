@@ -169,7 +169,16 @@ func NewE2ETestClient(
 	)
 }
 
-func NewClient(binDir string, cacheDir string, defaultVersionStr string, defaultVersionFlagName string, tfDownloadURL string, tfDownloader Downloader, usePluginCache bool, projectCmdOutputHandler jobs.ProjectCommandOutputHandler, featureAllocator feature.Allocator, logFilter filter.LogFilter) (*DefaultClient, error) {
+func NewClient(binDir string,
+	cacheDir string,
+	defaultVersionStr string,
+	defaultVersionFlagName string,
+	tfDownloadURL string,
+	tfDownloader Downloader,
+	usePluginCache bool,
+	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
+	featureAllocator feature.Allocator,
+	logFilter filter.LogFilter) (*DefaultClient, error) {
 	loader := VersionLoader{
 		downloader:  tfDownloader,
 		downloadURL: tfDownloadURL,
