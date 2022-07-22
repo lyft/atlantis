@@ -34,9 +34,13 @@ type Worker struct {
 	state WorkerState
 }
 
+// Work pops work off the queue and if the queue is empty,
+// it waits for the queue to be non-empty or a cancelation signal
 func (w *Worker) Work(ctx workflow.Context) {
 	for {
-		w.state = WaitingWorkerState
+		if w.Queue.IsEmpty() {
+			w.state = WaitingWorkerState
+		}
 
 		err := workflow.Await(ctx, func() bool {
 			return !w.Queue.IsEmpty()
