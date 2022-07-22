@@ -47,12 +47,13 @@ func (w *Worker) Work(ctx workflow.Context) {
 		})
 
 		if err == workflow.ErrCanceled {
-			logger.Info(ctx, "shutting down worker")
+			logger.Info(ctx, "canceled, shutting down worker")
 			return
 		}
 
 		if err != nil {
-			logger.Error(ctx, "failed to wait for valid condition, going to retry")
+			logger.Error(ctx, "failed to wait for valid condition, this is likely a bug, returning")
+			return
 		}
 
 		w.state = WorkingWorkerState
