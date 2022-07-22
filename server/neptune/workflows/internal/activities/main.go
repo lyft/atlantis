@@ -8,5 +8,11 @@ package activities
 // Note: This doesn't prevent issues with naming duplication that can come up when
 // registering multiple workflows to the same worker
 type Deploy struct {
-	dbActivities
+	*dbActivities
+}
+
+func NewDeploy() *Deploy {
+	return &Deploy{
+		dbActivities: &dbActivities{},
+	}
 }

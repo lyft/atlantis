@@ -62,8 +62,8 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	// so we're modeling our own DI around this.
 	var a *activities.Deploy
 
-	revisionQueue := &queue.Queue{}
-	newRevisionSignal := signals.NewRevisionSignal(ctx, revisionQueue)
+	revisionQueue := queue.NewQueue()
+	newRevisionSignal := signals.NewRevisionSignal(ctx, revisionQueue, 60 * time.Second)
 	worker := &queue.Worker{
 		Queue:      revisionQueue,
 		Activities: a,
@@ -81,11 +81,6 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 
 func (r *Runner) Run(ctx workflow.Context) error {
 	ctx, cancel := workflow.WithCancel(ctx)
-
-	timer := Timer{
-		Duration: 60 * time.Second,
-	}
-	timer.SetTimeout(ctx, r.Selector)
 
 	wg := workflow.NewWaitGroup(ctx)
 	wg.Add(1)
@@ -109,10 +104,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			cancel()
 			break
 		}
-		// finally, reset our timer if it unblocked our selector
-		if timer.DidTimeout() {
-			timer.SetTimeout(ctx, r.Selector)
-		}
 	}
 	// wait on cancellation so we can gracefully terminate, unsure if temporal handles this for us,
 	// but just being safe.
@@ -121,21 +112,21 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	return nil
 }
 
-// Timer allows us to timeout a selector after a certain duration since Select() calls are blocking
-type Timer struct {
-	Duration time.Duration
+// // Timer allows us to timeout a selector after a certain duration since Select() calls are blocking
+// type Timer struct {
+// 	Duration time.Duration
 
-	// mutable
-	timeout bool
-}
+// 	// mutable
+// 	timeout bool
+// }
 
-func (t Timer) DidTimeout() bool {
-	return t.timeout
-}
+// func (t Timer) DidTimeout() bool {
+// 	return t.timeout
+// }
 
-func (t Timer) SetTimeout(ctx workflow.Context, selector workflow.Selector) {
-	t.timeout = false
-	selector.AddFuture(workflow.NewTimer(ctx, t.Duration), func(f workflow.Future) {
-		t.timeout = true
-	})
-}
+// func (t Timer) SetTimeout(ctx workflow.Context, selector workflow.Selector) {
+// 	t.timeout = false
+// 	selector.AddFuture(workflow.NewTimer(ctx, t.Duration), func(f workflow.Future) {
+// 		t.timeout = true
+// 	})
+// }
