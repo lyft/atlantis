@@ -37,6 +37,12 @@ type NewRevision struct {
 
 func (n *NewRevision) AddCallback(ctx workflow.Context, selector workflow.Selector) {
 	selector.AddReceive(n.input, func(c workflow.ReceiveChannel, more bool) {
+
+		// more is false when the channel is closed, so let's just return right away
+		if !more {
+			return
+		}
+
 		var request NewRevisionRequest
 		c.Receive(ctx, &request)
 
