@@ -41,7 +41,6 @@ func (n *NewRevision) AddCallback(ctx workflow.Context, selector workflow.Select
 		c.Receive(ctx, &request)
 
 		// cancel's the existing timeout timer
-		// callers of the selector are responsible for handling cancellation error returned by callback
 		n.timerCancel()
 
 		n.queue.Push(queue.Message{

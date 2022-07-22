@@ -63,7 +63,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	var a *activities.Deploy
 
 	revisionQueue := queue.NewQueue()
-	newRevisionSignal := signals.NewRevisionSignal(ctx, revisionQueue, 60 * time.Second)
+	newRevisionSignal := signals.NewRevisionSignal(ctx, revisionQueue, 60*time.Second)
 	worker := &queue.Worker{
 		Queue:      revisionQueue,
 		Activities: a,
