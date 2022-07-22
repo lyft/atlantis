@@ -111,22 +111,3 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 	return nil
 }
-
-// // Timer allows us to timeout a selector after a certain duration since Select() calls are blocking
-// type Timer struct {
-// 	Duration time.Duration
-
-// 	// mutable
-// 	timeout bool
-// }
-
-// func (t Timer) DidTimeout() bool {
-// 	return t.timeout
-// }
-
-// func (t Timer) SetTimeout(ctx workflow.Context, selector workflow.Selector) {
-// 	t.timeout = false
-// 	selector.AddFuture(workflow.NewTimer(ctx, t.Duration), func(f workflow.Future) {
-// 		t.timeout = true
-// 	})
-// }
