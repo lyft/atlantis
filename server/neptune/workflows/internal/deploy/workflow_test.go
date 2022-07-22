@@ -11,13 +11,7 @@ import (
 )
 
 func TestWorkflow_CompletesWithoutAnError(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
 	revision := "123456789"
-
-	a := activities.NewDeploy()
-
 	request := deploy.Request{
 		GHRequestID: "some-id",
 		Repository: deploy.Repo{
@@ -30,7 +24,9 @@ func TestWorkflow_CompletesWithoutAnError(t *testing.T) {
 			Name: "root1",
 		},
 	}
-
+	a := activities.NewDeploy()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterActivity(a.FetchLatestDeployment)
 
 	env.OnActivity(a.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
@@ -38,27 +34,22 @@ func TestWorkflow_CompletesWithoutAnError(t *testing.T) {
 		RootName:      request.Root.Name,
 	}).Once()
 
+	// Execute
 	env.ExecuteWorkflow(deploy.Workflow, request)
-
 	env.SignalWorkflow(signals.NewRevisionID, signals.NewRevisionRequest{
 		Revision: revision,
 	})
 
+	// Validate
 	assert.True(t, env.IsWorkflowCompleted())
 	assert.NoError(t, env.GetWorkflowError())
 }
 
 func TestWorkflow_HandlesMultipleRevisions(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
 	revisions := []string{
 		"123456789",
 		"234567890",
 	}
-
-	a := activities.NewDeploy()
-
 	request := deploy.Request{
 		GHRequestID: "some-id",
 		Repository: deploy.Repo{
@@ -72,6 +63,9 @@ func TestWorkflow_HandlesMultipleRevisions(t *testing.T) {
 		},
 	}
 
+	a := activities.NewDeploy()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterActivity(a.FetchLatestDeployment)
 
 	env.OnActivity(a.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
@@ -79,6 +73,7 @@ func TestWorkflow_HandlesMultipleRevisions(t *testing.T) {
 		RootName:      request.Root.Name,
 	}).Times(len(revisions))
 
+	// Execute
 	env.ExecuteWorkflow(deploy.Workflow, request)
 
 	for _, r := range revisions {
@@ -87,6 +82,7 @@ func TestWorkflow_HandlesMultipleRevisions(t *testing.T) {
 		})
 	}
 
+	// Validate
 	assert.True(t, env.IsWorkflowCompleted())
 	assert.NoError(t, env.GetWorkflowError())
 }
