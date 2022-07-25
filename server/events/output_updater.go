@@ -125,7 +125,7 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 	}
 
 	if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-		ctx.Log.Error("updable to update check run", map[string]interface{}{
+		ctx.Log.Error("unable to update check run", map[string]interface{}{
 			"error": err.Error(),
 		})
 	}
