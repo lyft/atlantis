@@ -154,15 +154,15 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 	repos = append(defaultCfg.Repos, repos...)
 
 	return valid.GlobalCfg{
-		WorkflowMode:              defaultCfg.WorkflowMode,
-		Repos:                     repos,
-		Workflows:                 validWorkflows,
-		PullRequestWorkflows:      validPullRequestWorkflows,
-		DeploymentWorkflows:       validDeploymentWorkflows,
-		PolicySets:                policySets,
-		Metrics:                   g.Metrics.ToValid(),
-		Jobs:                      g.Jobs.ToValid(),
-		TerraformLogFilterRegexes: g.TerraformLogFilters.ToValid(),
+		WorkflowMode:         defaultCfg.WorkflowMode,
+		Repos:                repos,
+		Workflows:            validWorkflows,
+		PullRequestWorkflows: validPullRequestWorkflows,
+		DeploymentWorkflows:  validDeploymentWorkflows,
+		PolicySets:           policySets,
+		Metrics:              g.Metrics.ToValid(),
+		Jobs:                 g.Jobs.ToValid(),
+		TerraformLogFilter:   g.TerraformLogFilters.ToValid(),
 	}
 }
 

@@ -13,7 +13,7 @@ type TerraformLogFilters struct {
 }
 
 func (t TerraformLogFilters) ToValid() valid.TerraformLogFilters {
-	terraformLogFilterRegexes := valid.TerraformLogFilters{}
+	terraformLogFilters := valid.TerraformLogFilters{}
 	if len(t.Regexes) > 0 {
 		var regexes []*regexp.Regexp
 		for _, regexString := range t.Regexes {
@@ -21,9 +21,9 @@ func (t TerraformLogFilters) ToValid() valid.TerraformLogFilters {
 			regex, _ := regexp.Compile(regexString)
 			regexes = append(regexes, regex)
 		}
-		terraformLogFilterRegexes.Regexes = regexes
+		terraformLogFilters.Regexes = regexes
 	}
-	return terraformLogFilterRegexes
+	return terraformLogFilters
 }
 
 func (t TerraformLogFilters) Validate() error {

@@ -244,7 +244,7 @@ func (c *DefaultClient) RunCommandWithVersion(ctx context.Context, prjCtx comman
 				break
 			}
 			// sanitize output by stripping out logs matching config filter
-			if !c.logFilter.LogLineShouldBeFiltered(line.Line) {
+			if !c.logFilter.ShouldFilterLine(line.Line) {
 				lines = append(lines, line.Line)
 			}
 		}

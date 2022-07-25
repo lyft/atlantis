@@ -203,7 +203,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	statsScope, closer, err := metrics.NewScope(globalCfg.Metrics, ctxLogger, userConfig.StatsNamespace)
 
 	logFilter := filter.LogFilter{
-		Regexes: globalCfg.TerraformLogFilterRegexes.Regexes,
+		Regexes: globalCfg.TerraformLogFilter.Regexes,
 	}
 
 	if err != nil {

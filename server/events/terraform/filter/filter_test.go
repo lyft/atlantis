@@ -12,7 +12,7 @@ func TestLogFilter_ShouldFilter(t *testing.T) {
 	filter := filter.LogFilter{
 		Regexes: []*regexp.Regexp{regex},
 	}
-	assert.True(t, filter.LogLineShouldBeFiltered("abcd"))
+	assert.True(t, filter.ShouldFilterLine("abcd"))
 }
 
 func TestLogFilter_ShouldNotFilter(t *testing.T) {
@@ -20,5 +20,5 @@ func TestLogFilter_ShouldNotFilter(t *testing.T) {
 	filter := filter.LogFilter{
 		Regexes: []*regexp.Regexp{regex},
 	}
-	assert.False(t, filter.LogLineShouldBeFiltered("efg"))
+	assert.False(t, filter.ShouldFilterLine("efg"))
 }

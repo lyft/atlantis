@@ -36,7 +36,7 @@ func (w *Writer) Write(rw http.ResponseWriter, r *http.Request, input chan strin
 
 	// block on reading our input channel
 	for msg := range input {
-		if w.logFilter.LogLineShouldBeFiltered(msg) {
+		if w.logFilter.ShouldFilterLine(msg) {
 			continue
 		}
 		if err := conn.WriteMessage(websocket.BinaryMessage, []byte("\r"+msg+"\n")); err != nil {
