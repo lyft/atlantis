@@ -412,8 +412,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		&terraform.DefaultDownloader{},
 		true,
 		projectCmdOutputHandler,
-		featureAllocator,
-		logFilter)
+		featureAllocator)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform")
@@ -423,6 +422,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DisableMarkdownFolding:   userConfig.DisableMarkdownFolding,
 		GitlabSupportsCommonMark: gitlabClient.SupportsCommonMark(),
 		GlobalCfg:                globalCfg,
+		LogFilter:                logFilter,
 	}
 	markdownRenderer := &markdown.Renderer{
 		DisableApplyAll:          userConfig.DisableApplyAll,

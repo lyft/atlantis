@@ -17,7 +17,6 @@ package terraform
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -64,7 +63,6 @@ type DefaultClient struct {
 	commandBuilder commandBuilder
 
 	featureAllocator feature.Allocator
-	logFilter        filter.LogFilter
 	*AsyncClient
 }
 
@@ -95,9 +93,7 @@ func NewClientWithVersionCache(
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
-	versionCache cache.ExecutionVersionCache,
-	logFilter filter.LogFilter,
-) (*DefaultClient, error) {
+	versionCache cache.ExecutionVersionCache) (*DefaultClient, error) {
 	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 
 	if err != nil {
@@ -134,7 +130,6 @@ func NewClientWithVersionCache(
 		AsyncClient:      asyncClient,
 		commandBuilder:   builder,
 		versionCache:     versionCache,
-		logFilter:        logFilter,
 	}, nil
 
 }
@@ -151,22 +146,9 @@ func NewE2ETestClient(
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
-	logFilter filter.LogFilter,
 ) (*DefaultClient, error) {
 	versionCache := cache.NewLocalBinaryCache("terraform")
-	return NewClientWithVersionCache(
-		binDir,
-		cacheDir,
-		defaultVersionStr,
-		defaultVersionFlagName,
-		tfDownloadURL,
-		tfDownloader,
-		usePluginCache,
-		projectCmdOutputHandler,
-		featureAllocator,
-		versionCache,
-		logFilter,
-	)
+	return NewClientWithVersionCache(binDir, cacheDir, defaultVersionStr, defaultVersionFlagName, tfDownloadURL, tfDownloader, usePluginCache, projectCmdOutputHandler, featureAllocator, versionCache)
 }
 
 func NewClient(binDir string,
@@ -178,7 +160,7 @@ func NewClient(binDir string,
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
-	logFilter filter.LogFilter) (*DefaultClient, error) {
+) (*DefaultClient, error) {
 	loader := VersionLoader{
 		downloader:  tfDownloader,
 		downloadURL: tfDownloadURL,
@@ -189,19 +171,7 @@ func NewClient(binDir string,
 		binDir,
 		loader.loadVersion,
 	)
-	return NewClientWithVersionCache(
-		binDir,
-		cacheDir,
-		defaultVersionStr,
-		defaultVersionFlagName,
-		tfDownloadURL,
-		tfDownloader,
-		usePluginCache,
-		projectCmdOutputHandler,
-		featureAllocator,
-		versionCache,
-		logFilter,
-	)
+	return NewClientWithVersionCache(binDir, cacheDir, defaultVersionStr, defaultVersionFlagName, tfDownloadURL, tfDownloader, usePluginCache, projectCmdOutputHandler, featureAllocator, versionCache)
 }
 
 // Version returns the default version of Terraform we use if no other version
@@ -242,10 +212,6 @@ func (c *DefaultClient) RunCommandWithVersion(ctx context.Context, prjCtx comman
 			if line.Err != nil {
 				err = line.Err
 				break
-			}
-			// sanitize output by stripping out logs matching config filter
-			if !c.logFilter.ShouldFilterLine(line.Line) {
-				lines = append(lines, line.Line)
 			}
 		}
 		output := strings.Join(lines, "\n")

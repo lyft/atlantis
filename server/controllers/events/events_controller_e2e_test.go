@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -654,8 +653,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	ctxLogger := logging.NewNoopCtxLogger(t)
 	featureAllocator, _ := feature.NewStringSourcedAllocator(ctxLogger)
-	logFilter := filter.LogFilter{}
-	terraformClient, err := terraform.NewE2ETestClient(binDir, cacheDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", downloader, false, projectCmdOutputHandler, featureAllocator, logFilter)
+	terraformClient, err := terraform.NewE2ETestClient(binDir, cacheDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", downloader, false, projectCmdOutputHandler, featureAllocator)
 	Ok(t, err)
 
 	// Set real dependencies here.
