@@ -93,7 +93,8 @@ func NewClientWithVersionCache(
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	featureAllocator feature.Allocator,
-	versionCache cache.ExecutionVersionCache) (*DefaultClient, error) {
+	versionCache cache.ExecutionVersionCache,
+) (*DefaultClient, error) {
 	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 
 	if err != nil {
@@ -148,10 +149,22 @@ func NewE2ETestClient(
 	featureAllocator feature.Allocator,
 ) (*DefaultClient, error) {
 	versionCache := cache.NewLocalBinaryCache("terraform")
-	return NewClientWithVersionCache(binDir, cacheDir, defaultVersionStr, defaultVersionFlagName, tfDownloadURL, tfDownloader, usePluginCache, projectCmdOutputHandler, featureAllocator, versionCache)
+	return NewClientWithVersionCache(
+		binDir,
+		cacheDir,
+		defaultVersionStr,
+		defaultVersionFlagName,
+		tfDownloadURL,
+		tfDownloader,
+		usePluginCache,
+		projectCmdOutputHandler,
+		featureAllocator,
+		versionCache,
+	)
 }
 
-func NewClient(binDir string,
+func NewClient(
+	binDir string,
 	cacheDir string,
 	defaultVersionStr string,
 	defaultVersionFlagName string,
@@ -171,7 +184,18 @@ func NewClient(binDir string,
 		binDir,
 		loader.loadVersion,
 	)
-	return NewClientWithVersionCache(binDir, cacheDir, defaultVersionStr, defaultVersionFlagName, tfDownloadURL, tfDownloader, usePluginCache, projectCmdOutputHandler, featureAllocator, versionCache)
+	return NewClientWithVersionCache(
+		binDir,
+		cacheDir,
+		defaultVersionStr,
+		defaultVersionFlagName,
+		tfDownloadURL,
+		tfDownloader,
+		usePluginCache,
+		projectCmdOutputHandler,
+		featureAllocator,
+		versionCache,
+	)
 }
 
 // Version returns the default version of Terraform we use if no other version
@@ -213,6 +237,7 @@ func (c *DefaultClient) RunCommandWithVersion(ctx context.Context, prjCtx comman
 				err = line.Err
 				break
 			}
+			lines = append(lines, line.Line)
 		}
 		output := strings.Join(lines, "\n")
 
