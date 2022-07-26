@@ -400,6 +400,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectCmdOutput,
 		ctxLogger,
 		jobStore,
+		logFilter,
 	)
 
 	terraformClient, err := terraform.NewClient(
@@ -874,7 +875,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			ctxLogger,
 			controllers.JobIDKeyGenerator{},
 			projectCmdOutputHandler,
-			logFilter,
 		),
 		projectJobsScope,
 	)
