@@ -390,7 +390,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
 
-	jobStore := jobs.NewJobStore(storageBackend)
+	jobStore := jobs.NewJobStore(storageBackend, statsScope.SubScope("jobstore"))
 
 	var projectCmdOutputHandler jobs.ProjectCommandOutputHandler
 	// When TFE is enabled log streaming is not necessary.
@@ -1011,21 +1011,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ctxLogger.Info("running Atlantis in gateway mode", map[string]interface{}{
 			"sns": userConfig.LyftGatewaySnsTopicArn,
 		})
-	case Hybrid: // gateway eventsController handles POST, and SQS worker is set up to handle messages via default eventsController
-		vcsPostHandler = gatewayEventsController
-		worker, err := sqs.NewGatewaySQSWorker(ctx, statsScope, ctxLogger, userConfig.LyftWorkerQueueURL, defaultEventsController)
-		if err != nil {
-			ctxLogger.Error("unable to set up worker", map[string]interface{}{
-				"err": err,
-			})
-			cancel()
-			return nil, errors.Wrapf(err, "setting up sqs handler for hybrid mode")
-		}
-		go worker.Work(ctx)
-		ctxLogger.Info("running Atlantis in hybrid mode", map[string]interface{}{
-			"sns":   userConfig.LyftGatewaySnsTopicArn,
-			"queue": userConfig.LyftWorkerQueueURL,
-		})
 	case Worker: // an SQS worker is set up to handle messages via default eventsController
 		worker, err := sqs.NewGatewaySQSWorker(ctx, statsScope, ctxLogger, userConfig.LyftWorkerQueueURL, defaultEventsController)
 		if err != nil {
@@ -1134,7 +1119,7 @@ func (s *Server) Start() error {
 	<-stop
 
 	// Shutdown sqs polling. Any received messages being processed will either succeed/fail depending on if drainer started.
-	if s.LyftMode == Hybrid || s.LyftMode == Worker {
+	if s.LyftMode == Worker {
 		s.CtxLogger.Warn("Received interrupt. Shutting down the sqs handler")
 		s.CancelWorker()
 	}
