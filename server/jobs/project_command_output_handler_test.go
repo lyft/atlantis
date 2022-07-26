@@ -125,9 +125,9 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		projectOutputHandler.Register(ctx.JobID, ch)
 
 		wg.Add(1)
-		projectOutputHandler.Send(ctx, Msg)
-		// even if stripped message is sent last, registered channel will never receive it, making expectedMsg == Msg
+		// even if stripped message is sent first, registered channel will never receive it, making expectedMsg == Msg
 		projectOutputHandler.Send(ctx, strippedMessage)
+		projectOutputHandler.Send(ctx, Msg)
 		wg.Wait()
 		close(ch)
 

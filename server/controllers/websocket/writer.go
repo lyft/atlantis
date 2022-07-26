@@ -2,10 +2,11 @@ package websocket
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
-	"net/http"
 )
 
 func NewWriter(log logging.Logger) *Writer {

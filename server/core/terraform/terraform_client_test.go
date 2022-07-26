@@ -81,6 +81,8 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	Equals(t, fakeBinOut+"\n", output)
 }
 
+// Test that if the default-tf flag is set and that binary is in our download
+// bin dir that we use it.
 func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	fakeBinOut := "Terraform v0.11.10\n"
 	tmp, binDir, cacheDir, cleanup := mkSubDirs(t)
