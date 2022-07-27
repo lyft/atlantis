@@ -123,7 +123,7 @@ func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo
 			Error   string
 		}{
 			Command: common.Command,
-			Error:   result.Error.Error(),
+			Error:   filteredOutput,
 		}
 	case result.Failure != "":
 		// use template override if specified
@@ -143,6 +143,7 @@ func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo
 	case result.PlanSuccess != nil:
 		filteredOutput := t.filterOutput(result.PlanSuccess.TerraformOutput)
 		tmpl = t.buildTemplate(PlanSuccess, baseRepo.VCSHost.Type, planSuccessWrappedTmpl, planSuccessUnwrappedTmpl, filteredOutput, templateOverrides)
+		result.PlanSuccess.TerraformOutput = filteredOutput
 		templateData = planSuccessData{
 			PlanSuccess:              *result.PlanSuccess,
 			PlanSummary:              result.PlanSuccess.Summary(),
@@ -160,7 +161,7 @@ func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo
 		templateData = struct {
 			Output string
 		}{
-			Output: result.ApplySuccess,
+			Output: filteredOutput,
 		}
 	case result.VersionSuccess != "":
 		tmpl = t.buildTemplate(VersionSuccess, baseRepo.VCSHost.Type, versionWrappedSuccessTmpl, versionUnwrappedSuccessTmpl, result.VersionSuccess, templateOverrides)
