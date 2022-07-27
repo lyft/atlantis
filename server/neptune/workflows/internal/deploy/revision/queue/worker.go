@@ -20,8 +20,9 @@ type workerActivities interface {
 type WorkerState string
 
 const (
-	WaitingWorkerState = "waiting"
-	WorkingWorkerState = "working"
+	WaitingWorkerState  WorkerState = "waiting"
+	WorkingWorkerState  WorkerState = "working"
+	CompleteWorkerState WorkerState = "complete"
 )
 
 type Worker struct {
@@ -29,6 +30,7 @@ type Worker struct {
 	Queue      *Queue
 	Repo       github.Repo
 	RootName   string
+	WorkItems  workflow.ReceiveChannel
 
 	// mutable
 	state WorkerState
@@ -37,6 +39,11 @@ type Worker struct {
 // Work pops work off the queue and if the queue is empty,
 // it waits for the queue to be non-empty or a cancelation signal
 func (w *Worker) Work(ctx workflow.Context) {
+	// set to complete once we return else callers could think we are still working based on the 'working' state.
+	defer func() {
+		w.state = CompleteWorkerState
+	}()
+
 	for {
 		if w.Queue.IsEmpty() {
 			w.state = WaitingWorkerState
@@ -46,13 +53,8 @@ func (w *Worker) Work(ctx workflow.Context) {
 			return !w.Queue.IsEmpty()
 		})
 
-		if err == workflow.ErrCanceled {
-			logger.Info(ctx, "canceled, shutting down worker")
-			return
-		}
-
 		if err != nil {
-			logger.Error(ctx, "failed to wait for valid condition, this is likely a bug, returning")
+			logger.Warn(ctx, "cancelled, shutting down queue worker")
 			return
 		}
 

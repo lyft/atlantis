@@ -27,6 +27,11 @@ func (q *Queue) Push(msg Message) {
 	q.queue.PushBack(msg)
 }
 
+func (q *Queue) Peek() Message {
+	result := q.queue.Front()
+	return result.Value.(Message)
+}
+
 func (q *Queue) Pop() Message {
 	result := q.queue.Remove(q.queue.Front())
 

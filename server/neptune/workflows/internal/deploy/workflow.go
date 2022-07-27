@@ -1,10 +1,12 @@
 package deploy
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/signals"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -24,6 +26,16 @@ type Selectable interface {
 	AddCallback(ctx workflow.Context, selector workflow.Selector)
 }
 
+type TimedReceiver interface {
+	DidTimeout() bool
+	AddTimeout(ctx workflow.Context, selector workflow.Selector)
+}
+
+type QueueWorker interface {
+	Work(ctx workflow.Context)
+	GetState() queue.WorkerState
+}
+
 func Workflow(ctx workflow.Context, request Request) error {
 	options := workflow.ActivityOptions{
 		TaskQueue:              TaskQueue,
@@ -38,8 +50,9 @@ func Workflow(ctx workflow.Context, request Request) error {
 }
 
 type Runner struct {
-	QueueWorker *queue.Worker
-	Selector    workflow.Selector
+	QueueWorker      QueueWorker
+	Selector         workflow.Selector
+	RevisionReceiver TimedReceiver
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
@@ -63,31 +76,37 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	var a *activities.Deploy
 
 	revisionQueue := queue.NewQueue()
-	newRevisionSignal := signals.NewRevisionSignal(ctx, revisionQueue, 60*time.Second)
+	revisionReceiver := signals.NewRevisionSignalReceiver(ctx, revisionQueue, 60*time.Second)
+	selector := workflow.NewSelector(ctx)
+	revisionReceiver.AddCallback(ctx, selector)
+
 	worker := &queue.Worker{
 		Queue:      revisionQueue,
 		Activities: a,
 		Repo:       repo,
 		RootName:   request.Root.Name,
 	}
-	selector := workflow.NewSelector(ctx)
-	newRevisionSignal.AddCallback(ctx, selector)
 
 	return &Runner{
-		QueueWorker: worker,
-		Selector:    selector,
+		QueueWorker:      worker,
+		Selector:         selector,
+		RevisionReceiver: revisionReceiver,
 	}
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
-	ctx, cancel := workflow.WithCancel(ctx)
+	workerCtx, cancel := workflow.WithCancel(ctx)
 
 	wg := workflow.NewWaitGroup(ctx)
 	wg.Add(1)
 
+	// if this panics in anyway, we'll need to ship a fix to the running workflows, else risk dropping
+	// signals
+	// should we have some way of persisting our queue in case of workflow termination?
+	// Let's address this in a followup
 	workflow.Go(ctx, func(ctx workflow.Context) {
 		defer wg.Done()
-		r.QueueWorker.Work(ctx)
+		r.QueueWorker.Work(workerCtx)
 	})
 
 	// main loop which handles external signals
@@ -96,14 +115,24 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		// blocks until a configured callback fires
 		r.Selector.Select(ctx)
 
-		// if we're waiting around doing nothing, let's just break
-		if !r.Selector.HasPending() && (r.QueueWorker.GetState() == queue.WaitingWorkerState) {
+		if !r.RevisionReceiver.DidTimeout() {
+			continue
+		}
 
-			// calling cancel here is assumed to be fine since if our queue worker is waiting,
-			// no deployments are in-progress
+		logger.Info(ctx, "revision receiver timeout")
+
+		logger.Info(ctx, fmt.Sprintf("selector status %t", r.Selector.HasPending()))
+		logger.Info(ctx, fmt.Sprintf("queue state %s", r.QueueWorker.GetState()))
+
+		// check state here since if we timed out, we're probably not susceptible to the queue
+		// worker being in a waiting state right before it's about to start working on an item.
+		if !r.Selector.HasPending() && r.QueueWorker.GetState() != queue.WorkingWorkerState {
 			cancel()
 			break
 		}
+
+		// basically keep on adding timeouts until we can either break this loop or get another signal
+		r.RevisionReceiver.AddTimeout(ctx, r.Selector)
 	}
 	// wait on cancellation so we can gracefully terminate, unsure if temporal handles this for us,
 	// but just being safe.
