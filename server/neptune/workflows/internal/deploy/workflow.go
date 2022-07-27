@@ -1,7 +1,6 @@
 package deploy
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
@@ -15,16 +14,7 @@ import (
 
 const (
 	TaskQueue = "deploy"
-
-	NewRevisionSignal = "new-revision"
 )
-
-// Selectable makes it easier to add multiple callbacks to a given selector
-// while still allowing complete ownership of the underlying channels/futures
-// to the implementation
-type Selectable interface {
-	AddCallback(ctx workflow.Context, selector workflow.Selector)
-}
 
 type TimedReceiver interface {
 	DidTimeout() bool
@@ -120,9 +110,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		}
 
 		logger.Info(ctx, "revision receiver timeout")
-
-		logger.Info(ctx, fmt.Sprintf("selector status %t", r.Selector.HasPending()))
-		logger.Info(ctx, fmt.Sprintf("queue state %s", r.QueueWorker.GetState()))
 
 		// check state here since if we timed out, we're probably not susceptible to the queue
 		// worker being in a waiting state right before it's about to start working on an item.
