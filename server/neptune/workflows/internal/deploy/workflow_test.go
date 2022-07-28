@@ -48,7 +48,12 @@ func (r *receiver) DidTimeout() bool {
 	return r.timeoutValue
 }
 
-func (r *receiver) AddTimeout(ctx workflow.Context, selector workflow.Selector) {
+func (r *receiver) AddReceiveWithTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration) {
+	r.AddTimeout(ctx, selector, timeout)
+
+}
+
+func (r *receiver) AddTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration) {
 	r.timeoutValue = false
 	selector.AddFuture(workflow.NewTimer(ctx, 5*time.Second), func(f workflow.Future) {
 		r.timeoutValue = true
@@ -66,7 +71,7 @@ type request struct {
 func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	selector := workflow.NewSelector(ctx)
 	receiver := &receiver{}
-	receiver.AddTimeout(ctx, selector)
+	receiver.AddTimeout(ctx, selector, 30*time.Second)
 
 	worker := &queueWorker{state: r.WorkerState}
 	worker.addCallback(ctx, selector)

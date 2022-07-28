@@ -14,11 +14,14 @@ import (
 
 const (
 	TaskQueue = "deploy"
+
+	RevisionReceiveTimeout = 60*time.Second
 )
 
 type TimedReceiver interface {
 	DidTimeout() bool
-	AddTimeout(ctx workflow.Context, selector workflow.Selector)
+	AddTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration)
+	AddReceiveWithTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration)
 }
 
 type QueueWorker interface {
@@ -66,9 +69,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	var a *activities.Deploy
 
 	revisionQueue := queue.NewQueue()
-	revisionReceiver := signals.NewRevisionSignalReceiver(ctx, revisionQueue, 60*time.Second)
-	selector := workflow.NewSelector(ctx)
-	revisionReceiver.AddCallback(ctx, selector)
+	revisionReceiver := signals.NewRevisionSignalReceiver(ctx, revisionQueue, )
 
 	worker := &queue.Worker{
 		Queue:      revisionQueue,
@@ -79,7 +80,6 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 
 	return &Runner{
 		QueueWorker:      worker,
-		Selector:         selector,
 		RevisionReceiver: revisionReceiver,
 	}
 }
@@ -98,6 +98,9 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		defer wg.Done()
 		r.QueueWorker.Work(workerCtx)
 	})
+
+	selector := workflow.NewSelector(ctx)
+	r.RevisionReceiver.AddReceiveWithTimeout(ctx, selector, RevisionReceiveTimeout)
 
 	// main loop which handles external signals
 	// and in turn signals the queue worker
@@ -119,7 +122,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		}
 
 		// basically keep on adding timeouts until we can either break this loop or get another signal
-		r.RevisionReceiver.AddTimeout(ctx, r.Selector)
+		r.RevisionReceiver.AddTimeout(ctx, r.Selector, RevisionReceiveTimeout)
 	}
 	// wait on cancellation so we can gracefully terminate, unsure if temporal handles this for us,
 	// but just being safe.

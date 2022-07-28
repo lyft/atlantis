@@ -17,25 +17,23 @@ type Queue interface {
 	Push(queue.Message)
 }
 
-func NewRevisionSignalReceiver(ctx workflow.Context, queue Queue, timeout time.Duration) *RevisionReceiver {
+func NewRevisionSignalReceiver(ctx workflow.Context, queue Queue) *RevisionReceiver {
 	return &RevisionReceiver{
-		input:           workflow.GetSignalChannel(ctx, NewRevisionID),
-		queue:           queue,
-		timeoutDuration: timeout,
+		input: workflow.GetSignalChannel(ctx, NewRevisionID),
+		queue: queue,
 	}
 }
 
 type RevisionReceiver struct {
 	input           workflow.ReceiveChannel
 	queue           Queue
-	timeoutDuration time.Duration
 
 	// mutable
 	timerCancel workflow.CancelFunc
 	timeout     bool
 }
 
-func (n *RevisionReceiver) AddCallback(ctx workflow.Context, selector workflow.Selector) {
+func (n *RevisionReceiver) AddReceiveWithTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration) {
 	selector.AddReceive(n.input, func(c workflow.ReceiveChannel, more bool) {
 
 		// more is false when the channel is closed, so let's just return right away
@@ -54,16 +52,16 @@ func (n *RevisionReceiver) AddCallback(ctx workflow.Context, selector workflow.S
 		})
 
 		// add another timeout since this receiver is called each time the channel has a message
-		n.AddTimeout(ctx, selector)
+		n.AddTimeout(ctx, selector, timeout)
 	})
 
-	n.AddTimeout(ctx, selector)
+	n.AddTimeout(ctx, selector, timeout)
 }
 
-func (n *RevisionReceiver) AddTimeout(ctx workflow.Context, selector workflow.Selector) {
+func (n *RevisionReceiver) AddTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration) {
 	n.timeout = false
 	ctx, cancel := workflow.WithCancel(ctx)
-	selector.AddFuture(workflow.NewTimer(ctx, n.timeoutDuration), func(f workflow.Future) {
+	selector.AddFuture(workflow.NewTimer(ctx, timeout), func(f workflow.Future) {
 
 		// if canceled we shouldn't do anything
 		if ctx.Err() == workflow.ErrCanceled {

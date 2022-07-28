@@ -28,10 +28,10 @@ func testWorkflow(ctx workflow.Context) (response, error) {
 	var timeout bool
 	queue := &testQueue{}
 
-	receiver := signals.NewRevisionSignalReceiver(ctx, queue, 30*time.Second)
+	receiver := signals.NewRevisionSignalReceiver(ctx, queue)
 	selector := workflow.NewSelector(ctx)
 
-	receiver.AddCallback(ctx, selector)
+	receiver.AddReceiveWithTimeout(ctx, selector, 30*time.Second)
 
 	for {
 		selector.Select(ctx)
