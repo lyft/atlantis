@@ -508,15 +508,18 @@ func (g *GithubClient) updateChecksStatus(ctx context.Context, request types.Upd
 	}
 
 	ouptut := g.capCheckRunOutput(request.Output)
-	status, conclusion := g.resolveChecksStatus(request.State)
 	summary := g.summaryWithJobURL(request, fallBackURL)
-
 	checkRunOutput := github.CheckRunOutput{
 		Title:   &request.StatusName,
-		Text:    &ouptut,
 		Summary: &summary,
 	}
 
+	// Populate the text if output is not empty to avoid empty output boxes in the checkrun
+	if ouptut != "" {
+		checkRunOutput.Text = &ouptut
+	}
+
+	status, conclusion := g.resolveChecksStatus(request.State)
 	updateCheckRunOpts := github.UpdateCheckRunOptions{
 		Name:    request.StatusName,
 		HeadSHA: &request.Ref,
@@ -542,16 +545,19 @@ func (g *GithubClient) updateChecksStatus(ctx context.Context, request types.Upd
 
 // create a new checkrun
 func (g *GithubClient) createChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	ouptut := g.capCheckRunOutput(request.Output)
-	status, conclusion := g.resolveChecksStatus(request.State)
+	output := g.capCheckRunOutput(request.Output)
 	summary := g.summaryWithJobURL(request, "")
-
 	checkRunOutput := github.CheckRunOutput{
 		Title:   &request.StatusName,
-		Text:    &ouptut,
 		Summary: &summary,
 	}
 
+	// Populate the text if output is not empty to avoid empty output boxes in the checkrun
+	if output != "" {
+		checkRunOutput.Text = &output
+	}
+
+	status, conclusion := g.resolveChecksStatus(request.State)
 	createCheckRunOpts := github.CreateCheckRunOptions{
 		Name:    request.StatusName,
 		HeadSHA: request.Ref,
