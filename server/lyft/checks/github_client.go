@@ -103,8 +103,9 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 
 	}
 
-	// Pending state when it's a new run. So, we create a new checkrun
-	if request.State == models.PendingCommitStatus {
+	// Pending state when it's a new run.
+	// Approve_Policies is always a new run
+	if request.State == models.PendingCommitStatus || strings.Contains(request.StatusName, "approve_policies") {
 		return c.createCheckRun(ctx, request)
 	}
 
