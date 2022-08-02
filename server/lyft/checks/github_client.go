@@ -89,7 +89,7 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 	// We attempt to retrieve the checkrun and if it exists, we update that check run which happens when a user approves failing policies
 	// If not, we create a new one and put it into the db which happens when policy_check command is run for the first time
 	if c.isProjectLevelPolicyCheckCommand(request.StatusName) {
-		checkRun, err := c.Db.GetCheckRunForStatus(request.StatusName, request.Repo, request.PullNum)
+		checkRun, err := c.Db.GetCheckRunForStatus(request.StatusName, request.Repo, request.Ref)
 		if err != nil {
 			return errors.Wrapf(err, "getting checkrun Id from db for %s", request.StatusName)
 		}
@@ -110,7 +110,7 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 	}
 
 	// Get checkrun from db and update the existing checkrun
-	checkRun, err := c.Db.GetCheckRunForStatus(request.StatusName, request.Repo, request.PullNum)
+	checkRun, err := c.Db.GetCheckRunForStatus(request.StatusName, request.Repo, request.Ref)
 	if err != nil {
 		return errors.Wrapf(err, "getting checkrun Id from db for %s", request.StatusName)
 	}
@@ -140,7 +140,7 @@ func (c *ChecksClientWrapper) createCheckRun(ctx context.Context, request types.
 	}
 
 	// Store the checkrun ID in boltdb
-	if err = c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.PullNum, models.CheckRunStatus{
+	if err = c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.Ref, models.CheckRunStatus{
 		ID:      strconv.FormatInt(*checkRun.ID, 10),
 		Output:  output,
 		JobsURL: *checkRun.DetailsURL,
@@ -154,11 +154,6 @@ func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, checkRun model
 	checkRunIdInt, err := strconv.ParseInt(checkRun.ID, 10, 64)
 	if err != nil {
 		return errors.Wrapf(err, "parsing checkrunId for %s", request.StatusName)
-	}
-
-	// Populate summary and output if not already present
-	if request.Output == "" {
-		request.Output = checkRun.Output
 	}
 
 	return c.GithubClient.UpdateCheckStatus(ctx, request.Repo, checkRunIdInt, c.populateUpdateCheckRunOptions(request, checkRun))
@@ -223,15 +218,22 @@ func (c *ChecksClientWrapper) populateUpdateCheckRunOptions(request types.Update
 	output := c.capCheckRunOutput(request.Output)
 	summary := c.summaryWithJobURL(request.StatusName, request.Description, checkRunStatus.JobsURL)
 
+	checkRunOutput := &github.CheckRunOutput{
+		Title:   &request.StatusName,
+		Summary: &summary,
+	}
+
+	// Only add text if output is not empty to avoid an empty output box in the checkrun UI
+	if output != "" {
+		checkRunOutput.Text = &output
+	}
+
 	updateCheckRunOptions := github.UpdateCheckRunOptions{
-		Name:    request.StatusName,
-		HeadSHA: &request.Ref,
-		Status:  &status,
-		Output: &github.CheckRunOutput{
-			Title:   &request.StatusName,
-			Summary: &summary,
-			Text:    &output,
-		},
+		Name:       request.StatusName,
+		HeadSHA:    &request.Ref,
+		Status:     &status,
+		DetailsURL: &request.DetailsURL,
+		Output:     checkRunOutput,
 	}
 
 	// Conclusion is required if status is Completed

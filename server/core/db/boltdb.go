@@ -31,6 +31,7 @@ const (
 	globalLocksBucketName = "globalLocks"
 	checkrunsBucketName   = "checkRuns"
 	pullKeySeparator      = "::"
+	checkRunKeySeparator  = "||"
 )
 
 // New returns a valid locker. We need to be able to write to dataDir
@@ -318,8 +319,8 @@ func (b *BoltDB) GetLock(p models.Project, workspace string) (*models.ProjectLoc
 }
 
 // Sets the checkRunID for a command
-func (b *BoltDB) UpdateCheckRunForStatus(statusName string, repo models.Repo, pullNum int, checkRunStatus models.CheckRunStatus) error {
-	key := b.checkRunKey(statusName, repo, pullNum)
+func (b *BoltDB) UpdateCheckRunForStatus(statusName string, repo models.Repo, ref string, checkRunStatus models.CheckRunStatus) error {
+	key := b.checkRunKey(statusName, repo, ref)
 	return b.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(b.checkRunsBucketName)
 		return b.writeCheckRunToBucket(bucket, []byte(key), checkRunStatus)
@@ -327,8 +328,8 @@ func (b *BoltDB) UpdateCheckRunForStatus(statusName string, repo models.Repo, pu
 }
 
 // Returns nil if the checkrun dne in the db
-func (b *BoltDB) GetCheckRunForStatus(statusName string, repo models.Repo, pullNum int) (*models.CheckRunStatus, error) {
-	key := b.checkRunKey(statusName, repo, pullNum)
+func (b *BoltDB) GetCheckRunForStatus(statusName string, repo models.Repo, ref string) (*models.CheckRunStatus, error) {
+	key := b.checkRunKey(statusName, repo, ref)
 
 	var checkRun *models.CheckRunStatus
 	err := b.db.View(func(tx *bolt.Tx) error {
@@ -492,8 +493,8 @@ func (b *BoltDB) lockKey(p models.Project, workspace string) string {
 	return fmt.Sprintf("%s/%s/%s", p.RepoFullName, p.Path, workspace)
 }
 
-func (b *BoltDB) checkRunKey(statusName string, repo models.Repo, pullNum int) string {
-	return fmt.Sprintf("%s|%s|%v", repo.FullName, statusName, pullNum)
+func (b *BoltDB) checkRunKey(statusName string, repo models.Repo, ref string) string {
+	return fmt.Sprintf("%s||%s||%s", repo.FullName, ref, statusName)
 }
 
 func (b *BoltDB) getPullFromBucket(bucket *bolt.Bucket, key []byte) (*models.PullStatus, error) {
