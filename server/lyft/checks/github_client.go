@@ -100,7 +100,7 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 		}
 
 		var output string
-		if checkRun.Output != nil {
+		if checkRun.Output != nil && checkRun.Output.Text != nil {
 			output = *checkRun.Output.Text
 		}
 
