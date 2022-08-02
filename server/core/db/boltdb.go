@@ -326,7 +326,8 @@ func (b *BoltDB) UpdateCheckRunForStatus(statusName string, repo models.Repo, pu
 	})
 }
 
-func (b *BoltDB) GetCheckRunForStatus(statusName string, repo models.Repo, pullNum int) (models.CheckRunStatus, error) {
+// Returns nil if the checkrun dne in the db
+func (b *BoltDB) GetCheckRunForStatus(statusName string, repo models.Repo, pullNum int) (*models.CheckRunStatus, error) {
 	key := b.checkRunKey(statusName, repo, pullNum)
 
 	var checkRun *models.CheckRunStatus
@@ -337,7 +338,7 @@ func (b *BoltDB) GetCheckRunForStatus(statusName string, repo models.Repo, pullN
 		return txErr
 	})
 
-	return *checkRun, err
+	return checkRun, err
 }
 
 // UpdatePullWithResults updates pull's status with the latest project results.

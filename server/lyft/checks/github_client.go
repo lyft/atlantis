@@ -70,15 +70,6 @@ func (e ChecksConclusion) String() string {
 	return ""
 }
 
-/*
-
-
-If pending -> always a new checkrun & update the boltdb
-If not pending -> get the checkRunID from boltdb and update checkrun
-What do I need to uniquely identify a checkrun?
-	project, command name -> checkrunId
-*/
-
 // [WENGINES-4643] TODO: Remove this wrapper and add checks implementation to UpdateStatus() directly after github checks is stable
 type ChecksClientWrapper struct {
 	*vcs.GithubClient
@@ -88,38 +79,77 @@ type ChecksClientWrapper struct {
 }
 
 func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
+
 	if !c.isChecksEnabled(ctx, request) {
 		return c.GithubClient.UpdateStatus(ctx, request)
 	}
 
-	// Pending state when it's a new run. So, we create a new checkrun
-	if request.State == models.PendingCommitStatus {
-		checkRun, err := c.GithubClient.CreateCheckStatus(ctx, request.Repo, c.populateCreateCheckRunOptions(request))
+	// Project level policy check command status is set to either success or failure directly
+	// So, we can't use the Pending check to determine if this checkrun already exists
+	// We attempt to retrieve the checkrun and if it exists, we update that check run which happens when a user approves failing policies
+	// If not, we create a new one and put it into the db which happens when policy_check command is run for the first time
+	if c.isProjectLevelPolicyCheckCommand(request.StatusName) {
+		checkRun, err := c.Db.GetCheckRunForStatus(request.StatusName, request.Repo, request.PullNum)
 		if err != nil {
-			return errors.Wrapf(err, "creating checkrun for %s", request.StatusName)
+			return errors.Wrapf(err, "getting checkrun Id from db for %s", request.StatusName)
 		}
 
-		var output string
-		if checkRun.Output != nil && checkRun.Output.Text != nil {
-			output = *checkRun.Output.Text
+		// DNE in the db, so we create a new checkrun
+		if checkRun == nil {
+			return c.createCheckRun(ctx, request)
 		}
+		// Update the existing checkrun
+		return c.updateCheckRun(ctx, *checkRun, request)
 
-		// Store the checkrun ID in boltdb
-		if err = c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.PullNum, models.CheckRunStatus{
-			ID:      strconv.FormatInt(*checkRun.ID, 10),
-			Output:  output,
-			JobsURL: *checkRun.DetailsURL,
-		}); err != nil {
-			return errors.Wrapf(err, "updating checkrun id in db for %s", request.StatusName)
-		}
-		return nil
 	}
 
+	// Pending state when it's a new run. So, we create a new checkrun
+	if request.State == models.PendingCommitStatus {
+		return c.createCheckRun(ctx, request)
+	}
+
+	// Get checkrun from db and update the existing checkrun
 	checkRun, err := c.Db.GetCheckRunForStatus(request.StatusName, request.Repo, request.PullNum)
 	if err != nil {
 		return errors.Wrapf(err, "getting checkrun Id from db for %s", request.StatusName)
 	}
 
+	// This is likely a bug
+	if checkRun == nil {
+		return errors.New("checkrun dne in db")
+	}
+
+	return c.updateCheckRun(ctx, *checkRun, request)
+}
+
+func (c *ChecksClientWrapper) isProjectLevelPolicyCheckCommand(statusName string) bool {
+	return strings.Contains(statusName, "policy_check") && strings.Contains(statusName, ":")
+}
+
+func (c *ChecksClientWrapper) createCheckRun(ctx context.Context, request types.UpdateStatusRequest) error {
+	checkRun, err := c.GithubClient.CreateCheckStatus(ctx, request.Repo, c.populateCreateCheckRunOptions(request))
+	if err != nil {
+		return errors.Wrapf(err, "creating checkrun for %s", request.StatusName)
+	}
+
+	// Get output from checkrun and store in db, used to populate next status updates since github does not store its state
+	var output string
+	if checkRun.Output != nil && checkRun.Output.Text != nil {
+		output = *checkRun.Output.Text
+	}
+
+	// Store the checkrun ID in boltdb
+	if err = c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.PullNum, models.CheckRunStatus{
+		ID:      strconv.FormatInt(*checkRun.ID, 10),
+		Output:  output,
+		JobsURL: *checkRun.DetailsURL,
+	}); err != nil {
+		return errors.Wrapf(err, "updating checkrun id in db for %s", request.StatusName)
+	}
+	return nil
+}
+
+func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, checkRun models.CheckRunStatus, request types.UpdateStatusRequest) error {
 	checkRunIdInt, err := strconv.ParseInt(checkRun.ID, 10, 64)
 	if err != nil {
 		return errors.Wrapf(err, "parsing checkrunId for %s", request.StatusName)
