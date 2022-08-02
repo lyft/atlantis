@@ -99,10 +99,15 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 			return errors.Wrapf(err, "creating checkrun for %s", request.StatusName)
 		}
 
+		var output string
+		if checkRun.Output != nil {
+			output = *checkRun.Output.Text
+		}
+
 		// Store the checkrun ID in boltdb
 		if err = c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.PullNum, models.CheckRunStatus{
 			ID:      strconv.FormatInt(*checkRun.ID, 10),
-			Output:  *checkRun.Output.Text,
+			Output:  output,
 			JobsURL: *checkRun.DetailsURL,
 		}); err != nil {
 			return errors.Wrapf(err, "updating checkrun id in db for %s", request.StatusName)
