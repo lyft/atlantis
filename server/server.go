@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"io"
 	"io/ioutil"
 	"log"
@@ -32,6 +31,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/runatlantis/atlantis/server/instrumentation"
@@ -188,6 +189,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		globalCfg = globalCfg.EnablePlatformMode()
 	}
 
+	boltdb, err := db.New(userConfig.DataDir)
+	if err != nil {
+		return nil, err
+	}
+
 	if userConfig.RepoConfig != "" {
 		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
 		if err != nil {
@@ -263,6 +269,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			FeatureAllocator: featureAllocator,
 			Logger:           ctxLogger,
 			GithubClient:     rawGithubClient,
+			Db:               boltdb,
 		}
 
 		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, checksWrapperGhClient, statsScope, ctxLogger)
@@ -431,10 +438,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		TemplateResolver:         templateResolver,
 	}
 
-	boltdb, err := db.New(userConfig.DataDir)
-	if err != nil {
-		return nil, err
-	}
 	var lockingClient locking.Locker
 	var applyLockingClient locking.ApplyLocker
 
