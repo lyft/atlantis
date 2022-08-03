@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server"
-	"github.com/runatlantis/atlantis/server/controllers/templates"
+	"github.com/runatlantis/atlantis/server/controllers"
 	cfgParser "github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -20,6 +20,7 @@ import (
 	"github.com/urfave/negroni"
 	"go.temporal.io/sdk/client"
 	temporal_tally "go.temporal.io/sdk/contrib/tally"
+	"go.temporal.io/sdk/worker"
 	"io"
 	"log"
 	"net/http"
@@ -32,7 +33,11 @@ import (
 	"time"
 )
 
-const AtlantisNamespace = "atlantis"
+const (
+	AtlantisNamespace        = "atlantis"
+	DeployTaskqueue          = "deploy"
+	ProjectJobsViewRouteName = "project-jobs-detail"
+)
 
 type HealthStatus int64
 
@@ -50,6 +55,7 @@ type Config struct {
 	atlantisURL      *url.URL
 	atlantisVersion  string
 	ctxLogger        logging.Logger
+	dataDir          string
 	healthStatus     int32
 	metrics          valid.Metrics
 	sslCertFile      string
@@ -60,7 +66,7 @@ type Config struct {
 	closer           io.Closer
 }
 
-func NewConfig(atlantisURL, atlantisURLFlag, atlantisVersion string, logLevel logging.LogLevel, repoConfig string, sslCertFile, sslKeyFile, statsNamespace, temporalHostPort string) (*Config, error) {
+func NewConfig(atlantisURL, atlantisURLFlag, atlantisVersion, dataDir string, logLevel logging.LogLevel, repoConfig string, sslCertFile, sslKeyFile, statsNamespace, temporalHostPort string) (*Config, error) {
 	parsedURL, err := server.ParseAtlantisURL(atlantisURL)
 	if err != nil {
 		return nil, errors.Wrapf(err,
@@ -93,6 +99,7 @@ func NewConfig(atlantisURL, atlantisURLFlag, atlantisVersion string, logLevel lo
 		atlantisURL:      parsedURL,
 		atlantisVersion:  atlantisVersion,
 		ctxLogger:        ctxLogger,
+		dataDir:          dataDir,
 		scope:            scope,
 		closer:           closer,
 		sslCertFile:      sslCertFile,
@@ -120,77 +127,45 @@ func newReporter(cfg valid.Metrics) (tally.StatsReporter, error) {
 	return tallystatsd.NewReporter(client, tallystatsd.Options{}), nil
 }
 
-func (c *Config) buildTemporalClient() (client.Client, error) {
-	certs, err := x509.SystemCertPool()
-	if err != nil {
-		return nil, err
-	}
-	connectionOptions := client.ConnectionOptions{
-		TLS: &tls.Config{
-			RootCAs:    certs,
-			MinVersion: tls.VersionTLS12,
-		},
-	}
-	clientOptions := client.Options{
-		Namespace:         AtlantisNamespace,
-		ConnectionOptions: connectionOptions,
-		MetricsHandler:    temporal_tally.NewMetricsHandler(c.scope),
-	}
-	if c.temporalHostPort != "" {
-		clientOptions.HostPort = c.temporalHostPort
-	}
-	return client.Dial(clientOptions)
-}
-
-func (c *Config) Index(w http.ResponseWriter, _ *http.Request) {
-	err := templates.TemporalWorkerIndexTemplate.Execute(w, templates.IndexData{
-		AtlantisVersion: c.atlantisVersion,
-		CleanedBasePath: c.atlantisURL.Path,
-	})
-	if err != nil {
-		c.ctxLogger.Error(err.Error())
-	}
-}
-
 type Server struct {
-	Logger         logging.Logger
-	SSLCertFile    string
-	SSLKeyFile     string
-	Router         *mux.Router
-	LyftMode       server.Mode
-	Port           int
-	StatsCloser    io.Closer
-	TemporalClient client.Client
-	HealthStatus   int32
+	Logger           logging.Logger
+	SSLCertFile      string
+	SSLKeyFile       string
+	Router           *mux.Router
+	LyftMode         server.Mode
+	Port             int
+	StatsScope       tally.Scope
+	StatsCloser      io.Closer
+	TemporalHostPort string
+	HealthStatus     int32
+	JobsController   *controllers.JobsController
 }
 
 // TODO: as more behavior is added into the TemporalWorker package, inject corresponding dependencies
 func NewServer(config *Config) (*Server, error) {
-	temporalClient, err := config.buildTemporalClient()
-	if err != nil {
-		return nil, err
-	}
-	router := mux.NewRouter()
-	router.HandleFunc("/", config.Index).Methods("GET").MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
-		return r.URL.Path == "/" || r.URL.Path == "/index.html"
-	})
-	if err != nil {
-		return nil, err
-	}
+	// TODO: fill in when statscope is upgraded to tally v4 and be compatible with temporal
+	jobsController := &controllers.JobsController{}
 	server := Server{
-		TemporalClient: temporalClient,
-		Logger:         config.ctxLogger,
-		SSLCertFile:    config.sslCertFile,
-		SSLKeyFile:     config.sslKeyFile,
-		StatsCloser:    config.closer,
-		Router:         router,
-		HealthStatus:   int32(HEALTHY),
+		TemporalHostPort: config.temporalHostPort,
+		Logger:           config.ctxLogger,
+		SSLCertFile:      config.sslCertFile,
+		SSLKeyFile:       config.sslKeyFile,
+		StatsScope:       config.scope,
+		StatsCloser:      config.closer,
+		Router:           mux.NewRouter(),
+		HealthStatus:     int32(HEALTHY),
+		JobsController:   jobsController,
 	}
 	return &server, nil
 }
 
 func (s Server) Start() error {
+	defer s.Logger.Close()
+
+	// router initialization
 	s.Router.HandleFunc("/healthz", s.Healthz).Methods("GET")
+	s.Router.HandleFunc("/jobs/{job-id}", s.JobsController.GetProjectJobs).Methods("GET").Name(ProjectJobsViewRouteName)
+	s.Router.HandleFunc("/jobs/{job-id}/ws", s.JobsController.GetProjectJobsWS).Methods("GET")
 	n := negroni.New(&negroni.Recovery{
 		Logger:     log.New(os.Stdout, "", log.LstdFlags),
 		PrintStack: false,
@@ -198,10 +173,22 @@ func (s Server) Start() error {
 		StackSize:  1024 * 8,
 	})
 	n.UseHandler(s.Router)
-	s.SetHealthStatus(HEALTHY)
 
-	defer s.Logger.Close()
-	defer s.TemporalClient.Close()
+	// temporal client + worker initialization
+	temporalClient, err := s.buildTemporalClient()
+	if err != nil {
+		return err
+	}
+	defer temporalClient.Close()
+	go func() {
+		w := worker.New(temporalClient, DeployTaskqueue, worker.Options{
+			// ensures that sessions are preserved on the same worker
+			EnableSessionWorker: true,
+		})
+		if err := w.Run(worker.InterruptCh()); err != nil {
+			log.Fatalln("unable to start worker", err)
+		}
+	}()
 
 	// Ensure server gracefully drains connections when stopped.
 	stop := make(chan os.Signal, 1)
@@ -264,4 +251,26 @@ func (s *Server) Healthz(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data) // nolint: errcheck
+}
+
+func (s *Server) buildTemporalClient() (client.Client, error) {
+	certs, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, err
+	}
+	connectionOptions := client.ConnectionOptions{
+		TLS: &tls.Config{
+			RootCAs:    certs,
+			MinVersion: tls.VersionTLS12,
+		},
+	}
+	clientOptions := client.Options{
+		Namespace:         AtlantisNamespace,
+		ConnectionOptions: connectionOptions,
+		MetricsHandler:    temporal_tally.NewMetricsHandler(s.StatsScope),
+	}
+	if s.TemporalHostPort != "" {
+		clientOptions.HostPort = s.TemporalHostPort
+	}
+	return client.Dial(clientOptions)
 }

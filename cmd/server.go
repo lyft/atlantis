@@ -482,6 +482,7 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 		userConfig.AtlantisURL,
 		config.AtlantisURLFlag,
 		config.AtlantisVersion,
+		userConfig.DataDir,
 		userConfig.ToLogLevel(),
 		userConfig.RepoConfig,
 		userConfig.SSLCertFile,
