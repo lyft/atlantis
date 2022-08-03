@@ -28,6 +28,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway"
+	"github.com/runatlantis/atlantis/server/neptune/temporal_worker"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -91,6 +92,7 @@ const (
 	SlackTokenFlag               = "slack-token"
 	SSLCertFileFlag              = "ssl-cert-file"
 	SSLKeyFileFlag               = "ssl-key-file"
+	TemporalHostPortFlag         = "temporal-host-port"
 	TFDownloadURLFlag            = "tf-download-url"
 	VCSStatusName                = "vcs-status-name"
 	WriteGitCredsFlag            = "write-git-creds"
@@ -272,6 +274,9 @@ var stringFlags = map[string]stringFlag{
 	SSLKeyFileFlag: {
 		description: fmt.Sprintf("File containing x509 private key matching --%s.", SSLCertFileFlag),
 	},
+	TemporalHostPortFlag: {
+		description: "`host:port` the temporal client connects to",
+	},
 	TFDownloadURLFlag: {
 		description:  "Base URL to download Terraform versions from.",
 		defaultValue: DefaultTFDownloadURL,
@@ -418,6 +423,12 @@ func NewServerCmd(v *viper.Viper, version string) *ServerCmd {
 	}
 }
 
+// ServerStarter is for starting up a server.
+// It's an abstraction to help us test.
+type ServerStarter interface {
+	Start() error
+}
+
 // ServerCreator creates servers.
 // It's an abstraction to help us test.
 type ServerCreator interface {
@@ -456,29 +467,47 @@ func (c *GatewayCreator) NewServer(userConfig server.UserConfig, config server.C
 	return gateway.NewServer(cfg)
 }
 
-// DefaultServerCreator is the concrete implementation of ServerCreator.
 type WorkerCreator struct{}
-
-// ServerStarter is for starting up a server.
-// It's an abstraction to help us test.
-type ServerStarter interface {
-	Start() error
-}
 
 // NewServer returns the real Atlantis server object.
 func (d *WorkerCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
 	return server.NewServer(userConfig, config)
 }
 
+type TemporalWorker struct{}
+
+// NewServer returns the real Atlantis server object.
+func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
+	cfg, err := temporal_worker.NewConfig(
+		userConfig.AtlantisURL,
+		config.AtlantisURLFlag,
+		config.AtlantisVersion,
+		userConfig.ToLogLevel(),
+		userConfig.RepoConfig,
+		userConfig.SSLCertFile,
+		userConfig.SSLKeyFile,
+		userConfig.StatsNamespace,
+		userConfig.TemporalHostPort)
+	if err != nil {
+		return nil, err
+	}
+	return temporal_worker.NewServer(cfg)
+}
+
 // ServerCreatorProxy creates the correct server based on the mode passed in through user config
 type ServerCreatorProxy struct {
-	GatewayCreator ServerCreator
-	WorkerCreator  ServerCreator
+	GatewayCreator        ServerCreator
+	WorkerCreator         ServerCreator
+	TemporalWorkerCreator ServerCreator
 }
 
 func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
 	if userConfig.ToLyftMode() == server.Gateway {
 		return d.GatewayCreator.NewServer(userConfig, config)
+	}
+
+	if userConfig.ToLyftMode() == server.TemporalWorker {
+		return d.TemporalWorkerCreator.NewServer(userConfig, config)
 	}
 
 	return d.WorkerCreator.NewServer(userConfig, config)

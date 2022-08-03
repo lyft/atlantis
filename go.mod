@@ -134,13 +134,17 @@ require (
 	github.com/uber-go/tally v3.4.3+incompatible
 )
 
-require go.temporal.io/sdk v1.15.0
+require (
+	go.temporal.io/sdk v1.15.0
+	go.temporal.io/sdk/contrib/tally v0.1.0
+)
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.13.0
 	github.com/aws/aws-sdk-go-v2/config v1.13.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.16.0
 	github.com/graymeta/stow v0.2.7
+	github.com/uber-go/tally/v4 v4.1.1
 	logur.dev/adapter/zap v0.5.0
 	logur.dev/logur v0.17.0
 )

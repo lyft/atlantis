@@ -233,6 +233,41 @@ v{{ .AtlantisVersion }}
 </html>
 `))
 
+// TODO: eventually as we support more functionality in TBD mode, this should replace IndexTemplate
+var TemporalWorkerIndexTemplate = template.Must(template.New("index.html.tmpl").Parse(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>atlantis</title>
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="{{ .CleanedBasePath }}/static/js/jquery-3.5.1.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $("p.js-discard-success").toggle(document.URL.indexOf("discard=true") !== -1);
+        });
+        setTimeout(function() {
+            $("p.js-discard-success").fadeOut('slow');
+        }, 5000); // <-- time in milliseconds
+    </script>
+    <link rel="stylesheet" href="{{ .CleanedBasePath }}/static/css/normalize.css">
+    <link rel="stylesheet" href="{{ .CleanedBasePath }}/static/css/skeleton.css">
+    <link rel="stylesheet" href="{{ .CleanedBasePath }}/static/css/custom.css">
+    <link rel="icon" type="image/png" href="{{ .CleanedBasePath }}/static/images/atlantis-icon.png">
+</head>
+<body>
+<p>
+    hello world this is the Temporal-backed version of Atlantis.
+</p>
+<footer>
+    v{{ .AtlantisVersion }}
+</footer>
+</body>
+</html>
+`))
+
 // LockDetailData holds the fields needed to display the lock detail view.
 type LockDetailData struct {
 	LockKeyEncoded  string

@@ -10,6 +10,7 @@ const (
 	Default Mode = iota
 	Gateway
 	Worker
+	TemporalWorker
 )
 
 // UserConfig holds config values passed in by the user.
@@ -84,6 +85,7 @@ type UserConfig struct {
 	LyftGatewaySnsTopicArn   string          `mapstructure:"lyft-gateway-sns-topic-arn"`
 	LyftMode                 string          `mapstructure:"lyft-mode"`
 	LyftWorkerQueueURL       string          `mapstructure:"lyft-worker-queue-url"`
+	TemporalHostPort         string          `mapstructure:"temporal-host-port"`
 }
 
 // ToLogLevel returns the LogLevel object corresponding to the user-passed
@@ -111,6 +113,8 @@ func (u UserConfig) ToLyftMode() Mode {
 		return Gateway
 	case "worker":
 		return Worker
+	case "temporal_worker":
+		return TemporalWorker
 	}
 	return Default
 }
