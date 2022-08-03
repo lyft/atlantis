@@ -23,45 +23,31 @@ func (w *queueWorker) GetState() queue.WorkerState {
 }
 
 func (w *queueWorker) Work(ctx workflow.Context) {
+	w.state = queue.WorkingWorkerState
+	// sleep and then flip to waiting
+	workflow.Sleep(ctx, 60*time.Second)
+
+	w.state = queue.WaitingWorkerState
 
 	// do this so we can check for cancellation status
 	w.ctx = ctx
-	return
-}
-
-func (w *queueWorker) addCallback(ctx workflow.Context, selector workflow.Selector) {
-	// adding a signal receiver allows us to toggle the queueworker state from our tests
-	ch := workflow.GetSignalChannel(ctx, testSignalID)
-	selector.AddReceive(ch, func(c workflow.ReceiveChannel, more bool) {
-		var state queue.WorkerState
-		c.Receive(ctx, &state)
-
-		w.state = state
-	})
 }
 
 type receiver struct {
-	timeoutValue bool
+	receiveCalled bool
+	ctx workflow.Context
 }
 
-func (r *receiver) DidTimeout() bool {
-	return r.timeoutValue
-}
+func (n *receiver) Receive(c workflow.ReceiveChannel, more bool) {
 
-func (r *receiver) AddReceiveWithTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration) {
-	r.AddTimeout(ctx, selector, timeout)
-
-}
-
-func (r *receiver) AddTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration) {
-	r.timeoutValue = false
-	selector.AddFuture(workflow.NewTimer(ctx, 5*time.Second), func(f workflow.Future) {
-		r.timeoutValue = true
-	})
+	var s string
+	c.Receive(n.ctx, &s)
+	n.receiveCalled = true
 }
 
 type response struct {
 	WorkerCtxCancelled bool
+	ReceiverCalled     bool
 }
 
 type request struct {
@@ -69,23 +55,21 @@ type request struct {
 }
 
 func testWorkflow(ctx workflow.Context, r request) (response, error) {
-	selector := workflow.NewSelector(ctx)
-	receiver := &receiver{}
-	receiver.AddTimeout(ctx, selector, 30*time.Second)
+	receiver := &receiver{ctx: ctx}
 
 	worker := &queueWorker{state: r.WorkerState}
-	worker.addCallback(ctx, selector)
 
 	runner := &deploy.Runner{
-		QueueWorker:      worker,
-		RevisionReceiver: receiver,
-		Selector:         selector,
+		QueueWorker:              worker,
+		RevisionReceiver:         receiver,
+		NewRevisionSignalChannel: workflow.GetSignalChannel(ctx, testSignalID),
 	}
 
 	err := runner.Run(ctx)
 
 	return response{
 		WorkerCtxCancelled: worker.ctx.Err() == workflow.ErrCanceled,
+		ReceiverCalled:     receiver.receiveCalled,
 	}, err
 }
 
@@ -94,29 +78,48 @@ func TestRunner(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
-		env.ExecuteWorkflow(testWorkflow, request{WorkerState: queue.WaitingWorkerState})
+		// should timeout since we're not sending any signal
+		env.ExecuteWorkflow(testWorkflow, request{})
 
 		var resp response
 		err := env.GetWorkflowResult(&resp)
 		assert.NoError(t, err)
-		assert.Equal(t, response{WorkerCtxCancelled: true}, resp)
+		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: false}, resp)
 	})
 
-	t.Run("does not cancel working worker", func(t *testing.T) {
+	t.Run("receives signal and then times out", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
-		// send a signal after the first timer fires at 5 seconds to make sure that we're not
-		// exiting when the worker is working
 		env.RegisterDelayedCallback(func() {
-			env.SignalWorkflow(testSignalID, queue.WaitingWorkerState)
+			env.SignalWorkflow(testSignalID, "")
 		}, 7*time.Second)
 
-		env.ExecuteWorkflow(testWorkflow, request{WorkerState: queue.WorkingWorkerState})
+		// should timeout after sending the first signal
+		env.ExecuteWorkflow(testWorkflow, request{})
+
 		var resp response
 		err := env.GetWorkflowResult(&resp)
 		assert.NoError(t, err)
-		assert.Equal(t, response{WorkerCtxCancelled: true}, resp)
+		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: true}, resp)
+
 	})
+
+	// t.Run("does not cancel working worker", func(t *testing.T) {
+	// 	ts := testsuite.WorkflowTestSuite{}
+	// 	env := ts.NewTestWorkflowEnvironment()
+
+	// 	// send a signal after the first timer fires at 5 seconds to make sure that we're not
+	// 	// exiting when the worker is working
+	// 	env.RegisterDelayedCallback(func() {
+	// 		env.SignalWorkflow(testSignalID, queue.WaitingWorkerState)
+	// 	}, 7*time.Second)
+
+	// 	env.ExecuteWorkflow(testWorkflow, request{WorkerState: queue.WorkingWorkerState})
+	// 	var resp response
+	// 	err := env.GetWorkflowResult(&resp)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, response{WorkerCtxCancelled: true}, resp)
+	// })
 
 }

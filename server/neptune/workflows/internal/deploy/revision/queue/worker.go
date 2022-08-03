@@ -30,7 +30,6 @@ type Worker struct {
 	Queue      *Queue
 	Repo       github.Repo
 	RootName   string
-	WorkItems  workflow.ReceiveChannel
 
 	// mutable
 	state WorkerState

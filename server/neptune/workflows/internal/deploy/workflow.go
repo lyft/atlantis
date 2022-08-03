@@ -6,22 +6,33 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/signals"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
 const (
 	TaskQueue = "deploy"
 
-	RevisionReceiveTimeout = 60*time.Second
+	// signals
+	NewRevisionSignalID = "new-revision"
+
+	RevisionReceiveTimeout = 60 * time.Minute
 )
 
-type TimedReceiver interface {
-	DidTimeout() bool
-	AddTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration)
-	AddReceiveWithTimeout(ctx workflow.Context, selector workflow.Selector, timeout time.Duration)
+type RunnerAction int64
+
+const (
+	OnCancel RunnerAction = iota
+	OnTimeout
+	OnReceive
+)
+
+type SignalReceiver interface {
+	Receive(c workflow.ReceiveChannel, more bool)
 }
 
 type QueueWorker interface {
@@ -36,6 +47,11 @@ func Workflow(ctx workflow.Context, request Request) error {
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
+	// set relevant logging context
+	ctx = workflow.WithValue(ctx, config.RepositoryLogKey, request.Repository.FullName)
+	ctx = workflow.WithValue(ctx, config.ProjectLogKey, request.Root.Name)
+	ctx = workflow.WithValue(ctx, config.GHRequestIDLogKey, request.GHRequestID)
+
 	runner := newRunner(ctx, request)
 
 	// blocking call
@@ -43,17 +59,12 @@ func Workflow(ctx workflow.Context, request Request) error {
 }
 
 type Runner struct {
-	QueueWorker      QueueWorker
-	Selector         workflow.Selector
-	RevisionReceiver TimedReceiver
+	QueueWorker              QueueWorker
+	RevisionReceiver         SignalReceiver
+	NewRevisionSignalChannel workflow.ReceiveChannel
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
-	// set relevant logging context
-	ctx = workflow.WithValue(ctx, config.RepositoryLogKey, request.Repository.FullName)
-	ctx = workflow.WithValue(ctx, config.ProjectLogKey, request.Root.Name)
-	ctx = workflow.WithValue(ctx, config.GHRequestIDLogKey, request.GHRequestID)
-
 	// convert to internal types, we should probably move these into another struct
 	repo := github.Repo{
 		Name:     request.Repository.Name,
@@ -69,7 +80,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	var a *activities.Deploy
 
 	revisionQueue := queue.NewQueue()
-	revisionReceiver := signals.NewRevisionSignalReceiver(ctx, revisionQueue, )
+	revisionReceiver := revision.NewReceiver(ctx, revisionQueue)
 
 	worker := &queue.Worker{
 		Queue:      revisionQueue,
@@ -79,13 +90,15 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	}
 
 	return &Runner{
-		QueueWorker:      worker,
-		RevisionReceiver: revisionReceiver,
+		QueueWorker:              worker,
+		RevisionReceiver:         revisionReceiver,
+		NewRevisionSignalChannel: workflow.GetSignalChannel(ctx, NewRevisionSignalID),
 	}
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
-	workerCtx, cancel := workflow.WithCancel(ctx)
+	var action RunnerAction
+	workerCtx, shutdownWorker := workflow.WithCancel(ctx)
 
 	wg := workflow.NewWaitGroup(ctx)
 	wg.Add(1)
@@ -94,21 +107,46 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	// signals
 	// should we have some way of persisting our queue in case of workflow termination?
 	// Let's address this in a followup
-	workflow.Go(ctx, func(ctx workflow.Context) {
+	workflow.Go(workerCtx, func(ctx workflow.Context) {
 		defer wg.Done()
-		r.QueueWorker.Work(workerCtx)
+		r.QueueWorker.Work(ctx)
 	})
 
-	selector := workflow.NewSelector(ctx)
-	r.RevisionReceiver.AddReceiveWithTimeout(ctx, selector, RevisionReceiveTimeout)
+	onTimeout := func(f workflow.Future) {
+		err := f.Get(ctx, nil)
+
+		if temporal.IsCanceledError(err) {
+			action = OnCancel
+			return
+		}
+
+		action = OnTimeout
+	}
+
+	s := temporalInternal.SelectorWithTimeout{
+		Selector: workflow.NewSelector(ctx),
+	}
+	s.AddReceive(r.NewRevisionSignalChannel, func(c workflow.ReceiveChannel, more bool) {
+		r.RevisionReceiver.Receive(c, more)
+		action = OnReceive
+
+	})
+	cancelTimer, _ := s.AddTimeout(ctx, RevisionReceiveTimeout, onTimeout)
 
 	// main loop which handles external signals
 	// and in turn signals the queue worker
 	for {
 		// blocks until a configured callback fires
-		r.Selector.Select(ctx)
+		s.Select(ctx)
 
-		if !r.RevisionReceiver.DidTimeout() {
+		switch action {
+		case OnCancel:
+			logger.Info(ctx, "on cancel")
+			continue
+		case OnReceive:
+			cancelTimer()
+			logger.Info(ctx, "what's happening")
+			cancelTimer, _ = s.AddTimeout(ctx, RevisionReceiveTimeout, onTimeout)
 			continue
 		}
 
@@ -116,13 +154,14 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 		// check state here since if we timed out, we're probably not susceptible to the queue
 		// worker being in a waiting state right before it's about to start working on an item.
-		if !r.Selector.HasPending() && r.QueueWorker.GetState() != queue.WorkingWorkerState {
-			cancel()
+		if !s.HasPending() && r.QueueWorker.GetState() != queue.WorkingWorkerState {
+			shutdownWorker()
 			break
 		}
 
 		// basically keep on adding timeouts until we can either break this loop or get another signal
-		r.RevisionReceiver.AddTimeout(ctx, r.Selector, RevisionReceiveTimeout)
+		// we need to use the timeoutCtx to ensure that this gets cancelled when when the receive is ready
+		cancelTimer, _ = s.AddTimeout(ctx, RevisionReceiveTimeout, onTimeout)
 	}
 	// wait on cancellation so we can gracefully terminate, unsure if temporal handles this for us,
 	// but just being safe.
