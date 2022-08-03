@@ -484,9 +484,9 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 }
 
 // [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
-func (g *GithubClient) UpdateCheckStatus(ctx context.Context, repo models.Repo, checkRunId int64, updateCheckRunOpts github.UpdateCheckRunOptions) error {
-	_, _, err := g.client.Checks.UpdateCheckRun(ctx, repo.Owner, repo.Name, checkRunId, updateCheckRunOpts)
-	return err
+func (g *GithubClient) UpdateCheckStatus(ctx context.Context, repo models.Repo, checkRunId int64, updateCheckRunOpts github.UpdateCheckRunOptions) (github.CheckRun, error) {
+	checkRun, _, err := g.client.Checks.UpdateCheckRun(ctx, repo.Owner, repo.Name, checkRunId, updateCheckRunOpts)
+	return *checkRun, err
 }
 
 // [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable

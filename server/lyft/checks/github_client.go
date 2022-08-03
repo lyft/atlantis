@@ -84,28 +84,8 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 		return c.GithubClient.UpdateStatus(ctx, request)
 	}
 
-	// Project level policy check command status is set to either success or failure directly
-	// So, we can't use the Pending check to determine if this checkrun already exists
-	// We attempt to retrieve the checkrun and if it exists, we update that check run which happens when a user approves failing policies
-	// If not, we create a new one and put it into the db which happens when policy_check command is run for the first time
-	if c.isProjectLevelPolicyCheckCommand(request.StatusName) {
-		checkRun, err := c.Db.GetCheckRunForStatus(request.StatusName, request.Repo, request.Ref)
-		if err != nil {
-			return errors.Wrapf(err, "getting checkrun Id from db for %s", request.StatusName)
-		}
-
-		// DNE in the db, so we create a new checkrun
-		if checkRun == nil {
-			return c.createCheckRun(ctx, request)
-		}
-		// Update the existing checkrun
-		return c.updateCheckRun(ctx, *checkRun, request)
-
-	}
-
 	// Pending state when it's a new run.
-	// Approve_Policies is always a new run
-	if request.State == models.PendingCommitStatus || strings.Contains(request.StatusName, "approve_policies") {
+	if request.State == models.PendingCommitStatus {
 		return c.createCheckRun(ctx, request)
 	}
 
@@ -123,31 +103,13 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 	return c.updateCheckRun(ctx, *checkRun, request)
 }
 
-func (c *ChecksClientWrapper) isProjectLevelPolicyCheckCommand(statusName string) bool {
-	return strings.Contains(statusName, "policy_check") && strings.Contains(statusName, ":")
-}
-
 func (c *ChecksClientWrapper) createCheckRun(ctx context.Context, request types.UpdateStatusRequest) error {
 	checkRun, err := c.GithubClient.CreateCheckStatus(ctx, request.Repo, c.populateCreateCheckRunOptions(request))
 	if err != nil {
 		return errors.Wrapf(err, "creating checkrun for %s", request.StatusName)
 	}
 
-	// Get output from checkrun and store in db, used to populate next status updates since github does not store its state
-	var output string
-	if checkRun.Output != nil && checkRun.Output.Text != nil {
-		output = *checkRun.Output.Text
-	}
-
-	// Store the checkrun ID in boltdb
-	if err = c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.Ref, models.CheckRunStatus{
-		ID:      strconv.FormatInt(*checkRun.ID, 10),
-		Output:  output,
-		JobsURL: *checkRun.DetailsURL,
-	}); err != nil {
-		return errors.Wrapf(err, "updating checkrun id in db for %s", request.StatusName)
-	}
-	return nil
+	return c.updateCheckRunInDb(checkRun, request)
 }
 
 func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, checkRun models.CheckRunStatus, request types.UpdateStatusRequest) error {
@@ -156,7 +118,30 @@ func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, checkRun model
 		return errors.Wrapf(err, "parsing checkrunId for %s", request.StatusName)
 	}
 
-	return c.GithubClient.UpdateCheckStatus(ctx, request.Repo, checkRunIdInt, c.populateUpdateCheckRunOptions(request, checkRun))
+	updatedCheckRun, err := c.GithubClient.UpdateCheckStatus(ctx, request.Repo, checkRunIdInt, c.populateUpdateCheckRunOptions(request, checkRun))
+	if err != nil {
+		return errors.Wrapf(err, "updating checkrun for %s", request.StatusName)
+	}
+
+	return c.updateCheckRunInDb(updatedCheckRun, request)
+}
+
+func (c *ChecksClientWrapper) updateCheckRunInDb(checkRun github.CheckRun, request types.UpdateStatusRequest) error {
+	// Get output from checkrun and store in db, used to populate next status updates since github does not store its state
+	var output string
+	if checkRun.Output != nil && checkRun.Output.Text != nil {
+		output = *checkRun.Output.Text
+	}
+
+	// Store the checkrun ID in boltdb
+	if err := c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.Ref, models.CheckRunStatus{
+		ID:      strconv.FormatInt(*checkRun.ID, 10),
+		Output:  output,
+		JobsURL: *checkRun.DetailsURL,
+	}); err != nil {
+		return errors.Wrapf(err, "updating checkrun id in db for %s", request.StatusName)
+	}
+	return nil
 }
 
 func (c *ChecksClientWrapper) isChecksEnabled(ctx context.Context, request types.UpdateStatusRequest) bool {
@@ -195,6 +180,11 @@ func (c *ChecksClientWrapper) populateCreateCheckRunOptions(request types.Update
 		Output:  checkRunOutput,
 	}
 
+	// Add details URL is in the req
+	if request.DetailsURL != "" {
+		createCheckRunOptions.DetailsURL = &request.DetailsURL
+	}
+
 	// Conclusion is required if status is Completed
 	if status == Completed.String() {
 		createCheckRunOptions.Conclusion = &conclusion
@@ -209,14 +199,14 @@ func (c *ChecksClientWrapper) populateUpdateCheckRunOptions(request types.Update
 		request.Output = checkRunStatus.Output
 	}
 
-	// Populate detailsURL from the previous status update if request.DetailsURL is empty
+	// Populate the details URL if not provided in this req
 	if request.DetailsURL == "" {
 		request.DetailsURL = checkRunStatus.JobsURL
 	}
 
 	status, conclusion := c.resolveChecksStatus(request.State)
 	output := c.capCheckRunOutput(request.Output)
-	summary := c.summaryWithJobURL(request.StatusName, request.Description, checkRunStatus.JobsURL)
+	summary := c.summaryWithJobURL(request.StatusName, request.Description, request.DetailsURL)
 
 	checkRunOutput := &github.CheckRunOutput{
 		Title:   &request.StatusName,
