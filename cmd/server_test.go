@@ -95,7 +95,6 @@ var testFlags = map[string]interface{}{
 	LyftGatewaySnsTopicArnFlag:   "",
 	LyftModeFlag:                 "",
 	LyftWorkerQueueUrlFlag:       "",
-	TemporalHostPortFlag:         "hostname:1234",
 	DisableAutoplanFlag:          true,
 	EnablePlatformModeFlag:       false,
 	EnableRegExpCmdFlag:          false,

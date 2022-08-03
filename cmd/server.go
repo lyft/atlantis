@@ -15,6 +15,9 @@ package cmd
 
 import (
 	"fmt"
+	cfgParser "github.com/runatlantis/atlantis/server/core/config"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/metrics"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -28,7 +31,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway"
-	"github.com/runatlantis/atlantis/server/neptune/temporal_worker"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -92,7 +95,6 @@ const (
 	SlackTokenFlag               = "slack-token"
 	SSLCertFileFlag              = "ssl-cert-file"
 	SSLKeyFileFlag               = "ssl-key-file"
-	TemporalHostPortFlag         = "temporal-host-port"
 	TFDownloadURLFlag            = "tf-download-url"
 	VCSStatusName                = "vcs-status-name"
 	WriteGitCredsFlag            = "write-git-creds"
@@ -273,9 +275,6 @@ var stringFlags = map[string]stringFlag{
 	},
 	SSLKeyFileFlag: {
 		description: fmt.Sprintf("File containing x509 private key matching --%s.", SSLCertFileFlag),
-	},
-	TemporalHostPortFlag: {
-		description: "`host:port` the temporal client connects to",
 	},
 	TFDownloadURLFlag: {
 		description:  "Base URL to download Terraform versions from.",
@@ -478,21 +477,36 @@ type TemporalWorker struct{}
 
 // NewServer returns the real Atlantis server object.
 func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
-	cfg, err := temporal_worker.NewConfig(
-		userConfig.AtlantisURL,
-		config.AtlantisURLFlag,
-		config.AtlantisVersion,
-		userConfig.DataDir,
-		userConfig.ToLogLevel(),
-		userConfig.RepoConfig,
-		userConfig.SSLCertFile,
-		userConfig.SSLKeyFile,
-		userConfig.StatsNamespace,
-		userConfig.TemporalHostPort)
+	ctxLogger, err := logging.NewLoggerFromLevel(userConfig.ToLogLevel())
 	if err != nil {
 		return nil, err
 	}
-	return temporal_worker.NewServer(cfg)
+	globalCfg := valid.NewGlobalCfg()
+	validator := &cfgParser.ParserValidator{}
+	if userConfig.RepoConfig != "" {
+		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
+		}
+	}
+	scope, closer, err := metrics.NewScope(globalCfg.Metrics, ctxLogger, userConfig.StatsNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &temporalworker.Config{
+		CtxLogger:        ctxLogger,
+		DataDir:          userConfig.DataDir,
+		Scope:            scope,
+		Closer:           closer,
+		SslCertFile:      userConfig.SSLCertFile,
+		SslKeyFile:       userConfig.SSLKeyFile,
+		TemporalHostPort: fmt.Sprintf("%s:%s", globalCfg.Temporal.Host, globalCfg.Temporal.Port),
+	}
+	if err != nil {
+		return nil, err
+	}
+	return temporalworker.NewServer(cfg)
 }
 
 // ServerCreatorProxy creates the correct server based on the mode passed in through user config
