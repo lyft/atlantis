@@ -2,8 +2,6 @@ package websocket
 
 import (
 	"net/http"
-
-	"github.com/uber-go/tally"
 )
 
 type InstrumentedMultiplexor struct {

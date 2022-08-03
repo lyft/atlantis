@@ -131,7 +131,6 @@ require (
 	github.com/cactus/go-statsd-client/statsd v0.0.0-20200623234511-94959e3146b2
 	github.com/nikunjy/rules v0.0.0-20200120082459-0b7c4dc9dc86 // indirect
 	github.com/twmb/murmur3 v1.1.6 // indirect
-	github.com/uber-go/tally v3.4.3+incompatible
 )
 
 require go.temporal.io/sdk v1.13.0
