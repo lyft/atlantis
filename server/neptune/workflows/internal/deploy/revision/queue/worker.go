@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -52,8 +53,13 @@ func (w *Worker) Work(ctx workflow.Context) {
 			return !w.Queue.IsEmpty()
 		})
 
+		if temporal.IsCanceledError(err) {
+			logger.Info(ctx, "Received cancelled signal, worker is shutting down")
+			return
+		}
+
 		if err != nil {
-			logger.Warn(ctx, "cancelled, shutting down queue worker")
+			logger.Error(ctx, fmt.Sprintf("Unknown error %s, worker is shutting down", err.Error()))
 			return
 		}
 

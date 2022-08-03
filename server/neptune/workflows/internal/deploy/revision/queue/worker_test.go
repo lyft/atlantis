@@ -40,7 +40,6 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		Repo: github.Repo{
 			Name:     "hello",
 			Owner:    "nish",
-			FullName: "nish/hello",
 			URL:      "git@github.com/nish/hello.git",
 		},
 	}

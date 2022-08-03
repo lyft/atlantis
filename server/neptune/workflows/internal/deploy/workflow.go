@@ -69,7 +69,6 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	repo := github.Repo{
 		Name:     request.Repository.Name,
 		Owner:    request.Repository.Owner,
-		FullName: request.Repository.FullName,
 		URL:      request.Repository.URL,
 	}
 
