@@ -141,6 +141,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.13.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.16.0
 	github.com/graymeta/stow v0.2.7
+	github.com/uber-go/tally/v4 v4.1.2
 	logur.dev/adapter/zap v0.5.0
 	logur.dev/logur v0.17.0
 )
