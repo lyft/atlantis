@@ -28,7 +28,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -38,17 +37,6 @@ const (
 	DeployTaskqueue          = "deploy"
 	ProjectJobsViewRouteName = "project-jobs-detail"
 )
-
-type HealthStatus int64
-
-const (
-	HEALTHY HealthStatus = iota
-	UNHEALTHY
-)
-
-type HealthResponse struct {
-	Status string `json:"status"`
-}
 
 // Config is TemporalWorker specific user config
 type Config struct {
@@ -137,7 +125,6 @@ type Server struct {
 	StatsScope       tally.Scope
 	StatsCloser      io.Closer
 	TemporalHostPort string
-	HealthStatus     int32
 	JobsController   *controllers.JobsController
 }
 
@@ -153,7 +140,6 @@ func NewServer(config *Config) (*Server, error) {
 		StatsScope:       config.scope,
 		StatsCloser:      config.closer,
 		Router:           mux.NewRouter(),
-		HealthStatus:     int32(HEALTHY),
 		JobsController:   jobsController,
 	}
 	return &server, nil
@@ -212,8 +198,6 @@ func (s Server) Start() error {
 	}()
 	<-stop
 
-	s.SetHealthStatus(UNHEALTHY)
-
 	// flush stats before shutdown
 	if err := s.StatsCloser.Close(); err != nil {
 		s.Logger.Error(err.Error())
@@ -226,24 +210,13 @@ func (s Server) Start() error {
 	return nil
 }
 
-func (s *Server) SetHealthStatus(status HealthStatus) {
-	atomic.StoreInt32(&s.HealthStatus, int32(status))
-}
-
+// Healthz returns the health check response. It always returns a 200 currently.
 func (s *Server) Healthz(w http.ResponseWriter, _ *http.Request) {
-	var healthResponse *HealthResponse
-	if atomic.LoadInt32(&s.HealthStatus) == int32(HEALTHY) {
-		healthResponse = &HealthResponse{
-			Status: "ok",
-		}
-		w.WriteHeader(http.StatusOK)
-	} else {
-		healthResponse = &HealthResponse{
-			Status: "fail",
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-	data, err := json.MarshalIndent(healthResponse, "", "  ")
+	data, err := json.MarshalIndent(&struct {
+		Status string `json:"status"`
+	}{
+		Status: "ok",
+	}, "", "  ")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error creating status json response: %s", err)
