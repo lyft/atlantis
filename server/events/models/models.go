@@ -398,7 +398,6 @@ type VersionSuccess struct {
 // It keeps track of the jobURL and checkRunOutput
 type CheckRunStatus struct {
 	ID      string
-	Output  string
 	JobsURL string
 }
 

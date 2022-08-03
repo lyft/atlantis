@@ -127,16 +127,9 @@ func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, checkRun model
 }
 
 func (c *ChecksClientWrapper) updateCheckRunInDb(checkRun github.CheckRun, request types.UpdateStatusRequest) error {
-	// Get output from checkrun and store in db, used to populate next status updates since github does not store its state
-	var output string
-	if checkRun.Output != nil && checkRun.Output.Text != nil {
-		output = *checkRun.Output.Text
-	}
-
 	// Store the checkrun ID in boltdb
 	if err := c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.Ref, models.CheckRunStatus{
 		ID:      strconv.FormatInt(*checkRun.ID, 10),
-		Output:  output,
 		JobsURL: *checkRun.DetailsURL,
 	}); err != nil {
 		return errors.Wrapf(err, "updating checkrun id in db for %s", request.StatusName)
@@ -194,11 +187,6 @@ func (c *ChecksClientWrapper) populateCreateCheckRunOptions(request types.Update
 }
 
 func (c *ChecksClientWrapper) populateUpdateCheckRunOptions(request types.UpdateStatusRequest, checkRunStatus models.CheckRunStatus) github.UpdateCheckRunOptions {
-	// Populate output from previous status update if request.Output is empty
-	if request.Output == "" {
-		request.Output = checkRunStatus.Output
-	}
-
 	// Populate the details URL if not provided in this req
 	if request.DetailsURL == "" {
 		request.DetailsURL = checkRunStatus.JobsURL
