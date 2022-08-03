@@ -141,11 +141,9 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 		switch action {
 		case OnCancel:
-			logger.Info(ctx, "on cancel")
 			continue
 		case OnReceive:
 			cancelTimer()
-			logger.Info(ctx, "what's happening")
 			cancelTimer, _ = s.AddTimeout(ctx, RevisionReceiveTimeout, onTimeout)
 			continue
 		}
