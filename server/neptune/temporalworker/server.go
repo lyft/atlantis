@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -95,6 +96,8 @@ func NewServer(config *Config) (*Server, error) {
 }
 
 func (s Server) Start() error {
+	var wg sync.WaitGroup
+	wg.Add(1)
 	defer s.Logger.Close()
 
 	// temporal client + worker initialization
@@ -104,6 +107,7 @@ func (s Server) Start() error {
 	}
 	defer temporalClient.Close()
 	go func() {
+		defer wg.Done()
 		w := worker.New(temporalClient, DeployTaskqueue, worker.Options{
 			// ensures that sessions are preserved on the same worker
 			EnableSessionWorker: true,
@@ -133,6 +137,7 @@ func (s Server) Start() error {
 	if err := s.HttpServerProxy.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
 	}
+	wg.Wait()
 	return nil
 }
 
