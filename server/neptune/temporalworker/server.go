@@ -11,7 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server"
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/uber-go/tally"
+	"github.com/uber-go/tally/v4"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
 	"go.temporal.io/sdk/client"
