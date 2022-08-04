@@ -104,22 +104,4 @@ func TestRunner(t *testing.T) {
 		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: true}, resp)
 
 	})
-
-	// t.Run("does not cancel working worker", func(t *testing.T) {
-	// 	ts := testsuite.WorkflowTestSuite{}
-	// 	env := ts.NewTestWorkflowEnvironment()
-
-	// 	// send a signal after the first timer fires at 5 seconds to make sure that we're not
-	// 	// exiting when the worker is working
-	// 	env.RegisterDelayedCallback(func() {
-	// 		env.SignalWorkflow(testSignalID, queue.WaitingWorkerState)
-	// 	}, 7*time.Second)
-
-	// 	env.ExecuteWorkflow(testWorkflow, request{WorkerState: queue.WorkingWorkerState})
-	// 	var resp response
-	// 	err := env.GetWorkflowResult(&resp)
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, response{WorkerCtxCancelled: true}, resp)
-	// })
-
 }
