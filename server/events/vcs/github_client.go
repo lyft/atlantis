@@ -518,10 +518,9 @@ func (g *GithubClient) updateChecksStatus(ctx context.Context, request types.Upd
 	}
 
 	updateCheckRunOpts := github.UpdateCheckRunOptions{
-		Name:    request.StatusName,
-		HeadSHA: &request.Ref,
-		Status:  &status,
-		Output:  &checkRunOutput,
+		Name:   request.StatusName,
+		Status: &status,
+		Output: &checkRunOutput,
 	}
 
 	// URL in update request takes precedence.
