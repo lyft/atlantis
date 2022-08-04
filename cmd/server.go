@@ -493,12 +493,15 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create metrics scope")
 	}
-
+	parsedURL, err := server.ParseAtlantisURL(userConfig.AtlantisURL)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"parsing atlantis url %q", userConfig.AtlantisURL)
+	}
 	cfg := &temporalworker.Config{
-		AtlantisURL:      userConfig.AtlantisURL,
+		AtlantisURL:      parsedURL,
 		AtlantisVersion:  config.AtlantisVersion,
 		CtxLogger:        ctxLogger,
-		DataDir:          userConfig.DataDir,
 		Scope:            scope,
 		Closer:           closer,
 		Port:             userConfig.Port,

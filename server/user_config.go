@@ -112,7 +112,7 @@ func (u UserConfig) ToLyftMode() Mode {
 		return Gateway
 	case "worker":
 		return Worker
-	case "temporal-worker":
+	case "temporalworker":
 		return TemporalWorker
 	}
 	return Default

@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server"
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -22,6 +20,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,10 +35,9 @@ const (
 
 // Config is TemporalWorker specific user config
 type Config struct {
-	AtlantisURL      string
+	AtlantisURL      *url.URL
 	AtlantisVersion  string
 	CtxLogger        logging.Logger
-	DataDir          string
 	SslCertFile      string
 	SslKeyFile       string
 	TemporalHostPort string
@@ -59,14 +57,9 @@ type Server struct {
 
 // TODO: as more behavior is added into the TemporalWorker package, inject corresponding dependencies
 func NewServer(config *Config) (*Server, error) {
-	parsedURL, err := server.ParseAtlantisURL(config.AtlantisURL)
-	if err != nil {
-		return nil, errors.Wrapf(err,
-			"parsing atlantis url %q", config.AtlantisURL)
-	}
 	jobsController := &controllers.JobsController{
 		AtlantisVersion:     config.AtlantisVersion,
-		AtlantisURL:         parsedURL,
+		AtlantisURL:         config.AtlantisURL,
 		KeyGenerator:        controllers.JobIDKeyGenerator{},
 		StatsScope:          config.Scope,
 		Logger:              config.CtxLogger,
