@@ -479,7 +479,7 @@ type TemporalWorker struct{}
 func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
 	ctxLogger, err := logging.NewLoggerFromLevel(userConfig.ToLogLevel())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to build context logger")
 	}
 	globalCfg := valid.NewGlobalCfg()
 	validator := &cfgParser.ParserValidator{}
@@ -491,20 +491,20 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 	}
 	scope, closer, err := metrics.NewScope(globalCfg.Metrics, ctxLogger, userConfig.StatsNamespace)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create metrics scope")
 	}
 
 	cfg := &temporalworker.Config{
+		AtlantisURL:      userConfig.AtlantisURL,
+		AtlantisVersion:  config.AtlantisVersion,
 		CtxLogger:        ctxLogger,
 		DataDir:          userConfig.DataDir,
 		Scope:            scope,
 		Closer:           closer,
+		Port:             userConfig.Port,
 		SslCertFile:      userConfig.SSLCertFile,
 		SslKeyFile:       userConfig.SSLKeyFile,
 		TemporalHostPort: fmt.Sprintf("%s:%s", globalCfg.Temporal.Host, globalCfg.Temporal.Port),
-	}
-	if err != nil {
-		return nil, err
 	}
 	return temporalworker.NewServer(cfg)
 }

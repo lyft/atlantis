@@ -5,16 +5,19 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server"
 	"github.com/runatlantis/atlantis/server/controllers"
+	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/logging"
+	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
 	"go.temporal.io/sdk/client"
+	temporal_tally "go.temporal.io/sdk/contrib/tally"
 	"go.temporal.io/sdk/worker"
 	"io"
 	"log"
@@ -33,6 +36,8 @@ const (
 
 // Config is TemporalWorker specific user config
 type Config struct {
+	AtlantisURL      string
+	AtlantisVersion  string
 	CtxLogger        logging.Logger
 	DataDir          string
 	SslCertFile      string
@@ -40,44 +45,32 @@ type Config struct {
 	TemporalHostPort string
 	Scope            tally.Scope
 	Closer           io.Closer
-}
-
-type httpServerProxy struct {
-	*http.Server
-	SSLCertFile string
-	SSLKeyFile  string
-	Logger      logging.Logger
-}
-
-func (p *httpServerProxy) ListenAndServe() {
-	var err error
-	if p.SSLCertFile != "" && p.SSLKeyFile != "" {
-		err = p.Server.ListenAndServeTLS(p.SSLCertFile, p.SSLKeyFile)
-	} else {
-		err = p.Server.ListenAndServe()
-	}
-	if err != nil && err != http.ErrServerClosed {
-		p.Logger.Error(err.Error())
-	}
+	Port             int
 }
 
 type Server struct {
 	Logger           logging.Logger
-	SSLCertFile      string
-	SSLKeyFile       string
-	Negroni          *negroni.Negroni
-	LyftMode         server.Mode
+	HttpServerProxy  *neptune_http.ServerProxy
 	Port             int
 	StatsScope       tally.Scope
 	StatsCloser      io.Closer
 	TemporalHostPort string
-	JobsController   *controllers.JobsController
 }
 
 // TODO: as more behavior is added into the TemporalWorker package, inject corresponding dependencies
 func NewServer(config *Config) (*Server, error) {
+	parsedURL, err := server.ParseAtlantisURL(config.AtlantisURL)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"parsing atlantis url %q", config.AtlantisURL)
+	}
 	jobsController := &controllers.JobsController{
-		StatsScope: config.Scope,
+		AtlantisVersion:     config.AtlantisVersion,
+		AtlantisURL:         parsedURL,
+		KeyGenerator:        controllers.JobIDKeyGenerator{},
+		StatsScope:          config.Scope,
+		Logger:              config.CtxLogger,
+		ProjectJobsTemplate: templates.ProjectJobsTemplate,
 	}
 	// router initialization
 	router := mux.NewRouter()
@@ -91,15 +84,19 @@ func NewServer(config *Config) (*Server, error) {
 		StackSize:  1024 * 8,
 	})
 	n.UseHandler(router)
+	httpServerProxy := &neptune_http.ServerProxy{
+		SSLCertFile: config.SslCertFile,
+		SSLKeyFile:  config.SslKeyFile,
+		Server:      &http.Server{Addr: fmt.Sprintf(":%d", config.Port), Handler: n},
+		Logger:      config.CtxLogger,
+	}
 	server := Server{
-		TemporalHostPort: config.TemporalHostPort,
 		Logger:           config.CtxLogger,
-		SSLCertFile:      config.SslCertFile,
-		SSLKeyFile:       config.SslKeyFile,
+		HttpServerProxy:  httpServerProxy,
+		Port:             config.Port,
 		StatsScope:       config.Scope,
 		StatsCloser:      config.Closer,
-		Negroni:          n,
-		JobsController:   jobsController,
+		TemporalHostPort: config.TemporalHostPort,
 	}
 	return &server, nil
 }
@@ -129,13 +126,8 @@ func (s Server) Start() error {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	s.Logger.Info(fmt.Sprintf("Atlantis started - listening on port %v", s.Port))
-	httpServerProxy := httpServerProxy{
-		SSLCertFile: s.SSLCertFile,
-		SSLKeyFile:  s.SSLKeyFile,
-		Server:      &http.Server{Addr: fmt.Sprintf(":%d", s.Port), Handler: s.Negroni},
-		Logger:      s.Logger,
-	}
-	go httpServerProxy.ListenAndServe()
+
+	go s.HttpServerProxy.ListenAndServe()
 	<-stop
 
 	// flush stats before shutdown
@@ -145,16 +137,13 @@ func (s Server) Start() error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := httpServerProxy.Shutdown(ctx); err != nil {
+	if err := s.HttpServerProxy.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
 	}
 	return nil
 }
 
 func (s *Server) buildTemporalClient() (client.Client, error) {
-	if s.TemporalHostPort != "" {
-		return nil, errors.New("invalid host port")
-	}
 	certs, err := x509.SystemCertPool()
 	if err != nil {
 		return nil, err
@@ -165,12 +154,13 @@ func (s *Server) buildTemporalClient() (client.Client, error) {
 			MinVersion: tls.VersionTLS12,
 		},
 	}
-	// TODO: upgrade server/metrics dir to use tally v4 to be compatible with temporal
 	clientOptions := client.Options{
 		Namespace:         AtlantisNamespace,
 		ConnectionOptions: connectionOptions,
-		HostPort:          s.TemporalHostPort,
-		//MetricsHandler:    temporal_tally.NewMetricsHandler(s.StatsScope),
+		MetricsHandler:    temporal_tally.NewMetricsHandler(s.StatsScope),
+	}
+	if s.TemporalHostPort != "" {
+		clientOptions.HostPort = s.TemporalHostPort
 	}
 	return client.Dial(clientOptions)
 }
