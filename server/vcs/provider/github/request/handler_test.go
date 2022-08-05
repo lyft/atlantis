@@ -13,7 +13,7 @@ import (
 	httputils "github.com/runatlantis/atlantis/server/http"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
-	"github.com/runatlantis/atlantis/server/vcs/types/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/stretchr/testify/assert"
 )
 

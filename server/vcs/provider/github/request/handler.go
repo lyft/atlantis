@@ -7,7 +7,7 @@ import (
 	"github.com/runatlantis/atlantis/server/http"
 
 	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
-	event_types "github.com/runatlantis/atlantis/server/vcs/types/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 
 	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/controllers/events/errors"
@@ -26,20 +26,28 @@ const (
 
 // event handler interfaces
 type commentEventHandler interface {
-	Handle(ctx context.Context, request *http.BufferedRequest, event event_types.Comment) error
+	Handle(ctx context.Context, request *http.BufferedRequest, e event.Comment) error
 }
 
 type prEventHandler interface {
-	Handle(ctx context.Context, request *http.BufferedRequest, event event_types.PullRequest) error
+	Handle(ctx context.Context, request *http.BufferedRequest, e event.PullRequest) error
+}
+
+type pushEventHandler interface {
+	Handle(ctx context.Context, e event.Push) error
 }
 
 // converter interfaces
 type pullEventConverter interface {
-	Convert(event *github.PullRequestEvent) (event_types.PullRequest, error)
+	Convert(event *github.PullRequestEvent) (event.PullRequest, error)
 }
 
 type commentEventConverter interface {
-	Convert(event *github.IssueCommentEvent) (event_types.Comment, error)
+	Convert(event *github.IssueCommentEvent) (event.Comment, error)
+}
+
+type pushEventConverter interface {
+	Convert(event *github.PushEvent) (event.Push, error)
 }
 
 // Matcher matches a provided request against some condition
@@ -55,6 +63,7 @@ func NewHandler(
 	webhookSecret []byte,
 	commentHandler *handlers.CommentEvent,
 	prHandler *handlers.PullRequestEvent,
+	pushHandler pushEventHandler,
 	allowDraftPRs bool,
 	repoConverter converter.RepoConverter,
 	pullConverter converter.PullConverter,
@@ -76,6 +85,10 @@ func NewHandler(
 			},
 			PullGetter: pullGetter,
 		},
+		pushEventConverter: converter.PushEvent{
+			RepoConverter: repoConverter,
+		},
+		pushHandler:   pushHandler,
 		webhookSecret: webhookSecret,
 		logger:        logger,
 		scope:         scope,
@@ -86,9 +99,11 @@ type Handler struct {
 	validator             requestValidator
 	commentHandler        commentEventHandler
 	prHandler             prEventHandler
+	pushHandler           pushEventHandler
 	parser                webhookParser
 	pullEventConverter    pullEventConverter
 	commentEventConverter commentEventConverter
+	pushEventConverter    pushEventConverter
 	webhookSecret         []byte
 	logger                logging.Logger
 	scope                 tally.Scope
@@ -118,10 +133,13 @@ func (h *Handler) Handle(r *http.BufferedRequest) error {
 
 	switch event := event.(type) {
 	case *github.IssueCommentEvent:
-		err = h.handleGithubCommentEvent(ctx, event, r)
+		err = h.handleCommentEvent(ctx, event, r)
 		scope = scope.SubScope(fmt.Sprintf("comment.%s", *event.Action))
 	case *github.PullRequestEvent:
-		err = h.handleGithubPullRequestEvent(ctx, event, r)
+		err = h.handlePullRequestEvent(ctx, event, r)
+		scope = scope.SubScope(fmt.Sprintf("pr.%s", *event.Action))
+	case *github.PushEvent:
+		err = h.handlePushEvent(ctx, event)
 		scope = scope.SubScope(fmt.Sprintf("pr.%s", *event.Action))
 	default:
 		h.logger.WarnContext(ctx, "Ignoring unsupported event")
@@ -136,13 +154,13 @@ func (h *Handler) Handle(r *http.BufferedRequest) error {
 	return nil
 }
 
-func (h *Handler) handleGithubCommentEvent(ctx context.Context, event *github.IssueCommentEvent, request *http.BufferedRequest) error {
-	if event.GetAction() != "created" {
+func (h *Handler) handleCommentEvent(ctx context.Context, e *github.IssueCommentEvent, request *http.BufferedRequest) error {
+	if e.GetAction() != "created" {
 		h.logger.WarnContext(ctx, "Ignoring comment event since action was not created")
 		return nil
 	}
 
-	commentEvent, err := h.commentEventConverter.Convert(event)
+	commentEvent, err := h.commentEventConverter.Convert(e)
 	if err != nil {
 		return &errors.EventParsingError{Err: err}
 	}
@@ -153,8 +171,8 @@ func (h *Handler) handleGithubCommentEvent(ctx context.Context, event *github.Is
 	return h.commentHandler.Handle(ctx, request, commentEvent)
 }
 
-func (h *Handler) handleGithubPullRequestEvent(ctx context.Context, event *github.PullRequestEvent, request *http.BufferedRequest) error {
-	pullEvent, err := h.pullEventConverter.Convert(event)
+func (h *Handler) handlePullRequestEvent(ctx context.Context, e *github.PullRequestEvent, request *http.BufferedRequest) error {
+	pullEvent, err := h.pullEventConverter.Convert(e)
 
 	if err != nil {
 		return &errors.EventParsingError{Err: err}
@@ -164,4 +182,16 @@ func (h *Handler) handleGithubPullRequestEvent(ctx context.Context, event *githu
 	ctx = context.WithValue(ctx, logging.SHAKey, pullEvent.Pull.HeadCommit)
 
 	return h.prHandler.Handle(ctx, request, pullEvent)
+}
+
+func (h *Handler) handlePushEvent(ctx context.Context, e *github.PushEvent) error {
+	pushEvent, err := h.pushEventConverter.Convert(e)
+
+	if err != nil {
+		return &errors.EventParsingError{Err: err}
+	}
+	ctx = context.WithValue(ctx, logging.RepositoryKey, pushEvent.Repo.FullName)
+	ctx = context.WithValue(ctx, logging.SHAKey, pushEvent.Sha)
+
+	return h.pushHandler.Handle(ctx, pushEvent)
 }
