@@ -140,7 +140,7 @@ func (h *Handler) Handle(r *http.BufferedRequest) error {
 		scope = scope.SubScope(fmt.Sprintf("pr.%s", *event.Action))
 	case *github.PushEvent:
 		err = h.handlePushEvent(ctx, event)
-		scope = scope.SubScope(fmt.Sprintf("pr.%s", *event.Action))
+		scope = scope.SubScope("push")
 	default:
 		h.logger.WarnContext(ctx, "Ignoring unsupported event")
 	}
