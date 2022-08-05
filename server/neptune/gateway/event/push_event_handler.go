@@ -35,7 +35,5 @@ func (p *PushHandler) Handle(ctx context.Context, event Push) error {
 		return nil
 	}
 
-
-
 	return nil
 }
