@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/http"
 
 	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
@@ -21,6 +22,8 @@ const (
 	githubHeader    = "X-Github-Event"
 	requestIDHeader = "X-Github-Delivery"
 )
+
+
 
 // interfaces used in Handler
 
@@ -130,6 +133,18 @@ func (h *Handler) Handle(r *http.BufferedRequest) error {
 	if err != nil {
 		return &errors.WebhookParsingError{Err: err}
 	}
+
+	// all github app events implementt this interface
+	installationSource, ok := event.(githubapp.InstallationSource)
+
+	if !ok {
+		return fmt.Errorf("unable to get installation id from request %s", r.GetHeader(requestIDHeader))
+	}
+
+	installationID := githubapp.GetInstallationIDFromEvent(installationSource)
+
+	// this will be used to create the relevant installation client
+	ctx = context.WithValue(ctx, logging.InstallationIDKey, installationID)
 
 	switch event := event.(type) {
 	case *github.IssueCommentEvent:
