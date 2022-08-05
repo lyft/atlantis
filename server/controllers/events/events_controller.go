@@ -136,7 +136,7 @@ func NewVCSEventsController(
 		logger,
 	)
 
-	// we don't supported push events in the atlantis worker and these should never make it in the queue
+	// we don't support push events in the atlantis worker and these should never make it in the queue
 	// in the first place, so if it happens, let's return an error and fail fast.
 	pushHandler := unsupportedPushEventHandler{}
 

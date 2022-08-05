@@ -10,13 +10,13 @@ type RepoConverter struct {
 	GithubToken string
 }
 
-type externelRepo interface {
+type externalRepo interface {
 	GetFullName() string
 	GetCloneURL() string
 }
 
 // ParseGithubRepo parses the response from the GitHub API endpoint that
 // returns a repo into the Atlantis model.
-func (c *RepoConverter) Convert(ghRepo externelRepo) (models.Repo, error) {
+func (c *RepoConverter) Convert(ghRepo externalRepo) (models.Repo, error) {
 	return models.NewRepo(models.Github, ghRepo.GetFullName(), ghRepo.GetCloneURL(), c.GithubUser, c.GithubToken)
 }

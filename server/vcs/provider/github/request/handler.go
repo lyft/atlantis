@@ -134,7 +134,7 @@ func (h *Handler) Handle(r *http.BufferedRequest) error {
 		return &errors.WebhookParsingError{Err: err}
 	}
 
-	// all github app events implementt this interface
+	// all github app events implement this interface
 	installationSource, ok := event.(githubapp.InstallationSource)
 
 	if !ok {
