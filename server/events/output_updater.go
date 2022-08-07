@@ -51,37 +51,6 @@ type ChecksOutputUpdater struct {
 	TitleBuilder     vcs.StatusTitleBuilder
 }
 
-func (c *ChecksOutputUpdater) handlePolicyCheck(ctx command.Context, cmd PullCommand, res command.Result) {
-	// Write output to description
-	for _, projectResult := range res.ProjectResults {
-		statusName := c.TitleBuilder.Build(cmd.CommandName().String(), vcs.StatusTitleOptions{
-			ProjectName: projectResult.ProjectName,
-		})
-
-		var state models.CommitStatus
-		if projectResult.Error != nil || projectResult.Failure != "" {
-			state = models.FailedCommitStatus
-		} else {
-			state = models.SuccessCommitStatus
-		}
-
-		updateStatusReq := types.UpdateStatusRequest{
-			Repo:        ctx.HeadRepo,
-			Ref:         ctx.Pull.HeadCommit,
-			StatusName:  statusName,
-			PullNum:     ctx.Pull.Num,
-			State:       state,
-			Description: c.MarkdownRenderer.RenderProject(projectResult, cmd.CommandName(), ctx.Pull.BaseRepo),
-		}
-
-		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-			ctx.Log.ErrorContext(ctx.RequestCtx, "updable to update check run", map[string]interface{}{
-				"error": err.Error(),
-			})
-		}
-	}
-}
-
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
 
 	if res.Error != nil || res.Failure != "" {
@@ -101,12 +70,6 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 				"error": err.Error(),
 			})
 		}
-		return
-	}
-
-	// Write output to description
-	if cmd.CommandName() == command.PolicyCheck {
-		c.handlePolicyCheck(*ctx, cmd, res)
 		return
 	}
 
