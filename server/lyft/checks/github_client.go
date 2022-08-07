@@ -95,7 +95,7 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 		return errors.Wrapf(err, "getting checkrun Id from db for %s", request.StatusName)
 	}
 
-	// This is likely a bug
+	// This is likely a bug since all for every new checkrun, we first set it to Pending and populate the db
 	if checkRun == nil {
 		return errors.New("checkrun dne in db")
 	}
@@ -127,11 +127,20 @@ func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, checkRun model
 }
 
 func (c *ChecksClientWrapper) updateCheckRunInDb(checkRun github.CheckRun, request types.UpdateStatusRequest) error {
+
+	checkRunStatus := models.CheckRunStatus{
+		ID: strconv.FormatInt(*checkRun.ID, 10),
+	}
+
+	// Persist the output for policy check commands only since github does not persist the state of the checkrun output
+	// Project plan/apply commands output the logs when the operation is complete, so we don't need to persist the output
+	// for these commands.
+	if strings.Contains(request.StatusName, "policy_check") && checkRun.Output != nil && checkRun.Output.Text != nil {
+		checkRunStatus.Output = *checkRun.Output.Text
+	}
+
 	// Store the checkrun ID in boltdb
-	if err := c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.Ref, models.CheckRunStatus{
-		ID:      strconv.FormatInt(*checkRun.ID, 10),
-		JobsURL: *checkRun.DetailsURL,
-	}); err != nil {
+	if err := c.Db.UpdateCheckRunForStatus(request.StatusName, request.Repo, request.Ref, checkRunStatus); err != nil {
 		return errors.Wrapf(err, "updating checkrun id in db for %s", request.StatusName)
 	}
 	return nil
@@ -187,9 +196,9 @@ func (c *ChecksClientWrapper) populateCreateCheckRunOptions(request types.Update
 }
 
 func (c *ChecksClientWrapper) populateUpdateCheckRunOptions(request types.UpdateStatusRequest, checkRunStatus models.CheckRunStatus) github.UpdateCheckRunOptions {
-	// Populate the details URL if not provided in this req
-	if request.DetailsURL == "" {
-		request.DetailsURL = checkRunStatus.JobsURL
+	// Populate the output for policy_check command if the output is empty
+	if strings.Contains(request.StatusName, "policy_check") && request.Output == "" {
+		request.Output = checkRunStatus.Output
 	}
 
 	status, conclusion := c.resolveChecksStatus(request.State)
@@ -207,11 +216,15 @@ func (c *ChecksClientWrapper) populateUpdateCheckRunOptions(request types.Update
 	}
 
 	updateCheckRunOptions := github.UpdateCheckRunOptions{
-		Name:       request.StatusName,
-		HeadSHA:    &request.Ref,
-		Status:     &status,
-		DetailsURL: &request.DetailsURL,
-		Output:     checkRunOutput,
+		Name:    request.StatusName,
+		HeadSHA: &request.Ref,
+		Status:  &status,
+		Output:  checkRunOutput,
+	}
+
+	// Add details URL is in the req
+	if request.DetailsURL != "" {
+		updateCheckRunOptions.DetailsURL = &request.DetailsURL
 	}
 
 	// Conclusion is required if status is Completed
