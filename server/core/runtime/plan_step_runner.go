@@ -263,6 +263,9 @@ func (p *PlanStepRunner) runRemotePlan(
 	for line := range outCh {
 		if line.Err != nil {
 			err = line.Err
+
+			// Set to Pending first
+			updateStatusF(models.PendingCommitStatus, "")
 			break
 		}
 		lines = append(lines, line.Line)
