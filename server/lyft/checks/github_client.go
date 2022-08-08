@@ -129,7 +129,8 @@ func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, checkRun model
 func (c *ChecksClientWrapper) updateCheckRunInDb(checkRun github.CheckRun, request types.UpdateStatusRequest) error {
 
 	checkRunStatus := models.CheckRunStatus{
-		ID: strconv.FormatInt(*checkRun.ID, 10),
+		ID:      strconv.FormatInt(*checkRun.ID, 10),
+		JobsURL: request.DetailsURL,
 	}
 
 	// Persist the output for policy check commands only since github does not persist the state of the checkrun output
@@ -199,6 +200,11 @@ func (c *ChecksClientWrapper) populateUpdateCheckRunOptions(request types.Update
 	// Populate the output for policy_check command if the output is empty
 	if strings.Contains(request.StatusName, "policy_check") && request.Output == "" {
 		request.Output = checkRunStatus.Output
+	}
+
+	// Populate the DetailsURL if empty
+	if request.DetailsURL == "" {
+		request.DetailsURL = checkRunStatus.JobsURL
 	}
 
 	status, conclusion := c.resolveChecksStatus(request.State)
