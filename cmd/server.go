@@ -15,6 +15,9 @@ package cmd
 
 import (
 	"fmt"
+	cfgParser "github.com/runatlantis/atlantis/server/core/config"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/metrics"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -27,6 +30,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/gateway"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -406,14 +411,16 @@ type ServerCmd struct {
 	AtlantisVersion string
 }
 
-// ServerCreator creates servers.
-// It's an abstraction to help us test.
-type ServerCreator interface {
-	NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error)
+func NewServerCmd(v *viper.Viper, version string) *ServerCmd {
+	return &ServerCmd{
+		ServerCreator: &ServerCreatorProxy{
+			GatewayCreator: &GatewayCreator{},
+			WorkerCreator:  &WorkerCreator{},
+		},
+		Viper:           v,
+		AtlantisVersion: version,
+	}
 }
-
-// DefaultServerCreator is the concrete implementation of ServerCreator.
-type DefaultServerCreator struct{}
 
 // ServerStarter is for starting up a server.
 // It's an abstraction to help us test.
@@ -421,9 +428,107 @@ type ServerStarter interface {
 	Start() error
 }
 
+// ServerCreator creates servers.
+// It's an abstraction to help us test.
+type ServerCreator interface {
+	NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error)
+}
+
+type GatewayCreator struct{}
+
+func (c *GatewayCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
+	// For now we just plumb this data through, ideally though we'd have gateway config pretty isolated
+	// from worker config however this requires more refactoring and can be done later.
+	cfg := gateway.Config{
+		DataDir:             userConfig.DataDir,
+		AutoplanFileList:    userConfig.AutoplanFileList,
+		RepoAllowList:       userConfig.RepoAllowlist,
+		MaxProjectsPerPR:    userConfig.MaxProjectsPerPR,
+		FFOwner:             userConfig.FFOwner,
+		FFRepo:              userConfig.FFRepo,
+		FFBranch:            userConfig.FFBranch,
+		FFPath:              userConfig.FFPath,
+		GithubHostname:      userConfig.GithubHostname,
+		GithubWebhookSecret: userConfig.GithubWebhookSecret,
+		GithubAppID:         userConfig.GithubAppID,
+		GithubAppKeyFile:    userConfig.GithubAppKeyFile,
+		GithubAppSlug:       userConfig.GithubAppSlug,
+		GithubStatusName:    userConfig.VCSStatusName,
+		LogLevel:            userConfig.ToLogLevel(),
+		StatsNamespace:      userConfig.StatsNamespace,
+		Port:                userConfig.Port,
+		RepoConfig:          userConfig.RepoConfig,
+		TFDownloadURL:       userConfig.TFDownloadURL,
+		SNSTopicArn:         userConfig.LyftGatewaySnsTopicArn,
+		SSLKeyFile:          userConfig.SSLKeyFile,
+		SSLCertFile:         userConfig.SSLCertFile,
+	}
+	return gateway.NewServer(cfg)
+}
+
+type WorkerCreator struct{}
+
 // NewServer returns the real Atlantis server object.
-func (d *DefaultServerCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
+func (d *WorkerCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
 	return server.NewServer(userConfig, config)
+}
+
+type TemporalWorker struct{}
+
+// NewServer returns the real Atlantis server object.
+func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
+	ctxLogger, err := logging.NewLoggerFromLevel(userConfig.ToLogLevel())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build context logger")
+	}
+	globalCfg := valid.NewGlobalCfg()
+	validator := &cfgParser.ParserValidator{}
+	if userConfig.RepoConfig != "" {
+		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
+		}
+	}
+	scope, closer, err := metrics.NewScope(globalCfg.Metrics, ctxLogger, userConfig.StatsNamespace)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create metrics scope")
+	}
+	parsedURL, err := server.ParseAtlantisURL(userConfig.AtlantisURL)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"parsing atlantis url %q", userConfig.AtlantisURL)
+	}
+	cfg := &temporalworker.Config{
+		AtlantisURL:      parsedURL,
+		AtlantisVersion:  config.AtlantisVersion,
+		CtxLogger:        ctxLogger,
+		Scope:            scope,
+		Closer:           closer,
+		Port:             userConfig.Port,
+		SslCertFile:      userConfig.SSLCertFile,
+		SslKeyFile:       userConfig.SSLKeyFile,
+		TemporalHostPort: fmt.Sprintf("%s:%s", globalCfg.Temporal.Host, globalCfg.Temporal.Port),
+	}
+	return temporalworker.NewServer(cfg)
+}
+
+// ServerCreatorProxy creates the correct server based on the mode passed in through user config
+type ServerCreatorProxy struct {
+	GatewayCreator        ServerCreator
+	WorkerCreator         ServerCreator
+	TemporalWorkerCreator ServerCreator
+}
+
+func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
+	if userConfig.ToLyftMode() == server.Gateway {
+		return d.GatewayCreator.NewServer(userConfig, config)
+	}
+
+	if userConfig.ToLyftMode() == server.TemporalWorker {
+		return d.TemporalWorkerCreator.NewServer(userConfig, config)
+	}
+
+	return d.WorkerCreator.NewServer(userConfig, config)
 }
 
 // Init returns the runnable cobra command.

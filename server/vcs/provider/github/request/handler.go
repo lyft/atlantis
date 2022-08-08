@@ -9,12 +9,12 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
 	event_types "github.com/runatlantis/atlantis/server/vcs/types/event"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/controllers/events/errors"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
-	"github.com/uber-go/tally"
+	"github.com/uber-go/tally/v4"
 )
 
 const (
