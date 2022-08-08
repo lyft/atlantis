@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -313,17 +312,13 @@ func (s *Server) Start() error {
 	defer s.Logger.Close()
 
 	// we create a base context that is marked done when we get a sigterm.
-	// this basecontext is used as the parent for each http request.
-	// in addition we should use this context for other async work to ensure we
+	// we should use this context for other async work to ensure we
 	// are gracefully handling shutdown and not dropping data.
 	mainCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	s.Server.BaseContext = func(l net.Listener) context.Context {
-		return mainCtx
-	}
+	// error group here makes it easier to add other processes and share a ctx between them
 	group, gCtx := errgroup.WithContext(mainCtx)
-
 	group.Go(func() error {
 		s.Logger.Info(fmt.Sprintf("Atlantis started - listening on port %v", s.Port))
 		err := s.Server.ListenAndServe()
@@ -334,12 +329,12 @@ func (s *Server) Start() error {
 		return err
 	})
 
-	group.Go(func() error {
-		<-gCtx.Done()
-		s.Logger.Warn("Received interrupt. Waiting for in-progress operations to complete")
+	<-gCtx.Done()
+	s.Logger.Warn("Received interrupt. Waiting for in-progress operations to complete")
 
-		return s.Shutdown()
-	})
+	if err := s.Shutdown(); err != nil {
+		return err
+	}
 
 	if err := group.Wait(); err != nil {
 		return err
