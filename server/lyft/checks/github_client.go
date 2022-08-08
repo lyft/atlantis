@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v45/github"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -216,10 +216,9 @@ func (c *ChecksClientWrapper) populateUpdateCheckRunOptions(request types.Update
 	}
 
 	updateCheckRunOptions := github.UpdateCheckRunOptions{
-		Name:    request.StatusName,
-		HeadSHA: &request.Ref,
-		Status:  &status,
-		Output:  checkRunOutput,
+		Name:   request.StatusName,
+		Status: &status,
+		Output: checkRunOutput,
 	}
 
 	// Add details URL is in the req
