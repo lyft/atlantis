@@ -116,6 +116,7 @@ func (s Server) Start() error {
 			log.Fatalln("unable to start worker", err)
 		}
 	}()
+	// TODO: spin up a goroutine to build and run the terraform worker
 
 	// Ensure server gracefully drains connections when stopped.
 	stop := make(chan os.Signal, 1)

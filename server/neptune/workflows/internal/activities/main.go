@@ -16,3 +16,14 @@ func NewDeploy() *Deploy {
 		dbActivities: &dbActivities{},
 	}
 }
+
+type Terraform struct {
+	*vcsActivities
+	*terraformActivities
+	*notifyActivities
+	*cleanupActivities
+}
+
+func NewTerraform() *Terraform {
+	return &Terraform{}
+}

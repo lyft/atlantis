@@ -1,8 +1,10 @@
 package deploy
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
@@ -10,6 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -55,7 +58,29 @@ func Workflow(ctx workflow.Context, request Request) error {
 	runner := newRunner(ctx, request)
 
 	// blocking call
-	return runner.Run(ctx)
+	err := runner.Run(ctx)
+	if err != nil {
+		return errors.Wrap(err, "executing deploy workflow")
+	}
+
+	childWorkflowOptions := workflow.ChildWorkflowOptions{
+		TaskQueue: terraform.TaskQueue,
+		//TODO: match workflow id to format used by deploy workflow
+		WorkflowID: fmt.Sprintf("%s-%s", request.Repository.FullName, request.Root.Name),
+	}
+	ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)
+	terraformWorkflowRequest := terraform.Request{
+		Repo: github.Repo{
+			Owner: request.Repository.Owner,
+			Name:  request.Repository.Name,
+			URL:   request.Repository.URL,
+		},
+	}
+	err = workflow.ExecuteChildWorkflow(ctx, terraform.Workflow, terraformWorkflowRequest).Get(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "executing child terraform workflow")
+	}
+	return nil
 }
 
 type Runner struct {
@@ -67,9 +92,9 @@ type Runner struct {
 func newRunner(ctx workflow.Context, request Request) *Runner {
 	// convert to internal types, we should probably move these into another struct
 	repo := github.Repo{
-		Name:     request.Repository.Name,
-		Owner:    request.Repository.Owner,
-		URL:      request.Repository.URL,
+		Name:  request.Repository.Name,
+		Owner: request.Repository.Owner,
+		URL:   request.Repository.URL,
 	}
 
 	// inject dependencies
