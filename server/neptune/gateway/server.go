@@ -358,7 +358,9 @@ func (s *Server) Shutdown() error {
 	}
 
 	// wait for 5 seconds to shutdown http server and drain existing requests if any.
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	if err := s.Server.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
 	}
