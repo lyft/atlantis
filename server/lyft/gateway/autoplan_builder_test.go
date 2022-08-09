@@ -163,7 +163,7 @@ func TestPullRequestHasTerraformChanges_NoTerraformChanges(t *testing.T) {
 	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(context.TODO(), log, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	Assert(t, containsTerraformChanges == false, "should have no terraform changes")
 	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
-	commitStatusUpdater.VerifyWasCalled(Times(3)).UpdateCombinedCount(
+	commitStatusUpdater.VerifyWasCalled(Times(6)).UpdateCombinedCount(
 		matchers.AnyContextContext(),
 		matchers.AnyModelsRepo(),
 		matchers.AnyModelsPullRequest(),
