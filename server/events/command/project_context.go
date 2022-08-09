@@ -22,7 +22,8 @@ type ContextFlags struct {
 	ParallelApply,
 	ParallelPlan,
 	ForceApply bool
-	LogLevel string
+	LogLevel      string
+	SkipCheckRuns bool
 }
 
 func NewProjectContext(

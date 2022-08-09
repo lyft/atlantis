@@ -15,7 +15,7 @@ func NewApprovePoliciesCommandRunner(
 	outputUpdater OutputUpdater,
 	dbUpdater *DBUpdater,
 	policyCheckCommandRunner PolicyCheckCommandRunner,
-	projectCommandBuilder ProjectCommandBuilder,
+	projectCommandBuilder ProjectPlanCommandBuilder,
 ) *ApprovePoliciesCommandRunner {
 	return &ApprovePoliciesCommandRunner{
 		commitStatusUpdater:      commitStatusUpdater,
@@ -35,7 +35,7 @@ type ApprovePoliciesCommandRunner struct {
 	prjCmdBuilder            ProjectApprovePoliciesCommandBuilder
 	prjCmdRunner             ProjectApprovePoliciesCommandRunner
 	policyCheckCommandRunner PolicyCheckCommandRunner
-	projectCommandBuilder    ProjectCommandBuilder
+	projectCommandBuilder    ProjectPlanCommandBuilder
 }
 
 func (p *ApprovePoliciesCommandRunner) partitionProjectCmds(
@@ -90,11 +90,12 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 	// Build Policy Check Project Context
 	ctx.Log.InfoContext(ctx.RequestCtx, "building policy check context")
 	prjCmds, err := a.projectCommandBuilder.BuildPlanCommands(ctx, &command.Comment{
-		RepoRelDir:  cmd.RepoRelDir,
-		Name:        command.Plan,
-		Workspace:   cmd.Workspace,
-		ProjectName: cmd.ProjectName,
-		LogLevel:    cmd.LogLevel,
+		RepoRelDir:    cmd.RepoRelDir,
+		Name:          command.Plan,
+		Workspace:     cmd.Workspace,
+		ProjectName:   cmd.ProjectName,
+		LogLevel:      cmd.LogLevel,
+		SkipCheckRuns: true,
 	})
 
 	for _, prjCmd := range prjCmds {

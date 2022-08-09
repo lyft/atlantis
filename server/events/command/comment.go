@@ -48,6 +48,9 @@ type Comment struct {
 	ProjectName string
 	// LogLevel is the name log level verbosity requested on the underlying Terraform operation.
 	LogLevel string
+
+	// Flag used by approve policies command runner to indicate not to make any checkruns
+	SkipCheckRuns bool
 }
 
 // IsForSpecificProject returns true if the command is for a specific dir, workspace
