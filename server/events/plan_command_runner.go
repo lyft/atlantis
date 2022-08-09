@@ -54,7 +54,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 
 	projectCmds, err := p.prjCmdBuilder.BuildAutoplanCommands(ctx)
 	if err != nil {
-		if statusErr := p.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.FailedCommitStatus, command.Plan); statusErr != nil {
+		if _, statusErr := p.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.FailedCommitStatus, command.Plan, ""); statusErr != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 		}
 		p.outputUpdater.UpdateOutput(ctx, AutoplanCommand{}, command.Result{Error: err})
@@ -68,22 +68,25 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 		// If there were no projects modified, we set successful commit statuses
 		// with 0/0 projects planned/policy_checked/applied successfully because some users require
 		// the Atlantis status to be passing for all pull requests.
-		if err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, command.Plan, 0, 0); err != nil {
+		if _, err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, command.Plan, 0, 0, ""); err != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 		}
-		if err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, command.PolicyCheck, 0, 0); err != nil {
+		if _, err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, command.PolicyCheck, 0, 0, ""); err != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 		}
-		if err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, command.Apply, 0, 0); err != nil {
+		if _, err := p.commitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, command.Apply, 0, 0, ""); err != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 		}
 		return
 	}
 
 	// At this point we are sure Atlantis has work to do, so set commit status to pending
-	if err := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, command.Plan); err != nil {
+	statusId, err := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.PendingCommitStatus, command.Plan, "")
+	if err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
+
+	ctx.CheckrunId = &statusId
 
 	// Only run commands in parallel if enabled
 	var result command.Result
@@ -123,13 +126,16 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *command.Comment) {
 	baseRepo := ctx.Pull.BaseRepo
 	pull := ctx.Pull
 
-	if err = p.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.PendingCommitStatus, command.Plan); err != nil {
+	// creating status for the first time
+	statusId, err := p.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.PendingCommitStatus, command.Plan, "")
+	if err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
+	ctx.CheckrunId = &statusId
 
 	projectCmds, err := p.prjCmdBuilder.BuildPlanCommands(ctx, cmd)
 	if err != nil {
-		if statusErr := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, command.Plan); statusErr != nil {
+		if _, statusErr := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, command.Plan, *ctx.CheckrunId); statusErr != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 		}
 		p.outputUpdater.UpdateOutput(ctx, cmd, command.Result{Error: err})
@@ -191,7 +197,7 @@ func (p *PlanCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus 
 		status = models.FailedCommitStatus
 	}
 
-	if err := p.commitStatusUpdater.UpdateCombinedCount(
+	if _, err := p.commitStatusUpdater.UpdateCombinedCount(
 		context.TODO(),
 		ctx.Pull.BaseRepo,
 		ctx.Pull,
@@ -199,6 +205,7 @@ func (p *PlanCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus 
 		command.Plan,
 		numSuccess,
 		len(pullStatus.Projects),
+		*ctx.CheckrunId,
 	); err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}

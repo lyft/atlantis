@@ -63,9 +63,10 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Description: fmt.Sprintf("%s failed", strings.Title(cmd.CommandName().String())),
 			Output:      output,
 			State:       models.FailedCommitStatus,
+			CheckRunId:  *ctx.CheckrunId,
 		}
 
-		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
+		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
 			ctx.Log.ErrorContext(ctx.RequestCtx, "updable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
@@ -104,9 +105,10 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Description: description,
 			Output:      output,
 			State:       state,
+			CheckRunId:  projectResult.CheckRunId,
 		}
 
-		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
+		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
 			ctx.Log.ErrorContext(ctx.RequestCtx, "unable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})
@@ -125,9 +127,10 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 		Description: fmt.Sprintf("%s succeded", strings.Title(cmd.CommandName().String())),
 		Output:      output,
 		State:       models.SuccessCommitStatus,
+		CheckRunId:  *ctx.CheckrunId,
 	}
 
-	if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
+	if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
 		ctx.Log.Error("unable to update check run", map[string]interface{}{
 			"error": err.Error(),
 		})
@@ -152,9 +155,10 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 			StatusName: statusName,
 			PullNum:    ctx.Pull.Num,
 			State:      state,
+			CheckRunId: projectResult.CheckRunId,
 		}
 
-		if err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
+		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
 			ctx.Log.ErrorContext(ctx.RequestCtx, "updable to update check run", map[string]interface{}{
 				"error": err.Error(),
 			})

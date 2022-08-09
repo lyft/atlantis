@@ -80,9 +80,13 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	if err = a.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.PendingCommitStatus, cmd.CommandName()); err != nil {
+	statusId, err := a.commitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.PendingCommitStatus, cmd.CommandName(), "")
+	if err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
+
+	// populate the command context
+	ctx.CheckrunId = &statusId
 
 	// Get the mergeable status before we set any build statuses of our own.
 	// We do this here because when we set a "Pending" status, if users have
@@ -102,7 +106,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	projectCmds, err = a.prjCmdBuilder.BuildApplyCommands(ctx, cmd)
 
 	if err != nil {
-		if statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName()); statusErr != nil {
+		if _, statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName(), *ctx.CheckrunId); statusErr != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 		}
 		a.outputUpdater.UpdateOutput(ctx, cmd, command.Result{Error: err})
@@ -158,7 +162,7 @@ func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus
 		status = models.PendingCommitStatus
 	}
 
-	if err := a.commitStatusUpdater.UpdateCombinedCount(
+	if _, err := a.commitStatusUpdater.UpdateCombinedCount(
 		context.TODO(),
 		ctx.Pull.BaseRepo,
 		ctx.Pull,
@@ -166,6 +170,7 @@ func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus
 		command.Apply,
 		numSuccess,
 		len(pullStatus.Projects),
+		*ctx.CheckrunId,
 	); err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}

@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -462,7 +463,7 @@ func (g *GithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest
 
 // UpdateStatus updates the status badge on the pull request.
 // See https://github.com/blog/1227-commit-status-api.
-func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
+func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	ghState := "error"
 	switch request.State {
 	case models.PendingCommitStatus:
@@ -480,41 +481,28 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 		TargetURL:   &request.DetailsURL,
 	}
 	_, _, err := g.client.Repositories.CreateStatus(ctx, request.Repo.Owner, request.Repo.Name, request.Ref, status)
-	return err
+	return "", err
 }
 
 // [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
-func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	checkRuns, err := g.GetRepoChecks(request.Repo, request.Ref)
-	if err != nil {
-		return err
+func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
+
+	if request.CheckRunId == "" {
+		return g.createChecksStatus(ctx, request)
 	}
 
-	// Update checkrun if it exists and if it's not a rerun
-	// request.state is pending only when an operation starts. So, if the checkrun exists and the state is pending, it is a rerun.
-	if checkRun := g.findCheckRun(request.StatusName, checkRuns); checkRun != nil && request.State != models.PendingCommitStatus {
-		return g.updateChecksStatus(ctx, request, checkRun)
-	}
-
-	return g.createChecksStatus(ctx, request)
+	return request.CheckRunId, g.updateChecksStatus(ctx, request, request.CheckRunId)
 }
 
 // Update existing checkrun
-func (g *GithubClient) updateChecksStatus(ctx context.Context, request types.UpdateStatusRequest, checkRun *github.CheckRun) error {
-
-	var fallBackURL string
-	if checkRun.DetailsURL != nil {
-		fallBackURL = *checkRun.DetailsURL
-	}
+func (g *GithubClient) updateChecksStatus(ctx context.Context, request types.UpdateStatusRequest, checkRunId string) error {
 
 	ouptut := g.capCheckRunOutput(request.Output)
 	status, conclusion := g.resolveChecksStatus(request.State)
-	summary := g.summaryWithJobURL(request, fallBackURL)
-
 	checkRunOutput := github.CheckRunOutput{
 		Title:   &request.StatusName,
 		Text:    &ouptut,
-		Summary: &summary,
+		Summary: &request.Description,
 	}
 
 	updateCheckRunOpts := github.UpdateCheckRunOptions{
@@ -527,20 +515,20 @@ func (g *GithubClient) updateChecksStatus(ctx context.Context, request types.Upd
 	// fall back to checkRun details URL
 	if request.DetailsURL != "" {
 		updateCheckRunOpts.DetailsURL = &request.DetailsURL
-	} else if checkRun.DetailsURL != nil {
-		updateCheckRunOpts.DetailsURL = checkRun.DetailsURL
 	}
 
 	// Conclusion is required if status is Completed
 	if status == Completed.String() {
 		updateCheckRunOpts.Conclusion = &conclusion
 	}
-	_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, *checkRun.ID, updateCheckRunOpts)
+
+	checkRunIdInt, _ := strconv.ParseInt(checkRunId, 10, 64)
+	_, _, err := g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, checkRunIdInt, updateCheckRunOpts)
 	return err
 }
 
 // create a new checkrun
-func (g *GithubClient) createChecksStatus(ctx context.Context, request types.UpdateStatusRequest) error {
+func (g *GithubClient) createChecksStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	ouptut := g.capCheckRunOutput(request.Output)
 	status, conclusion := g.resolveChecksStatus(request.State)
 	summary := g.summaryWithJobURL(request, "")
@@ -563,8 +551,8 @@ func (g *GithubClient) createChecksStatus(ctx context.Context, request types.Upd
 		createCheckRunOpts.Conclusion = &conclusion
 	}
 
-	_, _, err := g.client.Checks.CreateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, createCheckRunOpts)
-	return err
+	checkRun, _, err := g.client.Checks.CreateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, createCheckRunOpts)
+	return strconv.FormatInt(*checkRun.ID, 10), err
 }
 
 // Cap the output string if it exceeds the max checks output length
