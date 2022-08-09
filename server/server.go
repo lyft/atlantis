@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"io"
 	"io/ioutil"
 	"log"
@@ -32,6 +31,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/runatlantis/atlantis/server/instrumentation"
@@ -527,11 +528,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	projectContextBuilder := wrappers.
 		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
-		WithInstrumentation(statsScope)
+		WithInstrumentation(statsScope).
+		WithGithubChecks(featureAllocator, commitStatusUpdater)
 
 	prProjectContextBuilder := wrappers.
 		WrapProjectContext(events.NewPRProjectCommandContextBuilder(commentParser)).
-		WithInstrumentation(statsScope)
+		WithInstrumentation(statsScope).
+		WithGithubChecks(featureAllocator, commitStatusUpdater)
 
 	if userConfig.EnablePolicyChecks {
 		projectContextBuilder = projectContextBuilder.EnablePolicyChecks(commentParser)

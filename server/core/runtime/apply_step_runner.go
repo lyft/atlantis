@@ -127,12 +127,10 @@ func (a *ApplyStepRunner) runRemoteApply(
 	}
 
 	// updateStatusF will update the commit status and log any error.
-	updateStatusF := func(status models.CommitStatus, url string, checkRunId string) string {
-		id, err := a.CommitStatusUpdater.UpdateProject(ctx, prjCtx, command.Apply, status, url, checkRunId)
-		if err != nil {
+	updateStatusF := func(status models.CommitStatus, url string, checkRunId string) {
+		if _, err := a.CommitStatusUpdater.UpdateProject(ctx, prjCtx, command.Apply, status, url, checkRunId); err != nil {
 			prjCtx.Log.ErrorContext(prjCtx.RequestCtx, fmt.Sprintf("unable to update status: %s", err))
 		}
-		return id
 	}
 
 	// Start the async command execution.
@@ -157,11 +155,7 @@ func (a *ApplyStepRunner) runRemoteApply(
 			nextLineIsRunURL = true
 		} else if nextLineIsRunURL {
 			runURL = strings.TrimSpace(line.Line)
-
-			// First time creating the checkrun
-			statusId := updateStatusF(models.PendingCommitStatus, runURL, "")
-			prjCtx.CheckRunId = &statusId
-
+			updateStatusF(models.PendingCommitStatus, runURL, "")
 			nextLineIsRunURL = false
 		}
 
@@ -192,9 +186,9 @@ func (a *ApplyStepRunner) runRemoteApply(
 	}
 
 	if err != nil {
-		updateStatusF(models.FailedCommitStatus, runURL, *prjCtx.CheckRunId)
+		updateStatusF(models.FailedCommitStatus, runURL, prjCtx.CheckRunId)
 	} else {
-		updateStatusF(models.SuccessCommitStatus, runURL, *prjCtx.CheckRunId)
+		updateStatusF(models.SuccessCommitStatus, runURL, prjCtx.CheckRunId)
 	}
 	return output, err
 }

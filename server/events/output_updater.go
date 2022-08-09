@@ -2,7 +2,6 @@ package events
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -53,27 +52,6 @@ type ChecksOutputUpdater struct {
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
 
-	if res.Error != nil || res.Failure != "" {
-		output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
-		updateStatusReq := types.UpdateStatusRequest{
-			Repo:        ctx.HeadRepo,
-			Ref:         ctx.Pull.HeadCommit,
-			StatusName:  c.TitleBuilder.Build(cmd.CommandName().String()),
-			PullNum:     ctx.Pull.Num,
-			Description: fmt.Sprintf("%s failed", strings.Title(cmd.CommandName().String())),
-			Output:      output,
-			State:       models.FailedCommitStatus,
-			CheckRunId:  *ctx.CheckrunId,
-		}
-
-		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-			ctx.Log.ErrorContext(ctx.RequestCtx, "updable to update check run", map[string]interface{}{
-				"error": err.Error(),
-			})
-		}
-		return
-	}
-
 	// Handle ApprovePolicies command separately
 	if cmd.CommandName() == command.ApprovePolicies {
 		c.handleApprovePolicies(ctx, cmd, res)
@@ -118,23 +96,6 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 }
 
 func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd PullCommand, res command.Result) {
-	output := c.MarkdownRenderer.Render(res, cmd.CommandName(), ctx.Pull.BaseRepo)
-	updateStatusReq := types.UpdateStatusRequest{
-		Repo:        ctx.HeadRepo,
-		Ref:         ctx.Pull.HeadCommit,
-		StatusName:  c.TitleBuilder.Build(cmd.CommandName().String()),
-		PullNum:     ctx.Pull.Num,
-		Description: fmt.Sprintf("%s succeded", strings.Title(cmd.CommandName().String())),
-		Output:      output,
-		State:       models.SuccessCommitStatus,
-		CheckRunId:  *ctx.CheckrunId,
-	}
-
-	if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-		ctx.Log.Error("unable to update check run", map[string]interface{}{
-			"error": err.Error(),
-		})
-	}
 
 	// In addition, update project level atlantis/policy_check checkruns
 	for _, projectResult := range res.ProjectResults {

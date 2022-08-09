@@ -154,7 +154,7 @@ type ProjectContext struct {
 	// RequestCtx is the context generated when request is first received from VCS
 	RequestCtx context.Context
 
-	CheckRunId *string
+	CheckRunId string
 }
 
 // ProjectCloneDir creates relative path to clone the repo to. If we are running

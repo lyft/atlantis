@@ -86,8 +86,6 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
 
-	ctx.CheckrunId = &statusId
-
 	// Only run commands in parallel if enabled
 	var result command.Result
 	if p.isParallelEnabled(projectCmds) {
@@ -104,7 +102,7 @@ func (p *PlanCommandRunner) runAutoplan(ctx *command.Context) {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("writing results: %s", err))
 	}
 
-	p.updateCommitStatus(ctx, pullStatus)
+	p.updateCommitStatus(ctx, pullStatus, statusId)
 
 	// Check if there are any planned projects and if there are any errors or if plans are being deleted
 	if len(policyCheckCmds) > 0 && !result.HasErrors() {
@@ -131,11 +129,10 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *command.Comment) {
 	if err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
-	ctx.CheckrunId = &statusId
 
 	projectCmds, err := p.prjCmdBuilder.BuildPlanCommands(ctx, cmd)
 	if err != nil {
-		if _, statusErr := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, command.Plan, *ctx.CheckrunId); statusErr != nil {
+		if _, statusErr := p.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, command.Plan, statusId); statusErr != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 		}
 		p.outputUpdater.UpdateOutput(ctx, cmd, command.Result{Error: err})
@@ -164,7 +161,7 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	p.updateCommitStatus(ctx, pullStatus)
+	p.updateCommitStatus(ctx, pullStatus, statusId)
 
 	// Runs policy checks step after all plans are successful.
 	// This step does not approve any policies that require approval.
@@ -182,7 +179,7 @@ func (p *PlanCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	}
 }
 
-func (p *PlanCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus) {
+func (p *PlanCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus, statusId string) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus
@@ -205,7 +202,7 @@ func (p *PlanCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus 
 		command.Plan,
 		numSuccess,
 		len(pullStatus.Projects),
-		*ctx.CheckrunId,
+		statusId,
 	); err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}

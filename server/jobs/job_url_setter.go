@@ -42,11 +42,6 @@ func (j *JobURLSetter) SetJobURLWithStatus(ctx command.ProjectContext, cmdName c
 		return err
 	}
 
-	checkRunId := ""
-	if ctx.CheckRunId != nil {
-		checkRunId = *ctx.CheckRunId
-	}
-	statusId, err := j.projectStatusUpdater.UpdateProject(context.TODO(), ctx, cmdName, status, url, checkRunId)
-	ctx.CheckRunId = &statusId
+	_, err = j.projectStatusUpdater.UpdateProject(context.TODO(), ctx, cmdName, status, url, ctx.CheckRunId)
 	return err
 }

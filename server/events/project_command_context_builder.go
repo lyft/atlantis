@@ -9,7 +9,51 @@ import (
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
+
+type ChecksEnabledPrjCmdContextBuilder struct {
+	ProjectCommandContextBuilder
+
+	FeatureAllocator    feature.Allocator
+	CommitStatusUpdater CommitStatusUpdater
+}
+
+func (c *ChecksEnabledPrjCmdContextBuilder) isChecksEnabled(repo models.Repo, pull models.PullRequest) bool {
+	if shouldAllocate, err := c.FeatureAllocator.ShouldAllocate(feature.GithubChecks, feature.FeatureContext{
+		RepoName:         repo.FullName,
+		PullCreationTime: pull.CreatedAt,
+	}); !shouldAllocate || err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (c *ChecksEnabledPrjCmdContextBuilder) BuildProjectContext(
+	ctx *command.Context,
+	cmdName command.Name,
+	prjCfg valid.MergedProjectCfg,
+	commentArgs []string,
+	repoDir string,
+	contextFlags *command.ContextFlags,
+) []command.ProjectContext {
+	prjCtxs := c.ProjectCommandContextBuilder.BuildProjectContext(ctx, cmdName, prjCfg, commentArgs, repoDir, contextFlags)
+	if !c.isChecksEnabled(ctx.HeadRepo, ctx.Pull) {
+		return prjCtxs
+	}
+
+	// Create pending checkrun for project commands
+	for i, prjCtx := range prjCtxs {
+
+		statusId, _ := c.CommitStatusUpdater.UpdateProject(ctx.RequestCtx, prjCtx, cmdName, models.PendingCommitStatus, "", "")
+
+		prjCtxs[i].CheckRunId = statusId
+	}
+	return prjCtxs
+
+}
 
 type ProjectCommandContextBuilder interface {
 	// BuildProjectContext builds project command contexts for atlantis commands

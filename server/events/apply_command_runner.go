@@ -85,9 +85,6 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
 
-	// populate the command context
-	ctx.CheckrunId = &statusId
-
 	// Get the mergeable status before we set any build statuses of our own.
 	// We do this here because when we set a "Pending" status, if users have
 	// required the Atlantis status checks to pass, then we've now changed
@@ -106,7 +103,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	projectCmds, err = a.prjCmdBuilder.BuildApplyCommands(ctx, cmd)
 
 	if err != nil {
-		if _, statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName(), *ctx.CheckrunId); statusErr != nil {
+		if _, statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, cmd.CommandName(), statusId); statusErr != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 		}
 		a.outputUpdater.UpdateOutput(ctx, cmd, command.Result{Error: err})
@@ -133,7 +130,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	a.updateCommitStatus(ctx, pullStatus)
+	a.updateCommitStatus(ctx, pullStatus, statusId)
 }
 
 func (a *ApplyCommandRunner) IsLocked() (bool, error) {
@@ -146,7 +143,7 @@ func (a *ApplyCommandRunner) isParallelEnabled(projectCmds []command.ProjectCont
 	return len(projectCmds) > 0 && projectCmds[0].ParallelApplyEnabled
 }
 
-func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus) {
+func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus, statusId string) {
 	var numSuccess int
 	var numErrored int
 	status := models.SuccessCommitStatus
@@ -170,7 +167,7 @@ func (a *ApplyCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus
 		command.Apply,
 		numSuccess,
 		len(pullStatus.Projects),
-		*ctx.CheckrunId,
+		statusId,
 	); err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
