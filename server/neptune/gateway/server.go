@@ -18,6 +18,7 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers"
 	cfgParser "github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/runtime"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
@@ -83,6 +84,12 @@ func NewServer(config Config) (*Server, error) {
 		return nil, err
 	}
 
+	// Status updates require bolt db for consecutive status updates
+	boltdb, err := db.New(config.DataDir)
+	if err != nil {
+		return nil, err
+	}
+
 	repoAllowlist, err := events.NewRepoAllowlistChecker(config.RepoAllowList)
 	if err != nil {
 		return nil, err
@@ -137,6 +144,7 @@ func NewServer(config Config) (*Server, error) {
 		FeatureAllocator: featureAllocator,
 		Logger:           ctxLogger,
 		GithubClient:     rawGithubClient,
+		Db:               boltdb,
 	}
 
 	vcsClient := vcs.NewInstrumentedGithubClient(rawGithubClient, checksWrapperGhClient, statsScope, ctxLogger)
