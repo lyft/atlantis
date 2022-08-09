@@ -117,6 +117,7 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 			PullNum:    ctx.Pull.Num,
 			State:      state,
 			CheckRunId: projectResult.CheckRunId,
+			Output:     projectResult.PolicyCheckSuccess.PolicyCheckOutput,
 		}
 
 		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {

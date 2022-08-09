@@ -14,22 +14,48 @@ func NewApprovePoliciesCommandRunner(
 	prjCommandRunner ProjectApprovePoliciesCommandRunner,
 	outputUpdater OutputUpdater,
 	dbUpdater *DBUpdater,
+	policyCheckCommandRunner PolicyCheckCommandRunner,
+	projectCommandBuilder ProjectCommandBuilder,
 ) *ApprovePoliciesCommandRunner {
 	return &ApprovePoliciesCommandRunner{
-		commitStatusUpdater: commitStatusUpdater,
-		prjCmdBuilder:       prjCommandBuilder,
-		prjCmdRunner:        prjCommandRunner,
-		outputUpdater:       outputUpdater,
-		dbUpdater:           dbUpdater,
+		commitStatusUpdater:      commitStatusUpdater,
+		prjCmdBuilder:            prjCommandBuilder,
+		prjCmdRunner:             prjCommandRunner,
+		outputUpdater:            outputUpdater,
+		dbUpdater:                dbUpdater,
+		policyCheckCommandRunner: policyCheckCommandRunner,
+		projectCommandBuilder:    projectCommandBuilder,
 	}
 }
 
 type ApprovePoliciesCommandRunner struct {
-	commitStatusUpdater CommitStatusUpdater
-	outputUpdater       OutputUpdater
-	dbUpdater           *DBUpdater
-	prjCmdBuilder       ProjectApprovePoliciesCommandBuilder
-	prjCmdRunner        ProjectApprovePoliciesCommandRunner
+	commitStatusUpdater      CommitStatusUpdater
+	outputUpdater            OutputUpdater
+	dbUpdater                *DBUpdater
+	prjCmdBuilder            ProjectApprovePoliciesCommandBuilder
+	prjCmdRunner             ProjectApprovePoliciesCommandRunner
+	policyCheckCommandRunner PolicyCheckCommandRunner
+	projectCommandBuilder    ProjectCommandBuilder
+}
+
+func (p *ApprovePoliciesCommandRunner) partitionProjectCmds(
+	ctx *command.Context,
+	cmds []command.ProjectContext,
+) (
+	projectCmds []command.ProjectContext,
+	policyCheckCmds []command.ProjectContext,
+) {
+	for _, cmd := range cmds {
+		switch cmd.CommandName {
+		case command.Plan:
+			projectCmds = append(projectCmds, cmd)
+		case command.PolicyCheck:
+			policyCheckCmds = append(policyCheckCmds, cmd)
+		default:
+			ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("%s is not supported", cmd.CommandName))
+		}
+	}
+	return
 }
 
 func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
@@ -61,7 +87,53 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 		return
 	}
 
+	// Build Policy Check Project Context
+	ctx.Log.InfoContext(ctx.RequestCtx, "building policy check context")
+	prjCmds, err := a.projectCommandBuilder.BuildPlanCommands(ctx, &command.Comment{
+		RepoRelDir:  cmd.RepoRelDir,
+		Name:        command.Plan,
+		Workspace:   cmd.Workspace,
+		ProjectName: cmd.ProjectName,
+		LogLevel:    cmd.LogLevel,
+	})
+
+	for _, prjCmd := range prjCmds {
+		ctx.Log.InfoContext(ctx.RequestCtx, "Project Command", map[string]interface{}{
+			"project command": prjCmd,
+		})
+	}
+
+	if err != nil {
+		ctx.Log.ErrorContext(ctx.RequestCtx, "build plan command for policy approval failed", map[string]interface{}{})
+	}
+
+	_, policyCheckCommands := a.partitionProjectCmds(ctx, prjCmds)
+	for _, prjCmd := range policyCheckCommands {
+		ctx.Log.InfoContext(ctx.RequestCtx, "Policy Check Command", map[string]interface{}{
+			"Policy Check Command": prjCmd,
+		})
+	}
+
+	policyCheckOutput := map[string]string{}
+	for _, policyCheckCommand := range policyCheckCommands {
+		res := a.policyCheckCommandRunner.prjCmdRunner.PolicyCheck(policyCheckCommand)
+		policyCheckOutput[policyCheckCommand.ProjectName] = res.PolicyCheckSuccess.PolicyCheckOutput
+	}
+
+	ctx.Log.InfoContext(ctx.RequestCtx, "policy check output", map[string]interface{}{
+		"output": policyCheckOutput,
+	})
+
 	result := a.buildApprovePolicyCommandResults(ctx, projectCmds)
+
+	// Populate the results with the policy check output
+	for i, prjResult := range result.ProjectResults {
+		result.ProjectResults[i].PolicyCheckSuccess.PolicyCheckOutput = policyCheckOutput[prjResult.ProjectName]
+	}
+
+	ctx.Log.InfoContext(ctx.RequestCtx, "approve policies result", map[string]interface{}{
+		"approve policies": result,
+	})
 
 	a.outputUpdater.UpdateOutput(
 		ctx,
