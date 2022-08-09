@@ -92,6 +92,11 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 	if len(projectCmds) == 0 {
 		cmdCtx.Log.InfoContext(cmdCtx.RequestCtx, "no modified projects have been found")
 		for _, cmd := range []command.Name{command.Plan, command.Apply, command.PolicyCheck} {
+			// Set to pending first to create a new  checkrun and populate the db
+			if err := r.CommitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, cmd, 0, 0); err != nil {
+				cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
+			}
+
 			if err := r.CommitStatusUpdater.UpdateCombinedCount(context.TODO(), baseRepo, pull, models.SuccessCommitStatus, cmd, 0, 0); err != nil {
 				cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 			}
