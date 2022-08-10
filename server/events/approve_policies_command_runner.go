@@ -135,7 +135,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 
 	// Populate the results with the policy check output
 	for i, prjResult := range result.ProjectResults {
-		result.ProjectResults[i].Failure = prjResult.Failure
+		result.ProjectResults[i].Failure = policyCheckOutput[prjResult.ProjectName]
 
 		// To avoid populating output from the approve policies command
 		result.ProjectResults[i].PolicyCheckSuccess = nil
