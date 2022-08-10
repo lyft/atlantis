@@ -23,7 +23,7 @@ type renderer interface {
 }
 
 type checksClient interface {
-	UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error
+	UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error)
 }
 
 // [WENGINES-4643] TODO: Remove PullOutputUpdater and default to checks once github checks is stable
@@ -92,7 +92,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Description:      description,
 			Output:           output,
 			State:            state,
-      CheckRunId:  projectResult.CheckRunId,
+			CheckRunId:       projectResult.CheckRunId,
 			PullCreationTime: ctx.Pull.CreatedAt,
 		}
 
@@ -113,17 +113,14 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 		})
 
 		output := c.MarkdownRenderer.RenderProject(projectResult, command.PolicyCheck, ctx.Pull.BaseRepo)
-		ctx.Log.Info("Output", map[string]interface{}{
-			"Output": output,
-		})
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:             ctx.HeadRepo,
 			Ref:              ctx.Pull.HeadCommit,
 			StatusName:       statusName,
 			PullNum:          ctx.Pull.Num,
-			State:            state,
-      CheckRunId: projectResult.CheckRunId,
-			Output:     output,
+			State:            models.SuccessCommitStatus,
+			CheckRunId:       projectResult.CheckRunId,
+			Output:           output,
 			PullCreationTime: ctx.Pull.CreatedAt,
 		}
 
