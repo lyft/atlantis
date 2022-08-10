@@ -497,12 +497,15 @@ func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.Upd
 // Update existing checkrun
 func (g *GithubClient) updateChecksStatus(ctx context.Context, request types.UpdateStatusRequest, checkRunId string) error {
 
-	ouptut := g.capCheckRunOutput(request.Output)
+	output := g.capCheckRunOutput(request.Output)
 	status, conclusion := g.resolveChecksStatus(request.State)
 	checkRunOutput := github.CheckRunOutput{
 		Title:   &request.StatusName,
-		Text:    &ouptut,
 		Summary: &request.Description,
+	}
+
+	if output != "" {
+		checkRunOutput.Text = &output
 	}
 
 	updateCheckRunOpts := github.UpdateCheckRunOptions{
@@ -529,14 +532,17 @@ func (g *GithubClient) updateChecksStatus(ctx context.Context, request types.Upd
 
 // create a new checkrun
 func (g *GithubClient) createChecksStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
-	ouptut := g.capCheckRunOutput(request.Output)
+	output := g.capCheckRunOutput(request.Output)
 	status, conclusion := g.resolveChecksStatus(request.State)
 	summary := g.summaryWithJobURL(request, "")
 
 	checkRunOutput := github.CheckRunOutput{
 		Title:   &request.StatusName,
-		Text:    &ouptut,
 		Summary: &summary,
+	}
+
+	if output != "" {
+		checkRunOutput.Text = &output
 	}
 
 	createCheckRunOpts := github.CreateCheckRunOptions{

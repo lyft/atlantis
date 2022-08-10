@@ -212,15 +212,17 @@ func (a *ApprovePoliciesCommandRunner) runPolicyCheckAndPopulateOuptut(ctx *comm
 	for _, policyCheckCommand := range policyCheckCommands {
 		res := a.projectPolicyCheckCommandRunner.PolicyCheck(policyCheckCommand)
 
-		// Skip if policy check is success
-		if res.Failure == "" {
-			continue
+		var output string
+		if res.Failure != "" {
+			output = res.Failure
+		} else if res.PolicyCheckSuccess != nil {
+			output = res.PolicyCheckSuccess.PolicyCheckOutput
 		}
 
 		a.Logger.Info("Result: ", map[string]interface{}{
-			"Result": res,
+			"Result": output,
 		})
-		policyCheckOutput[policyCheckCommand.ProjectName] = res.Failure
+		policyCheckOutput[policyCheckCommand.ProjectName] = output
 	}
 	a.Logger.Info("Policy Check Output", map[string]interface{}{
 		"output": policyCheckOutput,
