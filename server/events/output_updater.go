@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -15,6 +16,15 @@ import (
 
 type OutputUpdater interface {
 	UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result)
+}
+
+type renderer interface {
+	Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string
+	RenderProject(prjRes command.ProjectResult, cmdName command.Name, baseRepo models.Repo) string
+}
+
+type checksClient interface {
+	UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error
 }
 
 // [WENGINES-4643] TODO: Remove PullOutputUpdater and default to checks once github checks is stable
@@ -46,8 +56,8 @@ func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd
 
 // Used to support checks type output (Github checks for example)
 type ChecksOutputUpdater struct {
-	VCSClient        vcs.Client
-	MarkdownRenderer *markdown.Renderer
+	VCSClient        checksClient
+	MarkdownRenderer renderer
 	TitleBuilder     vcs.StatusTitleBuilder
 }
 
@@ -124,7 +134,7 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 		Ref:              ctx.Pull.HeadCommit,
 		StatusName:       c.TitleBuilder.Build(cmd.CommandName().String()),
 		PullNum:          ctx.Pull.Num,
-		Description:      fmt.Sprintf("%s succeded", strings.Title(cmd.CommandName().String())),
+		Description:      fmt.Sprintf("%s succeeded", strings.Title(cmd.CommandName().String())),
 		Output:           output,
 		State:            models.SuccessCommitStatus,
 		PullCreationTime: ctx.Pull.CreatedAt,
