@@ -40,7 +40,9 @@ func (c *ChecksEnabledPrjCmdContextBuilder) BuildProjectContext(
 	contextFlags *command.ContextFlags,
 ) []command.ProjectContext {
 	prjCtxs := c.ProjectCommandContextBuilder.BuildProjectContext(ctx, cmdName, prjCfg, commentArgs, repoDir, contextFlags)
-	if !c.isChecksEnabled(ctx.HeadRepo, ctx.Pull) || contextFlags.SkipCheckRuns {
+	if !c.isChecksEnabled(ctx.HeadRepo, ctx.Pull) ||
+		contextFlags.SkipCheckRuns ||
+		cmdName == command.ApprovePolicies {
 		return prjCtxs
 	}
 

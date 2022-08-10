@@ -6,6 +6,7 @@ import (
 
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/logging"
 )
 
 func NewApprovePoliciesCommandRunner(
@@ -16,6 +17,7 @@ func NewApprovePoliciesCommandRunner(
 	dbUpdater *DBUpdater,
 	policyCheckCommandRunner PolicyCheckCommandRunner,
 	projectCommandBuilder ProjectPlanCommandBuilder,
+	logger logging.Logger,
 ) *ApprovePoliciesCommandRunner {
 	return &ApprovePoliciesCommandRunner{
 		commitStatusUpdater:      commitStatusUpdater,
@@ -25,6 +27,7 @@ func NewApprovePoliciesCommandRunner(
 		dbUpdater:                dbUpdater,
 		policyCheckCommandRunner: policyCheckCommandRunner,
 		projectCommandBuilder:    projectCommandBuilder,
+		Logger:                   logger,
 	}
 }
 
@@ -36,6 +39,7 @@ type ApprovePoliciesCommandRunner struct {
 	prjCmdRunner             ProjectApprovePoliciesCommandRunner
 	policyCheckCommandRunner PolicyCheckCommandRunner
 	projectCommandBuilder    ProjectPlanCommandBuilder
+	Logger                   logging.Logger
 }
 
 func (p *ApprovePoliciesCommandRunner) partitionProjectCmds(
@@ -88,7 +92,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 	}
 
 	// Build Policy Check Project Context
-	ctx.Log.InfoContext(ctx.RequestCtx, "building policy check context")
+	a.Logger.Info("building policy check context")
 	prjCmds, err := a.projectCommandBuilder.BuildPlanCommands(ctx, &command.Comment{
 		RepoRelDir:    cmd.RepoRelDir,
 		Name:          command.Plan,
@@ -99,19 +103,19 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 	})
 
 	for _, prjCmd := range prjCmds {
-		ctx.Log.InfoContext(ctx.RequestCtx, "Project Command", map[string]interface{}{
-			"project command": prjCmd,
+		a.Logger.Info("project command", map[string]interface{}{
+			"project commnand": prjCmd,
 		})
 	}
 
 	if err != nil {
-		ctx.Log.ErrorContext(ctx.RequestCtx, "build plan command for policy approval failed", map[string]interface{}{})
+		a.Logger.Error("build plan command for policy approval failed")
 	}
 
 	_, policyCheckCommands := a.partitionProjectCmds(ctx, prjCmds)
 	for _, prjCmd := range policyCheckCommands {
-		ctx.Log.InfoContext(ctx.RequestCtx, "Policy Check Command", map[string]interface{}{
-			"Policy Check Command": prjCmd,
+		a.Logger.Info("Policy Check Command", map[string]interface{}{
+			"policy check": prjCmd,
 		})
 	}
 
@@ -120,8 +124,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 		res := a.policyCheckCommandRunner.prjCmdRunner.PolicyCheck(policyCheckCommand)
 		policyCheckOutput[policyCheckCommand.ProjectName] = res.PolicyCheckSuccess.PolicyCheckOutput
 	}
-
-	ctx.Log.InfoContext(ctx.RequestCtx, "policy check output", map[string]interface{}{
+	a.Logger.Info("Policy Check Output", map[string]interface{}{
 		"output": policyCheckOutput,
 	})
 
@@ -132,7 +135,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 		result.ProjectResults[i].PolicyCheckSuccess.PolicyCheckOutput = policyCheckOutput[prjResult.ProjectName]
 	}
 
-	ctx.Log.InfoContext(ctx.RequestCtx, "approve policies result", map[string]interface{}{
+	a.Logger.Info("approve policies result", map[string]interface{}{
 		"approve policies": result,
 	})
 

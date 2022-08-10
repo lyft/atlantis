@@ -764,6 +764,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		dbUpdater,
 		*policyCheckCommandRunner,
 		projectCommandBuilder,
+		ctxLogger,
 	)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
@@ -801,6 +802,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		dbUpdater,
 		*policyCheckCommandRunner,
 		projectCommandBuilder,
+		ctxLogger,
 	)
 
 	featuredPlanRunner := lyftCommands.NewPlatformModeFeatureRunner(
