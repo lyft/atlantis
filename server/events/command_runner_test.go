@@ -139,6 +139,9 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		projectCommandRunner,
 		pullUpdater,
 		dbUpdater,
+		projectCommandRunner,
+		projectCommandBuilder,
+		logger,
 	)
 
 	unlockCommandRunner = events.NewUnlockCommandRunner(
@@ -219,7 +222,7 @@ func TestRunCommentCommand_PreWorkflowHookError(t *testing.T) {
 			ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
 
 			ch.RunCommentCommand(ctx, fixtures.GithubRepo, modelPull.BaseRepo, modelPull, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: cmd}, time.Now())
-			_, _, _, status, cmdName := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName()).GetCapturedArguments()
+			_, _, _, status, cmdName, _ := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName(), AnyString()).GetCapturedArguments()
 			Equals(t, models.FailedCommitStatus, status)
 			Equals(t, cmd, cmdName)
 		})
@@ -243,6 +246,7 @@ func TestRunCommentCommandApprovePolicy_NoProjects_SilenceEnabled(t *testing.T) 
 		matchers.EqModelsCommandName(command.PolicyCheck),
 		EqInt(0),
 		EqInt(0),
+		AnyString(),
 	)
 }
 
@@ -381,7 +385,7 @@ func TestRunAutoplanCommand_PreWorkflowHookError(t *testing.T) {
 	ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
 
 	ch.RunAutoplanCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, time.Now())
-	_, _, _, status, cmdName := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName()).GetCapturedArguments()
+	_, _, _, status, cmdName, _ := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName(), AnyString()).GetCapturedArguments()
 	Equals(t, models.FailedCommitStatus, status)
 	Equals(t, command.Plan, cmdName)
 }
@@ -417,6 +421,7 @@ func TestFailedApprovalCreatesFailedStatusUpdate(t *testing.T) {
 		matchers.EqModelsCommandName(command.PolicyCheck),
 		EqInt(0),
 		EqInt(0),
+		AnyString(),
 	)
 }
 
@@ -461,6 +466,7 @@ func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
 		matchers.EqModelsCommandName(command.PolicyCheck),
 		EqInt(1),
 		EqInt(1),
+		AnyString(),
 	)
 }
 
