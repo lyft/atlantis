@@ -92,7 +92,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Description:      description,
 			Output:           output,
 			State:            state,
-			CheckRunId:       projectResult.CheckRunId,
+			StatusId:         projectResult.StatusId,
 			PullCreationTime: ctx.Pull.CreatedAt,
 		}
 
@@ -119,7 +119,7 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 			StatusName:       statusName,
 			PullNum:          ctx.Pull.Num,
 			State:            models.SuccessCommitStatus,
-			CheckRunId:       projectResult.CheckRunId,
+			StatusId:         projectResult.StatusId,
 			Output:           output,
 			PullCreationTime: ctx.Pull.CreatedAt,
 		}

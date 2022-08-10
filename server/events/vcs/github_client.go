@@ -487,11 +487,11 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 // [WENGINES-4643] TODO: Move the checks implementation to UpdateStatus once github checks is stable
 func (g *GithubClient) UpdateChecksStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 
-	if request.CheckRunId == "" {
+	if request.StatusId == "" {
 		return g.createChecksStatus(ctx, request)
 	}
 
-	return request.CheckRunId, g.updateChecksStatus(ctx, request, request.CheckRunId)
+	return request.StatusId, g.updateChecksStatus(ctx, request, request.StatusId)
 }
 
 // Update existing checkrun
