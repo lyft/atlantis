@@ -762,7 +762,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		prjCmdRunner,
 		outputUpdater,
 		dbUpdater,
-		*policyCheckCommandRunner,
+		prjCmdRunner,
 		projectCommandBuilder,
 		ctxLogger,
 	)
@@ -800,7 +800,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		prPrjCmdRunner,
 		outputUpdater,
 		dbUpdater,
-		*policyCheckCommandRunner,
+		*prjCmdRunner,
 		projectCommandBuilder,
 		ctxLogger,
 	)

@@ -15,31 +15,31 @@ func NewApprovePoliciesCommandRunner(
 	prjCommandRunner ProjectApprovePoliciesCommandRunner,
 	outputUpdater OutputUpdater,
 	dbUpdater *DBUpdater,
-	policyCheckCommandRunner PolicyCheckCommandRunner,
+	projectPolicyCheckCommandRunner ProjectPolicyCheckCommandRunner,
 	projectCommandBuilder ProjectPlanCommandBuilder,
 	logger logging.Logger,
 ) *ApprovePoliciesCommandRunner {
 	return &ApprovePoliciesCommandRunner{
-		commitStatusUpdater:      commitStatusUpdater,
-		prjCmdBuilder:            prjCommandBuilder,
-		prjCmdRunner:             prjCommandRunner,
-		outputUpdater:            outputUpdater,
-		dbUpdater:                dbUpdater,
-		policyCheckCommandRunner: policyCheckCommandRunner,
-		projectCommandBuilder:    projectCommandBuilder,
-		Logger:                   logger,
+		commitStatusUpdater:             commitStatusUpdater,
+		prjCmdBuilder:                   prjCommandBuilder,
+		prjCmdRunner:                    prjCommandRunner,
+		outputUpdater:                   outputUpdater,
+		dbUpdater:                       dbUpdater,
+		projectPolicyCheckCommandRunner: projectPolicyCheckCommandRunner,
+		projectCommandBuilder:           projectCommandBuilder,
+		Logger:                          logger,
 	}
 }
 
 type ApprovePoliciesCommandRunner struct {
-	commitStatusUpdater      CommitStatusUpdater
-	outputUpdater            OutputUpdater
-	dbUpdater                *DBUpdater
-	prjCmdBuilder            ProjectApprovePoliciesCommandBuilder
-	prjCmdRunner             ProjectApprovePoliciesCommandRunner
-	policyCheckCommandRunner PolicyCheckCommandRunner
-	projectCommandBuilder    ProjectPlanCommandBuilder
-	Logger                   logging.Logger
+	commitStatusUpdater             CommitStatusUpdater
+	outputUpdater                   OutputUpdater
+	dbUpdater                       *DBUpdater
+	prjCmdBuilder                   ProjectApprovePoliciesCommandBuilder
+	prjCmdRunner                    ProjectApprovePoliciesCommandRunner
+	projectPolicyCheckCommandRunner ProjectPolicyCheckCommandRunner
+	projectCommandBuilder           ProjectPlanCommandBuilder
+	Logger                          logging.Logger
 }
 
 func (p *ApprovePoliciesCommandRunner) partitionProjectCmds(
@@ -121,7 +121,10 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 
 	policyCheckOutput := map[string]string{}
 	for _, policyCheckCommand := range policyCheckCommands {
-		res := a.policyCheckCommandRunner.prjCmdRunner.PolicyCheck(policyCheckCommand)
+		res := a.projectPolicyCheckCommandRunner.PolicyCheck(policyCheckCommand)
+		a.Logger.Info("Result: ", map[string]interface{}{
+			"Result": res,
+		})
 		policyCheckOutput[policyCheckCommand.ProjectName] = res.PolicyCheckSuccess.PolicyCheckOutput
 	}
 	a.Logger.Info("Policy Check Output", map[string]interface{}{
