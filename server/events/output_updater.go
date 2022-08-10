@@ -110,6 +110,7 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 			state = models.SuccessCommitStatus
 		}
 
+		output := c.MarkdownRenderer.RenderProject(projectResult, cmd.CommandName(), ctx.Pull.BaseRepo)
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:       ctx.HeadRepo,
 			Ref:        ctx.Pull.HeadCommit,
@@ -117,7 +118,7 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 			PullNum:    ctx.Pull.Num,
 			State:      state,
 			CheckRunId: projectResult.CheckRunId,
-			Output:     projectResult.PolicyCheckSuccess.PolicyCheckOutput,
+			Output:     output,
 		}
 
 		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
