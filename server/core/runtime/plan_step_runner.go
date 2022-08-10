@@ -273,7 +273,7 @@ func (p *PlanStepRunner) runRemotePlan(
 			nextLineIsRunURL = true
 		} else if nextLineIsRunURL {
 			runURL = strings.TrimSpace(line.Line)
-			updateStatusF(models.PendingCommitStatus, runURL, "")
+			updateStatusF(models.PendingCommitStatus, runURL, prjCtx.CheckRunId)
 			nextLineIsRunURL = false
 		}
 	}

@@ -124,7 +124,6 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 
 	result := a.buildApprovePolicyCommandResults(ctx, projectCmds)
 
-	// Write to db before changing the output for the user
 	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("writing results: %s", err))
@@ -212,6 +211,12 @@ func (a *ApprovePoliciesCommandRunner) runPolicyCheckAndPopulateOuptut(ctx *comm
 	policyCheckOutput := map[string]string{}
 	for _, policyCheckCommand := range policyCheckCommands {
 		res := a.projectPolicyCheckCommandRunner.PolicyCheck(policyCheckCommand)
+
+		// Skip if policy check is success
+		if res.Failure == "" {
+			continue
+		}
+
 		a.Logger.Info("Result: ", map[string]interface{}{
 			"Result": res,
 		})
@@ -223,6 +228,10 @@ func (a *ApprovePoliciesCommandRunner) runPolicyCheckAndPopulateOuptut(ctx *comm
 
 	// Populate the results with the policy check output
 	for i, prjResult := range result.ProjectResults {
+		if _, ok := policyCheckOutput[prjResult.ProjectName]; !ok {
+			continue
+		}
+
 		result.ProjectResults[i].Failure = policyCheckOutput[prjResult.ProjectName]
 
 		// To avoid populating output from the approve policies command

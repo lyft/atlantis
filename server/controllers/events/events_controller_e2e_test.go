@@ -881,7 +881,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		dbUpdater,
 		prjCmdRunner,
 		projectCommandBuilder,
-		logging.NewNoopCtxLogger(t),
+		ctxLogger,
 	)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
