@@ -125,7 +125,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 		a.Logger.Info("Result: ", map[string]interface{}{
 			"Result": res,
 		})
-		policyCheckOutput[policyCheckCommand.ProjectName] = res.PolicyCheckSuccess.PolicyCheckOutput
+		policyCheckOutput[policyCheckCommand.ProjectName] = res.Failure
 	}
 	a.Logger.Info("Policy Check Output", map[string]interface{}{
 		"output": policyCheckOutput,
