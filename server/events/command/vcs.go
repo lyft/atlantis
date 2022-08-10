@@ -31,7 +31,8 @@ func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo,
 		DetailsURL:       "",
 		PullCreationTime: pull.CreatedAt,
 	}
-	return d.Client.UpdateStatus(ctx, request)
+	_, err := d.Client.UpdateStatus(ctx, request)
+	return err
 }
 
 func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, numSuccess int, numTotal int) error {
@@ -58,7 +59,8 @@ func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.
 		PullCreationTime: pull.CreatedAt,
 	}
 
-	return d.Client.UpdateStatus(ctx, request)
+	_, err := d.Client.UpdateStatus(ctx, request)
+	return err
 }
 
 func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string) error {
@@ -81,8 +83,8 @@ func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx Project
 		DetailsURL:       url,
 		PullCreationTime: projectCtx.Pull.CreatedAt,
 	}
-
-	return d.Client.UpdateStatus(ctx, request)
+	_, err := d.Client.UpdateStatus(ctx, request)
+	return err
 }
 
 func (d *VCSStatusUpdater) statusDescription(status models.CommitStatus) string {
