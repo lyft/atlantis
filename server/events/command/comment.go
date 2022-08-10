@@ -51,6 +51,9 @@ type Comment struct {
 
 	// Flag used by approve policies command runner to indicate not to make any checkruns
 	SkipCheckRuns bool
+
+	// Github checks enabled flag for ApprovePoliciesCommandRunner to decide on commitStatus vs GithubChecks
+	GithubChecksEnabled bool
 }
 
 // IsForSpecificProject returns true if the command is for a specific dir, workspace

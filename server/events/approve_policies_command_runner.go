@@ -7,7 +7,38 @@ import (
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
+
+type ChecksEnabledApprovePoliciesCommandRunner struct {
+	command.Runner
+
+	FeatureAllocator feature.Allocator
+}
+
+func (c *ChecksEnabledApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
+	shouldAllocate, err := c.FeatureAllocator.ShouldAllocate(feature.GithubChecks, feature.FeatureContext{
+		RepoName:         ctx.HeadRepo.FullName,
+		PullCreationTime: ctx.Pull.CreatedAt,
+	})
+	if err != nil {
+		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.GithubChecks, err))
+	}
+
+	// Turn the flag on if github checks is enabled
+	if shouldAllocate {
+		cmd.GithubChecksEnabled = true
+	}
+
+	c.Runner.Run(ctx, cmd)
+}
+
+func NewChecksEnabledApprovePoliciesCommandRunner(runnner command.Runner, featureAllocator feature.Allocator) command.Runner {
+	return &ChecksEnabledApprovePoliciesCommandRunner{
+		Runner:           runnner,
+		FeatureAllocator: featureAllocator,
+	}
+}
 
 func NewApprovePoliciesCommandRunner(
 	commitStatusUpdater CommitStatusUpdater,
@@ -91,7 +122,66 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 		return
 	}
 
-	// Build Policy Check Project Context
+	result := a.buildApprovePolicyCommandResults(ctx, projectCmds)
+
+	// Write to db before changing the output for the user
+	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
+	if err != nil {
+		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("writing results: %s", err))
+		return
+	}
+
+	// Rerun policy check and populate output since github checks does not retain the output
+	if cmd.GithubChecksEnabled {
+		a.runPolicyCheckAndPopulateOuptut(ctx, cmd, &result)
+	}
+
+	a.outputUpdater.UpdateOutput(
+		ctx,
+		cmd,
+		result,
+	)
+
+	a.updateCommitStatus(ctx, pullStatus, statusId)
+}
+
+func (a *ApprovePoliciesCommandRunner) buildApprovePolicyCommandResults(ctx *command.Context, prjCmds []command.ProjectContext) (result command.Result) {
+	// Check if vcs user is in the owner list of the PolicySets. All projects
+	// share the same Owners list at this time so no reason to iterate over each
+	// project.
+	if len(prjCmds) > 0 && !prjCmds[0].PolicySets.IsOwner(ctx.User.Username) {
+		result.Error = fmt.Errorf("contact policy owners to approve failing policies")
+		return
+	}
+
+	var prjResults []command.ProjectResult
+
+	for _, prjCmd := range prjCmds {
+		prjResult := a.prjCmdRunner.ApprovePolicies(prjCmd)
+		prjResults = append(prjResults, prjResult)
+	}
+	result.ProjectResults = prjResults
+	return
+}
+
+func (a *ApprovePoliciesCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus, statusId string) {
+	var numSuccess int
+	var numErrored int
+	status := models.SuccessCommitStatus
+
+	numSuccess = pullStatus.StatusCount(models.PassedPolicyCheckStatus)
+	numErrored = pullStatus.StatusCount(models.ErroredPolicyCheckStatus)
+
+	if numErrored > 0 {
+		status = models.FailedCommitStatus
+	}
+
+	if _, err := a.commitStatusUpdater.UpdateCombinedCount(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, status, command.PolicyCheck, numSuccess, len(pullStatus.Projects), statusId); err != nil {
+		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
+	}
+}
+
+func (a *ApprovePoliciesCommandRunner) runPolicyCheckAndPopulateOuptut(ctx *command.Context, cmd *command.Comment, result *command.Result) {
 	a.Logger.Info("building policy check context")
 	prjCmds, err := a.projectCommandBuilder.BuildPlanCommands(ctx, &command.Comment{
 		RepoRelDir:    cmd.RepoRelDir,
@@ -131,8 +221,6 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 		"output": policyCheckOutput,
 	})
 
-	result := a.buildApprovePolicyCommandResults(ctx, projectCmds)
-
 	// Populate the results with the policy check output
 	for i, prjResult := range result.ProjectResults {
 		result.ProjectResults[i].Failure = policyCheckOutput[prjResult.ProjectName]
@@ -144,54 +232,4 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 	a.Logger.Info("approve policies result", map[string]interface{}{
 		"approve policies": result,
 	})
-
-	a.outputUpdater.UpdateOutput(
-		ctx,
-		cmd,
-		result,
-	)
-
-	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
-	if err != nil {
-		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("writing results: %s", err))
-		return
-	}
-
-	a.updateCommitStatus(ctx, pullStatus, statusId)
-}
-
-func (a *ApprovePoliciesCommandRunner) buildApprovePolicyCommandResults(ctx *command.Context, prjCmds []command.ProjectContext) (result command.Result) {
-	// Check if vcs user is in the owner list of the PolicySets. All projects
-	// share the same Owners list at this time so no reason to iterate over each
-	// project.
-	if len(prjCmds) > 0 && !prjCmds[0].PolicySets.IsOwner(ctx.User.Username) {
-		result.Error = fmt.Errorf("contact policy owners to approve failing policies")
-		return
-	}
-
-	var prjResults []command.ProjectResult
-
-	for _, prjCmd := range prjCmds {
-		prjResult := a.prjCmdRunner.ApprovePolicies(prjCmd)
-		prjResults = append(prjResults, prjResult)
-	}
-	result.ProjectResults = prjResults
-	return
-}
-
-func (a *ApprovePoliciesCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus models.PullStatus, statusId string) {
-	var numSuccess int
-	var numErrored int
-	status := models.SuccessCommitStatus
-
-	numSuccess = pullStatus.StatusCount(models.PassedPolicyCheckStatus)
-	numErrored = pullStatus.StatusCount(models.ErroredPolicyCheckStatus)
-
-	if numErrored > 0 {
-		status = models.FailedCommitStatus
-	}
-
-	if _, err := a.commitStatusUpdater.UpdateCombinedCount(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, status, command.PolicyCheck, numSuccess, len(pullStatus.Projects), statusId); err != nil {
-		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
-	}
 }

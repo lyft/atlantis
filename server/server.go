@@ -756,7 +756,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	)
 
 	// Using pull updater for approving policies until we move off of PR comments entirely
-	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
+	approvePoliciesCommandRunner := events.NewChecksEnabledApprovePoliciesCommandRunner(events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
@@ -765,7 +765,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		prjCmdRunner,
 		projectCommandBuilder,
 		ctxLogger,
-	)
+	), featureAllocator)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
 		deleteLockCommand,
@@ -793,8 +793,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
-	// Using pull updater for approving policies until we move off of PR comments entirely
-	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
+	prApprovePoliciesCommandRunner := events.NewChecksEnabledApprovePoliciesCommandRunner(events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
@@ -803,7 +802,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		*prjCmdRunner,
 		projectCommandBuilder,
 		ctxLogger,
-	)
+	), featureAllocator)
 
 	featuredPlanRunner := lyftCommands.NewPlatformModeFeatureRunner(
 		featureAllocator,
