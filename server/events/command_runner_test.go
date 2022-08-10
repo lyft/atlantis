@@ -451,8 +451,10 @@ func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
 	When(projectCommandRunner.ApprovePolicies(matchers.AnyModelsProjectCommandContext())).Then(func(_ []Param) ReturnValues {
 		return ReturnValues{
 			command.ProjectResult{
-				Command:            command.PolicyCheck,
-				PolicyCheckSuccess: &models.PolicyCheckSuccess{},
+				Command: command.PolicyCheck,
+				PolicyCheckSuccess: &models.PolicyCheckSuccess{
+					PolicyCheckOutput: "Hello World",
+				},
 			},
 		}
 	})

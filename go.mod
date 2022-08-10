@@ -73,7 +73,6 @@ require (
 	github.com/nlopes/slack v0.4.0
 	github.com/onsi/gomega v1.10.1 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
-	github.com/petergtz/pegomock v2.9.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -147,12 +146,16 @@ require (
 )
 
 require (
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
+	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/petergtz/pegomock v2.9.0+incompatible // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rs/zerolog v1.27.0 // indirect
+	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 )
 
 require (
