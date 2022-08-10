@@ -103,20 +103,16 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 			ProjectName: projectResult.ProjectName,
 		})
 
-		var state models.CommitStatus
-		if projectResult.Error != nil || projectResult.Failure != "" {
-			state = models.FailedCommitStatus
-		} else {
-			state = models.SuccessCommitStatus
-		}
-
-		output := c.MarkdownRenderer.RenderProject(projectResult, cmd.CommandName(), ctx.Pull.BaseRepo)
+		output := c.MarkdownRenderer.RenderProject(projectResult, command.PolicyCheck, ctx.Pull.BaseRepo)
+		ctx.Log.Info("Output", map[string]interface{}{
+			"Output": output,
+		})
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:       ctx.HeadRepo,
 			Ref:        ctx.Pull.HeadCommit,
 			StatusName: statusName,
 			PullNum:    ctx.Pull.Num,
-			State:      state,
+			State:      models.SuccessCommitStatus,
 			CheckRunId: projectResult.CheckRunId,
 			Output:     output,
 		}
