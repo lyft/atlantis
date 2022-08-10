@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/runatlantis/atlantis/server/events/command"
@@ -14,6 +15,15 @@ import (
 
 type OutputUpdater interface {
 	UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result)
+}
+
+type renderer interface {
+	Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string
+	RenderProject(prjRes command.ProjectResult, cmdName command.Name, baseRepo models.Repo) string
+}
+
+type checksClient interface {
+	UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error
 }
 
 // [WENGINES-4643] TODO: Remove PullOutputUpdater and default to checks once github checks is stable
@@ -45,13 +55,12 @@ func (c *FeatureAwareChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd
 
 // Used to support checks type output (Github checks for example)
 type ChecksOutputUpdater struct {
-	VCSClient        vcs.Client
-	MarkdownRenderer *markdown.Renderer
+	VCSClient        checksClient
+	MarkdownRenderer renderer
 	TitleBuilder     vcs.StatusTitleBuilder
 }
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
-
 	// Handle ApprovePolicies command separately
 	if cmd.CommandName() == command.ApprovePolicies {
 		c.handleApprovePolicies(ctx, cmd, res)
@@ -76,14 +85,15 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 
 		output := c.MarkdownRenderer.RenderProject(projectResult, cmd.CommandName(), ctx.Pull.BaseRepo)
 		updateStatusReq := types.UpdateStatusRequest{
-			Repo:        ctx.HeadRepo,
-			Ref:         ctx.Pull.HeadCommit,
-			StatusName:  statusName,
-			PullNum:     ctx.Pull.Num,
-			Description: description,
-			Output:      output,
-			State:       state,
-			CheckRunId:  projectResult.CheckRunId,
+			Repo:             ctx.HeadRepo,
+			Ref:              ctx.Pull.HeadCommit,
+			StatusName:       statusName,
+			PullNum:          ctx.Pull.Num,
+			Description:      description,
+			Output:           output,
+			State:            state,
+      CheckRunId:  projectResult.CheckRunId,
+			PullCreationTime: ctx.Pull.CreatedAt,
 		}
 
 		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
@@ -96,7 +106,6 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 }
 
 func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd PullCommand, res command.Result) {
-
 	// In addition, update project level atlantis/policy_check checkruns
 	for _, projectResult := range res.ProjectResults {
 		statusName := c.TitleBuilder.Build(command.PolicyCheck.String(), vcs.StatusTitleOptions{
@@ -108,13 +117,14 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 			"Output": output,
 		})
 		updateStatusReq := types.UpdateStatusRequest{
-			Repo:       ctx.HeadRepo,
-			Ref:        ctx.Pull.HeadCommit,
-			StatusName: statusName,
-			PullNum:    ctx.Pull.Num,
-			State:      models.SuccessCommitStatus,
-			CheckRunId: projectResult.CheckRunId,
+			Repo:             ctx.HeadRepo,
+			Ref:              ctx.Pull.HeadCommit,
+			StatusName:       statusName,
+			PullNum:          ctx.Pull.Num,
+			State:            state,
+      CheckRunId: projectResult.CheckRunId,
 			Output:     output,
+			PullCreationTime: ctx.Pull.CreatedAt,
 		}
 
 		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
