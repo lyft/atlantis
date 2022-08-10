@@ -212,24 +212,25 @@ func (a *ApprovePoliciesCommandRunner) runPolicyCheckAndPopulateOuptut(ctx *comm
 	for _, policyCheckCommand := range policyCheckCommands {
 		res := a.projectPolicyCheckCommandRunner.PolicyCheck(policyCheckCommand)
 
-		var output string
-		if res.Failure != "" {
-			output = res.Failure
-		} else if res.PolicyCheckSuccess != nil {
-			output = res.PolicyCheckSuccess.PolicyCheckOutput
+		// Policy check is already passing, no need to update it
+		if res.PolicyCheckSuccess != nil {
+			continue
 		}
 
 		a.Logger.Info("Result: ", map[string]interface{}{
-			"Result": output,
+			"Result": res.Failure,
 		})
-		policyCheckOutput[policyCheckCommand.ProjectName] = output
+		policyCheckOutput[policyCheckCommand.ProjectName] = res.Failure
 	}
 	a.Logger.Info("Policy Check Output", map[string]interface{}{
 		"output": policyCheckOutput,
 	})
 
+	newProjectResults := []command.ProjectResult{}
 	// Populate the results with the policy check output
 	for i, prjResult := range result.ProjectResults {
+
+		// If it does not exist, policy check was success
 		if _, ok := policyCheckOutput[prjResult.ProjectName]; !ok {
 			continue
 		}
@@ -238,7 +239,9 @@ func (a *ApprovePoliciesCommandRunner) runPolicyCheckAndPopulateOuptut(ctx *comm
 
 		// To avoid populating output from the approve policies command
 		result.ProjectResults[i].PolicyCheckSuccess = nil
+		newProjectResults = append(newProjectResults, result.ProjectResults[i])
 	}
+	result.ProjectResults = newProjectResults
 
 	a.Logger.Info("approve policies result", map[string]interface{}{
 		"approve policies": result,
