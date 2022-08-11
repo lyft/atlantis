@@ -61,13 +61,6 @@ type ChecksOutputUpdater struct {
 }
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
-
-	// Handle ApprovePolicies command separately
-	if cmd.CommandName() == command.ApprovePolicies {
-		c.handleApprovePolicies(ctx, cmd, res)
-		return
-	}
-
 	// iterate through all project results and the update the github check
 	for _, projectResult := range res.ProjectResults {
 		statusName := c.TitleBuilder.Build(cmd.CommandName().String(), vcs.StatusTitleOptions{

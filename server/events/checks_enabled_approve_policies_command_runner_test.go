@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestChecksEnabledApprovePoliciesCommandRunner_LogAndContinueWhenBuildPlanFails(t *testing.T) {
@@ -45,10 +46,7 @@ func TestChecksEnabledApprovePoliciesCommandRunner_LogAndContinueWhenBuildPlanFa
 
 	cmdRunner.Run(&ctx, &comment)
 
-	// Ensure the underlying runner was called
-	if underlyingRunner.isExecuted == false {
-		t.FailNow()
-	}
+	assert.True(t, underlyingRunner.isExecuted)
 }
 
 func TestChecksEnabledApprovePoliciesCommandRunner_WriteOutputForFailingPolicyCheck(t *testing.T) {
@@ -98,14 +96,10 @@ func TestChecksEnabledApprovePoliciesCommandRunner_WriteOutputForFailingPolicyCh
 	cmdRunner.Run(&ctx, &comment)
 
 	// Assert ctx is populated with policy check output
-	if comment.PolicyCheckOutput.GetOutputFor("project", "workspace") != "Policy Check Failed" {
-		t.FailNow()
-	}
+	assert.Equal(t, "Policy Check Failed", comment.PolicyCheckOutput.GetOutputFor("project", "workspace"))
 
 	// Ensure the underlying runner was called
-	if underlyingRunner.isExecuted == false {
-		t.FailNow()
-	}
+	assert.True(t, underlyingRunner.isExecuted)
 }
 
 func TestChecksEnabledApprovePoliciesCommandRunner_SkipPassingPolicyCheck(t *testing.T) {
@@ -156,14 +150,10 @@ func TestChecksEnabledApprovePoliciesCommandRunner_SkipPassingPolicyCheck(t *tes
 	cmdRunner.Run(&ctx, &comment)
 
 	// Assert ctx is populated with policy check output
-	if comment.PolicyCheckOutput.GetOutputFor("project", "workspace") != "" {
-		t.FailNow()
-	}
+	assert.Equal(t, "", comment.PolicyCheckOutput.GetOutputFor("project", "workspace"))
 
 	// Ensure the underlying runner was called
-	if underlyingRunner.isExecuted == false {
-		t.FailNow()
-	}
+	assert.True(t, underlyingRunner.isExecuted)
 }
 
 type testPolicyCheckCmdRunner struct {
