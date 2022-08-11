@@ -133,12 +133,23 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		pullReqStatusFetcher,
 	)
 
+<<<<<<< HEAD
 	approvePoliciesCommandRunner = events.NewApprovePoliciesCommandRunner(
 		commitUpdater,
 		projectCommandBuilder,
 		projectCommandRunner,
 		pullUpdater,
 		dbUpdater,
+=======
+	approvePoliciesCommandRunner = wrappers.WrapCommandRunner(
+		events.NewApprovePoliciesCommandRunner(
+			commitUpdater,
+			projectCommandBuilder,
+			projectCommandRunner,
+			pullUpdater,
+			dbUpdater,
+		),
+>>>>>>> 6dc5e1ab (tests)
 	)
 
 	unlockCommandRunner = events.NewUnlockCommandRunner(

@@ -24,7 +24,7 @@ type JobURLGenerator interface {
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_status_updater.go ProjectStatusUpdater
 
-type ProjectCommitStatusUpdater interface {
+type CommitStatusUpdater interface {
 	// UpdateProject sets the commit status for the project represented by
 	// ctx.
 	UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string, statusId string) (string, error)
@@ -38,7 +38,7 @@ type ProjectStatusUpdater struct {
 	ProjectJobURLGenerator     JobURLGenerator
 	JobCloser                  JobCloser
 	FeatureAllocator           feature.Allocator
-	ProjectCommitStatusUpdater ProjectCommitStatusUpdater
+	ProjectCommitStatusUpdater CommitStatusUpdater
 }
 
 func (p ProjectStatusUpdater) UpdateProjectStatus(ctx ProjectContext, status models.CommitStatus) (string, error) {
