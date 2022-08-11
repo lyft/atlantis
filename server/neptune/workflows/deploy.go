@@ -9,6 +9,9 @@ import (
 // Export anything that callers need such as requests, signals, etc.
 type DeployRequest = deploy.Request
 type Repo = deploy.Repo
+type Root = deploy.Root
+type Job = deploy.Job
+type Step = deploy.Step
 
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 

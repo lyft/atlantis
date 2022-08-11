@@ -2,7 +2,6 @@ package event
 
 import (
 	"context"
-
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -34,6 +33,7 @@ type PushHandler struct {
 	Scheduler      scheduler
 	TemporalClient signaler
 	Logger         logging.Logger
+	StepGenerator  StepGenerator
 }
 
 func (p *PushHandler) Handle(ctx context.Context, event Push) error {
@@ -79,6 +79,15 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 				FullName: event.Repo.FullName,
 				Name:     event.Repo.Name,
 				Owner:    event.Repo.Owner,
+			},
+			Root: workflows.Root{
+				Name: "name",
+				Plan: workflows.Job{
+					Steps: p.StepGenerator.GeneratePlanSteps(event.Repo.ID()),
+				},
+				Apply: workflows.Job{
+					Steps: p.StepGenerator.GenerateApplySteps(event.Repo.ID()),
+				},
 			},
 		},
 	)

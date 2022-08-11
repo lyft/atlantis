@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"time"
 
 	"github.com/pkg/errors"
@@ -63,18 +64,16 @@ func Workflow(ctx workflow.Context, request Request) error {
 		return errors.Wrap(err, "executing deploy workflow")
 	}
 
+	// Spin up a child workflow to handle Terraform operations
 	childWorkflowOptions := workflow.ChildWorkflowOptions{
 		TaskQueue: terraform.TaskQueue,
 		//TODO: match workflow id to format used by deploy workflow
 		WorkflowID: fmt.Sprintf("%s-%s", request.Repository.FullName, request.Root.Name),
 	}
 	ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)
-	terraformWorkflowRequest := terraform.Request{
-		Repo: github.Repo{
-			Owner: request.Repository.Owner,
-			Name:  request.Repository.Name,
-			URL:   request.Repository.URL,
-		},
+	terraformWorkflowRequest := workflows.TerraformRequest{
+		Repo: request.Repository,
+		Root: request.Root,
 	}
 	err = workflow.ExecuteChildWorkflow(ctx, terraform.Workflow, terraformWorkflowRequest).Get(ctx, nil)
 	if err != nil {

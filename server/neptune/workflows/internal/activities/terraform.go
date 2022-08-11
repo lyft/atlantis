@@ -4,6 +4,15 @@ import "context"
 
 type terraformActivities struct{}
 
+// Terraform Init
+
+type TerraformInitRequest struct {
+}
+
+func (t *terraformActivities) TerraformInit(ctx context.Context, request TerraformInitRequest) error {
+	return nil
+}
+
 // Terraform Plan
 
 type TerraformPlanRequest struct {

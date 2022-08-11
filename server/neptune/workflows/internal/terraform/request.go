@@ -1,12 +1,9 @@
 package terraform
 
-import (
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-)
+import "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy"
 
 type Request struct {
-	Repo      github.Repo
-	Revision  string
-	GlobalCfg valid.GlobalCfg
+	// TODO: potentially separate identical request definition from deploy pkg
+	Repo deploy.Repo
+	Root deploy.Root
 }

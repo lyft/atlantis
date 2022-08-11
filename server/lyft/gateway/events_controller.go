@@ -13,7 +13,6 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	gateway_handlers "github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/sync"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	converters "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/request"
 	"github.com/uber-go/tally/v4"
@@ -26,24 +25,7 @@ type scheduler interface {
 	Schedule(ctx context.Context, f sync.Executor) error
 }
 
-func NewVCSEventsController(
-	scope tally.Scope,
-	webhookSecret []byte,
-	allowDraftPRs bool,
-	autoplanValidator gateway_handlers.EventValidator,
-	snsWriter gateway_handlers.Writer,
-	commentParser events.CommentParsing,
-	repoAllowlistChecker *events.RepoAllowlistChecker,
-	vcsClient vcs.Client,
-	logger logging.Logger,
-	supportedVCSProviders []models.VCSHostType,
-	repoConverter converters.RepoConverter,
-	pullConverter converters.PullConverter,
-	githubClient converter.PullGetter,
-	featureAllocator feature.Allocator,
-	scheduler scheduler,
-	temporalClient client.Client,
-) *VCSEventsController {
+func NewVCSEventsController(scope tally.Scope, webhookSecret []byte, allowDraftPRs bool, autoplanValidator gateway_handlers.EventValidator, snsWriter gateway_handlers.Writer, commentParser events.CommentParsing, repoAllowlistChecker *events.RepoAllowlistChecker, vcsClient vcs.Client, logger logging.Logger, supportedVCSProviders []models.VCSHostType, repoConverter converters.RepoConverter, pullConverter converters.PullConverter, githubClient converters.PullGetter, featureAllocator feature.Allocator, scheduler scheduler, temporalClient client.Client, stepGenerator gateway_handlers.StepGenerator) *VCSEventsController {
 	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
 		snsWriter, logger,
 	)
@@ -72,6 +54,7 @@ func NewVCSEventsController(
 		Scheduler:      scheduler,
 		Logger:         logger,
 		TemporalClient: temporalClient,
+		StepGenerator:  stepGenerator,
 	}
 
 	// lazy map of resolver providers to their resolver

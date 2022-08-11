@@ -5,7 +5,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 )
 
-// TODO: Initial implementation will support GH VCS, but we will eventually abstract to other platforms
+// TODO: Initial implementation will support GH VCS, but we will need to eventually abstract to other platforms
 
 type vcsActivities struct{}
 

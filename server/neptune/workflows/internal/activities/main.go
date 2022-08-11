@@ -20,6 +20,7 @@ func NewDeploy() *Deploy {
 type Terraform struct {
 	*vcsActivities
 	*terraformActivities
+	*executeCommandActivities
 	*notifyActivities
 	*cleanupActivities
 }

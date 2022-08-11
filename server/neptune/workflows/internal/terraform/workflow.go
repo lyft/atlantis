@@ -4,17 +4,27 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy"
 	"go.temporal.io/sdk/workflow"
 	"time"
 )
 
 const TaskQueue = "terraform"
 
+type PlanStatus int
+
+const (
+	Approved PlanStatus = iota
+	Rejected
+)
+
 func Workflow(ctx workflow.Context, request Request) error {
+	// TODO: should we set up a heartbeat? How long it takes to make progress on a terraform op activity is dependent on
+	// how complex of a change it runs
 	options := workflow.ActivityOptions{
 		TaskQueue:              TaskQueue,
 		ScheduleToCloseTimeout: 30 * time.Minute,
-		HeartbeatTimeout:       10 * time.Minute,
+		//HeartbeatTimeout:       2 * time.Minute,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
@@ -28,7 +38,6 @@ func Workflow(ctx workflow.Context, request Request) error {
 	}
 	defer workflow.CompleteSession(ctx)
 
-	// TODO: replace simple runner with
 	runner := newRunner(ctx, request)
 
 	// blocking call
@@ -37,19 +46,23 @@ func Workflow(ctx workflow.Context, request Request) error {
 
 type workerActivities interface {
 	GithubRepoClone(context.Context, activities.GithubRepoCloneRequest) error
+	TerraformInit(context.Context, activities.TerraformInitRequest) error
 	TerraformPlan(context.Context, activities.TerraformPlanRequest) error
 	TerraformApply(context.Context, activities.TerraformApplyRequest) error
+	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) error
 	Notify(context.Context, activities.NotifyRequest) error
 	Cleanup(context.Context, activities.CleanupRequest) error
 }
 
 type Runner struct {
 	workerActivities
+	request Request
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
 	return &Runner{
 		workerActivities: activities.Terraform{},
+		request:          request,
 	}
 }
 
@@ -59,33 +72,24 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "executing GH repo clone")
 	}
-	// Run terraform init/plan operation
-	err = workflow.ExecuteActivity(ctx, r.TerraformPlan, activities.TerraformPlanRequest{}).Get(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "executing terraform plan")
-	}
-	// Notify results of preceding terraform operations
-	err = workflow.ExecuteActivity(ctx, r.Notify, activities.NotifyRequest{}).Get(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "notifying plan result")
+	// Run plan steps
+	for _, step := range r.request.Root.Plan.Steps {
+		err := r.runStep(ctx, step)
+		if err != nil {
+			return errors.Wrap(err, "running step")
+		}
 	}
 	// Wait for plan review signal
-	s := workflow.NewSelector(ctx)
-	var planReview bool
-	signalChan := workflow.GetSignalChannel(ctx, "")
-	s.AddReceive(signalChan, func(c workflow.ReceiveChannel, more bool) {
-		c.Receive(ctx, &planReview)
-	})
-	s.Select(ctx)
-	// Run terraform apply operation
-	err = workflow.ExecuteActivity(ctx, r.TerraformApply, activities.TerraformApplyRequest{}).Get(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "executing terraform apply")
+	planReview := r.WaitUntilPlanIsReviewed(ctx)
+	if planReview.Status == Rejected {
+		return nil
 	}
-	// Notify results of preceding terraform operations
-	err = workflow.ExecuteActivity(ctx, r.Notify, activities.NotifyRequest{}).Get(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "notifying apply result")
+	// Run apply steps
+	for _, step := range r.request.Root.Plan.Steps {
+		err := r.runStep(ctx, step)
+		if err != nil {
+			return errors.Wrap(err, "running step")
+		}
 	}
 	// Cleanup
 	err = workflow.ExecuteActivity(ctx, r.Cleanup, activities.CleanupRequest{}).Get(ctx, nil)
@@ -93,4 +97,74 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return errors.Wrap(err, "cleaning up")
 	}
 	return nil
+}
+
+// TODO: wrap each case statement's ExecuteActivity with a specific Runner implementation;
+// activity itself should just handle the non-deterministic code chunk (i.e. running terraform operation, state updates)
+// ex:
+//type Runner interface {
+//	Run(ctx workflow.Context, step deploy.Step) error
+//}
+//case "init":
+//	err = initStepRunner.Run(ctx, step)
+//	if err != nil {
+//		return errors.Wrap(err, "executing terraform init")
+//	}
+func (r *Runner) runStep(ctx workflow.Context, step deploy.Step) error {
+	var err error
+	switch step.StepName {
+	case "init":
+		err = workflow.ExecuteActivity(ctx, r.TerraformInit, activities.TerraformInitRequest{}).Get(ctx, nil)
+		if err != nil {
+			return errors.Wrap(err, "executing terraform init")
+		}
+	case "plan":
+		err = workflow.ExecuteActivity(ctx, r.TerraformPlan, activities.TerraformPlanRequest{}).Get(ctx, nil)
+		if err != nil {
+			return errors.Wrap(err, "executing terraform plan")
+		}
+		err = workflow.ExecuteActivity(ctx, r.Notify, activities.NotifyRequest{}).Get(ctx, nil)
+		if err != nil {
+			return errors.Wrap(err, "notifying plan result")
+		}
+	case "apply":
+		err = workflow.ExecuteActivity(ctx, r.TerraformApply, activities.TerraformApplyRequest{}).Get(ctx, nil)
+		if err != nil {
+			return errors.Wrap(err, "executing terraform apply")
+		}
+		err = workflow.ExecuteActivity(ctx, r.Notify, activities.NotifyRequest{}).Get(ctx, nil)
+		if err != nil {
+			return errors.Wrap(err, "notifying apply result")
+		}
+	case "run":
+		err = workflow.ExecuteActivity(ctx, r.ExecuteCommand, activities.ExecuteCommandRequest{}).Get(ctx, nil)
+		if err != nil {
+			return errors.Wrap(err, "executing custom command")
+		}
+	case "env":
+		err = workflow.ExecuteActivity(ctx, r.ExecuteCommand, activities.ExecuteCommandRequest{}).Get(ctx, nil)
+		if err != nil {
+			return errors.Wrap(err, "exporting custom env variables")
+		}
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type PlanReview struct {
+	Status PlanStatus
+}
+
+//TODO: should we build a timer select branches to notify users that an approval is still needed/way to cancel long running exection?
+func (r *Runner) WaitUntilPlanIsReviewed(ctx workflow.Context) PlanReview {
+	s := workflow.NewSelector(ctx)
+	var planReview PlanReview
+	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-root")
+	s.AddReceive(signalChan, func(c workflow.ReceiveChannel, more bool) {
+		c.Receive(ctx, &planReview)
+	})
+	s.Select(ctx)
+	return planReview
 }
