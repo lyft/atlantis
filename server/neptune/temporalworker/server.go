@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"go.temporal.io/sdk/client"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -104,40 +104,45 @@ func NewServer(config *Config) (*Server, error) {
 }
 
 func (s Server) Start() error {
-	var wg sync.WaitGroup
-	wg.Add(1)
 	defer s.Logger.Close()
 	defer s.TemporalClient.Close()
+	// TODO: spin up a goroutine to build and run the terraform worker
 
-	go func() {
-		defer wg.Done()
-		w := worker.New(s.TemporalClient, workflows.DeployTaskQueue, worker.Options{
+	// we create a base context that is marked done when we get a sigterm.
+	// we should use this context for other async work to ensure we
+	// are gracefully handling shutdown and not dropping data.
+	mainCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// error group here makes it easier to add other processes and share a ctx between them
+	group, gCtx := errgroup.WithContext(mainCtx)
+	group.Go(func() error {
+		w := worker.New(s.TemporalClient, workflows.DeployTaskQueue, worker.Options{})
+		if err := w.Run(worker.InterruptCh()); err != nil {
+			log.Fatalln("unable to start worker", err)
+		}
+		return nil
+	})
+	group.Go(func() error {
+		w := worker.New(s.TemporalClient, workflows.TerraformTaskQueue, worker.Options{
 			// ensures that sessions are preserved on the same worker
 			EnableSessionWorker: true,
 		})
 		if err := w.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start worker", err)
 		}
-	}()
-	// TODO: spin up a goroutine to build and run the terraform worker
-
-	// Ensure server gracefully drains connections when stopped.
-	stop := make(chan os.Signal, 1)
-	// Stop on SIGINTs and SIGTERMs.
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	s.Logger.Info(fmt.Sprintf("Atlantis started - listening on port %v", s.Port))
-
-	go func() {
+		return nil
+	})
+	group.Go(func() error {
+		s.Logger.Info(fmt.Sprintf("Atlantis started - listening on port %v", s.Port))
 		err := s.HttpServerProxy.ListenAndServe()
-
 		if err != nil && err != http.ErrServerClosed {
 			s.Logger.Error(err.Error())
 		}
-	}()
+		return err
+	})
 
-	<-stop
-
+	<-gCtx.Done()
 	// flush stats before shutdown
 	if err := s.StatsCloser.Close(); err != nil {
 		s.Logger.Error(err.Error())
@@ -148,7 +153,6 @@ func (s Server) Start() error {
 	if err := s.HttpServerProxy.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
 	}
-	wg.Wait()
 	return nil
 }
 
