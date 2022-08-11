@@ -1,7 +1,7 @@
 package deploy
 
 import (
-	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,7 +12,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -63,42 +62,14 @@ func Workflow(ctx workflow.Context, request Request) error {
 		return errors.Wrap(err, "executing deploy workflow")
 	}
 
-	// Spin up a child workflow to handle Terraform operations
-	childWorkflowOptions := workflow.ChildWorkflowOptions{
-		TaskQueue: terraform.TaskQueue,
-		//TODO: match workflow id to format used by deploy workflow
-		WorkflowID: fmt.Sprintf("%s-%s", request.Repository.FullName, request.Root.Name),
-	}
-	ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)
-	terraformWorkflowRequest := TerraformRequest{
-		Repo: terraform.Repo{
-			FullName: request.Repository.FullName,
-			Owner:    request.Repository.Owner,
-			Name:     request.Repository.Name,
-			URL:      request.Repository.URL,
-		},
-		Root: terraform.Root{
-			Name: request.Root.Name,
-			Apply: terraform.Job{
-				Steps: convertToTerraformSteps(request.Root.Apply.Steps),
-			},
-			Plan: terraform.Job{
-				Steps: convertToTerraformSteps(request.Root.Plan.Steps),
-			},
-		},
-	}
-	err = workflow.ExecuteChildWorkflow(ctx, terraform.Workflow, terraformWorkflowRequest).Get(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "executing child terraform workflow")
-	}
 	return nil
 }
 
 // TODO: clean this up
-func convertToTerraformSteps(steps []Step) []terraform.Step {
-	var terraformSteps []terraform.Step
-	for _, step := range steps {
-		terraformSteps = append(terraformSteps, terraform.Step{
+func convertToInternalSteps(requestSteps []Step) []steps.Step {
+	var terraformSteps []steps.Step
+	for _, step := range requestSteps {
+		terraformSteps = append(terraformSteps, steps.Step{
 			StepName:    step.StepName,
 			ExtraArgs:   step.ExtraArgs,
 			RunCommand:  step.RunCommand,
@@ -122,6 +93,11 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 		Owner: request.Repository.Owner,
 		URL:   request.Repository.URL,
 	}
+	root := steps.Root{
+		Name:  request.Root.Name,
+		Apply: steps.Job{Steps: convertToInternalSteps(request.Root.Apply.Steps)},
+		Plan:  steps.Job{Steps: convertToInternalSteps(request.Root.Plan.Steps)},
+	}
 
 	// inject dependencies
 
@@ -136,7 +112,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 		Queue:      revisionQueue,
 		Activities: a,
 		Repo:       repo,
-		RootName:   request.Root.Name,
+		Root:       root,
 	}
 
 	return &Runner{

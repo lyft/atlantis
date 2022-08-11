@@ -3,7 +3,6 @@ package workflows
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -17,7 +16,6 @@ type Step = deploy.Step
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 
 var DeployTaskQueue = deploy.TaskQueue
-var TerraformTaskQueue = terraform.TaskQueue
 
 var DeployNewRevisionSignalID = deploy.NewRevisionSignalID
 

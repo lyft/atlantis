@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -10,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -30,7 +32,7 @@ type Worker struct {
 	Activities workerActivities
 	Queue      *Queue
 	Repo       github.Repo
-	RootName   string
+	Root       steps.Root
 
 	// mutable
 	state WorkerState
@@ -102,6 +104,34 @@ func (w *Worker) work(ctx workflow.Context, revision string) error {
 	logger.Info(ctx, fmt.Sprintf("latest deployed revision %s", deployedRevision))
 
 	// TODO: fill in the rest
+	// Spin up a child workflow to handle Terraform operations
+	childWorkflowOptions := workflow.ChildWorkflowOptions{
+		TaskQueue: terraform.TaskQueue,
+		//TODO: match workflow id to format used by deploy workflow
+		WorkflowID: fmt.Sprintf("%s-%s", w.Repo.GetFullName(), w.Root.Name),
+	}
+	ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)
+	terraformWorkflowRequest := steps.Request{
+		Repo: github.Repo{
+			Owner: w.Repo.Owner,
+			Name:  w.Repo.Name,
+			URL:   w.Repo.URL,
+		},
+		Root: steps.Root{
+			Name: w.Root.Name,
+			Apply: steps.Job{
+				Steps: w.Root.Apply.Steps,
+			},
+			Plan: steps.Job{
+				Steps: w.Root.Plan.Steps,
+			},
+		},
+	}
+	err = workflow.ExecuteChildWorkflow(ctx, terraform.Workflow, terraformWorkflowRequest).Get(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "executing child terraform workflow")
+	}
+	return nil
 
 	return nil
 }
@@ -109,7 +139,7 @@ func (w *Worker) work(ctx workflow.Context, revision string) error {
 func (w *Worker) fetchLatestDeployment(ctx workflow.Context) (string, error) {
 	request := activities.FetchLatestDeploymentRequest{
 		RepositoryURL: w.Repo.URL,
-		RootName:      w.RootName,
+		RootName:      w.Root.Name,
 	}
 
 	var resp activities.FetchLatestDeploymentResponse

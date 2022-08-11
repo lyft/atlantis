@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	"go.temporal.io/sdk/workflow"
 	"time"
 )
@@ -17,13 +18,11 @@ const (
 	Rejected
 )
 
-func Workflow(ctx workflow.Context, request Request) error {
-	// TODO: should we set up a heartbeat? How long it takes to make progress on a terraform op activity is dependent on
-	// how complex of a change it runs
+func Workflow(ctx workflow.Context, request steps.Request) error {
 	options := workflow.ActivityOptions{
 		TaskQueue:              TaskQueue,
 		ScheduleToCloseTimeout: 30 * time.Minute,
-		//HeartbeatTimeout:       2 * time.Minute,
+		HeartbeatTimeout:       1 * time.Minute,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
@@ -55,10 +54,10 @@ type workerActivities interface {
 
 type Runner struct {
 	workerActivities
-	request Request
+	request steps.Request
 }
 
-func newRunner(ctx workflow.Context, request Request) *Runner {
+func newRunner(ctx workflow.Context, request steps.Request) *Runner {
 	return &Runner{
 		workerActivities: activities.Terraform{},
 		request:          request,
@@ -79,12 +78,14 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		}
 	}
 	// Wait for plan review signal
-	planReview := r.WaitUntilPlanIsReviewed(ctx)
+	var planReview PlanReview
+	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-steps")
+	signalChan.Receive(ctx, &planReview)
 	if planReview.Status == Rejected {
 		return nil
 	}
 	// Run apply steps
-	for _, step := range r.request.Root.Plan.Steps {
+	for _, step := range r.request.Root.Apply.Steps {
 		err := r.runStep(ctx, step)
 		if err != nil {
 			return errors.Wrap(err, "running step")
@@ -109,7 +110,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 //	if err != nil {
 //		return errors.Wrap(err, "executing terraform init")
 //	}
-func (r *Runner) runStep(ctx workflow.Context, step Step) error {
+func (r *Runner) runStep(ctx workflow.Context, step steps.Step) error {
 	var err error
 	switch step.StepName {
 	case "init":
@@ -154,16 +155,4 @@ func (r *Runner) runStep(ctx workflow.Context, step Step) error {
 
 type PlanReview struct {
 	Status PlanStatus
-}
-
-//TODO: should we build a timer select branches to notify users that an approval is still needed/way to cancel long running exection?
-func (r *Runner) WaitUntilPlanIsReviewed(ctx workflow.Context) PlanReview {
-	s := workflow.NewSelector(ctx)
-	var planReview PlanReview
-	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-root")
-	s.AddReceive(signalChan, func(c workflow.ReceiveChannel, more bool) {
-		c.Receive(ctx, &planReview)
-	})
-	s.Select(ctx)
-	return planReview
 }
