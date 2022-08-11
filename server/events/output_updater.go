@@ -112,13 +112,18 @@ func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd Pu
 			ProjectName: projectResult.ProjectName,
 		})
 
+		state := models.SuccessCommitStatus
+		if projectResult.PolicyCheckSuccess == nil {
+			state = models.FailedCommitStatus
+		}
+
 		output := c.MarkdownRenderer.RenderProject(projectResult, command.PolicyCheck, ctx.Pull.BaseRepo)
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:             ctx.HeadRepo,
 			Ref:              ctx.Pull.HeadCommit,
 			StatusName:       statusName,
 			PullNum:          ctx.Pull.Num,
-			State:            models.SuccessCommitStatus,
+			State:            state,
 			StatusId:         projectResult.StatusId,
 			Output:           output,
 			PullCreationTime: ctx.Pull.CreatedAt,
