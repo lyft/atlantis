@@ -30,8 +30,8 @@ type ProjectCommitStatusUpdater interface {
 	UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string, statusId string) (string, error)
 }
 
-type ProjectUpdater interface {
-	UpdateStatus(ctx ProjectContext, status models.CommitStatus) (string, error)
+type StatusUpdater interface {
+	UpdateProjectStatus(ctx ProjectContext, status models.CommitStatus) (string, error)
 }
 
 type ProjectStatusUpdater struct {
@@ -41,7 +41,7 @@ type ProjectStatusUpdater struct {
 	ProjectCommitStatusUpdater ProjectCommitStatusUpdater
 }
 
-func (p ProjectStatusUpdater) UpdateStatus(ctx ProjectContext, status models.CommitStatus) (string, error) {
+func (p ProjectStatusUpdater) UpdateProjectStatus(ctx ProjectContext, status models.CommitStatus) (string, error) {
 	url, err := p.ProjectJobURLGenerator.GenerateProjectJobURL(ctx)
 	if err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("updating project PR status %v", err))

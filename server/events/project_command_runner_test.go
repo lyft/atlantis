@@ -267,8 +267,12 @@ func TestProjectOutputWrapper(t *testing.T) {
 			mockProjectCommandRunner := mocks.NewMockProjectCommandRunner()
 
 			runner := &events.ProjectOutputWrapper{
-				JobURLSetter:         mockJobURLSetter,
-				JobCloser:            mockJobCloser,
+				ProjectStatusUpdater: command.ProjectStatusUpdater{
+					JobCloser:                  mockJobCloser,
+					ProjectJobURLGenerator:     mockJobUrlGenerator,
+					ProjectCommitStatusUpdater: mockCommitStatusUpdater,
+					FeatureAllocator:           mockFeatureAllocator{},
+				},
 				ProjectCommandRunner: mockProjectCommandRunner,
 			}
 
