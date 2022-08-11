@@ -16,7 +16,7 @@ type ProjectResult struct {
 	ApplySuccess       string
 	VersionSuccess     string
 	ProjectName        string
-	CheckRunId         string
+	StatusId           string
 }
 
 // CommitStatus returns the vcs commit status of this project result.
