@@ -106,7 +106,6 @@ func NewServer(config *Config) (*Server, error) {
 func (s Server) Start() error {
 	defer s.Logger.Close()
 	defer s.TemporalClient.Close()
-	// TODO: spin up a goroutine to build and run the terraform worker
 
 	// we create a base context that is marked done when we get a sigterm.
 	// we should use this context for other async work to ensure we

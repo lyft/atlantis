@@ -1,4 +1,4 @@
-package workflows
+package deploy
 
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"

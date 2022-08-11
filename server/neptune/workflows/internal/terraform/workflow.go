@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy"
 	"go.temporal.io/sdk/workflow"
 	"time"
 )
@@ -110,7 +109,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 //	if err != nil {
 //		return errors.Wrap(err, "executing terraform init")
 //	}
-func (r *Runner) runStep(ctx workflow.Context, step deploy.Step) error {
+func (r *Runner) runStep(ctx workflow.Context, step Step) error {
 	var err error
 	switch step.StepName {
 	case "init":

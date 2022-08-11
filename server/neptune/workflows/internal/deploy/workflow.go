@@ -2,7 +2,6 @@ package deploy
 
 import (
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"time"
 
 	"github.com/pkg/errors"
@@ -71,15 +70,43 @@ func Workflow(ctx workflow.Context, request Request) error {
 		WorkflowID: fmt.Sprintf("%s-%s", request.Repository.FullName, request.Root.Name),
 	}
 	ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)
-	terraformWorkflowRequest := workflows.TerraformRequest{
-		Repo: request.Repository,
-		Root: request.Root,
+	terraformWorkflowRequest := TerraformRequest{
+		Repo: terraform.Repo{
+			FullName: request.Repository.FullName,
+			Owner:    request.Repository.Owner,
+			Name:     request.Repository.Name,
+			URL:      request.Repository.URL,
+		},
+		Root: terraform.Root{
+			Name: request.Root.Name,
+			Apply: terraform.Job{
+				Steps: convertToTerraformSteps(request.Root.Apply.Steps),
+			},
+			Plan: terraform.Job{
+				Steps: convertToTerraformSteps(request.Root.Plan.Steps),
+			},
+		},
 	}
 	err = workflow.ExecuteChildWorkflow(ctx, terraform.Workflow, terraformWorkflowRequest).Get(ctx, nil)
 	if err != nil {
 		return errors.Wrap(err, "executing child terraform workflow")
 	}
 	return nil
+}
+
+// TODO: clean this up
+func convertToTerraformSteps(steps []Step) []terraform.Step {
+	var terraformSteps []terraform.Step
+	for _, step := range steps {
+		terraformSteps = append(terraformSteps, terraform.Step{
+			StepName:    step.StepName,
+			ExtraArgs:   step.ExtraArgs,
+			RunCommand:  step.RunCommand,
+			EnvVarName:  step.EnvVarName,
+			EnvVarValue: step.EnvVarValue,
+		})
+	}
+	return terraformSteps
 }
 
 type Runner struct {
