@@ -77,8 +77,8 @@ func NewServer(config *Config) (*Server, error) {
 	// router initialization
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods("GET")
-	router.HandleFunc("/jobs/{steps-id}", jobsController.GetProjectJobs).Methods("GET").Name(ProjectJobsViewRouteName)
-	router.HandleFunc("/jobs/{steps-id}/ws", jobsController.GetProjectJobsWS).Methods("GET")
+	router.HandleFunc("/jobs/{job-id}", jobsController.GetProjectJobs).Methods("GET").Name(ProjectJobsViewRouteName)
+	router.HandleFunc("/jobs/{job-id}/ws", jobsController.GetProjectJobsWS).Methods("GET")
 	n := negroni.New(&negroni.Recovery{
 		Logger:     log.New(os.Stdout, "", log.LstdFlags),
 		PrintStack: false,

@@ -63,7 +63,7 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 	run, err := p.TemporalClient.SignalWithStartWorkflow(
 		ctx,
 
-		// TODO: name should include steps name as well
+		// TODO: name should include root name as well
 		event.Repo.FullName,
 		workflows.DeployNewRevisionSignalID,
 		workflows.DeployNewRevisionSignalRequest{
