@@ -14,7 +14,7 @@ func NewApprovePoliciesCommandRunner(
 	prjCommandRunner ProjectApprovePoliciesCommandRunner,
 	outputUpdater OutputUpdater,
 	dbUpdater *DBUpdater,
-	policyCheckOutputPopulator CommandOutputPopulator,
+	policyCheckOutputGenerator CommandOutputGenerator,
 ) *ApprovePoliciesCommandRunner {
 	return &ApprovePoliciesCommandRunner{
 		commitStatusUpdater:        commitStatusUpdater,
@@ -22,7 +22,7 @@ func NewApprovePoliciesCommandRunner(
 		prjCmdRunner:               prjCommandRunner,
 		outputUpdater:              outputUpdater,
 		dbUpdater:                  dbUpdater,
-		policyCheckOutputPopulator: policyCheckOutputPopulator,
+		policyCheckOutputGenerator: policyCheckOutputGenerator,
 	}
 }
 
@@ -32,7 +32,7 @@ type ApprovePoliciesCommandRunner struct {
 	dbUpdater                  *DBUpdater
 	prjCmdBuilder              ProjectApprovePoliciesCommandBuilder
 	prjCmdRunner               ProjectApprovePoliciesCommandRunner
-	policyCheckOutputPopulator CommandOutputPopulator
+	policyCheckOutputGenerator CommandOutputGenerator
 }
 
 func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
@@ -66,21 +66,27 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 
 	result := a.buildApprovePolicyCommandResults(ctx, projectCmds)
 
+	// Adds the policy check output for failing policies which needs to be populated when using github checks
+	// Noop when github checks is not enabled.
+	policyCheckOutputStore := a.policyCheckOutputGenerator.GenerateCommandOutput(ctx, cmd)
+	for i, prjResult := range result.ProjectResults {
+		policyCheckOutput := policyCheckOutputStore.GetOutputFor(prjResult.ProjectName, prjResult.Workspace)
+		if policyCheckOutput != nil {
+			result.ProjectResults[i].PolicyCheckSuccess = policyCheckOutputStore.GetOutputFor(prjResult.ProjectName, prjResult.Workspace)
+		}
+	}
+
+	a.outputUpdater.UpdateOutput(
+		ctx,
+		cmd,
+		result,
+	)
+
 	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("writing results: %s", err))
 		return
 	}
-
-	// Adds the policy check output for failing policies which needs to be populated when using github checks
-	// Noop when github checks is not enabled.
-	result = a.policyCheckOutputPopulator.PopulateCommandOutput(ctx, cmd, result)
-
-	a.outputUpdater.UpdateOutput(
-		ctx,
-		PolicyCheckCommand{},
-		result,
-	)
 
 	a.updateCommitStatus(ctx, pullStatus, statusId)
 }

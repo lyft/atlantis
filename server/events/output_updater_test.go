@@ -100,6 +100,7 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 			ProjectName: "project1",
 			RepoRelDir:  "somedir",
 			Workspace:   "default",
+			Command:     command.Plan,
 		}
 		commandResult := command.Result{
 			ProjectResults: []command.ProjectResult{
@@ -144,6 +145,7 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 			RepoRelDir:  "somedir",
 			Workspace:   "default",
 			Error:       assert.AnError,
+			Command:     command.Plan,
 		}
 		commandResult := command.Result{
 			ProjectResults: []command.ProjectResult{
@@ -188,6 +190,7 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 			RepoRelDir:  "somedir",
 			Workspace:   "default",
 			Failure:     "failure",
+			Command:     command.Plan,
 		}
 		commandResult := command.Result{
 			ProjectResults: []command.ProjectResult{
@@ -251,16 +254,17 @@ func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
 
 	output := "some output"
 
-	t.Run("project result success", func(t *testing.T) {
-		projectResult := command.ProjectResult{
-			ProjectName:        "project1",
-			RepoRelDir:         "somedir",
-			Workspace:          "default",
-			PolicyCheckSuccess: &models.PolicyCheckSuccess{},
-		}
+	result := command.ProjectResult{
+		ProjectName: "project1",
+		RepoRelDir:  "somedir",
+		Workspace:   "default",
+		Command:     command.ApprovePolicies,
+	}
+
+	t.Run("handle approve policies", func(t *testing.T) {
 		commandResult := command.Result{
 			ProjectResults: []command.ProjectResult{
-				projectResult,
+				result,
 			},
 		}
 
@@ -285,17 +289,17 @@ func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
 			VCSClient: client,
 			MarkdownRenderer: &testRenderer{
 				t:                     t,
-				expectedCmdName:       command.PolicyCheck,
+				expectedCmdName:       command.ApprovePolicies,
 				expectedResult:        commandResult,
 				expectedRepo:          repo,
 				expectedOutput:        output,
-				expectedProjectResult: projectResult,
+				expectedProjectResult: result,
 			},
 			TitleBuilder: vcs.StatusTitleBuilder{"nish"},
 		}
 
 		subject.UpdateOutput(cmdCtx, &command.Comment{
-			Name: command.PolicyCheck,
+			Name: command.ApprovePolicies,
 		}, commandResult)
 	})
 }

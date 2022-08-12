@@ -758,7 +758,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		pullReqStatusFetcher,
 	)
 
-	outputPopulator := events.PolicyCheckCommandOutputPopulator{
+	policyCheckOutputGenerator := events.PolicyCheckCommandOutputGenerator{
 		PrjCommandRunner:  prjCmdRunner,
 		PrjCommandBuilder: projectCommandBuilder,
 		FeatureAllocator:  featureAllocator,
@@ -770,7 +770,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		prjCmdRunner,
 		outputUpdater,
 		dbUpdater,
-		&outputPopulator,
+		&policyCheckOutputGenerator,
 	)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
@@ -799,7 +799,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
-	prOuptutPopulator := events.PolicyCheckCommandOutputPopulator{
+	prPolicyCheckOutputGenerator := events.PolicyCheckCommandOutputGenerator{
 		PrjCommandRunner:  prPrjCmdRunner,
 		PrjCommandBuilder: prProjectCommandBuilder,
 		FeatureAllocator:  featureAllocator,
@@ -811,7 +811,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		prPrjCmdRunner,
 		outputUpdater,
 		dbUpdater,
-		&prOuptutPopulator,
+		&prPolicyCheckOutputGenerator,
 	)
 
 	featuredPlanRunner := lyftCommands.NewPlatformModeFeatureRunner(

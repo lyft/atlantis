@@ -61,11 +61,10 @@ type ChecksOutputUpdater struct {
 }
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
+
 	// iterate through all project results and the update the github check
 	for _, projectResult := range res.ProjectResults {
-		statusName := c.TitleBuilder.Build(cmd.CommandName().String(), vcs.StatusTitleOptions{
-			ProjectName: projectResult.ProjectName,
-		})
+		statusName := c.buildStatusName(cmd, projectResult)
 
 		// Description is a required field
 		description := fmt.Sprintf("**Project**: `%s`\n**Dir**: `%s`\n**Workspace**: `%s`", projectResult.ProjectName, projectResult.RepoRelDir, projectResult.Workspace)
@@ -77,7 +76,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			state = models.SuccessCommitStatus
 		}
 
-		output := c.MarkdownRenderer.RenderProject(projectResult, cmd.CommandName(), ctx.Pull.BaseRepo)
+		output := c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo)
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:             ctx.HeadRepo,
 			Ref:              ctx.Pull.HeadCommit,
@@ -96,7 +95,35 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			})
 		}
 	}
+}
 
+func (c *ChecksOutputUpdater) buildStatusName(cmd PullCommand, prjResult command.ProjectResult) string {
+
+	commandName := cmd.CommandName()
+	// Replace project level approve policies command with Policy Check
+	if commandName == command.ApprovePolicies {
+		commandName = command.PolicyCheck
+	}
+
+	return c.TitleBuilder.Build(commandName.String(), vcs.StatusTitleOptions{
+		ProjectName: prjResult.ProjectName,
+	})
+}
+
+func (c *ChecksOutputUpdater) filterPassingProjectPolicyCheck(prjResults []command.ProjectResult) []command.ProjectResult {
+	filteredPrjResults := []command.ProjectResult{}
+
+	for _, prjResult := range prjResults {
+
+		// When github checks is enabled, the PolicyCheckOutputPopulator populates PolicyCheckSuccess for the failing policy check commands only
+		// So, if PolicyCheckSuccess is empty, we can assume this policy check was already green
+		if prjResult.PolicyCheckSuccess == nil {
+			continue
+		}
+
+		filteredPrjResults = append(filteredPrjResults, prjResult)
+	}
+	return filteredPrjResults
 }
 
 // Default prj output updater which writes to the pull req comment
