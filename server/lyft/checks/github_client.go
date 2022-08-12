@@ -149,7 +149,7 @@ func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, request types.
 func (c *ChecksClientWrapper) createCheckRunOutput(request types.UpdateStatusRequest) *github.CheckRunOutput {
 
 	// Add Jobs URL if a project plan/apply command
-	var summary string
+	summary := request.Description
 	if strings.Contains(request.StatusName, ":") &&
 		(strings.Contains(request.StatusName, "plan") || strings.Contains(request.StatusName, "apply")) {
 		if request.DetailsURL != "" {
