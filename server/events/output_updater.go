@@ -64,29 +64,16 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 
 	// iterate through all project results and the update the github check
 	for _, projectResult := range res.ProjectResults {
-		statusName := c.buildStatusName(cmd, projectResult)
-
-		// Description is a required field
-		description := fmt.Sprintf("**Project**: `%s`\n**Dir**: `%s`\n**Workspace**: `%s`", projectResult.ProjectName, projectResult.RepoRelDir, projectResult.Workspace)
-
-		var state models.CommitStatus
-		if projectResult.Error != nil || projectResult.Failure != "" {
-			state = models.FailedCommitStatus
-		} else {
-			state = models.SuccessCommitStatus
-		}
-
-		output := c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo)
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:             ctx.HeadRepo,
 			Ref:              ctx.Pull.HeadCommit,
-			StatusName:       statusName,
 			PullNum:          ctx.Pull.Num,
-			Description:      description,
-			Output:           output,
-			State:            state,
+			StatusName:       c.buildStatusName(cmd, projectResult),
 			PullCreationTime: ctx.Pull.CreatedAt,
 			StatusId:         projectResult.StatusId,
+			Description:      c.buildDescription(projectResult),
+			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),
+			State:            c.resolveState(projectResult),
 		}
 
 		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
@@ -98,8 +85,8 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 }
 
 func (c *ChecksOutputUpdater) buildStatusName(cmd PullCommand, prjResult command.ProjectResult) string {
-
 	commandName := cmd.CommandName()
+
 	// Replace project level approve policies command with Policy Check
 	if commandName == command.ApprovePolicies {
 		commandName = command.PolicyCheck
@@ -108,6 +95,18 @@ func (c *ChecksOutputUpdater) buildStatusName(cmd PullCommand, prjResult command
 	return c.TitleBuilder.Build(commandName.String(), vcs.StatusTitleOptions{
 		ProjectName: prjResult.ProjectName,
 	})
+}
+
+func (c *ChecksOutputUpdater) buildDescription(projectResult command.ProjectResult) string {
+	return fmt.Sprintf("**Project**: `%s`\n**Dir**: `%s`\n**Workspace**: `%s`", projectResult.ProjectName, projectResult.RepoRelDir, projectResult.Workspace)
+}
+
+func (c *ChecksOutputUpdater) resolveState(result command.ProjectResult) models.CommitStatus {
+	if result.Error != nil || result.Failure != "" {
+		return models.FailedCommitStatus
+	} else {
+		return models.SuccessCommitStatus
+	}
 }
 
 func (c *ChecksOutputUpdater) filterPassingProjectPolicyCheck(prjResults []command.ProjectResult) []command.ProjectResult {
