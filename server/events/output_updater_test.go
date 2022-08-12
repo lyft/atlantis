@@ -273,6 +273,7 @@ func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
 						StatusName:       "nish/policy_check: project1",
 						Output:           "some output",
 						State:            models.SuccessCommitStatus,
+						Description:      "Policies Approved",
 						PullCreationTime: createdAt,
 						PullNum:          1,
 					},

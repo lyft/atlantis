@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"io"
 	"io/ioutil"
 	"log"
@@ -32,6 +31,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/runatlantis/atlantis/server/instrumentation"
@@ -752,13 +753,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		pullReqStatusFetcher,
 	)
 
-	// Using pull updater for approving policies until we move off of PR comments entirely
+	outputPopulator := events.PolicyCheckCommandOutputPopulator{
+		PrjCommandRunner:  prjCmdRunner,
+		PrjCommandBuilder: projectCommandBuilder,
+		FeatureAllocator:  featureAllocator,
+	}
+
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		outputUpdater,
 		dbUpdater,
+		&outputPopulator,
 	)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
@@ -787,13 +794,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
-	// Using pull updater for approving policies until we move off of PR comments entirely
+	prOuptutPopulator := events.PolicyCheckCommandOutputPopulator{
+		PrjCommandRunner:  prPrjCmdRunner,
+		PrjCommandBuilder: prProjectCommandBuilder,
+		FeatureAllocator:  featureAllocator,
+	}
+
 	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
 		outputUpdater,
 		dbUpdater,
+		&prOuptutPopulator,
 	)
 
 	featuredPlanRunner := lyftCommands.NewPlatformModeFeatureRunner(

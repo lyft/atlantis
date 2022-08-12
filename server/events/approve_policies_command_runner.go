@@ -14,22 +14,25 @@ func NewApprovePoliciesCommandRunner(
 	prjCommandRunner ProjectApprovePoliciesCommandRunner,
 	outputUpdater OutputUpdater,
 	dbUpdater *DBUpdater,
+	policyCheckOutputPopulator CommandOutputPopulator,
 ) *ApprovePoliciesCommandRunner {
 	return &ApprovePoliciesCommandRunner{
-		commitStatusUpdater: commitStatusUpdater,
-		prjCmdBuilder:       prjCommandBuilder,
-		prjCmdRunner:        prjCommandRunner,
-		outputUpdater:       outputUpdater,
-		dbUpdater:           dbUpdater,
+		commitStatusUpdater:        commitStatusUpdater,
+		prjCmdBuilder:              prjCommandBuilder,
+		prjCmdRunner:               prjCommandRunner,
+		outputUpdater:              outputUpdater,
+		dbUpdater:                  dbUpdater,
+		policyCheckOutputPopulator: policyCheckOutputPopulator,
 	}
 }
 
 type ApprovePoliciesCommandRunner struct {
-	commitStatusUpdater CommitStatusUpdater
-	outputUpdater       OutputUpdater
-	dbUpdater           *DBUpdater
-	prjCmdBuilder       ProjectApprovePoliciesCommandBuilder
-	prjCmdRunner        ProjectApprovePoliciesCommandRunner
+	commitStatusUpdater        CommitStatusUpdater
+	outputUpdater              OutputUpdater
+	dbUpdater                  *DBUpdater
+	prjCmdBuilder              ProjectApprovePoliciesCommandBuilder
+	prjCmdRunner               ProjectApprovePoliciesCommandRunner
+	policyCheckOutputPopulator CommandOutputPopulator
 }
 
 func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
@@ -63,17 +66,21 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 
 	result := a.buildApprovePolicyCommandResults(ctx, projectCmds)
 
-	a.outputUpdater.UpdateOutput(
-		ctx,
-		cmd,
-		result,
-	)
-
 	pullStatus, err := a.dbUpdater.updateDB(ctx, pull, result.ProjectResults)
 	if err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("writing results: %s", err))
 		return
 	}
+
+	// Adds the policy check output for failing policies which needs to be populated when using github checks
+	// Noop when github checks is not enabled.
+	result = a.policyCheckOutputPopulator.PopulateCommandOutput(ctx, cmd, result)
+
+	a.outputUpdater.UpdateOutput(
+		ctx,
+		PolicyCheckCommand{},
+		result,
+	)
 
 	a.updateCommitStatus(ctx, pullStatus, statusId)
 }
