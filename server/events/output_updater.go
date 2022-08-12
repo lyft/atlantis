@@ -87,7 +87,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Output:           output,
 			State:            state,
 			PullCreationTime: ctx.Pull.CreatedAt,
-			CheckRunId:       projectResult.CheckRunId,
+			StatusId:         projectResult.StatusId,
 		}
 
 		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {

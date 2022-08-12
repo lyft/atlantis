@@ -134,12 +134,16 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1642f230 (fix tests)
 	approvePoliciesCommandRunner = events.NewApprovePoliciesCommandRunner(
 		commitUpdater,
 		projectCommandBuilder,
 		projectCommandRunner,
 		pullUpdater,
 		dbUpdater,
+<<<<<<< HEAD
 =======
 	approvePoliciesCommandRunner = wrappers.WrapCommandRunner(
 		events.NewApprovePoliciesCommandRunner(
@@ -150,6 +154,13 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 			dbUpdater,
 		),
 >>>>>>> 6dc5e1ab (tests)
+=======
+		&events.PolicyCheckCommandOutputPopulator{
+			PrjCommandRunner:  projectCommandRunner,
+			PrjCommandBuilder: projectCommandBuilder,
+			FeatureAllocator:  mockFeatureAllocator{},
+		},
+>>>>>>> 1642f230 (fix tests)
 	)
 
 	unlockCommandRunner = events.NewUnlockCommandRunner(
