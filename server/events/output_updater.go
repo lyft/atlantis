@@ -68,9 +68,9 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Repo:             ctx.HeadRepo,
 			Ref:              ctx.Pull.HeadCommit,
 			PullNum:          ctx.Pull.Num,
-			StatusName:       c.buildStatusName(cmd, projectResult),
 			PullCreationTime: ctx.Pull.CreatedAt,
 			StatusId:         projectResult.StatusId,
+			StatusName:       c.buildStatusName(cmd, projectResult),
 			Description:      c.buildDescription(projectResult),
 			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),
 			State:            c.resolveState(projectResult),
@@ -84,10 +84,9 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 	}
 }
 
+// Replace project level approve policies command with Policy Check
 func (c *ChecksOutputUpdater) buildStatusName(cmd PullCommand, prjResult command.ProjectResult) string {
 	commandName := cmd.CommandName()
-
-	// Replace project level approve policies command with Policy Check
 	if commandName == command.ApprovePolicies {
 		commandName = command.PolicyCheck
 	}
@@ -107,22 +106,6 @@ func (c *ChecksOutputUpdater) resolveState(result command.ProjectResult) models.
 	} else {
 		return models.SuccessCommitStatus
 	}
-}
-
-func (c *ChecksOutputUpdater) filterPassingProjectPolicyCheck(prjResults []command.ProjectResult) []command.ProjectResult {
-	filteredPrjResults := []command.ProjectResult{}
-
-	for _, prjResult := range prjResults {
-
-		// When github checks is enabled, the PolicyCheckOutputPopulator populates PolicyCheckSuccess for the failing policy check commands only
-		// So, if PolicyCheckSuccess is empty, we can assume this policy check was already green
-		if prjResult.PolicyCheckSuccess == nil {
-			continue
-		}
-
-		filteredPrjResults = append(filteredPrjResults, prjResult)
-	}
-	return filteredPrjResults
 }
 
 // Default prj output updater which writes to the pull req comment

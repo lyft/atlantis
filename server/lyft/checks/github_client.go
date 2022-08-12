@@ -100,30 +100,31 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 	return request.StatusId, c.updateCheckRun(ctx, request, request.StatusId)
 }
 
-// Update existing checkrun
-func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunId string) error {
-
-	output := c.capCheckRunOutput(request.Output)
+func (c *ChecksClientWrapper) createCheckRun(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	status, conclusion := c.resolveChecksStatus(request.State)
-	checkRunOutput := github.CheckRunOutput{
-		Title:   &request.StatusName,
-		Summary: &request.Description,
+	createCheckRunOpts := github.CreateCheckRunOptions{
+		Name:       request.StatusName,
+		HeadSHA:    request.Ref,
+		Status:     &status,
+		DetailsURL: &request.DetailsURL,
+		Output:     c.createCheckRunOutput(request),
 	}
 
-	if output != "" {
-		checkRunOutput.Text = &output
+	// Conclusion is required if status is Completed
+	if status == Completed.String() {
+		createCheckRunOpts.Conclusion = &conclusion
 	}
 
+	return c.GithubClient.CreateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, createCheckRunOpts)
+}
+
+func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunId string) error {
+	status, conclusion := c.resolveChecksStatus(request.State)
 	updateCheckRunOpts := github.UpdateCheckRunOptions{
-		Name:   request.StatusName,
-		Status: &status,
-		Output: &checkRunOutput,
-	}
-
-	// URL in update request takes precedence.
-	// fall back to checkRun details URL
-	if request.DetailsURL != "" {
-		updateCheckRunOpts.DetailsURL = &request.DetailsURL
+		Name:       request.StatusName,
+		Status:     &status,
+		DetailsURL: &request.DetailsURL,
+		Output:     c.createCheckRunOutput(request),
 	}
 
 	// Conclusion is required if status is Completed
@@ -139,41 +140,36 @@ func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, request types.
 	return c.GithubClient.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, checkRunIdInt, updateCheckRunOpts)
 }
 
-func (c *ChecksClientWrapper) createCheckRun(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
-	output := c.capCheckRunOutput(request.Output)
-	status, conclusion := c.resolveChecksStatus(request.State)
-	summary := c.summaryWithJobURL(request, "")
+func (c *ChecksClientWrapper) createCheckRunOutput(request types.UpdateStatusRequest) *github.CheckRunOutput {
+
+	// Add Jobs URL if a project plan/apply command
+	var summary string
+	if strings.Contains(request.StatusName, ":") &&
+		(strings.Contains(request.StatusName, "plan") || strings.Contains(request.StatusName, "apply")) {
+		if request.DetailsURL != "" {
+			summary = fmt.Sprintf("%s\n[Logs](%s)", request.Description, request.DetailsURL)
+		}
+	}
 
 	checkRunOutput := github.CheckRunOutput{
 		Title:   &request.StatusName,
 		Summary: &summary,
 	}
 
-	if output != "" {
-		checkRunOutput.Text = &output
+	if request.Output != "" {
+		checkRunOutput.Text = c.capCheckRunOutput(request.Output)
 	}
 
-	createCheckRunOpts := github.CreateCheckRunOptions{
-		Name:    request.StatusName,
-		HeadSHA: request.Ref,
-		Status:  &status,
-		Output:  &checkRunOutput,
-	}
-
-	// Conclusion is required if status is Completed
-	if status == Completed.String() {
-		createCheckRunOpts.Conclusion = &conclusion
-	}
-
-	return c.GithubClient.CreateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, createCheckRunOpts)
+	return &checkRunOutput
 }
 
 // Cap the output string if it exceeds the max checks output length
-func (c *ChecksClientWrapper) capCheckRunOutput(output string) string {
+func (c *ChecksClientWrapper) capCheckRunOutput(output string) *string {
+	cappedOutput := output
 	if len(output) > maxChecksOutputLength {
-		return output[:maxChecksOutputLength]
+		cappedOutput = output[:maxChecksOutputLength]
 	}
-	return output
+	return &cappedOutput
 }
 
 // Github Checks uses Status and Conclusion to report status of the check run. Need to map models.CommitStatus to Status and Conclusion
@@ -197,20 +193,4 @@ func (c *ChecksClientWrapper) resolveChecksStatus(state models.CommitStatus) (st
 	}
 
 	return status.String(), conclusion.String()
-}
-
-// Append job URL to summary if it's a project plan or apply operation bc we currently only stream logs for these two operations
-func (c *ChecksClientWrapper) summaryWithJobURL(request types.UpdateStatusRequest, fallBackURL string) string {
-	if strings.Contains(request.StatusName, ":") &&
-		(strings.Contains(request.StatusName, "plan") || strings.Contains(request.StatusName, "apply")) {
-
-		// URL in update request takes precedence
-		// fallbackURL i.e checkrun URL could be stale from previous operation
-		if request.DetailsURL != "" {
-			return fmt.Sprintf("%s\n[Logs](%s)", request.Description, request.DetailsURL)
-		} else if fallBackURL != "" {
-			return fmt.Sprintf("%s\n[Logs](%s)", request.Description, fallBackURL)
-		}
-	}
-	return request.Description
 }
