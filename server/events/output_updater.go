@@ -17,6 +17,11 @@ type OutputUpdater interface {
 	UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result)
 }
 
+// JobURLGenerator generates urls to view project's progress.
+type jobURLGenerator interface {
+	GenerateProjectJobURL(jobId string) (string, error)
+}
+
 type renderer interface {
 	Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string
 	RenderProject(prjRes command.ProjectResult, cmdName command.Name, baseRepo models.Repo) string
@@ -58,18 +63,26 @@ type ChecksOutputUpdater struct {
 	VCSClient        checksClient
 	MarkdownRenderer renderer
 	TitleBuilder     vcs.StatusTitleBuilder
+	JobURLGenerator  jobURLGenerator
 }
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
 
 	// iterate through all project results and the update the github check
 	for _, projectResult := range res.ProjectResults {
+
+		jobURL, err := c.JobURLGenerator.GenerateProjectJobURL(projectResult.JobId)
+		if err != nil {
+			ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("generating job URL %v", err))
+		}
+
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:             ctx.HeadRepo,
 			Ref:              ctx.Pull.HeadCommit,
 			PullNum:          ctx.Pull.Num,
 			PullCreationTime: ctx.Pull.CreatedAt,
 			StatusId:         projectResult.StatusId,
+			DetailsURL:       jobURL,
 			StatusName:       c.buildStatusName(cmd, projectResult),
 			Description:      c.buildDescription(projectResult),
 			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),

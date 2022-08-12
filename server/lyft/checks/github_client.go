@@ -103,11 +103,14 @@ func (c *ChecksClientWrapper) UpdateStatus(ctx context.Context, request types.Up
 func (c *ChecksClientWrapper) createCheckRun(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	status, conclusion := c.resolveChecksStatus(request.State)
 	createCheckRunOpts := github.CreateCheckRunOptions{
-		Name:       request.StatusName,
-		HeadSHA:    request.Ref,
-		Status:     &status,
-		DetailsURL: &request.DetailsURL,
-		Output:     c.createCheckRunOutput(request),
+		Name:    request.StatusName,
+		HeadSHA: request.Ref,
+		Status:  &status,
+		Output:  c.createCheckRunOutput(request),
+	}
+
+	if request.DetailsURL != "" {
+		createCheckRunOpts.DetailsURL = &request.DetailsURL
 	}
 
 	// Conclusion is required if status is Completed
@@ -121,10 +124,13 @@ func (c *ChecksClientWrapper) createCheckRun(ctx context.Context, request types.
 func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunId string) error {
 	status, conclusion := c.resolveChecksStatus(request.State)
 	updateCheckRunOpts := github.UpdateCheckRunOptions{
-		Name:       request.StatusName,
-		Status:     &status,
-		DetailsURL: &request.DetailsURL,
-		Output:     c.createCheckRunOutput(request),
+		Name:   request.StatusName,
+		Status: &status,
+		Output: c.createCheckRunOutput(request),
+	}
+
+	if request.DetailsURL != "" {
+		updateCheckRunOpts.DetailsURL = &request.DetailsURL
 	}
 
 	// Conclusion is required if status is Completed

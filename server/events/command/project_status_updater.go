@@ -19,7 +19,7 @@ type JobCloser interface {
 
 // JobURLGenerator generates urls to view project's progress.
 type JobURLGenerator interface {
-	GenerateProjectJobURL(p ProjectContext) (string, error)
+	GenerateProjectJobURL(jobID string) (string, error)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_project_status_updater.go ProjectStatusUpdater
@@ -42,7 +42,7 @@ type ProjectStatusUpdater struct {
 }
 
 func (p ProjectStatusUpdater) UpdateProjectStatus(ctx ProjectContext, status models.CommitStatus) (string, error) {
-	url, err := p.ProjectJobURLGenerator.GenerateProjectJobURL(ctx)
+	url, err := p.ProjectJobURLGenerator.GenerateProjectJobURL(ctx.JobID)
 	if err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("updating project PR status %v", err))
 	}

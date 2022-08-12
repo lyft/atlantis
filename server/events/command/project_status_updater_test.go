@@ -20,7 +20,7 @@ type testJobUrlGenerator struct {
 	expectedErr error
 }
 
-func (t *testJobUrlGenerator) GenerateProjectJobURL(p command.ProjectContext) (string, error) {
+func (t *testJobUrlGenerator) GenerateProjectJobURL(jobID string) (string, error) {
 	return t.expectedUrl, t.expectedErr
 }
 

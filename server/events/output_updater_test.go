@@ -15,6 +15,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type testJobUrlGenerator struct {
+	t        *testing.T
+	expJobId string
+	url      string
+	err      error
+}
+
+func (t *testJobUrlGenerator) GenerateProjectJobURL(jobID string) (string, error) {
+	assert.Equal(t.t, t.expJobId, jobID)
+	return t.url, t.err
+}
+
 type testRenderer struct {
 	t                     *testing.T
 	expectedResult        command.Result
@@ -132,6 +144,12 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 				expectedProjectResult: projectResult,
 			},
 			TitleBuilder: vcs.StatusTitleBuilder{"nish"},
+			JobURLGenerator: &testJobUrlGenerator{
+				t:        t,
+				expJobId: "",
+				url:      "",
+				err:      nil,
+			},
 		}
 
 		subject.UpdateOutput(cmdCtx, events.AutoplanCommand{}, commandResult)
@@ -177,6 +195,12 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 				expectedProjectResult: projectResult,
 			},
 			TitleBuilder: vcs.StatusTitleBuilder{"nish"},
+			JobURLGenerator: &testJobUrlGenerator{
+				t:        t,
+				expJobId: "",
+				url:      "",
+				err:      nil,
+			},
 		}
 
 		subject.UpdateOutput(cmdCtx, events.AutoplanCommand{}, commandResult)
@@ -222,6 +246,12 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 				expectedProjectResult: projectResult,
 			},
 			TitleBuilder: vcs.StatusTitleBuilder{"nish"},
+			JobURLGenerator: &testJobUrlGenerator{
+				t:        t,
+				expJobId: "",
+				url:      "",
+				err:      nil,
+			},
 		}
 
 		subject.UpdateOutput(cmdCtx, events.AutoplanCommand{}, commandResult)
@@ -296,6 +326,12 @@ func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
 				expectedProjectResult: result,
 			},
 			TitleBuilder: vcs.StatusTitleBuilder{"nish"},
+			JobURLGenerator: &testJobUrlGenerator{
+				t:        t,
+				expJobId: "",
+				url:      "",
+				err:      nil,
+			},
 		}
 
 		subject.UpdateOutput(cmdCtx, &command.Comment{

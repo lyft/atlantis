@@ -5,7 +5,6 @@ package mocks
 
 import (
 	pegomock "github.com/petergtz/pegomock"
-	command "github.com/runatlantis/atlantis/server/events/command"
 	"reflect"
 	"time"
 )
@@ -25,7 +24,7 @@ func NewMockJobURLGenerator(options ...pegomock.Option) *MockJobURLGenerator {
 func (mock *MockJobURLGenerator) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockJobURLGenerator) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockJobURLGenerator) GenerateProjectJobURL(_param0 command.ProjectContext) (string, error) {
+func (mock *MockJobURLGenerator) GenerateProjectJobURL(_param0 string) (string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockJobURLGenerator().")
 	}
@@ -81,7 +80,7 @@ type VerifierMockJobURLGenerator struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockJobURLGenerator) GenerateProjectJobURL(_param0 command.ProjectContext) *MockJobURLGenerator_GenerateProjectJobURL_OngoingVerification {
+func (verifier *VerifierMockJobURLGenerator) GenerateProjectJobURL(_param0 string) *MockJobURLGenerator_GenerateProjectJobURL_OngoingVerification {
 	params := []pegomock.Param{_param0}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "GenerateProjectJobURL", params, verifier.timeout)
 	return &MockJobURLGenerator_GenerateProjectJobURL_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -92,17 +91,17 @@ type MockJobURLGenerator_GenerateProjectJobURL_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockJobURLGenerator_GenerateProjectJobURL_OngoingVerification) GetCapturedArguments() command.ProjectContext {
+func (c *MockJobURLGenerator_GenerateProjectJobURL_OngoingVerification) GetCapturedArguments() string {
 	_param0 := c.GetAllCapturedArguments()
 	return _param0[len(_param0)-1]
 }
 
-func (c *MockJobURLGenerator_GenerateProjectJobURL_OngoingVerification) GetAllCapturedArguments() (_param0 []command.ProjectContext) {
+func (c *MockJobURLGenerator_GenerateProjectJobURL_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
-		_param0 = make([]command.ProjectContext, len(c.methodInvocations))
+		_param0 = make([]string, len(c.methodInvocations))
 		for u, param := range params[0] {
-			_param0[u] = param.(command.ProjectContext)
+			_param0[u] = param.(string)
 		}
 	}
 	return
