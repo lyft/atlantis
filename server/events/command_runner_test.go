@@ -27,6 +27,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/metrics"
 
 	. "github.com/petergtz/pegomock"
@@ -139,6 +140,11 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		projectCommandRunner,
 		pullUpdater,
 		dbUpdater,
+		&events.PolicyCheckCommandOutputPopulator{
+			PrjCommandRunner:  projectCommandRunner,
+			PrjCommandBuilder: projectCommandBuilder,
+			FeatureAllocator:  mocksFeatureAllocator{},
+		},
 	)
 
 	unlockCommandRunner = events.NewUnlockCommandRunner(
@@ -574,4 +580,12 @@ func TestRunAutoplanCommand_DropStaleRequest(t *testing.T) {
 
 	ch.RunAutoplanCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, time.Now())
 	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
+}
+
+type mocksFeatureAllocator struct {
+	shouldAllocate bool
+}
+
+func (m mocksFeatureAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
+	return m.shouldAllocate, nil
 }

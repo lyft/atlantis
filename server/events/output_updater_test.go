@@ -3,6 +3,7 @@ package events_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -273,6 +274,7 @@ func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
 						StatusName:       "nish/policy_check: project1",
 						Output:           "some output",
 						State:            models.SuccessCommitStatus,
+						Description:      fmt.Sprintf("**Project**: `%s`\n**Dir**: `%s`\n**Workspace**: `%s`", "project1", "somedir", "default"),
 						PullCreationTime: createdAt,
 						PullNum:          1,
 					},
@@ -293,7 +295,7 @@ func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
 		}
 
 		subject.UpdateOutput(cmdCtx, &command.Comment{
-			Name: command.ApprovePolicies,
+			Name: command.PolicyCheck,
 		}, commandResult)
 	})
 }

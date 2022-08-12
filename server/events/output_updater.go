@@ -61,12 +61,6 @@ type ChecksOutputUpdater struct {
 }
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
-	// Handle ApprovePolicies command separately
-	if cmd.CommandName() == command.ApprovePolicies {
-		c.handleApprovePolicies(ctx, cmd, res)
-		return
-	}
-
 	// iterate through all project results and the update the github check
 	for _, projectResult := range res.ProjectResults {
 		statusName := c.TitleBuilder.Build(cmd.CommandName().String(), vcs.StatusTitleOptions{
@@ -92,8 +86,8 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Description:      description,
 			Output:           output,
 			State:            state,
-			StatusId:         projectResult.StatusId,
 			PullCreationTime: ctx.Pull.CreatedAt,
+			StatusId:         projectResult.StatusId,
 		}
 
 		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
@@ -103,40 +97,6 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 		}
 	}
 
-}
-
-func (c *ChecksOutputUpdater) handleApprovePolicies(ctx *command.Context, cmd PullCommand, res command.Result) {
-	// In addition, update project level atlantis/policy_check checkruns
-	for _, projectResult := range res.ProjectResults {
-		statusName := c.TitleBuilder.Build(command.PolicyCheck.String(), vcs.StatusTitleOptions{
-			ProjectName: projectResult.ProjectName,
-		})
-
-		state := models.SuccessCommitStatus
-		if projectResult.PolicyCheckSuccess == nil {
-			state = models.FailedCommitStatus
-		}
-
-		output := c.MarkdownRenderer.RenderProject(projectResult, command.PolicyCheck, ctx.Pull.BaseRepo)
-		updateStatusReq := types.UpdateStatusRequest{
-			Repo:             ctx.HeadRepo,
-			Ref:              ctx.Pull.HeadCommit,
-			StatusName:       statusName,
-			PullNum:          ctx.Pull.Num,
-			State:            state,
-			StatusId:         projectResult.StatusId,
-			Output:           output,
-			PullCreationTime: ctx.Pull.CreatedAt,
-		}
-
-		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
-			ctx.Log.ErrorContext(ctx.RequestCtx, "updable to update check run", map[string]interface{}{
-				"error": err.Error(),
-			})
-		}
-	}
-
-	return
 }
 
 // Default prj output updater which writes to the pull req comment
