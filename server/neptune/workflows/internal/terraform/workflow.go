@@ -57,13 +57,13 @@ type workerActivities interface {
 
 type Runner struct {
 	workerActivities
-	request Request
+	Request Request
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
 	return &Runner{
 		workerActivities: activities.Terraform{},
-		request:          request,
+		Request:          request,
 	}
 }
 
@@ -74,7 +74,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return errors.Wrap(err, "executing GH repo clone")
 	}
 	// Run plan steps
-	for _, step := range r.request.Root.Plan.Steps {
+	for _, step := range r.Request.Root.Plan.Steps {
 		err := r.runStep(ctx, step)
 		if err != nil {
 			return errors.Wrap(err, "running step")
@@ -91,7 +91,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return nil
 	}
 	// Run apply steps
-	for _, step := range r.request.Root.Apply.Steps {
+	for _, step := range r.Request.Root.Apply.Steps {
 		err := r.runStep(ctx, step)
 		if err != nil {
 			return errors.Wrap(err, "running step")
