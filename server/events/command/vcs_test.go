@@ -16,6 +16,7 @@ package command_test
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	. "github.com/petergtz/pegomock"
@@ -160,6 +161,8 @@ func TestUpdateCombinedCount(t *testing.T) {
 				StatusName:  expSrc,
 				Description: c.expDescrip,
 				CommandName: c.command.String(),
+				NumSuccess:  strconv.FormatInt(int64(c.numSuccess), 10),
+				NumTotal:    strconv.FormatInt(int64(c.numTotal), 10),
 			})
 		})
 	}
