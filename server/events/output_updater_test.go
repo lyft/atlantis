@@ -3,7 +3,6 @@ package events_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -126,13 +125,12 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 				Repo:             repo,
 				Ref:              sha,
 				StatusName:       "nish/plan: project1",
-				Description:      "**Project**: `project1`\n**Dir**: `somedir`\n**Workspace**: `default`",
 				State:            models.SuccessCommitStatus,
 				PullCreationTime: createdAt,
 				Output:           output,
 				PullNum:          1,
 
-				CommandName: "plan",
+				CommandName: "Plan",
 				Project:     "project1",
 				Workspace:   "default",
 				Directory:   "somedir",
@@ -182,13 +180,12 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 				Repo:             repo,
 				Ref:              sha,
 				StatusName:       "nish/plan: project1",
-				Description:      "**Project**: `project1`\n**Dir**: `somedir`\n**Workspace**: `default`",
 				State:            models.FailedCommitStatus,
 				PullCreationTime: createdAt,
 				Output:           output,
 				PullNum:          1,
 
-				CommandName: "plan",
+				CommandName: "Plan",
 				Project:     "project1",
 				Workspace:   "default",
 				Directory:   "somedir",
@@ -238,13 +235,12 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 				Repo:             repo,
 				Ref:              sha,
 				StatusName:       "nish/plan: project1",
-				Description:      "**Project**: `project1`\n**Dir**: `somedir`\n**Workspace**: `default`",
 				State:            models.FailedCommitStatus,
 				PullCreationTime: createdAt,
 				Output:           output,
 				PullNum:          1,
 
-				CommandName: "plan",
+				CommandName: "Plan",
 				Project:     "project1",
 				Workspace:   "default",
 				Directory:   "somedir",
@@ -323,11 +319,10 @@ func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
 						StatusName:       "nish/policy_check: project1",
 						Output:           "some output",
 						State:            models.SuccessCommitStatus,
-						Description:      fmt.Sprintf("**Project**: `%s`\n**Dir**: `%s`\n**Workspace**: `%s`", "project1", "somedir", "default"),
 						PullCreationTime: createdAt,
 						PullNum:          1,
 
-						CommandName: "policy_check",
+						CommandName: "Approve Policies",
 						Project:     "project1",
 						Workspace:   "default",
 						Directory:   "somedir",

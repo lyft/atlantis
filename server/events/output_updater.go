@@ -67,10 +67,13 @@ type ChecksOutputUpdater struct {
 }
 
 func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand, res command.Result) {
+	if res.Error != nil || res.Failure != "" {
+		c.handleCommandFailure(ctx, cmd, res)
+		return
+	}
 
 	// iterate through all project results and the update the github check
 	for _, projectResult := range res.ProjectResults {
-
 		jobURL, err := c.JobURLGenerator.GenerateProjectJobURL(projectResult.JobId)
 		if err != nil {
 			ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("generating job URL %v", err))
@@ -83,12 +86,14 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			PullCreationTime: ctx.Pull.CreatedAt,
 			StatusId:         projectResult.StatusId,
 			DetailsURL:       jobURL,
-			StatusName:       c.buildStatusName(cmd, projectResult),
-			Description:      c.buildDescription(projectResult),
 			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),
 			State:            c.resolveState(projectResult),
 
-			CommandName: c.buildCommandName(projectResult.Command),
+			// Also replaces ApprovePolicies with PolicyCheck
+			StatusName: c.buildStatusName(cmd, vcs.StatusTitleOptions{ProjectName: projectResult.ProjectName}),
+
+			// Additional fields to support templating for project level checkruns
+			CommandName: projectResult.Command.TitleString(),
 			Project:     projectResult.ProjectName,
 			Workspace:   projectResult.Workspace,
 			Directory:   projectResult.RepoRelDir,
@@ -102,27 +107,41 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 	}
 }
 
-func (c *ChecksOutputUpdater) buildCommandName(cmd command.Name) string {
-	if cmd == command.ApprovePolicies {
-		return command.PolicyCheck.String()
+func (c *ChecksOutputUpdater) handleCommandFailure(ctx *command.Context, cmd PullCommand, res command.Result) {
+	updateStatusReq := types.UpdateStatusRequest{
+		Repo:             ctx.HeadRepo,
+		Ref:              ctx.Pull.HeadCommit,
+		PullNum:          ctx.Pull.Num,
+		PullCreationTime: ctx.Pull.CreatedAt,
+		State:            models.FailedCommitStatus,
+		StatusName:       c.buildStatusName(cmd, vcs.StatusTitleOptions{}),
+		CommandName:      cmd.CommandName().TitleString(),
+		Output:           c.buildOutput(res),
 	}
-	return cmd.String()
+
+	if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
+		ctx.Log.ErrorContext(ctx.RequestCtx, "unable to update check run", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
 }
 
-// Replace project level approve policies command with Policy Check
-func (c *ChecksOutputUpdater) buildStatusName(cmd PullCommand, prjResult command.ProjectResult) string {
+func (c *ChecksOutputUpdater) buildOutput(res command.Result) string {
+	if res.Error != nil {
+		return res.Error.Error()
+	} else if res.Failure != "" {
+		return res.Failure
+	}
+	return ""
+}
+
+func (c *ChecksOutputUpdater) buildStatusName(cmd PullCommand, options vcs.StatusTitleOptions) string {
 	commandName := cmd.CommandName()
 	if commandName == command.ApprovePolicies {
 		commandName = command.PolicyCheck
 	}
 
-	return c.TitleBuilder.Build(commandName.String(), vcs.StatusTitleOptions{
-		ProjectName: prjResult.ProjectName,
-	})
-}
-
-func (c *ChecksOutputUpdater) buildDescription(projectResult command.ProjectResult) string {
-	return fmt.Sprintf("**Project**: `%s`\n**Dir**: `%s`\n**Workspace**: `%s`", projectResult.ProjectName, projectResult.RepoRelDir, projectResult.Workspace)
+	return c.TitleBuilder.Build(commandName.String(), options)
 }
 
 func (c *ChecksOutputUpdater) resolveState(result command.ProjectResult) models.CommitStatus {

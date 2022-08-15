@@ -218,6 +218,10 @@ func (c *ChecksClientWrapper) createCheckRunOutput(request types.UpdateStatusReq
 
 	// Add formatting to summary
 	summary = strings.ReplaceAll(strings.ReplaceAll(summary, "{", "`"), "}", "`")
+
+	// Append description
+	summary = fmt.Sprintf("%s\n%s", summary, request.Description)
+
 	checkRunOutput := github.CheckRunOutput{
 		Title:   &request.StatusName,
 		Summary: &summary,
