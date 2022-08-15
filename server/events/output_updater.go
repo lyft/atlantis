@@ -74,18 +74,13 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 
 	// iterate through all project results and the update the github check
 	for _, projectResult := range res.ProjectResults {
-		jobURL, err := c.JobURLGenerator.GenerateProjectJobURL(projectResult.JobId)
-		if err != nil {
-			ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("generating job URL %v", err))
-		}
-
 		updateStatusReq := types.UpdateStatusRequest{
 			Repo:             ctx.HeadRepo,
 			Ref:              ctx.Pull.HeadCommit,
 			PullNum:          ctx.Pull.Num,
 			PullCreationTime: ctx.Pull.CreatedAt,
 			StatusId:         projectResult.StatusId,
-			DetailsURL:       jobURL,
+			DetailsURL:       c.buildJobURL(ctx, projectResult.Command, projectResult.JobId),,
 			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),
 			State:            c.resolveState(projectResult),
 
@@ -124,6 +119,20 @@ func (c *ChecksOutputUpdater) handleCommandFailure(ctx *command.Context, cmd Pul
 			"error": err.Error(),
 		})
 	}
+}
+
+func (c *ChecksOutputUpdater) buildJobURL(ctx *command.Context, cmd command.Name, jobID string) string {
+
+	// Only support streaming logs for plan and apply operation for now
+	if cmd == command.Plan || cmd == command.Apply {
+		jobURL, err := c.JobURLGenerator.GenerateProjectJobURL(jobID)
+		if err != nil {
+			ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("generating job URL %v", err))
+		}
+
+		return jobURL
+	}
+	return ""
 }
 
 func (c *ChecksOutputUpdater) buildOutput(res command.Result) string {
