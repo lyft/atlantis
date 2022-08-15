@@ -65,21 +65,6 @@ func Workflow(ctx workflow.Context, request Request) error {
 	return nil
 }
 
-// TODO: clean this up
-func convertToInternalSteps(requestSteps []Step) []steps.Step {
-	var terraformSteps []steps.Step
-	for _, step := range requestSteps {
-		terraformSteps = append(terraformSteps, steps.Step{
-			StepName:    step.StepName,
-			ExtraArgs:   step.ExtraArgs,
-			RunCommand:  step.RunCommand,
-			EnvVarName:  step.EnvVarName,
-			EnvVarValue: step.EnvVarValue,
-		})
-	}
-	return terraformSteps
-}
-
 type Runner struct {
 	QueueWorker              QueueWorker
 	RevisionReceiver         SignalReceiver
@@ -109,10 +94,11 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	revisionReceiver := revision.NewReceiver(ctx, revisionQueue)
 
 	worker := &queue.Worker{
-		Queue:      revisionQueue,
-		Activities: a,
-		Repo:       repo,
-		Root:       root,
+		Queue:             revisionQueue,
+		Activities:        a,
+		Repo:              repo,
+		Root:              root,
+		TerraformWorkflow: request.TerraformWorkflow,
 	}
 
 	return &Runner{
@@ -192,4 +178,18 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	wg.Wait(ctx)
 
 	return nil
+}
+
+func convertToInternalSteps(requestSteps []Step) []steps.Step {
+	var terraformSteps []steps.Step
+	for _, step := range requestSteps {
+		terraformSteps = append(terraformSteps, steps.Step{
+			StepName:    step.StepName,
+			ExtraArgs:   step.ExtraArgs,
+			RunCommand:  step.RunCommand,
+			EnvVarName:  step.EnvVarName,
+			EnvVarValue: step.EnvVarValue,
+		})
+	}
+	return terraformSteps
 }

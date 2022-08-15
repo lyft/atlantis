@@ -18,7 +18,7 @@ const (
 	Rejected
 )
 
-func Workflow(ctx workflow.Context, request steps.Request) error {
+func Workflow(ctx workflow.Context, request Request) error {
 	options := workflow.ActivityOptions{
 		TaskQueue:              TaskQueue,
 		ScheduleToCloseTimeout: 30 * time.Minute,
@@ -54,10 +54,10 @@ type workerActivities interface {
 
 type Runner struct {
 	workerActivities
-	request steps.Request
+	request Request
 }
 
-func newRunner(ctx workflow.Context, request steps.Request) *Runner {
+func newRunner(ctx workflow.Context, request Request) *Runner {
 	return &Runner{
 		workerActivities: activities.Terraform{},
 		request:          request,

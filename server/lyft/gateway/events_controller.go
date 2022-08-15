@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"net/http"
 
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
@@ -25,7 +26,24 @@ type scheduler interface {
 	Schedule(ctx context.Context, f sync.Executor) error
 }
 
-func NewVCSEventsController(scope tally.Scope, webhookSecret []byte, allowDraftPRs bool, autoplanValidator gateway_handlers.EventValidator, snsWriter gateway_handlers.Writer, commentParser events.CommentParsing, repoAllowlistChecker *events.RepoAllowlistChecker, vcsClient vcs.Client, logger logging.Logger, supportedVCSProviders []models.VCSHostType, repoConverter converters.RepoConverter, pullConverter converters.PullConverter, githubClient converters.PullGetter, featureAllocator feature.Allocator, scheduler scheduler, temporalClient client.Client, stepGenerator gateway_handlers.StepGenerator) *VCSEventsController {
+func NewVCSEventsController(
+	scope tally.Scope,
+	webhookSecret []byte,
+	allowDraftPRs bool,
+	autoplanValidator gateway_handlers.EventValidator,
+	snsWriter gateway_handlers.Writer,
+	commentParser events.CommentParsing,
+	repoAllowlistChecker *events.RepoAllowlistChecker,
+	vcsClient vcs.Client,
+	logger logging.Logger,
+	supportedVCSProviders []models.VCSHostType,
+	repoConverter converters.RepoConverter,
+	pullConverter converters.PullConverter,
+	githubClient converters.PullGetter,
+	featureAllocator feature.Allocator,
+	scheduler scheduler,
+	temporalClient client.Client,
+	globalCfg valid.GlobalCfg) *VCSEventsController {
 	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
 		snsWriter, logger,
 	)
@@ -54,7 +72,7 @@ func NewVCSEventsController(scope tally.Scope, webhookSecret []byte, allowDraftP
 		Scheduler:      scheduler,
 		Logger:         logger,
 		TemporalClient: temporalClient,
-		StepGenerator:  stepGenerator,
+		GlobalCfg:      globalCfg,
 	}
 
 	// lazy map of resolver providers to their resolver

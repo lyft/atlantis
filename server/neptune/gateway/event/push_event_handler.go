@@ -84,7 +84,7 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 				Owner:    event.Repo.Owner,
 			},
 			Root: workflows.Root{
-				Name: "name",
+				Name: "TODO",
 				Plan: workflows.Job{
 					Steps: p.generatePlanSteps(event.Repo.ID()),
 				},
@@ -92,6 +92,7 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 					Steps: p.generateApplySteps(event.Repo.ID()),
 				},
 			},
+			TerraformWorkflow: workflows.Terraform,
 		},
 	)
 

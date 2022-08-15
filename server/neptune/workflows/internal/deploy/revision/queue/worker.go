@@ -3,7 +3,6 @@ package queue
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -12,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -29,10 +29,11 @@ const (
 )
 
 type Worker struct {
-	Activities workerActivities
-	Queue      *Queue
-	Repo       github.Repo
-	Root       steps.Root
+	Activities        workerActivities
+	Queue             *Queue
+	Repo              github.Repo
+	Root              steps.Root
+	TerraformWorkflow func(ctx workflow.Context, request terraform.Request) error
 
 	// mutable
 	state WorkerState
@@ -111,23 +112,11 @@ func (w *Worker) work(ctx workflow.Context, revision string) error {
 		WorkflowID: fmt.Sprintf("%s-%s", w.Repo.GetFullName(), w.Root.Name),
 	}
 	ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)
-	terraformWorkflowRequest := steps.Request{
-		Repo: github.Repo{
-			Owner: w.Repo.Owner,
-			Name:  w.Repo.Name,
-			URL:   w.Repo.URL,
-		},
-		Root: steps.Root{
-			Name: w.Root.Name,
-			Apply: steps.Job{
-				Steps: w.Root.Apply.Steps,
-			},
-			Plan: steps.Job{
-				Steps: w.Root.Plan.Steps,
-			},
-		},
+	terraformWorkflowRequest := terraform.Request{
+		Repo: w.Repo,
+		Root: w.Root,
 	}
-	err = workflow.ExecuteChildWorkflow(ctx, terraform.Workflow, terraformWorkflowRequest).Get(ctx, nil)
+	err = workflow.ExecuteChildWorkflow(ctx, w.TerraformWorkflow, terraformWorkflowRequest).Get(ctx, nil)
 	if err != nil {
 		return errors.Wrap(err, "executing child terraform workflow")
 	}

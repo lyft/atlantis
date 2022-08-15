@@ -1,12 +1,5 @@
 package steps
 
-import "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-
-type Request struct {
-	Repo github.Repo
-	Root Root
-}
-
 type Root struct {
 	Name  string
 	Apply Job

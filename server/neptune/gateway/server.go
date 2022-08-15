@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"io"
 	"io/ioutil"
 	"log"
@@ -264,10 +263,6 @@ func NewServer(config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing temporal client")
 	}
 
-	stepGenerator := &event.TerraformWorkflowStepsGenerator{
-		Logger:    ctxLogger,
-		GlobalCfg: globalCfg,
-	}
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(
 		statsScope,
 		[]byte(config.GithubWebhookSecret),
@@ -285,7 +280,7 @@ func NewServer(config Config) (*Server, error) {
 		featureAllocator,
 		asyncScheduler,
 		temporalClient,
-		stepGenerator,
+		globalCfg,
 	)
 
 	router := mux.NewRouter()
