@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"io"
 	"io/ioutil"
 	"log"
@@ -32,6 +31,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/runatlantis/atlantis/server/instrumentation"
@@ -752,13 +753,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		pullReqStatusFetcher,
 	)
 
-	// Using pull updater for approving policies until we move off of PR comments entirely
+	policyCheckOutputGenerator := events.PolicyCheckCommandOutputGenerator{
+		PrjCommandRunner:  prjCmdRunner,
+		PrjCommandBuilder: projectCommandBuilder,
+		FeatureAllocator:  featureAllocator,
+	}
+
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		outputUpdater,
 		dbUpdater,
+		&policyCheckOutputGenerator,
 	)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
@@ -768,7 +775,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	// Using pull updater for version commands until we move off of PR comments entirely
 	versionCommandRunner := events.NewVersionCommandRunner(
-		outputUpdater,
+		&pullOutputUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -787,13 +794,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
-	// Using pull updater for approving policies until we move off of PR comments entirely
+	prPolicyCheckOutputGenerator := events.PolicyCheckCommandOutputGenerator{
+		PrjCommandRunner:  prPrjCmdRunner,
+		PrjCommandBuilder: prProjectCommandBuilder,
+		FeatureAllocator:  featureAllocator,
+	}
+
 	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
 		outputUpdater,
 		dbUpdater,
+		&prPolicyCheckOutputGenerator,
 	)
 
 	featuredPlanRunner := lyftCommands.NewPlatformModeFeatureRunner(

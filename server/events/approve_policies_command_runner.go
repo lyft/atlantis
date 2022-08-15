@@ -14,22 +14,25 @@ func NewApprovePoliciesCommandRunner(
 	prjCommandRunner ProjectApprovePoliciesCommandRunner,
 	outputUpdater OutputUpdater,
 	dbUpdater *DBUpdater,
+	policyCheckOutputGenerator CommandOutputGenerator,
 ) *ApprovePoliciesCommandRunner {
 	return &ApprovePoliciesCommandRunner{
-		commitStatusUpdater: commitStatusUpdater,
-		prjCmdBuilder:       prjCommandBuilder,
-		prjCmdRunner:        prjCommandRunner,
-		outputUpdater:       outputUpdater,
-		dbUpdater:           dbUpdater,
+		commitStatusUpdater:        commitStatusUpdater,
+		prjCmdBuilder:              prjCommandBuilder,
+		prjCmdRunner:               prjCommandRunner,
+		outputUpdater:              outputUpdater,
+		dbUpdater:                  dbUpdater,
+		policyCheckOutputGenerator: policyCheckOutputGenerator,
 	}
 }
 
 type ApprovePoliciesCommandRunner struct {
-	commitStatusUpdater CommitStatusUpdater
-	outputUpdater       OutputUpdater
-	dbUpdater           *DBUpdater
-	prjCmdBuilder       ProjectApprovePoliciesCommandBuilder
-	prjCmdRunner        ProjectApprovePoliciesCommandRunner
+	commitStatusUpdater        CommitStatusUpdater
+	outputUpdater              OutputUpdater
+	dbUpdater                  *DBUpdater
+	prjCmdBuilder              ProjectApprovePoliciesCommandBuilder
+	prjCmdRunner               ProjectApprovePoliciesCommandRunner
+	policyCheckOutputGenerator CommandOutputGenerator
 }
 
 func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
@@ -62,6 +65,16 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 	}
 
 	result := a.buildApprovePolicyCommandResults(ctx, projectCmds)
+
+	// Adds the policy check output for failing policies which needs to be populated when using github checks
+	// Noop when github checks is not enabled.
+	policyCheckOutputStore := a.policyCheckOutputGenerator.GenerateCommandOutput(ctx, cmd)
+	for i, prjResult := range result.ProjectResults {
+		policyCheckOutput := policyCheckOutputStore.GetOutputFor(prjResult.ProjectName, prjResult.Workspace)
+		if policyCheckOutput != nil {
+			result.ProjectResults[i].PolicyCheckSuccess = policyCheckOutput
+		}
+	}
 
 	a.outputUpdater.UpdateOutput(
 		ctx,

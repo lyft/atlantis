@@ -879,6 +879,11 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		prjCmdRunner,
 		pullUpdater,
 		dbUpdater,
+		&events.PolicyCheckCommandOutputGenerator{
+			PrjCommandRunner:  prjCmdRunner,
+			PrjCommandBuilder: projectCommandBuilder,
+			FeatureAllocator:  featureAllocator,
+		},
 	)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
