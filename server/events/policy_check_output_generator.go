@@ -101,7 +101,7 @@ func (f *PolicyCheckCommandOutputGenerator) getPolicyCheckCommands(
 
 func (f *PolicyCheckCommandOutputGenerator) isChecksEnabled(ctx *command.Context) bool {
 	shouldAllocate, err := f.FeatureAllocator.ShouldAllocate(feature.GithubChecks, feature.FeatureContext{
-		RepoName:         ctx.HeadRepo.Name,
+		RepoName:         ctx.HeadRepo.FullName,
 		PullCreationTime: ctx.Pull.CreatedAt,
 	})
 	if err != nil {
