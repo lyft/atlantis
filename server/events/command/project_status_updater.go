@@ -54,16 +54,3 @@ func (p ProjectStatusUpdater) UpdateProjectStatus(ctx ProjectContext, status mod
 	}
 	return statusId, err
 }
-
-func (c *ProjectStatusUpdater) isChecksEnabled(ctx ProjectContext, repo models.Repo, pull models.PullRequest) bool {
-	shouldAllocate, err := c.FeatureAllocator.ShouldAllocate(feature.GithubChecks, feature.FeatureContext{
-		RepoName:         repo.FullName,
-		PullCreationTime: pull.CreatedAt,
-	})
-	if err != nil {
-		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.GithubChecks, err))
-		return false
-	}
-
-	return shouldAllocate
-}

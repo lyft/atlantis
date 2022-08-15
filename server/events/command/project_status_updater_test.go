@@ -10,11 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
-/*
-1. Close job when Op is Complete
-2. Log Error when JobURLGenerator fails
-*/
-
 type testJobUrlGenerator struct {
 	expectedUrl string
 	expectedErr error

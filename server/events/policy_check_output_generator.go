@@ -8,39 +8,33 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
-type PolicyCheckOutputKey struct {
-	ProjectName string
-	Workspace   string
-}
+const KeySeparator = "||"
 
 type PolicyCheckOutputStore struct {
-	Store map[PolicyCheckOutputKey]*models.PolicyCheckSuccess
+	Store map[string]*models.PolicyCheckSuccess
 }
 
 func NewPolicyCheckOutputStore() *PolicyCheckOutputStore {
 	return &PolicyCheckOutputStore{
-		Store: map[PolicyCheckOutputKey]*models.PolicyCheckSuccess{},
+		Store: map[string]*models.PolicyCheckSuccess{},
 	}
 }
 
-func (p *PolicyCheckOutputStore) GetOutputFor(projectName string, workspace string) *models.PolicyCheckSuccess {
-	key := PolicyCheckOutputKey{
-		ProjectName: projectName,
-		Workspace:   workspace,
-	}
+func (p *PolicyCheckOutputStore) buildKey(projectName string, workspace string) string {
+	return fmt.Sprintf("%s%s%s", projectName, KeySeparator, workspace)
+}
 
-	if ouptut, ok := p.Store[key]; ok {
-		return ouptut
+func (p *PolicyCheckOutputStore) GetOutputFor(projectName string, workspace string) *models.PolicyCheckSuccess {
+	key := p.buildKey(projectName, workspace)
+
+	if output, ok := p.Store[key]; ok {
+		return output
 	}
 	return nil
 }
 
 func (p *PolicyCheckOutputStore) WriteOutputFor(projectName string, workspace string, policyCheckResult command.ProjectResult) {
-
-	key := PolicyCheckOutputKey{
-		ProjectName: projectName,
-		Workspace:   workspace,
-	}
+	key := p.buildKey(projectName, workspace)
 
 	var output string
 	if policyCheckResult.Failure != "" {
@@ -60,12 +54,6 @@ type CommandOutputGenerator interface {
 	GenerateCommandOutput(ctx *command.Context, cmd *command.Comment) PolicyCheckOutputStore
 }
 
-type NoopCommandOutputGenerator struct{}
-
-func (n *NoopCommandOutputGenerator) GenerateCommandOutput(ctx *command.Context, cmd *command.Comment) PolicyCheckOutputStore {
-	return PolicyCheckOutputStore{}
-}
-
 type PolicyCheckCommandOutputGenerator struct {
 	PrjCommandRunner  ProjectPolicyCheckCommandRunner
 	PrjCommandBuilder ProjectPlanCommandBuilder
@@ -73,7 +61,7 @@ type PolicyCheckCommandOutputGenerator struct {
 }
 
 func (f *PolicyCheckCommandOutputGenerator) GenerateCommandOutput(ctx *command.Context, cmd *command.Comment) PolicyCheckOutputStore {
-	if !f.isChecksEnabled(ctx, ctx.HeadRepo, ctx.Pull) {
+	if !f.isChecksEnabled(ctx) {
 		return PolicyCheckOutputStore{}
 	}
 
@@ -111,10 +99,10 @@ func (f *PolicyCheckCommandOutputGenerator) getPolicyCheckCommands(
 	return policyCheckCmds
 }
 
-func (f *PolicyCheckCommandOutputGenerator) isChecksEnabled(ctx *command.Context, repo models.Repo, pull models.PullRequest) bool {
+func (f *PolicyCheckCommandOutputGenerator) isChecksEnabled(ctx *command.Context) bool {
 	shouldAllocate, err := f.FeatureAllocator.ShouldAllocate(feature.GithubChecks, feature.FeatureContext{
-		RepoName:         repo.FullName,
-		PullCreationTime: pull.CreatedAt,
+		RepoName:         ctx.HeadRepo.Name,
+		PullCreationTime: ctx.Pull.CreatedAt,
 	})
 	if err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.GithubChecks, err))

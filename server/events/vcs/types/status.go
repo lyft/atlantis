@@ -19,6 +19,7 @@ type UpdateStatusRequest struct {
 	PullCreationTime time.Time
 	StatusId         string
 
+	// Fields used to support templating for github checks
 	CommandName string
 	Project     string
 	Workspace   string
