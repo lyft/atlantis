@@ -11,47 +11,24 @@ import (
 const KeySeparator = "||"
 
 type PolicyCheckOutputStore struct {
-	Store map[string]*models.PolicyCheckSuccess
+	store map[string]*models.PolicyCheckSuccess
 }
 
-func NewPolicyCheckOutputStore() *PolicyCheckOutputStore {
-	return &PolicyCheckOutputStore{
-		Store: map[string]*models.PolicyCheckSuccess{},
-	}
-}
-
-func (p *PolicyCheckOutputStore) buildKey(projectName string, workspace string) string {
+func buildKey(projectName string, workspace string) string {
 	return fmt.Sprintf("%s%s%s", projectName, KeySeparator, workspace)
 }
 
-func (p *PolicyCheckOutputStore) GetOutputFor(projectName string, workspace string) *models.PolicyCheckSuccess {
-	key := p.buildKey(projectName, workspace)
+func (p *PolicyCheckOutputStore) Get(projectName string, workspace string) *models.PolicyCheckSuccess {
+	key := buildKey(projectName, workspace)
 
-	if output, ok := p.Store[key]; ok {
+	if output, ok := p.store[key]; ok {
 		return output
 	}
 	return nil
 }
 
-func (p *PolicyCheckOutputStore) WriteOutputFor(projectName string, workspace string, policyCheckResult command.ProjectResult) {
-	key := p.buildKey(projectName, workspace)
-
-	var output string
-	if policyCheckResult.Failure != "" {
-		output = policyCheckResult.Failure
-	} else if policyCheckResult.PolicyCheckSuccess != nil {
-		output = policyCheckResult.PolicyCheckSuccess.PolicyCheckOutput
-	}
-
-	val := &models.PolicyCheckSuccess{
-		PolicyCheckOutput: output,
-	}
-
-	p.Store[key] = val
-}
-
 type CommandOutputGenerator interface {
-	GenerateCommandOutput(ctx *command.Context, cmd *command.Comment) PolicyCheckOutputStore
+	GeneratePolicyCheckOutputStore(ctx *command.Context, cmd *command.Comment) PolicyCheckOutputStore
 }
 
 type PolicyCheckCommandOutputGenerator struct {
@@ -60,7 +37,7 @@ type PolicyCheckCommandOutputGenerator struct {
 	FeatureAllocator  feature.Allocator
 }
 
-func (f *PolicyCheckCommandOutputGenerator) GenerateCommandOutput(ctx *command.Context, cmd *command.Comment) PolicyCheckOutputStore {
+func (f *PolicyCheckCommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *command.Context, cmd *command.Comment) PolicyCheckOutputStore {
 	if !f.isChecksEnabled(ctx) {
 		return PolicyCheckOutputStore{}
 	}
@@ -78,10 +55,23 @@ func (f *PolicyCheckCommandOutputGenerator) GenerateCommandOutput(ctx *command.C
 	}
 
 	policyCheckCommands := f.getPolicyCheckCommands(ctx, prjCmds)
-	policyCheckOutputStore := NewPolicyCheckOutputStore()
+	policyCheckOutputStore := &PolicyCheckOutputStore{
+		store: map[string]*models.PolicyCheckSuccess{},
+	}
 	for _, policyCheckCmd := range policyCheckCommands {
 		policyCheckResult := f.PrjCommandRunner.PolicyCheck(policyCheckCmd)
-		policyCheckOutputStore.WriteOutputFor(policyCheckCmd.ProjectName, policyCheckCmd.Workspace, policyCheckResult)
+
+		var output string
+		if policyCheckResult.Failure != "" {
+			output = policyCheckResult.Failure
+		} else if policyCheckResult.PolicyCheckSuccess != nil {
+			output = policyCheckResult.PolicyCheckSuccess.PolicyCheckOutput
+		}
+
+		key := buildKey(policyCheckCmd.ProjectName, policyCheckCmd.Workspace)
+		policyCheckOutputStore.store[key] = &models.PolicyCheckSuccess{
+			PolicyCheckOutput: output,
+		}
 	}
 	return *policyCheckOutputStore
 }

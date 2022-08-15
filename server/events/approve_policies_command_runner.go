@@ -14,7 +14,7 @@ func NewApprovePoliciesCommandRunner(
 	prjCommandRunner ProjectApprovePoliciesCommandRunner,
 	outputUpdater OutputUpdater,
 	dbUpdater *DBUpdater,
-	policyCheckOutputGenerator CommandOutputGenerator,
+	policyCheckOutputGenerator PolicyCheckCommandOutputGenerator,
 ) *ApprovePoliciesCommandRunner {
 	return &ApprovePoliciesCommandRunner{
 		commitStatusUpdater:        commitStatusUpdater,
@@ -32,7 +32,7 @@ type ApprovePoliciesCommandRunner struct {
 	dbUpdater                  *DBUpdater
 	prjCmdBuilder              ProjectApprovePoliciesCommandBuilder
 	prjCmdRunner               ProjectApprovePoliciesCommandRunner
-	policyCheckOutputGenerator CommandOutputGenerator
+	policyCheckOutputGenerator PolicyCheckCommandOutputGenerator
 }
 
 func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
@@ -68,9 +68,9 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 
 	// Adds the policy check output for failing policies which needs to be populated when using github checks
 	// Noop when github checks is not enabled.
-	policyCheckOutputStore := a.policyCheckOutputGenerator.GenerateCommandOutput(ctx, cmd)
+	policyCheckOutputStore := a.policyCheckOutputGenerator.GeneratePolicyCheckOutputStore(ctx, cmd)
 	for i, prjResult := range result.ProjectResults {
-		policyCheckOutput := policyCheckOutputStore.GetOutputFor(prjResult.ProjectName, prjResult.Workspace)
+		policyCheckOutput := policyCheckOutputStore.Get(prjResult.ProjectName, prjResult.Workspace)
 		if policyCheckOutput != nil {
 			result.ProjectResults[i].PolicyCheckSuccess = policyCheckOutput
 		}

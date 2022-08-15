@@ -38,7 +38,7 @@ func TestPolicyCheckOutputGenerator(t *testing.T) {
 			FeatureAllocator:  &testFeatureAllocator{isChecksEnabled: true},
 		}
 
-		store := outputGenerator.GenerateCommandOutput(&ctx, &comment)
+		store := outputGenerator.GeneratePolicyCheckOutputStore(&ctx, &comment)
 		assert.Empty(t, store)
 	})
 
@@ -94,8 +94,8 @@ func TestPolicyCheckOutputGenerator(t *testing.T) {
 			FeatureAllocator:  &testFeatureAllocator{isChecksEnabled: true},
 		}
 
-		store := outputGenerator.GenerateCommandOutput(&ctx, &comment)
-		assert.Equal(t, store.GetOutputFor("project", "workspace").PolicyCheckOutput, "Policies Failed")
+		store := outputGenerator.GeneratePolicyCheckOutputStore(&ctx, &comment)
+		assert.Equal(t, store.Get("project", "workspace").PolicyCheckOutput, "Policies Failed")
 	})
 
 }
