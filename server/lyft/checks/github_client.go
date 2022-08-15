@@ -14,6 +14,34 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
+/*
+
+Command
+Project
+Workspace
+Logs
+Directory
+Time Elapsed
+*/
+
+var projectCommandTemplateWithLogs = `
+| Command Name | Project | Workspace | Status | Logs |  
+| - | - | - | - | - |
+| %s  | {%s}  | {%s}  | {%s}  | %s  | 
+`
+
+var projectCommandTemplate = `
+| Command Name  | Project | Workspace | Status | 
+| - | - | - | - |
+| %s  | {%s}  | {%s}  | %s  |
+`
+
+var commandTemplate = `
+| Command Name  |  Status |  
+| - | - |
+| %s  | {%s}  | 
+`
+
 const (
 	// Reference: https://github.com/github/docs/issues/3765
 	maxChecksOutputLength = 65535
@@ -146,17 +174,50 @@ func (c *ChecksClientWrapper) updateCheckRun(ctx context.Context, request types.
 	return c.GithubClient.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, checkRunIdInt, updateCheckRunOpts)
 }
 
+func (c *ChecksClientWrapper) resolveState(state models.CommitStatus) string {
+	switch state {
+	case models.PendingCommitStatus:
+		return "In Progress"
+	case models.SuccessCommitStatus:
+		return "Success"
+	case models.FailedCommitStatus:
+		return "Failed"
+	}
+	return "Failed"
+}
+
 func (c *ChecksClientWrapper) createCheckRunOutput(request types.UpdateStatusRequest) *github.CheckRunOutput {
 
-	// Add Jobs URL if a project plan/apply command
-	summary := request.Description
-	if strings.Contains(request.StatusName, ":") &&
-		(strings.Contains(request.StatusName, "plan") || strings.Contains(request.StatusName, "apply")) {
+	var summary string
+
+	// Project command
+	if strings.Contains(request.StatusName, ":") {
+
+		// plan/apply command
 		if request.DetailsURL != "" {
-			summary = fmt.Sprintf("%s\n[Logs](%s)", request.Description, request.DetailsURL)
+			summary = fmt.Sprintf(projectCommandTemplateWithLogs,
+				strings.Title(request.CommandName),
+				request.Project,
+				request.Workspace,
+				c.resolveState(request.State),
+				fmt.Sprintf("[Logs](%s)", request.DetailsURL),
+			)
+		} else {
+			summary = fmt.Sprintf(projectCommandTemplate,
+				strings.Title(request.CommandName),
+				request.Project,
+				request.Workspace,
+				c.resolveState(request.State),
+			)
 		}
+	} else {
+		summary = fmt.Sprintf(commandTemplate,
+			strings.Title(request.CommandName),
+			request.State)
 	}
 
+	// Add formatting to summary
+	summary = strings.ReplaceAll(strings.ReplaceAll(summary, "{", "`"), "}", "`")
 	checkRunOutput := github.CheckRunOutput{
 		Title:   &request.StatusName,
 		Summary: &summary,

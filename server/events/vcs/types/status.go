@@ -18,4 +18,9 @@ type UpdateStatusRequest struct {
 	PullNum          int
 	PullCreationTime time.Time
 	StatusId         string
+
+	CommandName string
+	Project     string
+	Workspace   string
+	Directory   string
 }

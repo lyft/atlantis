@@ -87,6 +87,11 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Description:      c.buildDescription(projectResult),
 			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),
 			State:            c.resolveState(projectResult),
+
+			CommandName: c.buildCommandName(projectResult.Command),
+			Project:     projectResult.ProjectName,
+			Workspace:   projectResult.Workspace,
+			Directory:   projectResult.RepoRelDir,
 		}
 
 		if _, err := c.VCSClient.UpdateStatus(ctx.RequestCtx, updateStatusReq); err != nil {
@@ -95,6 +100,13 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			})
 		}
 	}
+}
+
+func (c *ChecksOutputUpdater) buildCommandName(cmd command.Name) string {
+	if cmd == command.ApprovePolicies {
+		return command.PolicyCheck.String()
+	}
+	return cmd.String()
 }
 
 // Replace project level approve policies command with Policy Check

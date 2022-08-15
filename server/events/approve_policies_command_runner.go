@@ -72,7 +72,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 	for i, prjResult := range result.ProjectResults {
 		policyCheckOutput := policyCheckOutputStore.GetOutputFor(prjResult.ProjectName, prjResult.Workspace)
 		if policyCheckOutput != nil {
-			result.ProjectResults[i].PolicyCheckSuccess = policyCheckOutputStore.GetOutputFor(prjResult.ProjectName, prjResult.Workspace)
+			result.ProjectResults[i].PolicyCheckSuccess = policyCheckOutput
 		}
 	}
 

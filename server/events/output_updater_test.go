@@ -131,6 +131,11 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 				PullCreationTime: createdAt,
 				Output:           output,
 				PullNum:          1,
+
+				CommandName: "plan",
+				Project:     "project1",
+				Workspace:   "default",
+				Directory:   "somedir",
 			},
 		}
 		subject := events.ChecksOutputUpdater{
@@ -182,6 +187,11 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 				PullCreationTime: createdAt,
 				Output:           output,
 				PullNum:          1,
+
+				CommandName: "plan",
+				Project:     "project1",
+				Workspace:   "default",
+				Directory:   "somedir",
 			},
 		}
 		subject := events.ChecksOutputUpdater{
@@ -233,6 +243,11 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 				PullCreationTime: createdAt,
 				Output:           output,
 				PullNum:          1,
+
+				CommandName: "plan",
+				Project:     "project1",
+				Workspace:   "default",
+				Directory:   "somedir",
 			},
 		}
 		subject := events.ChecksOutputUpdater{
@@ -311,6 +326,11 @@ func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
 						Description:      fmt.Sprintf("**Project**: `%s`\n**Dir**: `%s`\n**Workspace**: `%s`", "project1", "somedir", "default"),
 						PullCreationTime: createdAt,
 						PullNum:          1,
+
+						CommandName: "policy_check",
+						Project:     "project1",
+						Workspace:   "default",
+						Directory:   "somedir",
 					},
 				},
 			},

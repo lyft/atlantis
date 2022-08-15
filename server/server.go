@@ -781,7 +781,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	// Using pull updater for version commands until we move off of PR comments entirely
 	versionCommandRunner := events.NewVersionCommandRunner(
-		outputUpdater,
+		&pullOutputUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,

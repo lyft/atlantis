@@ -84,6 +84,7 @@ func TestUpdateCombined(t *testing.T) {
 				State:       c.status,
 				StatusName:  expSrc,
 				Description: c.expDescrip,
+				CommandName: c.command.String(),
 			})
 		})
 	}
@@ -158,6 +159,7 @@ func TestUpdateCombinedCount(t *testing.T) {
 				State:       c.status,
 				StatusName:  expSrc,
 				Description: c.expDescrip,
+				CommandName: c.command.String(),
 			})
 		})
 	}
@@ -209,6 +211,11 @@ func TestDefaultCommitStatusUpdater_UpdateProjectSrc(t *testing.T) {
 				StatusName:  c.expSrc,
 				Description: "Plan in progress...",
 				DetailsURL:  "url",
+
+				CommandName: "plan",
+				Workspace:   c.workspace,
+				Directory:   c.repoRelDir,
+				Project:     c.projectName,
 			})
 		})
 	}
@@ -275,6 +282,9 @@ func TestDefaultCommitStatusUpdater_UpdateProject(t *testing.T) {
 				StatusName:  fmt.Sprintf("atlantis/%s: ./default", c.cmd.String()),
 				Description: c.expDescrip,
 				DetailsURL:  "url",
+				CommandName: c.cmd.String(),
+				Workspace:   "default",
+				Directory:   ".",
 			})
 		})
 	}
@@ -302,5 +312,8 @@ func TestDefaultCommitStatusUpdater_UpdateProjectCustomStatusName(t *testing.T) 
 		StatusName:  "custom/apply: ./default",
 		Description: "Apply succeeded.",
 		DetailsURL:  "url",
+		Workspace:   "default",
+		CommandName: "apply",
+		Directory:   ".",
 	})
 }

@@ -31,6 +31,7 @@ func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo,
 		DetailsURL:       "",
 		PullCreationTime: pull.CreatedAt,
 		StatusId:         statusId,
+		CommandName:      cmdName.String(),
 	}
 	return d.Client.UpdateStatus(ctx, request)
 }
@@ -58,6 +59,7 @@ func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.
 		DetailsURL:       "",
 		PullCreationTime: pull.CreatedAt,
 		StatusId:         statusId,
+		CommandName:      cmdName.String(),
 	}
 
 	return d.Client.UpdateStatus(ctx, request)
@@ -83,6 +85,11 @@ func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx Project
 		DetailsURL:       url,
 		PullCreationTime: projectCtx.Pull.CreatedAt,
 		StatusId:         statusId,
+
+		CommandName: cmdName.String(),
+		Project:     projectCtx.ProjectName,
+		Workspace:   projectCtx.Workspace,
+		Directory:   projectCtx.RepoRelDir,
 	}
 
 	return d.Client.UpdateStatus(ctx, request)
