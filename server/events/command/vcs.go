@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -60,6 +61,10 @@ func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.
 		PullCreationTime: pull.CreatedAt,
 		StatusId:         statusId,
 		CommandName:      cmdName.String(),
+
+		// Additional fields for github checks rendering
+		NumSuccess: strconv.FormatInt(int64(numSuccess), 10),
+		NumTotal:   strconv.FormatInt(int64(numTotal), 10),
 	}
 
 	return d.Client.UpdateStatus(ctx, request)

@@ -80,7 +80,7 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			PullNum:          ctx.Pull.Num,
 			PullCreationTime: ctx.Pull.CreatedAt,
 			StatusId:         projectResult.StatusId,
-			DetailsURL:       c.buildJobURL(ctx, projectResult.Command, projectResult.JobId),,
+			DetailsURL:       c.buildJobURL(ctx, projectResult.Command, projectResult.JobId),
 			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),
 			State:            c.resolveState(projectResult),
 

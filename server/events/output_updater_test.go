@@ -269,7 +269,6 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 
 		assert.True(t, client.called)
 	})
-
 }
 
 func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
@@ -352,5 +351,139 @@ func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
 		subject.UpdateOutput(cmdCtx, &command.Comment{
 			Name: command.ApprovePolicies,
 		}, commandResult)
+	})
+}
+
+func TestChecksOutputUpdater_CommandFailure(t *testing.T) {
+	repo := models.Repo{
+		FullName: "nish/repo",
+	}
+
+	createdAt := time.Now()
+	sha := "12345"
+
+	pull := models.PullRequest{
+		HeadCommit: sha,
+		Num:        1,
+		CreatedAt:  createdAt,
+		BaseRepo:   repo,
+	}
+
+	cmdCtx := &command.Context{
+		Pull:       pull,
+		RequestCtx: context.Background(),
+		HeadRepo:   repo,
+	}
+	t.Run("approve policies", func(t *testing.T) {
+		errorString := "error"
+		commandResult := command.Result{
+			Error: errors.New(errorString),
+		}
+
+		client := &strictTestChecksClient{
+			clients: []*testChecksClient{
+				{
+					t: t,
+					expectedRequest: types.UpdateStatusRequest{
+						Repo:             repo,
+						Ref:              sha,
+						StatusName:       "nish/policy_check",
+						Output:           errorString,
+						State:            models.FailedCommitStatus,
+						PullCreationTime: createdAt,
+						PullNum:          1,
+						CommandName:      "Approve Policies",
+					},
+				},
+			},
+		}
+		subject := events.ChecksOutputUpdater{
+			VCSClient:    client,
+			TitleBuilder: vcs.StatusTitleBuilder{"nish"},
+			JobURLGenerator: &testJobUrlGenerator{
+				t:        t,
+				expJobId: "",
+				url:      "",
+				err:      nil,
+			},
+		}
+
+		subject.UpdateOutput(cmdCtx, command.Comment{
+			Name: command.ApprovePolicies,
+		}, commandResult)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		errorString := "error"
+		commandResult := command.Result{
+			Error: errors.New(errorString),
+		}
+
+		client := &strictTestChecksClient{
+			clients: []*testChecksClient{
+				{
+					t: t,
+					expectedRequest: types.UpdateStatusRequest{
+						Repo:             repo,
+						Ref:              sha,
+						StatusName:       "nish/plan",
+						Output:           errorString,
+						State:            models.FailedCommitStatus,
+						PullCreationTime: createdAt,
+						PullNum:          1,
+						CommandName:      "Plan",
+					},
+				},
+			},
+		}
+		subject := events.ChecksOutputUpdater{
+			VCSClient:    client,
+			TitleBuilder: vcs.StatusTitleBuilder{"nish"},
+			JobURLGenerator: &testJobUrlGenerator{
+				t:        t,
+				expJobId: "",
+				url:      "",
+				err:      nil,
+			},
+		}
+
+		subject.UpdateOutput(cmdCtx, events.AutoplanCommand{}, commandResult)
+	})
+
+	t.Run("failure", func(t *testing.T) {
+		failureString := "error"
+		commandResult := command.Result{
+			Failure: failureString,
+		}
+
+		client := &strictTestChecksClient{
+			clients: []*testChecksClient{
+				{
+					t: t,
+					expectedRequest: types.UpdateStatusRequest{
+						Repo:             repo,
+						Ref:              sha,
+						StatusName:       "nish/plan",
+						Output:           failureString,
+						State:            models.FailedCommitStatus,
+						PullCreationTime: createdAt,
+						PullNum:          1,
+						CommandName:      "Plan",
+					},
+				},
+			},
+		}
+		subject := events.ChecksOutputUpdater{
+			VCSClient:    client,
+			TitleBuilder: vcs.StatusTitleBuilder{"nish"},
+			JobURLGenerator: &testJobUrlGenerator{
+				t:        t,
+				expJobId: "",
+				url:      "",
+				err:      nil,
+			},
+		}
+
+		subject.UpdateOutput(cmdCtx, events.AutoplanCommand{}, commandResult)
 	})
 }

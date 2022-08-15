@@ -14,32 +14,28 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
-/*
-
-Command
-Project
-Workspace
-Logs
-Directory
-Time Elapsed
-*/
-
 var projectCommandTemplateWithLogs = `
-| Command Name | Project | Workspace | Status | Logs |  
+| **Command Name** | **Project** | **Workspace** | **Status** | **Logs** |  
 | - | - | - | - | - |
 | %s  | {%s}  | {%s}  | {%s}  | %s  | 
 `
 
 var projectCommandTemplate = `
-| Command Name  | Project | Workspace | Status | 
+| **Command Name**  | **Project** | **Workspace** | **Status** | 
 | - | - | - | - |
-| %s  | {%s}  | {%s}  | %s  |
+| %s  | {%s}  | {%s}  | {%s}  |
 `
 
 var commandTemplate = `
-| Command Name  |  Status |  
+| **Command Name**  |  **Status** |  
 | - | - |
 | %s  | {%s}  | 
+`
+
+var commandTemplateWithCount = `
+| **Command Name** | **Num Total** | **Num Success** | **Status** |  
+| - | - | - | - |
+| %s | {%s} | {%s} | {%s} |  
 `
 
 const (
@@ -211,16 +207,22 @@ func (c *ChecksClientWrapper) createCheckRunOutput(request types.UpdateStatusReq
 			)
 		}
 	} else {
-		summary = fmt.Sprintf(commandTemplate,
-			strings.Title(request.CommandName),
-			request.State)
+		if request.NumSuccess != "" && request.NumTotal != "" {
+			summary = fmt.Sprintf(commandTemplateWithCount,
+				strings.Title(request.CommandName),
+				request.NumTotal,
+				request.NumSuccess,
+				c.resolveState(request.State))
+		} else {
+			summary = fmt.Sprintf(commandTemplate,
+				strings.Title(request.CommandName),
+				c.resolveState(request.State))
+		}
+
 	}
 
 	// Add formatting to summary
 	summary = strings.ReplaceAll(strings.ReplaceAll(summary, "{", "`"), "}", "`")
-
-	// Append description
-	summary = fmt.Sprintf("%s\n%s", summary, request.Description)
 
 	checkRunOutput := github.CheckRunOutput{
 		Title:   &request.StatusName,
