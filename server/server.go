@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"io"
 	"io/ioutil"
 	"log"
@@ -32,6 +31,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/runatlantis/atlantis/server/instrumentation"
@@ -644,6 +645,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		VCSClient:        vcsClient,
 		MarkdownRenderer: markdownRenderer,
 		TitleBuilder:     vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName},
+		JobURLGenerator:  router,
 	}
 
 	// [WENGINES-4643] TODO: Remove pullOutputUpdater once github checks is stable
@@ -752,7 +754,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		pullReqStatusFetcher,
 	)
 
-	// Using pull updater for approving policies until we move off of PR comments entirely
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
@@ -768,7 +769,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	// Using pull updater for version commands until we move off of PR comments entirely
 	versionCommandRunner := events.NewVersionCommandRunner(
-		outputUpdater,
+		&pullOutputUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -787,7 +788,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
-	// Using pull updater for approving policies until we move off of PR comments entirely
 	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		prProjectCommandBuilder,
