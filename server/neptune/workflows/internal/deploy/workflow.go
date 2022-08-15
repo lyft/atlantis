@@ -1,16 +1,15 @@
 package deploy
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -57,12 +56,7 @@ func Workflow(ctx workflow.Context, request Request) error {
 	runner := newRunner(ctx, request)
 
 	// blocking call
-	err := runner.Run(ctx)
-	if err != nil {
-		return errors.Wrap(err, "executing deploy workflow")
-	}
-
-	return nil
+	return runner.Run(ctx)
 }
 
 type Runner struct {

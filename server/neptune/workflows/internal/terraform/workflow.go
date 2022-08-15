@@ -12,6 +12,9 @@ import (
 const TaskQueue = "terraform"
 
 type PlanStatus int
+type PlanReview struct {
+	Status PlanStatus
+}
 
 const (
 	Approved PlanStatus = iota
@@ -28,7 +31,7 @@ func Workflow(ctx workflow.Context, request Request) error {
 
 	sessionOptions := &workflow.SessionOptions{
 		CreationTimeout:  time.Minute,
-		ExecutionTimeout: time.Minute,
+		ExecutionTimeout: 30 * time.Minute,
 	}
 	ctx, err := workflow.CreateSession(ctx, sessionOptions)
 	if err != nil {
@@ -80,7 +83,10 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	// Wait for plan review signal
 	var planReview PlanReview
 	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-steps")
-	signalChan.Receive(ctx, &planReview)
+	more := signalChan.Receive(ctx, &planReview)
+	if !more {
+		return errors.New("plan review signal channel cancelled")
+	}
 	if planReview.Status == Rejected {
 		return nil
 	}
@@ -151,8 +157,4 @@ func (r *Runner) runStep(ctx workflow.Context, step steps.Step) error {
 		return err
 	}
 	return nil
-}
-
-type PlanReview struct {
-	Status PlanStatus
 }

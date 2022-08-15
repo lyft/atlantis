@@ -121,8 +121,6 @@ func (w *Worker) work(ctx workflow.Context, revision string) error {
 		return errors.Wrap(err, "executing child terraform workflow")
 	}
 	return nil
-
-	return nil
 }
 
 func (w *Worker) fetchLatestDeployment(ctx workflow.Context) (string, error) {

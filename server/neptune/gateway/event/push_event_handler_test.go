@@ -2,9 +2,9 @@ package event_test
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"testing"
 
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
@@ -166,10 +166,10 @@ func TestHandlePushEvent(t *testing.T) {
 				Root: workflows.Root{
 					Name: "TODO",
 					Plan: workflows.Job{
-						Steps: convertSteps(valid.DefaultPlanStage.Steps),
+						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
 					},
 					Apply: workflows.Job{
-						Steps: convertSteps(valid.DefaultApplyStage.Steps),
+						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
 					},
 				},
 				TerraformWorkflow: workflows.Terraform,
@@ -220,10 +220,10 @@ func TestHandlePushEvent(t *testing.T) {
 				Root: workflows.Root{
 					Name: "TODO",
 					Plan: workflows.Job{
-						Steps: convertSteps(valid.DefaultPlanStage.Steps),
+						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
 					},
 					Apply: workflows.Job{
-						Steps: convertSteps(valid.DefaultApplyStage.Steps),
+						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
 					},
 				},
 				TerraformWorkflow: workflows.Terraform,
@@ -254,7 +254,7 @@ func TestHandlePushEvent(t *testing.T) {
 	})
 }
 
-func convertSteps(steps []valid.Step) []workflows.Step {
+func convertTestSteps(steps []valid.Step) []workflows.Step {
 	var convertedSteps []workflows.Step
 	for _, step := range steps {
 		convertedSteps = append(convertedSteps, workflows.Step{
