@@ -192,7 +192,7 @@ func (c *ChecksClientWrapper) createCheckRunOutput(request types.UpdateStatusReq
 		// plan/apply command
 		if request.DetailsURL != "" {
 			summary = fmt.Sprintf(projectCommandTemplateWithLogs,
-				strings.Title(request.CommandName),
+				request.CommandName,
 				request.Project,
 				request.Workspace,
 				c.resolveState(request.State),
@@ -200,7 +200,7 @@ func (c *ChecksClientWrapper) createCheckRunOutput(request types.UpdateStatusReq
 			)
 		} else {
 			summary = fmt.Sprintf(projectCommandTemplate,
-				strings.Title(request.CommandName),
+				request.CommandName,
 				request.Project,
 				request.Workspace,
 				c.resolveState(request.State),
@@ -209,13 +209,13 @@ func (c *ChecksClientWrapper) createCheckRunOutput(request types.UpdateStatusReq
 	} else {
 		if request.NumSuccess != "" && request.NumTotal != "" {
 			summary = fmt.Sprintf(commandTemplateWithCount,
-				strings.Title(request.CommandName),
+				request.CommandName,
 				request.NumTotal,
 				request.NumSuccess,
 				c.resolveState(request.State))
 		} else {
 			summary = fmt.Sprintf(commandTemplate,
-				strings.Title(request.CommandName),
+				request.CommandName,
 				c.resolveState(request.State))
 		}
 

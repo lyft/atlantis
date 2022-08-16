@@ -32,7 +32,7 @@ func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo,
 		DetailsURL:       "",
 		PullCreationTime: pull.CreatedAt,
 		StatusId:         statusId,
-		CommandName:      cmdName.String(),
+		CommandName:      titleString(cmdName),
 	}
 	return d.Client.UpdateStatus(ctx, request)
 }
@@ -60,7 +60,7 @@ func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.
 		DetailsURL:       "",
 		PullCreationTime: pull.CreatedAt,
 		StatusId:         statusId,
-		CommandName:      cmdName.String(),
+		CommandName:      titleString(cmdName),
 
 		// Additional fields for github checks rendering
 		NumSuccess: strconv.FormatInt(int64(numSuccess), 10),
@@ -91,7 +91,7 @@ func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx Project
 		PullCreationTime: projectCtx.Pull.CreatedAt,
 		StatusId:         statusId,
 
-		CommandName: cmdName.String(),
+		CommandName: titleString(cmdName),
 		Project:     projectCtx.ProjectName,
 		Workspace:   projectCtx.Workspace,
 		Directory:   projectCtx.RepoRelDir,
@@ -112,4 +112,8 @@ func (d *VCSStatusUpdater) statusDescription(status models.CommitStatus) string 
 	}
 
 	return description
+}
+
+func titleString(cmdName fmt.Stringer) string {
+	return strings.Title(strings.ReplaceAll(strings.ToLower(cmdName.String()), "_", " "))
 }
