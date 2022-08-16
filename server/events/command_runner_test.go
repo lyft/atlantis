@@ -141,7 +141,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		projectCommandRunner,
 		pullUpdater,
 		dbUpdater,
-		&policies.PolicyCheckCommandOutputGenerator{
+		&policies.CommandOutputGenerator{
 			PrjCommandRunner:  projectCommandRunner,
 			PrjCommandBuilder: projectCommandBuilder,
 			FeatureAllocator:  mocksFeatureAllocator{},

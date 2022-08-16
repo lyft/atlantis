@@ -33,7 +33,7 @@ func TestPolicyCheckOutputGenerator(t *testing.T) {
 			},
 		}
 
-		outputGenerator := policies.PolicyCheckCommandOutputGenerator{
+		outputGenerator := policies.CommandOutputGenerator{
 			PrjCommandBuilder: &prjCmdBuilder,
 			FeatureAllocator:  &testFeatureAllocator{isChecksEnabled: true},
 		}
@@ -88,7 +88,7 @@ func TestPolicyCheckOutputGenerator(t *testing.T) {
 			},
 		}
 
-		outputGenerator := policies.PolicyCheckCommandOutputGenerator{
+		outputGenerator := policies.CommandOutputGenerator{
 			PrjCommandBuilder: &prjCmdBuilder,
 			PrjCommandRunner:  &prjCmdRunner,
 			FeatureAllocator:  &testFeatureAllocator{isChecksEnabled: true},

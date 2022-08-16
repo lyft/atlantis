@@ -880,7 +880,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		prjCmdRunner,
 		pullUpdater,
 		dbUpdater,
-		&policies.PolicyCheckCommandOutputGenerator{
+		&policies.CommandOutputGenerator{
 			PrjCommandRunner:  prjCmdRunner,
 			PrjCommandBuilder: projectCommandBuilder,
 			FeatureAllocator:  featureAllocator,

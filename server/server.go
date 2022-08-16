@@ -754,7 +754,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		pullReqStatusFetcher,
 	)
 
-	policyCheckOutputGenerator := policies.PolicyCheckCommandOutputGenerator{
+	policyCheckOutputGenerator := policies.CommandOutputGenerator{
 		PrjCommandRunner:  prjCmdRunner,
 		PrjCommandBuilder: projectCommandBuilder,
 		FeatureAllocator:  featureAllocator,
@@ -795,7 +795,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
-	prPolicyCheckOutputGenerator := &policies.PolicyCheckCommandOutputGenerator{
+	prPolicyCheckOutputGenerator := &policies.CommandOutputGenerator{
 		PrjCommandRunner:  prPrjCmdRunner,
 		PrjCommandBuilder: prProjectCommandBuilder,
 		FeatureAllocator:  featureAllocator,

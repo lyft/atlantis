@@ -8,13 +8,13 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
-type PolicyCheckCommandOutputGenerator struct {
+type CommandOutputGenerator struct {
 	PrjCommandRunner  events.ProjectPolicyCheckCommandRunner
 	PrjCommandBuilder events.ProjectPlanCommandBuilder
 	FeatureAllocator  feature.Allocator
 }
 
-func (f *PolicyCheckCommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *command.Context, cmd *command.Comment) (command.PolicyCheckOutputStore, error) {
+func (f *CommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *command.Context, cmd *command.Comment) (command.PolicyCheckOutputStore, error) {
 	if !f.isChecksEnabled(ctx) {
 		return command.PolicyCheckOutputStore{}, nil
 	}
@@ -52,7 +52,7 @@ func (f *PolicyCheckCommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *
 	return *policyCheckOutputStore, nil
 }
 
-func (f *PolicyCheckCommandOutputGenerator) getPolicyCheckCommands(
+func (f *CommandOutputGenerator) getPolicyCheckCommands(
 	ctx *command.Context,
 	cmds []command.ProjectContext,
 ) []command.ProjectContext {
@@ -65,7 +65,7 @@ func (f *PolicyCheckCommandOutputGenerator) getPolicyCheckCommands(
 	return policyCheckCmds
 }
 
-func (f *PolicyCheckCommandOutputGenerator) isChecksEnabled(ctx *command.Context) bool {
+func (f *CommandOutputGenerator) isChecksEnabled(ctx *command.Context) bool {
 	shouldAllocate, err := f.FeatureAllocator.ShouldAllocate(feature.GithubChecks, feature.FeatureContext{
 		RepoName:         ctx.HeadRepo.FullName,
 		PullCreationTime: ctx.Pull.CreatedAt,
