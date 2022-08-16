@@ -68,6 +68,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/command/apply"
+	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
@@ -754,12 +755,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		pullReqStatusFetcher,
 	)
 
+	policyCheckOutputGenerator := policies.CommandOutputGenerator{
+		PrjCommandRunner:  prjCmdRunner,
+		PrjCommandBuilder: projectCommandBuilder,
+		FeatureAllocator:  featureAllocator,
+	}
+  
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		outputUpdater,
 		dbUpdater,
+		&policyCheckOutputGenerator,
 	)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
@@ -788,12 +796,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.ParallelPoolSize,
 	)
 
+	prPolicyCheckOutputGenerator := &policies.CommandOutputGenerator{
+		PrjCommandRunner:  prPrjCmdRunner,
+		PrjCommandBuilder: prProjectCommandBuilder,
+		FeatureAllocator:  featureAllocator,
+	}
+
 	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		prProjectCommandBuilder,
 		prPrjCmdRunner,
 		outputUpdater,
 		dbUpdater,
+		prPolicyCheckOutputGenerator,
 	)
 
 	featuredPlanRunner := lyftCommands.NewPlatformModeFeatureRunner(
