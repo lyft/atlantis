@@ -1,45 +1,22 @@
-package events
+package policies
 
 import (
 	"fmt"
 
+	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
-const KeySeparator = "||"
-
-type PolicyCheckOutputStore struct {
-	store map[string]*models.PolicyCheckSuccess
-}
-
-func buildKey(projectName string, workspace string) string {
-	return fmt.Sprintf("%s%s%s", projectName, KeySeparator, workspace)
-}
-
-func (p *PolicyCheckOutputStore) Get(projectName string, workspace string) *models.PolicyCheckSuccess {
-	key := buildKey(projectName, workspace)
-
-	if output, ok := p.store[key]; ok {
-		return output
-	}
-	return nil
-}
-
-type CommandOutputGenerator interface {
-	GeneratePolicyCheckOutputStore(ctx *command.Context, cmd *command.Comment) PolicyCheckOutputStore
-}
-
 type PolicyCheckCommandOutputGenerator struct {
-	PrjCommandRunner  ProjectPolicyCheckCommandRunner
-	PrjCommandBuilder ProjectPlanCommandBuilder
+	PrjCommandRunner  events.ProjectPolicyCheckCommandRunner
+	PrjCommandBuilder events.ProjectPlanCommandBuilder
 	FeatureAllocator  feature.Allocator
 }
 
-func (f *PolicyCheckCommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *command.Context, cmd *command.Comment) PolicyCheckOutputStore {
+func (f *PolicyCheckCommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *command.Context, cmd *command.Comment) (command.PolicyCheckOutputStore, error) {
 	if !f.isChecksEnabled(ctx) {
-		return PolicyCheckOutputStore{}
+		return command.PolicyCheckOutputStore{}, nil
 	}
 
 	prjCmds, err := f.PrjCommandBuilder.BuildPlanCommands(ctx, &command.Comment{
@@ -51,13 +28,11 @@ func (f *PolicyCheckCommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *
 	})
 	if err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to build plan command: %s", err))
-		return PolicyCheckOutputStore{}
+		return command.PolicyCheckOutputStore{}, err
 	}
 
 	policyCheckCommands := f.getPolicyCheckCommands(ctx, prjCmds)
-	policyCheckOutputStore := &PolicyCheckOutputStore{
-		store: map[string]*models.PolicyCheckSuccess{},
-	}
+	policyCheckOutputStore := command.NewPolicyCheckOutputStore()
 	for _, policyCheckCmd := range policyCheckCommands {
 		policyCheckResult := f.PrjCommandRunner.PolicyCheck(policyCheckCmd)
 
@@ -68,12 +43,13 @@ func (f *PolicyCheckCommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *
 			output = policyCheckResult.PolicyCheckSuccess.PolicyCheckOutput
 		}
 
-		key := buildKey(policyCheckCmd.ProjectName, policyCheckCmd.Workspace)
-		policyCheckOutputStore.store[key] = &models.PolicyCheckSuccess{
-			PolicyCheckOutput: output,
-		}
+		policyCheckOutputStore.Set(
+			policyCheckCmd.ProjectName,
+			policyCheckCmd.Workspace,
+			output,
+		)
 	}
-	return *policyCheckOutputStore
+	return *policyCheckOutputStore, nil
 }
 
 func (f *PolicyCheckCommandOutputGenerator) getPolicyCheckCommands(

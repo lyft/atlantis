@@ -36,6 +36,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/command/apply"
+	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -879,7 +880,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		prjCmdRunner,
 		pullUpdater,
 		dbUpdater,
-		events.PolicyCheckCommandOutputGenerator{
+		&policies.PolicyCheckCommandOutputGenerator{
 			PrjCommandRunner:  prjCmdRunner,
 			PrjCommandBuilder: projectCommandBuilder,
 			FeatureAllocator:  featureAllocator,

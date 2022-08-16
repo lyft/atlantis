@@ -1,19 +1,19 @@
-package events_test
+package policies_test
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPolicyCheckOutputGenerator(t *testing.T) {
-	t.Run("empty when build plan command fails", func(t *testing.T) {
+	t.Run("error build plan command fails", func(t *testing.T) {
 		ctx := command.Context{
 			RequestCtx: context.Background(),
 			Log:        logging.NewNoopCtxLogger(t),
@@ -33,13 +33,13 @@ func TestPolicyCheckOutputGenerator(t *testing.T) {
 			},
 		}
 
-		outputGenerator := events.PolicyCheckCommandOutputGenerator{
+		outputGenerator := policies.PolicyCheckCommandOutputGenerator{
 			PrjCommandBuilder: &prjCmdBuilder,
 			FeatureAllocator:  &testFeatureAllocator{isChecksEnabled: true},
 		}
 
-		store := outputGenerator.GeneratePolicyCheckOutputStore(&ctx, &comment)
-		assert.Empty(t, store)
+		_, err := outputGenerator.GeneratePolicyCheckOutputStore(&ctx, &comment)
+		assert.EqualError(t, err, "error")
 	})
 
 	t.Run("only runs policy check commands", func(t *testing.T) {
@@ -88,13 +88,14 @@ func TestPolicyCheckOutputGenerator(t *testing.T) {
 			},
 		}
 
-		outputGenerator := events.PolicyCheckCommandOutputGenerator{
+		outputGenerator := policies.PolicyCheckCommandOutputGenerator{
 			PrjCommandBuilder: &prjCmdBuilder,
 			PrjCommandRunner:  &prjCmdRunner,
 			FeatureAllocator:  &testFeatureAllocator{isChecksEnabled: true},
 		}
 
-		store := outputGenerator.GeneratePolicyCheckOutputStore(&ctx, &comment)
+		store, err := outputGenerator.GeneratePolicyCheckOutputStore(&ctx, &comment)
+		assert.Nil(t, err)
 		assert.Equal(t, store.Get("project", "workspace").PolicyCheckOutput, "Policies Failed")
 	})
 

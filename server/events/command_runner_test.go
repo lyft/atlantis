@@ -24,6 +24,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/command"
+	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -140,7 +141,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		projectCommandRunner,
 		pullUpdater,
 		dbUpdater,
-		events.PolicyCheckCommandOutputGenerator{
+		&policies.PolicyCheckCommandOutputGenerator{
 			PrjCommandRunner:  projectCommandRunner,
 			PrjCommandBuilder: projectCommandBuilder,
 			FeatureAllocator:  mocksFeatureAllocator{},

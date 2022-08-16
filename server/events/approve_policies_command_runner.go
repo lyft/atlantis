@@ -8,13 +8,17 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
+type commandOutputGenerator interface {
+	GeneratePolicyCheckOutputStore(ctx *command.Context, cmd *command.Comment) (command.PolicyCheckOutputStore, error)
+}
+
 func NewApprovePoliciesCommandRunner(
 	commitStatusUpdater CommitStatusUpdater,
 	prjCommandBuilder ProjectApprovePoliciesCommandBuilder,
 	prjCommandRunner ProjectApprovePoliciesCommandRunner,
 	outputUpdater OutputUpdater,
 	dbUpdater *DBUpdater,
-	policyCheckOutputGenerator PolicyCheckCommandOutputGenerator,
+	policyCheckOutputGenerator commandOutputGenerator,
 ) *ApprovePoliciesCommandRunner {
 	return &ApprovePoliciesCommandRunner{
 		commitStatusUpdater:        commitStatusUpdater,
@@ -32,7 +36,7 @@ type ApprovePoliciesCommandRunner struct {
 	dbUpdater                  *DBUpdater
 	prjCmdBuilder              ProjectApprovePoliciesCommandBuilder
 	prjCmdRunner               ProjectApprovePoliciesCommandRunner
-	policyCheckOutputGenerator PolicyCheckCommandOutputGenerator
+	policyCheckOutputGenerator commandOutputGenerator
 }
 
 func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
@@ -68,7 +72,15 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 
 	// Adds the policy check output for failing policies which needs to be populated when using github checks
 	// Noop when github checks is not enabled.
-	policyCheckOutputStore := a.policyCheckOutputGenerator.GeneratePolicyCheckOutputStore(ctx, cmd)
+	policyCheckOutputStore, err := a.policyCheckOutputGenerator.GeneratePolicyCheckOutputStore(ctx, cmd)
+	if err != nil {
+		if _, statusErr := a.commitStatusUpdater.UpdateCombined(context.TODO(), ctx.Pull.BaseRepo, ctx.Pull, models.FailedCommitStatus, command.PolicyCheck, statusId); statusErr != nil {
+			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", statusErr))
+		}
+		a.outputUpdater.UpdateOutput(ctx, cmd, command.Result{Error: err})
+		return
+	}
+
 	for i, prjResult := range result.ProjectResults {
 		policyCheckOutput := policyCheckOutputStore.Get(prjResult.ProjectName, prjResult.Workspace)
 		if policyCheckOutput != nil {
