@@ -9,6 +9,7 @@ import (
 // Export anything that callers need such as requests, signals, etc.
 type DeployRequest = deploy.Request
 type Repo = deploy.Repo
+type AppCredentials = deploy.AppCredentials
 
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 

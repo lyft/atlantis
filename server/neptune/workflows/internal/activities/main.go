@@ -9,10 +9,12 @@ package activities
 // registering multiple workflows to the same worker
 type Deploy struct {
 	*dbActivities
+	*githubActivities
 }
 
 func NewDeploy() *Deploy {
 	return &Deploy{
-		dbActivities: &dbActivities{},
+		dbActivities:     &dbActivities{},
+		githubActivities: &githubActivities{},
 	}
 }
