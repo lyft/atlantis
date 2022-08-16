@@ -92,7 +92,6 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 					Steps: p.generateApplySteps(event.Repo.ID()),
 				},
 			},
-			TerraformWorkflow: workflows.Terraform,
 		},
 	)
 

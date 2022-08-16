@@ -11,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -41,7 +42,7 @@ type QueueWorker interface {
 	GetState() queue.WorkerState
 }
 
-func Workflow(ctx workflow.Context, request Request) error {
+func Workflow(ctx workflow.Context, request Request, terraformWorkflow func(ctx workflow.Context, request terraform.Request) error) error {
 	options := workflow.ActivityOptions{
 		TaskQueue:              TaskQueue,
 		ScheduleToCloseTimeout: 5 * time.Second,
@@ -53,7 +54,7 @@ func Workflow(ctx workflow.Context, request Request) error {
 	ctx = workflow.WithValue(ctx, config.ProjectLogKey, request.Root.Name)
 	ctx = workflow.WithValue(ctx, config.GHRequestIDLogKey, request.GHRequestID)
 
-	runner := newRunner(ctx, request)
+	runner := newRunner(ctx, request, terraformWorkflow)
 
 	// blocking call
 	return runner.Run(ctx)
@@ -65,7 +66,7 @@ type Runner struct {
 	NewRevisionSignalChannel workflow.ReceiveChannel
 }
 
-func newRunner(ctx workflow.Context, request Request) *Runner {
+func newRunner(ctx workflow.Context, request Request, terraformWorkflow func(ctx workflow.Context, request terraform.Request) error) *Runner {
 	// convert to internal types, we should probably move these into another struct
 	repo := github.Repo{
 		Name:  request.Repository.Name,
@@ -92,7 +93,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 		Activities:        a,
 		Repo:              repo,
 		Root:              root,
-		TerraformWorkflow: request.TerraformWorkflow,
+		TerraformWorkflow: terraformWorkflow,
 	}
 
 	return &Runner{

@@ -56,8 +56,7 @@ func (s *testSignaler) SignalWithStartWorkflow(ctx context.Context, workflowID s
 	assert.Equal(s.t, s.expectedSignalArg, signalArg)
 	assert.Equal(s.t, s.expectedOptions, options)
 	assert.IsType(s.t, s.expectedWorkflow, workflow)
-	// TODO: fails against fxns
-	//assert.Equal(s.t, []interface{}{s.expectedWorkflowArgs}, workflowArgs)
+	assert.Equal(s.t, []interface{}{s.expectedWorkflowArgs}, workflowArgs)
 
 	return testRun{}, s.expectedErr
 }
@@ -172,7 +171,6 @@ func TestHandlePushEvent(t *testing.T) {
 						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
 					},
 				},
-				TerraformWorkflow: workflows.Terraform,
 			},
 		}
 		allocator := &testAllocator{
@@ -226,7 +224,6 @@ func TestHandlePushEvent(t *testing.T) {
 						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
 					},
 				},
-				TerraformWorkflow: workflows.Terraform,
 			},
 			expectedErr: assert.AnError,
 		}

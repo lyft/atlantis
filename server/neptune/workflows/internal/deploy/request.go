@@ -1,16 +1,10 @@
 package deploy
 
-import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
-	"go.temporal.io/sdk/workflow"
-)
-
 // Types defined here should not be used internally, as our goal should be to eventually swap these out for something less brittle than json translation
 type Request struct {
-	GHRequestID       string
-	Repository        Repo
-	Root              Root
-	TerraformWorkflow func(ctx workflow.Context, request terraform.Request) error
+	GHRequestID string
+	Repository  Repo
+	Root        Root
 }
 
 type Repo struct {
