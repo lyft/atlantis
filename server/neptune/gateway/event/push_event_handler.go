@@ -2,15 +2,20 @@ package event
 
 import (
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/models"
+	vcs_client "github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"
 	"go.temporal.io/sdk/client"
+	"path/filepath"
 )
 
 type Push struct {
@@ -31,13 +36,21 @@ type scheduler interface {
 }
 
 const defaultWorkspace = "default"
+const repos = "repos"
 
 type PushHandler struct {
-	Allocator      feature.Allocator
-	Scheduler      scheduler
-	TemporalClient signaler
-	Logger         logging.Logger
-	GlobalCfg      valid.GlobalCfg
+	Allocator                     feature.Allocator
+	Scheduler                     scheduler
+	TemporalClient                signaler
+	Logger                        logging.Logger
+	GlobalCfg                     valid.GlobalCfg
+	ProjectFinder                 events.ProjectFinder
+	VCSClient                     vcs_client.Client
+	PreWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
+	ParserValidator               config.ParserValidator
+	DataDir                       string
+	WorkingDir                    events.WorkingDir
+	AutoplanFileList              string
 }
 
 func (p *PushHandler) Handle(ctx context.Context, event Push) error {
@@ -60,10 +73,26 @@ func (p *PushHandler) Handle(ctx context.Context, event Push) error {
 }
 
 func (p *PushHandler) handle(ctx context.Context, event Push) error {
+
+	projectCfgs, err := p.buildRoots(event, ctx)
+	if err != nil {
+		return errors.Wrap(err, "generating roots")
+	}
+	for _, projectCfg := range projectCfgs {
+		run, err := p.startWorkflow(ctx, event, projectCfg)
+		if err != nil {
+			return errors.Wrap(err, "signalling workflow")
+		}
+
+		p.Logger.InfoContext(ctx, "Signaled workflow.", map[string]interface{}{
+			"workflow-id": run.GetID(), "run-id": run.GetRunID(),
+		})
+	}
+	return nil
+}
+
+func (p *PushHandler) startWorkflow(ctx context.Context, event Push, cfg *valid.MergedProjectCfg) (client.WorkflowRun, error) {
 	options := client.StartWorkflowOptions{TaskQueue: workflows.DeployTaskQueue}
-
-	// TODO: clone and build project config
-
 	run, err := p.TemporalClient.SignalWithStartWorkflow(
 		ctx,
 
@@ -88,35 +117,22 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 				},
 			},
 			Root: workflows.Root{
-				Name: "TODO",
+				Name: cfg.Name,
 				Plan: workflows.Job{
-					Steps: p.generatePlanSteps(event.Repo.ID()),
+					Steps: p.generateSteps(cfg.Workflow.Plan.Steps),
 				},
 				Apply: workflows.Job{
-					Steps: p.generateApplySteps(event.Repo.ID()),
+					Steps: p.generateSteps(cfg.Workflow.Apply.Steps),
 				},
 			},
 		},
 	)
-
-	if err != nil {
-		return errors.Wrap(err, "signalling workflow")
-	}
-
-	p.Logger.InfoContext(ctx, "Signaled workflow.", map[string]interface{}{
-		"workflow-id": run.GetID(), "run-id": run.GetRunID(),
-	})
-
-	return nil
+	return run, err
 }
 
-func (p *PushHandler) generatePlanSteps(repoID string) []workflows.Step {
+func (p *PushHandler) generateSteps(steps []valid.Step) []workflows.Step {
 	// NOTE: for deployment workflows, we won't support command level user requests for log level output verbosity
 	var workflowSteps []workflows.Step
-
-	// TODO: replace example use of DefaultProjCfg with a project config generator that handles default vs. merged cfg case
-	projectConfig := p.GlobalCfg.DefaultProjCfg(p.Logger, repoID, "path", defaultWorkspace)
-	steps := projectConfig.Workflow.Plan.Steps
 	for _, step := range steps {
 		workflowSteps = append(workflowSteps, workflows.Step{
 			StepName:    step.StepName,
@@ -129,18 +145,66 @@ func (p *PushHandler) generatePlanSteps(repoID string) []workflows.Step {
 	return workflowSteps
 }
 
-func (p *PushHandler) generateApplySteps(repoID string) []workflows.Step {
-	var workflowSteps []workflows.Step
-	projectConfig := p.GlobalCfg.DefaultProjCfg(p.Logger, repoID, "path", defaultWorkspace)
-	steps := projectConfig.Workflow.Apply.Steps
-	for _, step := range steps {
-		workflowSteps = append(workflowSteps, workflows.Step{
-			StepName:    step.StepName,
-			ExtraArgs:   step.ExtraArgs,
-			RunCommand:  step.RunCommand,
-			EnvVarName:  step.EnvVarName,
-			EnvVarValue: step.EnvVarValue,
-		})
+func (p *PushHandler) buildRoots(event Push, ctx context.Context) ([]*valid.MergedProjectCfg, error) {
+	// TODO: run pre-workflow hook
+	err := p.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), cmdCtx)
+	if err != nil {
+		p.Logger.Error(fmt.Sprintf("Error running pre-workflow hooks %s. Proceeding with root building.", err))
 	}
-	return workflowSteps
+
+	modifiedFiles, err := p.VCSClient.GetModifiedFilesFromCommit(event.Repo, event.Sha)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Reclone repo
+	//workspace := "default"
+	//repoDir, _, err := p.WorkingDir.Clone(p.Logger, event.Repo, ctx.Pull, workspace)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	// Parse config file if it exists.
+	repoDir := p.cloneDir(event.Repo, event.Sha, defaultWorkspace)
+	hasRepoCfg, err := p.ParserValidator.HasRepoCfg(repoDir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "looking for %s file in %q", config.AtlantisYAMLFilename, repoDir)
+	}
+
+	var mergedProjectCfgs []*valid.MergedProjectCfg
+	if hasRepoCfg {
+		// If there's a repo cfg then we'll use it to figure out which projects
+		// should be planed.
+		repoCfg, err := p.ParserValidator.ParseRepoCfg(repoDir, p.GlobalCfg, event.Repo.ID())
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing %s", config.AtlantisYAMLFilename)
+		}
+		matchingProjects, err := p.ProjectFinder.DetermineProjectsViaConfig(p.Logger, modifiedFiles, repoCfg, repoDir)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, mp := range matchingProjects {
+			mergedProjectCfg := p.GlobalCfg.MergeProjectCfg(p.Logger, event.Repo.ID(), mp, repoCfg)
+			mergedProjectCfgs = append(mergedProjectCfgs, &mergedProjectCfg)
+		}
+	} else {
+		// If there is no config file, then we'll plan each project that
+		// our algorithm determines was modified.
+		modifiedProjects := p.ProjectFinder.DetermineProjects(p.Logger, ctx, modifiedFiles, event.Repo.FullName, repoDir, p.AutoplanFileList)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding modified projects: %s", modifiedFiles)
+		}
+		for _, mp := range modifiedProjects {
+			mergedProjectCfg := p.GlobalCfg.DefaultProjCfg(p.Logger, event.Repo.ID(), mp.Path, defaultWorkspace)
+			mergedProjectCfgs = append(mergedProjectCfgs, &mergedProjectCfg)
+
+		}
+	}
+
+	return mergedProjectCfgs, nil
+}
+
+func (p *PushHandler) cloneDir(r models.Repo, sha string, workspace string) string {
+	return filepath.Join(p.DataDir, repos, r.FullName, sha, workspace)
 }

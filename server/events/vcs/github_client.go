@@ -168,6 +168,43 @@ func (g *GithubClient) GetModifiedFiles(repo models.Repo, pull models.PullReques
 	return files, nil
 }
 
+// GetModifiedFilesFromCommit returns the names of files that were modified in the pull request
+// relative to the repo root, e.g. parent/child/file.txt.
+func (g *GithubClient) GetModifiedFilesFromCommit(repo models.Repo, sha string) ([]string, error) {
+	var files []string
+	nextPage := 0
+	for {
+		opts := github.ListOptions{
+			PerPage: 300,
+		}
+		if nextPage != 0 {
+			opts.Page = nextPage
+		}
+		repositoryCommit, resp, err := g.client.Repositories.GetCommit(g.ctx, repo.Owner, repo.Name, sha, &opts)
+		if err != nil {
+			return files, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("error fetching repository contents: %s", resp.Status)
+		}
+		for _, f := range repositoryCommit.Files {
+			files = append(files, f.GetFilename())
+
+			// If the file was renamed, we'll want to run plan in the directory
+			// it was moved from as well.
+			if f.GetStatus() == "renamed" {
+				files = append(files, f.GetPreviousFilename())
+			}
+		}
+		if resp.NextPage == 0 {
+			break
+		}
+		nextPage = resp.NextPage
+	}
+	return files, nil
+
+}
+
 // CreateComment creates a comment on the pull request.
 // If comment length is greater than the max comment length we split into
 // multiple comments.
