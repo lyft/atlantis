@@ -153,18 +153,18 @@ func (w *Worker) work(ctx workflow.Context, revision string) error {
 
 	// TODO: fill in the rest
 	// Spin up a child workflow to handle Terraform operations
-	childWorkflowOptions := workflow.ChildWorkflowOptions{
-		WorkflowID: id.String(),
-	}
-	ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)
-	terraformWorkflowRequest := terraform.Request{
-		Repo: w.Repo,
-		Root: w.Root,
-	}
-	err = workflow.ExecuteChildWorkflow(ctx, w.TerraformWorkflow, terraformWorkflowRequest).Get(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "executing child terraform workflow")
-	}
+	//childWorkflowOptions := workflow.ChildWorkflowOptions{
+	//	WorkflowID: id.String(),
+	//}
+	//ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)
+	//terraformWorkflowRequest := terraform.Request{
+	//	Repo: w.Repo,
+	//	Root: w.Root,
+	//}
+	//err = workflow.ExecuteChildWorkflow(ctx, w.TerraformWorkflow, terraformWorkflowRequest).Get(ctx, nil)
+	//if err != nil {
+	//	return errors.Wrap(err, "executing child terraform workflow")
+	//}
 	return nil
 }
 
