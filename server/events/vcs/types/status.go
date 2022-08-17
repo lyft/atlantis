@@ -17,4 +17,15 @@ type UpdateStatusRequest struct {
 	// if not present, should be -1
 	PullNum          int
 	PullCreationTime time.Time
+	StatusId         string
+
+	// Fields used to support templating project level command for github checks
+	CommandName string
+	Project     string
+	Workspace   string
+	Directory   string
+
+	// Fields used to support templating command level operations for github checks
+	NumSuccess string
+	NumTotal   string
 }

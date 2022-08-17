@@ -72,6 +72,9 @@ func newRunner(ctx workflow.Context, request Request, terraformWorkflow func(ctx
 		Name:  request.Repository.Name,
 		Owner: request.Repository.Owner,
 		URL:   request.Repository.URL,
+		Credentials: github.AppCredentials{
+			InstallationToken: request.Repository.Credentials.InstallationToken,
+		},
 	}
 	root := steps.Root{
 		Name:  request.Root.Name,
@@ -86,7 +89,7 @@ func newRunner(ctx workflow.Context, request Request, terraformWorkflow func(ctx
 	var a *activities.Deploy
 
 	revisionQueue := queue.NewQueue()
-	revisionReceiver := revision.NewReceiver(ctx, revisionQueue)
+	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, repo, a)
 
 	worker := &queue.Worker{
 		Queue:             revisionQueue,

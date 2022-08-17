@@ -143,6 +143,8 @@ func (p *DefaultProjectCommandRunner) Plan(ctx command.ProjectContext) command.P
 		RepoRelDir:  ctx.RepoRelDir,
 		Workspace:   ctx.Workspace,
 		ProjectName: ctx.ProjectName,
+		StatusId:    ctx.StatusId,
+		JobId:       ctx.JobID,
 	}
 }
 
@@ -157,6 +159,7 @@ func (p *DefaultProjectCommandRunner) PolicyCheck(ctx command.ProjectContext) co
 		RepoRelDir:         ctx.RepoRelDir,
 		Workspace:          ctx.Workspace,
 		ProjectName:        ctx.ProjectName,
+		StatusId:           ctx.StatusId,
 	}
 }
 
@@ -171,6 +174,8 @@ func (p *DefaultProjectCommandRunner) Apply(ctx command.ProjectContext) command.
 		RepoRelDir:   ctx.RepoRelDir,
 		Workspace:    ctx.Workspace,
 		ProjectName:  ctx.ProjectName,
+		StatusId:     ctx.StatusId,
+		JobId:        ctx.JobID,
 	}
 }
 
@@ -184,6 +189,7 @@ func (p *DefaultProjectCommandRunner) ApprovePolicies(ctx command.ProjectContext
 		RepoRelDir:         ctx.RepoRelDir,
 		Workspace:          ctx.Workspace,
 		ProjectName:        ctx.ProjectName,
+		StatusId:           ctx.StatusId,
 	}
 }
 

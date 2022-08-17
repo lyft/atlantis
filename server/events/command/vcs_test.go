@@ -16,6 +16,7 @@ package command_test
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	. "github.com/petergtz/pegomock"
@@ -74,7 +75,7 @@ func TestUpdateCombined(t *testing.T) {
 			s := command.VCSStatusUpdater{Client: client, TitleBuilder: titleBuilder}
 			ctx := context.Background()
 
-			err := s.UpdateCombined(ctx, models.Repo{}, models.PullRequest{}, c.status, c.command)
+			_, err := s.UpdateCombined(ctx, models.Repo{}, models.PullRequest{}, c.status, c.command, "")
 			Ok(t, err)
 
 			expSrc := fmt.Sprintf("atlantis/%s", c.command)
@@ -84,6 +85,7 @@ func TestUpdateCombined(t *testing.T) {
 				State:       c.status,
 				StatusName:  expSrc,
 				Description: c.expDescrip,
+				CommandName: c.command.TitleString(),
 			})
 		})
 	}
@@ -148,7 +150,7 @@ func TestUpdateCombinedCount(t *testing.T) {
 			titleBuilder := vcs.StatusTitleBuilder{TitlePrefix: "atlantis-test"}
 			s := command.VCSStatusUpdater{Client: client, TitleBuilder: titleBuilder}
 			ctx := context.Background()
-			err := s.UpdateCombinedCount(ctx, models.Repo{}, models.PullRequest{}, c.status, c.command, c.numSuccess, c.numTotal)
+			_, err := s.UpdateCombinedCount(ctx, models.Repo{}, models.PullRequest{}, c.status, c.command, c.numSuccess, c.numTotal, "")
 			Ok(t, err)
 
 			expSrc := fmt.Sprintf("%s/%s", titleBuilder.TitlePrefix, c.command)
@@ -158,6 +160,9 @@ func TestUpdateCombinedCount(t *testing.T) {
 				State:       c.status,
 				StatusName:  expSrc,
 				Description: c.expDescrip,
+				CommandName: c.command.TitleString(),
+				NumSuccess:  strconv.FormatInt(int64(c.numSuccess), 10),
+				NumTotal:    strconv.FormatInt(int64(c.numTotal), 10),
 			})
 		})
 	}
@@ -193,14 +198,14 @@ func TestDefaultCommitStatusUpdater_UpdateProjectSrc(t *testing.T) {
 			titleBuilder := vcs.StatusTitleBuilder{TitlePrefix: "atlantis"}
 			s := command.VCSStatusUpdater{Client: client, TitleBuilder: titleBuilder}
 			ctx := context.Background()
-			err := s.UpdateProject(ctx, command.ProjectContext{
+			_, err := s.UpdateProject(ctx, command.ProjectContext{
 				ProjectName: c.projectName,
 				RepoRelDir:  c.repoRelDir,
 				Workspace:   c.workspace,
 			},
 				command.Plan,
 				models.PendingCommitStatus,
-				"url")
+				"url", "")
 			Ok(t, err)
 			client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
 				Repo:        models.Repo{},
@@ -209,6 +214,11 @@ func TestDefaultCommitStatusUpdater_UpdateProjectSrc(t *testing.T) {
 				StatusName:  c.expSrc,
 				Description: "Plan in progress...",
 				DetailsURL:  "url",
+
+				CommandName: "Plan",
+				Workspace:   c.workspace,
+				Directory:   c.repoRelDir,
+				Project:     c.projectName,
 			})
 		})
 	}
@@ -260,13 +270,13 @@ func TestDefaultCommitStatusUpdater_UpdateProject(t *testing.T) {
 			titleBuilder := vcs.StatusTitleBuilder{TitlePrefix: "atlantis"}
 			s := command.VCSStatusUpdater{Client: client, TitleBuilder: titleBuilder}
 			ctx := context.Background()
-			err := s.UpdateProject(ctx, command.ProjectContext{
+			_, err := s.UpdateProject(ctx, command.ProjectContext{
 				RepoRelDir: ".",
 				Workspace:  "default",
 			},
 				c.cmd,
 				c.status,
-				"url")
+				"url", "")
 			Ok(t, err)
 			client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
 				Repo:        models.Repo{},
@@ -275,6 +285,9 @@ func TestDefaultCommitStatusUpdater_UpdateProject(t *testing.T) {
 				StatusName:  fmt.Sprintf("atlantis/%s: ./default", c.cmd.String()),
 				Description: c.expDescrip,
 				DetailsURL:  "url",
+				CommandName: c.cmd.TitleString(),
+				Workspace:   "default",
+				Directory:   ".",
 			})
 		})
 	}
@@ -287,13 +300,13 @@ func TestDefaultCommitStatusUpdater_UpdateProjectCustomStatusName(t *testing.T) 
 	titleBuilder := vcs.StatusTitleBuilder{TitlePrefix: "custom"}
 	s := command.VCSStatusUpdater{Client: client, TitleBuilder: titleBuilder}
 	ctx := context.Background()
-	err := s.UpdateProject(ctx, command.ProjectContext{
+	_, err := s.UpdateProject(ctx, command.ProjectContext{
 		RepoRelDir: ".",
 		Workspace:  "default",
 	},
 		command.Apply,
 		models.SuccessCommitStatus,
-		"url")
+		"url", "")
 	Ok(t, err)
 	client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
 		Repo:        models.Repo{},
@@ -302,5 +315,8 @@ func TestDefaultCommitStatusUpdater_UpdateProjectCustomStatusName(t *testing.T) 
 		StatusName:  "custom/apply: ./default",
 		Description: "Apply succeeded.",
 		DetailsURL:  "url",
+		Workspace:   "default",
+		CommandName: "Apply",
+		Directory:   ".",
 	})
 }

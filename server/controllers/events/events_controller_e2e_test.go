@@ -36,6 +36,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/command/apply"
+	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -879,6 +880,11 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		prjCmdRunner,
 		pullUpdater,
 		dbUpdater,
+		&policies.CommandOutputGenerator{
+			PrjCommandRunner:  prjCmdRunner,
+			PrjCommandBuilder: projectCommandBuilder,
+			FeatureAllocator:  featureAllocator,
+		},
 	)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
@@ -1317,8 +1323,8 @@ func (t *testGithubClient) PullIsApproved(repo models.Repo, pull models.PullRequ
 func (t *testGithubClient) PullIsMergeable(repo models.Repo, pull models.PullRequest) (bool, error) {
 	return false, nil
 }
-func (t *testGithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) error {
-	return nil
+func (t *testGithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
+	return "", nil
 }
 func (t *testGithubClient) MarkdownPullLink(pull models.PullRequest) (string, error) {
 	return "", nil
