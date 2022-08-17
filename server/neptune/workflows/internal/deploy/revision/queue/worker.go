@@ -154,7 +154,6 @@ func (w *Worker) work(ctx workflow.Context, revision string) error {
 	// TODO: fill in the rest
 	// Spin up a child workflow to handle Terraform operations
 	childWorkflowOptions := workflow.ChildWorkflowOptions{
-		TaskQueue:  terraform.TaskQueue,
 		WorkflowID: id.String(),
 	}
 	ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)

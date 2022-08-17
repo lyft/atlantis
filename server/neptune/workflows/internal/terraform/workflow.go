@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-const TaskQueue = "terraform"
-
 type PlanStatus int
 type PlanReview struct {
 	Status PlanStatus
@@ -23,7 +21,6 @@ const (
 
 func Workflow(ctx workflow.Context, request Request) error {
 	options := workflow.ActivityOptions{
-		TaskQueue:              TaskQueue,
 		ScheduleToCloseTimeout: 30 * time.Minute,
 		HeartbeatTimeout:       1 * time.Minute,
 	}
