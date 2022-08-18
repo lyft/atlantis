@@ -357,9 +357,10 @@ func (w *FileWorkspace) forceCloneSha(log logging.Logger, cloneDir string, baseR
 		baseCloneURL = w.TestingOverrideBaseCloneURL
 	}
 
+	// clones the default branch into the clone directory, cds to new repo, and checks out sha
 	cmds := [][]string{
 		{
-			"git", "clone", "--single-branch", baseCloneURL, cloneDir,
+			"git", "clone", "--branch", baseRepo.DefaultBranch, "--single-branch", baseCloneURL, cloneDir,
 		},
 		{
 			"cd", cloneDir,
