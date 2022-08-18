@@ -32,6 +32,11 @@ type WorkingDirLocker interface {
 	// an error if the workspace is already locked. The error is expected to
 	// be printed to the pull request.
 	TryLock(repoFullName string, pullNum int, workspace string) (func(), error)
+	// TryLockOnSha tries to acquire a lock for this repo, workspace and commit.
+	// It returns a function that should be used to unlock the workspace and
+	// an error if the workspace is already locked. The error is expected to
+	// be printed to the pull request.
+	TryLockOnSha(repoFullName string, sha string, workspace string) (func(), error)
 	// TryLockPull tries to acquire a lock for all the workspaces in this repo
 	// and pull.
 	// It returns a function that should be used to unlock the workspace and

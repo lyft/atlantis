@@ -42,7 +42,12 @@ type WorkingDir interface {
 	// absolute path to the root of the cloned repo. It also returns
 	// a boolean indicating if we should warn users that the branch we're
 	// merging into has been updated since we cloned it.
-	Clone(log logging.Logger, headRepo models.Repo, p models.PullRequest, projectCloneDir string) (string, bool, error)
+	Clone(log logging.Logger, headRepo models.Repo, p models.PullRequest, projectCloneDir string) (string, error)
+	// Clone git clones headRepo, checks out the branch and then returns the
+	// absolute path to the root of the cloned repo. It also returns
+	// a boolean indicating if we should warn users that the branch we're
+	// merging into has been updated since we cloned it.
+	CloneFromSha(log logging.Logger, headRepo models.Repo, p models.PullRequest, projectCloneDir string) (string, bool, error)
 	// GetWorkingDir returns the path to the workspace for this repo and pull.
 	// If workspace does not exist on disk, error will be of type os.IsNotExist.
 	GetWorkingDir(r models.Repo, p models.PullRequest, workspace string) (string, error)
@@ -78,6 +83,53 @@ func (w *FileWorkspace) Clone(
 	headRepo models.Repo,
 	p models.PullRequest,
 	projectCloneDir string) (string, bool, error) {
+	cloneDir := w.cloneDir(p.BaseRepo, p, projectCloneDir)
+
+	matchingRepo := w.GlobalCfg.MatchingRepo(p.BaseRepo.ID())
+	checkoutMerge := matchingRepo.CheckoutStrategy == "merge"
+
+	// If the directory already exists, check if it's at the right commit.
+	// If so, then we do nothing.
+	if _, err := os.Stat(cloneDir); err == nil {
+		// We use git rev-parse to see if our repo is at the right commit.
+		// If just checking out the pull request branch, we can use HEAD.
+		// If doing a merge, then HEAD won't be at the pull request's HEAD
+		// because we'll already have performed a merge. Instead, we'll check
+		// HEAD^2 since that will be the commit before our merge.
+		pullHead := "HEAD"
+
+		if checkoutMerge {
+			pullHead = "HEAD^2"
+		}
+		revParseCmd := exec.Command("git", "rev-parse", pullHead) // #nosec
+		revParseCmd.Dir = cloneDir
+		outputRevParseCmd, err := revParseCmd.CombinedOutput()
+		logFields := map[string]interface{}{
+			"repository": headRepo.FullName,
+			"pull-num":   p.Num,
+			"workspace":  projectCloneDir,
+		}
+		if err != nil {
+			log.Warn(
+				fmt.Sprintf("will re-clone repo, could not determine if was at correct commit: %s: %s: %s", strings.Join(revParseCmd.Args, " "), err, string(outputRevParseCmd)),
+				logFields)
+			return cloneDir, false, w.forceClone(log, cloneDir, headRepo, p, checkoutMerge)
+		}
+		currCommit := strings.Trim(string(outputRevParseCmd), "\n")
+
+		// We're prefix matching here because BitBucket doesn't give us the full
+		// commit, only a 12 character prefix.
+		if strings.HasPrefix(currCommit, p.HeadCommit) {
+			return cloneDir, w.warnDiverged(log, p, headRepo, cloneDir, checkoutMerge), nil
+		}
+		// We'll fall through to re-clone.
+	}
+
+	// Otherwise we clone the repo.
+	return cloneDir, false, w.forceClone(log, cloneDir, headRepo, p, checkoutMerge)
+}
+
+func (w *FileWorkspace) CloneFromSha(log logging.Logger, headRepo models.Repo, p models.PullRequest, projectCloneDir string) (string, error) {
 	cloneDir := w.cloneDir(p.BaseRepo, p, projectCloneDir)
 
 	matchingRepo := w.GlobalCfg.MatchingRepo(p.BaseRepo.ID())

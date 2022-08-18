@@ -158,14 +158,13 @@ func (p *PushHandler) buildRoots(event Push, ctx context.Context) ([]*valid.Merg
 	}
 
 	// TODO: Reclone repo
-	//workspace := "default"
-	//repoDir, _, err := p.WorkingDir.Clone(p.Logger, event.Repo, ctx.Pull, workspace)
-	//if err != nil {
-	//	return nil, err
-	//}
+	workspace := "default"
+	repoDir, _, err := p.WorkingDir.CloneFromSha(p.Logger, event.Repo, sha, ref, workspace)
+	if err != nil {
+		return nil, err
+	}
 
 	// Parse config file if it exists.
-	repoDir := p.cloneDir(event.Repo, event.Sha, defaultWorkspace)
 	hasRepoCfg, err := p.ParserValidator.HasRepoCfg(repoDir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "looking for %s file in %q", config.AtlantisYAMLFilename, repoDir)

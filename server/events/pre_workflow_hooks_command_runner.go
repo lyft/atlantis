@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/logging"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -15,6 +16,7 @@ import (
 
 type PreWorkflowHooksCommandRunner interface {
 	RunPreHooks(ctx context.Context, cmdCtx *command.Context) error
+	RunPreHooks2(ctx context.Context, logger logging.Logger, baseRepo models.Repo, sha string, ref string) error
 }
 
 // DefaultPreWorkflowHooksCommandRunner is the first step when processing a workflow hook commands.
@@ -97,17 +99,14 @@ func (w *DefaultPreWorkflowHooksCommandRunner) runHooks(
 	return nil
 }
 
-// RunPreHooks runs pre_workflow_hooks when PR is opened or updated.
+// RunPreHooksOnSha runs pre_workflow_hooks when a sha pushed to main branch
 func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks2(
 	ctx context.Context,
-	cmdCtx *command.Context,
+	logger logging.Logger,
+	baseRepo models.Repo,
+	sha string,
+	ref string,
 ) error {
-	pull := cmdCtx.Pull
-	baseRepo := pull.BaseRepo
-	headRepo := cmdCtx.HeadRepo
-	user := cmdCtx.User
-	log := cmdCtx.Log
-
 	preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
 	for _, repo := range w.GlobalCfg.Repos {
 		if repo.IDMatches(baseRepo.ID()) && len(repo.PreWorkflowHooks) > 0 {
@@ -120,25 +119,23 @@ func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks2(
 		return nil
 	}
 
-	unlockFn, err := w.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
+	unlockFn, err := w.WorkingDirLocker.TryLockOnSha(baseRepo.FullName, sha, DefaultWorkspace)
 	if err != nil {
 		return errors.Wrap(err, "locking working dir")
 	}
 	defer unlockFn()
 
-	repoDir, _, err := w.WorkingDir.Clone(log, headRepo, pull, DefaultWorkspace)
+	repoDir, err := w.WorkingDir.CloneFromSha(logger, baseRepo, sha, ref, DefaultWorkspace)
 	if err != nil {
 		return errors.Wrap(err, "cloning repository")
 	}
 
+	// uses default zero values for some field in PreWorkflowHookCommandContext struct since they aren't relevant to fxn
 	err = w.runHooks(
 		ctx,
 		models.PreWorkflowHookCommandContext{
 			BaseRepo: baseRepo,
-			HeadRepo: headRepo,
-			Log:      log,
-			Pull:     pull,
-			User:     user,
+			Log:      logger,
 		},
 		preWorkflowHooks, repoDir)
 
