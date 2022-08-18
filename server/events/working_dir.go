@@ -130,7 +130,7 @@ func (w *FileWorkspace) Clone(
 	return cloneDir, false, w.forceClone(log, cloneDir, headRepo, p, checkoutMerge)
 }
 
-func (w *FileWorkspace) CloneFromSha(log logging.Logger, baseRepo models.Repo, sha string, ref vcs.Ref, projectCloneDir string) (string, error) {
+func (w *FileWorkspace) CloneFromSha(log logging.Logger, baseRepo models.Repo, sha string, projectCloneDir string) (string, error) {
 	cloneDir := filepath.Join(w.DataDir, workingDirPrefix, baseRepo.FullName, sha, projectCloneDir)
 
 	// If the directory already exists, check if it's at the right commit.
@@ -149,7 +149,7 @@ func (w *FileWorkspace) CloneFromSha(log logging.Logger, baseRepo models.Repo, s
 			log.Warn(
 				fmt.Sprintf("will re-clone repo, could not determine if was at correct commit: %s: %s: %s", strings.Join(revParseCmd.Args, " "), err, string(outputRevParseCmd)),
 				logFields)
-			return cloneDir, w.forceCloneSha(log, cloneDir, baseRepo, sha, ref)
+			return cloneDir, w.forceCloneSha(log, cloneDir, baseRepo, sha)
 		}
 		currCommit := strings.Trim(string(outputRevParseCmd), "\n")
 
@@ -163,7 +163,7 @@ func (w *FileWorkspace) CloneFromSha(log logging.Logger, baseRepo models.Repo, s
 	}
 
 	// Otherwise we clone the repo.
-	return cloneDir, w.forceCloneSha(log, cloneDir, baseRepo, sha, ref)
+	return cloneDir, w.forceCloneSha(log, cloneDir, baseRepo, sha)
 }
 
 // warnDiverged returns true if we should warn the user that the branch we're
@@ -332,6 +332,63 @@ func (w *FileWorkspace) forceClone(log logging.Logger,
 	return nil
 }
 
+func (w *FileWorkspace) forceCloneSha(log logging.Logger, cloneDir string, baseRepo models.Repo, sha string) error {
+	logFields := map[string]interface{}{
+		"repository": baseRepo.FullName,
+		"sha":        sha,
+		"workspace":  cloneDir,
+	}
+
+	err := os.RemoveAll(cloneDir)
+	if err != nil {
+		return errors.Wrapf(err, "deleting dir %q before cloning", cloneDir)
+	}
+
+	// Create the directory and parents if necessary.
+	log.Info(fmt.Sprintf("creating dir %q", cloneDir), logFields)
+	if err := os.MkdirAll(cloneDir, 0700); err != nil {
+		return errors.Wrap(err, "creating new workspace")
+	}
+
+	// During testing, we mock some of this out.
+	baseCloneURL := baseRepo.CloneURL
+	if w.TestingOverrideBaseCloneURL != "" {
+		baseCloneURL = w.TestingOverrideBaseCloneURL
+	}
+
+	cmds := [][]string{
+		{
+			"git", "clone", "--single-branch", baseCloneURL, cloneDir,
+		},
+		{
+			"cd", cloneDir,
+		},
+		{
+			"git", "checkout", sha,
+		},
+	}
+
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...) // nolint: gosec
+		cmd.Dir = cloneDir
+		// The git merge command requires these env vars are set.
+		cmd.Env = append(os.Environ(), []string{
+			"EMAIL=atlantis@runatlantis.io",
+			"GIT_AUTHOR_NAME=atlantis",
+			"GIT_COMMITTER_NAME=atlantis",
+		}...)
+
+		cmdStr := w.sanitizeGitCredentialsBase(strings.Join(cmd.Args, " "), baseRepo)
+		output, err := cmd.CombinedOutput()
+		sanitizedOutput := w.sanitizeGitCredentialsBase(string(output), baseRepo)
+		if err != nil {
+			sanitizedErrMsg := w.sanitizeGitCredentialsBase(err.Error(), baseRepo)
+			return fmt.Errorf("running %s: %s: %s", cmdStr, sanitizedOutput, sanitizedErrMsg)
+		}
+	}
+	return nil
+}
+
 // GetWorkingDir returns the path to the workspace for this repo and pull.
 func (w *FileWorkspace) GetWorkingDir(r models.Repo, p models.PullRequest, workspace string) (string, error) {
 	repoDir := w.cloneDir(r, p, workspace)
@@ -376,6 +433,8 @@ func (w *FileWorkspace) sanitizeGitCredentials(s string, base models.Repo, head 
 	return strings.Replace(baseReplaced, head.CloneURL, head.SanitizedCloneURL, -1)
 }
 
-func (w *FileWorkspace) forceCloneSha(log logging.Logger, dir string, repo models.Repo, sha string, ref vcs.Ref) error {
-	return nil
+// sanitizeGitCredentialsBase replaces any git clone urls that contain credentials
+// in s with the sanitized versions.
+func (w *FileWorkspace) sanitizeGitCredentialsBase(s string, base models.Repo) string {
+	return strings.Replace(s, base.CloneURL, base.SanitizedCloneURL, -1)
 }
