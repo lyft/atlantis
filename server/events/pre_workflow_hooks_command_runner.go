@@ -10,14 +10,13 @@ import (
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
-	server_vcs "github.com/runatlantis/atlantis/server/vcs"
 )
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_pre_workflows_hooks_command_runner.go PreWorkflowHooksCommandRunner
 
 type PreWorkflowHooksCommandRunner interface {
 	RunPreHooks(ctx context.Context, cmdCtx *command.Context) error
-	RunPreHooksWithSha(ctx context.Context, logger logging.Logger, baseRepo models.Repo, sha string, ref server_vcs.Ref) error
+	RunPreHooksWithSha(ctx context.Context, logger logging.Logger, baseRepo models.Repo, sha string) error
 }
 
 // DefaultPreWorkflowHooksCommandRunner is the first step when processing a workflow hook commands.
@@ -106,7 +105,6 @@ func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooksWithSha(
 	logger logging.Logger,
 	baseRepo models.Repo,
 	sha string,
-	ref server_vcs.Ref,
 ) error {
 	preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
 	for _, repo := range w.GlobalCfg.Repos {
@@ -126,7 +124,7 @@ func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooksWithSha(
 	}
 	defer unlockFn()
 
-	repoDir, err := w.WorkingDir.CloneFromSha(logger, baseRepo, sha, ref, DefaultWorkspace)
+	repoDir, err := w.WorkingDir.CloneFromSha(logger, baseRepo, sha, DefaultWorkspace)
 	if err != nil {
 		return errors.Wrap(err, "cloning repository")
 	}

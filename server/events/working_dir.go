@@ -25,7 +25,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/vcs"
 )
 
 const workingDirPrefix = "repos"
@@ -48,7 +47,7 @@ type WorkingDir interface {
 	// absolute path to the root of the cloned repo. It also returns
 	// a boolean indicating if we should warn users that the branch we're
 	// merging into has been updated since we cloned it.
-	CloneFromSha(log logging.Logger, baseRepo models.Repo, sha string, ref vcs.Ref, projectCloneDir string) (string, error)
+	CloneFromSha(log logging.Logger, baseRepo models.Repo, sha string, projectCloneDir string) (string, error)
 	// GetWorkingDir returns the path to the workspace for this repo and pull.
 	// If workspace does not exist on disk, error will be of type os.IsNotExist.
 	GetWorkingDir(r models.Repo, p models.PullRequest, workspace string) (string, error)

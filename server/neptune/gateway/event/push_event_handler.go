@@ -93,7 +93,6 @@ func (p *PushHandler) Handle(ctx context.Context, event Push) error {
 }
 
 func (p *PushHandler) handle(ctx context.Context, event Push) error {
-
 	projectCfgs, err := p.buildRoots(event, ctx)
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
@@ -166,7 +165,7 @@ func (p *PushHandler) generateSteps(steps []valid.Step) []workflows.Step {
 }
 
 func (p *PushHandler) buildRoots(event Push, ctx context.Context) ([]*valid.MergedProjectCfg, error) {
-	err := p.PreWorkflowHooksCommandRunner.RunPreHooks2(ctx, p.Logger, event.Repo, event.Sha, event.Ref)
+	err := p.PreWorkflowHooksCommandRunner.RunPreHooksWithSha(ctx, p.Logger, event.Repo, event.Sha)
 	if err != nil {
 		p.Logger.Error(fmt.Sprintf("Error running pre-workflow hooks %s. Proceeding with root building.", err))
 	}
@@ -177,7 +176,7 @@ func (p *PushHandler) buildRoots(event Push, ctx context.Context) ([]*valid.Merg
 	}
 
 	workspace := "default"
-	repoDir, err := p.WorkingDir.CloneFromSha(p.Logger, event.Repo, event.Sha, event.Ref, workspace)
+	repoDir, err := p.WorkingDir.CloneFromSha(p.Logger, event.Repo, event.Sha, workspace)
 	if err != nil {
 		return nil, err
 	}
