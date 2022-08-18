@@ -28,6 +28,10 @@ type NotConfiguredVCSClient struct {
 	Host models.VCSHostType
 }
 
+func (a *NotConfiguredVCSClient) GetModifiedFilesFromCommit(repo models.Repo, sha string) ([]string, error) {
+	return nil, a.err()
+}
+
 func (a *NotConfiguredVCSClient) GetModifiedFiles(repo models.Repo, pull models.PullRequest) ([]string, error) {
 	return nil, a.err()
 }

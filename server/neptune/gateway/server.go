@@ -281,6 +281,11 @@ func NewServer(config Config) (*Server, error) {
 		asyncScheduler,
 		temporalClient,
 		globalCfg,
+		workingDir,
+		workingDirLocker,
+		preWorkflowHooksCommandRunner,
+		validator,
+		config.AutoplanFileList,
 	)
 
 	router := mux.NewRouter()

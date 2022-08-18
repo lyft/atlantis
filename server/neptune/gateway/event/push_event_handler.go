@@ -15,7 +15,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"
 	"go.temporal.io/sdk/client"
-	"path/filepath"
 )
 
 type PushAction string
@@ -44,8 +43,7 @@ type scheduler interface {
 	Schedule(ctx context.Context, f sync.Executor) error
 }
 
-const defaultWorkspace = "default"
-const repos = "repos"
+const DefaultWorkspace = "default"
 
 type PushHandler struct {
 	Allocator                     feature.Allocator
@@ -56,9 +54,9 @@ type PushHandler struct {
 	ProjectFinder                 events.ProjectFinder
 	VCSClient                     vcs_client.Client
 	PreWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
-	ParserValidator               config.ParserValidator
-	DataDir                       string
+	ParserValidator               *config.ParserValidator
 	WorkingDir                    events.WorkingDir
+	WorkingDirLocker              events.WorkingDirLocker
 	AutoplanFileList              string
 }
 
@@ -173,11 +171,23 @@ func (p *PushHandler) buildRoots(event Push, ctx context.Context) ([]*valid.Merg
 		return nil, err
 	}
 
-	workspace := "default"
-	repoDir, err := p.WorkingDir.CloneFromSha(p.Logger, event.Repo, event.Sha, workspace)
+	unlockFn, err := p.WorkingDirLocker.TryLockOnSha(event.Repo.FullName, event.Sha, DefaultWorkspace)
+	if err != nil {
+		return nil, errors.Wrap(err, "locking working dir")
+	}
+	defer unlockFn()
+	repoDir, err := p.WorkingDir.CloneFromSha(p.Logger, event.Repo, event.Sha, DefaultWorkspace)
 	if err != nil {
 		return nil, err
 	}
+	deleteFn := func() {
+		if err := p.WorkingDir.DeleteSha(event.Repo, event.Sha); err != nil {
+			p.Logger.Error("failed deleting cloned repo", map[string]interface{}{
+				"err": err,
+			})
+		}
+	}
+	defer deleteFn()
 
 	// Parse config file if it exists.
 	hasRepoCfg, err := p.ParserValidator.HasRepoCfg(repoDir)
@@ -210,15 +220,10 @@ func (p *PushHandler) buildRoots(event Push, ctx context.Context) ([]*valid.Merg
 			return nil, errors.Wrapf(err, "finding modified projects: %s", modifiedFiles)
 		}
 		for _, mp := range modifiedProjects {
-			mergedProjectCfg := p.GlobalCfg.DefaultProjCfg(p.Logger, event.Repo.ID(), mp.Path, defaultWorkspace)
+			mergedProjectCfg := p.GlobalCfg.DefaultProjCfg(p.Logger, event.Repo.ID(), mp.Path, DefaultWorkspace)
 			mergedProjectCfgs = append(mergedProjectCfgs, &mergedProjectCfg)
 
 		}
 	}
-
 	return mergedProjectCfgs, nil
-}
-
-func (p *PushHandler) cloneDir(r models.Repo, sha string, workspace string) string {
-	return filepath.Join(p.DataDir, repos, r.FullName, sha, workspace)
 }

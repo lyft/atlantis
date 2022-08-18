@@ -55,6 +55,8 @@ type WorkingDir interface {
 	GetPullDir(r models.Repo, p models.PullRequest) (string, error)
 	// Delete deletes the workspace for this repo and pull.
 	Delete(r models.Repo, p models.PullRequest) error
+	// Delete deletes the workspace for this repo and sha.
+	DeleteSha(r models.Repo, sha string) error
 	DeleteForWorkspace(r models.Repo, p models.PullRequest, workspace string) error
 }
 
@@ -130,7 +132,7 @@ func (w *FileWorkspace) Clone(
 }
 
 func (w *FileWorkspace) CloneFromSha(log logging.Logger, baseRepo models.Repo, sha string, projectCloneDir string) (string, error) {
-	cloneDir := filepath.Join(w.DataDir, workingDirPrefix, baseRepo.FullName, sha, projectCloneDir)
+	cloneDir := w.cloneDirFromSha(baseRepo, sha, projectCloneDir)
 
 	// If the directory already exists, check if it's at the right commit.
 	// If so, then we do nothing.
@@ -412,6 +414,11 @@ func (w *FileWorkspace) Delete(r models.Repo, p models.PullRequest) error {
 	return os.RemoveAll(w.repoPullDir(r, p))
 }
 
+// Delete deletes the workspace for this repo and sha.
+func (w *FileWorkspace) DeleteSha(r models.Repo, sha string) error {
+	return os.RemoveAll(w.repoShaDir(r, sha))
+}
+
 // DeleteForWorkspace deletes the working dir for this workspace.
 func (w *FileWorkspace) DeleteForWorkspace(r models.Repo, p models.PullRequest, workspace string) error {
 	return os.RemoveAll(w.cloneDir(r, p, workspace))
@@ -423,6 +430,14 @@ func (w *FileWorkspace) repoPullDir(r models.Repo, p models.PullRequest) string 
 
 func (w *FileWorkspace) cloneDir(r models.Repo, p models.PullRequest, workspace string) string {
 	return filepath.Join(w.repoPullDir(r, p), workspace)
+}
+
+func (w *FileWorkspace) repoShaDir(r models.Repo, sha string) string {
+	return filepath.Join(w.DataDir, workingDirPrefix, r.FullName, sha)
+}
+
+func (w *FileWorkspace) cloneDirFromSha(r models.Repo, sha string, workspace string) string {
+	return filepath.Join(w.repoShaDir(r, sha), workspace)
 }
 
 // sanitizeGitCredentials replaces any git clone urls that contain credentials

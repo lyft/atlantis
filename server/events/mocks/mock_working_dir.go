@@ -49,6 +49,25 @@ func (mock *MockWorkingDir) Clone(log logging.Logger, headRepo models.Repo, p mo
 	return ret0, ret1, ret2
 }
 
+func (mock *MockWorkingDir) CloneFromSha(log logging.Logger, baseRepo models.Repo, sha string, projectCloneDir string) (string, error) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockWorkingDir().")
+	}
+	params := []pegomock.Param{log, baseRepo, sha, projectCloneDir}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("CloneFromSha", params, []reflect.Type{reflect.TypeOf((*string)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 string
+	var ret1 error
+	if len(result) != 0 {
+		if result[0] != nil {
+			ret0 = result[0].(string)
+		}
+		if result[1] != nil {
+			ret1 = result[1].(error)
+		}
+	}
+	return ret0, ret1
+}
+
 func (mock *MockWorkingDir) GetWorkingDir(r models.Repo, p models.PullRequest, workspace string) (string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockWorkingDir().")
@@ -108,6 +127,21 @@ func (mock *MockWorkingDir) Delete(r models.Repo, p models.PullRequest) error {
 	}
 	params := []pegomock.Param{r, p}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("Delete", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 error
+	if len(result) != 0 {
+		if result[0] != nil {
+			ret0 = result[0].(error)
+		}
+	}
+	return ret0
+}
+
+func (mock *MockWorkingDir) DeleteSha(r models.Repo, sha string) error {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockWorkingDir().")
+	}
+	params := []pegomock.Param{r, sha}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("DeleteSha", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 error
 	if len(result) != 0 {
 		if result[0] != nil {
@@ -199,6 +233,45 @@ func (c *MockWorkingDir_Clone_OngoingVerification) GetAllCapturedArguments() (_p
 		_param2 = make([]models.PullRequest, len(c.methodInvocations))
 		for u, param := range params[2] {
 			_param2[u] = param.(models.PullRequest)
+		}
+		_param3 = make([]string, len(c.methodInvocations))
+		for u, param := range params[3] {
+			_param3[u] = param.(string)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierMockWorkingDir) CloneFromSha(log logging.Logger, baseRepo models.Repo, sha string, projectCloneDir string) *MockWorkingDir_CloneFromSha_OngoingVerification {
+	params := []pegomock.Param{log, baseRepo, sha, projectCloneDir}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "CloneFromSha", params, verifier.timeout)
+	return &MockWorkingDir_CloneFromSha_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type MockWorkingDir_CloneFromSha_OngoingVerification struct {
+	mock              *MockWorkingDir
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *MockWorkingDir_CloneFromSha_OngoingVerification) GetCapturedArguments() (logging.Logger, models.Repo, string, string) {
+	log, baseRepo, sha, projectCloneDir := c.GetAllCapturedArguments()
+	return log[len(log)-1], baseRepo[len(baseRepo)-1], sha[len(sha)-1], projectCloneDir[len(projectCloneDir)-1]
+}
+
+func (c *MockWorkingDir_CloneFromSha_OngoingVerification) GetAllCapturedArguments() (_param0 []logging.Logger, _param1 []models.Repo, _param2 []string, _param3 []string) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]logging.Logger, len(c.methodInvocations))
+		for u, param := range params[0] {
+			_param0[u] = param.(logging.Logger)
+		}
+		_param1 = make([]models.Repo, len(c.methodInvocations))
+		for u, param := range params[1] {
+			_param1[u] = param.(models.Repo)
+		}
+		_param2 = make([]string, len(c.methodInvocations))
+		for u, param := range params[2] {
+			_param2[u] = param.(string)
 		}
 		_param3 = make([]string, len(c.methodInvocations))
 		for u, param := range params[3] {
@@ -335,6 +408,37 @@ func (c *MockWorkingDir_Delete_OngoingVerification) GetAllCapturedArguments() (_
 		_param1 = make([]models.PullRequest, len(c.methodInvocations))
 		for u, param := range params[1] {
 			_param1[u] = param.(models.PullRequest)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierMockWorkingDir) DeleteSha(r models.Repo, sha string) *MockWorkingDir_DeleteSha_OngoingVerification {
+	params := []pegomock.Param{r, sha}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "DeleteSha", params, verifier.timeout)
+	return &MockWorkingDir_DeleteSha_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type MockWorkingDir_DeleteSha_OngoingVerification struct {
+	mock              *MockWorkingDir
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *MockWorkingDir_DeleteSha_OngoingVerification) GetCapturedArguments() (models.Repo, string) {
+	r, sha := c.GetAllCapturedArguments()
+	return r[len(r)-1], sha[len(sha)-1]
+}
+
+func (c *MockWorkingDir_DeleteSha_OngoingVerification) GetAllCapturedArguments() (_param0 []models.Repo, _param1 []string) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]models.Repo, len(c.methodInvocations))
+		for u, param := range params[0] {
+			_param0[u] = param.(models.Repo)
+		}
+		_param1 = make([]string, len(c.methodInvocations))
+		for u, param := range params[1] {
+			_param1[u] = param.(string)
 		}
 	}
 	return
