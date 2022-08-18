@@ -98,12 +98,40 @@ func (d *DefaultWorkingDirLocker) TryLock(repoFullName string, pullNum int, work
 	}, nil
 }
 
+func (d *DefaultWorkingDirLocker) TryLockOnSha(repoFullName string, sha string, workspace string) (func(), error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	shaKey := d.shaKey(repoFullName, sha)
+	workspaceKey := d.workspaceShaKey(repoFullName, sha, workspace)
+	for _, l := range d.locks {
+		if l == shaKey || l == workspaceKey {
+			return func() {}, fmt.Errorf("The %s workspace is currently locked by another"+
+				" command that is running for this pull request.\n"+
+				"Wait until the previous command is complete and try again.", workspace)
+		}
+	}
+	d.locks = append(d.locks, workspaceKey)
+	return func() {
+		d.unlockSha(repoFullName, sha, workspace)
+	}, nil
+}
+
 // Unlock unlocks the workspace for this pull.
 func (d *DefaultWorkingDirLocker) unlock(repoFullName string, pullNum int, workspace string) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
 	workspaceKey := d.workspaceKey(repoFullName, pullNum, workspace)
+	d.removeLock(workspaceKey)
+}
+
+// Unlock unlocks the workspace for this pull.
+func (d *DefaultWorkingDirLocker) unlockSha(repoFullName string, sha string, workspace string) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	workspaceKey := d.workspaceShaKey(repoFullName, sha, workspace)
 	d.removeLock(workspaceKey)
 }
 
@@ -132,4 +160,12 @@ func (d *DefaultWorkingDirLocker) workspaceKey(repo string, pull int, workspace 
 
 func (d *DefaultWorkingDirLocker) pullKey(repo string, pull int) string {
 	return fmt.Sprintf("%s/%d", repo, pull)
+}
+
+func (d *DefaultWorkingDirLocker) workspaceShaKey(repo string, sha string, workspace string) string {
+	return fmt.Sprintf("%s/%s", d.shaKey(repo, sha), workspace)
+}
+
+func (d *DefaultWorkingDirLocker) shaKey(repo string, sha string) string {
+	return fmt.Sprintf("%s/%s", repo, sha)
 }

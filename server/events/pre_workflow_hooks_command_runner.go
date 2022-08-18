@@ -10,13 +10,14 @@ import (
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
+	server_vcs "github.com/runatlantis/atlantis/server/vcs"
 )
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_pre_workflows_hooks_command_runner.go PreWorkflowHooksCommandRunner
 
 type PreWorkflowHooksCommandRunner interface {
 	RunPreHooks(ctx context.Context, cmdCtx *command.Context) error
-	RunPreHooks2(ctx context.Context, logger logging.Logger, baseRepo models.Repo, sha string, ref string) error
+	RunPreHooksWithSha(ctx context.Context, logger logging.Logger, baseRepo models.Repo, sha string, ref server_vcs.Ref) error
 }
 
 // DefaultPreWorkflowHooksCommandRunner is the first step when processing a workflow hook commands.
@@ -100,12 +101,12 @@ func (w *DefaultPreWorkflowHooksCommandRunner) runHooks(
 }
 
 // RunPreHooksOnSha runs pre_workflow_hooks when a sha pushed to main branch
-func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks2(
+func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooksWithSha(
 	ctx context.Context,
 	logger logging.Logger,
 	baseRepo models.Repo,
 	sha string,
-	ref string,
+	ref server_vcs.Ref,
 ) error {
 	preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
 	for _, repo := range w.GlobalCfg.Repos {
