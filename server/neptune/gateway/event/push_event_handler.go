@@ -114,9 +114,7 @@ func (p *PushHandler) startWorkflow(ctx context.Context, event Push, cfg *valid.
 	options := client.StartWorkflowOptions{TaskQueue: workflows.DeployTaskQueue}
 	run, err := p.TemporalClient.SignalWithStartWorkflow(
 		ctx,
-
-		// TODO: name should include root name as well
-		event.Repo.FullName,
+		fmt.Sprintf("%s||%s", event.Repo.FullName, cfg.Name),
 		workflows.DeployNewRevisionSignalID,
 		workflows.DeployNewRevisionSignalRequest{
 			Revision: event.Sha,
