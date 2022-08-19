@@ -13,13 +13,7 @@ import (
 )
 
 func NewClient(scope tally.Scope, logger logur.Logger, cfg valid.Temporal) (client.Client, error) {
-	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
-
-	logger.Info(addr)
-	logger.Info("test")
-
 	opts := client.Options{
-		HostPort:       addr,
 		Namespace:      cfg.Namespace,
 		MetricsHandler: temporaltally.NewMetricsHandler(scope),
 		Logger:         logur.LoggerToKV(logger),
