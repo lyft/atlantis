@@ -12,12 +12,15 @@ import (
 	"logur.dev/logur"
 )
 
-var namespace = "atlantis"
-
 func NewClient(scope tally.Scope, logger logur.Logger, cfg valid.Temporal) (client.Client, error) {
+	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
+
+	logger.Info(addr)
+	logger.Info("test")
+
 	opts := client.Options{
-		HostPort:       fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
-		Namespace:      namespace,
+		HostPort:       addr,
+		Namespace:      cfg.Namespace,
 		MetricsHandler: temporaltally.NewMetricsHandler(scope),
 		Logger:         logur.LoggerToKV(logger),
 	}
