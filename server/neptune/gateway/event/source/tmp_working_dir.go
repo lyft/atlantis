@@ -48,13 +48,7 @@ func (w *TmpFileWorkspace) Clone(baseRepo models.Repo, sha string, destinationPa
 		return nil
 	}
 
-	// Otherwise, cd into cloned directory and checkout the correct sha
-	cdCmd := []string{"cd", destinationPath}
-	_, err = w.run(cdCmd, destinationPath)
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to cd into directory: %s", destinationPath))
-	}
-
+	// Otherwise, checkout the correct sha
 	checkoutCmd := []string{"git", "checkout", sha}
 	_, err = w.run(checkoutCmd, destinationPath)
 	if err != nil {
