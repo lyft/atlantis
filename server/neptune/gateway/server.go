@@ -277,9 +277,11 @@ func NewServer(config Config) (*Server, error) {
 		GithubHostname: config.GithubHostname,
 		Logger:         ctxLogger,
 	}
+	hookExecutor := &preworkflow.PreWorkflowHookExecutor{}
 	preWorkflowHook := &preworkflow.PreWorkflowHooksRunner{
-		WorkingDir: ghWorkingDir,
-		GlobalCfg:  globalCfg,
+		WorkingDir:   ghWorkingDir,
+		GlobalCfg:    globalCfg,
+		HookExecutor: hookExecutor,
 	}
 	//TODO: add metrics
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
@@ -313,7 +315,8 @@ func NewServer(config Config) (*Server, error) {
 		featureAllocator,
 		asyncScheduler,
 		temporalClient,
-		projectConfigBuilder)
+		projectConfigBuilder,
+	)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods("GET")

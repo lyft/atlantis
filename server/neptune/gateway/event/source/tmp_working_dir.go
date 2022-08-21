@@ -1,6 +1,7 @@
 package source
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -24,9 +25,6 @@ type TmpWorkingDir interface {
 // TmpFileWorkspace
 type TmpFileWorkspace struct {
 	DataDir string
-	// TestingOverrideBaseCloneURL can be used during testing to override the
-	// URL of the base repo to be cloned. If it's empty then we clone normally.
-	TestingOverrideBaseCloneURL string
 }
 
 func (w *TmpFileWorkspace) Clone(baseRepo models.Repo, sha string, destinationPath string) error {
@@ -35,14 +33,8 @@ func (w *TmpFileWorkspace) Clone(baseRepo models.Repo, sha string, destinationPa
 		return errors.Wrap(err, "creating new directory")
 	}
 
-	// During testing, we mock some of this out.
-	baseCloneURL := baseRepo.CloneURL
-	if w.TestingOverrideBaseCloneURL != "" {
-		baseCloneURL = w.TestingOverrideBaseCloneURL
-	}
-
 	// Clone default branch into clone directory
-	cloneCmd := []string{"git", "clone", "--branch", baseRepo.DefaultBranch, "--single-branch", baseCloneURL, destinationPath}
+	cloneCmd := []string{"git", "clone", "--branch", baseRepo.DefaultBranch, "--single-branch", baseRepo.CloneURL, destinationPath}
 	_, err := w.run(cloneCmd, destinationPath)
 	if err != nil {
 		return errors.New("failed to clone directory")
@@ -60,13 +52,13 @@ func (w *TmpFileWorkspace) Clone(baseRepo models.Repo, sha string, destinationPa
 	cdCmd := []string{"cd", destinationPath}
 	_, err = w.run(cdCmd, destinationPath)
 	if err != nil {
-		return errors.New("failed to cd into directory")
+		return errors.New(fmt.Sprintf("failed to cd into directory: %s", destinationPath))
 	}
 
 	checkoutCmd := []string{"git", "checkout", sha}
 	_, err = w.run(checkoutCmd, destinationPath)
 	if err != nil {
-		return errors.New("failed to checkout requested sha")
+		return errors.New(fmt.Sprintf("failed to checkout to sha: %s", sha))
 	}
 	return nil
 }

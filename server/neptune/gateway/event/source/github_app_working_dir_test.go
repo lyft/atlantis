@@ -2,7 +2,6 @@ package source_test
 
 import (
 	"crypto/tls"
-	"fmt"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
@@ -27,8 +26,7 @@ func TestClone_GithubAppNoneExisting(t *testing.T) {
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
 	wd := &source.TmpFileWorkspace{
-		DataDir:                     dataDir,
-		TestingOverrideBaseCloneURL: fmt.Sprintf("file://%s", repoDir),
+		DataDir: dataDir,
 	}
 	defer disableSSLVerification()()
 	testServer, err := fixtures.GithubAppTestServer(t)
@@ -45,7 +43,7 @@ func TestClone_GithubAppNoneExisting(t *testing.T) {
 		Logger:         logger,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
-	err = gwd.Clone(newBaseRepo(), sha, destinationPath)
+	err = gwd.Clone(newBaseRepo(repoDir), sha, destinationPath)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.

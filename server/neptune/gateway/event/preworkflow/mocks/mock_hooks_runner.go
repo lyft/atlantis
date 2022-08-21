@@ -25,19 +25,23 @@ func NewMockHooksRunner(options ...pegomock.Option) *MockHooksRunner {
 func (mock *MockHooksRunner) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockHooksRunner) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockHooksRunner) Run(repo models.Repo, sha string) error {
+func (mock *MockHooksRunner) Run(repo models.Repo, sha string) (string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockHooksRunner().")
 	}
 	params := []pegomock.Param{repo, sha}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("Run", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 error
+	result := pegomock.GetGenericMockFrom(mock).Invoke("Run", params, []reflect.Type{reflect.TypeOf((*string)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 string
+	var ret1 error
 	if len(result) != 0 {
 		if result[0] != nil {
-			ret0 = result[0].(error)
+			ret0 = result[0].(string)
+		}
+		if result[1] != nil {
+			ret1 = result[1].(error)
 		}
 	}
-	return ret0
+	return ret0, ret1
 }
 
 func (mock *MockHooksRunner) VerifyWasCalledOnce() *VerifierMockHooksRunner {

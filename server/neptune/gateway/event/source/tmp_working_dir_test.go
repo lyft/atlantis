@@ -24,11 +24,10 @@ func TestCloneSimple(t *testing.T) {
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
 	wd := &source.TmpFileWorkspace{
-		DataDir:                     dataDir,
-		TestingOverrideBaseCloneURL: fmt.Sprintf("file://%s", repoDir),
+		DataDir: dataDir,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
-	err := wd.Clone(newBaseRepo(), sha, destinationPath)
+	err := wd.Clone(newBaseRepo(repoDir), sha, destinationPath)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -52,11 +51,10 @@ func TestCloneCheckout(t *testing.T) {
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
 	wd := &source.TmpFileWorkspace{
-		DataDir:                     dataDir,
-		TestingOverrideBaseCloneURL: fmt.Sprintf("file://%s", repoDir),
+		DataDir: dataDir,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
-	err := wd.Clone(newBaseRepo(), sha1, destinationPath)
+	err := wd.Clone(newBaseRepo(repoDir), sha1, destinationPath)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -74,11 +72,10 @@ func TestSimpleCloneFailure(t *testing.T) {
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
 	wd := &source.TmpFileWorkspace{
-		DataDir:                     dataDir,
-		TestingOverrideBaseCloneURL: fmt.Sprintf("file://%s", repoDir),
+		DataDir: dataDir,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
-	repo := newBaseRepo()
+	repo := newBaseRepo(repoDir)
 	repo.DefaultBranch = "invalid-branch"
 	err := wd.Clone(repo, sha, destinationPath)
 	assert.Error(t, err)
@@ -99,21 +96,21 @@ func TestCloneCheckoutFailure(t *testing.T) {
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
 	wd := &source.TmpFileWorkspace{
-		DataDir:                     dataDir,
-		TestingOverrideBaseCloneURL: fmt.Sprintf("file://%s", repoDir),
+		DataDir: dataDir,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
-	err := wd.Clone(newBaseRepo(), "invalidsha", destinationPath)
+	err := wd.Clone(newBaseRepo(repoDir), "invalidsha", destinationPath)
 	assert.Error(t, err)
 }
 
-func newBaseRepo() models.Repo {
+func newBaseRepo(repoDir string) models.Repo {
 	return models.Repo{
 		VCSHost: models.VCSHost{
 			Hostname: "github.com",
 		},
 		FullName:      "nish/repo",
 		DefaultBranch: "branch",
+		CloneURL:      fmt.Sprintf("file://%s", repoDir),
 	}
 }
 

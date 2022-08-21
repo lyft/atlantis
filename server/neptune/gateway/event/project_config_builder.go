@@ -29,7 +29,7 @@ type ProjectBuilder interface {
 
 func (b *ProjectConfigBuilder) BuildProjectConfigs(ctx context.Context, event Push) ([]*valid.MergedProjectCfg, error) {
 	// Continue if preworkflow hooks fail
-	err := b.PreWorkflowHooks.Run(event.Repo, event.Sha)
+	repoDir, err := b.PreWorkflowHooks.Run(event.Repo, event.Sha)
 	if err != nil {
 		b.Logger.Error(fmt.Sprintf("Error running pre-workflow hooks %s. Proceeding with root building.", err))
 	}
@@ -38,7 +38,10 @@ func (b *ProjectConfigBuilder) BuildProjectConfigs(ctx context.Context, event Pu
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding modified files: %s", modifiedFiles)
 	}
-	repoDir := b.TmpWorkingDir.GenerateDirPath(event.Repo.FullName)
+	// create a new directory path if preworkflow hook failed
+	if repoDir == "" {
+		repoDir = b.TmpWorkingDir.GenerateDirPath(event.Repo.FullName)
+	}
 	err = b.TmpWorkingDir.Clone(event.Repo, event.Sha, repoDir)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("creating temporary clone at path: %s", repoDir))

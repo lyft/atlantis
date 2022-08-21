@@ -51,7 +51,8 @@ func TestRunPreHooks_Clone(t *testing.T) {
 		When(whWorkingDir.GenerateDirPath(fixtures.GithubRepo.FullName)).ThenReturn(repoDir)
 		When(whWorkingDir.Clone(fixtures.GithubRepo, sha, repoDir)).ThenReturn(nil)
 		When(whExecutor.Execute(testHook, fixtures.GithubRepo, repoDir)).ThenReturn(nil)
-		err := wh.Run(fixtures.GithubRepo, sha)
+		whDir, err := wh.Run(fixtures.GithubRepo, sha)
+		assert.Equal(t, whDir, repoDir)
 		assert.NoError(t, err)
 		whExecutor.VerifyWasCalledOnce().Execute(testHook, fixtures.GithubRepo, repoDir)
 	})
@@ -74,8 +75,9 @@ func TestRunPreHooks_Clone(t *testing.T) {
 			},
 		}
 		wh.GlobalCfg = globalCfg
-		err := wh.Run(fixtures.GithubRepo, sha)
+		whDir, err := wh.Run(fixtures.GithubRepo, sha)
 		assert.NoError(t, err)
+		assert.Equal(t, whDir, "")
 		whExecutor.VerifyWasCalled(Never()).Execute(testHook, fixtures.GithubRepo, repoDir)
 		whWorkingDir.VerifyWasCalled(Never()).Clone(fixtures.GithubRepo, sha, repoDir)
 		whWorkingDir.VerifyWasCalled(Never()).GenerateDirPath(fixtures.GithubRepo.FullName)
@@ -95,8 +97,9 @@ func TestRunPreHooks_Clone(t *testing.T) {
 		wh.GlobalCfg = globalCfg
 		When(whWorkingDir.GenerateDirPath(fixtures.GithubRepo.FullName)).ThenReturn(repoDir)
 		When(whWorkingDir.Clone(fixtures.GithubRepo, sha, repoDir)).ThenReturn(errors.New("some error"))
-		err := wh.Run(fixtures.GithubRepo, sha)
+		whDir, err := wh.Run(fixtures.GithubRepo, sha)
 		assert.Error(t, err, "error not nil")
+		assert.Empty(t, whDir)
 
 		whExecutor.VerifyWasCalled(Never()).Execute(testHook, fixtures.GithubRepo, repoDir)
 	})
@@ -116,7 +119,8 @@ func TestRunPreHooks_Clone(t *testing.T) {
 		When(whWorkingDir.GenerateDirPath(fixtures.GithubRepo.FullName)).ThenReturn(repoDir)
 		When(whWorkingDir.Clone(fixtures.GithubRepo, sha, repoDir)).ThenReturn(nil)
 		When(whExecutor.Execute(testHook, fixtures.GithubRepo, repoDir)).ThenReturn(errors.New("some error"))
-		err := wh.Run(fixtures.GithubRepo, sha)
+		whDir, err := wh.Run(fixtures.GithubRepo, sha)
 		assert.Error(t, err, "error not nil")
+		assert.Empty(t, whDir)
 	})
 }
