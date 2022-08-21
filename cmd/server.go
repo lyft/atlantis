@@ -443,9 +443,16 @@ type GatewayCreator struct{}
 func (c *GatewayCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
 	// For now we just plumb this data through, ideally though we'd have gateway config pretty isolated
 	// from worker config however this requires more refactoring and can be done later.
+	privateKey, err := ioutil.ReadFile(userConfig.GithubAppKeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	appConfig := createGHAppConfig(userConfig, privateKey)
 	cfg := gateway.Config{
 		DataDir:             userConfig.DataDir,
 		AutoplanFileList:    userConfig.AutoplanFileList,
+		App:                 appConfig,
 		RepoAllowList:       userConfig.RepoAllowlist,
 		MaxProjectsPerPR:    userConfig.MaxProjectsPerPR,
 		FFOwner:             userConfig.FFOwner,
@@ -510,22 +517,7 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 		return nil, err
 	}
 
-	appConfig := githubapp.Config{
-		App: struct {
-			IntegrationID int64  "yaml:\"integration_id\" json:\"integrationId\""
-			WebhookSecret string "yaml:\"webhook_secret\" json:\"webhookSecret\""
-			PrivateKey    string "yaml:\"private_key\" json:\"privateKey\""
-		}{
-			IntegrationID: userConfig.GithubAppID,
-			WebhookSecret: userConfig.GithubWebhookSecret,
-			PrivateKey:    string(privateKey),
-		},
-
-		//TODO: parameterize this
-		WebURL:   "https://github.com",
-		V3APIURL: "https://api.github.com",
-		V4APIURL: "https://api.github.com/graphql",
-	}
+	appConfig := createGHAppConfig(userConfig, privateKey)
 	cfg := &temporalworker.Config{
 		AtlantisURL:     parsedURL,
 		AtlantisVersion: config.AtlantisVersion,
@@ -953,4 +945,23 @@ func isValidLogLevel(level string) bool {
 	}
 
 	return false
+}
+
+func createGHAppConfig(userConfig server.UserConfig, privateKey []byte) githubapp.Config {
+	return githubapp.Config{
+		App: struct {
+			IntegrationID int64  "yaml:\"integration_id\" json:\"integrationId\""
+			WebhookSecret string "yaml:\"webhook_secret\" json:\"webhookSecret\""
+			PrivateKey    string "yaml:\"private_key\" json:\"privateKey\""
+		}{
+			IntegrationID: userConfig.GithubAppID,
+			WebhookSecret: userConfig.GithubWebhookSecret,
+			PrivateKey:    string(privateKey),
+		},
+
+		//TODO: parameterize this
+		WebURL:   "https://github.com",
+		V3APIURL: "https://api.github.com",
+		V4APIURL: "https://api.github.com/graphql",
+	}
 }
