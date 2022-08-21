@@ -1,13 +1,26 @@
+// Copyright 2017 HootSuite Media Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the License);
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//    http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an AS IS BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// Modified hereafter by contributors to runatlantis/atlantis.
+
 package source_test
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -78,7 +91,7 @@ func setupTmpRepos(t *testing.T) {
 	// env/
 	//   staging.tfvars
 	//   production.tfvars
-	//   global-env-repo.auto.tfvars.json
+	//   global-env-config.auto.tfvars.json
 	envDir, err = ioutil.TempDir("", "")
 	Ok(t, err)
 	err = os.MkdirAll(filepath.Join(envDir, "env"), 0700)
@@ -229,7 +242,7 @@ func TestDetermineProjects(t *testing.T) {
 		},
 		{
 			"Should find yaml files unless excluded",
-			[]string{"project1/ansible.yml", "project2/repo.yml"},
+			[]string{"project1/ansible.yml", "project2/config.yml"},
 			[]string{"project1"},
 			topLevelModules,
 			"**/*.yml,!project2/*.yml",

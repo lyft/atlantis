@@ -307,7 +307,6 @@ func TestHandlePushEvent(t *testing.T) {
 					URL:      repoURL,
 				},
 				Root: workflows.Root{
-					Name: "",
 					Plan: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
 					},
@@ -372,7 +371,6 @@ func TestHandlePushEvent(t *testing.T) {
 					URL:      repoURL,
 				},
 				Root: workflows.Root{
-					Name: "",
 					Plan: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
 					},

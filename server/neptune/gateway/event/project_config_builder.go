@@ -38,7 +38,7 @@ func (b *ProjectConfigBuilder) BuildProjectConfigs(ctx context.Context, event Pu
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding modified files: %s", modifiedFiles)
 	}
-	// create a new directory path if preworkflow hook failed
+	// generate a new directory path if pre-workflow hook failed
 	if repoDir == "" {
 		repoDir = b.TmpWorkingDir.GenerateDirPath(event.Repo.FullName)
 	}
