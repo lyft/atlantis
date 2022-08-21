@@ -2,13 +2,18 @@ package event_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	. "github.com/petergtz/pegomock"
+	cfgParser "github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	preworkflow_mocks "github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow/mocks"
+	source_mocks "github.com/runatlantis/atlantis/server/neptune/gateway/event/source/mocks"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"
@@ -109,11 +114,22 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			t: t,
 		}
 
+		projectConfigBuilder := &event.ProjectConfigBuilder{
+			Logger:           logger,
+			GlobalCfg:        valid.NewGlobalCfg(),
+			ProjectFinder:    source_mocks.NewMockProjectFinder(),
+			FileFetcher:      source_mocks.NewMockFileFetcher(),
+			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
+			ParserValidator:  &cfgParser.ParserValidator{},
+			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
+			AutoplanFileList: "",
+		}
 		handler := event.PushHandler{
-			Scheduler:      &sync.SynchronousScheduler{Logger: logger},
-			TemporalClient: testSignaler,
-			Allocator:      allocator,
-			Logger:         logger,
+			Allocator:            allocator,
+			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
+			TemporalClient:       testSignaler,
+			Logger:               logger,
+			ProjectConfigBuilder: projectConfigBuilder,
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -147,11 +163,22 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			t: t,
 		}
 
+		projectConfigBuilder := &event.ProjectConfigBuilder{
+			Logger:           logger,
+			GlobalCfg:        valid.NewGlobalCfg(),
+			ProjectFinder:    source_mocks.NewMockProjectFinder(),
+			FileFetcher:      source_mocks.NewMockFileFetcher(),
+			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
+			ParserValidator:  &cfgParser.ParserValidator{},
+			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
+			AutoplanFileList: "",
+		}
 		handler := event.PushHandler{
-			Scheduler:      &sync.SynchronousScheduler{Logger: logger},
-			TemporalClient: testSignaler,
-			Allocator:      allocator,
-			Logger:         logger,
+			Allocator:            allocator,
+			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
+			TemporalClient:       testSignaler,
+			Logger:               logger,
+			ProjectConfigBuilder: projectConfigBuilder,
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -186,11 +213,22 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			t: t,
 		}
 
+		projectConfigBuilder := &event.ProjectConfigBuilder{
+			Logger:           logger,
+			GlobalCfg:        valid.NewGlobalCfg(),
+			ProjectFinder:    source_mocks.NewMockProjectFinder(),
+			FileFetcher:      source_mocks.NewMockFileFetcher(),
+			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
+			ParserValidator:  &cfgParser.ParserValidator{},
+			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
+			AutoplanFileList: "",
+		}
 		handler := event.PushHandler{
-			Scheduler:      &sync.SynchronousScheduler{Logger: logger},
-			TemporalClient: testSignaler,
-			Allocator:      allocator,
-			Logger:         logger,
+			Allocator:            allocator,
+			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
+			TemporalClient:       testSignaler,
+			Logger:               logger,
+			ProjectConfigBuilder: projectConfigBuilder,
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -209,15 +247,16 @@ func TestHandlePushEvent(t *testing.T) {
 	repoName := "repo"
 	repoURL := "www.nish.com"
 	sha := "12345"
+	repo := models.Repo{
+		FullName:      repoFullName,
+		Name:          repoName,
+		Owner:         repoOwner,
+		CloneURL:      repoURL,
+		DefaultBranch: "main",
+	}
 
 	e := event.Push{
-		Repo: models.Repo{
-			FullName:      repoFullName,
-			Name:          repoName,
-			Owner:         repoOwner,
-			CloneURL:      repoURL,
-			DefaultBranch: "main",
-		},
+		Repo: repo,
 		Ref: vcs.Ref{
 			Type: vcs.BranchRef,
 			Name: "main",
@@ -236,11 +275,22 @@ func TestHandlePushEvent(t *testing.T) {
 			t: t,
 		}
 
+		projectConfigBuilder := &event.ProjectConfigBuilder{
+			Logger:           logger,
+			GlobalCfg:        valid.NewGlobalCfg(),
+			ProjectFinder:    source_mocks.NewMockProjectFinder(),
+			FileFetcher:      source_mocks.NewMockFileFetcher(),
+			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
+			ParserValidator:  &cfgParser.ParserValidator{},
+			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
+			AutoplanFileList: "",
+		}
 		handler := event.PushHandler{
-			Scheduler:      &sync.SynchronousScheduler{Logger: logger},
-			TemporalClient: testSignaler,
-			Allocator:      allocator,
-			Logger:         logger,
+			Allocator:            allocator,
+			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
+			TemporalClient:       testSignaler,
+			Logger:               logger,
+			ProjectConfigBuilder: projectConfigBuilder,
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -260,11 +310,22 @@ func TestHandlePushEvent(t *testing.T) {
 			t: t,
 		}
 
+		projectConfigBuilder := &event.ProjectConfigBuilder{
+			Logger:           logger,
+			GlobalCfg:        valid.NewGlobalCfg(),
+			ProjectFinder:    source_mocks.NewMockProjectFinder(),
+			FileFetcher:      source_mocks.NewMockFileFetcher(),
+			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
+			ParserValidator:  &cfgParser.ParserValidator{},
+			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
+			AutoplanFileList: "",
+		}
 		handler := event.PushHandler{
-			Scheduler:      &sync.SynchronousScheduler{Logger: logger},
-			TemporalClient: testSignaler,
-			Allocator:      allocator,
-			Logger:         logger,
+			Allocator:            allocator,
+			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
+			TemporalClient:       testSignaler,
+			Logger:               logger,
+			ProjectConfigBuilder: projectConfigBuilder,
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -276,7 +337,7 @@ func TestHandlePushEvent(t *testing.T) {
 	t.Run("signal success", func(t *testing.T) {
 		testSignaler := &testSignaler{
 			t:                  t,
-			expectedWorkflowID: repoFullName,
+			expectedWorkflowID: fmt.Sprintf("%s||", repoFullName),
 			expectedSignalName: workflows.DeployNewRevisionSignalID,
 			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 				Revision: sha,
@@ -293,7 +354,7 @@ func TestHandlePushEvent(t *testing.T) {
 					URL:      repoURL,
 				},
 				Root: workflows.Root{
-					Name: "TODO",
+					Name: "",
 					Plan: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
 					},
@@ -311,16 +372,35 @@ func TestHandlePushEvent(t *testing.T) {
 			},
 			t: t,
 		}
+		ctx := context.Background()
+		projectFinder := source_mocks.NewMockProjectFinder()
+		projects := []models.Project{
+			{
+				RepoFullName: repoFullName,
+			},
+		}
+		When(projectFinder.DetermineProjects(nil, repoFullName, "", "")).
+			ThenReturn(projects)
 
+		projectConfigBuilder := &event.ProjectConfigBuilder{
+			Logger:           logger,
+			GlobalCfg:        valid.NewGlobalCfg(),
+			ProjectFinder:    projectFinder,
+			FileFetcher:      source_mocks.NewMockFileFetcher(),
+			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
+			ParserValidator:  &cfgParser.ParserValidator{},
+			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
+			AutoplanFileList: "",
+		}
 		handler := event.PushHandler{
-			Scheduler:      &sync.SynchronousScheduler{Logger: logger},
-			TemporalClient: testSignaler,
-			Allocator:      allocator,
-			Logger:         logger,
-			GlobalCfg:      valid.NewGlobalCfg(),
+			Allocator:            allocator,
+			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
+			TemporalClient:       testSignaler,
+			Logger:               logger,
+			ProjectConfigBuilder: projectConfigBuilder,
 		}
 
-		err := handler.Handle(context.Background(), e)
+		err := handler.Handle(ctx, e)
 		assert.NoError(t, err)
 
 		assert.True(t, testSignaler.called)
@@ -329,7 +409,7 @@ func TestHandlePushEvent(t *testing.T) {
 	t.Run("signal error", func(t *testing.T) {
 		testSignaler := &testSignaler{
 			t:                  t,
-			expectedWorkflowID: repoFullName,
+			expectedWorkflowID: fmt.Sprintf("%s||", repoFullName),
 			expectedSignalName: workflows.DeployNewRevisionSignalID,
 			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 				Revision: sha,
@@ -346,7 +426,7 @@ func TestHandlePushEvent(t *testing.T) {
 					URL:      repoURL,
 				},
 				Root: workflows.Root{
-					Name: "TODO",
+					Name: "",
 					Plan: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
 					},
@@ -366,15 +446,35 @@ func TestHandlePushEvent(t *testing.T) {
 			t: t,
 		}
 
+		ctx := context.Background()
+		projectFinder := source_mocks.NewMockProjectFinder()
+		projects := []models.Project{
+			{
+				RepoFullName: repoFullName,
+			},
+		}
+		When(projectFinder.DetermineProjects(nil, repoFullName, "", "")).
+			ThenReturn(projects)
+
+		projectConfigBuilder := &event.ProjectConfigBuilder{
+			Logger:           logger,
+			GlobalCfg:        valid.NewGlobalCfg(),
+			ProjectFinder:    projectFinder,
+			FileFetcher:      source_mocks.NewMockFileFetcher(),
+			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
+			ParserValidator:  &cfgParser.ParserValidator{},
+			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
+			AutoplanFileList: "",
+		}
 		handler := event.PushHandler{
-			Scheduler:      &sync.SynchronousScheduler{Logger: logger},
-			TemporalClient: testSignaler,
-			Allocator:      allocator,
-			Logger:         logger,
-			GlobalCfg:      valid.NewGlobalCfg(),
+			Allocator:            allocator,
+			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
+			TemporalClient:       testSignaler,
+			Logger:               logger,
+			ProjectConfigBuilder: projectConfigBuilder,
 		}
 
-		err := handler.Handle(context.Background(), e)
+		err := handler.Handle(ctx, e)
 		assert.Error(t, err)
 
 		assert.True(t, testSignaler.called)

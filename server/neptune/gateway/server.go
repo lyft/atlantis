@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
 	"io"
 	"io/ioutil"
 	"log"
@@ -67,6 +71,7 @@ type Config struct {
 	SNSTopicArn         string
 	SSLKeyFile          string
 	SSLCertFile         string
+	App                 githubapp.Config
 }
 
 type Server struct {
@@ -263,6 +268,31 @@ func NewServer(config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing temporal client")
 	}
 
+	tmpWorkingDir := &source.TmpFileWorkspace{
+		DataDir:        config.DataDir,
+		Logger:         ctxLogger,
+		Credentials:    githubCredentials,
+		GithubHostname: config.GithubHostname,
+	}
+	preWorkflowHook := &preworkflow.PreWorkflowHooksRunner{
+		WorkingDir: tmpWorkingDir,
+		GlobalCfg:  globalCfg,
+	}
+	//TODO: add metrics
+	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
+		config.App,
+		githubapp.WithClientMiddleware())
+	projectConfigBuilder := &event.ProjectConfigBuilder{
+		TmpWorkingDir:    tmpWorkingDir,
+		AutoplanFileList: config.AutoplanFileList,
+		PreWorkflowHooks: preWorkflowHook,
+		ParserValidator:  validator,
+		ProjectFinder:    &source.DefaultProjectFinder{},
+		FileFetcher:      &source.GithubFileFetcher{ClientCreator: clientCreator},
+		GlobalCfg:        globalCfg,
+		Logger:           ctxLogger,
+	}
+
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(
 		statsScope,
 		[]byte(config.GithubWebhookSecret),
@@ -280,13 +310,7 @@ func NewServer(config Config) (*Server, error) {
 		featureAllocator,
 		asyncScheduler,
 		temporalClient,
-		globalCfg,
-		workingDir,
-		workingDirLocker,
-		preWorkflowHooksCommandRunner,
-		validator,
-		config.AutoplanFileList,
-	)
+		projectConfigBuilder)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods("GET")

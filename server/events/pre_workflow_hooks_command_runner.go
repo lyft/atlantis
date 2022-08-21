@@ -2,7 +2,6 @@ package events
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/logging"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -16,7 +15,6 @@ import (
 
 type PreWorkflowHooksCommandRunner interface {
 	RunPreHooks(ctx context.Context, cmdCtx *command.Context) error
-	RunPreHooksWithSha(ctx context.Context, logger logging.Logger, baseRepo models.Repo, sha string) error
 }
 
 // DefaultPreWorkflowHooksCommandRunner is the first step when processing a workflow hook commands.
@@ -28,7 +26,6 @@ type DefaultPreWorkflowHooksCommandRunner struct {
 	PreWorkflowHookRunner runtime.PreWorkflowHookRunner
 }
 
-// TODO: remove cmdCtx
 // RunPreHooks runs pre_workflow_hooks when PR is opened or updated.
 func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks(
 	ctx context.Context,
@@ -94,52 +91,6 @@ func (w *DefaultPreWorkflowHooksCommandRunner) runHooks(
 		if err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-// RunPreHooksOnSha runs pre_workflow_hooks when a sha pushed to main branch
-func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooksWithSha(
-	ctx context.Context,
-	logger logging.Logger,
-	baseRepo models.Repo,
-	sha string,
-) error {
-	preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
-	for _, repo := range w.GlobalCfg.Repos {
-		if repo.IDMatches(baseRepo.ID()) && len(repo.PreWorkflowHooks) > 0 {
-			preWorkflowHooks = append(preWorkflowHooks, repo.PreWorkflowHooks...)
-		}
-	}
-
-	// short circuit any other calls if there are no pre-hooks configured
-	if len(preWorkflowHooks) == 0 {
-		return nil
-	}
-
-	unlockFn, err := w.WorkingDirLocker.TryLockOnSha(baseRepo.FullName, sha, DefaultWorkspace)
-	if err != nil {
-		return errors.Wrap(err, "locking working dir")
-	}
-	defer unlockFn()
-
-	repoDir, err := w.WorkingDir.CloneFromSha(logger, baseRepo, sha, DefaultWorkspace)
-	if err != nil {
-		return errors.Wrap(err, "cloning repository")
-	}
-
-	// uses default zero values for some field in PreWorkflowHookCommandContext struct since they aren't relevant to fxn
-	err = w.runHooks(
-		ctx,
-		models.PreWorkflowHookCommandContext{
-			BaseRepo: baseRepo,
-			Log:      logger,
-		},
-		preWorkflowHooks, repoDir)
-
-	if err != nil {
-		return errors.Wrap(err, "running pre workflow hooks")
 	}
 
 	return nil
