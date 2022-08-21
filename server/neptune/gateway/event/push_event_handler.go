@@ -46,7 +46,7 @@ type PushHandler struct {
 	Scheduler            scheduler
 	TemporalClient       signaler
 	Logger               logging.Logger
-	ProjectConfigBuilder *ProjectConfigBuilder
+	ProjectConfigBuilder ProjectBuilder
 }
 
 func (p *PushHandler) Handle(ctx context.Context, event Push) error {

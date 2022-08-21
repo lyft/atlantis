@@ -3,17 +3,15 @@ package event_test
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/mocks"
 	"testing"
 
 	. "github.com/petergtz/pegomock"
-	cfgParser "github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
-	preworkflow_mocks "github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow/mocks"
-	source_mocks "github.com/runatlantis/atlantis/server/neptune/gateway/event/source/mocks"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"
@@ -114,16 +112,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := &event.ProjectConfigBuilder{
-			Logger:           logger,
-			GlobalCfg:        valid.NewGlobalCfg(),
-			ProjectFinder:    source_mocks.NewMockProjectFinder(),
-			FileFetcher:      source_mocks.NewMockFileFetcher(),
-			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
-			ParserValidator:  &cfgParser.ParserValidator{},
-			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
-			AutoplanFileList: "",
-		}
+		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
@@ -163,16 +152,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := &event.ProjectConfigBuilder{
-			Logger:           logger,
-			GlobalCfg:        valid.NewGlobalCfg(),
-			ProjectFinder:    source_mocks.NewMockProjectFinder(),
-			FileFetcher:      source_mocks.NewMockFileFetcher(),
-			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
-			ParserValidator:  &cfgParser.ParserValidator{},
-			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
-			AutoplanFileList: "",
-		}
+		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
@@ -213,16 +193,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := &event.ProjectConfigBuilder{
-			Logger:           logger,
-			GlobalCfg:        valid.NewGlobalCfg(),
-			ProjectFinder:    source_mocks.NewMockProjectFinder(),
-			FileFetcher:      source_mocks.NewMockFileFetcher(),
-			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
-			ParserValidator:  &cfgParser.ParserValidator{},
-			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
-			AutoplanFileList: "",
-		}
+		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
@@ -275,16 +246,7 @@ func TestHandlePushEvent(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := &event.ProjectConfigBuilder{
-			Logger:           logger,
-			GlobalCfg:        valid.NewGlobalCfg(),
-			ProjectFinder:    source_mocks.NewMockProjectFinder(),
-			FileFetcher:      source_mocks.NewMockFileFetcher(),
-			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
-			ParserValidator:  &cfgParser.ParserValidator{},
-			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
-			AutoplanFileList: "",
-		}
+		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
@@ -310,16 +272,7 @@ func TestHandlePushEvent(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := &event.ProjectConfigBuilder{
-			Logger:           logger,
-			GlobalCfg:        valid.NewGlobalCfg(),
-			ProjectFinder:    source_mocks.NewMockProjectFinder(),
-			FileFetcher:      source_mocks.NewMockFileFetcher(),
-			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
-			ParserValidator:  &cfgParser.ParserValidator{},
-			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
-			AutoplanFileList: "",
-		}
+		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
@@ -373,25 +326,18 @@ func TestHandlePushEvent(t *testing.T) {
 			t: t,
 		}
 		ctx := context.Background()
-		projectFinder := source_mocks.NewMockProjectFinder()
-		projects := []models.Project{
-			{
-				RepoFullName: repoFullName,
+		projectConfigBuilder := mocks.NewMockProjectBuilder()
+		projCfg := valid.MergedProjectCfg{
+			Workflow: valid.Workflow{
+				Name:  "default",
+				Plan:  valid.DefaultPlanStage,
+				Apply: valid.DefaultApplyStage,
 			},
 		}
-		When(projectFinder.DetermineProjects(nil, repoFullName, "", "")).
-			ThenReturn(projects)
-
-		projectConfigBuilder := &event.ProjectConfigBuilder{
-			Logger:           logger,
-			GlobalCfg:        valid.NewGlobalCfg(),
-			ProjectFinder:    projectFinder,
-			FileFetcher:      source_mocks.NewMockFileFetcher(),
-			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
-			ParserValidator:  &cfgParser.ParserValidator{},
-			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
-			AutoplanFileList: "",
+		projectCfgs := []*valid.MergedProjectCfg{
+			&projCfg,
 		}
+		When(projectConfigBuilder.BuildProjectConfigs(ctx, e)).ThenReturn(projectCfgs, nil)
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
@@ -447,25 +393,18 @@ func TestHandlePushEvent(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		projectFinder := source_mocks.NewMockProjectFinder()
-		projects := []models.Project{
-			{
-				RepoFullName: repoFullName,
+		projectConfigBuilder := mocks.NewMockProjectBuilder()
+		projCfg := valid.MergedProjectCfg{
+			Workflow: valid.Workflow{
+				Name:  "default",
+				Plan:  valid.DefaultPlanStage,
+				Apply: valid.DefaultApplyStage,
 			},
 		}
-		When(projectFinder.DetermineProjects(nil, repoFullName, "", "")).
-			ThenReturn(projects)
-
-		projectConfigBuilder := &event.ProjectConfigBuilder{
-			Logger:           logger,
-			GlobalCfg:        valid.NewGlobalCfg(),
-			ProjectFinder:    projectFinder,
-			FileFetcher:      source_mocks.NewMockFileFetcher(),
-			PreWorkflowHooks: preworkflow_mocks.NewMockHooksRunner(),
-			ParserValidator:  &cfgParser.ParserValidator{},
-			TmpWorkingDir:    source_mocks.NewMockTmpWorkingDir(),
-			AutoplanFileList: "",
+		projectCfgs := []*valid.MergedProjectCfg{
+			&projCfg,
 		}
+		When(projectConfigBuilder.BuildProjectConfigs(ctx, e)).ThenReturn(projectCfgs, nil)
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},

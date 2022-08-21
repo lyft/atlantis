@@ -22,7 +22,13 @@ type ProjectConfigBuilder struct {
 	Logger           logging.Logger
 }
 
+//go:generate pegomock generate --use-experimental-model-gen --package mocks -o mocks/mock_project_config_builder.go ProjectBuilder
+type ProjectBuilder interface {
+	BuildProjectConfigs(ctx context.Context, event Push) ([]*valid.MergedProjectCfg, error)
+}
+
 func (b *ProjectConfigBuilder) BuildProjectConfigs(ctx context.Context, event Push) ([]*valid.MergedProjectCfg, error) {
+	// Continue if preworkflow hooks fail
 	err := b.PreWorkflowHooks.Run(event.Repo, event.Sha)
 	if err != nil {
 		b.Logger.Error(fmt.Sprintf("Error running pre-workflow hooks %s. Proceeding with root building.", err))
@@ -30,7 +36,7 @@ func (b *ProjectConfigBuilder) BuildProjectConfigs(ctx context.Context, event Pu
 
 	modifiedFiles, err := b.FileFetcher.GetModifiedFilesFromCommit(ctx, event.Repo, event.Sha, event.InstallationToken)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "finding modified files: %s", modifiedFiles)
 	}
 	repoDir := b.TmpWorkingDir.GenerateDirPath(event.Repo.FullName)
 	err = b.TmpWorkingDir.Clone(event.Repo, event.Sha, repoDir)
@@ -64,7 +70,6 @@ func (b *ProjectConfigBuilder) BuildProjectConfigs(ctx context.Context, event Pu
 		if err != nil {
 			return nil, err
 		}
-
 		for _, mp := range matchingProjects {
 			mergedProjectCfg := b.GlobalCfg.MergeProjectCfg(event.Repo.ID(), mp, repoCfg)
 			mergedProjectCfgs = append(mergedProjectCfgs, &mergedProjectCfg)
@@ -73,13 +78,9 @@ func (b *ProjectConfigBuilder) BuildProjectConfigs(ctx context.Context, event Pu
 		// If there is no repo file, then we'll plan each project that
 		// our algorithm determines was modified.
 		modifiedProjects := b.ProjectFinder.DetermineProjects(modifiedFiles, event.Repo.FullName, repoDir, b.AutoplanFileList)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding modified projects: %s", modifiedFiles)
-		}
 		for _, mp := range modifiedProjects {
 			mergedProjectCfg := b.GlobalCfg.DefaultProjCfg(event.Repo.ID(), mp.Path, "")
 			mergedProjectCfgs = append(mergedProjectCfgs, &mergedProjectCfg)
-
 		}
 	}
 	if len(mergedProjectCfgs) == 0 {

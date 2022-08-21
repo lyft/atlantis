@@ -269,13 +269,16 @@ func NewServer(config Config) (*Server, error) {
 	}
 
 	tmpWorkingDir := &source.TmpFileWorkspace{
-		DataDir:        config.DataDir,
-		Logger:         ctxLogger,
+		DataDir: config.DataDir,
+	}
+	ghWorkingDir := &source.GithubAppWorkingDir{
+		TmpWorkingDir:  tmpWorkingDir,
 		Credentials:    githubCredentials,
 		GithubHostname: config.GithubHostname,
+		Logger:         ctxLogger,
 	}
 	preWorkflowHook := &preworkflow.PreWorkflowHooksRunner{
-		WorkingDir: tmpWorkingDir,
+		WorkingDir: ghWorkingDir,
 		GlobalCfg:  globalCfg,
 	}
 	//TODO: add metrics
@@ -283,7 +286,7 @@ func NewServer(config Config) (*Server, error) {
 		config.App,
 		githubapp.WithClientMiddleware())
 	projectConfigBuilder := &event.ProjectConfigBuilder{
-		TmpWorkingDir:    tmpWorkingDir,
+		TmpWorkingDir:    ghWorkingDir,
 		AutoplanFileList: config.AutoplanFileList,
 		PreWorkflowHooks: preWorkflowHook,
 		ParserValidator:  validator,
