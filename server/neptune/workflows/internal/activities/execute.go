@@ -14,6 +14,11 @@ import (
 
 type executeCommandActivities struct {
 	versionCache cache.ExecutionVersionCache
+
+	DefaultTFVersion *version.Version
+
+	// TerraformBinDir is the directory where Atlantis downloads Terraform binaries.
+	TerraformBinDir string
 }
 
 type ExecuteCommandResponse struct {
@@ -35,13 +40,23 @@ type ExecuteCommandRequest struct {
 
 func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request ExecuteCommandRequest) ExecuteCommandResponse {
 
+	terraformVersion := t.DefaultTFVersion
+	if request.TerraformVersion != nil {
+		terraformVersion = request.TerraformVersion
+	}
+
 	// Ensure version exists
-	_, err := t.versionCache.Get(request.TerraformVersion)
+	_, err := t.versionCache.Get(terraformVersion)
 	if err != nil {
 		return ExecuteCommandResponse{
 			Output: "",
 			Error:  errors.Wrapf(err, "getting version %s", request.TerraformVersion),
 		}
+	}
+
+	terraformEnvVars := map[string]string{
+		"ATLANTIS_TERRAFORM_VERSION": terraformVersion.String(),
+		"PATH":                       fmt.Sprintf("%s:%s", os.Getenv("PATH"), t.TerraformBinDir),
 	}
 
 	cmd := exec.Command("sh", "-c", request.Step.RunCommand) // #nosec
@@ -54,6 +69,9 @@ func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request E
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
 	for key, val := range request.Envs {
+		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
+	}
+	for key, val := range terraformEnvVars {
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
 	cmd.Env = finalEnvVars

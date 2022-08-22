@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/runners"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -48,21 +48,32 @@ type workerActivities interface {
 	TerraformInit(context.Context, activities.TerraformInitRequest) error
 	TerraformPlan(context.Context, activities.TerraformPlanRequest) error
 	TerraformApply(context.Context, activities.TerraformApplyRequest) error
-	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) error
+	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) activities.ExecuteCommandResponse
 	Notify(context.Context, activities.NotifyRequest) error
 	Cleanup(context.Context, activities.CleanupRequest) error
 }
 
 type Runner struct {
 	Activities workerActivities
+	JobRunner  runners.JobRunner
 	Request    Request
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
 	var a *activities.Terraform
+
+	runStepRunner := runners.RunStepRunner{
+		Activity: a,
+	}
 	return &Runner{
 		Activities: a,
 		Request:    request,
+		JobRunner: runners.NewJobRunner(
+			&runStepRunner,
+			&runners.EnvStepRunner{
+				RunStepRunner: &runStepRunner,
+			},
+		),
 	}
 }
 
@@ -72,13 +83,12 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "executing GH repo clone")
 	}
-	// Run plan steps
-	for _, step := range r.Request.Root.Plan.Steps {
-		err := r.runStep(ctx, step)
-		if err != nil {
-			return errors.Wrap(err, "running step")
-		}
+
+	_, err = r.JobRunner.Run(ctx, r.Request.Root.Plan, r.Request.Repo, r.Request.Commit, r.Request.TerraformVersion, r.Request.ProjectName, r.Request.RepoRelDir, r.Request.Path)
+	if err != nil {
+		return errors.Wrap(err, "running step")
 	}
+
 	// Wait for plan review signal
 	var planReview PlanReview
 	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-steps")
@@ -90,12 +100,11 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return nil
 	}
 	// Run apply steps
-	for _, step := range r.Request.Root.Apply.Steps {
-		err := r.runStep(ctx, step)
-		if err != nil {
-			return errors.Wrap(err, "running step")
-		}
+	_, err = r.JobRunner.Run(ctx, r.Request.Root.Apply, r.Request.Repo, r.Request.Commit, r.Request.TerraformVersion, r.Request.ProjectName, r.Request.RepoRelDir, r.Request.Path)
+	if err != nil {
+		return errors.Wrap(err, "running step")
 	}
+
 	// Cleanup
 	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{}).Get(ctx, nil)
 	if err != nil {
@@ -115,45 +124,45 @@ func (r *Runner) Run(ctx workflow.Context) error {
 //	if err != nil {
 //		return errors.Wrap(err, "executing terraform init")
 //	}
-func (r *Runner) runStep(ctx workflow.Context, step steps.Step) error {
-	var err error
-	switch step.StepName {
-	case "init":
-		err = workflow.ExecuteActivity(ctx, r.Activities.TerraformInit, activities.TerraformInitRequest{}).Get(ctx, nil)
-		if err != nil {
-			return errors.Wrap(err, "executing terraform init")
-		}
-	case "plan":
-		err = workflow.ExecuteActivity(ctx, r.Activities.TerraformPlan, activities.TerraformPlanRequest{}).Get(ctx, nil)
-		if err != nil {
-			return errors.Wrap(err, "executing terraform plan")
-		}
-		err = workflow.ExecuteActivity(ctx, r.Activities.Notify, activities.NotifyRequest{}).Get(ctx, nil)
-		if err != nil {
-			return errors.Wrap(err, "notifying plan result")
-		}
-	case "apply":
-		err = workflow.ExecuteActivity(ctx, r.Activities.TerraformApply, activities.TerraformApplyRequest{}).Get(ctx, nil)
-		if err != nil {
-			return errors.Wrap(err, "executing terraform apply")
-		}
-		err = workflow.ExecuteActivity(ctx, r.Activities.Notify, activities.NotifyRequest{}).Get(ctx, nil)
-		if err != nil {
-			return errors.Wrap(err, "notifying apply result")
-		}
-	case "run":
-		err = workflow.ExecuteActivity(ctx, r.Activities.ExecuteCommand, activities.ExecuteCommandRequest{}).Get(ctx, nil)
-		if err != nil {
-			return errors.Wrap(err, "executing custom command")
-		}
-	case "env":
-		err = workflow.ExecuteActivity(ctx, r.Activities.ExecuteCommand, activities.ExecuteCommandRequest{}).Get(ctx, nil)
-		if err != nil {
-			return errors.Wrap(err, "exporting custom env variables")
-		}
-	}
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// func (r *Runner) runStep(ctx workflow.Context, step steps.Step) error {
+// 	var err error
+// 	switch step.StepName {
+// 	case "init":
+// 		err = workflow.ExecuteActivity(ctx, r.Activities.TerraformInit, activities.TerraformInitRequest{}).Get(ctx, nil)
+// 		if err != nil {
+// 			return errors.Wrap(err, "executing terraform init")
+// 		}
+// 	case "plan":
+// 		err = workflow.ExecuteActivity(ctx, r.Activities.TerraformPlan, activities.TerraformPlanRequest{}).Get(ctx, nil)
+// 		if err != nil {
+// 			return errors.Wrap(err, "executing terraform plan")
+// 		}
+// 		err = workflow.ExecuteActivity(ctx, r.Activities.Notify, activities.NotifyRequest{}).Get(ctx, nil)
+// 		if err != nil {
+// 			return errors.Wrap(err, "notifying plan result")
+// 		}
+// 	case "apply":
+// 		err = workflow.ExecuteActivity(ctx, r.Activities.TerraformApply, activities.TerraformApplyRequest{}).Get(ctx, nil)
+// 		if err != nil {
+// 			return errors.Wrap(err, "executing terraform apply")
+// 		}
+// 		err = workflow.ExecuteActivity(ctx, r.Activities.Notify, activities.NotifyRequest{}).Get(ctx, nil)
+// 		if err != nil {
+// 			return errors.Wrap(err, "notifying apply result")
+// 		}
+// 	case "run":
+// 		err = workflow.ExecuteActivity(ctx, r.Activities.ExecuteCommand, activities.ExecuteCommandRequest{}).Get(ctx, nil)
+// 		if err != nil {
+// 			return errors.Wrap(err, "executing custom command")
+// 		}
+// 	case "env":
+// 		err = workflow.ExecuteActivity(ctx, r.Activities.ExecuteCommand, activities.ExecuteCommandRequest{}).Get(ctx, nil)
+// 		if err != nil {
+// 			return errors.Wrap(err, "exporting custom env variables")
+// 		}
+// 	}
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }

@@ -9,75 +9,65 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	"go.temporal.io/sdk/workflow"
 )
 
 type ExecuteCommandActivities interface {
-	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) error
+	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) activities.ExecuteCommandResponse
 }
 
 const planfileSlashReplace = "::"
 
 type RunStepRunner struct {
-	versionCache cache.ExecutionVersionCache
-	// Need a terraform client
-
-	DefaultTFVersion *version.Version
-	// TerraformBinDir is the directory where Atlantis downloads Terraform binaries.
-	TerraformBinDir string
-
-	activity ExecuteCommandActivities
+	Activity ExecuteCommandActivities
 }
 
-// GetPlanFilename returns the filename (not the path) of the generated tf plan
-// given a workspace and project name.
-func GetPlanFilename(workspace string, projName string) string {
-	if projName == "" {
-		return fmt.Sprintf("%s.tfplan", workspace)
-	}
+func GetPlanFilename(projName string) string {
 	projName = strings.Replace(projName, "/", planfileSlashReplace, -1)
-	return fmt.Sprintf("%s-%s.tfplan", projName, workspace)
+	return fmt.Sprintf("%s.tfplan", projName)
 }
 
-// GetShowResultFileName returns the filename (not the path) to store the tf show result
-func GetShowResultFileName(projectName string, workspace string) string {
-	if projectName == "" {
-		return fmt.Sprintf("%s.json", workspace)
-	}
+func GetShowResultFileName(projectName string) string {
 	projName := strings.Replace(projectName, "/", planfileSlashReplace, -1)
-	return fmt.Sprintf("%s-%s.json", projName, workspace)
+	return fmt.Sprintf("%s-%s.json", projName)
 }
 
-func (r *RunStepRunner) Run(ctx workflow.Context, step steps.Step, jobContext deploy.JobContext, envs map[string]string) (string, error) {
-
-	tfVersion := r.DefaultTFVersion
-	if jobContext.TerraformVersion != nil {
-		tfVersion = jobContext.TerraformVersion
-	}
+func (r *RunStepRunner) Run(
+	ctx workflow.Context,
+	step steps.Step,
+	repo github.Repo,
+	commit github.Commit,
+	tfVersion *version.Version,
+	projectName string,
+	repoRelDir string,
+	path string,
+	envs map[string]string,
+) (string, error) {
 
 	cmd := exec.Command("sh", "-c", step.RunCommand) // #nosec
-	cmd.Dir = jobContext.Path
+	cmd.Dir = path
 
 	baseEnvVars := os.Environ()
 	customEnvVars := map[string]string{
-		"ATLANTIS_TERRAFORM_VERSION": tfVersion.String(),
-		"BASE_REPO_NAME":             jobContext.Repo.Name,
-		"BASE_REPO_OWNER":            jobContext.Repo.Owner,
-		"DIR":                        jobContext.Path,
-		"HEAD_COMMIT":                jobContext.Commit.Ref,
-		"PATH":                       fmt.Sprintf("%s:%s", os.Getenv("PATH"), r.TerraformBinDir),
-		"PLANFILE":                   filepath.Join(jobContext.Path, GetPlanFilename(jobContext.Workspace, jobContext.ProjectName)),
-		"SHOWFILE":                   filepath.Join(jobContext.Path, GetShowResultFileName(jobContext.ProjectName, jobContext.Workspace)),
-		"PROJECT_NAME":               jobContext.ProjectName,
-		"REPO_REL_DIR":               jobContext.RepoRelDir,
-		"USER_NAME":                  jobContext.Commit.Author.Username,
-		"WORKSPACE":                  jobContext.Workspace,
+		"REPO_NAME":    repo.Name,
+		"REPO_OWNER":   repo.Owner,
+		"DIR":          path,
+		"HEAD_COMMIT":  commit.Ref,
+		"PLANFILE":     filepath.Join(path, GetPlanFilename(projectName)),
+		"SHOWFILE":     filepath.Join(path, GetShowResultFileName(projectName)),
+		"PROJECT_NAME": projectName,
+		"REPO_REL_DIR": repoRelDir,
+		"USER_NAME":    commit.Author.Username,
+
+		// Set these 2 fields in the activity since it relies on machine specific configuration
+		// "ATLANTIS_TERRAFORM_VERSION": tfVersion.String(),
+		// "PATH":                       fmt.Sprintf("%s:%s", os.Getenv("PATH"), r.TerraformBinDir),
 
 		// Not required when working from main branch
+		// "WORKSPACE":                  jobContext.Workspace,
 		// "PULL_AUTHOR":                request.Pull.Author,
 		// "COMMENT_ARGS":               strings.Join(request.EscapedCommentArgs, ","),
 		// "BASE_BRANCH_NAME":           request.Pull.BaseBranch,
@@ -95,15 +85,13 @@ func (r *RunStepRunner) Run(ctx workflow.Context, step steps.Step, jobContext de
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
 
-	// Call activity
-
 	var resp activities.ExecuteCommandResponse
-	_ = workflow.ExecuteActivity(ctx, r.activity.ExecuteCommand, activities.ExecuteCommandRequest{
+	_ = workflow.ExecuteActivity(ctx, r.Activity.ExecuteCommand, activities.ExecuteCommandRequest{
 		Step:             step,
 		CustomEnvVars:    customEnvVars,
 		Envs:             envs,
-		Path:             jobContext.Path,
-		TerraformVersion: jobContext.TerraformVersion,
+		Path:             path,
+		TerraformVersion: tfVersion,
 	}).Get(ctx, &resp)
 
 	if resp.Error != nil {
