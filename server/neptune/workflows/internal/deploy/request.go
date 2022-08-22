@@ -1,5 +1,10 @@
 package deploy
 
+import (
+	"github.com/hashicorp/go-version"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
+)
+
 // Types defined here should not be used internally, as our goal should be to eventually swap these out for something less brittle than json translation
 type Request struct {
 	GHRequestID string
@@ -33,19 +38,42 @@ type Root struct {
 }
 
 type Job struct {
-	Steps []Step
+	Steps []steps.Step
+
+	// JobContext has all the information needed to run this job
+	JobContext JobContext
 }
 
-// Step was taken from the Atlantis OG config, we might be able to clean this up/remove it
-type Step struct {
-	StepName  string
-	ExtraArgs []string
-	// RunCommand is either a custom run step or the command to run
-	// during an env step to populate the environment variable dynamically.
-	RunCommand string
-	// EnvVarName is the name of the
-	// environment variable that should be set by this step.
-	EnvVarName string
-	// EnvVarValue is the value to set EnvVarName to.
-	EnvVarValue string
+type User struct {
+	Username string
+}
+
+type Commit struct {
+	Ref    string
+	Author User
+}
+
+type JobContext struct {
+	// TerraformVersion is the version of terraform we should use when executing
+	// commands for this project. This can be set to nil in which case we will
+	// use the default Atlantis terraform version.
+	TerraformVersion *version.Version
+
+	// Repo is the repository that the commit is merged into.
+	Repo Repo
+
+	Path string
+
+	Commit Commit
+
+	// RepoRelDir is the directory of this project relative to the repo root.
+	RepoRelDir string
+
+	// ProjectName is the name of the project set in atlantis.yaml. If there was
+	// no name this will be an empty string.
+	ProjectName string
+
+	// Workspace is the Terraform workspace this project is in. It will always
+	// be set.
+	Workspace string
 }

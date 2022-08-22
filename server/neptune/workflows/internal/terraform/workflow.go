@@ -2,11 +2,12 @@ package terraform
 
 import (
 	"context"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	"go.temporal.io/sdk/workflow"
-	"time"
 )
 
 type PlanStatus int
