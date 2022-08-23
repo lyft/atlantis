@@ -32,7 +32,7 @@ func GetPlanFilename(projName string) string {
 
 func GetShowResultFileName(projectName string) string {
 	projName := strings.Replace(projectName, "/", planfileSlashReplace, -1)
-	return fmt.Sprintf("%s-%s.json", projName)
+	return fmt.Sprintf("%s.json", projName)
 }
 
 func (r *RunStepRunner) Run(

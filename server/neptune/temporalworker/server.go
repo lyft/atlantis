@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -22,6 +23,8 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/core/runtime/cache"
+	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/logging"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -36,20 +39,27 @@ const (
 	AtlantisNamespace        = "atlantis"
 	DeployTaskqueue          = "deploy"
 	ProjectJobsViewRouteName = "project-jobs-detail"
+	// binDirName is the name of the directory inside our data dir where
+	// we download binaries.
+	BinDirName = "bin"
 )
 
 // Config is TemporalWorker specific user config
 type Config struct {
-	AtlantisURL     *url.URL
-	AtlantisVersion string
-	CtxLogger       logging.Logger
-	SslCertFile     string
-	SslKeyFile      string
-	Scope           tally.Scope
-	Closer          io.Closer
-	TemporalCfg     valid.Temporal
-	Port            int
-	App             githubapp.Config
+	AtlantisURL              *url.URL
+	AtlantisVersion          string
+	CtxLogger                logging.Logger
+	SslCertFile              string
+	SslKeyFile               string
+	Scope                    tally.Scope
+	Closer                   io.Closer
+	TemporalCfg              valid.Temporal
+	Port                     int
+	App                      githubapp.Config
+	DefaultTFVersionStr      string
+	DefaultTFVersionFlagName string
+	DataDir                  string
+	TFDownloadURL            string
 }
 
 type Server struct {
@@ -96,7 +106,30 @@ func NewServer(config *Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	activities, err := workflows.NewActivities(config.App, config.Scope.SubScope("app"))
+	binDir, err := mkSubDir(config.DataDir, BinDirName)
+	if err != nil {
+		return nil, err
+	}
+
+	loader := terraform.NewVersionLoader(&terraform.DefaultDownloader{}, config.TFDownloadURL)
+	versionCache := cache.NewExecutionVersionLayeredLoadingCache(
+		"terraform",
+		binDir,
+		loader.LoadVersion,
+	)
+
+	tfVersion, err := terraform.GetDefaultVersion(config.DefaultTFVersionStr, config.DefaultTFVersionFlagName)
+	if err != nil {
+		return nil, err
+	}
+
+	activities, err := workflows.NewActivities(
+		config.App,
+		config.Scope.SubScope("app"),
+		versionCache,
+		tfVersion,
+		binDir,
+	)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing activities")
@@ -177,4 +210,13 @@ func Healthz(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data) // nolint: errcheck
+}
+
+func mkSubDir(parentDir string, subDir string) (string, error) {
+	fullDir := filepath.Join(parentDir, subDir)
+	if err := os.MkdirAll(fullDir, 0700); err != nil {
+		return "", errors.Wrapf(err, "unable to creare dir %q", fullDir)
+	}
+
+	return fullDir, nil
 }

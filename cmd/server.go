@@ -527,16 +527,20 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 		V4APIURL: "https://api.github.com/graphql",
 	}
 	cfg := &temporalworker.Config{
-		AtlantisURL:     parsedURL,
-		AtlantisVersion: config.AtlantisVersion,
-		CtxLogger:       ctxLogger,
-		Scope:           scope,
-		Closer:          closer,
-		Port:            userConfig.Port,
-		SslCertFile:     userConfig.SSLCertFile,
-		SslKeyFile:      userConfig.SSLKeyFile,
-		TemporalCfg:     globalCfg.Temporal,
-		App:             appConfig,
+		AtlantisURL:              parsedURL,
+		AtlantisVersion:          config.AtlantisVersion,
+		CtxLogger:                ctxLogger,
+		Scope:                    scope,
+		Closer:                   closer,
+		Port:                     userConfig.Port,
+		SslCertFile:              userConfig.SSLCertFile,
+		SslKeyFile:               userConfig.SSLKeyFile,
+		TemporalCfg:              globalCfg.Temporal,
+		App:                      appConfig,
+		DataDir:                  userConfig.DataDir,
+		TFDownloadURL:            userConfig.TFDownloadURL,
+		DefaultTFVersionStr:      userConfig.DefaultTFVersion,
+		DefaultTFVersionFlagName: config.DefaultTFVersionFlag,
 	}
 	return temporalworker.NewServer(cfg)
 }

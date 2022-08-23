@@ -77,7 +77,7 @@ func TestVersionLoader_buildsURL(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		When(mockDownloader.GetAny(EqString(destPath), EqString(fullURL))).ThenReturn(nil)
-		binPath, err := subject.loadVersion(v, destPath)
+		binPath, err := subject.LoadVersion(v, destPath)
 
 		mockDownloader.VerifyWasCalledOnce().GetAny(EqString(destPath), EqString(fullURL))
 
@@ -89,7 +89,7 @@ func TestVersionLoader_buildsURL(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 
 		When(mockDownloader.GetAny(EqString(destPath), EqString(fullURL))).ThenReturn(fmt.Errorf("err"))
-		_, err := subject.loadVersion(v, destPath)
+		_, err := subject.LoadVersion(v, destPath)
 
 		Assert(t, err != nil, "err is expected")
 	})
