@@ -11,7 +11,6 @@ import (
 
 // interface for actual execution makes local testing easier
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_hook_executor.go HookExecutor
 type HookExecutor interface {
 	Execute(hook *valid.PreWorkflowHook, repo models.Repo, path string) error
 }
@@ -48,4 +47,18 @@ func (e *PreWorkflowHookExecutor) Execute(hook *valid.PreWorkflowHook, repo mode
 		return errors.Wrap(err, "running hook")
 	}
 	return nil
+}
+
+type MockSuccessPreWorkflowHookExecutor struct {
+}
+
+func (m *MockSuccessPreWorkflowHookExecutor) Execute(_ *valid.PreWorkflowHook, _ models.Repo, _ string) error {
+	return nil
+}
+
+type MockFailurePreWorkflowHookExecutor struct {
+}
+
+func (m *MockFailurePreWorkflowHookExecutor) Execute(_ *valid.PreWorkflowHook, _ models.Repo, _ string) error {
+	return errors.New("some error")
 }

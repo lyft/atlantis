@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/google/go-github/v45/github"
 	"github.com/palantir/go-githubapp/githubapp"
@@ -9,7 +10,6 @@ import (
 	"net/http"
 )
 
-//go:generate pegomock generate --use-experimental-model-gen --package mocks -o mocks/mock_file_fetcher.go FileFetcher
 type FileFetcher interface {
 	GetModifiedFilesFromCommit(ctx context.Context, repo models.Repo, sha string, installationToken int64) ([]string, error)
 }
@@ -51,4 +51,16 @@ func (g *GithubFileFetcher) GetModifiedFilesFromCommit(ctx context.Context, repo
 		nextPage = resp.NextPage
 	}
 	return files, nil
+}
+
+type MockSuccessFileFetcher struct{}
+
+func (m *MockSuccessFileFetcher) GetModifiedFilesFromCommit(ctx context.Context, _ models.Repo, _ string, _ int64) ([]string, error) {
+	return nil, nil
+}
+
+type MockFailureFileFetcher struct{}
+
+func (m *MockFailureFileFetcher) GetModifiedFilesFromCommit(ctx context.Context, _ models.Repo, _ string, _ int64) ([]string, error) {
+	return nil, errors.New("some error")
 }

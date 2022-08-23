@@ -47,3 +47,9 @@ func (r *PreWorkflowHooksRunner) Run(baseRepo models.Repo, sha string) (string, 
 
 	return repoDir, nil
 }
+
+type MockSuccessPreWorkflowHooksRunner struct{}
+
+func (m *MockSuccessPreWorkflowHooksRunner) Run(baseRepo models.Repo, sha string) (string, error) {
+	return "", nil
+}

@@ -3,10 +3,8 @@ package event_test
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event/mocks"
 	"testing"
 
-	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -112,13 +110,12 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:       testSignaler,
 			Logger:               logger,
-			ProjectConfigBuilder: projectConfigBuilder,
+			ProjectConfigBuilder: &event.MockProjectConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -152,13 +149,12 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:       testSignaler,
 			Logger:               logger,
-			ProjectConfigBuilder: projectConfigBuilder,
+			ProjectConfigBuilder: &event.MockProjectConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -193,13 +189,12 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:       testSignaler,
 			Logger:               logger,
-			ProjectConfigBuilder: projectConfigBuilder,
+			ProjectConfigBuilder: &event.MockProjectConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -246,13 +241,12 @@ func TestHandlePushEvent(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:       testSignaler,
 			Logger:               logger,
-			ProjectConfigBuilder: projectConfigBuilder,
+			ProjectConfigBuilder: &event.MockProjectConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -272,13 +266,12 @@ func TestHandlePushEvent(t *testing.T) {
 			t: t,
 		}
 
-		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:       testSignaler,
 			Logger:               logger,
-			ProjectConfigBuilder: projectConfigBuilder,
+			ProjectConfigBuilder: &event.MockProjectConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -325,7 +318,6 @@ func TestHandlePushEvent(t *testing.T) {
 			t: t,
 		}
 		ctx := context.Background()
-		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		projCfg := valid.MergedProjectCfg{
 			Workflow: valid.Workflow{
 				Name:  "default",
@@ -336,7 +328,9 @@ func TestHandlePushEvent(t *testing.T) {
 		projectCfgs := []*valid.MergedProjectCfg{
 			&projCfg,
 		}
-		When(projectConfigBuilder.BuildProjectConfigs(ctx, e)).ThenReturn(projectCfgs, nil)
+		projectConfigBuilder := &event.MockProjectConfigBuilder{
+			ProjectCfgs: projectCfgs,
+		}
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},
@@ -391,7 +385,6 @@ func TestHandlePushEvent(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		projectConfigBuilder := mocks.NewMockProjectBuilder()
 		projCfg := valid.MergedProjectCfg{
 			Workflow: valid.Workflow{
 				Name:  "default",
@@ -402,7 +395,9 @@ func TestHandlePushEvent(t *testing.T) {
 		projectCfgs := []*valid.MergedProjectCfg{
 			&projCfg,
 		}
-		When(projectConfigBuilder.BuildProjectConfigs(ctx, e)).ThenReturn(projectCfgs, nil)
+		projectConfigBuilder := &event.MockProjectConfigBuilder{
+			ProjectCfgs: projectCfgs,
+		}
 		handler := event.PushHandler{
 			Allocator:            allocator,
 			Scheduler:            &sync.SynchronousScheduler{Logger: logger},

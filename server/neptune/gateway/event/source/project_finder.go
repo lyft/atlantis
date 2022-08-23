@@ -26,8 +26,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-//go:generate pegomock generate --use-experimental-model-gen --package mocks -o mocks/mock_project_finder.go ProjectFinder
-
 // ProjectFinder determines which projects were modified in a given pull
 // request.
 type ProjectFinder interface {
@@ -257,4 +255,17 @@ func (p *DefaultProjectFinder) removeNonExistingDirs(relativePaths []string, abs
 		}
 	}
 	return filtered
+}
+
+type MockProjectFinder struct {
+	Projects       []models.Project
+	ConfigProjects []valid.Project
+}
+
+func (m *MockProjectFinder) DetermineProjects(_ []string, _ string, _ string, _ string) []models.Project {
+	return m.Projects
+}
+
+func (m *MockProjectFinder) DetermineProjectsViaConfig(_ []string, _ valid.RepoCfg, _ string) ([]valid.Project, error) {
+	return m.ConfigProjects, nil
 }

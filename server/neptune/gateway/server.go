@@ -115,7 +115,7 @@ func NewServer(config Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	githubCredentials := &vcs.GithubAppCredentials{
+	githubCredentials := &source.GithubAppCredentials{
 		AppID:    config.GithubAppID,
 		Key:      privateKey,
 		Hostname: config.GithubHostname,

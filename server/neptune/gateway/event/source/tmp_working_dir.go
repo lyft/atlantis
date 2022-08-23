@@ -11,8 +11,6 @@ import (
 	"strings"
 )
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_tmp_working_dir.go TmpWorkingDir
-
 const workingDirPrefix = "repos"
 
 // TmpWorkingDir handles a tmp workspace on disk for running commands.
@@ -75,4 +73,34 @@ func (w *TmpFileWorkspace) run(args []string, destinationPath string) ([]byte, e
 		"GIT_COMMITTER_NAME=atlantis",
 	}...)
 	return cmd.CombinedOutput()
+}
+
+type MockSuccessTmpFileWorkspace struct {
+	DirPath string
+}
+
+func (m *MockSuccessTmpFileWorkspace) Clone(_ models.Repo, _ string, _ string) error {
+	return nil
+}
+
+func (m *MockSuccessTmpFileWorkspace) DeleteClone(_ string) error {
+	return nil
+}
+
+func (m *MockSuccessTmpFileWorkspace) GenerateDirPath(_ string) string {
+	return m.DirPath
+}
+
+type MockFailureTmpFileWorkspace struct{}
+
+func (m *MockFailureTmpFileWorkspace) Clone(_ models.Repo, _ string, _ string) error {
+	return errors.New("some error")
+}
+
+func (m *MockFailureTmpFileWorkspace) DeleteClone(_ string) error {
+	return errors.New("some error")
+}
+
+func (m *MockFailureTmpFileWorkspace) GenerateDirPath(_ string) string {
+	return ""
 }

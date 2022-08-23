@@ -91,3 +91,11 @@ func (b *ProjectConfigBuilder) BuildProjectConfigs(ctx context.Context, event Pu
 	}
 	return mergedProjectCfgs, nil
 }
+
+type MockProjectConfigBuilder struct {
+	ProjectCfgs []*valid.MergedProjectCfg
+}
+
+func (m *MockProjectConfigBuilder) BuildProjectConfigs(_ context.Context, _ Push) ([]*valid.MergedProjectCfg, error) {
+	return m.ProjectCfgs, nil
+}

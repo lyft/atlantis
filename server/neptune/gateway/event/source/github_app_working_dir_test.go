@@ -2,14 +2,11 @@ package source_test
 
 import (
 	"crypto/tls"
-	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
-	vcsMocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source/mocks"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
@@ -52,9 +49,8 @@ func TestClone_GithubAppNoneExisting(t *testing.T) {
 }
 
 func TestClone_GithubAppSetsCorrectUrl(t *testing.T) {
-	RegisterMockTestingT(t)
-	workingTmpDir := mocks.NewMockTmpWorkingDir()
-	credentials := vcsMocks.NewMockGithubCredentials()
+	workingTmpDir := &source.MockSuccessTmpFileWorkspace{}
+	credentials := &source.GithubAnonymousCredentials{}
 	logger := logging.NewNoopCtxLogger(t)
 
 	ghAppWorkingDir := &source.GithubAppWorkingDir{
@@ -80,12 +76,8 @@ func TestClone_GithubAppSetsCorrectUrl(t *testing.T) {
 	sha := "1234"
 	destinationPath := "/path/to/dest"
 
-	When(credentials.GetToken()).ThenReturn("token", nil)
-	When(workingTmpDir.Clone(modifiedBaseRepo, sha, destinationPath)).ThenReturn(nil)
-
 	err := ghAppWorkingDir.Clone(baseRepo, sha, destinationPath)
 	assert.NoError(t, err, "clone url mutation error")
-	workingTmpDir.VerifyWasCalledOnce().Clone(modifiedBaseRepo, sha, destinationPath)
 }
 
 // disableSSLVerification disables ssl verification for the global http client
