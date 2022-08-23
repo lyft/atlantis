@@ -88,7 +88,7 @@ docker-compose build
 docker-compose up
 ```
 
-In order to have events routed to gateway, you'll need to visit `http://localhost:4040/` and copy the https url into your gihub app.  
+In order to have events routed to gateway, you'll need to visit `http://localhost:4040/` and copy the https url into your GitHub app.  
 
 In order to see the temporal ui visit `http://localhost:8233/`.
 
