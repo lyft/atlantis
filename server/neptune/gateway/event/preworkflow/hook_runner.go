@@ -7,7 +7,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
 )
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_hooks_runner.go HooksRunner
 type HooksRunner interface {
 	Run(repo models.Repo, sha string) (string, error)
 }
