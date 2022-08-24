@@ -35,14 +35,14 @@ type Step struct {
 
 // Root Instance is a root at a certain commit with the repo info
 type RootInstance struct {
-	Name         string
-	Path         string
-	RepoInstance *github.RepoInstance
-	Root         Root
+	Name string
+	Path string
+	Repo github.RepoInstance
+	Root Root
 }
 
 func (r *RootInstance) RelativePathFromRepo() (string, error) {
-	return filepath.Rel(r.Path, r.RepoInstance.Path)
+	return filepath.Rel(r.Path, r.Repo.Path)
 }
 
 func (r *RootInstance) GetPlanFilename() string {
@@ -55,9 +55,9 @@ func (r *RootInstance) GetShowResultFileName() string {
 
 func BuildRootInstanceFrom(root Root, repo github.RepoInstance) *RootInstance {
 	return &RootInstance{
-		Name:         root.Name,
-		Path:         root.Path,
-		Root:         root,
-		RepoInstance: &repo,
+		Name: root.Name,
+		Path: root.Path,
+		Root: root,
+		Repo: repo,
 	}
 }

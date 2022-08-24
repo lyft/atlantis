@@ -271,8 +271,8 @@ type VersionLoader struct {
 	downloadURL string
 }
 
-func NewVersionLoader(downloader Downloader, downloadURL string) *VersionLoader {
-	return &VersionLoader{
+func NewVersionLoader(downloader Downloader, downloadURL string) VersionLoader {
+	return VersionLoader{
 		downloader:  downloader,
 		downloadURL: downloadURL,
 	}

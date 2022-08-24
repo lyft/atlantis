@@ -59,7 +59,7 @@ func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request E
 	if err != nil {
 		return ExecuteCommandResponse{
 			Output: "",
-			Error:  errors.Wrapf(err, "getting version %s", request.TerraformVersion),
+			Error:  errors.Wrapf(err, "getting version %s", terraformVersion),
 		}
 	}
 
@@ -76,10 +76,10 @@ func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request E
 	for key, val := range request.DefaultEnvVars {
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
-	for key, val := range request.CustomEnvVars {
+	for key, val := range terraformEnvVars {
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
-	for key, val := range terraformEnvVars {
+	for key, val := range request.CustomEnvVars {
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
 

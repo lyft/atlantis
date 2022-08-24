@@ -24,15 +24,15 @@ func (r *RunStepRunner) Run(executionContext steps.ExecutionContext, rootInstanc
 	}
 
 	defaultEnvVars := map[string]string{
-		"REPO_NAME":    rootInstance.RepoInstance.Name,
-		"REPO_OWNER":   rootInstance.RepoInstance.Owner,
+		"REPO_NAME":    rootInstance.Repo.Name,
+		"REPO_OWNER":   rootInstance.Repo.Owner,
 		"DIR":          executionContext.Path,
-		"HEAD_COMMIT":  rootInstance.RepoInstance.HeadCommit.Ref,
+		"HEAD_COMMIT":  rootInstance.Repo.HeadCommit.Ref,
 		"PLANFILE":     filepath.Join(executionContext.Path, rootInstance.GetPlanFilename()),
 		"SHOWFILE":     filepath.Join(executionContext.Path, rootInstance.GetShowResultFileName()),
 		"PROJECT_NAME": rootInstance.Name,
 		"REPO_REL_DIR": relPath,
-		"USER_NAME":    rootInstance.RepoInstance.HeadCommit.Author.Username,
+		"USER_NAME":    rootInstance.Repo.HeadCommit.Author.Username,
 
 		// Set these 2 fields in the activity since it relies on machine specific configuration
 		// "ATLANTIS_TERRAFORM_VERSION": tfVersion.String(),
@@ -53,7 +53,7 @@ func (r *RunStepRunner) Run(executionContext steps.ExecutionContext, rootInstanc
 	_ = workflow.ExecuteActivity(executionContext.Context, r.Activity.ExecuteCommand, activities.ExecuteCommandRequest{
 		Step:             step,
 		DefaultEnvVars:   defaultEnvVars,
-		CustomEnvVars:    executionContext.Envs,
+		CustomEnvVars:    *executionContext.Envs,
 		Path:             executionContext.Path,
 		TerraformVersion: executionContext.TfVersion,
 	}).Get(executionContext, &resp)

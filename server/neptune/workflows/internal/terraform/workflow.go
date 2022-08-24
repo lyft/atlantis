@@ -81,7 +81,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 func (r *Runner) Run(ctx workflow.Context) error {
 	// Root instance has all the metadata needed to execute a step in a root
 	rootInstance := steps.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
-	executionContext := steps.BuildExecutionContextFrom(ctx, r.Request.Root, map[string]string{})
+	executionContext := steps.BuildExecutionContextFrom(ctx, r.Request.Root, &map[string]string{})
 
 	// Clone repository into disk
 	err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, nil)

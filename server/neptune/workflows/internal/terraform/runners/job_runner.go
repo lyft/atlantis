@@ -17,11 +17,10 @@ type JobRunner interface {
 }
 
 func NewJobRunner(runStepRunner StepRunner, envStepRunner StepRunner) *jobRunner {
-	jobRunner := &jobRunner{}
-	jobRunner.RunRunner = runStepRunner
-	jobRunner.EnvRunner = envStepRunner
-
-	return jobRunner
+	return &jobRunner{
+		RunRunner: runStepRunner,
+		EnvRunner: envStepRunner,
+	}
 }
 
 func (r *jobRunner) Run(
@@ -31,16 +30,16 @@ func (r *jobRunner) Run(
 ) (string, error) {
 	var outputs []string
 
-	envs := make(map[string]string)
 	for _, step := range job.Steps {
 		var out string
 		var err error
+
 		switch step.StepName {
 		case "run":
 			out, err = r.RunRunner.Run(ctx, rootInstance, step)
 		case "env":
 			out, err = r.EnvRunner.Run(ctx, rootInstance, step)
-			envs[step.EnvVarName] = out
+			(*ctx.Envs)[step.EnvVarName] = out
 			// We reset out to the empty string because we don't want it to
 			// be printed to the PR, it's solely to set the environment variable.
 			out = ""

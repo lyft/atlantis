@@ -20,6 +20,7 @@ type AppCredentials struct {
 	InstallationToken int64
 }
 
+// Repo Instance is a Repo at a certain commit
 type RepoInstance struct {
 	HeadCommit Commit
 	Owner      string
