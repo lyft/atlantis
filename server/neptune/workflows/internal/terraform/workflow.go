@@ -63,16 +63,16 @@ type Runner struct {
 func newRunner(ctx workflow.Context, request Request) *Runner {
 	var a *activities.Terraform
 
-	runStepRunner := runners.RunStepRunner{
+	runStepRunner := &runners.RunStepRunner{
 		Activity: a,
 	}
 	return &Runner{
 		Activities: a,
 		Request:    request,
 		JobRunner: runners.NewJobRunner(
-			&runStepRunner,
+			runStepRunner,
 			&runners.EnvStepRunner{
-				RunStepRunner: &runStepRunner,
+				RunStepRunner: runStepRunner,
 			},
 		),
 	}
