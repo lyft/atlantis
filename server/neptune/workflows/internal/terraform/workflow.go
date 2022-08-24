@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	steps "github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/runners"
 	"go.temporal.io/sdk/workflow"
 )
@@ -78,13 +79,17 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
+	// Root instance has all the metadata needed to execute a step in a root
+	rootInstance := steps.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
+	executionContext := steps.BuildExecutionContextFrom(ctx, r.Request.Root, map[string]string{})
+
 	// Clone repository into disk
 	err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, nil)
 	if err != nil {
 		return errors.Wrap(err, "executing GH repo clone")
 	}
 
-	_, err = r.JobRunner.Run(ctx, r.Request.Root.Plan, r.Request.Repo, r.Request.Commit, r.Request.TerraformVersion, r.Request.ProjectName, r.Request.RepoRelDir, r.Request.Path)
+	r.JobRunner.Run(*executionContext, r.Request.Root.Plan, rootInstance)
 	if err != nil {
 		return errors.Wrap(err, "running step")
 	}
@@ -100,10 +105,10 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return nil
 	}
 	// Run apply steps
-	_, err = r.JobRunner.Run(ctx, r.Request.Root.Apply, r.Request.Repo, r.Request.Commit, r.Request.TerraformVersion, r.Request.ProjectName, r.Request.RepoRelDir, r.Request.Path)
-	if err != nil {
-		return errors.Wrap(err, "running step")
-	}
+	// _, err = r.JobRunner.Run(ctx, r.Request.Root.Apply, r.Request.Repo, r.Request.Commit, r.Request.TerraformVersion, r.Request.ProjectName, r.Request.RepoRelDir, r.Request.Path)
+	// if err != nil {
+	// 	return errors.Wrap(err, "running step")
+	// }
 
 	// Cleanup
 	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{}).Get(ctx, nil)

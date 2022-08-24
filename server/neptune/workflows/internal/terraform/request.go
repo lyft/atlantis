@@ -1,28 +1,54 @@
 package terraform
 
 import (
-	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
+	steps "github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
-type Request struct {
-	Repo github.Repo
-	Root steps.Root
-
-	Commit github.Commit
-
-	// TerraformVersion is the version of terraform we should use when executing
-	// commands for this project. This can be set to nil in which case we will
-	// use the default Atlantis terraform version.
-	TerraformVersion *version.Version
-
-	// ProjectName is the name of the project set in atlantis.yaml. If there was
-	// no name this will be an empty string.
-	ProjectName string
-
-	// RepoRelDir is the directory of this project relative to the repo root.
-	RepoRelDir string
-
+/*
+Root
+	Name string
 	Path string
+	Tf Version string
+
+	Plan Job
+		Steps[]
+			StepName  string
+			ExtraArgs []string
+			RunCommand string
+			EnvVarName string
+			EnvVarValue string
+	Apply Job
+		Steps[]
+			StepName  string
+			ExtraArgs []string
+			RunCommand string
+			EnvVarName string
+			EnvVarValue string
+
+Repo
+	Owner string
+	Name string
+	HeadCommit
+		Ref string
+		Author string
+	Path string
+
+
+RootInstance
+	Name string
+	Path string
+	Repo *RepoInstance
+		HeadCommit github.Commit
+		Repo github.Repo
+		Path string
+
+JobRunner.Run(workflowCtx, job, rootInstance)
+
+StepRunner.Run(workflowCtx, step, rootInstance, executionContext)
+*/
+
+type Request struct {
+	Root steps.Root
+	Repo github.RepoInstance
 }

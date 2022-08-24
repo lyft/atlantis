@@ -1,0 +1,79 @@
+package steps
+
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"go.temporal.io/sdk/workflow"
+)
+
+type Root struct {
+	Name      string
+	Path      string
+	TfVersion string
+	Apply     Job
+	Plan      Job
+}
+
+type Job struct {
+	Steps []Step
+}
+
+// Step was taken from the Atlantis OG config, we might be able to clean this up/remove it
+type Step struct {
+	StepName  string
+	ExtraArgs []string
+	// RunCommand is either a custom run step or the command to run
+	// during an env step to populate the environment variable dynamically.
+	RunCommand string
+	// EnvVarName is the name of the
+	// environment variable that should be set by this step.
+	EnvVarName string
+	// EnvVarValue is the value to set EnvVarName to.
+	EnvVarValue string
+}
+
+type RootInstance struct {
+	Name         string
+	Path         string
+	RepoInstance *github.RepoInstance
+	Root         Root
+}
+
+func (r *RootInstance) RelativePathFromRepo() (string, error) {
+	return filepath.Rel(r.Path, r.RepoInstance.Path)
+}
+
+func (r *RootInstance) GetPlanFilename() string {
+	return fmt.Sprintf("%s.tfplan", r.Name)
+}
+
+func (r *RootInstance) GetShowResultFileName() string {
+	return fmt.Sprintf("%s.json", r.Name)
+}
+
+func BuildRootInstanceFrom(root Root, repo github.RepoInstance) *RootInstance {
+	return &RootInstance{
+		Name:         root.Name,
+		Path:         root.Path,
+		Root:         root,
+		RepoInstance: &repo,
+	}
+}
+
+type ExecutionContext struct {
+	Path      string
+	Envs      map[string]string
+	TfVersion string
+	workflow.Context
+}
+
+func BuildExecutionContextFrom(ctx workflow.Context, root Root, envs map[string]string) *ExecutionContext {
+	return &ExecutionContext{
+		Context:   ctx,
+		Path:      root.Path,
+		Envs:      envs,
+		TfVersion: root.TfVersion,
+	}
+}

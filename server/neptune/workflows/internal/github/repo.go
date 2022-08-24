@@ -19,3 +19,10 @@ func (r Repo) GetFullName() string {
 type AppCredentials struct {
 	InstallationToken int64
 }
+
+type RepoInstance struct {
+	HeadCommit Commit
+	Owner      string
+	Name       string
+	Path       string
+}

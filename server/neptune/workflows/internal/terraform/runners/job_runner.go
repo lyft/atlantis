@@ -3,45 +3,20 @@ package runners
 import (
 	"strings"
 
-	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
-	"go.temporal.io/sdk/workflow"
+	steps "github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
-// CustomRunner runs custom run steps.
+// StepRunner runs custom run steps.
 type StepRunner interface {
-	Run(
-		ctx workflow.Context,
-		step steps.Step,
-		repo github.Repo,
-		commit github.Commit,
-		tfVersion *version.Version,
-		projectName string,
-		repoRelDir string,
-		path string,
-		envs map[string]string,
-	) (string, error)
+	Run(executionContext steps.ExecutionContext, rootInstance *steps.RootInstance, step steps.Step) (string, error)
 }
 
-// JobRunner runs a deploy job
+// JobRunner runs a deploy plan/apply job
 type JobRunner interface {
-	Run(
-		ctx workflow.Context,
-		job steps.Job,
-		repo github.Repo,
-		commit github.Commit,
-		tfVersion *version.Version,
-		projectName string,
-		repoRelDir string,
-		path string,
-	) (string, error)
+	Run(ctx steps.ExecutionContext, job steps.Job, rootInstance *steps.RootInstance) (string, error)
 }
 
-func NewJobRunner(
-	runStepRunner StepRunner,
-	envStepRunner StepRunner,
-) JobRunner {
+func NewJobRunner(runStepRunner StepRunner, envStepRunner StepRunner) JobRunner {
 	jobRunner := &jobRunner{}
 	jobRunner.RunRunner = runStepRunner
 	jobRunner.EnvRunner = envStepRunner
@@ -50,14 +25,9 @@ func NewJobRunner(
 }
 
 func (r *jobRunner) Run(
-	ctx workflow.Context,
+	ctx steps.ExecutionContext,
 	job steps.Job,
-	repo github.Repo,
-	commit github.Commit,
-	tfVersion *version.Version,
-	projectName string,
-	repoRelDir string,
-	path string,
+	rootInstance *steps.RootInstance,
 ) (string, error) {
 	var outputs []string
 
@@ -73,9 +43,9 @@ func (r *jobRunner) Run(
 		case "apply":
 		case "version":
 		case "run":
-			out, err = r.RunRunner.Run(ctx, step, repo, commit, tfVersion, projectName, repoRelDir, path, envs)
+			out, err = r.RunRunner.Run(ctx, rootInstance, step)
 		case "env":
-			out, err = r.EnvRunner.Run(ctx, step, repo, commit, tfVersion, projectName, repoRelDir, path, envs)
+			out, err = r.EnvRunner.Run(ctx, rootInstance, step)
 			envs[step.EnvVarName] = out
 			// We reset out to the empty string because we don't want it to
 			// be printed to the PR, it's solely to set the environment variable.

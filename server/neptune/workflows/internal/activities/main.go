@@ -51,7 +51,7 @@ type Terraform struct {
 func NewTerraform(versionCache cache.ExecutionVersionCache, defaultTfVersion *version.Version, terraformBinDir string) *Terraform {
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{
-			versionCache:     versionCache,
+			VersionCache:     versionCache,
 			DefaultTFVersion: defaultTfVersion,
 			TerraformBinDir:  terraformBinDir,
 		},

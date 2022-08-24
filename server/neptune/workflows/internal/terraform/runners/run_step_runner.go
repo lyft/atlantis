@@ -2,16 +2,11 @@ package runners
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
-	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
+	steps "github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -19,48 +14,30 @@ type ExecuteCommandActivities interface {
 	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) activities.ExecuteCommandResponse
 }
 
-const planfileSlashReplace = "::"
-
 type RunStepRunner struct {
 	Activity ExecuteCommandActivities
 }
 
-func GetPlanFilename(projName string) string {
-	projName = strings.Replace(projName, "/", planfileSlashReplace, -1)
-	return fmt.Sprintf("%s.tfplan", projName)
-}
-
-func GetShowResultFileName(projectName string) string {
-	projName := strings.Replace(projectName, "/", planfileSlashReplace, -1)
-	return fmt.Sprintf("%s.json", projName)
-}
-
-func (r *RunStepRunner) Run(
-	ctx workflow.Context,
-	step steps.Step,
-	repo github.Repo,
-	commit github.Commit,
-	tfVersion *version.Version,
-	projectName string,
-	repoRelDir string,
-	path string,
-	envs map[string]string,
-) (string, error) {
+func (r *RunStepRunner) Run(executionContext steps.ExecutionContext, rootInstance *steps.RootInstance, step steps.Step) (string, error) {
 
 	cmd := exec.Command("sh", "-c", step.RunCommand) // #nosec
-	cmd.Dir = path
+	cmd.Dir = executionContext.Path
 
-	baseEnvVars := os.Environ()
-	customEnvVars := map[string]string{
-		"REPO_NAME":    repo.Name,
-		"REPO_OWNER":   repo.Owner,
-		"DIR":          path,
-		"HEAD_COMMIT":  commit.Ref,
-		"PLANFILE":     filepath.Join(path, GetPlanFilename(projectName)),
-		"SHOWFILE":     filepath.Join(path, GetShowResultFileName(projectName)),
-		"PROJECT_NAME": projectName,
-		"REPO_REL_DIR": repoRelDir,
-		"USER_NAME":    commit.Author.Username,
+	relPath, err := rootInstance.RelativePathFromRepo()
+	if err != nil {
+		return "", err
+	}
+
+	defaultEnvVars := map[string]string{
+		"REPO_NAME":    rootInstance.RepoInstance.Name,
+		"REPO_OWNER":   rootInstance.RepoInstance.Owner,
+		"DIR":          executionContext.Path,
+		"HEAD_COMMIT":  rootInstance.RepoInstance.HeadCommit.Ref,
+		"PLANFILE":     filepath.Join(executionContext.Path, rootInstance.GetPlanFilename()),
+		"SHOWFILE":     filepath.Join(executionContext.Path, rootInstance.GetShowResultFileName()),
+		"PROJECT_NAME": rootInstance.Name,
+		"REPO_REL_DIR": relPath,
+		"USER_NAME":    rootInstance.RepoInstance.HeadCommit.Author.Username,
 
 		// Set these 2 fields in the activity since it relies on machine specific configuration
 		// "ATLANTIS_TERRAFORM_VERSION": tfVersion.String(),
@@ -77,22 +54,22 @@ func (r *RunStepRunner) Run(
 		// "PULL_NUM":                   fmt.Sprintf("%d", request.Pull.Num),
 	}
 
-	finalEnvVars := baseEnvVars
-	for key, val := range customEnvVars {
-		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
-	}
-	for key, val := range envs {
-		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
+	activityStep := activities.Step{
+		StepName:    step.StepName,
+		ExtraArgs:   step.ExtraArgs,
+		RunCommand:  step.RunCommand,
+		EnvVarName:  step.EnvVarName,
+		EnvVarValue: step.EnvVarValue,
 	}
 
 	var resp activities.ExecuteCommandResponse
-	_ = workflow.ExecuteActivity(ctx, r.Activity.ExecuteCommand, activities.ExecuteCommandRequest{
-		Step:             step,
-		CustomEnvVars:    customEnvVars,
-		Envs:             envs,
-		Path:             path,
-		TerraformVersion: tfVersion,
-	}).Get(ctx, &resp)
+	_ = workflow.ExecuteActivity(executionContext.Context, r.Activity.ExecuteCommand, activities.ExecuteCommandRequest{
+		Step:             activityStep,
+		DefaultEnvVars:   defaultEnvVars,
+		CustomEnvVars:    executionContext.Envs,
+		Path:             executionContext.Path,
+		TerraformVersion: executionContext.TfVersion,
+	}).Get(executionContext, &resp)
 
 	if resp.Error != nil {
 		return "", resp.Error
