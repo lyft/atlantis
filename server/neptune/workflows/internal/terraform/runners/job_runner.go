@@ -3,7 +3,7 @@ package runners
 import (
 	"strings"
 
-	steps "github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 )
 
 // StepRunner runs custom run steps.
@@ -16,7 +16,7 @@ type JobRunner interface {
 	Run(ctx steps.ExecutionContext, job steps.Job, rootInstance *steps.RootInstance) (string, error)
 }
 
-func NewJobRunner(runStepRunner StepRunner, envStepRunner StepRunner) JobRunner {
+func NewJobRunner(runStepRunner StepRunner, envStepRunner StepRunner) *jobRunner {
 	jobRunner := &jobRunner{}
 	jobRunner.RunRunner = runStepRunner
 	jobRunner.EnvRunner = envStepRunner
@@ -36,12 +36,6 @@ func (r *jobRunner) Run(
 		var out string
 		var err error
 		switch step.StepName {
-		case "init":
-		case "plan":
-		case "show":
-		case "policy_check":
-		case "apply":
-		case "version":
 		case "run":
 			out, err = r.RunRunner.Run(ctx, rootInstance, step)
 		case "env":

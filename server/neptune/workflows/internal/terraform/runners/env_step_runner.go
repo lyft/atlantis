@@ -3,7 +3,7 @@ package runners
 import (
 	"strings"
 
-	steps "github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 )
 
 type EnvStepRunner struct {

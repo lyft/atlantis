@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 )
 
 type executeCommandActivities struct {
@@ -27,22 +28,8 @@ type ExecuteCommandResponse struct {
 	Error  error
 }
 
-// Step was taken from the Atlantis OG config, we might be able to clean this up/remove it
-type Step struct {
-	StepName  string
-	ExtraArgs []string
-	// RunCommand is either a custom run step or the command to run
-	// during an env step to populate the environment variable dynamically.
-	RunCommand string
-	// EnvVarName is the name of the
-	// environment variable that should be set by this step.
-	EnvVarName string
-	// EnvVarValue is the value to set EnvVarName to.
-	EnvVarValue string
-}
-
 type ExecuteCommandRequest struct {
-	Step           Step
+	Step           steps.Step
 	Path           string
 	CustomEnvVars  map[string]string
 	DefaultEnvVars map[string]string
@@ -76,7 +63,7 @@ func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request E
 		}
 	}
 
-	// Need to set the ATLANTIS_TERRAFORM_VERSION and PATH here because we don't know the defaultTfVersion and the TerraformBinDir in the workflow
+	// defaultTfVersion and the TerraformBinDir is only configured in the worker
 	terraformEnvVars := map[string]string{
 		"ATLANTIS_TERRAFORM_VERSION": terraformVersion.String(),
 		"PATH":                       fmt.Sprintf("%s:%s", os.Getenv("PATH"), t.TerraformBinDir),

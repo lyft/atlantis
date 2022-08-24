@@ -2,27 +2,22 @@ package runners
 
 import (
 	"context"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	steps "github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	"go.temporal.io/sdk/workflow"
 )
 
-type ExecuteCommandActivities interface {
+type executeCommandActivities interface {
 	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) activities.ExecuteCommandResponse
 }
 
 type RunStepRunner struct {
-	Activity ExecuteCommandActivities
+	Activity executeCommandActivities
 }
 
 func (r *RunStepRunner) Run(executionContext steps.ExecutionContext, rootInstance *steps.RootInstance, step steps.Step) (string, error) {
-
-	cmd := exec.Command("sh", "-c", step.RunCommand) // #nosec
-	cmd.Dir = executionContext.Path
-
 	relPath, err := rootInstance.RelativePathFromRepo()
 	if err != nil {
 		return "", err
@@ -54,17 +49,9 @@ func (r *RunStepRunner) Run(executionContext steps.ExecutionContext, rootInstanc
 		// "PULL_NUM":                   fmt.Sprintf("%d", request.Pull.Num),
 	}
 
-	activityStep := activities.Step{
-		StepName:    step.StepName,
-		ExtraArgs:   step.ExtraArgs,
-		RunCommand:  step.RunCommand,
-		EnvVarName:  step.EnvVarName,
-		EnvVarValue: step.EnvVarValue,
-	}
-
 	var resp activities.ExecuteCommandResponse
 	_ = workflow.ExecuteActivity(executionContext.Context, r.Activity.ExecuteCommand, activities.ExecuteCommandRequest{
-		Step:             activityStep,
+		Step:             step,
 		DefaultEnvVars:   defaultEnvVars,
 		CustomEnvVars:    executionContext.Envs,
 		Path:             executionContext.Path,

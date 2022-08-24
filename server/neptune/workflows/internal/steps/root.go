@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"go.temporal.io/sdk/workflow"
 )
 
 type Root struct {
@@ -34,6 +33,7 @@ type Step struct {
 	EnvVarValue string
 }
 
+// Root Instance is a root at a certain commit with the repo info
 type RootInstance struct {
 	Name         string
 	Path         string
@@ -59,21 +59,5 @@ func BuildRootInstanceFrom(root Root, repo github.RepoInstance) *RootInstance {
 		Path:         root.Path,
 		Root:         root,
 		RepoInstance: &repo,
-	}
-}
-
-type ExecutionContext struct {
-	Path      string
-	Envs      map[string]string
-	TfVersion string
-	workflow.Context
-}
-
-func BuildExecutionContextFrom(ctx workflow.Context, root Root, envs map[string]string) *ExecutionContext {
-	return &ExecutionContext{
-		Context:   ctx,
-		Path:      root.Path,
-		Envs:      envs,
-		TfVersion: root.TfVersion,
 	}
 }
