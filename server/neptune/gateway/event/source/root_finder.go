@@ -26,39 +26,38 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-// ProjectFinder determines which projects were modified in a given pull
-// request.
-type ProjectFinder interface {
-	// DetermineProjects returns the list of projects that were modified based on
+// RootFinder determines which projects were modified in a given event.
+type RootFinder interface {
+	// DetermineRoots returns the list of projects that were modified based on
 	// the modifiedFiles. The list will be de-duplicated.
 	// absRepoDir is the path to the cloned repo on disk.
-	DetermineProjects(modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList string) []models.Project
-	// DetermineProjectsViaConfig returns the list of projects that were modified
+	DetermineRoots(modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList string) []models.Project
+	// DetermineRootsViaConfig returns the list of projects that were modified
 	// based on modifiedFiles and the repo's config.
 	// absRepoDir is the path to the cloned repo on disk.
-	DetermineProjectsViaConfig(modifiedFiles []string, config valid.RepoCfg, absRepoDir string) ([]valid.Project, error)
+	DetermineRootsViaConfig(modifiedFiles []string, config valid.RepoCfg, absRepoDir string) ([]valid.Project, error)
 }
 
 // ignoredFilenameFragments contains filename fragments to ignore while looking at changes
 var ignoredFilenameFragments = []string{"terraform.tfstate", "terraform.tfstate.backup", "tflint.hcl"}
 
-// DefaultProjectFinder implements ProjectFinder.
-type DefaultProjectFinder struct{}
+// PushEventRootFinder implements RootFinder.
+type PushEventRootFinder struct{}
 
-// See ProjectFinder.DetermineProjects.
-func (p *DefaultProjectFinder) DetermineProjects(modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList string) []models.Project {
-	var projects []models.Project
+// See PushEventRootFinder.DetermineRoots.
+func (p *PushEventRootFinder) DetermineRoots(modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList string) []models.Project {
+	var roots []models.Project
 
 	modifiedTerraformFiles := p.filterToFileList(modifiedFiles, autoplanFileList)
 	if len(modifiedTerraformFiles) == 0 {
-		return projects
+		return roots
 	}
 
 	var dirs []string
 	for _, modifiedFile := range modifiedTerraformFiles {
-		projectDir := p.getProjectDir(modifiedFile, absRepoDir)
-		if projectDir != "" {
-			dirs = append(dirs, projectDir)
+		rootDir := p.getRootDir(modifiedFile, absRepoDir)
+		if rootDir != "" {
+			dirs = append(dirs, rootDir)
 		}
 	}
 	uniqueDirs := p.unique(dirs)
@@ -70,17 +69,17 @@ func (p *DefaultProjectFinder) DetermineProjects(modifiedFiles []string, repoFul
 	exists := p.removeNonExistingDirs(uniqueDirs, absRepoDir)
 
 	for _, p := range exists {
-		projects = append(projects, models.NewProject(repoFullName, p))
+		roots = append(roots, models.NewProject(repoFullName, p))
 	}
-	return projects
+	return roots
 }
 
-// See ProjectFinder.DetermineProjectsViaConfig.
-func (p *DefaultProjectFinder) DetermineProjectsViaConfig(modifiedFiles []string, config valid.RepoCfg, absRepoDir string) ([]valid.Project, error) {
-	var projects []valid.Project
-	for _, project := range config.Projects {
+// See RootFinder.DetermineRootsViaConfig.
+func (p *PushEventRootFinder) DetermineRootsViaConfig(modifiedFiles []string, config valid.RepoCfg, absRepoDir string) ([]valid.Project, error) {
+	var roots []valid.Project
+	for _, root := range config.Projects {
 		var whenModifiedRelToRepoRoot []string
-		for _, wm := range project.Autoplan.WhenModified {
+		for _, wm := range root.Autoplan.WhenModified {
 			wm = strings.TrimSpace(wm)
 			// An exclusion uses a '!' at the beginning. If it's there, we need
 			// to remove it, then add in the project path, then add it back.
@@ -90,10 +89,10 @@ func (p *DefaultProjectFinder) DetermineProjectsViaConfig(modifiedFiles []string
 				exclusion = true
 			}
 
-			// Prepend project dir to when modified patterns because the patterns
-			// are relative to the project dirs but our list of modified files is
+			// Prepend root dir to when modified patterns because the patterns
+			// are relative to the root dirs but our list of modified files is
 			// relative to the repo root.
-			wmRelPath := filepath.Join(project.Dir, wm)
+			wmRelPath := filepath.Join(root.Dir, wm)
 			if exclusion {
 				wmRelPath = "!" + wmRelPath
 			}
@@ -101,10 +100,10 @@ func (p *DefaultProjectFinder) DetermineProjectsViaConfig(modifiedFiles []string
 		}
 		pm, err := fileutils.NewPatternMatcher(whenModifiedRelToRepoRoot)
 		if err != nil {
-			return nil, errors.Wrapf(err, "matching modified files with patterns: %v", project.Autoplan.WhenModified)
+			return nil, errors.Wrapf(err, "matching modified files with patterns: %v", root.Autoplan.WhenModified)
 		}
 
-		// If any of the modified files matches the pattern then this project is
+		// If any of the modified files matches the pattern then this root is
 		// considered modified.
 		for _, file := range modifiedFiles {
 			match, err := pm.Matches(file)
@@ -112,30 +111,16 @@ func (p *DefaultProjectFinder) DetermineProjectsViaConfig(modifiedFiles []string
 				continue
 			}
 			if match {
-				// If we're checking using an atlantis.yaml file we downloaded
-				// directly from the repo (when doing a no-clone check) then
-				// absRepoDir will be empty. Since we didn't clone the repo
-				// yet we can't do this check. If there was a file modified
-				// in a deleted directory then when we finally do clone the repo
-				// we'll call this function again and then we'll detect the
-				// directory was deleted.
-				if absRepoDir != "" {
-					_, err := os.Stat(filepath.Join(absRepoDir, project.Dir))
-					if err == nil {
-						projects = append(projects, project)
-					}
-				} else {
-					projects = append(projects, project)
-				}
+				roots = append(roots, root)
 				break
 			}
 		}
 	}
-	return projects, nil
+	return roots, nil
 }
 
 // filterToFileList filters out files not included in the file list
-func (p *DefaultProjectFinder) filterToFileList(files []string, fileList string) []string {
+func (p *PushEventRootFinder) filterToFileList(files []string, fileList string) []string {
 	var filtered []string
 	patterns := strings.Split(fileList, ",")
 	// Ignore pattern matcher error here as it was checked for errors in server validation
@@ -158,7 +143,7 @@ func (p *DefaultProjectFinder) filterToFileList(files []string, fileList string)
 }
 
 // shouldIgnore returns true if we shouldn't trigger a plan on changes to this file.
-func (p *DefaultProjectFinder) shouldIgnore(fileName string) bool {
+func (p *PushEventRootFinder) shouldIgnore(fileName string) bool {
 	for _, s := range ignoredFilenameFragments {
 		if strings.Contains(fileName, s) {
 			return true
@@ -167,12 +152,12 @@ func (p *DefaultProjectFinder) shouldIgnore(fileName string) bool {
 	return false
 }
 
-// getProjectDir attempts to determine based on the location of a modified
+// getRootDir attempts to determine based on the location of a modified
 // file, where the root of the Terraform project is. It also attempts to verify
 // if the root is valid by looking for a main.tf file. It returns a relative
 // path to the repo. If the project is at the root returns ".". If modified file
 // doesn't lead to a valid project path, returns an empty string.
-func (p *DefaultProjectFinder) getProjectDir(modifiedFilePath string, repoDir string) string {
+func (p *PushEventRootFinder) getRootDir(modifiedFilePath string, repoDir string) string {
 	dir := path.Dir(modifiedFilePath)
 	if path.Base(dir) == "env" {
 		// If the modified file was inside an env/ directory, we treat this
@@ -232,7 +217,7 @@ func (p *DefaultProjectFinder) getProjectDir(modifiedFilePath string, repoDir st
 }
 
 // unique de-duplicates strs.
-func (p *DefaultProjectFinder) unique(strs []string) []string {
+func (p *PushEventRootFinder) unique(strs []string) []string {
 	hash := make(map[string]bool)
 	var unique []string
 	for _, s := range strs {
@@ -246,7 +231,7 @@ func (p *DefaultProjectFinder) unique(strs []string) []string {
 
 // removeNonExistingDirs removes paths from relativePaths that don't exist.
 // relativePaths is a list of paths relative to absRepoDir.
-func (p *DefaultProjectFinder) removeNonExistingDirs(relativePaths []string, absRepoDir string) []string {
+func (p *PushEventRootFinder) removeNonExistingDirs(relativePaths []string, absRepoDir string) []string {
 	var filtered []string
 	for _, pth := range relativePaths {
 		absPath := filepath.Join(absRepoDir, pth)
@@ -255,17 +240,4 @@ func (p *DefaultProjectFinder) removeNonExistingDirs(relativePaths []string, abs
 		}
 	}
 	return filtered
-}
-
-type MockProjectFinder struct {
-	Projects       []models.Project
-	ConfigProjects []valid.Project
-}
-
-func (m *MockProjectFinder) DetermineProjects(_ []string, _ string, _ string, _ string) []models.Project {
-	return m.Projects
-}
-
-func (m *MockProjectFinder) DetermineProjectsViaConfig(_ []string, _ valid.RepoCfg, _ string) ([]valid.Project, error) {
-	return m.ConfigProjects, nil
 }

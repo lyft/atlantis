@@ -14,6 +14,7 @@
 package source_test
 
 import (
+	"github.com/runatlantis/atlantis/server/events/models"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,7 +26,6 @@ import (
 )
 
 var modifiedRepo = "owner/repo"
-var m = source.DefaultProjectFinder{}
 var nestedModules1 string
 var nestedModules2 string
 var topLevelModules string
@@ -250,7 +250,8 @@ func TestDetermineProjects(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
-			projects := m.DetermineProjects(c.files, modifiedRepo, c.repoDir, c.autoplanFileList)
+			rf := source.PushEventRootFinder{}
+			projects := rf.DetermineRoots(c.files, modifiedRepo, c.repoDir, c.autoplanFileList)
 
 			// Extract the paths from the projects. We use a slice here instead of a
 			// map so we can test whether there are duplicates returned.
@@ -383,22 +384,6 @@ func TestDefaultProjectFinder_DetermineProjectsViaConfig(t *testing.T) {
 			expProjPaths: []string{"project1"},
 		},
 		{
-			description: "dir deleted",
-			config: valid.RepoCfg{
-				Projects: []valid.Project{
-					{
-						Dir: "project3",
-						Autoplan: valid.Autoplan{
-							Enabled:      true,
-							WhenModified: []string{"*.tf"},
-						},
-					},
-				},
-			},
-			modified:     []string{"project3/main.tf"},
-			expProjPaths: nil,
-		},
-		{
 			description: "multiple projects",
 			config: valid.RepoCfg{
 				Projects: []valid.Project{
@@ -496,8 +481,8 @@ func TestDefaultProjectFinder_DetermineProjectsViaConfig(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
-			pf := source.DefaultProjectFinder{}
-			projects, err := pf.DetermineProjectsViaConfig(c.modified, c.config, tmpDir)
+			rf := source.PushEventRootFinder{}
+			projects, err := rf.DetermineRootsViaConfig(c.modified, c.config, tmpDir)
 			Ok(t, err)
 			Equals(t, len(c.expProjPaths), len(projects))
 			for i, proj := range projects {
@@ -505,4 +490,17 @@ func TestDefaultProjectFinder_DetermineProjectsViaConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+type MockProjectFinder struct {
+	Projects       []models.Project
+	ConfigProjects []valid.Project
+}
+
+func (m *MockProjectFinder) DetermineProjects(_ []string, _ string, _ string, _ string) []models.Project {
+	return m.Projects
+}
+
+func (m *MockProjectFinder) DetermineProjectsViaConfig(_ []string, _ valid.RepoCfg, _ string) ([]valid.Project, error) {
+	return m.ConfigProjects, nil
 }
