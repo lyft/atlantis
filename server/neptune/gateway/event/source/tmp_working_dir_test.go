@@ -1,6 +1,7 @@
 package source_test
 
 import (
+	"errors"
 	"fmt"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
@@ -149,4 +150,34 @@ func tempDir(t *testing.T) (string, func()) {
 	return tmpDir, func() {
 		os.RemoveAll(tmpDir) // nolint: errcheck
 	}
+}
+
+type MockSuccessTmpFileWorkspace struct {
+	DirPath string
+}
+
+func (m *MockSuccessTmpFileWorkspace) Clone(_ models.Repo, _ string, _ string) error {
+	return nil
+}
+
+func (m *MockSuccessTmpFileWorkspace) DeleteClone(_ string) error {
+	return nil
+}
+
+func (m *MockSuccessTmpFileWorkspace) GenerateDirPath(_ string) string {
+	return m.DirPath
+}
+
+type MockFailureTmpFileWorkspace struct{}
+
+func (m *MockFailureTmpFileWorkspace) Clone(_ models.Repo, _ string, _ string) error {
+	return errors.New("some error")
+}
+
+func (m *MockFailureTmpFileWorkspace) DeleteClone(_ string) error {
+	return errors.New("some error")
+}
+
+func (m *MockFailureTmpFileWorkspace) GenerateDirPath(_ string) string {
+	return ""
 }

@@ -49,7 +49,7 @@ func TestClone_GithubAppNoneExisting(t *testing.T) {
 }
 
 func TestClone_GithubAppSetsCorrectUrl(t *testing.T) {
-	workingTmpDir := &source.MockSuccessTmpFileWorkspace{}
+	workingTmpDir := &MockSuccessTmpFileWorkspace{}
 	credentials := &source.GithubAnonymousCredentials{}
 	logger := logging.NewNoopCtxLogger(t)
 
