@@ -1,10 +1,12 @@
 package preworkflow_test
 
 import (
+	"errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/local"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -29,8 +31,8 @@ func TestRunPreHooks_Clone(t *testing.T) {
 			},
 		}
 		wh := preworkflow.PreWorkflowHooksRunner{
-			WorkingDir:   &source.MockSuccessTmpFileWorkspace{DirPath: repoDir},
-			HookExecutor: &preworkflow.MockSuccessPreWorkflowHookExecutor{},
+			RepoDir:      &local.MockSuccessRepoDir{DirPath: repoDir},
+			HookExecutor: &MockSuccessPreWorkflowHookExecutor{},
 			GlobalCfg:    globalCfg,
 		}
 		whDir, err := wh.Run(fixtures.GithubRepo, sha)
@@ -55,8 +57,8 @@ func TestRunPreHooks_Clone(t *testing.T) {
 			},
 		}
 		wh := preworkflow.PreWorkflowHooksRunner{
-			WorkingDir:   &source.MockSuccessTmpFileWorkspace{DirPath: repoDir},
-			HookExecutor: &preworkflow.MockSuccessPreWorkflowHookExecutor{},
+			RepoDir:      &local.MockSuccessRepoDir{DirPath: repoDir},
+			HookExecutor: &MockSuccessPreWorkflowHookExecutor{},
 			GlobalCfg:    globalCfg,
 		}
 		whDir, err := wh.Run(fixtures.GithubRepo, sha)
@@ -75,8 +77,8 @@ func TestRunPreHooks_Clone(t *testing.T) {
 			},
 		}
 		wh := preworkflow.PreWorkflowHooksRunner{
-			WorkingDir:   &source.MockFailureTmpFileWorkspace{},
-			HookExecutor: &preworkflow.MockSuccessPreWorkflowHookExecutor{},
+			RepoDir:      &local.MockFailureRepoDir{},
+			HookExecutor: &MockSuccessPreWorkflowHookExecutor{},
 			GlobalCfg:    globalCfg,
 		}
 		whDir, err := wh.Run(fixtures.GithubRepo, sha)
@@ -95,12 +97,26 @@ func TestRunPreHooks_Clone(t *testing.T) {
 			},
 		}
 		wh := preworkflow.PreWorkflowHooksRunner{
-			WorkingDir:   &source.MockSuccessTmpFileWorkspace{DirPath: repoDir},
-			HookExecutor: &preworkflow.MockFailurePreWorkflowHookExecutor{},
+			RepoDir:      &local.MockSuccessRepoDir{DirPath: repoDir},
+			HookExecutor: &MockFailurePreWorkflowHookExecutor{},
 			GlobalCfg:    globalCfg,
 		}
 		whDir, err := wh.Run(fixtures.GithubRepo, sha)
 		assert.Error(t, err, "error not nil")
 		assert.Empty(t, whDir)
 	})
+}
+
+type MockSuccessPreWorkflowHookExecutor struct {
+}
+
+func (m *MockSuccessPreWorkflowHookExecutor) Execute(_ *valid.PreWorkflowHook, _ models.Repo, _ string) error {
+	return nil
+}
+
+type MockFailurePreWorkflowHookExecutor struct {
+}
+
+func (m *MockFailurePreWorkflowHookExecutor) Execute(_ *valid.PreWorkflowHook, _ models.Repo, _ string) error {
+	return errors.New("some error")
 }

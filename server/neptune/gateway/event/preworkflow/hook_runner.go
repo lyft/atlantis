@@ -4,16 +4,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
 )
 
-type HooksRunner interface {
-	Run(repo models.Repo, sha string) (string, error)
+type HookExecutor interface {
+	Execute(hook *valid.PreWorkflowHook, repo models.Repo, path string) error
 }
 
 // PreWorkflowHooksRunner is the first step when processing a workflow hook commands.
 type PreWorkflowHooksRunner struct {
-	WorkingDir   source.TmpWorkingDir
+	RepoDir      local.RepoDir
 	GlobalCfg    valid.GlobalCfg
 	HookExecutor HookExecutor
 }
@@ -30,8 +29,8 @@ func (r *PreWorkflowHooksRunner) Run(baseRepo models.Repo, sha string) (string, 
 	if len(preWorkflowHooks) == 0 {
 		return "", nil
 	}
-	repoDir := r.WorkingDir.GenerateDirPath(baseRepo.FullName)
-	err := r.WorkingDir.Clone(baseRepo, sha, repoDir)
+	repoDir := r.RepoDir.GenerateDirPath(baseRepo.FullName)
+	err := r.RepoDir.Clone(baseRepo, sha, repoDir)
 	if err != nil {
 		return "", errors.Wrap(err, "cloning repository")
 	}
@@ -45,10 +44,4 @@ func (r *PreWorkflowHooksRunner) Run(baseRepo models.Repo, sha string) (string, 
 	}
 
 	return repoDir, nil
-}
-
-type MockSuccessPreWorkflowHooksRunner struct{}
-
-func (m *MockSuccessPreWorkflowHooksRunner) Run(baseRepo models.Repo, sha string) (string, error) {
-	return "", nil
 }
