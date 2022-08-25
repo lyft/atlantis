@@ -241,7 +241,6 @@ type ProjectLock struct {
 	Time time.Time
 }
 
-// TODO: rename to root
 // Project represents a Terraform project. Since there may be multiple
 // Terraform projects in a single repo we also include Path to the project
 // root relative to the repo root.
