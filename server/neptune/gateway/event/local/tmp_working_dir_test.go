@@ -1,10 +1,9 @@
-package source_test
+package local_test
 
 import (
-	"errors"
 	"fmt"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/local"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
@@ -24,7 +23,7 @@ func TestCloneSimple(t *testing.T) {
 
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
-	wd := &source.TmpFileWorkspace{
+	wd := &local.TmpFileWorkspace{
 		DataDir: dataDir,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
@@ -51,7 +50,7 @@ func TestCloneCheckout(t *testing.T) {
 
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
-	wd := &source.TmpFileWorkspace{
+	wd := &local.TmpFileWorkspace{
 		DataDir: dataDir,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
@@ -72,7 +71,7 @@ func TestSimpleCloneFailure(t *testing.T) {
 
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
-	wd := &source.TmpFileWorkspace{
+	wd := &local.TmpFileWorkspace{
 		DataDir: dataDir,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
@@ -96,7 +95,7 @@ func TestCloneCheckoutFailure(t *testing.T) {
 
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
-	wd := &source.TmpFileWorkspace{
+	wd := &local.TmpFileWorkspace{
 		DataDir: dataDir,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
@@ -150,34 +149,4 @@ func tempDir(t *testing.T) (string, func()) {
 	return tmpDir, func() {
 		os.RemoveAll(tmpDir) // nolint: errcheck
 	}
-}
-
-type MockSuccessTmpFileWorkspace struct {
-	DirPath string
-}
-
-func (m *MockSuccessTmpFileWorkspace) Clone(_ models.Repo, _ string, _ string) error {
-	return nil
-}
-
-func (m *MockSuccessTmpFileWorkspace) DeleteClone(_ string) error {
-	return nil
-}
-
-func (m *MockSuccessTmpFileWorkspace) GenerateDirPath(_ string) string {
-	return m.DirPath
-}
-
-type MockFailureTmpFileWorkspace struct{}
-
-func (m *MockFailureTmpFileWorkspace) Clone(_ models.Repo, _ string, _ string) error {
-	return errors.New("some error")
-}
-
-func (m *MockFailureTmpFileWorkspace) DeleteClone(_ string) error {
-	return errors.New("some error")
-}
-
-func (m *MockFailureTmpFileWorkspace) GenerateDirPath(_ string) string {
-	return ""
 }

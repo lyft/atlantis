@@ -1,4 +1,4 @@
-package source_test
+package local_test
 
 import (
 	"crypto/tls"
@@ -6,7 +6,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event/source"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/local"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
@@ -22,14 +22,14 @@ func TestClone_GithubAppNoneExisting(t *testing.T) {
 
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
-	wd := &source.TmpFileWorkspace{
+	wd := &local.TmpFileWorkspace{
 		DataDir: dataDir,
 	}
 	defer disableSSLVerification()()
 	testServer, err := fixtures.GithubAppTestServer(t)
 	assert.NoError(t, err)
 	logger := logging.NewNoopCtxLogger(t)
-	gwd := &source.GithubAppWorkingDir{
+	gwd := &local.GithubAppWorkingDir{
 		TmpWorkingDir: wd,
 		Credentials: &vcs.GithubAppCredentials{
 			Key:      []byte(fixtures.GithubPrivateKey),
@@ -49,11 +49,11 @@ func TestClone_GithubAppNoneExisting(t *testing.T) {
 }
 
 func TestClone_GithubAppSetsCorrectUrl(t *testing.T) {
-	workingTmpDir := &MockSuccessTmpFileWorkspace{}
-	credentials := &source.GithubAnonymousCredentials{}
+	workingTmpDir := &MockSuccessRepoDir{}
+	credentials := &local.GithubAnonymousCredentials{}
 	logger := logging.NewNoopCtxLogger(t)
 
-	ghAppWorkingDir := &source.GithubAppWorkingDir{
+	ghAppWorkingDir := &local.GithubAppWorkingDir{
 		TmpWorkingDir:  workingTmpDir,
 		Credentials:    credentials,
 		GithubHostname: "some-host",
@@ -89,4 +89,20 @@ func disableSSLVerification() func() {
 	return func() {
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = orig
 	}
+}
+
+type MockSuccessRepoDir struct {
+	DirPath string
+}
+
+func (m *MockSuccessRepoDir) Clone(_ models.Repo, _ string, _ string) error {
+	return nil
+}
+
+func (m *MockSuccessRepoDir) DeleteClone(_ string) error {
+	return nil
+}
+
+func (m *MockSuccessRepoDir) GenerateDirPath(_ string) string {
+	return m.DirPath
 }
