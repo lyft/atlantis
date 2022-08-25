@@ -39,6 +39,8 @@ func (r *PreWorkflowHooksRunner) Run(baseRepo models.Repo, sha string) (string, 
 	for _, hook := range preWorkflowHooks {
 		err = r.HookExecutor.Execute(hook, baseRepo, repoDir)
 		if err != nil {
+			// attempt clone deletion upon failed workflow execution
+			r.RepoDir.DeleteClone(repoDir)
 			return "", errors.Wrap(err, "running pre workflow hooks")
 		}
 	}
