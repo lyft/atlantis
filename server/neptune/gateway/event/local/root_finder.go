@@ -23,14 +23,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// RootFinder determines which roots were modified in a given event.
-type RootFinder interface {
-	// DetermineRoots returns the list of roots that were modified
-	// based on modifiedFiles and the repo's config.
-	// absRepoDir is the path to the cloned repo on disk.
-	DetermineRoots(modifiedFiles []string, config valid.RepoCfg, absRepoDir string) ([]valid.Project, error)
-}
-
 // RepoRootFinder implements RootFinder.
 type RepoRootFinder struct{}
 
