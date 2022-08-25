@@ -10,11 +10,11 @@ import (
 	"net/http"
 )
 
-type GithubFileFetcher struct {
+type RemoteFileFetcher struct {
 	ClientCreator githubapp.ClientCreator
 }
 
-func (g *GithubFileFetcher) GetModifiedFilesFromCommit(ctx context.Context, repo models.Repo, sha string, installationToken int64) ([]string, error) {
+func (r *RemoteFileFetcher) GetModifiedFilesFromCommit(ctx context.Context, repo models.Repo, sha string, installationToken int64) ([]string, error) {
 	var files []string
 	nextPage := 0
 	for {
@@ -24,7 +24,7 @@ func (g *GithubFileFetcher) GetModifiedFilesFromCommit(ctx context.Context, repo
 		if nextPage != 0 {
 			opts.Page = nextPage
 		}
-		client, err := g.ClientCreator.NewInstallationClient(installationToken)
+		client, err := r.ClientCreator.NewInstallationClient(installationToken)
 		repositoryCommit, resp, err := client.Repositories.GetCommit(ctx, repo.Owner, repo.Name, sha, &opts)
 		if err != nil {
 			return nil, errors.Wrap(err, "error fetching repository commit")
