@@ -10,11 +10,17 @@ type HookExecutor interface {
 	Execute(hook *valid.PreWorkflowHook, repo models.Repo, path string) error
 }
 
+type RepoGenerator interface {
+	Clone(baseRepo models.Repo, sha string, destination string) error
+	DeleteClone(filePath string) error
+	GenerateDirPath(repoName string) string
+}
+
 // PreWorkflowHooksRunner is the first step when processing a workflow hook commands.
 type PreWorkflowHooksRunner struct {
-	RepoDir      local.RepoDir
-	GlobalCfg    valid.GlobalCfg
-	HookExecutor HookExecutor
+	GlobalCfg     valid.GlobalCfg
+	HookExecutor  HookExecutor
+	RepoGenerator RepoGenerator
 }
 
 func (r *PreWorkflowHooksRunner) Run(baseRepo models.Repo, sha string) (string, error) {
@@ -29,8 +35,8 @@ func (r *PreWorkflowHooksRunner) Run(baseRepo models.Repo, sha string) (string, 
 	if len(preWorkflowHooks) == 0 {
 		return "", nil
 	}
-	repoDir := r.RepoDir.GenerateDirPath(baseRepo.FullName)
-	err := r.RepoDir.Clone(baseRepo, sha, repoDir)
+	repoDir := r.RepoGenerator.GenerateDirPath(baseRepo.FullName)
+	err := r.RepoGenerator.Clone(baseRepo, sha, repoDir)
 	if err != nil {
 		return "", errors.Wrap(err, "cloning repository")
 	}
@@ -40,7 +46,7 @@ func (r *PreWorkflowHooksRunner) Run(baseRepo models.Repo, sha string) (string, 
 		err = r.HookExecutor.Execute(hook, baseRepo, repoDir)
 		if err != nil {
 			// attempt clone deletion upon failed workflow execution
-			r.RepoDir.DeleteClone(repoDir)
+			r.RepoGenerator.DeleteClone(repoDir)
 			return "", errors.Wrap(err, "running pre workflow hooks")
 		}
 	}
