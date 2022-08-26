@@ -1,11 +1,15 @@
 package local_test
 
 import (
+	"crypto/tls"
 	"fmt"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/local"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -23,11 +27,17 @@ func TestCloneSimple(t *testing.T) {
 
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
-	wd := &local.TmpFileWorkspace{
-		DataDir: dataDir,
+	defer disableSSLVerification()()
+	testServer, err := fixtures.GithubAppTestServer(t)
+	assert.NoError(t, err)
+	logger := logging.NewNoopCtxLogger(t)
+	wd := &local.GitRepoGenerator{
+		DataDir:        dataDir,
+		GithubHostname: testServer,
+		Logger:         logger,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
-	err := wd.Clone(newBaseRepo(repoDir), sha, destinationPath)
+	err = wd.Clone(newBaseRepo(repoDir), sha, destinationPath)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -50,11 +60,17 @@ func TestCloneCheckout(t *testing.T) {
 
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
-	wd := &local.TmpFileWorkspace{
-		DataDir: dataDir,
+	defer disableSSLVerification()()
+	testServer, err := fixtures.GithubAppTestServer(t)
+	assert.NoError(t, err)
+	logger := logging.NewNoopCtxLogger(t)
+	wd := &local.GitRepoGenerator{
+		DataDir:        dataDir,
+		GithubHostname: testServer,
+		Logger:         logger,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
-	err := wd.Clone(newBaseRepo(repoDir), sha1, destinationPath)
+	err = wd.Clone(newBaseRepo(repoDir), sha1, destinationPath)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -71,13 +87,19 @@ func TestSimpleCloneFailure(t *testing.T) {
 
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
-	wd := &local.TmpFileWorkspace{
-		DataDir: dataDir,
+	defer disableSSLVerification()()
+	testServer, err := fixtures.GithubAppTestServer(t)
+	assert.NoError(t, err)
+	logger := logging.NewNoopCtxLogger(t)
+	wd := &local.GitRepoGenerator{
+		DataDir:        dataDir,
+		GithubHostname: testServer,
+		Logger:         logger,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
 	repo := newBaseRepo(repoDir)
 	repo.DefaultBranch = "invalid-branch"
-	err := wd.Clone(repo, sha, destinationPath)
+	err = wd.Clone(repo, sha, destinationPath)
 	assert.Error(t, err)
 }
 
@@ -95,11 +117,17 @@ func TestCloneCheckoutFailure(t *testing.T) {
 
 	dataDir, cleanupDataDir := tempDir(t)
 	defer cleanupDataDir()
-	wd := &local.TmpFileWorkspace{
-		DataDir: dataDir,
+	defer disableSSLVerification()()
+	testServer, err := fixtures.GithubAppTestServer(t)
+	assert.NoError(t, err)
+	logger := logging.NewNoopCtxLogger(t)
+	wd := &local.GitRepoGenerator{
+		DataDir:        dataDir,
+		GithubHostname: testServer,
+		Logger:         logger,
 	}
 	destinationPath := wd.GenerateDirPath("nish/repo")
-	err := wd.Clone(newBaseRepo(repoDir), "invalidsha", destinationPath)
+	err = wd.Clone(newBaseRepo(repoDir), "invalidsha", destinationPath)
 	assert.Error(t, err)
 }
 
@@ -148,5 +176,16 @@ func tempDir(t *testing.T) (string, func()) {
 	assert.NoError(t, err)
 	return tmpDir, func() {
 		os.RemoveAll(tmpDir) // nolint: errcheck
+	}
+}
+
+// disableSSLVerification disables ssl verification for the global http client
+// and returns a function to be called in a defer that will re-enable it.
+func disableSSLVerification() func() {
+	orig := http.DefaultTransport.(*http.Transport).TLSClientConfig
+	// nolint: gosec
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	return func() {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = orig
 	}
 }
