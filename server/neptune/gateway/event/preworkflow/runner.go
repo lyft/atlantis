@@ -6,13 +6,13 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-type Executor interface {
+type executor interface {
 	Execute(hook *valid.PreWorkflowHook, repo models.Repo, path string) error
 }
 
 type HooksRunner struct {
 	GlobalCfg    valid.GlobalCfg
-	HookExecutor Executor
+	HookExecutor executor
 }
 
 func (r *HooksRunner) Run(baseRepo models.Repo, repoDir string) error {
