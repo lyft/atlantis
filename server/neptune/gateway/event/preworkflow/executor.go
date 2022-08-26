@@ -9,10 +9,10 @@ import (
 	"os/exec"
 )
 
-type PreWorkflowHookExecutor struct {
+type HookExecutor struct {
 }
 
-func (e *PreWorkflowHookExecutor) Execute(hook *valid.PreWorkflowHook, repo models.Repo, path string) error {
+func (e *HookExecutor) Execute(hook *valid.PreWorkflowHook, repo models.Repo, path string) error {
 	cmd := exec.Command("sh", "-c", hook.RunCommand) // #nosec
 	cmd.Dir = path
 

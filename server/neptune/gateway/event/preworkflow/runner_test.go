@@ -11,7 +11,6 @@ import (
 )
 
 func TestRunPreHooks_Clone(t *testing.T) {
-	sha := "1234"
 	testHook := &valid.PreWorkflowHook{
 		StepName:   "test",
 		RunCommand: "some command",
@@ -29,13 +28,11 @@ func TestRunPreHooks_Clone(t *testing.T) {
 				},
 			},
 		}
-		wh := preworkflow.PreWorkflowHooksRunner{
-			RepoGenerator: &MockSuccessRepoGenerator{DirPath: repoDir},
-			HookExecutor:  &MockSuccessPreWorkflowHookExecutor{},
-			GlobalCfg:     globalCfg,
+		wh := preworkflow.HooksRunner{
+			HookExecutor: &MockSuccessPreWorkflowHookExecutor{},
+			GlobalCfg:    globalCfg,
 		}
-		whDir, err := wh.Run(fixtures.GithubRepo, sha)
-		assert.Equal(t, whDir, repoDir)
+		err := wh.Run(fixtures.GithubRepo, repoDir)
 		assert.NoError(t, err)
 	})
 	t.Run("success hooks not in cfg", func(t *testing.T) {
@@ -55,34 +52,12 @@ func TestRunPreHooks_Clone(t *testing.T) {
 				},
 			},
 		}
-		wh := preworkflow.PreWorkflowHooksRunner{
-			RepoGenerator: &MockSuccessRepoGenerator{DirPath: repoDir},
-			HookExecutor:  &MockSuccessPreWorkflowHookExecutor{},
-			GlobalCfg:     globalCfg,
+		wh := preworkflow.HooksRunner{
+			HookExecutor: &MockSuccessPreWorkflowHookExecutor{},
+			GlobalCfg:    globalCfg,
 		}
-		whDir, err := wh.Run(fixtures.GithubRepo, sha)
+		err := wh.Run(fixtures.GithubRepo, repoDir)
 		assert.NoError(t, err)
-		assert.Equal(t, whDir, "")
-	})
-	t.Run("error cloning", func(t *testing.T) {
-		globalCfg := valid.GlobalCfg{
-			Repos: []valid.Repo{
-				{
-					ID: fixtures.GithubRepo.ID(),
-					PreWorkflowHooks: []*valid.PreWorkflowHook{
-						testHook,
-					},
-				},
-			},
-		}
-		wh := preworkflow.PreWorkflowHooksRunner{
-			RepoGenerator: &MockFailureRepoGenerator{},
-			HookExecutor:  &MockSuccessPreWorkflowHookExecutor{},
-			GlobalCfg:     globalCfg,
-		}
-		whDir, err := wh.Run(fixtures.GithubRepo, sha)
-		assert.Error(t, err, "error not nil")
-		assert.Empty(t, whDir)
 	})
 	t.Run("error running pre hook", func(t *testing.T) {
 		globalCfg := valid.GlobalCfg{
@@ -95,14 +70,12 @@ func TestRunPreHooks_Clone(t *testing.T) {
 				},
 			},
 		}
-		wh := preworkflow.PreWorkflowHooksRunner{
-			RepoGenerator: &MockSuccessRepoGenerator{DirPath: repoDir},
-			HookExecutor:  &MockFailurePreWorkflowHookExecutor{},
-			GlobalCfg:     globalCfg,
+		wh := preworkflow.HooksRunner{
+			HookExecutor: &MockFailurePreWorkflowHookExecutor{},
+			GlobalCfg:    globalCfg,
 		}
-		whDir, err := wh.Run(fixtures.GithubRepo, sha)
+		err := wh.Run(fixtures.GithubRepo, repoDir)
 		assert.Error(t, err, "error not nil")
-		assert.Empty(t, whDir)
 	})
 }
 
@@ -118,37 +91,4 @@ type MockFailurePreWorkflowHookExecutor struct {
 
 func (m *MockFailurePreWorkflowHookExecutor) Execute(_ *valid.PreWorkflowHook, _ models.Repo, _ string) error {
 	return errors.New("some error")
-}
-
-type MockSuccessRepoGenerator struct {
-	DirPath      string
-	CloneCalled  int
-	DeleteCalled int
-}
-
-func (m *MockSuccessRepoGenerator) Clone(_ models.Repo, _ string, _ string) error {
-	return nil
-}
-
-func (m *MockSuccessRepoGenerator) DeleteClone(_ string) error {
-	return nil
-}
-
-func (m *MockSuccessRepoGenerator) GenerateDirPath(_ string) string {
-	return m.DirPath
-}
-
-type MockFailureRepoGenerator struct {
-}
-
-func (m *MockFailureRepoGenerator) Clone(_ models.Repo, _ string, _ string) error {
-	return errors.New("some error")
-}
-
-func (m *MockFailureRepoGenerator) DeleteClone(_ string) error {
-	return errors.New("some error")
-}
-
-func (m *MockFailureRepoGenerator) GenerateDirPath(_ string) string {
-	return ""
 }
