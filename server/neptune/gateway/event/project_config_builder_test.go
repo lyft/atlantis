@@ -182,7 +182,7 @@ func (f *MockFileFetcher) GetModifiedFilesFromCommit(_ context.Context, _ models
 
 type MockRootFinder struct {
 	ConfigProjects []valid.Project
-	error
+	error          error
 }
 
 func (m *MockRootFinder) DetermineRoots(_ []string, _ valid.RepoCfg) ([]valid.Project, error) {
