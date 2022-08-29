@@ -152,11 +152,11 @@ type MockRepoGenerator struct {
 	cloneError error
 }
 
-func (r *MockRepoGenerator) Clone(_ models.Repo, _ string, _ string) error {
+func (r *MockRepoGenerator) Fetch(_ models.Repo, _ string, _ string) error {
 	return r.cloneError
 }
 
-func (r *MockRepoGenerator) DeleteClone(_ string) error {
+func (r *MockRepoGenerator) Cleanup(_ string) error {
 	return nil
 }
 

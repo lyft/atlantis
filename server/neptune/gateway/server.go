@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event/local"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
@@ -273,7 +272,7 @@ func NewServer(config Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching github token")
 	}
-	localRepoGenerator := &local.GitRepoGenerator{
+	localRepoGenerator := &github.RepoFetcher{
 		DataDir:        config.DataDir,
 		Token:          ghToken,
 		GithubHostname: config.GithubHostname,
@@ -292,7 +291,7 @@ func NewServer(config Config) (*Server, error) {
 		AutoplanFileList: config.AutoplanFileList,
 		HooksRunner:      hooksRunner,
 		ParserValidator:  validator,
-		RootFinder:       &local.RepoRootFinder{},
+		RootFinder:       &event.RepoRootFinder{},
 		FileFetcher:      &github.RemoteFileFetcher{ClientCreator: clientCreator},
 		GlobalCfg:        globalCfg,
 		Logger:           ctxLogger,
