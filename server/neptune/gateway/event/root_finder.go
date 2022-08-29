@@ -11,7 +11,7 @@
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
 
-package local
+package event
 
 import (
 	"path/filepath"
@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// RepoRootFinder implements RootFinder.
+// RepoRootFinder implements rootFinder.
 type RepoRootFinder struct{}
 
 func (f *RepoRootFinder) DetermineRoots(modifiedFiles []string, config valid.RepoCfg) ([]valid.Project, error) {

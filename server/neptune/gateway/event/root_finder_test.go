@@ -11,14 +11,14 @@
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
 
-package local_test
+package event_test
 
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event/local"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -223,7 +223,7 @@ func TestDefaultProjectFinder_DetermineRoots(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
-			rf := local.RepoRootFinder{}
+			rf := event.RepoRootFinder{}
 			projects, err := rf.DetermineRoots(c.modified, c.config)
 			assert.NoError(t, err)
 			assert.Equal(t, len(c.expProjPaths), len(projects))
