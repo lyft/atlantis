@@ -16,15 +16,15 @@ import (
 
 const workingDirPrefix = "repos"
 
-// GitRepoFetcher implements RepoFetcher through git commands
-type GitRepoFetcher struct {
+// RepoFetcher implements repoFetcher through git clone operations
+type RepoFetcher struct {
 	DataDir        string
 	Token          string
 	GithubHostname string
 	Logger         logging.Logger
 }
 
-func (g *GitRepoFetcher) Fetch(baseRepo models.Repo, sha string, destinationPath string) error {
+func (g *RepoFetcher) Fetch(baseRepo models.Repo, sha string, destinationPath string) error {
 	home, err := homedir.Dir()
 	if err != nil {
 		return errors.Wrap(err, "getting home dir to write ~/.git-credentials file")
@@ -43,7 +43,7 @@ func (g *GitRepoFetcher) Fetch(baseRepo models.Repo, sha string, destinationPath
 	return g.clone(baseRepo, sha, destinationPath)
 }
 
-func (g *GitRepoFetcher) clone(baseRepo models.Repo, sha string, destinationPath string) error {
+func (g *RepoFetcher) clone(baseRepo models.Repo, sha string, destinationPath string) error {
 	// Create the directory and parents if necessary.
 	if err := os.MkdirAll(destinationPath, 0700); err != nil {
 		return errors.Wrap(err, "creating new directory")
@@ -73,7 +73,7 @@ func (g *GitRepoFetcher) clone(baseRepo models.Repo, sha string, destinationPath
 	return nil
 }
 
-func (g *GitRepoFetcher) run(args []string, destinationPath string) ([]byte, error) {
+func (g *RepoFetcher) run(args []string, destinationPath string) ([]byte, error) {
 	cmd := exec.Command(args[0], args[1:]...) // nolint: gosec
 	cmd.Dir = destinationPath
 	// The repo merge command requires these env vars are set.
@@ -85,10 +85,10 @@ func (g *GitRepoFetcher) run(args []string, destinationPath string) ([]byte, err
 	return cmd.CombinedOutput()
 }
 
-func (g *GitRepoFetcher) Cleanup(filePath string) error {
+func (g *RepoFetcher) Cleanup(filePath string) error {
 	return os.RemoveAll(filePath)
 }
 
-func (g *GitRepoFetcher) GenerateDirPath(repoName string) string {
+func (g *RepoFetcher) GenerateDirPath(repoName string) string {
 	return filepath.Join(g.DataDir, workingDirPrefix, repoName, uuid.New().String())
 }
