@@ -1,4 +1,4 @@
-package local_test
+package github_test
 
 import (
 	"crypto/tls"
@@ -6,7 +6,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github/local"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
@@ -31,7 +31,7 @@ func TestFetchSimple(t *testing.T) {
 	testServer, err := fixtures.GithubAppTestServer(t)
 	assert.NoError(t, err)
 	logger := logging.NewNoopCtxLogger(t)
-	fetcher := &local.RepoFetcher{
+	fetcher := &github.RepoFetcher{
 		DataDir:        dataDir,
 		GithubHostname: testServer,
 		Logger:         logger,
@@ -64,7 +64,7 @@ func TestFetchCheckout(t *testing.T) {
 	testServer, err := fixtures.GithubAppTestServer(t)
 	assert.NoError(t, err)
 	logger := logging.NewNoopCtxLogger(t)
-	fetcher := &local.RepoFetcher{
+	fetcher := &github.RepoFetcher{
 		DataDir:        dataDir,
 		GithubHostname: testServer,
 		Logger:         logger,
@@ -91,7 +91,7 @@ func TestFetchSimpleFailure(t *testing.T) {
 	testServer, err := fixtures.GithubAppTestServer(t)
 	assert.NoError(t, err)
 	logger := logging.NewNoopCtxLogger(t)
-	fetcher := &local.RepoFetcher{
+	fetcher := &github.RepoFetcher{
 		DataDir:        dataDir,
 		GithubHostname: testServer,
 		Logger:         logger,
@@ -121,7 +121,7 @@ func TestFetchCheckoutFailure(t *testing.T) {
 	testServer, err := fixtures.GithubAppTestServer(t)
 	assert.NoError(t, err)
 	logger := logging.NewNoopCtxLogger(t)
-	fetcher := &local.RepoFetcher{
+	fetcher := &github.RepoFetcher{
 		DataDir:        dataDir,
 		GithubHostname: testServer,
 		Logger:         logger,
