@@ -16,15 +16,15 @@ import (
 
 const workingDirPrefix = "repos"
 
-// GitRepoGenerator implements RepoGenerator through git commands
-type GitRepoGenerator struct {
+// GitRepoFetcher implements RepoFetcher through git commands
+type GitRepoFetcher struct {
 	DataDir        string
 	Token          string
 	GithubHostname string
 	Logger         logging.Logger
 }
 
-func (g *GitRepoGenerator) Clone(baseRepo models.Repo, sha string, destinationPath string) error {
+func (g *GitRepoFetcher) Fetch(baseRepo models.Repo, sha string, destinationPath string) error {
 	home, err := homedir.Dir()
 	if err != nil {
 		return errors.Wrap(err, "getting home dir to write ~/.git-credentials file")
@@ -43,13 +43,13 @@ func (g *GitRepoGenerator) Clone(baseRepo models.Repo, sha string, destinationPa
 	return g.clone(baseRepo, sha, destinationPath)
 }
 
-func (g *GitRepoGenerator) clone(baseRepo models.Repo, sha string, destinationPath string) error {
+func (g *GitRepoFetcher) clone(baseRepo models.Repo, sha string, destinationPath string) error {
 	// Create the directory and parents if necessary.
 	if err := os.MkdirAll(destinationPath, 0700); err != nil {
 		return errors.Wrap(err, "creating new directory")
 	}
 
-	// Clone default branch into clone directory
+	// Fetch default branch into clone directory
 	cloneCmd := []string{"git", "clone", "--branch", baseRepo.DefaultBranch, "--single-branch", baseRepo.CloneURL, destinationPath}
 	_, err := g.run(cloneCmd, destinationPath)
 	if err != nil {
@@ -73,7 +73,7 @@ func (g *GitRepoGenerator) clone(baseRepo models.Repo, sha string, destinationPa
 	return nil
 }
 
-func (g *GitRepoGenerator) run(args []string, destinationPath string) ([]byte, error) {
+func (g *GitRepoFetcher) run(args []string, destinationPath string) ([]byte, error) {
 	cmd := exec.Command(args[0], args[1:]...) // nolint: gosec
 	cmd.Dir = destinationPath
 	// The repo merge command requires these env vars are set.
@@ -85,10 +85,10 @@ func (g *GitRepoGenerator) run(args []string, destinationPath string) ([]byte, e
 	return cmd.CombinedOutput()
 }
 
-func (g *GitRepoGenerator) DeleteClone(filePath string) error {
+func (g *GitRepoFetcher) Cleanup(filePath string) error {
 	return os.RemoveAll(filePath)
 }
 
-func (g *GitRepoGenerator) GenerateDirPath(repoName string) string {
+func (g *GitRepoFetcher) GenerateDirPath(repoName string) string {
 	return filepath.Join(g.DataDir, workingDirPrefix, repoName, uuid.New().String())
 }

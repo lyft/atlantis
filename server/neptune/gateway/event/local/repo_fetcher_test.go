@@ -17,8 +17,8 @@ import (
 	"testing"
 )
 
-// Clone from provided branch
-func TestCloneSimple(t *testing.T) {
+// Fetch from provided branch
+func TestFetchSimple(t *testing.T) {
 	// Initialize the git repo.
 	repoDir, cleanupRepo := initRepo(t)
 	defer cleanupRepo()
@@ -31,13 +31,13 @@ func TestCloneSimple(t *testing.T) {
 	testServer, err := fixtures.GithubAppTestServer(t)
 	assert.NoError(t, err)
 	logger := logging.NewNoopCtxLogger(t)
-	wd := &local.GitRepoGenerator{
+	fetcher := &local.GitRepoFetcher{
 		DataDir:        dataDir,
 		GithubHostname: testServer,
 		Logger:         logger,
 	}
-	destinationPath := wd.GenerateDirPath("nish/repo")
-	err = wd.Clone(newBaseRepo(repoDir), sha, destinationPath)
+	destinationPath := fetcher.GenerateDirPath("nish/repo")
+	err = fetcher.Fetch(newBaseRepo(repoDir), sha, destinationPath)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -45,8 +45,8 @@ func TestCloneSimple(t *testing.T) {
 	assert.Equal(t, expCommit, actCommit)
 }
 
-// Clone with checkout to correct sha needed
-func TestCloneCheckout(t *testing.T) {
+// Fetch with checkout to correct sha needed
+func TestFetchCheckout(t *testing.T) {
 	// Initialize the git repo.
 	repoDir, cleanupRepo := initRepo(t)
 	defer cleanupRepo()
@@ -64,13 +64,13 @@ func TestCloneCheckout(t *testing.T) {
 	testServer, err := fixtures.GithubAppTestServer(t)
 	assert.NoError(t, err)
 	logger := logging.NewNoopCtxLogger(t)
-	wd := &local.GitRepoGenerator{
+	fetcher := &local.GitRepoFetcher{
 		DataDir:        dataDir,
 		GithubHostname: testServer,
 		Logger:         logger,
 	}
-	destinationPath := wd.GenerateDirPath("nish/repo")
-	err = wd.Clone(newBaseRepo(repoDir), sha1, destinationPath)
+	destinationPath := fetcher.GenerateDirPath("nish/repo")
+	err = fetcher.Fetch(newBaseRepo(repoDir), sha1, destinationPath)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -79,7 +79,7 @@ func TestCloneCheckout(t *testing.T) {
 }
 
 // Validate if clone is not possible, we return a failure
-func TestSimpleCloneFailure(t *testing.T) {
+func TestFetchSimpleFailure(t *testing.T) {
 	// Initialize the git repo.
 	repoDir, cleanupRepo := initRepo(t)
 	defer cleanupRepo()
@@ -91,20 +91,20 @@ func TestSimpleCloneFailure(t *testing.T) {
 	testServer, err := fixtures.GithubAppTestServer(t)
 	assert.NoError(t, err)
 	logger := logging.NewNoopCtxLogger(t)
-	wd := &local.GitRepoGenerator{
+	fetcher := &local.GitRepoFetcher{
 		DataDir:        dataDir,
 		GithubHostname: testServer,
 		Logger:         logger,
 	}
-	destinationPath := wd.GenerateDirPath("nish/repo")
+	destinationPath := fetcher.GenerateDirPath("nish/repo")
 	repo := newBaseRepo(repoDir)
 	repo.DefaultBranch = "invalid-branch"
-	err = wd.Clone(repo, sha, destinationPath)
+	err = fetcher.Fetch(repo, sha, destinationPath)
 	assert.Error(t, err)
 }
 
 // Validate if we do not find requested sha, we don't checkout
-func TestCloneCheckoutFailure(t *testing.T) {
+func TestFetchCheckoutFailure(t *testing.T) {
 	// Initialize the git repo.
 	repoDir, cleanupRepo := initRepo(t)
 	defer cleanupRepo()
@@ -121,13 +121,13 @@ func TestCloneCheckoutFailure(t *testing.T) {
 	testServer, err := fixtures.GithubAppTestServer(t)
 	assert.NoError(t, err)
 	logger := logging.NewNoopCtxLogger(t)
-	wd := &local.GitRepoGenerator{
+	fetcher := &local.GitRepoFetcher{
 		DataDir:        dataDir,
 		GithubHostname: testServer,
 		Logger:         logger,
 	}
-	destinationPath := wd.GenerateDirPath("nish/repo")
-	err = wd.Clone(newBaseRepo(repoDir), "invalidsha", destinationPath)
+	destinationPath := fetcher.GenerateDirPath("nish/repo")
+	err = fetcher.Fetch(newBaseRepo(repoDir), "invalidsha", destinationPath)
 	assert.Error(t, err)
 }
 
