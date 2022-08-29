@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/local"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,6 +18,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers"
 	cfgParser "github.com/runatlantis/atlantis/server/core/config"
@@ -47,6 +52,7 @@ import (
 type Config struct {
 	DataDir             string
 	AutoplanFileList    string
+	App                 githubapp.Config
 	RepoAllowList       string
 	MaxProjectsPerPR    int
 	FFOwner             string
@@ -263,6 +269,35 @@ func NewServer(config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing temporal client")
 	}
 
+	ghToken, err := githubCredentials.GetToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching github token")
+	}
+	localRepoGenerator := &local.GitRepoGenerator{
+		DataDir:        config.DataDir,
+		Token:          ghToken,
+		GithubHostname: config.GithubHostname,
+		Logger:         ctxLogger,
+	}
+	hooksRunner := &preworkflow.HooksRunner{
+		GlobalCfg:    globalCfg,
+		HookExecutor: &preworkflow.HookExecutor{},
+	}
+	//TODO: add metrics
+	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
+		config.App,
+		githubapp.WithClientMiddleware())
+	rootConfigBuilder := &event.RootConfigBuilder{
+		RepoGenerator:    localRepoGenerator,
+		AutoplanFileList: config.AutoplanFileList,
+		HooksRunner:      hooksRunner,
+		ParserValidator:  validator,
+		RootFinder:       &local.RepoRootFinder{},
+		FileFetcher:      &github.RemoteFileFetcher{ClientCreator: clientCreator},
+		GlobalCfg:        globalCfg,
+		Logger:           ctxLogger,
+	}
+
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(
 		statsScope,
 		[]byte(config.GithubWebhookSecret),
@@ -280,7 +315,7 @@ func NewServer(config Config) (*Server, error) {
 		featureAllocator,
 		asyncScheduler,
 		temporalClient,
-		globalCfg,
+		rootConfigBuilder,
 	)
 
 	router := mux.NewRouter()
