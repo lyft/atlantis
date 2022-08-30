@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
-	job_model "github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/run"
 )
 
@@ -12,7 +11,7 @@ type Runner struct {
 	RunRunner run.Runner
 }
 
-func (e *Runner) Run(executionContext *job.ExecutionContext, rootInstance *job_model.RootInstance, step job_model.Step) (string, error) {
+func (e *Runner) Run(executionContext *job.ExecutionContext, rootInstance *job.RootInstance, step job.Step) (string, error) {
 	if step.EnvVarValue != "" {
 		return step.EnvVarValue, nil
 	}

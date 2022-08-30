@@ -6,8 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	job_model "github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	job_runner "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/env"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/run"
 	"go.temporal.io/sdk/workflow"
@@ -15,7 +15,7 @@ import (
 
 // jobRunner runs a deploy plan/apply job
 type jobRunner interface {
-	Run(ctx workflow.Context, job job_model.Job, rootInstance *job_model.RootInstance) (string, error)
+	Run(ctx workflow.Context, job job.Job, rootInstance *job.RootInstance) (string, error)
 }
 
 type PlanStatus int
@@ -76,7 +76,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	return &Runner{
 		Activities: a,
 		Request:    request,
-		JobRunner: job.NewRunner(
+		JobRunner: job_runner.NewRunner(
 			&runStepRunner,
 			&env.Runner{
 				RunRunner: runStepRunner,
@@ -87,7 +87,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 
 func (r *Runner) Run(ctx workflow.Context) error {
 	// Root instance has all the metadata needed to execute a step in a root
-	rootInstance := job_model.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
+	rootInstance := job.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
 
 	// Clone repository into disk
 	err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, nil)
@@ -136,7 +136,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 //	if err != nil {
 //		return errors.Wrap(err, "executing terraform init")
 //	}
-func (r *Runner) runStep(ctx workflow.Context, step job_model.Step) error {
+func (r *Runner) runStep(ctx workflow.Context, step job.Step) error {
 	var err error
 	switch step.StepName {
 	case "init":
