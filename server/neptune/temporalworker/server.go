@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -23,8 +22,6 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/core/runtime/cache"
-	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/logging"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -69,7 +66,9 @@ type Server struct {
 	StatsScope      tally.Scope
 	StatsCloser     io.Closer
 	TemporalClient  client.Client
-	Activities      *workflows.Activities
+
+	DeployActivities    workflows.DeployActivities
+	TerraformActivities workflows.TerraformActivities
 }
 
 func NewServer(config *Config) (*Server, error) {
@@ -106,42 +105,30 @@ func NewServer(config *Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	binDir, err := mkSubDir(config.DataDir, BinDirName)
-	if err != nil {
-		return nil, err
-	}
-
-	loader := terraform.NewVersionLoader(&terraform.DefaultDownloader{}, config.TFDownloadURL)
-	versionCache := cache.NewExecutionVersionLayeredLoadingCache(
-		"terraform",
-		binDir,
-		loader.LoadVersion,
-	)
-
-	tfVersion, err := terraform.GetDefaultVersion(config.DefaultTFVersionStr, config.DefaultTFVersionFlagName)
-	if err != nil {
-		return nil, err
-	}
-
-	activities, err := workflows.NewActivities(
+	deployActivities, err := workflows.NewDeployActivities(
 		config.App,
 		config.Scope.SubScope("app"),
-		versionCache,
-		tfVersion,
-		binDir,
 	)
-
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing activities")
+		return nil, errors.Wrap(err, "initializing deploy activities")
 	}
+
+	terraformActivities, err := workflows.NewTerraformActivities(
+		config.Scope.SubScope("terraform"),
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing terraform activities")
+	}
+
 	server := Server{
-		Logger:          config.CtxLogger,
-		HttpServerProxy: httpServerProxy,
-		Port:            config.Port,
-		StatsScope:      config.Scope,
-		StatsCloser:     config.Closer,
-		TemporalClient:  temporalClient,
-		Activities:      activities,
+		Logger:              config.CtxLogger,
+		HttpServerProxy:     httpServerProxy,
+		Port:                config.Port,
+		StatsScope:          config.Scope,
+		StatsCloser:         config.Closer,
+		TemporalClient:      temporalClient,
+		DeployActivities:    *deployActivities,
+		TerraformActivities: *terraformActivities,
 	}
 	return &server, nil
 }
@@ -157,7 +144,9 @@ func (s Server) Start() error {
 		w := worker.New(s.TemporalClient, workflows.DeployTaskQueue, worker.Options{
 			EnableSessionWorker: true,
 		})
-		w.RegisterActivity(s.Activities)
+		w.RegisterActivity(s.TerraformActivities)
+		w.RegisterActivity(s.DeployActivities)
+
 		w.RegisterWorkflow(workflows.Deploy)
 		w.RegisterWorkflow(workflows.Terraform)
 		if err := w.Run(worker.InterruptCh()); err != nil {
@@ -210,13 +199,4 @@ func Healthz(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data) // nolint: errcheck
-}
-
-func mkSubDir(parentDir string, subDir string) (string, error) {
-	fullDir := filepath.Join(parentDir, subDir)
-	if err := os.MkdirAll(fullDir, 0700); err != nil {
-		return "", errors.Wrapf(err, "unable to creare dir %q", fullDir)
-	}
-
-	return fullDir, nil
 }

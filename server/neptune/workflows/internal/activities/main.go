@@ -1,10 +1,8 @@
 package activities
 
 import (
-	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/github"
 	"github.com/uber-go/tally/v4"
 )
@@ -48,12 +46,8 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform(versionCache cache.ExecutionVersionCache, defaultTfVersion *version.Version, terraformBinDir string) *Terraform {
+func NewTerraform() *Terraform {
 	return &Terraform{
-		executeCommandActivities: &executeCommandActivities{
-			VersionCache:     versionCache,
-			DefaultTFVersion: defaultTfVersion,
-			TerraformBinDir:  terraformBinDir,
-		},
+		executeCommandActivities: &executeCommandActivities{},
 	}
 }

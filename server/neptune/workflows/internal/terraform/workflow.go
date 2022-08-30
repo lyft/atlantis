@@ -7,9 +7,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/runners"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/env"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/run"
 	"go.temporal.io/sdk/workflow"
 )
+
+// jobRunner runs a deploy plan/apply job
+type jobRunner interface {
+	Run(ctx workflow.Context, job steps.Job, rootInstance *steps.RootInstance) (string, error)
+}
 
 type PlanStatus int
 type PlanReview struct {
@@ -49,30 +56,30 @@ type workerActivities interface {
 	TerraformInit(context.Context, activities.TerraformInitRequest) error
 	TerraformPlan(context.Context, activities.TerraformPlanRequest) error
 	TerraformApply(context.Context, activities.TerraformApplyRequest) error
-	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) activities.ExecuteCommandResponse
+	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error)
 	Notify(context.Context, activities.NotifyRequest) error
 	Cleanup(context.Context, activities.CleanupRequest) error
 }
 
 type Runner struct {
 	Activities workerActivities
-	JobRunner  runners.JobRunner
+	JobRunner  jobRunner
 	Request    Request
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
 	var a *activities.Terraform
 
-	runStepRunner := &runners.RunStepRunner{
+	runStepRunner := run.Runner{
 		Activity: a,
 	}
 	return &Runner{
 		Activities: a,
 		Request:    request,
-		JobRunner: runners.NewJobRunner(
-			runStepRunner,
-			&runners.EnvStepRunner{
-				RunStepRunner: runStepRunner,
+		JobRunner: job.NewRunner(
+			&runStepRunner,
+			&env.Runner{
+				RunRunner: runStepRunner,
 			},
 		),
 	}
@@ -81,7 +88,6 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 func (r *Runner) Run(ctx workflow.Context) error {
 	// Root instance has all the metadata needed to execute a step in a root
 	rootInstance := steps.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
-	executionContext := steps.BuildExecutionContextFrom(ctx, r.Request.Root, &map[string]string{})
 
 	// Clone repository into disk
 	err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, nil)
@@ -89,7 +95,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return errors.Wrap(err, "executing GH repo clone")
 	}
 
-	_, err = r.JobRunner.Run(*executionContext, r.Request.Root.Plan, rootInstance)
+	_, err = r.JobRunner.Run(ctx, r.Request.Root.Plan, rootInstance)
 	if err != nil {
 		return errors.Wrap(err, "running step")
 	}
@@ -104,8 +110,9 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	if planReview.Status == Rejected {
 		return nil
 	}
+
 	// Run apply steps
-	_, err = r.JobRunner.Run(*executionContext, r.Request.Root.Apply, rootInstance)
+	_, err = r.JobRunner.Run(ctx, r.Request.Root.Apply, rootInstance)
 	if err != nil {
 		return errors.Wrap(err, "running step")
 	}
