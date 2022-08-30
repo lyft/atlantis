@@ -1,126 +1,103 @@
 package run_test
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"path/filepath"
-// 	"testing"
+import (
+	"context"
+	"testing"
+	"time"
 
-// 	"github.com/runatlantis/atlantis/server/neptune/workflows"
-// 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-// 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-// 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
-// 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
-// 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/run"
-// 	"github.com/stretchr/testify/assert"
-// 	"github.com/stretchr/testify/mock"
-// 	"github.com/stretchr/testify/suite"
-// 	"go.temporal.io/sdk/testsuite"
-// )
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/run"
+	"github.com/stretchr/testify/assert"
+	"go.temporal.io/sdk/testsuite"
+	"go.temporal.io/sdk/workflow"
+)
 
-// // func TestRunRunner(t *testing.T) {
-// // 	/*
-// // 		- Sets up env variables correctly
-// // 		- Error when execute activity fails
-// // 	*/
-// // }
+const (
+	RepoName    = "test-repo"
+	RepoOwner   = "test-owner"
+	RepoPath    = "test/repo"
+	ProjectName = "test-project"
+	ProjectPath = "test/repo/project"
+	HeadCommit  = "ref"
+	Dir         = "test-path"
+	UserName    = "test-user"
+)
 
-// type UnitTestSuite struct {
-// 	suite.Suite
-// 	testsuite.WorkflowTestSuite
+type request struct {
+	RootInstance job.RootInstance
+	Step         job.Step
+}
 
-// 	env *testsuite.TestActivityEnvironment
-// }
+type testExecuteActivity struct {
+	t           *testing.T
+	expectedReq map[string]string
+}
 
-// func (s *UnitTestSuite) SetupTest() {
-// 	s.env = s.NewTestActivityEnvironment()
-// }
+func (a *testExecuteActivity) ExecuteCommand(ctx context.Context, request activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error) {
+	assert.Equal(a.t, a.expectedReq, request.EnvVars)
+	return activities.ExecuteCommandResponse{}, nil
+}
 
-// func (s *UnitTestSuite) TestRunRunner(t *testing.T) {
-// 	runnner := run.Runner{}
+func testWorkflow(ctx workflow.Context, r request) (string, error) {
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		ScheduleToCloseTimeout: 5 * time.Second,
+	})
 
-// 	repoPath := filepath.Join("test", "repo")
+	jobExectionCtx := job.BuildExecutionContextFrom(ctx, r.RootInstance, map[string]string{})
 
-// 	jobExectionCtx := &job.ExecutionContext{
-// 		Path: "test-path",
-// 	}
-// 	rootInstance := &steps.RootInstance{
-// 		Root: steps.Root{
-// 			Name: "test-root",
-// 			Path: filepath.Join(repoPath, "test-root"),
-// 		},
-// 		Repo: github.RepoInstance{
-// 			Path:  repoPath,
-// 			Name:  "test-repo",
-// 			Owner: "test-owner",
-// 			HeadCommit: github.Commit{
-// 				Ref: "ref",
-// 				Author: github.User{
-// 					Username: "test-user",
-// 				},
-// 			},
-// 		},
-// 	}
-// 	step := steps.Step{}
+	var a *testExecuteActivity
+	runStepRunner := run.Runner{
+		Activity: a,
+	}
 
-// 	s.env.RegisterActivity(workflows.TerraformActivities.ExecuteCommand, mock.Anything)
+	return runStepRunner.Run(jobExectionCtx, &r.RootInstance, r.Step)
+}
 
-// 	s.env.ExecuteActivity(workflows.TerraformActivities.ExecuteCommand, mock.Anything, mock.Anything).Return(
-// 		func(ctx context.Context, request activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error) {
-// 			// Assert the env variables are set properly
-// 			fmt.Println(request.EnvVars)
-// 			return activities.ExecuteCommandResponse{}, nil
-// 		})
+func TestRunRunner_ShouldSetupEnvVars(t *testing.T) {
 
-// 	out, err := runnner.Run(jobExectionCtx, rootInstance, step)
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
 
-// 	assert.Nil(t, err)
-// 	assert.Nil(t, out)
-// }
+	expectedEnvVars := map[string]string{
+		"REPO_NAME":    RepoName,
+		"REPO_OWNER":   RepoOwner,
+		"DIR":          ProjectPath,
+		"HEAD_COMMIT":  HeadCommit,
+		"PROJECT_NAME": ProjectName,
+		"REPO_REL_DIR": "project",
+		"USER_NAME":    UserName,
+	}
+	testExecuteActivity := &testExecuteActivity{
+		t:           t,
+		expectedReq: expectedEnvVars,
+	}
+	env.RegisterActivity(testExecuteActivity)
+	env.RegisterWorkflow(testWorkflow)
 
-// func TestRunRunner_ShouldSetupEnvVars(t *testing.T) {
+	env.ExecuteWorkflow(testWorkflow, request{
+		RootInstance: job.RootInstance{
+			Root: job.Root{
+				Name: ProjectName,
+				Path: ProjectPath,
+			},
+			Repo: github.RepoInstance{
+				Path:  RepoPath,
+				Name:  RepoName,
+				Owner: RepoOwner,
+				HeadCommit: github.Commit{
+					Ref: HeadCommit,
+					Author: github.User{
+						Username: UserName,
+					},
+				},
+			},
+		},
+		Step: job.Step{},
+	})
 
-// 	type suite struct {
-// 		suite.Suite
-// 		testsuite.WorkflowTestSuite
-// 	}
-// 	env := testsuite.TestActivityEnvironment
-
-// 	runnner := run.Runner{}
-
-// 	repoPath := filepath.Join("test", "repo")
-
-// 	jobExectionCtx := &job.ExecutionContext{
-// 		Path: "test-path",
-// 	}
-// 	rootInstance := &steps.RootInstance{
-// 		Root: steps.Root{
-// 			Name: "test-root",
-// 			Path: filepath.Join(repoPath, "test-root"),
-// 		},
-// 		Repo: github.RepoInstance{
-// 			Path:  repoPath,
-// 			Name:  "test-repo",
-// 			Owner: "test-owner",
-// 			HeadCommit: github.Commit{
-// 				Ref: "ref",
-// 				Author: github.User{
-// 					Username: "test-user",
-// 				},
-// 			},
-// 		},
-// 	}
-// 	step := steps.Step{}
-
-// 	s.env.OnActivity(workflows.TerraformActivities.ExecuteCommand, mock.Anything, mock.Anything).Return(
-// 		func(ctx context.Context, request activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error) {
-// 			// Assert the env variables are set properly
-// 			fmt.Println(request.EnvVars)
-// 			return activities.ExecuteCommandResponse{}, nil
-// 		})
-
-// 	out, err := runnner.Run(jobExectionCtx, rootInstance, step)
-
-// 	assert.Nil(t, err)
-// 	assert.Nil(t, out)
-// }
+	var resp string
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+}

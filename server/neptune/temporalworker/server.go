@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -17,11 +16,9 @@ import (
 	"go.temporal.io/sdk/client"
 
 	"github.com/gorilla/mux"
-	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -38,20 +35,6 @@ const (
 	ProjectJobsViewRouteName = "project-jobs-detail"
 )
 
-// Config is TemporalWorker specific user config
-type Config struct {
-	AtlantisURL     *url.URL
-	AtlantisVersion string
-	CtxLogger       logging.Logger
-	SslCertFile     string
-	SslKeyFile      string
-	Scope           tally.Scope
-	Closer          io.Closer
-	TemporalCfg     valid.Temporal
-	Port            int
-	App             githubapp.Config
-}
-
 type Server struct {
 	Logger          logging.Logger
 	HttpServerProxy *neptune_http.ServerProxy
@@ -66,8 +49,8 @@ type Server struct {
 
 func NewServer(config *Config) (*Server, error) {
 	jobsController := &controllers.JobsController{
-		AtlantisVersion:     config.AtlantisVersion,
-		AtlantisURL:         config.AtlantisURL,
+		AtlantisVersion:     config.ServerCfg.Version,
+		AtlantisURL:         config.ServerCfg.URL,
 		KeyGenerator:        controllers.JobIDKeyGenerator{},
 		StatsScope:          config.Scope,
 		Logger:              config.CtxLogger,
@@ -92,9 +75,9 @@ func NewServer(config *Config) (*Server, error) {
 	})
 	n.UseHandler(router)
 	httpServerProxy := &neptune_http.ServerProxy{
-		SSLCertFile: config.SslCertFile,
-		SSLKeyFile:  config.SslKeyFile,
-		Server:      &http.Server{Addr: fmt.Sprintf(":%d", config.Port), Handler: n},
+		SSLCertFile: config.AuthCfg.SslCertFile,
+		SSLKeyFile:  config.AuthCfg.SslKeyFile,
+		Server:      &http.Server{Addr: fmt.Sprintf(":%d", config.ServerCfg.Port), Handler: n},
 		Logger:      config.CtxLogger,
 	}
 
@@ -116,9 +99,9 @@ func NewServer(config *Config) (*Server, error) {
 	server := Server{
 		Logger:              config.CtxLogger,
 		HttpServerProxy:     httpServerProxy,
-		Port:                config.Port,
+		Port:                config.ServerCfg.Port,
 		StatsScope:          config.Scope,
-		StatsCloser:         config.Closer,
+		StatsCloser:         config.StatsCloser,
 		TemporalClient:      temporalClient,
 		DeployActivities:    *deployActivities,
 		TerraformActivities: *terraformActivities,

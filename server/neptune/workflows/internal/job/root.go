@@ -21,7 +21,7 @@ type RootInstance struct {
 }
 
 func (r *RootInstance) RelativePathFromRepo() (string, error) {
-	return filepath.Rel(r.Root.Path, r.Repo.Path)
+	return filepath.Rel(r.Repo.Path, r.Root.Path)
 }
 
 func BuildRootInstanceFrom(root Root, repo github.RepoInstance) *RootInstance {
