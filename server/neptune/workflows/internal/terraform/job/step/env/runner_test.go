@@ -4,16 +4,15 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/env"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEnvRunner(t *testing.T) {
 	executioncontext := &job.ExecutionContext{}
-	rootInstance := &steps.RootInstance{}
+	rootInstance := &job.RootInstance{}
 
-	step := steps.Step{
+	step := job.Step{
 		EnvVarName:  "TEST_VAR",
 		EnvVarValue: "TEST_VALUE",
 	}

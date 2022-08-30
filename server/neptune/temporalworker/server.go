@@ -36,9 +36,6 @@ const (
 	AtlantisNamespace        = "atlantis"
 	DeployTaskqueue          = "deploy"
 	ProjectJobsViewRouteName = "project-jobs-detail"
-	// binDirName is the name of the directory inside our data dir where
-	// we download binaries.
-	BinDirName = "bin"
 )
 
 // Config is TemporalWorker specific user config
