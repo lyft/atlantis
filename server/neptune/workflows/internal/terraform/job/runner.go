@@ -4,13 +4,13 @@ import (
 	"strings"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
+	job_model "github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"go.temporal.io/sdk/workflow"
 )
 
 // stepRunner runs individual run steps
 type stepRunner interface {
-	Run(executionContext *job.ExecutionContext, rootInstance *steps.RootInstance, step steps.Step) (string, error)
+	Run(executionContext *job.ExecutionContext, rootInstance *job_model.RootInstance, step job_model.Step) (string, error)
 }
 
 type jobRunner struct {
@@ -27,12 +27,13 @@ func NewRunner(runStepRunner stepRunner, envStepRunner stepRunner) *jobRunner {
 
 func (r *jobRunner) Run(
 	ctx workflow.Context,
-	terraformJob steps.Job,
-	rootInstance *steps.RootInstance,
+	terraformJob job_model.Job,
+	rootInstance *job_model.RootInstance,
 ) (string, error) {
-	jobExectionCtx := job.BuildExecutionContextFrom(ctx, *rootInstance, map[string]string{})
 	var outputs []string
 
+	// Execution ctx for a job that handles setting up the env vars from the previous steps
+	jobExectionCtx := job.BuildExecutionContextFrom(ctx, *rootInstance, map[string]string{})
 	for _, step := range terraformJob.Steps {
 		var out string
 		var err error

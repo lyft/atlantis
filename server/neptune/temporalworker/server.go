@@ -43,20 +43,16 @@ const (
 
 // Config is TemporalWorker specific user config
 type Config struct {
-	AtlantisURL              *url.URL
-	AtlantisVersion          string
-	CtxLogger                logging.Logger
-	SslCertFile              string
-	SslKeyFile               string
-	Scope                    tally.Scope
-	Closer                   io.Closer
-	TemporalCfg              valid.Temporal
-	Port                     int
-	App                      githubapp.Config
-	DefaultTFVersionStr      string
-	DefaultTFVersionFlagName string
-	DataDir                  string
-	TFDownloadURL            string
+	AtlantisURL     *url.URL
+	AtlantisVersion string
+	CtxLogger       logging.Logger
+	SslCertFile     string
+	SslKeyFile      string
+	Scope           tally.Scope
+	Closer          io.Closer
+	TemporalCfg     valid.Temporal
+	Port            int
+	App             githubapp.Config
 }
 
 type Server struct {
@@ -107,7 +103,7 @@ func NewServer(config *Config) (*Server, error) {
 
 	deployActivities, err := workflows.NewDeployActivities(
 		config.App,
-		config.Scope.SubScope("app"),
+		config.Scope.SubScope("deploy"),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")

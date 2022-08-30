@@ -95,7 +95,7 @@ func NewClientWithVersionCache(
 	featureAllocator feature.Allocator,
 	versionCache cache.ExecutionVersionCache,
 ) (*DefaultClient, error) {
-	version, err := GetDefaultVersion(defaultVersionStr, defaultVersionFlagName)
+	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting default version")
@@ -182,7 +182,7 @@ func NewClient(
 	versionCache := cache.NewExecutionVersionLayeredLoadingCache(
 		"terraform",
 		binDir,
-		loader.LoadVersion,
+		loader.loadVersion,
 	)
 	return NewClientWithVersionCache(
 		binDir,
@@ -271,14 +271,7 @@ type VersionLoader struct {
 	downloadURL string
 }
 
-func NewVersionLoader(downloader Downloader, downloadURL string) VersionLoader {
-	return VersionLoader{
-		downloader:  downloader,
-		downloadURL: downloadURL,
-	}
-}
-
-func (l *VersionLoader) LoadVersion(v *version.Version, destPath string) (runtime_models.FilePath, error) {
+func (l *VersionLoader) loadVersion(v *version.Version, destPath string) (runtime_models.FilePath, error) {
 	urlPrefix := fmt.Sprintf("%s/terraform/%s/terraform_%s", l.downloadURL, v.String(), v.String())
 	binURL := fmt.Sprintf("%s_%s_%s.zip", urlPrefix, runtime.GOOS, runtime.GOARCH)
 	checksumURL := fmt.Sprintf("%s_SHA256SUMS", urlPrefix)
@@ -302,7 +295,7 @@ func isAsyncEligibleCommand(cmd string) bool {
 	return false
 }
 
-func GetDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
+func getDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
 	if overrideVersion != "" {
 		v, err := version.NewVersion(overrideVersion)
 		if err != nil {

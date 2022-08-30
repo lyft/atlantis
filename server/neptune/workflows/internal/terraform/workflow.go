@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
+	job_model "github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/env"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/run"
@@ -15,7 +15,7 @@ import (
 
 // jobRunner runs a deploy plan/apply job
 type jobRunner interface {
-	Run(ctx workflow.Context, job steps.Job, rootInstance *steps.RootInstance) (string, error)
+	Run(ctx workflow.Context, job job_model.Job, rootInstance *job_model.RootInstance) (string, error)
 }
 
 type PlanStatus int
@@ -87,7 +87,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 
 func (r *Runner) Run(ctx workflow.Context) error {
 	// Root instance has all the metadata needed to execute a step in a root
-	rootInstance := steps.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
+	rootInstance := job_model.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
 
 	// Clone repository into disk
 	err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, nil)
@@ -136,7 +136,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 //	if err != nil {
 //		return errors.Wrap(err, "executing terraform init")
 //	}
-func (r *Runner) runStep(ctx workflow.Context, step steps.Step) error {
+func (r *Runner) runStep(ctx workflow.Context, step job_model.Step) error {
 	var err error
 	switch step.StepName {
 	case "init":

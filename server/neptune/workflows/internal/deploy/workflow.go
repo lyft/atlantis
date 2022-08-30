@@ -9,7 +9,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
+	job_model "github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"go.temporal.io/sdk/temporal"
@@ -76,10 +76,10 @@ func newRunner(ctx workflow.Context, request Request, terraformWorkflow func(ctx
 			InstallationToken: request.Repository.Credentials.InstallationToken,
 		},
 	}
-	root := steps.Root{
+	root := job_model.Root{
 		Name:  request.Root.Name,
-		Apply: steps.Job{Steps: convertToInternalSteps(request.Root.Apply.Steps)},
-		Plan:  steps.Job{Steps: convertToInternalSteps(request.Root.Plan.Steps)},
+		Apply: job_model.Job{Steps: convertToInternalSteps(request.Root.Apply.Steps)},
+		Plan:  job_model.Job{Steps: convertToInternalSteps(request.Root.Plan.Steps)},
 	}
 
 	// inject dependencies
@@ -178,10 +178,10 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	return nil
 }
 
-func convertToInternalSteps(requestSteps []Step) []steps.Step {
-	var terraformSteps []steps.Step
+func convertToInternalSteps(requestSteps []Step) []job_model.Step {
+	var terraformSteps []job_model.Step
 	for _, step := range requestSteps {
-		terraformSteps = append(terraformSteps, steps.Step{
+		terraformSteps = append(terraformSteps, job_model.Step{
 			StepName:    step.StepName,
 			ExtraArgs:   step.ExtraArgs,
 			RunCommand:  step.RunCommand,

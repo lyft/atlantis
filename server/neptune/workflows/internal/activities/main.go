@@ -23,7 +23,7 @@ func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		config,
 		githubapp.WithClientMiddleware(
-			github.ClientMetrics(scope),
+			github.ClientMetrics(scope.SubScope("app")),
 		))
 
 	if err != nil {

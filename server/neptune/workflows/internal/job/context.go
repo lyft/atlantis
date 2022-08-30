@@ -1,7 +1,6 @@
 package job
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -13,7 +12,7 @@ type ExecutionContext struct {
 	workflow.Context
 }
 
-func BuildExecutionContextFrom(ctx workflow.Context, rootInstance steps.RootInstance, envs map[string]string) *ExecutionContext {
+func BuildExecutionContextFrom(ctx workflow.Context, rootInstance RootInstance, envs map[string]string) *ExecutionContext {
 	return &ExecutionContext{
 		Context:   ctx,
 		Path:      rootInstance.Root.Path,
