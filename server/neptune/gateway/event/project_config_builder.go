@@ -10,8 +10,8 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
-// repoGenerator manages a cloned repo's workspace on disk for running commands.
-type repoGenerator interface {
+// repoFetcher manages a cloned repo's workspace on disk for running commands.
+type repoFetcher interface {
 	Fetch(baseRepo models.Repo, sha string, destination string) error
 	Cleanup(filePath string) error
 	GenerateDirPath(repoName string) string
@@ -41,7 +41,7 @@ type parserValidator interface {
 }
 
 type RootConfigBuilder struct {
-	RepoGenerator    repoGenerator
+	RepoFetcher      repoFetcher
 	AutoplanFileList string
 	HooksRunner      hooksRunner
 	ParserValidator  parserValidator
@@ -53,13 +53,13 @@ type RootConfigBuilder struct {
 
 func (b *RootConfigBuilder) BuildRootConfigs(ctx context.Context, event Push) ([]*valid.MergedProjectCfg, error) {
 	// Generate a new filepath location and clone repo into it
-	repoDir := b.RepoGenerator.GenerateDirPath(event.Repo.FullName)
-	err := b.RepoGenerator.Fetch(event.Repo, event.Sha, repoDir)
+	repoDir := b.RepoFetcher.GenerateDirPath(event.Repo.FullName)
+	err := b.RepoFetcher.Fetch(event.Repo, event.Sha, repoDir)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("creating temporary clone at path: %s", repoDir))
 	}
 	deleteFn := func() {
-		if err := b.RepoGenerator.Cleanup(repoDir); err != nil {
+		if err := b.RepoFetcher.Cleanup(repoDir); err != nil {
 			b.Logger.ErrorContext(ctx, "failed deleting cloned repo", map[string]interface{}{
 				"err": err,
 			})

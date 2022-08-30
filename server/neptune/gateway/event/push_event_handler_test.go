@@ -35,6 +35,8 @@ func (r testRun) GetWithOptions(ctx context.Context, valuePtr interface{}, optio
 	return nil
 }
 
+const testRoot = "testroot"
+
 type testSignaler struct {
 	t                    *testing.T
 	expectedWorkflowID   string
@@ -283,7 +285,7 @@ func TestHandlePushEvent(t *testing.T) {
 	t.Run("signal success", func(t *testing.T) {
 		testSignaler := &testSignaler{
 			t:                  t,
-			expectedWorkflowID: fmt.Sprintf("%s||", repoFullName),
+			expectedWorkflowID: fmt.Sprintf("%s||%s", repoFullName, testRoot),
 			expectedSignalName: workflows.DeployNewRevisionSignalID,
 			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 				Revision: sha,
@@ -300,6 +302,7 @@ func TestHandlePushEvent(t *testing.T) {
 					URL:      repoURL,
 				},
 				Root: workflows.Root{
+					Name: testRoot,
 					Plan: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
 					},
@@ -319,8 +322,8 @@ func TestHandlePushEvent(t *testing.T) {
 		}
 		ctx := context.Background()
 		rootCfg := valid.MergedProjectCfg{
+			Name: testRoot,
 			DeploymentWorkflow: valid.Workflow{
-				Name:  "default",
 				Plan:  valid.DefaultPlanStage,
 				Apply: valid.DefaultApplyStage,
 			},
@@ -348,7 +351,7 @@ func TestHandlePushEvent(t *testing.T) {
 	t.Run("signal error", func(t *testing.T) {
 		testSignaler := &testSignaler{
 			t:                  t,
-			expectedWorkflowID: fmt.Sprintf("%s||", repoFullName),
+			expectedWorkflowID: fmt.Sprintf("%s||%s", repoFullName, testRoot),
 			expectedSignalName: workflows.DeployNewRevisionSignalID,
 			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 				Revision: sha,
@@ -365,6 +368,7 @@ func TestHandlePushEvent(t *testing.T) {
 					URL:      repoURL,
 				},
 				Root: workflows.Root{
+					Name: testRoot,
 					Plan: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
 					},
@@ -386,8 +390,8 @@ func TestHandlePushEvent(t *testing.T) {
 
 		ctx := context.Background()
 		rootCfg := valid.MergedProjectCfg{
+			Name: testRoot,
 			DeploymentWorkflow: valid.Workflow{
-				Name:  "default",
 				Plan:  valid.DefaultPlanStage,
 				Apply: valid.DefaultApplyStage,
 			},

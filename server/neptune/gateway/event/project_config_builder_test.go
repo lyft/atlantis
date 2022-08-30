@@ -28,7 +28,7 @@ func setupTesting(t *testing.T) {
 	}
 	// creates a default PCB to used in each test; individual tests mutate a specific field to test certain functionalities
 	rcb = event.RootConfigBuilder{
-		RepoGenerator:    &MockRepoGenerator{},
+		RepoFetcher:      &MockRepoFetcher{},
 		AutoplanFileList: "",
 		HooksRunner:      &MockHooksRunner{},
 		ParserValidator:  &MockParserValidator{hasRepoCfg: true},
@@ -123,10 +123,9 @@ func TestRootConfigBuilder_GetModifiedFilesError(t *testing.T) {
 
 func TestRootConfigBuilder_CloneError(t *testing.T) {
 	setupTesting(t)
-	mockRepoGenerator := &MockRepoGenerator{
+	rcb.RepoFetcher = &MockRepoFetcher{
 		cloneError: expectedErr,
 	}
-	rcb.RepoGenerator = mockRepoGenerator
 	projectConfigs, err := rcb.BuildRootConfigs(context.Background(), pushEvent)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
@@ -147,20 +146,20 @@ func TestRootConfigBuilder_HooksRunnerError(t *testing.T) {
 
 // Mock implementations
 
-type MockRepoGenerator struct {
+type MockRepoFetcher struct {
 	dirPath    string
 	cloneError error
 }
 
-func (r *MockRepoGenerator) Fetch(_ models.Repo, _ string, _ string) error {
+func (r *MockRepoFetcher) Fetch(_ models.Repo, _ string, _ string) error {
 	return r.cloneError
 }
 
-func (r *MockRepoGenerator) Cleanup(_ string) error {
+func (r *MockRepoFetcher) Cleanup(_ string) error {
 	return nil
 }
 
-func (r *MockRepoGenerator) GenerateDirPath(_ string) string {
+func (r *MockRepoFetcher) GenerateDirPath(_ string) string {
 	return r.dirPath
 }
 

@@ -272,7 +272,7 @@ func NewServer(config Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching github token")
 	}
-	localRepoGenerator := &github.RepoFetcher{
+	repoFetcher := &github.RepoFetcher{
 		DataDir:        config.DataDir,
 		Token:          ghToken,
 		GithubHostname: config.GithubHostname,
@@ -287,7 +287,7 @@ func NewServer(config Config) (*Server, error) {
 		config.App,
 		githubapp.WithClientMiddleware())
 	rootConfigBuilder := &event.RootConfigBuilder{
-		RepoGenerator:    localRepoGenerator,
+		RepoFetcher:      repoFetcher,
 		AutoplanFileList: config.AutoplanFileList,
 		HooksRunner:      hooksRunner,
 		ParserValidator:  validator,
