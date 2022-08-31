@@ -25,7 +25,6 @@ func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
 }
 
 type Terraform struct {
-	*githubActivities
 	*terraformActivities
 	*executeCommandActivities
 	*notifyActivities

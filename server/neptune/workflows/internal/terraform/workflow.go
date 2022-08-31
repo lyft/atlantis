@@ -13,6 +13,11 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+type workerActivity struct {
+	*activities.Terraform
+	*activities.Github
+}
+
 // jobRunner runs a deploy plan/apply job
 type jobRunner interface {
 	Run(ctx workflow.Context, job job.Job, rootInstance *job.RootInstance) (string, error)
@@ -68,7 +73,7 @@ type Runner struct {
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
-	var a *activities.Terraform
+	var a *workerActivity
 
 	runStepRunner := run.Runner{
 		Activity: a,
