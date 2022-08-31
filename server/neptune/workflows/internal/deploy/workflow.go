@@ -25,6 +25,11 @@ const (
 	RevisionReceiveTimeout = 60 * time.Minute
 )
 
+type workerActivities struct {
+	*activities.Github
+	*activities.Deploy
+}
+
 type RunnerAction int64
 
 const (
@@ -86,7 +91,7 @@ func newRunner(ctx workflow.Context, request Request, terraformWorkflow func(ctx
 
 	// temporal effectively "injects" this, it just cares about the method names,
 	// so we're modeling our own DI around this.
-	var a *activities.Deploy
+	var a *workerActivities
 
 	revisionQueue := queue.NewQueue()
 	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, repo, a)

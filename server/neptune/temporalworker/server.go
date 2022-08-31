@@ -43,8 +43,9 @@ type Server struct {
 	StatsCloser     io.Closer
 	TemporalClient  client.Client
 
-	DeployActivities    workflows.DeployActivities
-	TerraformActivities workflows.TerraformActivities
+	DeployActivities    *workflows.DeployActivities
+	TerraformActivities *workflows.TerraformActivities
+	GithubActivities    *workflows.GithubActivities
 }
 
 func NewServer(config *Config) (*Server, error) {
@@ -96,6 +97,14 @@ func NewServer(config *Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}
 
+	githubActivities, err := workflows.NewGithubActiviies(
+		config.App,
+		config.Scope.SubScope("app"),
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing github activities")
+	}
+
 	server := Server{
 		Logger:              config.CtxLogger,
 		HttpServerProxy:     httpServerProxy,
@@ -103,8 +112,9 @@ func NewServer(config *Config) (*Server, error) {
 		StatsScope:          config.Scope,
 		StatsCloser:         config.StatsCloser,
 		TemporalClient:      temporalClient,
-		DeployActivities:    *deployActivities,
-		TerraformActivities: *terraformActivities,
+		DeployActivities:    deployActivities,
+		TerraformActivities: terraformActivities,
+		GithubActivities:    githubActivities,
 	}
 	return &server, nil
 }
@@ -122,6 +132,7 @@ func (s Server) Start() error {
 		})
 		w.RegisterActivity(s.TerraformActivities)
 		w.RegisterActivity(s.DeployActivities)
+		w.RegisterActivity(s.GithubActivities)
 
 		w.RegisterWorkflow(workflows.Deploy)
 		w.RegisterWorkflow(workflows.Terraform)

@@ -16,25 +16,11 @@ import (
 // registering multiple workflows to the same worker
 type Deploy struct {
 	*dbActivities
-	*githubActivities
 }
 
 func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
-	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
-		config,
-		githubapp.WithClientMiddleware(
-			github.ClientMetrics(scope.SubScope("app")),
-		))
-
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing client creator")
-	}
-
 	return &Deploy{
 		dbActivities: &dbActivities{},
-		githubActivities: &githubActivities{
-			ClientCreator: clientCreator,
-		},
 	}, nil
 }
 
@@ -50,4 +36,25 @@ func NewTerraform() *Terraform {
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
 	}
+}
+
+type Github struct {
+	*githubActivities
+}
+
+func NewGithub(config githubapp.Config, scope tally.Scope) (*Github, error) {
+	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
+		config,
+		githubapp.WithClientMiddleware(
+			github.ClientMetrics(scope.SubScope("app")),
+		))
+
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing client creator")
+	}
+	return &Github{
+		githubActivities: &githubActivities{
+			ClientCreator: clientCreator,
+		},
+	}, nil
 }
