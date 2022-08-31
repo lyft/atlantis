@@ -8,6 +8,7 @@ import (
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
 type githubActivities struct {
@@ -124,8 +125,18 @@ type GithubRepoCloneRequest struct {
 	Repo           internal.Repo
 	Revision       string
 	DestinationDir string
+	Root           root.Root
 }
 
-func (a *githubActivities) GithubRepoClone(ctx context.Context, request GithubRepoCloneRequest) error {
-	return nil
+type GithubRepoCloneResponse struct {
+	LocalRoot *root.LocalRoot
+}
+
+func (a *githubActivities) GithubRepoClone(ctx context.Context, request GithubRepoCloneRequest) (*GithubRepoCloneResponse, error) {
+
+	// for now return an empty path
+	localRoot := root.BuildLocalRoot(request.Root, request.Repo, "")
+	return &GithubRepoCloneResponse{
+		LocalRoot: localRoot,
+	}, nil
 }

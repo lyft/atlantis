@@ -10,10 +10,9 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
-	terraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
-	tClient "go.temporal.io/sdk/client"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -39,8 +38,7 @@ type Worker struct {
 	Activities             workerActivities
 	Queue                  *Queue
 	Repo                   github.Repo
-	Root                   steps.Root
-	TemporalClient         tClient.Client
+	Root                   root.Root
 	TerraformStateReceiver stateReceiver
 	TerraformWorkflow      func(ctx workflow.Context, request terraform.Request) error
 

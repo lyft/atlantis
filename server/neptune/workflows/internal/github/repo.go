@@ -1,6 +1,8 @@
 package github
 
 type Repo struct {
+	HeadCommit Commit
+
 	// Owner is just the repo owner
 	Owner string
 	// Name is just the repo name, this will never have
