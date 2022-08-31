@@ -19,7 +19,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
+	"github.com/runatlantis/atlantis/server/controllers/websocket"
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
+	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/config"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
@@ -48,15 +53,13 @@ type Server struct {
 	GithubActivities    *workflows.GithubActivities
 }
 
-func NewServer(config *Config) (*Server, error) {
-	jobsController := &controllers.JobsController{
-		AtlantisVersion:     config.ServerCfg.Version,
-		AtlantisURL:         config.ServerCfg.URL,
-		KeyGenerator:        controllers.JobIDKeyGenerator{},
-		StatsScope:          config.Scope,
-		Logger:              config.CtxLogger,
-		ProjectJobsTemplate: templates.ProjectJobsTemplate,
+func NewServer(config *config.Config) (*Server, error) {
+	projectCmdOutputHandler, err := createProjectCommandOuptutHandler(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "intializing project command output handler")
 	}
+
+	jobsController := createJobsController(config, projectCmdOutputHandler)
 
 	// temporal client + worker initialization
 	temporalClient, err := temporal.NewClient(config.Scope, config.CtxLogger, config.TemporalCfg)
@@ -91,7 +94,9 @@ func NewServer(config *Config) (*Server, error) {
 	}
 
 	terraformActivities, err := workflows.NewTerraformActivities(
+		config.TerraformCfg,
 		config.Scope.SubScope("terraform"),
+		projectCmdOutputHandler,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
@@ -186,4 +191,46 @@ func Healthz(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data) // nolint: errcheck
+}
+
+func createJobsController(config *config.Config, prjCmdOutputHandler jobs.ProjectCommandOutputHandler) *controllers.JobsController {
+	projectJobsScope := config.Scope.SubScope("getprojectjobs")
+	wsMux := websocket.NewInstrumentedMultiplexor(
+		websocket.NewMultiplexor(
+			config.CtxLogger,
+			controllers.JobIDKeyGenerator{},
+			prjCmdOutputHandler,
+		),
+		projectJobsScope,
+	)
+
+	return &controllers.JobsController{
+		AtlantisVersion:     config.ServerCfg.Version,
+		AtlantisURL:         config.ServerCfg.URL,
+		KeyGenerator:        controllers.JobIDKeyGenerator{},
+		StatsScope:          config.Scope,
+		Logger:              config.CtxLogger,
+		ProjectJobsTemplate: templates.ProjectJobsTemplate,
+		WsMux:               wsMux,
+	}
+}
+
+func createProjectCommandOuptutHandler(config *config.Config) (jobs.ProjectCommandOutputHandler, error) {
+	storageBackend, err := jobs.NewStorageBackend(config.LogStreamingJobCfg, config.CtxLogger, &feature.PercentageBasedAllocator{}, config.Scope.SubScope("getprojectjobs"))
+	if err != nil {
+		return nil, errors.Wrapf(err, "initializing storage backend")
+	}
+
+	jobStore := jobs.NewJobStore(storageBackend, config.Scope.SubScope("jobstore"))
+	logFilter := filter.LogFilter{
+		Regexes: config.TerraformLogFilters.Regexes,
+	}
+
+	projectCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
+	return jobs.NewAsyncProjectCommandOutputHandler(
+		projectCmdOutput,
+		config.CtxLogger,
+		jobStore,
+		logFilter,
+	), nil
 }

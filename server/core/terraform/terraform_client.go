@@ -33,7 +33,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/terraform/ansi"
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
 var LogStreamingValidCmds = [...]string{"init", "plan", "apply"}
@@ -61,8 +60,6 @@ type DefaultClient struct {
 
 	versionCache   cache.ExecutionVersionCache
 	commandBuilder commandBuilder
-
-	featureAllocator feature.Allocator
 	*AsyncClient
 }
 
@@ -92,10 +89,9 @@ func NewClientWithVersionCache(
 	tfDownloader Downloader,
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
-	featureAllocator feature.Allocator,
 	versionCache cache.ExecutionVersionCache,
 ) (*DefaultClient, error) {
-	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
+	version, err := GetDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting default version")
@@ -123,14 +119,13 @@ func NewClientWithVersionCache(
 	}
 
 	return &DefaultClient{
-		defaultVersion:   version,
-		binDir:           binDir,
-		downloader:       tfDownloader,
-		downloadBaseURL:  tfDownloadURL,
-		featureAllocator: featureAllocator,
-		AsyncClient:      asyncClient,
-		commandBuilder:   builder,
-		versionCache:     versionCache,
+		defaultVersion:  version,
+		binDir:          binDir,
+		downloader:      tfDownloader,
+		downloadBaseURL: tfDownloadURL,
+		AsyncClient:     asyncClient,
+		commandBuilder:  builder,
+		versionCache:    versionCache,
 	}, nil
 
 }
@@ -146,7 +141,6 @@ func NewE2ETestClient(
 	tfDownloader Downloader,
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
-	featureAllocator feature.Allocator,
 ) (*DefaultClient, error) {
 	versionCache := cache.NewLocalBinaryCache("terraform")
 	return NewClientWithVersionCache(
@@ -158,7 +152,6 @@ func NewE2ETestClient(
 		tfDownloader,
 		usePluginCache,
 		projectCmdOutputHandler,
-		featureAllocator,
 		versionCache,
 	)
 }
@@ -172,7 +165,6 @@ func NewClient(
 	tfDownloader Downloader,
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
-	featureAllocator feature.Allocator,
 ) (*DefaultClient, error) {
 	loader := VersionLoader{
 		downloader:  tfDownloader,
@@ -193,7 +185,6 @@ func NewClient(
 		tfDownloader,
 		usePluginCache,
 		projectCmdOutputHandler,
-		featureAllocator,
 		versionCache,
 	)
 }
@@ -295,7 +286,7 @@ func isAsyncEligibleCommand(cmd string) bool {
 	return false
 }
 
-func getDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
+func GetDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
 	if overrideVersion != "" {
 		v, err := version.NewVersion(overrideVersion)
 		if err != nil {

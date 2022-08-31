@@ -1,8 +1,18 @@
 package activities
 
-import "context"
+import (
+	"context"
 
-type terraformActivities struct{}
+	"github.com/hashicorp/go-version"
+	"github.com/runatlantis/atlantis/server/core/runtime"
+	"github.com/uber-go/tally/v4"
+)
+
+type terraformActivities struct {
+	TerraformExecutor runtime.TerraformExec
+	DefaultTFVersion  *version.Version
+	Scope             tally.Scope
+}
 
 // Terraform Init
 

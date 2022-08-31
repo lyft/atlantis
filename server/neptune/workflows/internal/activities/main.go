@@ -1,10 +1,26 @@
 package activities
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/terraform"
+	"github.com/runatlantis/atlantis/server/jobs"
+	"github.com/runatlantis/atlantis/server/neptune/config"
 	"github.com/runatlantis/atlantis/server/neptune/github"
+
 	"github.com/uber-go/tally/v4"
+)
+
+const (
+	// binDirName is the name of the directory inside our data dir where
+	// we download binaries.
+	BinDirName = "bin"
+	// terraformPluginCacheDir is the name of the dir inside our data dir
+	// where we tell terraform to cache plugins and modules.
+	TerraformPluginCacheDirName = "plugin-cache"
 )
 
 // Exported Activites should be here.
@@ -31,10 +47,44 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform() *Terraform {
+func NewTerraform(config config.TerraformConfig, scope tally.Scope, prjCmdOutputHandler jobs.ProjectCommandOutputHandler) (*Terraform, error) {
+	binDir, err := mkSubDir(config.DataDir, BinDirName)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheDir, err := mkSubDir(config.DataDir, TerraformPluginCacheDirName)
+	if err != nil {
+		return nil, err
+	}
+
+	tfVersion, err := terraform.GetDefaultVersion(config.DefaultVersionStr, config.DefaultVersionFlagName)
+	if err != nil {
+		return nil, err
+	}
+
+	tfClient, err := terraform.NewClient(
+		binDir,
+		cacheDir,
+		config.DefaultVersionStr,
+		config.DefaultVersionFlagName,
+		config.DownloadURL,
+		&terraform.DefaultDownloader{},
+		true,
+		prjCmdOutputHandler,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
-	}
+		terraformActivities: &terraformActivities{
+			TerraformExecutor: tfClient,
+			DefaultTFVersion:  tfVersion,
+			Scope:             scope.SubScope("terraform"),
+		},
+	}, nil
 }
 
 type Github struct {
@@ -56,4 +106,13 @@ func NewGithub(config githubapp.Config, scope tally.Scope) (*Github, error) {
 			ClientCreator: clientCreator,
 		},
 	}, nil
+}
+
+func mkSubDir(parentDir string, subDir string) (string, error) {
+	fullDir := filepath.Join(parentDir, subDir)
+	if err := os.MkdirAll(fullDir, 0700); err != nil {
+		return "", errors.Wrapf(err, "unable to creare dir %q", fullDir)
+	}
+
+	return fullDir, nil
 }
