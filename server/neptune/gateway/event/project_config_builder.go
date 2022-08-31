@@ -32,7 +32,7 @@ type rootFinder interface {
 	DetermineRoots(modifiedFiles []string, config valid.RepoCfg) ([]valid.Project, error)
 }
 
-// parserValidator confi
+// parserValidator config builds repo specific configurations
 type parserValidator interface {
 	HasRepoCfg(absRepoDir string) (bool, error)
 	ParseRepoCfg(absRepoDir string, globalCfg valid.GlobalCfg, repoID string) (valid.RepoCfg, error)
