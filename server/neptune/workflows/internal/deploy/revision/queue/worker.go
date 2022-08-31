@@ -6,12 +6,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
-	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
+	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
+	tClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -30,11 +33,13 @@ const (
 )
 
 type Worker struct {
-	Activities        workerActivities
-	Queue             *Queue
-	Repo              github.Repo
-	Root              steps.Root
-	TerraformWorkflow func(ctx workflow.Context, request terraform.Request) error
+	Activities             workerActivities
+	Queue                  *Queue
+	Repo                   github.Repo
+	Root                   steps.Root
+	TemporalClient         tClient.Client
+	TerraformStateReceiver terraform.StateReceiver
+	TerraformWorkflow      func(ctx workflow.Context, request terraformWorkflow.Request) error
 
 	// mutable
 	state WorkerState
@@ -75,9 +80,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		checkRunID := msg.CheckRunID
 		ctx := workflow.WithValue(ctx, internalContext.SHAKey, revision)
 
-		w.updateInProgress(ctx, checkRunID)
-		err = w.work(ctx, revision)
-		w.updateComplete(ctx, checkRunID)
+		err = w.work(ctx, revision, checkRunID)
 
 		if err != nil {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
@@ -89,51 +92,7 @@ func (w *Worker) GetState() WorkerState {
 	return w.state
 }
 
-func (w *Worker) updateComplete(ctx workflow.Context, checkRunID int64) {
-	// TODO: if we never created a check run, there was likely some issue, we should attempt to create it again.
-	if checkRunID == 0 {
-		logger.Info(ctx, "check run id is 0, skipping updating state to complete")
-	}
-
-	var resp activities.UpdateCheckRunResponse
-
-	// intentionally infinitely retry since it's important we at least apply a completion status.
-	// we might want to not block on this and track this in the background so as to not block future deploys
-	_ = workflow.ExecuteActivity(ctx, w.Activities.UpdateCheckRun, activities.UpdateCheckRunRequest{
-		Title:      "atlantis/deploy",
-		State:      github.CheckRunComplete,
-		Conclusion: github.CheckRunSuccess,
-		// TODO: Add conclusion
-		Repo: w.Repo,
-		ID:   checkRunID,
-	}).Get(ctx, &resp)
-}
-
-func (w *Worker) updateInProgress(ctx workflow.Context, checkRunID int64) {
-	// TODO: if we never created a check run, there was likely some issue, we should attempt to create it again.
-	if checkRunID == 0 {
-		logger.Info(ctx, "check run id is 0, skipping updating state to in_progress")
-		return
-	}
-	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
-		MaximumAttempts: 5,
-	})
-
-	var resp activities.UpdateCheckRunResponse
-
-	err := workflow.ExecuteActivity(ctx, w.Activities.UpdateCheckRun, activities.UpdateCheckRunRequest{
-		Title: "atlantis/deploy",
-		State: github.CheckRunPending,
-		Repo:  w.Repo,
-		ID:    checkRunID,
-	}).Get(ctx, &resp)
-
-	if err != nil {
-		logger.Error(ctx, err.Error())
-	}
-}
-
-func (w *Worker) work(ctx workflow.Context, revision string) error {
+func (w *Worker) work(ctx workflow.Context, revision string, checkRunID int64) error {
 	id, err := generateID(ctx)
 
 	ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, id)
@@ -152,20 +111,45 @@ func (w *Worker) work(ctx workflow.Context, revision string) error {
 
 	logger.Info(ctx, fmt.Sprintf("latest deployed revision %s", deployedRevision))
 
-	// TODO: fill in the rest
-	// Spin up a child workflow to handle Terraform operations
-	//childWorkflowOptions := workflow.ChildWorkflowOptions{
-	//	WorkflowID: id.String(),
-	//}
-	//ctx = workflow.WithChildOptions(ctx, childWorkflowOptions)
-	//terraformWorkflowRequest := terraform.Request{
-	//	Repo: w.Repo,
-	//	Root: w.Root,
-	//}
-	//err = workflow.ExecuteChildWorkflow(ctx, w.TerraformWorkflow, terraformWorkflowRequest).Get(ctx, nil)
-	//if err != nil {
-	//	return errors.Wrap(err, "executing child terraform workflow")
-	//}
+	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
+		WorkflowID: id.String(),
+	})
+	terraformWorkflowRequest := terraformWorkflow.Request{
+		Repo: w.Repo,
+		Root: w.Root,
+	}
+
+	future := workflow.ExecuteChildWorkflow(ctx, w.TerraformWorkflow, terraformWorkflowRequest)
+	return w.awaitTerraformWorkflow(ctx, future, checkRunID)
+}
+
+func (w *Worker) awaitTerraformWorkflow(ctx workflow.Context, future workflow.ChildWorkflowFuture, checkRunID int64) error {
+	var childWE workflow.Execution
+	future.GetChildWorkflowExecution().Get(ctx, &childWE)
+	ch := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
+
+	selector := workflow.NewSelector(ctx)
+	selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {
+		w.TerraformStateReceiver.Receive(c, checkRunID)
+	})
+	var workflowComplete bool
+	var err error
+	selector.AddFuture(future, func(f workflow.Future) {
+		workflowComplete = true
+		err = f.Get(ctx, nil)
+	})
+
+	for {
+		selector.Select(ctx)
+
+		if workflowComplete {
+			break
+		}
+	}
+	
+	if err != nil {
+		return errors.Wrap(err, "executing terraform workflow")
+	}
 	return nil
 }
 

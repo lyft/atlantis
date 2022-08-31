@@ -2,6 +2,7 @@ package activities
 
 import (
 	"context"
+	_ "embed"
 
 	"github.com/google/go-github/v45/github"
 	"github.com/palantir/go-githubapp/githubapp"
@@ -19,6 +20,7 @@ type CreateCheckRunRequest struct {
 	Repo       internal.Repo
 	State      internal.CheckRunState
 	Conclusion internal.CheckRunConclusion
+	Summary    string
 }
 
 type UpdateCheckRunRequest struct {
@@ -27,6 +29,7 @@ type UpdateCheckRunRequest struct {
 	Conclusion internal.CheckRunConclusion
 	Repo       internal.Repo
 	ID         int64
+	Summary    string
 }
 
 type CreateCheckRunResponse struct {
@@ -37,10 +40,11 @@ type UpdateCheckRunResponse struct {
 }
 
 func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateCheckRunRequest) (UpdateCheckRunResponse, error) {
+
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
-		Text:    github.String("this is test"),
-		Summary: github.String("this is also a test"),
+		Text:    &request.Title,
+		Summary: &request.Summary,
 	}
 
 	opts := github.UpdateCheckRunOptions{
@@ -74,8 +78,8 @@ func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateChe
 func (a *githubActivities) CreateCheckRun(ctx context.Context, request CreateCheckRunRequest) (CreateCheckRunResponse, error) {
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
-		Text:    github.String("this is test"),
-		Summary: github.String("this is also a test"),
+		Text:    &request.Title,
+		Summary: &request.Summary,
 	}
 
 	opts := github.CreateCheckRunOptions{
