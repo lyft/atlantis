@@ -436,6 +436,6 @@ type MockRootConfigBuilder struct {
 	error       error
 }
 
-func (r *MockRootConfigBuilder) BuildRootConfigs(_ context.Context, _ event.Push) ([]*valid.MergedProjectCfg, error) {
+func (r *MockRootConfigBuilder) Build(_ context.Context, _ event.Push) ([]*valid.MergedProjectCfg, error) {
 	return r.rootConfigs, r.error
 }

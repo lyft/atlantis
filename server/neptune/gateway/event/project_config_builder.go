@@ -12,9 +12,7 @@ import (
 
 // repoFetcher manages a cloned repo's workspace on disk for running commands.
 type repoFetcher interface {
-	Fetch(baseRepo models.Repo, sha string, destination string) error
-	Cleanup(filePath string) error
-	GenerateDirPath(repoName string) string
+	Fetch(ctx context.Context, baseRepo models.Repo, sha string) (string, func(ctx context.Context, filePath string), error)
 }
 
 // hooksRunner runs preworkflow hooks for a given repository/commit
@@ -34,38 +32,29 @@ type rootFinder interface {
 	DetermineRoots(modifiedFiles []string, config valid.RepoCfg) ([]valid.Project, error)
 }
 
-// ParserValidator
+// parserValidator confi
 type parserValidator interface {
 	HasRepoCfg(absRepoDir string) (bool, error)
 	ParseRepoCfg(absRepoDir string, globalCfg valid.GlobalCfg, repoID string) (valid.RepoCfg, error)
 }
 
 type RootConfigBuilder struct {
-	RepoFetcher      repoFetcher
-	AutoplanFileList string
-	HooksRunner      hooksRunner
-	ParserValidator  parserValidator
-	RootFinder       rootFinder
-	FileFetcher      fileFetcher
-	GlobalCfg        valid.GlobalCfg
-	Logger           logging.Logger
+	RepoFetcher     repoFetcher
+	HooksRunner     hooksRunner
+	ParserValidator parserValidator
+	RootFinder      rootFinder
+	FileFetcher     fileFetcher
+	GlobalCfg       valid.GlobalCfg
+	Logger          logging.Logger
 }
 
-func (b *RootConfigBuilder) BuildRootConfigs(ctx context.Context, event Push) ([]*valid.MergedProjectCfg, error) {
+func (b *RootConfigBuilder) Build(ctx context.Context, event Push) ([]*valid.MergedProjectCfg, error) {
 	// Generate a new filepath location and clone repo into it
-	repoDir := b.RepoFetcher.GenerateDirPath(event.Repo.FullName)
-	err := b.RepoFetcher.Fetch(event.Repo, event.Sha, repoDir)
+	repoDir, deleteFn, err := b.RepoFetcher.Fetch(ctx, event.Repo, event.Sha)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("creating temporary clone at path: %s", repoDir))
 	}
-	deleteFn := func() {
-		if err := b.RepoFetcher.Cleanup(repoDir); err != nil {
-			b.Logger.ErrorContext(ctx, "failed deleting cloned repo", map[string]interface{}{
-				"err": err,
-			})
-		}
-	}
-	defer deleteFn()
+	defer deleteFn(ctx, repoDir)
 
 	// Run pre-workflow hooks
 	err = b.HooksRunner.Run(event.Repo, repoDir)

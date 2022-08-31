@@ -450,7 +450,7 @@ func (c *GatewayCreator) NewServer(userConfig server.UserConfig, config server.C
 	cfg := gateway.Config{
 		DataDir:             userConfig.DataDir,
 		AutoplanFileList:    userConfig.AutoplanFileList,
-		App:                 appConfig,
+		AppCfg:              appConfig,
 		RepoAllowList:       userConfig.RepoAllowlist,
 		MaxProjectsPerPR:    userConfig.MaxProjectsPerPR,
 		FFOwner:             userConfig.FFOwner,

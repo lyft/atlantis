@@ -51,7 +51,7 @@ import (
 type Config struct {
 	DataDir             string
 	AutoplanFileList    string
-	App                 githubapp.Config
+	AppCfg              githubapp.Config
 	RepoAllowList       string
 	MaxProjectsPerPR    int
 	FFOwner             string
@@ -284,17 +284,17 @@ func NewServer(config Config) (*Server, error) {
 	}
 	//TODO: add metrics
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
-		config.App,
+		config.AppCfg,
 		githubapp.WithClientMiddleware())
+
 	rootConfigBuilder := &event.RootConfigBuilder{
-		RepoFetcher:      repoFetcher,
-		AutoplanFileList: config.AutoplanFileList,
-		HooksRunner:      hooksRunner,
-		ParserValidator:  validator,
-		RootFinder:       &event.RepoRootFinder{},
-		FileFetcher:      &github.RemoteFileFetcher{ClientCreator: clientCreator},
-		GlobalCfg:        globalCfg,
-		Logger:           ctxLogger,
+		RepoFetcher:     repoFetcher,
+		HooksRunner:     hooksRunner,
+		ParserValidator: validator,
+		RootFinder:      &event.RepoRootFinder{},
+		FileFetcher:     &github.RemoteFileFetcher{ClientCreator: clientCreator},
+		GlobalCfg:       globalCfg,
+		Logger:          ctxLogger,
 	}
 
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(
