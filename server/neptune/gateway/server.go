@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
+	"github.com/runatlantis/atlantis/server/neptune/middleware"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
 	"io/ioutil"
@@ -282,10 +283,11 @@ func NewServer(config Config) (*Server, error) {
 		GlobalCfg:    globalCfg,
 		HookExecutor: &preworkflow.HookExecutor{},
 	}
-	//TODO: add metrics
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		config.AppCfg,
-		githubapp.WithClientMiddleware())
+		githubapp.WithClientMiddleware(
+			middleware.ClientMetrics(statsScope.SubScope("github")),
+		))
 
 	rootConfigBuilder := &event.RootConfigBuilder{
 		RepoFetcher:     repoFetcher,
