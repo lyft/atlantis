@@ -2,11 +2,15 @@ package activities
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/google/go-github/v45/github"
+	"github.com/hashicorp/go-getter"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"net/url"
+	"path"
+	"strings"
 )
 
 type githubActivities struct {
@@ -116,12 +120,54 @@ func (a *githubActivities) CreateCheckRun(ctx context.Context, request CreateChe
 	}, nil
 }
 
-type GithubRepoCloneRequest struct {
-	Repo           internal.Repo
-	Revision       string
-	DestinationDir string
+type CloneRepoRequest struct {
+	Repo            internal.Repo
+	RootPath        string
+	DestinationPath string
 }
 
-func (a *githubActivities) GithubRepoClone(ctx context.Context, request GithubRepoCloneRequest) error {
-	return nil
+// CloneRepoResponse empty for now,
+// but keeping it makes it easier to change in the future.
+type CloneRepoResponse struct{}
+
+func (a *githubActivities) CloneRepo(ctx context.Context, request CloneRepoRequest) (CloneRepoResponse, error) {
+	// Fetch link for zip
+	opts := &github.RepositoryContentGetOptions{
+		Ref: request.Repo.Ref,
+	}
+	client, err := a.ClientCreator.NewInstallationClient(request.Repo.Credentials.InstallationToken)
+	if err != nil {
+		return CloneRepoResponse{}, errors.Wrap(err, "creating installation client")
+	}
+	url, resp, err := client.Repositories.GetArchiveLink(ctx, request.Repo.Owner, request.Repo.Name, github.Zipball, opts, true)
+	if err != nil {
+		return CloneRepoResponse{}, errors.Wrap(err, "repository get contents")
+	}
+	if resp.StatusCode != 302 {
+		return CloneRepoResponse{}, errors.New("not found status returned on download contents")
+	}
+	// Fetch archive, unarchive contents into destination path, and remove out any unnecessary files
+	srcURL := buildSrcURL(url, request)
+	err = getter.GetAny(request.DestinationPath, srcURL, getter.WithContext(ctx))
+	if err != nil {
+		return CloneRepoResponse{}, errors.Wrapf(err, "fetching and unarchiving zip")
+	}
+	return CloneRepoResponse{}, nil
+}
+
+// buildSrcURL modifies fetched archive URL to add needed query/path modifications for the go-getter pkg to handle
+// un-archiving entire repo and fetching files only defined within rootPath
+func buildSrcURL(url *url.URL, request CloneRepoRequest) string {
+	// Append zip query param to trigger go-getter pkg to un-archive contents
+	queryParams := "archive=zip"
+	token := url.Query().Get("token")
+	if token != "" {
+		queryParams += fmt.Sprintf("&token=%s", token)
+	}
+	url.RawQuery = queryParams
+	// Subdirectory will exist under the name of the parent unarchived directory
+	archiveName := strings.Join([]string{request.Repo.Owner, request.Repo.Name, request.Repo.Ref}, "-")
+	subDirPath := path.Join(archiveName, request.RootPath)
+	url.Path = fmt.Sprintf("%s//%s", url.Path, subDirPath)
+	return url.String()
 }

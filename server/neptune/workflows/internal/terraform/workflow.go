@@ -43,7 +43,7 @@ func Workflow(ctx workflow.Context, request Request) error {
 }
 
 type workerActivities interface {
-	GithubRepoClone(context.Context, activities.GithubRepoCloneRequest) error
+	CloneRepo(context.Context, activities.CloneRepoRequest) (activities.CloneRepoResponse, error)
 	TerraformInit(context.Context, activities.TerraformInitRequest) error
 	TerraformPlan(context.Context, activities.TerraformPlanRequest) error
 	TerraformApply(context.Context, activities.TerraformApplyRequest) error
@@ -67,7 +67,8 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 
 func (r *Runner) Run(ctx workflow.Context) error {
 	// Clone repository into disk
-	err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, nil)
+	var cloneResp activities.CloneRepoResponse
+	err := workflow.ExecuteActivity(ctx, r.Activities.CloneRepo, activities.CloneRepoRequest{}).Get(ctx, cloneResp)
 	if err != nil {
 		return errors.Wrap(err, "executing GH repo clone")
 	}
