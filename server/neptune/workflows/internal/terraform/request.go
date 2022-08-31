@@ -2,10 +2,10 @@ package terraform
 
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
 type Request struct {
-	Root job.Root
+	Root root.Root
 	Repo github.RepoInstance
 }

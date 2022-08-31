@@ -1,4 +1,4 @@
-package run
+package cmd
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -17,7 +18,7 @@ type Runner struct {
 	Activity executeCommandActivities
 }
 
-func (r *Runner) Run(executionContext *job.ExecutionContext, rootInstance *job.RootInstance, step job.Step) (string, error) {
+func (r *Runner) Run(executionContext *job.ExecutionContext, rootInstance *root.RootInstance, step job.Step) (string, error) {
 	relPath, err := rootInstance.RelativePathFromRepo()
 	if err != nil {
 		return "", err

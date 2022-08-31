@@ -4,22 +4,23 @@ import (
 	"strings"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"go.temporal.io/sdk/workflow"
 )
 
 // stepRunner runs individual run steps
 type stepRunner interface {
-	Run(executionContext *job.ExecutionContext, rootInstance *job.RootInstance, step job.Step) (string, error)
+	Run(executionContext *job.ExecutionContext, rootInstance *root.RootInstance, step job.Step) (string, error)
 }
 
 type jobRunner struct {
 	EnvStepRunner stepRunner
-	RunStepRunner stepRunner
+	CmdStepRunner stepRunner
 }
 
 func NewRunner(runStepRunner stepRunner, envStepRunner stepRunner) *jobRunner {
 	return &jobRunner{
-		RunStepRunner: runStepRunner,
+		CmdStepRunner: runStepRunner,
 		EnvStepRunner: envStepRunner,
 	}
 }
@@ -27,22 +28,28 @@ func NewRunner(runStepRunner stepRunner, envStepRunner stepRunner) *jobRunner {
 func (r *jobRunner) Run(
 	ctx workflow.Context,
 	terraformJob job.Job,
-	rootInstance *job.RootInstance,
+	rootInstance *root.RootInstance,
 ) (string, error) {
 	var outputs []string
 
 	// Execution ctx for a job that handles setting up the env vars from the previous steps
-	jobExectionCtx := job.BuildExecutionContextFrom(ctx, *rootInstance, map[string]string{})
+	jobExecutionCtx := &job.ExecutionContext{
+		Context:   ctx,
+		Path:      rootInstance.Root.Path,
+		Envs:      map[string]string{},
+		TfVersion: rootInstance.Root.TfVersion,
+	}
+
 	for _, step := range terraformJob.Steps {
 		var out string
 		var err error
 
 		switch step.StepName {
 		case "run":
-			out, err = r.RunStepRunner.Run(jobExectionCtx, rootInstance, step)
+			out, err = r.CmdStepRunner.Run(jobExecutionCtx, rootInstance, step)
 		case "env":
-			out, err = r.EnvStepRunner.Run(jobExectionCtx, rootInstance, step)
-			jobExectionCtx.Envs[step.EnvVarName] = out
+			out, err = r.EnvStepRunner.Run(jobExecutionCtx, rootInstance, step)
+			jobExecutionCtx.Envs[step.EnvVarName] = out
 			// We reset out to the empty string because we don't want it to
 			// be printed to the PR, it's solely to set the environment variable.
 			out = ""

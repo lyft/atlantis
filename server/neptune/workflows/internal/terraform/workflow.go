@@ -7,9 +7,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	job_runner "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/cmd"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/env"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/run"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -20,7 +21,7 @@ type workerActivity struct {
 
 // jobRunner runs a deploy plan/apply job
 type jobRunner interface {
-	Run(ctx workflow.Context, job job.Job, rootInstance *job.RootInstance) (string, error)
+	Run(ctx workflow.Context, job job.Job, rootInstance *root.RootInstance) (string, error)
 }
 
 type PlanStatus int
@@ -75,16 +76,16 @@ type Runner struct {
 func newRunner(ctx workflow.Context, request Request) *Runner {
 	var a *workerActivity
 
-	runStepRunner := run.Runner{
+	cmdStepRunner := cmd.Runner{
 		Activity: a,
 	}
 	return &Runner{
 		Activities: a,
 		Request:    request,
 		JobRunner: job_runner.NewRunner(
-			&runStepRunner,
+			&cmdStepRunner,
 			&env.Runner{
-				RunRunner: runStepRunner,
+				CmdRunner: cmdStepRunner,
 			},
 		),
 	}
@@ -92,7 +93,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 
 func (r *Runner) Run(ctx workflow.Context) error {
 	// Root instance has all the metadata needed to execute a step in a root
-	rootInstance := job.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
+	rootInstance := root.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
 
 	// Clone repository into disk
 	err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, nil)
@@ -102,7 +103,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 	_, err = r.JobRunner.Run(ctx, r.Request.Root.Plan, rootInstance)
 	if err != nil {
-		return errors.Wrap(err, "running step")
+		return errors.Wrap(err, "running plan job")
 	}
 
 	// Wait for plan review signal
@@ -119,7 +120,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	// Run apply steps
 	_, err = r.JobRunner.Run(ctx, r.Request.Root.Apply, rootInstance)
 	if err != nil {
-		return errors.Wrap(err, "running step")
+		return errors.Wrap(err, "running apply job")
 	}
 
 	// Cleanup

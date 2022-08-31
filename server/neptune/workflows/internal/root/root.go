@@ -1,17 +1,18 @@
-package job
+package root
 
 import (
 	"path/filepath"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 )
 
 type Root struct {
 	Name      string
 	Path      string
 	TfVersion string
-	Apply     Job
-	Plan      Job
+	Apply     job.Job
+	Plan      job.Job
 }
 
 // Root Instance is a root at a certain commit with the repo info

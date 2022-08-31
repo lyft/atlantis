@@ -1,4 +1,4 @@
-package run_test
+package cmd_test
 
 import (
 	"context"
@@ -8,7 +8,8 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/run"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/cmd"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
@@ -26,7 +27,7 @@ const (
 )
 
 type request struct {
-	RootInstance job.RootInstance
+	RootInstance root.RootInstance
 	Step         job.Step
 }
 
@@ -45,14 +46,19 @@ func testWorkflow(ctx workflow.Context, r request) (string, error) {
 		ScheduleToCloseTimeout: 5 * time.Second,
 	})
 
-	jobExectionCtx := job.BuildExecutionContextFrom(ctx, r.RootInstance, map[string]string{})
+	jobExecutionCtx := &job.ExecutionContext{
+		Context:   ctx,
+		Path:      r.RootInstance.Root.Path,
+		Envs:      map[string]string{},
+		TfVersion: r.RootInstance.Root.TfVersion,
+	}
 
 	var a *testExecuteActivity
-	runStepRunner := run.Runner{
+	cmdStepRunner := cmd.Runner{
 		Activity: a,
 	}
 
-	return runStepRunner.Run(jobExectionCtx, &r.RootInstance, r.Step)
+	return cmdStepRunner.Run(jobExecutionCtx, &r.RootInstance, r.Step)
 }
 
 func TestRunRunner_ShouldSetupEnvVars(t *testing.T) {
@@ -77,8 +83,8 @@ func TestRunRunner_ShouldSetupEnvVars(t *testing.T) {
 	env.RegisterWorkflow(testWorkflow)
 
 	env.ExecuteWorkflow(testWorkflow, request{
-		RootInstance: job.RootInstance{
-			Root: job.Root{
+		RootInstance: root.RootInstance{
+			Root: root.Root{
 				Name: ProjectName,
 				Path: ProjectPath,
 			},

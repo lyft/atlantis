@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"go.temporal.io/sdk/temporal"
@@ -81,7 +82,7 @@ func newRunner(ctx workflow.Context, request Request, terraformWorkflow func(ctx
 			InstallationToken: request.Repository.Credentials.InstallationToken,
 		},
 	}
-	root := job.Root{
+	root := root.Root{
 		Name:  request.Root.Name,
 		Apply: job.Job{Steps: convertToInternalSteps(request.Root.Apply.Steps)},
 		Plan:  job.Job{Steps: convertToInternalSteps(request.Root.Plan.Steps)},

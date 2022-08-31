@@ -8,8 +8,9 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/cmd"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/env"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/run"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
@@ -28,7 +29,7 @@ const (
 )
 
 type request struct {
-	RootInstance job.RootInstance
+	RootInstance root.RootInstance
 	Step         job.Step
 }
 
@@ -44,16 +45,21 @@ func testWorkflow(ctx workflow.Context, r request) (string, error) {
 		ScheduleToCloseTimeout: 5 * time.Second,
 	})
 
-	jobExectionCtx := job.BuildExecutionContextFrom(ctx, r.RootInstance, map[string]string{})
+	jobExecutionCtx := &job.ExecutionContext{
+		Context:   ctx,
+		Path:      r.RootInstance.Root.Path,
+		Envs:      map[string]string{},
+		TfVersion: r.RootInstance.Root.TfVersion,
+	}
 
 	var a *testExecuteActivity
 	envStepRunner := env.Runner{
-		RunRunner: run.Runner{
+		CmdRunner: cmd.Runner{
 			Activity: a,
 		},
 	}
 
-	return envStepRunner.Run(jobExectionCtx, &r.RootInstance, r.Step)
+	return envStepRunner.Run(jobExecutionCtx, &r.RootInstance, r.Step)
 }
 
 func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
@@ -84,8 +90,8 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 	}, nil)
 
 	env.ExecuteWorkflow(testWorkflow, request{
-		RootInstance: job.RootInstance{
-			Root: job.Root{
+		RootInstance: root.RootInstance{
+			Root: root.Root{
 				Name: ProjectName,
 				Path: ProjectPath,
 			},
@@ -116,7 +122,7 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 
 func TestEnvRunne_EnvVarValueSet(t *testing.T) {
 	executioncontext := &job.ExecutionContext{}
-	rootInstance := &job.RootInstance{}
+	rootInstance := &root.RootInstance{}
 
 	step := job.Step{
 		EnvVarName:  "TEST_VAR",

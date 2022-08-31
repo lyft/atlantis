@@ -12,15 +12,6 @@ type ExecutionContext struct {
 	workflow.Context
 }
 
-func BuildExecutionContextFrom(ctx workflow.Context, rootInstance RootInstance, envs map[string]string) *ExecutionContext {
-	return &ExecutionContext{
-		Context:   ctx,
-		Path:      rootInstance.Root.Path,
-		Envs:      envs,
-		TfVersion: rootInstance.Root.TfVersion,
-	}
-}
-
 type Job struct {
 	Steps []Step
 }
