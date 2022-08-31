@@ -15,7 +15,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	jobmocks "github.com/runatlantis/atlantis/server/jobs/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
-	fmocks "github.com/runatlantis/atlantis/server/lyft/feature/mocks"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -45,12 +44,9 @@ func TestDefaultClient_Synchronous_RunCommandWithVersion(t *testing.T) {
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          mockBuilder,
 	}
-	allocator := fmocks.NewMockAllocator()
-
 	client := &DefaultClient{
-		commandBuilder:   mockBuilder,
-		AsyncClient:      asyncClient,
-		featureAllocator: allocator,
+		commandBuilder: mockBuilder,
+		AsyncClient:    asyncClient,
 	}
 	When(mockBuilder.Build(nil, workspace, path, args)).ThenReturn(echoCommand, nil)
 
@@ -121,12 +117,10 @@ func TestDefaultClient_Synchronous_RunCommandWithVersion_Error(t *testing.T) {
 		projectCmdOutputHandler: projectCmdOutputHandler,
 		commandBuilder:          mockBuilder,
 	}
-	allocator := fmocks.NewMockAllocator()
 
 	client := &DefaultClient{
-		commandBuilder:   mockBuilder,
-		AsyncClient:      asyncClient,
-		featureAllocator: allocator,
+		commandBuilder: mockBuilder,
+		AsyncClient:    asyncClient,
 	}
 
 	When(mockBuilder.Build(nil, workspace, path, args)).ThenReturn(echoCommand, nil)
