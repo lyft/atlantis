@@ -139,6 +139,7 @@ func (a *githubActivities) CloneRepo(ctx context.Context, request CloneRepoReque
 	if err != nil {
 		return CloneRepoResponse{}, errors.Wrap(err, "creating installation client")
 	}
+	// note: this link exists for 5 minutes
 	url, resp, err := client.Repositories.GetArchiveLink(ctx, request.Repo.Owner, request.Repo.Name, github.Zipball, opts, true)
 	if err != nil {
 		return CloneRepoResponse{}, errors.Wrap(err, "repository get contents")
@@ -146,8 +147,8 @@ func (a *githubActivities) CloneRepo(ctx context.Context, request CloneRepoReque
 	if resp.StatusCode != 302 {
 		return CloneRepoResponse{}, errors.New("not found status returned on download contents")
 	}
-	// Fetch archive, unarchive contents into destination path, and remove out any unnecessary files
 	srcURL := buildSrcURL(url, request)
+	// Library fetches archive, extracts contents into destination path, and removes any unnecessary files
 	err = getter.GetAny(request.DestinationPath, srcURL, getter.WithContext(ctx))
 	if err != nil {
 		return CloneRepoResponse{}, errors.Wrapf(err, "fetching and unarchiving zip")
@@ -155,8 +156,9 @@ func (a *githubActivities) CloneRepo(ctx context.Context, request CloneRepoReque
 	return CloneRepoResponse{}, nil
 }
 
+// TODO: consider extract this logic out to separate interface
 // buildSrcURL modifies fetched archive URL to add needed query/path modifications for the go-getter pkg to handle
-// un-archiving entire repo and fetching files only defined within rootPath
+// extracting the entire repo and fetching files only defined within rootPath
 func buildSrcURL(url *url.URL, request CloneRepoRequest) string {
 	// Append zip query param to trigger go-getter pkg to un-archive contents
 	queryParams := "archive=zip"

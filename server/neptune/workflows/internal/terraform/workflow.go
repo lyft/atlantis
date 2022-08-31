@@ -68,7 +68,11 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 func (r *Runner) Run(ctx workflow.Context) error {
 	// Clone repository into disk
 	var cloneResp activities.CloneRepoResponse
-	err := workflow.ExecuteActivity(ctx, r.Activities.CloneRepo, activities.CloneRepoRequest{}).Get(ctx, cloneResp)
+	err := workflow.ExecuteActivity(ctx, r.Activities.CloneRepo, activities.CloneRepoRequest{
+		Repo:            r.Request.Repo,
+		RootPath:        "", // TODO: use root path from root instance
+		DestinationPath: "", // TODO: generate destination path within workflow and pass along to tf activities
+	}).Get(ctx, cloneResp)
 	if err != nil {
 		return errors.Wrap(err, "executing GH repo clone")
 	}
