@@ -9,10 +9,9 @@ import (
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/steps"
-	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
+	terraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	tClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
@@ -22,6 +21,10 @@ import (
 type workerActivities interface {
 	FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error)
 	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
+}
+
+type stateReceiver interface {
+	Receive(c workflow.ReceiveChannel, checkRunID int64)
 }
 
 type WorkerState string
@@ -38,8 +41,8 @@ type Worker struct {
 	Repo                   github.Repo
 	Root                   steps.Root
 	TemporalClient         tClient.Client
-	TerraformStateReceiver terraform.StateReceiver
-	TerraformWorkflow      func(ctx workflow.Context, request terraformWorkflow.Request) error
+	TerraformStateReceiver stateReceiver
+	TerraformWorkflow      func(ctx workflow.Context, request terraform.Request) error
 
 	// mutable
 	state WorkerState
@@ -114,7 +117,7 @@ func (w *Worker) work(ctx workflow.Context, revision string, checkRunID int64) e
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		WorkflowID: id.String(),
 	})
-	terraformWorkflowRequest := terraformWorkflow.Request{
+	terraformWorkflowRequest := terraform.Request{
 		Repo: w.Repo,
 		Root: w.Root,
 	}
@@ -146,7 +149,7 @@ func (w *Worker) awaitTerraformWorkflow(ctx workflow.Context, future workflow.Ch
 			break
 		}
 	}
-	
+
 	if err != nil {
 		return errors.Wrap(err, "executing terraform workflow")
 	}

@@ -22,6 +22,14 @@ type StateReceiver struct {
 	activity activity
 }
 
+func NewStateReceiver(ctx workflow.Context, repo github.Repo, a activity) *StateReceiver {
+	return &StateReceiver{
+		ctx:      ctx,
+		repo:     repo,
+		activity: a,
+	}
+}
+
 func (n *StateReceiver) Receive(c workflow.ReceiveChannel, checkRunID int64) {
 	var workflowState *state.Workflow
 	c.Receive(n.ctx, &workflowState)

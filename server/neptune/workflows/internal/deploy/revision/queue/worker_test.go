@@ -156,8 +156,8 @@ func TestWorker_updatesChecks(t *testing.T) {
 	}).Return(activities.UpdateCheckRunResponse{}, nil)
 
 	env.OnActivity(testActivities.UpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
-		Title: "atlantis/deploy",
-		State: github.CheckRunComplete,
+		Title:      "atlantis/deploy",
+		State:      github.CheckRunComplete,
 		Conclusion: github.CheckRunSuccess,
 		Repo: github.Repo{
 			Name:  "hello",
