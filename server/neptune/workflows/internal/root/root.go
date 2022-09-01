@@ -1,8 +1,6 @@
 package root
 
 import (
-	"path/filepath"
-
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 )

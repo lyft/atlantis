@@ -1,7 +1,6 @@
 package terraform
 
 import (
-	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -14,7 +13,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type workerActivity struct {
+type workflowActivities struct {
 	*activities.Terraform
 	*activities.Github
 }
@@ -57,24 +56,14 @@ func Workflow(ctx workflow.Context, request Request) error {
 	return runner.Run(ctx)
 }
 
-type workerActivities interface {
-	GithubRepoClone(context.Context, activities.GithubRepoCloneRequest) error
-	TerraformInit(context.Context, activities.TerraformInitRequest) error
-	TerraformPlan(context.Context, activities.TerraformPlanRequest) error
-	TerraformApply(context.Context, activities.TerraformApplyRequest) error
-	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error)
-	Notify(context.Context, activities.NotifyRequest) error
-	Cleanup(context.Context, activities.CleanupRequest) error
-}
-
 type Runner struct {
-	Activities workerActivities
+	Activities *workflowActivities
 	JobRunner  jobRunner
 	Request    Request
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
-	var a *workerActivity
+	var a *workflowActivities
 
 	cmdStepRunner := cmd.Runner{
 		Activity: a,
