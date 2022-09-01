@@ -76,6 +76,9 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 			InstallationToken: request.Repository.Credentials.InstallationToken,
 		},
 	}
+
+	// TODO: We should actually probably pass this with the revision because a revision
+	// can potentially change a root configuration
 	root := root.Root{
 		Name:  request.Root.Name,
 		Apply: job.Job{Steps: convertToInternalSteps(request.Root.Apply.Steps)},

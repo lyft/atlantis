@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -14,7 +13,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type testTerraformWorkflowRunner struct {}
+type testTerraformWorkflowRunner struct{}
 
 func (r testTerraformWorkflowRunner) Run(ctx workflow.Context, checkRunID int64, revision string, root root.Root) error {
 	return nil
@@ -34,10 +33,6 @@ type queueAndState struct {
 	State        queue.WorkerState
 }
 
-func emptyTerraformWorkflow(ctx workflow.Context, r terraform.Request) error {
-	return nil
-}
-
 func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		ScheduleToCloseTimeout: 5 * time.Second,
@@ -50,7 +45,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	}
 
 	worker := queue.Worker{
-		Queue:      q,
+		Queue:                   q,
 		TerraformWorkflowRunner: &testTerraformWorkflowRunner{},
 		Repo: github.Repo{
 			Name:  "hello",
