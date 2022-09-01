@@ -62,36 +62,39 @@ func (p *ParserValidator) hasRepoCfg(absRepoDir string) (bool, error) {
 func (p *ParserValidator) parseRepoCfgData(repoCfgData []byte, repoID string) (valid.RepoCfg, error) {
 	var rawConfig raw.RepoCfg
 	if err := yaml.UnmarshalStrict(repoCfgData, &rawConfig); err != nil {
-		return valid.RepoCfg{}, err
+		return valid.RepoCfg{}, errors.Wrap(err, "unmarshalling repo cfg yaml")
 	}
 
 	// Set ErrorTag to yaml so it uses the YAML field names in error messages.
 	validation.ErrorTag = "yaml"
 	if err := rawConfig.Validate(); err != nil {
-		return valid.RepoCfg{}, err
+		return valid.RepoCfg{}, errors.Wrap(err, "validating raw config")
 	}
 
 	validConfig := rawConfig.ToValid()
 	// We do the project name validation after we get the valid config because
 	// we need the defaults of dir and workspace to be populated.
 	if err := p.validateProjectNames(validConfig); err != nil {
-		return valid.RepoCfg{}, err
+		return valid.RepoCfg{}, errors.Wrap(err, "validating project names")
 	}
-	if validConfig.Version == 2 {
-		// The only difference between v2 and v3 is how we parse custom run
-		// commands.
-		if err := p.applyLegacyShellParsing(&validConfig); err != nil {
-			return validConfig, err
-		}
+	if validConfig.Version != 2 {
+		err := p.GlobalCfg.ValidateRepoCfg(validConfig, repoID)
+		return validConfig, errors.Wrap(err, "validating repo cfg")
+	}
+	// The only difference between v2 and v3 is how we parse custom run
+	// commands.
+	if err := p.applyLegacyShellParsing(&validConfig); err != nil {
+		return validConfig, errors.Wrap(err, "applying legacy shell parsing")
 	}
 	err := p.GlobalCfg.ValidateRepoCfg(validConfig, repoID)
-	return validConfig, err
+	return validConfig, errors.Wrap(err, "validating repo cfg")
 }
 
 func (p *ParserValidator) repoCfgPath(repoDir, cfgFilename string) string {
 	return filepath.Join(repoDir, cfgFilename)
 }
 
+// TODO: rename to root
 func (p *ParserValidator) validateProjectNames(config valid.RepoCfg) error {
 	// First, validate that all names are unique.
 	seen := make(map[string]bool)
@@ -133,13 +136,14 @@ func (p *ParserValidator) validateProjectNames(config valid.RepoCfg) error {
 // parsing method with shlex.Split().
 func (p *ParserValidator) applyLegacyShellParsing(cfg *valid.RepoCfg) error {
 	legacyParseF := func(s *valid.Step) error {
-		if s.StepName == "run" {
-			split, err := shlex.Split(s.RunCommand)
-			if err != nil {
-				return errors.Wrapf(err, "unable to parse %q", s.RunCommand)
-			}
-			s.RunCommand = strings.Join(split, " ")
+		if s.StepName != "run" {
+			return nil
 		}
+		split, err := shlex.Split(s.RunCommand)
+		if err != nil {
+			return errors.Wrapf(err, "unable to parse %q", s.RunCommand)
+		}
+		s.RunCommand = strings.Join(split, " ")
 		return nil
 	}
 
