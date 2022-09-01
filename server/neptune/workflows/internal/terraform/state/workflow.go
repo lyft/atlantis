@@ -4,7 +4,7 @@ import "net/url"
 
 type JobStatus string
 
-const WorkflowStateChangeSignal = "workflow-state-change"
+const WorkflowStateChangeSignal = "terraform-workflow-state-change"
 
 const (
 	InProgressJobStatus JobStatus = "in-progress"
