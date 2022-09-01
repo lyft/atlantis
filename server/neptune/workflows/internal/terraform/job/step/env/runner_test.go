@@ -30,7 +30,7 @@ const (
 
 type request struct {
 	LocalRoot root.LocalRoot
-	Step         job.Step
+	Step      job.Step
 }
 
 type testExecuteActivity struct {
@@ -121,7 +121,7 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 
 func TestEnvRunne_EnvVarValueSet(t *testing.T) {
 	executioncontext := &job.ExecutionContext{}
-	rootInstance := &root.LocalRoot{}
+	localRoot := &root.LocalRoot{}
 
 	step := job.Step{
 		EnvVarName:  "TEST_VAR",
@@ -130,7 +130,7 @@ func TestEnvRunne_EnvVarValueSet(t *testing.T) {
 
 	runner := env.Runner{}
 
-	out, err := runner.Run(executioncontext, rootInstance, step)
+	out, err := runner.Run(executioncontext, localRoot, step)
 	assert.Nil(t, err)
 	assert.Equal(t, out, step.EnvVarValue)
 }

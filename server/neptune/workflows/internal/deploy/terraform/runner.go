@@ -64,9 +64,11 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 		return errors.Wrap(err, "getting child workflow execution")
 	}
 
-	ch := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
-
 	selector := workflow.NewSelector(ctx)
+
+	// our child workflow will signal us when there is a state change which we will
+	// handle accordingly
+	ch := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
 	selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {
 		r.StateReceiver.Receive(ctx, c, checkRunID)
 	})

@@ -73,7 +73,8 @@ func determineCheckRunStateAndConclusionFromJob(jobState *state.Job) (github.Che
 	case state.SuccessJobStatus:
 		checkRunState = github.CheckRunComplete
 		checkRunConclusion = github.CheckRunSuccess
-	case state.FailedJobStatus:
+	// applies can be rejected manually and atm we consider these failures
+	case state.FailedJobStatus, state.RejectedJobStatus:
 		checkRunState = github.CheckRunComplete
 		checkRunConclusion = github.CheckRunFailure
 	}

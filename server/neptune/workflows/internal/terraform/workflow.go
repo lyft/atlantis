@@ -20,7 +20,7 @@ type workflowActivities struct {
 
 // jobRunner runs a deploy plan/apply job
 type jobRunner interface {
-	Run(ctx workflow.Context, job job.Job, rootInstance *root.LocalRoot) (string, error)
+	Run(ctx workflow.Context, job job.Job, localRoot *root.LocalRoot) (string, error)
 }
 
 type PlanStatus int
