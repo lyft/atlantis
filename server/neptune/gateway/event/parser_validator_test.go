@@ -1,7 +1,6 @@
 package event_test
 
 import (
-	"fmt"
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
@@ -141,35 +140,6 @@ projects:
 - dir: "."
 `,
 			expErr: "version: is required. If you've just upgraded Atlantis you need to rewrite your atlantis.yaml for version 3. See www.runatlantis.io/docs/upgrading-atlantis-yaml.html.",
-		},
-		{
-			description: "version 2",
-			input: `
-version: 2
-workflows:
- custom:
-   plan:
-     steps:
-     - run: old 'shell parsing'
-`,
-			exp: valid.RepoCfg{
-				Version: 2,
-				Workflows: map[string]valid.Workflow{
-					"custom": {
-						Name:        "custom",
-						Apply:       valid.DefaultApplyStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
-						Plan: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:   "run",
-									RunCommand: "old shell parsing",
-								},
-							},
-						},
-					},
-				},
-			},
 		},
 
 		// Projects key.
@@ -1094,68 +1064,4 @@ workflows:
 
 	_, err = r.ParseRepoCfg(tmpDir, "repo_id")
 	assert.ErrorContains(t, err, "repo config not allowed to set 'workflow' key: server-side config needs 'allowed_overrides: [workflow]'")
-}
-
-// Test legacy shell parsing vs v3 parsing.
-func TestParseRepoCfg_V2ShellParsing(t *testing.T) {
-	cases := []struct {
-		in       string
-		expV2    string
-		expV2Err string
-	}{
-		{
-			in:    "echo a b",
-			expV2: "echo a b",
-		},
-		{
-			in:    "echo 'a b'",
-			expV2: "echo a b",
-		},
-		{
-			in:       "echo 'a b",
-			expV2Err: "unable to parse \"echo 'a b\": EOF found when expecting closing quote.",
-		},
-		{
-			in:    `mkdir a/b/c || printf \'your main.tf file does not provide default region.\\ncheck\'`,
-			expV2: `mkdir a/b/c || printf 'your main.tf file does not provide default region.\ncheck'`,
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.in, func(t *testing.T) {
-			v2Dir, cleanup2 := TempDir(t)
-			defer cleanup2()
-			v3Dir, cleanup3 := TempDir(t)
-			defer cleanup3()
-			v2Path := filepath.Join(v2Dir, "atlantis.yaml")
-			v3Path := filepath.Join(v3Dir, "atlantis.yaml")
-			cfg := fmt.Sprintf(`workflows:
- custom:
-   plan:
-     steps:
-     - run: %s
-   apply:
-     steps:
-     - run: %s`, c.in, c.in)
-			assert.NoError(t, ioutil.WriteFile(v2Path, []byte("version: 2\n"+cfg), 0600))
-			assert.NoError(t, ioutil.WriteFile(v3Path, []byte("version: 3\n"+cfg), 0600))
-
-			p := &event.ParserValidator{
-				GlobalCfg: globalConfig,
-			}
-
-			v2Cfg, err := p.ParseRepoCfg(v2Dir, "")
-			if c.expV2Err != "" {
-				assert.ErrorContains(t, err, c.expV2Err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, c.expV2, v2Cfg.Workflows["custom"].Plan.Steps[0].RunCommand)
-				assert.Equal(t, c.expV2, v2Cfg.Workflows["custom"].Apply.Steps[0].RunCommand)
-			}
-			v3Cfg, err := p.ParseRepoCfg(v3Dir, "")
-			assert.NoError(t, err)
-			assert.Equal(t, c.in, v3Cfg.Workflows["custom"].Plan.Steps[0].RunCommand)
-			assert.Equal(t, c.in, v3Cfg.Workflows["custom"].Apply.Steps[0].RunCommand)
-		})
-	}
 }

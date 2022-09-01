@@ -117,7 +117,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:    testSignaler,
 			Logger:            logger,
-			RootConfigBuilder: &MockRootConfigBuilder{},
+			RootConfigBuilder: &mockRootConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -156,7 +156,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:    testSignaler,
 			Logger:            logger,
-			RootConfigBuilder: &MockRootConfigBuilder{},
+			RootConfigBuilder: &mockRootConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -196,7 +196,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:    testSignaler,
 			Logger:            logger,
-			RootConfigBuilder: &MockRootConfigBuilder{},
+			RootConfigBuilder: &mockRootConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -248,7 +248,7 @@ func TestHandlePushEvent(t *testing.T) {
 			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:    testSignaler,
 			Logger:            logger,
-			RootConfigBuilder: &MockRootConfigBuilder{},
+			RootConfigBuilder: &mockRootConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -273,7 +273,7 @@ func TestHandlePushEvent(t *testing.T) {
 			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
 			TemporalClient:    testSignaler,
 			Logger:            logger,
-			RootConfigBuilder: &MockRootConfigBuilder{},
+			RootConfigBuilder: &mockRootConfigBuilder{},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -331,7 +331,7 @@ func TestHandlePushEvent(t *testing.T) {
 		rootCfgs := []*valid.MergedProjectCfg{
 			&rootCfg,
 		}
-		rootConfigBuilder := &MockRootConfigBuilder{
+		rootConfigBuilder := &mockRootConfigBuilder{
 			rootConfigs: rootCfgs,
 		}
 		handler := event.PushHandler{
@@ -399,7 +399,7 @@ func TestHandlePushEvent(t *testing.T) {
 		rootCfgs := []*valid.MergedProjectCfg{
 			&rootCfg,
 		}
-		rootConfigBuilder := &MockRootConfigBuilder{
+		rootConfigBuilder := &mockRootConfigBuilder{
 			rootConfigs: rootCfgs,
 		}
 		handler := event.PushHandler{
@@ -431,11 +431,11 @@ func convertTestSteps(steps []valid.Step) []workflows.Step {
 	return convertedSteps
 }
 
-type MockRootConfigBuilder struct {
+type mockRootConfigBuilder struct {
 	rootConfigs []*valid.MergedProjectCfg
 	error       error
 }
 
-func (r *MockRootConfigBuilder) Build(_ context.Context, _ event.Push) ([]*valid.MergedProjectCfg, error) {
+func (r *mockRootConfigBuilder) Build(_ context.Context, _ event.Push) ([]*valid.MergedProjectCfg, error) {
 	return r.rootConfigs, r.error
 }

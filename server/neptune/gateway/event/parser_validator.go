@@ -77,15 +77,6 @@ func (p *ParserValidator) parseRepoCfgData(repoCfgData []byte, repoID string) (v
 	if err := p.validateProjectNames(validConfig); err != nil {
 		return valid.RepoCfg{}, errors.Wrap(err, "validating project names")
 	}
-	if validConfig.Version != 2 {
-		err := p.GlobalCfg.ValidateRepoCfg(validConfig, repoID)
-		return validConfig, errors.Wrap(err, "validating repo cfg")
-	}
-	// The only difference between v2 and v3 is how we parse custom run
-	// commands.
-	if err := p.applyLegacyShellParsing(&validConfig); err != nil {
-		return validConfig, errors.Wrap(err, "applying legacy shell parsing")
-	}
 	err := p.GlobalCfg.ValidateRepoCfg(validConfig, repoID)
 	return validConfig, errors.Wrap(err, "validating repo cfg")
 }

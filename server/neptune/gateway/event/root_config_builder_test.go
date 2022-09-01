@@ -28,11 +28,11 @@ func setupTesting(t *testing.T) {
 	}
 	// creates a default PCB to used in each test; individual tests mutate a specific field to test certain functionalities
 	rcb = event.RootConfigBuilder{
-		RepoFetcher:     &MockRepoFetcher{},
-		HooksRunner:     &MockHooksRunner{},
-		ParserValidator: &MockParserValidator{},
-		RootFinder:      &MockRootFinder{},
-		FileFetcher:     &MockFileFetcher{},
+		RepoFetcher:     &mockRepoFetcher{},
+		HooksRunner:     &mockHooksRunner{},
+		ParserValidator: &mockParserValidator{},
+		RootFinder:      &mockRootFinder{},
+		FileFetcher:     &mockFileFetcher{},
 		GlobalCfg:       globalCfg,
 		Logger:          logging.NewNoopCtxLogger(t),
 	}
@@ -45,7 +45,7 @@ func TestRootConfigBuilder_Success(t *testing.T) {
 			Name: &pushEvent.Repo.FullName,
 		},
 	}
-	rcb.RootFinder = &MockRootFinder{
+	rcb.RootFinder = &mockRootFinder{
 		ConfigProjects: projects,
 	}
 	projCfg := globalCfg.MergeProjectCfg(pushEvent.Repo.ID(), projects[0], valid.RepoCfg{})
@@ -59,7 +59,7 @@ func TestRootConfigBuilder_Success(t *testing.T) {
 
 func TestRootConfigBuilder_DetermineRootsError(t *testing.T) {
 	setupTesting(t)
-	mockRootFinder := &MockRootFinder{
+	mockRootFinder := &mockRootFinder{
 		error: expectedErr,
 	}
 	rcb.RootFinder = mockRootFinder
@@ -71,7 +71,7 @@ func TestRootConfigBuilder_DetermineRootsError(t *testing.T) {
 
 func TestRootConfigBuilder_ParserValidatorParseError(t *testing.T) {
 	setupTesting(t)
-	mockParserValidator := &MockParserValidator{
+	mockParserValidator := &mockParserValidator{
 		error: expectedErr,
 	}
 	rcb.ParserValidator = mockParserValidator
@@ -83,7 +83,7 @@ func TestRootConfigBuilder_ParserValidatorParseError(t *testing.T) {
 
 func TestRootConfigBuilder_GetModifiedFilesError(t *testing.T) {
 	setupTesting(t)
-	rcb.FileFetcher = &MockFileFetcher{
+	rcb.FileFetcher = &mockFileFetcher{
 		error: expectedErr,
 	}
 	projectConfigs, err := rcb.Build(context.Background(), pushEvent)
@@ -93,7 +93,7 @@ func TestRootConfigBuilder_GetModifiedFilesError(t *testing.T) {
 
 func TestRootConfigBuilder_CloneError(t *testing.T) {
 	setupTesting(t)
-	rcb.RepoFetcher = &MockRepoFetcher{
+	rcb.RepoFetcher = &mockRepoFetcher{
 		cloneError: expectedErr,
 	}
 	projectConfigs, err := rcb.Build(context.Background(), pushEvent)
@@ -104,7 +104,7 @@ func TestRootConfigBuilder_CloneError(t *testing.T) {
 
 func TestRootConfigBuilder_HooksRunnerError(t *testing.T) {
 	setupTesting(t)
-	mockHooksRunner := &MockHooksRunner{
+	mockHooksRunner := &mockHooksRunner{
 		error: expectedErr,
 	}
 	rcb.HooksRunner = mockHooksRunner
@@ -116,45 +116,45 @@ func TestRootConfigBuilder_HooksRunnerError(t *testing.T) {
 
 // Mock implementations
 
-type MockRepoFetcher struct {
+type mockRepoFetcher struct {
 	dirPath    string
 	cloneError error
 }
 
-func (r *MockRepoFetcher) Fetch(_ context.Context, _ models.Repo, _ string) (string, func(ctx context.Context, filePath string), error) {
+func (r *mockRepoFetcher) Fetch(_ context.Context, _ models.Repo, _ string) (string, func(ctx context.Context, filePath string), error) {
 	return "", func(ctx context.Context, filePath string) {}, r.cloneError
 }
 
-type MockHooksRunner struct {
+type mockHooksRunner struct {
 	error error
 }
 
-func (h *MockHooksRunner) Run(_ models.Repo, _ string) error {
+func (h *mockHooksRunner) Run(_ models.Repo, _ string) error {
 	return h.error
 }
 
-type MockFileFetcher struct {
+type mockFileFetcher struct {
 	error error
 }
 
-func (f *MockFileFetcher) GetModifiedFilesFromCommit(_ context.Context, _ models.Repo, _ string, _ int64) ([]string, error) {
+func (f *mockFileFetcher) GetModifiedFilesFromCommit(_ context.Context, _ models.Repo, _ string, _ int64) ([]string, error) {
 	return nil, f.error
 }
 
-type MockRootFinder struct {
+type mockRootFinder struct {
 	ConfigProjects []valid.Project
 	error          error
 }
 
-func (m *MockRootFinder) DetermineRoots(_ []string, _ valid.RepoCfg) ([]valid.Project, error) {
+func (m *mockRootFinder) FindRoots(_ []string, _ valid.RepoCfg) ([]valid.Project, error) {
 	return m.ConfigProjects, m.error
 }
 
-type MockParserValidator struct {
+type mockParserValidator struct {
 	repoCfg valid.RepoCfg
 	error   error
 }
 
-func (v *MockParserValidator) ParseRepoCfg(_ string, _ string) (valid.RepoCfg, error) {
+func (v *mockParserValidator) ParseRepoCfg(_ string, _ string) (valid.RepoCfg, error) {
 	return v.repoCfg, v.error
 }

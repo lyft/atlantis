@@ -27,9 +27,9 @@ type fileFetcher interface {
 
 // rootFinder determines which roots were modified in a given event.
 type rootFinder interface {
-	// DetermineRoots returns the list of roots that were modified
+	// FindRoots returns the list of roots that were modified
 	// based on modifiedFiles and the repo's config.
-	DetermineRoots(modifiedFiles []string, config valid.RepoCfg) ([]valid.Project, error)
+	FindRoots(modifiedFiles []string, config valid.RepoCfg) ([]valid.Project, error)
 }
 
 // parserValidator config builds repo specific configurations
@@ -49,11 +49,11 @@ type RootConfigBuilder struct {
 
 func (b *RootConfigBuilder) Build(ctx context.Context, event Push) ([]*valid.MergedProjectCfg, error) {
 	// Generate a new filepath location and clone repo into it
-	repoDir, deleteFn, err := b.RepoFetcher.Fetch(ctx, event.Repo, event.Sha)
+	repoDir, cleanup, err := b.RepoFetcher.Fetch(ctx, event.Repo, event.Sha)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("creating temporary clone at path: %s", repoDir))
 	}
-	defer deleteFn(ctx, repoDir)
+	defer cleanup(ctx, repoDir)
 
 	// Run pre-workflow hooks
 	err = b.HooksRunner.Run(event.Repo, repoDir)
@@ -74,7 +74,7 @@ func (b *RootConfigBuilder) Build(ctx context.Context, event Push) ([]*valid.Mer
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing %s", config.AtlantisYAMLFilename)
 	}
-	matchingRoots, err := b.RootFinder.DetermineRoots(modifiedFiles, repoCfg)
+	matchingRoots, err := b.RootFinder.FindRoots(modifiedFiles, repoCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "determining roots")
 	}
