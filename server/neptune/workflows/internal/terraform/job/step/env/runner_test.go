@@ -47,7 +47,7 @@ func testWorkflow(ctx workflow.Context, r request) (string, error) {
 
 	jobExecutionCtx := &job.ExecutionContext{
 		Context:   ctx,
-		Path:      r.LocalRoot.Root.Path,
+		Path:      ProjectPath,
 		Envs:      map[string]string{},
 		TfVersion: r.LocalRoot.Root.TfVersion,
 	}
@@ -93,7 +93,7 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 		LocalRoot: root.LocalRoot{
 			Root: root.Root{
 				Name: ProjectName,
-				Path: ProjectPath,
+				Path: "project",
 			},
 			Repo: github.Repo{
 				Name:  RepoName,

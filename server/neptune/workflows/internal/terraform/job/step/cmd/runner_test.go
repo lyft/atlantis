@@ -28,7 +28,7 @@ const (
 
 type request struct {
 	LocalRoot root.LocalRoot
-	Step         job.Step
+	Step      job.Step
 }
 
 type testExecuteActivity struct {
@@ -48,7 +48,7 @@ func testWorkflow(ctx workflow.Context, r request) (string, error) {
 
 	jobExecutionCtx := &job.ExecutionContext{
 		Context:   ctx,
-		Path:      r.LocalRoot.Root.Path,
+		Path:      ProjectPath,
 		Envs:      map[string]string{},
 		TfVersion: r.LocalRoot.Root.TfVersion,
 	}
@@ -86,7 +86,7 @@ func TestRunRunner_ShouldSetupEnvVars(t *testing.T) {
 		LocalRoot: root.LocalRoot{
 			Root: root.Root{
 				Name: ProjectName,
-				Path: ProjectPath,
+				Path: "project",
 			},
 			Repo: github.Repo{
 				Name:  RepoName,
