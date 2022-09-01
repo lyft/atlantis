@@ -34,8 +34,7 @@ type rootFinder interface {
 
 // parserValidator config builds repo specific configurations
 type parserValidator interface {
-	HasRepoCfg(absRepoDir string) (bool, error)
-	ParseRepoCfg(absRepoDir string, globalCfg valid.GlobalCfg, repoID string) (valid.RepoCfg, error)
+	ParseRepoCfg(absRepoDir string, repoID string) (valid.RepoCfg, error)
 }
 
 type RootConfigBuilder struct {
@@ -68,32 +67,20 @@ func (b *RootConfigBuilder) Build(ctx context.Context, event Push) ([]*valid.Mer
 		return nil, errors.Wrapf(err, "finding modified files: %s", modifiedFiles)
 	}
 
-	// Validate rep cfg file exists
-	hasRepoCfg, err := b.ParserValidator.HasRepoCfg(repoDir)
-	if err != nil {
-		return nil, errors.Wrapf(err, "looking for %s file in %q", config.AtlantisYAMLFilename, repoDir)
-	}
-	if !hasRepoCfg {
-		return nil, errors.New("repo cfg file does not exist")
-	}
-
 	// Parse repo configs into specific root configs (i.e. roots)
 	// TODO: rename project to roots
 	var mergedRootCfgs []*valid.MergedProjectCfg
-	repoCfg, err := b.ParserValidator.ParseRepoCfg(repoDir, b.GlobalCfg, event.Repo.ID())
+	repoCfg, err := b.ParserValidator.ParseRepoCfg(repoDir, event.Repo.ID())
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing %s", config.AtlantisYAMLFilename)
 	}
 	matchingRoots, err := b.RootFinder.DetermineRoots(modifiedFiles, repoCfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "determining roots")
 	}
 	for _, mr := range matchingRoots {
 		mergedRootCfg := b.GlobalCfg.MergeProjectCfg(event.Repo.ID(), mr, repoCfg)
 		mergedRootCfgs = append(mergedRootCfgs, &mergedRootCfg)
-	}
-	if len(mergedRootCfgs) == 0 {
-		return nil, errors.New("event generated 0 root configs")
 	}
 	return mergedRootCfgs, nil
 }

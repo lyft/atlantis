@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
-	"github.com/runatlantis/atlantis/server/neptune/middleware"
+	middleware "github.com/runatlantis/atlantis/server/neptune/github"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
 	"io/ioutil"
@@ -288,11 +288,10 @@ func NewServer(config Config) (*Server, error) {
 		githubapp.WithClientMiddleware(
 			middleware.ClientMetrics(statsScope.SubScope("github")),
 		))
-
 	rootConfigBuilder := &event.RootConfigBuilder{
 		RepoFetcher:     repoFetcher,
 		HooksRunner:     hooksRunner,
-		ParserValidator: validator,
+		ParserValidator: &event.ParserValidator{GlobalCfg: globalCfg},
 		RootFinder:      &event.RepoRootFinder{},
 		FileFetcher:     &github.RemoteFileFetcher{ClientCreator: clientCreator},
 		GlobalCfg:       globalCfg,

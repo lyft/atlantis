@@ -30,7 +30,7 @@ func setupTesting(t *testing.T) {
 	rcb = event.RootConfigBuilder{
 		RepoFetcher:     &MockRepoFetcher{},
 		HooksRunner:     &MockHooksRunner{},
-		ParserValidator: &MockParserValidator{hasRepoCfg: true},
+		ParserValidator: &MockParserValidator{},
 		RootFinder:      &MockRootFinder{},
 		FileFetcher:     &MockFileFetcher{},
 		GlobalCfg:       globalCfg,
@@ -57,14 +57,6 @@ func TestRootConfigBuilder_Success(t *testing.T) {
 	assert.Equal(t, expProjectConfigs, projectConfigs)
 }
 
-func TestRootConfigBuilder_NoProjects(t *testing.T) {
-	setupTesting(t)
-	projectConfigs, err := rcb.Build(context.Background(), pushEvent)
-	assert.Error(t, err)
-	assert.Equal(t, err.Error(), "event generated 0 root configs")
-	assert.Empty(t, projectConfigs)
-}
-
 func TestRootConfigBuilder_DetermineRootsError(t *testing.T) {
 	setupTesting(t)
 	mockRootFinder := &MockRootFinder{
@@ -80,28 +72,7 @@ func TestRootConfigBuilder_DetermineRootsError(t *testing.T) {
 func TestRootConfigBuilder_ParserValidatorParseError(t *testing.T) {
 	setupTesting(t)
 	mockParserValidator := &MockParserValidator{
-		hasRepoCfg:        true,
-		parseRepoCfgError: expectedErr,
-	}
-	rcb.ParserValidator = mockParserValidator
-	projectConfigs, err := rcb.Build(context.Background(), pushEvent)
-	assert.Error(t, err)
-	assert.Empty(t, projectConfigs)
-
-}
-
-func TestRootConfigBuilder_NoRepoCfgError(t *testing.T) {
-	setupTesting(t)
-	projectConfigs, err := rcb.Build(context.Background(), pushEvent)
-	assert.Error(t, err)
-	assert.Empty(t, projectConfigs)
-}
-
-func TestRootConfigBuilder_HasRepoCfgError(t *testing.T) {
-	setupTesting(t)
-	mockParserValidator := &MockParserValidator{
-		hasRepoCfg:      true,
-		hasRepoCfgError: expectedErr,
+		error: expectedErr,
 	}
 	rcb.ParserValidator = mockParserValidator
 	projectConfigs, err := rcb.Build(context.Background(), pushEvent)
@@ -180,16 +151,10 @@ func (m *MockRootFinder) DetermineRoots(_ []string, _ valid.RepoCfg) ([]valid.Pr
 }
 
 type MockParserValidator struct {
-	hasRepoCfg        bool
-	hasRepoCfgError   error
-	parseRepoCfgError error
-	repoCfg           valid.RepoCfg
+	repoCfg valid.RepoCfg
+	error   error
 }
 
-func (v *MockParserValidator) HasRepoCfg(_ string) (bool, error) {
-	return v.hasRepoCfg, v.hasRepoCfgError
-}
-
-func (v *MockParserValidator) ParseRepoCfg(_ string, _ valid.GlobalCfg, _ string) (valid.RepoCfg, error) {
-	return v.repoCfg, v.parseRepoCfgError
+func (v *MockParserValidator) ParseRepoCfg(_ string, _ string) (valid.RepoCfg, error) {
+	return v.repoCfg, v.error
 }
