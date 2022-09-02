@@ -77,9 +77,15 @@ func newRunner(ctx workflow.Context, request Request, terraformWorkflow func(ctx
 		},
 	}
 	root := root.Root{
-		Name:  request.Root.Name,
-		Apply: job.Job{Steps: convertToInternalSteps(request.Root.Apply.Steps)},
-		Plan:  job.Job{Steps: convertToInternalSteps(request.Root.Plan.Steps)},
+		Name: request.Root.Name,
+		Apply: job.Job{
+			Steps: convertToInternalSteps(request.Root.Apply.Steps),
+			ID:    request.Root.Apply.ID,
+		},
+		Plan: job.Job{
+			Steps: convertToInternalSteps(request.Root.Plan.Steps),
+			ID:    request.Root.Plan.ID,
+		},
 	}
 
 	// inject dependencies

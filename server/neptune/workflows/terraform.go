@@ -2,8 +2,8 @@ package workflows
 
 import (
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/neptune/config"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/uber-go/tally/v4"
@@ -17,8 +17,8 @@ type TerraformActivities struct {
 	activities.Terraform
 }
 
-func NewTerraformActivities(config config.TerraformConfig, scope tally.Scope, prjCmdOutputHandler jobs.ProjectCommandOutputHandler) (*TerraformActivities, error) {
-	terraformActivities, err := activities.NewTerraform(config, scope, prjCmdOutputHandler)
+func NewTerraformActivities(config config.TerraformConfig, scope tally.Scope, outputHandler *job.OutputHandler) (*TerraformActivities, error) {
+	terraformActivities, err := activities.NewTerraform(config, scope, outputHandler)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}

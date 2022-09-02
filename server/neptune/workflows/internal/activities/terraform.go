@@ -4,12 +4,16 @@ import (
 	"context"
 
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/core/runtime"
+	"github.com/runatlantis/atlantis/server/core/terraform/helpers"
 	"github.com/uber-go/tally/v4"
 )
 
+type TerraformExec interface {
+	RunCommandAsync(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan helpers.Line
+}
+
 type terraformActivities struct {
-	TerraformExecutor runtime.TerraformExec
+	TerraformExecutor TerraformExec
 	DefaultTFVersion  *version.Version
 	Scope             tally.Scope
 }

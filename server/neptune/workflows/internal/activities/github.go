@@ -6,11 +6,13 @@ import (
 	"github.com/google/go-github/v45/github"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 )
 
 type githubActivities struct {
-	ClientCreator githubapp.ClientCreator
+	ClientCreator   githubapp.ClientCreator
+	JobURLGenerator job.UrlGenerator
 }
 
 type CreateCheckRunRequest struct {
@@ -19,6 +21,7 @@ type CreateCheckRunRequest struct {
 	Repo       internal.Repo
 	State      internal.CheckRunState
 	Conclusion internal.CheckRunConclusion
+	JobID      string
 }
 
 type UpdateCheckRunRequest struct {
@@ -27,6 +30,7 @@ type UpdateCheckRunRequest struct {
 	Conclusion internal.CheckRunConclusion
 	Repo       internal.Repo
 	ID         int64
+	JobID      string
 }
 
 type CreateCheckRunResponse struct {
@@ -37,6 +41,15 @@ type UpdateCheckRunResponse struct {
 }
 
 func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateCheckRunRequest) (UpdateCheckRunResponse, error) {
+
+	// TODO: Use this job id to generate checkrun summary with link to job URL
+	// Job ID should never be empty since it's generated in the worker.
+	// So let's fail the activity if there's any other error
+	_, err := a.JobURLGenerator.GenerateJobURL(request.JobID)
+	if err != nil {
+		return UpdateCheckRunResponse{}, errors.Wrapf(err, "error generating job id")
+	}
+
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
 		Text:    github.String("this is test"),
@@ -72,6 +85,14 @@ func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateChe
 }
 
 func (a *githubActivities) CreateCheckRun(ctx context.Context, request CreateCheckRunRequest) (CreateCheckRunResponse, error) {
+	// TODO: Use this job id to generate checkrun summary with link to job URL
+	// Job ID should never be empty since it's generated in the worker.
+	// So let's fail the activity if there's any other error
+	_, err := a.JobURLGenerator.GenerateJobURL(request.JobID)
+	if err != nil {
+		return CreateCheckRunResponse{}, errors.Wrapf(err, "error generating job id")
+	}
+
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
 		Text:    github.String("this is test"),

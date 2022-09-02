@@ -174,7 +174,7 @@ func NewClient(
 	versionCache := cache.NewExecutionVersionLayeredLoadingCache(
 		"terraform",
 		binDir,
-		loader.loadVersion,
+		loader.LoadVersion,
 	)
 	return NewClientWithVersionCache(
 		binDir,
@@ -262,7 +262,14 @@ type VersionLoader struct {
 	downloadURL string
 }
 
-func (l *VersionLoader) loadVersion(v *version.Version, destPath string) (runtime_models.FilePath, error) {
+func NewVersionLoader(downloader Downloader, downloadURL string) *VersionLoader {
+	return &VersionLoader{
+		downloader:  downloader,
+		downloadURL: downloadURL,
+	}
+}
+
+func (l *VersionLoader) LoadVersion(v *version.Version, destPath string) (runtime_models.FilePath, error) {
 	urlPrefix := fmt.Sprintf("%s/terraform/%s/terraform_%s", l.downloadURL, v.String(), v.String())
 	binURL := fmt.Sprintf("%s_%s_%s.zip", urlPrefix, runtime.GOOS, runtime.GOARCH)
 	checksumURL := fmt.Sprintf("%s_SHA256SUMS", urlPrefix)

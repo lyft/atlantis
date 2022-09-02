@@ -35,6 +35,7 @@ type Root struct {
 
 type Job struct {
 	Steps []Step
+	ID    string
 }
 
 // Step was taken from the Atlantis OG config, we might be able to clean this up/remove it

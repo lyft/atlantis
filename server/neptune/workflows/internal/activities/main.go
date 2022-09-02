@@ -4,12 +4,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/jobs"
+	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/config"
 	"github.com/runatlantis/atlantis/server/neptune/github"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
+	"github.com/runatlantis/atlantis/server/neptune/terraform"
 
 	"github.com/uber-go/tally/v4"
 )
@@ -47,7 +49,7 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform(config config.TerraformConfig, scope tally.Scope, prjCmdOutputHandler jobs.ProjectCommandOutputHandler) (*Terraform, error) {
+func NewTerraform(config config.TerraformConfig, scope tally.Scope, outputHandler *job.OutputHandler) (*Terraform, error) {
 	binDir, err := mkSubDir(config.DataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -58,20 +60,20 @@ func NewTerraform(config config.TerraformConfig, scope tally.Scope, prjCmdOutput
 		return nil, err
 	}
 
-	tfVersion, err := terraform.GetDefaultVersion(config.DefaultVersionStr, config.DefaultVersionFlagName)
+	defaultTfVersion, err := version.NewVersion(config.DefaultVersionStr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "parsing version %s", config.DefaultVersionStr)
 	}
 
-	tfClient, err := terraform.NewClient(
+	tfClient, err := terraform.NewAsyncClient(
+		outputHandler,
 		binDir,
 		cacheDir,
 		config.DefaultVersionStr,
 		config.DefaultVersionFlagName,
 		config.DownloadURL,
-		&terraform.DefaultDownloader{},
+		&legacy_tf.DefaultDownloader{},
 		true,
-		prjCmdOutputHandler,
 	)
 	if err != nil {
 		return nil, err
@@ -81,7 +83,7 @@ func NewTerraform(config config.TerraformConfig, scope tally.Scope, prjCmdOutput
 		executeCommandActivities: &executeCommandActivities{},
 		terraformActivities: &terraformActivities{
 			TerraformExecutor: tfClient,
-			DefaultTFVersion:  tfVersion,
+			DefaultTFVersion:  defaultTfVersion,
 			Scope:             scope.SubScope("terraform"),
 		},
 	}, nil
@@ -91,7 +93,7 @@ type Github struct {
 	*githubActivities
 }
 
-func NewGithub(config githubapp.Config, scope tally.Scope) (*Github, error) {
+func NewGithub(config githubapp.Config, scope tally.Scope, jobURLGenerator job.UrlGenerator) (*Github, error) {
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		config,
 		githubapp.WithClientMiddleware(
@@ -103,7 +105,8 @@ func NewGithub(config githubapp.Config, scope tally.Scope) (*Github, error) {
 	}
 	return &Github{
 		githubActivities: &githubActivities{
-			ClientCreator: clientCreator,
+			ClientCreator:   clientCreator,
+			JobURLGenerator: jobURLGenerator,
 		},
 	}, nil
 }
