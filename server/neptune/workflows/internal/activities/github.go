@@ -2,12 +2,14 @@ package activities
 
 import (
 	"context"
+	_ "embed"
 
 	"github.com/google/go-github/v45/github"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
 type githubActivities struct {
@@ -22,6 +24,7 @@ type CreateCheckRunRequest struct {
 	State      internal.CheckRunState
 	Conclusion internal.CheckRunConclusion
 	JobID      string
+	Summary    string
 }
 
 type UpdateCheckRunRequest struct {
@@ -31,6 +34,7 @@ type UpdateCheckRunRequest struct {
 	Repo       internal.Repo
 	ID         int64
 	JobID      string
+	Summary    string
 }
 
 type CreateCheckRunResponse struct {
@@ -52,8 +56,8 @@ func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateChe
 
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
-		Text:    github.String("this is test"),
-		Summary: github.String("this is also a test"),
+		Text:    &request.Title,
+		Summary: &request.Summary,
 	}
 
 	opts := github.UpdateCheckRunOptions{
@@ -95,8 +99,8 @@ func (a *githubActivities) CreateCheckRun(ctx context.Context, request CreateChe
 
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
-		Text:    github.String("this is test"),
-		Summary: github.String("this is also a test"),
+		Text:    &request.Title,
+		Summary: &request.Summary,
 	}
 
 	opts := github.CreateCheckRunOptions{
@@ -141,8 +145,18 @@ type GithubRepoCloneRequest struct {
 	Repo           internal.Repo
 	Revision       string
 	DestinationDir string
+	Root           root.Root
 }
 
-func (a *githubActivities) GithubRepoClone(ctx context.Context, request GithubRepoCloneRequest) error {
-	return nil
+type GithubRepoCloneResponse struct {
+	LocalRoot *root.LocalRoot
+}
+
+func (a *githubActivities) GithubRepoClone(ctx context.Context, request GithubRepoCloneRequest) (*GithubRepoCloneResponse, error) {
+
+	// for now return an empty path
+	localRoot := root.BuildLocalRoot(request.Root, request.Repo, "")
+	return &GithubRepoCloneResponse{
+		LocalRoot: localRoot,
+	}, nil
 }

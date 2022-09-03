@@ -18,7 +18,7 @@ type Runner struct {
 	Activity initActivities
 }
 
-func (r *Runner) Run(executionContext *job.ExecutionContext, rootInstance *root.RootInstance, step job.Step) (string, error) {
+func (r *Runner) Run(executionContext *job.ExecutionContext, localRoot *root.LocalRoot, step job.Step) (string, error) {
 	var resp activities.TerraformInitResponse
 	err := workflow.ExecuteActivity(executionContext.Context, r.Activity.TerraformInit, activities.TerraformInitRequest{
 		Step:      step,
