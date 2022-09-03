@@ -386,7 +386,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	projectJobsScope := statsScope.SubScope("getprojectjobs")
 
-	storageBackend, err := jobs.NewStorageBackend(globalCfg.Jobs, ctxLogger, featureAllocator, projectJobsScope)
+	storageBackend, err := jobs.NewStorageBackend(globalCfg.Jobs, ctxLogger, projectJobsScope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}

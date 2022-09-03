@@ -11,6 +11,7 @@ import (
 	job_runner "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/cmd"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/env"
+	init_step_runner "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/init"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -59,7 +60,7 @@ func Workflow(ctx workflow.Context, request Request) error {
 
 type workerActivities interface {
 	GithubRepoClone(context.Context, activities.GithubRepoCloneRequest) error
-	TerraformInit(context.Context, activities.TerraformInitRequest) error
+	TerraformInit(context.Context, activities.TerraformInitRequest) (activities.TerraformInitResponse, error)
 	TerraformPlan(context.Context, activities.TerraformPlanRequest) error
 	TerraformApply(context.Context, activities.TerraformApplyRequest) error
 	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error)
@@ -87,6 +88,9 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 			&env.Runner{
 				CmdRunner: cmdStepRunner,
 			},
+			&init_step_runner.Runner{
+				Activity: a,
+			},
 		),
 	}
 }
@@ -96,37 +100,39 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	rootInstance := root.BuildRootInstanceFrom(r.Request.Root, r.Request.Repo)
 
 	// Clone repository into disk
-	err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "executing GH repo clone")
-	}
+	// err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, nil)
+	// if err != nil {
+	// 	return errors.Wrap(err, "executing GH repo clone")
+	// }
 
-	_, err = r.JobRunner.Run(ctx, r.Request.Root.Plan, rootInstance)
+	//
+
+	_, err := r.JobRunner.Run(ctx, r.Request.Root.Plan, rootInstance)
 	if err != nil {
 		return errors.Wrap(err, "running plan job")
 	}
 
-	// Wait for plan review signal
-	var planReview PlanReview
-	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-steps")
-	more := signalChan.Receive(ctx, &planReview)
-	if !more {
-		return errors.New("plan review signal channel cancelled")
-	}
-	if planReview.Status == Rejected {
-		return nil
-	}
+	// // Wait for plan review signal
+	// var planReview PlanReview
+	// signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-steps")
+	// more := signalChan.Receive(ctx, &planReview)
+	// if !more {
+	// 	return errors.New("plan review signal channel cancelled")
+	// }
+	// if planReview.Status == Rejected {
+	// 	return nil
+	// }
 
-	// Run apply steps
-	_, err = r.JobRunner.Run(ctx, r.Request.Root.Apply, rootInstance)
-	if err != nil {
-		return errors.Wrap(err, "running apply job")
-	}
+	// // Run apply steps
+	// _, err = r.JobRunner.Run(ctx, r.Request.Root.Apply, rootInstance)
+	// if err != nil {
+	// 	return errors.Wrap(err, "running apply job")
+	// }
 
-	// Cleanup
-	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{}).Get(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "cleaning up")
-	}
+	// // Cleanup
+	// err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{}).Get(ctx, nil)
+	// if err != nil {
+	// 	return errors.Wrap(err, "cleaning up")
+	// }
 	return nil
 }

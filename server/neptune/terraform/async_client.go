@@ -28,10 +28,6 @@ const BufioScannerBufferSize = 10 * 1024 * 1024
 //	   => 0.11.10
 var versionRegex = regexp.MustCompile("Terraform v(.*?)(\\s.*)?\n")
 
-type clientAsync interface {
-	RunCommandAsync(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan helpers.Line
-}
-
 func NewAsyncClient(
 	outputHandler *job.OutputHandler,
 	binDir string,

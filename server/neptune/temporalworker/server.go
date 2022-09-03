@@ -23,7 +23,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/config"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -52,6 +51,7 @@ type Server struct {
 	DeployActivities    *workflows.DeployActivities
 	TerraformActivities *workflows.TerraformActivities
 	GithubActivities    *workflows.GithubActivities
+	JobOutputHandler    job.OutputHandler
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -127,6 +127,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
+		JobOutputHandler:    *jobOutputHandler,
 	}
 	return &server, nil
 }
@@ -136,6 +137,10 @@ func (s Server) Start() error {
 	defer s.TemporalClient.Close()
 	var wg sync.WaitGroup
 	wg.Add(1)
+
+	go func() {
+		s.JobOutputHandler.Handle()
+	}()
 
 	go func() {
 		defer wg.Done()
@@ -223,7 +228,7 @@ func createJobsController(config *config.Config, jobOutputHandler *job.OutputHan
 }
 
 func createJobOutputHandler(config *config.Config) (*job.OutputHandler, error) {
-	storageBackend, err := jobs.NewStorageBackend(config.LogStreamingJobCfg, config.CtxLogger, &feature.PercentageBasedAllocator{}, config.Scope.SubScope("getprojectjobs"))
+	storageBackend, err := jobs.NewStorageBackend(config.LogStreamingJobCfg, config.CtxLogger, config.Scope.SubScope("getprojectjobs"))
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}

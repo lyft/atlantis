@@ -525,6 +525,12 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 			Version: config.AtlantisVersion,
 			Port:    userConfig.Port,
 		},
+		TerraformCfg: neptune_config.TerraformConfig{
+			DefaultVersionFlagName: config.DefaultTFVersionFlag,
+			DefaultVersionStr:      userConfig.DefaultTFVersion,
+			DataDir:                userConfig.DataDir,
+			DownloadURL:            userConfig.TFDownloadURL,
+		},
 		TemporalCfg: globalCfg.Temporal,
 		App:         appConfig,
 		CtxLogger:   ctxLogger,

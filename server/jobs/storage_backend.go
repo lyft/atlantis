@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/uber-go/tally/v4"
 )
 
@@ -26,7 +25,7 @@ type StorageBackend interface {
 	Write(key string, logs []string) (bool, error)
 }
 
-func NewStorageBackend(jobs valid.Jobs, logger logging.Logger, featureAllocator feature.Allocator, scope tally.Scope) (StorageBackend, error) {
+func NewStorageBackend(jobs valid.Jobs, logger logging.Logger, scope tally.Scope) (StorageBackend, error) {
 
 	if jobs.StorageBackend == nil {
 		return &NoopStorageBackend{}, nil
