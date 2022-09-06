@@ -412,8 +412,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.TFDownloadURL,
 		&terraform.DefaultDownloader{},
 		true,
-		projectCmdOutputHandler,
-		featureAllocator)
+		projectCmdOutputHandler)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform")
@@ -765,7 +764,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PrjCommandBuilder: projectCommandBuilder,
 		FeatureAllocator:  featureAllocator,
 	}
-  
+
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
@@ -806,7 +805,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PrjCommandBuilder: prProjectCommandBuilder,
 		FeatureAllocator:  featureAllocator,
 	}
-  
+
 	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		prProjectCommandBuilder,
