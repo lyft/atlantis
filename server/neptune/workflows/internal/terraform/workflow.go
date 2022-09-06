@@ -81,10 +81,13 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
-
-	// Clone repository into disk
-	var cloneResponse activities.GithubRepoCloneResponse
-	err := workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, &cloneResponse)
+	// Download repository into disk
+	var cloneResponse activities.DownloadRootResponse
+	err := workflow.ExecuteActivity(ctx, r.Activities.DownloadRoot, activities.DownloadRootRequest{
+		Repo:         r.Request.Repo,
+		Root:         r.Request.Root,
+		DeploymentId: r.Request.DeploymentId,
+	}).Get(ctx, &cloneResponse)
 	if err != nil {
 		return errors.Wrap(err, "executing GH repo clone")
 	}

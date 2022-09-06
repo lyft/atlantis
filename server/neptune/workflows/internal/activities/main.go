@@ -41,7 +41,7 @@ type Github struct {
 	*githubActivities
 }
 
-func NewGithub(config githubapp.Config, scope tally.Scope) (*Github, error) {
+func NewGithub(config githubapp.Config, scope tally.Scope, dataDir string) (*Github, error) {
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		config,
 		githubapp.WithClientMiddleware(
@@ -54,6 +54,7 @@ func NewGithub(config githubapp.Config, scope tally.Scope) (*Github, error) {
 	return &Github{
 		githubActivities: &githubActivities{
 			ClientCreator: clientCreator,
+			DataDir:       dataDir,
 		},
 	}, nil
 }
