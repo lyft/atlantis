@@ -48,7 +48,7 @@ func (r *jobRunner) Run(
 
 		switch step.StepName {
 		case "init":
-			out, err = r.InitStepRunner.Run(jobExecutionCtx, rootInstance, step)
+			out, err = r.InitStepRunner.Run(jobExecutionCtx, localRoot, step)
 		case "run":
 			out, err = r.CmdStepRunner.Run(jobExecutionCtx, localRoot, step)
 		case "env":
