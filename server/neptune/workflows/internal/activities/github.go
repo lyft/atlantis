@@ -2,15 +2,16 @@ package activities
 
 import (
 	"context"
-	"github.com/hashicorp/go-getter"
-	"net/http"
-	"path/filepath"
-
 	"github.com/google/go-github/v45/github"
+	"github.com/hashicorp/go-getter"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
+	"net/http"
+	"path/filepath"
+	"time"
 )
 
 const deploymentsDirName = "deployments"
@@ -138,6 +139,9 @@ type DownloadRootResponse struct {
 }
 
 func (a *githubActivities) DownloadRoot(ctx context.Context, request DownloadRootRequest) (DownloadRootResponse, error) {
+	ctx, cancel := temporal.StartHeartbeat(ctx, 10*time.Second)
+	defer cancel()
+
 	destinationPath := filepath.Join(a.DataDir, deploymentsDirName, request.DeploymentId)
 	opts := &github.RepositoryContentGetOptions{
 		Ref: request.Repo.HeadCommit.Ref,
