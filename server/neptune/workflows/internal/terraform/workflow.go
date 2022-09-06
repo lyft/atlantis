@@ -90,14 +90,14 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 				CmdRunner: cmdStepRunner,
 			},
 		),
-		Store: &state.WorkflowStore{
-			Notifier: func(s *state.Workflow) error {
+		Store: state.NewWorkflowStore(
+			func(s *state.Workflow) error {
 				return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.WorkflowStateChangeSignal, s).Get(ctx, nil)
 			},
-			OutputURLGenerator: &state.OutputURLGenerator{
+			&state.OutputURLGenerator{
 				URLBuilder: route,
 			},
-		},
+		),
 	}
 }
 
@@ -122,6 +122,7 @@ func (r *Runner) Plan(ctx workflow.Context, root *root.LocalRoot, serverURL *url
 		return errors.Wrap(err, "running job")
 	}
 	if err := r.Store.UpdatePlanJobWithStatus(state.SuccessJobStatus); err != nil {
+		logger.Error(ctx, "unable to update job with success status")
 		return errors.Wrap(err, "updating job with success status")
 	}
 
@@ -183,11 +184,11 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}
 
 	if err := r.Plan(ctx, cloneResponse.LocalRoot, response.ServerURL); err != nil {
-		return err
+		return errors.Wrap(err, "running plan job")
 	}
 
 	if err := r.Apply(ctx, cloneResponse.LocalRoot, response.ServerURL); err != nil {
-		return err
+		return errors.Wrap(err, "running apply job")
 	}
 
 	// Cleanup

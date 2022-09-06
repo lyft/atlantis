@@ -22,8 +22,7 @@ type OutputURLGenerator struct {
 	URLBuilder outputURLBuilder
 }
 
-func (g *OutputURLGenerator) Generate(jobID fmt.Stringer, BaseURL *url.URL) (*url.URL, error) {
-
+func (g *OutputURLGenerator) Generate(jobID fmt.Stringer, BaseURL fmt.Stringer) (*url.URL, error) {
 	jobIDParam := jobID.String()
 
 	jobURL, err := g.URLBuilder.URL(
