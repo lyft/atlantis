@@ -10,7 +10,6 @@ import (
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/url"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
@@ -19,6 +18,7 @@ const deploymentsDirName = "deployments"
 type githubActivities struct {
 	ClientCreator githubapp.ClientCreator
 	DataDir       string
+	LinkBuilder   LinkBuilder
 }
 
 type CreateCheckRunRequest struct {
@@ -155,7 +155,7 @@ func (a *githubActivities) DownloadRoot(ctx context.Context, request DownloadRoo
 	if resp.StatusCode != http.StatusFound {
 		return DownloadRootResponse{}, errors.Errorf("getting repo archive link returns non-302 status %d", resp.StatusCode)
 	}
-	downloadLink := url.BuildDownloadLinkFromArchive(archiveLink, request.Root, request.Repo)
+	downloadLink := a.LinkBuilder.BuildDownloadLinkFromArchive(archiveLink, request.Root, request.Repo)
 	err = getter.Get(destinationPath, downloadLink, getter.WithContext(ctx))
 	if err != nil {
 		return DownloadRootResponse{}, errors.Wrap(err, "fetching and extracting zip")

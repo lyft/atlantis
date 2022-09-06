@@ -4,7 +4,11 @@ import (
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/github"
+	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/uber-go/tally/v4"
+	"net/url"
 )
 
 // Exported Activites should be here.
@@ -41,6 +45,10 @@ type Github struct {
 	*githubActivities
 }
 
+type LinkBuilder interface {
+	BuildDownloadLinkFromArchive(archiveURL *url.URL, root root.Root, repo repo.Repo) string
+}
+
 func NewGithub(config githubapp.Config, scope tally.Scope, dataDir string) (*Github, error) {
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		config,
@@ -55,6 +63,7 @@ func NewGithub(config githubapp.Config, scope tally.Scope, dataDir string) (*Git
 		githubActivities: &githubActivities{
 			ClientCreator: clientCreator,
 			DataDir:       dataDir,
+			LinkBuilder:   link.Builder{},
 		},
 	}, nil
 }
