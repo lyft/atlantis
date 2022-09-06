@@ -765,7 +765,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PrjCommandBuilder: projectCommandBuilder,
 		FeatureAllocator:  featureAllocator,
 	}
-
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
@@ -806,7 +805,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PrjCommandBuilder: prProjectCommandBuilder,
 		FeatureAllocator:  featureAllocator,
 	}
-
 	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		prProjectCommandBuilder,
