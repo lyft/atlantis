@@ -138,9 +138,8 @@ type FetchRootResponse struct {
 	LocalRoot *root.LocalRoot
 }
 
-// FetchRoot performs two network calls. It fetches a link to the archive URL using the GH client, processes that
-// URL into a download URL that the go-getter library can parse, and then uses the go-getter library to download
-// files/subdirs within the root path to the destinationPath.
+// FetchRoot fetches a link to the archive URL using the GH client, processes that URL into a download URL that the
+// go-getter library can use, and then go-getter to download/extract files/subdirs within the root path to the destinationPath.
 func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootRequest) (FetchRootResponse, error) {
 	ctx, cancel := temporal.StartHeartbeat(ctx, 10*time.Second)
 	defer cancel()
