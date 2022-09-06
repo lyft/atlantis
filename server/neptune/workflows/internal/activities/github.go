@@ -8,10 +8,8 @@ import (
 	"github.com/pkg/errors"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"net/http"
 	"path/filepath"
-	"time"
 )
 
 const deploymentsDirName = "deployments"
@@ -128,19 +126,22 @@ func (a *githubActivities) CreateCheckRun(ctx context.Context, request CreateChe
 	}, nil
 }
 
-type DownloadRootRequest struct {
+type FetchRootRequest struct {
 	Repo         internal.Repo
 	Root         root.Root
 	DeploymentId string
 }
 
-type DownloadRootResponse struct {
+type FetchRootResponse struct {
 	LocalRoot *root.LocalRoot
 }
 
-func (a *githubActivities) DownloadRoot(ctx context.Context, request DownloadRootRequest) (DownloadRootResponse, error) {
-	ctx, cancel := temporal.StartHeartbeat(ctx, 10*time.Second)
-	defer cancel()
+// FetchRoot performs two network calls. It fetches a link to the archive URL using the GH client, processes that
+// URL into a download URL that the go-getter library can parse, and then uses the go-getter library to download
+// files/subdirs within the root path to the destinationPath.
+func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootRequest) (FetchRootResponse, error) {
+	//ctx, cancel := temporal.StartHeartbeat(ctx, 10*time.Second)
+	//defer cancel()
 
 	destinationPath := filepath.Join(a.DataDir, deploymentsDirName, request.DeploymentId)
 	opts := &github.RepositoryContentGetOptions{
@@ -148,24 +149,24 @@ func (a *githubActivities) DownloadRoot(ctx context.Context, request DownloadRoo
 	}
 	client, err := a.ClientCreator.NewInstallationClient(request.Repo.Credentials.InstallationToken)
 	if err != nil {
-		return DownloadRootResponse{}, errors.Wrap(err, "creating installation client")
+		return FetchRootResponse{}, errors.Wrap(err, "creating installation client")
 	}
 	// note: this link exists for 5 minutes when fetching a private repository archive
 	archiveLink, resp, err := client.Repositories.GetArchiveLink(ctx, request.Repo.Owner, request.Repo.Name, github.Zipball, opts, true)
 	if err != nil {
-		return DownloadRootResponse{}, errors.Wrap(err, "getting repo archive link")
+		return FetchRootResponse{}, errors.Wrap(err, "getting repo archive link")
 	}
 	// GH responds with a 302 + redirect link to where the archive exists
 	if resp.StatusCode != http.StatusFound {
-		return DownloadRootResponse{}, errors.Errorf("getting repo archive link returns non-302 status %d", resp.StatusCode)
+		return FetchRootResponse{}, errors.Errorf("getting repo archive link returns non-302 status %d", resp.StatusCode)
 	}
 	downloadLink := a.LinkBuilder.BuildDownloadLinkFromArchive(archiveLink, request.Root, request.Repo)
 	err = getter.Get(destinationPath, downloadLink, getter.WithContext(ctx))
 	if err != nil {
-		return DownloadRootResponse{}, errors.Wrap(err, "fetching and extracting zip")
+		return FetchRootResponse{}, errors.Wrap(err, "fetching and extracting zip")
 	}
 	localRoot := root.BuildLocalRoot(request.Root, request.Repo, destinationPath)
-	return DownloadRootResponse{
+	return FetchRootResponse{
 		LocalRoot: localRoot,
 	}, nil
 }

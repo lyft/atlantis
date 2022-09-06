@@ -26,8 +26,8 @@ const (
 
 type testActivities struct{}
 
-func (a *testActivities) DownloadRoot(_ context.Context, _ activities.DownloadRootRequest) (activities.DownloadRootResponse, error) {
-	return activities.DownloadRootResponse{}, nil
+func (a *testActivities) FetchRoot(_ context.Context, _ activities.FetchRootRequest) (activities.FetchRootResponse, error) {
+	return activities.FetchRootResponse{}, nil
 }
 
 func (a *testActivities) Cleanup(_ context.Context, _ activities.CleanupRequest) (activities.CleanupResponse, error) {
@@ -48,8 +48,8 @@ func testTerraformWorkflow(ctx workflow.Context) error {
 	}
 
 	// Run download step
-	var downloadResponse activities.DownloadRootResponse
-	err := workflow.ExecuteActivity(ctx, act.DownloadRoot, activities.DownloadRootRequest{
+	var downloadResponse activities.FetchRootResponse
+	err := workflow.ExecuteActivity(ctx, act.FetchRoot, activities.FetchRootRequest{
 		Repo:         testRepo,
 		Root:         testRoot,
 		DeploymentId: testDeploymentID,
@@ -109,11 +109,11 @@ func Test_TerraformWorkflowSuccess(t *testing.T) {
 		Path: testPath,
 		Repo: testRepo,
 	}
-	env.OnActivity(a.DownloadRoot, mock.Anything, activities.DownloadRootRequest{
+	env.OnActivity(a.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testRepo,
 		Root:         testRoot,
 		DeploymentId: testDeploymentID,
-	}).Return(activities.DownloadRootResponse{
+	}).Return(activities.FetchRootResponse{
 		LocalRoot: testLocalRoot,
 	}, nil)
 	env.OnActivity(a.Cleanup, mock.Anything, activities.CleanupRequest{
@@ -141,11 +141,11 @@ func Test_TerraformWorkflow_CloneFailure(t *testing.T) {
 	testRoot := root.Root{
 		Name: testRootName,
 	}
-	env.OnActivity(a.DownloadRoot, mock.Anything, activities.DownloadRootRequest{
+	env.OnActivity(a.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testRepo,
 		Root:         testRoot,
 		DeploymentId: testDeploymentID,
-	}).Return(activities.DownloadRootResponse{}, errors.New("CloneActivityError"))
+	}).Return(activities.FetchRootResponse{}, errors.New("CloneActivityError"))
 
 	env.ExecuteWorkflow(testTerraformWorkflow)
 	assert.True(t, env.IsWorkflowCompleted())
@@ -175,11 +175,11 @@ func Test_TerraformWorkflow_CleanupFailure(t *testing.T) {
 		Path: testPath,
 		Repo: testRepo,
 	}
-	env.OnActivity(a.DownloadRoot, mock.Anything, activities.DownloadRootRequest{
+	env.OnActivity(a.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testRepo,
 		Root:         testRoot,
 		DeploymentId: testDeploymentID,
-	}).Return(activities.DownloadRootResponse{
+	}).Return(activities.FetchRootResponse{
 		LocalRoot: testLocalRoot,
 	}, nil)
 	env.OnActivity(a.Cleanup, mock.Anything, activities.CleanupRequest{
