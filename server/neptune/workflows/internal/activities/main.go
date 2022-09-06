@@ -10,7 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/uber-go/tally/v4"
-	"net/url"
 )
 
 // Exported Activites should be here.
