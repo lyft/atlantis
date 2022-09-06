@@ -8,8 +8,10 @@ import (
 	"github.com/pkg/errors"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"net/http"
 	"path/filepath"
+	"time"
 )
 
 const deploymentsDirName = "deployments"
@@ -140,8 +142,8 @@ type FetchRootResponse struct {
 // URL into a download URL that the go-getter library can parse, and then uses the go-getter library to download
 // files/subdirs within the root path to the destinationPath.
 func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootRequest) (FetchRootResponse, error) {
-	//ctx, cancel := temporal.StartHeartbeat(ctx, 10*time.Second)
-	//defer cancel()
+	ctx, cancel := temporal.StartHeartbeat(ctx, 10*time.Second)
+	defer cancel()
 
 	destinationPath := filepath.Join(a.DataDir, deploymentsDirName, request.DeploymentId)
 	opts := &github.RepositoryContentGetOptions{
