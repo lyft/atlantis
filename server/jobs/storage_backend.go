@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/uber-go/tally/v4"
 )
 
@@ -23,10 +22,10 @@ type StorageBackend interface {
 	Read(key string) ([]string, error)
 
 	// Write logs to the storage backend
-	Write(key string, logs []string, fullRepoName string) (bool, error)
+	Write(key string, logs []string) (bool, error)
 }
 
-func NewStorageBackend(jobs valid.Jobs, logger logging.Logger, featureAllocator feature.Allocator, scope tally.Scope) (StorageBackend, error) {
+func NewStorageBackend(jobs valid.Jobs, logger logging.Logger, scope tally.Scope) (StorageBackend, error) {
 
 	if jobs.StorageBackend == nil {
 		return &NoopStorageBackend{}, nil
@@ -108,7 +107,7 @@ func (s *storageBackend) Read(key string) (logs []string, err error) {
 	return
 }
 
-func (s *storageBackend) Write(key string, logs []string, _ string) (bool, error) {
+func (s *storageBackend) Write(key string, logs []string) (bool, error) {
 	// Write to /output directory
 	key = fmt.Sprintf("%s/%s", OutputPrefix, key)
 
@@ -167,8 +166,8 @@ func (i *InstrumenetedStorageBackend) Read(key string) ([]string, error) {
 	return logs, err
 }
 
-func (i *InstrumenetedStorageBackend) Write(key string, logs []string, fullRepoName string) (bool, error) {
-	ok, err := i.StorageBackend.Write(key, logs, fullRepoName)
+func (i *InstrumenetedStorageBackend) Write(key string, logs []string) (bool, error) {
+	ok, err := i.StorageBackend.Write(key, logs)
 	if err != nil {
 		i.writeFailures.Inc(1)
 		return ok, err
@@ -184,6 +183,6 @@ func (s *NoopStorageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *NoopStorageBackend) Write(key string, logs []string, fullRepoName string) (bool, error) {
+func (s *NoopStorageBackend) Write(key string, logs []string) (bool, error) {
 	return false, nil
 }

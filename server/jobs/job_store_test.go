@@ -2,8 +2,9 @@ package jobs_test
 
 import (
 	"fmt"
-	"github.com/uber-go/tally/v4"
 	"testing"
+
+	"github.com/uber-go/tally/v4"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/jobs"
@@ -137,9 +138,9 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString(), AnyString())).ThenReturn(false, storageBackendErr)
+		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString())).ThenReturn(false, storageBackendErr)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetJobCompleteStatus(jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
 
 		// Assert storage backend error
 		assert.EqualError(t, err, expecterErr.Error())
@@ -164,7 +165,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		// Setup storage backend
 		storageBackend := &jobs.NoopStorageBackend{}
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetJobCompleteStatus(jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
 
 		assert.Nil(t, err)
 
@@ -187,9 +188,9 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString(), AnyString())).ThenReturn(true, nil)
+		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString())).ThenReturn(true, nil)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetJobCompleteStatus(jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
 		assert.Nil(t, err)
 
 		When(storageBackend.Read(jobID)).ThenReturn([]string{}, nil)
@@ -204,7 +205,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		jobID := "1234"
 		expectedErrString := fmt.Sprintf("job: %s does not exist", jobID)
 
-		err := jobStore.SetJobCompleteStatus(jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(jobID, jobs.Complete)
 		assert.EqualError(t, err, expectedErrString)
 
 	})
