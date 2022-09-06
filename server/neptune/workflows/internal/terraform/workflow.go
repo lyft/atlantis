@@ -103,7 +103,6 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 
 func (r *Runner) Plan(ctx workflow.Context, root *root.LocalRoot, serverURL *url.URL) error {
 	jobID, err := sideeffect.GenerateUUID(ctx)
-
 	if err != nil {
 		return errors.Wrap(err, "generating job id")
 	}
@@ -151,7 +150,6 @@ func (r *Runner) Apply(ctx workflow.Context, root *root.LocalRoot, serverURL *ur
 		}
 		return nil
 	}
-
 	_, err = r.JobRunner.Run(ctx, r.Request.Root.Apply, root)
 	if err != nil {
 
@@ -176,23 +174,30 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return errors.Wrap(err, "getting worker info")
 	}
 
-	// Clone repository into disk
-	var cloneResponse activities.GithubRepoCloneResponse
-	err = workflow.ExecuteActivity(ctx, r.Activities.GithubRepoClone, activities.GithubRepoCloneRequest{}).Get(ctx, &cloneResponse)
+	var fetchRootResponse activities.FetchRootResponse
+	err = workflow.ExecuteActivity(ctx, r.Activities.FetchRoot, activities.FetchRootRequest{
+		Repo:         r.Request.Repo,
+		Root:         r.Request.Root,
+		DeploymentId: r.Request.DeploymentId,
+	}).Get(ctx, &fetchRootResponse)
+
 	if err != nil {
-		return errors.Wrap(err, "executing GH repo clone")
+		return errors.Wrap(err, "fetching root")
 	}
 
-	if err := r.Plan(ctx, cloneResponse.LocalRoot, response.ServerURL); err != nil {
+	if err := r.Plan(ctx, fetchRootResponse.LocalRoot, response.ServerURL); err != nil {
 		return errors.Wrap(err, "running plan job")
 	}
 
-	if err := r.Apply(ctx, cloneResponse.LocalRoot, response.ServerURL); err != nil {
+	if err := r.Apply(ctx, fetchRootResponse.LocalRoot, response.ServerURL); err != nil {
 		return errors.Wrap(err, "running apply job")
 	}
 
 	// Cleanup
-	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{}).Get(ctx, nil)
+	var cleanupResponse activities.CleanupResponse
+	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{
+		LocalRoot: fetchRootResponse.LocalRoot,
+	}).Get(ctx, &cleanupResponse)
 	if err != nil {
 		return errors.Wrap(err, "cleaning up")
 	}

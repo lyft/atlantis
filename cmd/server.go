@@ -453,6 +453,7 @@ func (c *GatewayCreator) NewServer(userConfig server.UserConfig, config server.C
 		AppCfg:              appConfig,
 		RepoAllowList:       userConfig.RepoAllowlist,
 		MaxProjectsPerPR:    userConfig.MaxProjectsPerPR,
+		EnablePlatformMode:  userConfig.EnablePlatformMode,
 		FFOwner:             userConfig.FFOwner,
 		FFRepo:              userConfig.FFRepo,
 		FFBranch:            userConfig.FFBranch,
@@ -529,6 +530,7 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 		CtxLogger:   ctxLogger,
 		Scope:       scope,
 		StatsCloser: closer,
+		DataDir:     userConfig.DataDir,
 	}
 	return temporalworker.NewServer(cfg)
 }
