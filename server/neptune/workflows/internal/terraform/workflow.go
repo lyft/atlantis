@@ -115,7 +115,10 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}
 
 	// Cleanup
-	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{}).Get(ctx, nil)
+	var cleanupResponse activities.CleanupResponse
+	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{
+		LocalRoot: cloneResponse.LocalRoot,
+	}).Get(ctx, &cleanupResponse)
 	if err != nil {
 		return errors.Wrap(err, "cleaning up")
 	}

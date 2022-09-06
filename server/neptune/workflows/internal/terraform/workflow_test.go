@@ -30,6 +30,10 @@ func (a *testActivities) DownloadRoot(_ context.Context, _ activities.DownloadRo
 	return activities.DownloadRootResponse{}, nil
 }
 
+func (a *testActivities) Cleanup(_ context.Context, _ activities.CleanupRequest) (activities.CleanupResponse, error) {
+	return activities.CleanupResponse{}, nil
+}
+
 func testTerraformWorkflow(ctx workflow.Context) error {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		ScheduleToCloseTimeout: 5 * time.Second,
@@ -44,12 +48,12 @@ func testTerraformWorkflow(ctx workflow.Context) error {
 	}
 
 	// Run download step
-	var resp activities.DownloadRootResponse
+	var downloadResponse activities.DownloadRootResponse
 	err := workflow.ExecuteActivity(ctx, act.DownloadRoot, activities.DownloadRootRequest{
 		Repo:         testRepo,
 		Root:         testRoot,
 		DeploymentId: testDeploymentID,
-	}).Get(ctx, &resp)
+	}).Get(ctx, &downloadResponse)
 	if err != nil {
 		return err
 	}
@@ -70,10 +74,19 @@ func testTerraformWorkflow(ctx workflow.Context) error {
 	if planReview.Status != terraform.Approved {
 		return errors.New("failed to receive approval")
 	}
-	return nil
 
 	// TODO: run apply steps
-	// TODO: run cleanup step
+
+	// Cleanup
+	var cleanupResponse activities.CleanupResponse
+	err = workflow.ExecuteActivity(ctx, act.Cleanup, activities.CleanupRequest{
+		LocalRoot: downloadResponse.LocalRoot,
+	}).Get(ctx, &cleanupResponse)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func Test_TerraformWorkflowSuccess(t *testing.T) {
@@ -91,17 +104,21 @@ func Test_TerraformWorkflowSuccess(t *testing.T) {
 	testRoot := root.Root{
 		Name: testRootName,
 	}
+	testLocalRoot := &root.LocalRoot{
+		Root: testRoot,
+		Path: testPath,
+		Repo: testRepo,
+	}
 	env.OnActivity(a.DownloadRoot, mock.Anything, activities.DownloadRootRequest{
 		Repo:         testRepo,
 		Root:         testRoot,
 		DeploymentId: testDeploymentID,
 	}).Return(activities.DownloadRootResponse{
-		LocalRoot: &root.LocalRoot{
-			Root: testRoot,
-			Path: testPath,
-			Repo: testRepo,
-		},
+		LocalRoot: testLocalRoot,
 	}, nil)
+	env.OnActivity(a.Cleanup, mock.Anything, activities.CleanupRequest{
+		LocalRoot: testLocalRoot,
+	}).Return(activities.CleanupResponse{}, nil)
 
 	env.ExecuteWorkflow(testTerraformWorkflow)
 	env.AssertExpectations(t)
@@ -136,4 +153,43 @@ func Test_TerraformWorkflow_CloneFailure(t *testing.T) {
 	var applicationErr *temporal.ApplicationError
 	assert.True(t, errors.As(err, &applicationErr))
 	assert.Equal(t, "CloneActivityError", applicationErr.Error())
+}
+
+func Test_TerraformWorkflow_CleanupFailure(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	env.SetWorkerOptions(worker.Options{
+		BackgroundActivityContext: context.Background(),
+	})
+	a := &testActivities{}
+	env.RegisterActivity(a)
+
+	testRepo := github.Repo{
+		Name: testRepoName,
+	}
+	testRoot := root.Root{
+		Name: testRootName,
+	}
+	testLocalRoot := &root.LocalRoot{
+		Root: testRoot,
+		Path: testPath,
+		Repo: testRepo,
+	}
+	env.OnActivity(a.DownloadRoot, mock.Anything, activities.DownloadRootRequest{
+		Repo:         testRepo,
+		Root:         testRoot,
+		DeploymentId: testDeploymentID,
+	}).Return(activities.DownloadRootResponse{
+		LocalRoot: testLocalRoot,
+	}, nil)
+	env.OnActivity(a.Cleanup, mock.Anything, activities.CleanupRequest{
+		LocalRoot: testLocalRoot,
+	}).Return(activities.CleanupResponse{}, errors.New("CleanupActivityError"))
+
+	env.ExecuteWorkflow(testTerraformWorkflow)
+	assert.True(t, env.IsWorkflowCompleted())
+	err := env.GetWorkflowError()
+	var applicationErr *temporal.ApplicationError
+	assert.True(t, errors.As(err, &applicationErr))
+	assert.Equal(t, "CleanupActivityError", applicationErr.Error())
 }
