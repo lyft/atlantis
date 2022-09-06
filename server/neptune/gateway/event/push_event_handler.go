@@ -3,6 +3,8 @@ package event
 import (
 	"context"
 	"fmt"
+
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -128,9 +130,11 @@ func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *va
 				Name: rootCfg.Name,
 				Plan: workflows.Job{
 					Steps: p.generateSteps(rootCfg.DeploymentWorkflow.Plan.Steps),
+					ID:    uuid.New().String(),
 				},
 				Apply: workflows.Job{
 					Steps: p.generateSteps(rootCfg.DeploymentWorkflow.Apply.Steps),
+					ID:    uuid.New().String(),
 				},
 				RepoRelPath: rootCfg.RepoRelDir,
 			},

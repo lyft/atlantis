@@ -19,9 +19,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
+	"github.com/runatlantis/atlantis/server/controllers/websocket"
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
+	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/config"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/cli"
@@ -46,23 +51,23 @@ type Server struct {
 	DeployActivities    *workflows.DeployActivities
 	TerraformActivities *workflows.TerraformActivities
 	GithubActivities    *workflows.GithubActivities
+	JobOutputHandler    job.OutputHandler
 }
 
-func NewServer(config *Config) (*Server, error) {
-	jobsController := &controllers.JobsController{
-		AtlantisVersion:     config.ServerCfg.Version,
-		AtlantisURL:         config.ServerCfg.URL,
-		KeyGenerator:        controllers.JobIDKeyGenerator{},
-		StatsScope:          config.Scope,
-		Logger:              config.CtxLogger,
-		ProjectJobsTemplate: templates.ProjectJobsTemplate,
+func NewServer(config *config.Config) (*Server, error) {
+	jobOutputHandler, err := createJobOutputHandler(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "intializing project command output handler")
 	}
+
+	jobsController := createJobsController(config, jobOutputHandler)
 
 	// temporal client + worker initialization
 	temporalClient, err := temporal.NewClient(config.Scope, config.CtxLogger, config.TemporalCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing temporal client")
 	}
+
 	// router initialization
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods("GET")
@@ -91,7 +96,9 @@ func NewServer(config *Config) (*Server, error) {
 	}
 
 	terraformActivities, err := workflows.NewTerraformActivities(
+		config.TerraformCfg,
 		config.Scope.SubScope("terraform"),
+		jobOutputHandler,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
@@ -100,6 +107,11 @@ func NewServer(config *Config) (*Server, error) {
 	githubActivities, err := workflows.NewGithubActiviies(
 		config.App,
 		config.Scope.SubScope("app"),
+		job.UrlGenerator{
+			Underlying:               router,
+			ProjectJobsViewRouteName: ProjectJobsViewRouteName,
+			AtlantisURL:              config.ServerCfg.URL,
+		},
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing github activities")
@@ -115,6 +127,7 @@ func NewServer(config *Config) (*Server, error) {
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
+		JobOutputHandler:    *jobOutputHandler,
 	}
 	return &server, nil
 }
@@ -124,6 +137,10 @@ func (s Server) Start() error {
 	defer s.TemporalClient.Close()
 	var wg sync.WaitGroup
 	wg.Add(1)
+
+	go func() {
+		s.JobOutputHandler.Handle()
+	}()
 
 	go func() {
 		defer wg.Done()
@@ -186,4 +203,47 @@ func Healthz(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data) // nolint: errcheck
+}
+
+func createJobsController(config *config.Config, jobOutputHandler *job.OutputHandler) *controllers.JobsController {
+	projectJobsScope := config.Scope.SubScope("getprojectjobs")
+	wsMux := websocket.NewInstrumentedMultiplexor(
+		websocket.NewMultiplexor(
+			config.CtxLogger,
+			controllers.JobIDKeyGenerator{},
+			jobOutputHandler,
+		),
+		projectJobsScope,
+	)
+
+	return &controllers.JobsController{
+		AtlantisVersion:     config.ServerCfg.Version,
+		AtlantisURL:         config.ServerCfg.URL,
+		KeyGenerator:        controllers.JobIDKeyGenerator{},
+		StatsScope:          config.Scope,
+		Logger:              config.CtxLogger,
+		ProjectJobsTemplate: templates.ProjectJobsTemplate,
+		WsMux:               wsMux,
+	}
+}
+
+func createJobOutputHandler(config *config.Config) (*job.OutputHandler, error) {
+	storageBackend, err := jobs.NewStorageBackend(config.LogStreamingJobCfg, config.CtxLogger, config.Scope.SubScope("getprojectjobs"))
+	if err != nil {
+		return nil, errors.Wrapf(err, "initializing storage backend")
+	}
+
+	jobStore := jobs.NewJobStore(storageBackend, config.Scope.SubScope("jobstore"))
+	logFilter := filter.LogFilter{
+		Regexes: config.TerraformLogFilters.Regexes,
+	}
+
+	jobOutputChan := make(chan *job.OutputLine)
+	return &job.OutputHandler{
+		JobOutput:        jobOutputChan,
+		JobStore:         jobStore,
+		ReceiverRegistry: jobs.NewReceiverRegistry(),
+		Logger:           config.CtxLogger,
+		LogFilter:        logFilter,
+	}, nil
 }

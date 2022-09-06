@@ -21,18 +21,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/palantir/go-githubapp/githubapp"
-	cfgParser "github.com/runatlantis/atlantis/server/core/config"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/metrics"
-
 	"github.com/docker/docker/pkg/fileutils"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server"
+	cfgParser "github.com/runatlantis/atlantis/server/core/config"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/metrics"
+	neptune_config "github.com/runatlantis/atlantis/server/neptune/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker"
 	"github.com/spf13/cobra"
@@ -514,15 +514,22 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 	if err != nil {
 		return nil, err
 	}
-	cfg := &temporalworker.Config{
-		AuthCfg: temporalworker.AuthConfig{
+
+	cfg := &neptune_config.Config{
+		AuthCfg: neptune_config.AuthConfig{
 			SslCertFile: userConfig.SSLCertFile,
 			SslKeyFile:  userConfig.SSLKeyFile,
 		},
-		ServerCfg: temporalworker.ServerConfig{
+		ServerCfg: neptune_config.ServerConfig{
 			URL:     parsedURL,
 			Version: config.AtlantisVersion,
 			Port:    userConfig.Port,
+		},
+		TerraformCfg: neptune_config.TerraformConfig{
+			DefaultVersionFlagName: config.DefaultTFVersionFlag,
+			DefaultVersionStr:      userConfig.DefaultTFVersion,
+			DataDir:                userConfig.DataDir,
+			DownloadURL:            userConfig.TFDownloadURL,
 		},
 		TemporalCfg: globalCfg.Temporal,
 		App:         appConfig,

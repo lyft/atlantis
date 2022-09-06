@@ -1,16 +1,82 @@
 package activities
 
-import "context"
+import (
+	"context"
+	"fmt"
+	"strings"
 
-type terraformActivities struct{}
+	"github.com/hashicorp/go-version"
+	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/terraform/helpers"
+	"github.com/runatlantis/atlantis/server/events/runtime/common"
+	"github.com/runatlantis/atlantis/server/events/terraform/ansi"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	"github.com/uber-go/tally/v4"
+)
+
+type TerraformExec interface {
+	RunCommandAsync(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan helpers.Line
+}
+
+type terraformActivities struct {
+	TerraformExecutor TerraformExec
+	DefaultTFVersion  *version.Version
+	Scope             tally.Scope
+}
 
 // Terraform Init
 
 type TerraformInitRequest struct {
+	Step      job.Step
+	Envs      map[string]string
+	TfVersion string
+	JobID     string
+	Path      string
 }
 
-func (t *terraformActivities) TerraformInit(ctx context.Context, request TerraformInitRequest) error {
-	return nil
+type TerraformInitResponse struct {
+	Output string
+}
+
+func (t *terraformActivities) TerraformInit(ctx context.Context, request TerraformInitRequest) (TerraformInitResponse, error) {
+
+	version, err := version.NewVersion(request.TfVersion)
+	if err != nil {
+		return TerraformInitResponse{}, errors.Wrap(err, "resolving terraform version")
+	}
+
+	tfVersion := t.DefaultTFVersion
+	if version != nil {
+		tfVersion = version
+	}
+
+	terraformInitVerb := []string{"init"}
+	terraformInitArgs := []string{"-input=false"}
+	finalArgs := common.DeDuplicateExtraArgs(terraformInitArgs, request.Step.ExtraArgs)
+
+	terraformInitCmd := append(terraformInitVerb, finalArgs...)
+
+	fmt.Println("Hello world")
+
+	outCh := t.TerraformExecutor.RunCommandAsync(ctx, request.JobID, request.Path, terraformInitCmd, request.Envs, tfVersion)
+	var lines []string
+	for line := range outCh {
+		if line.Err != nil {
+			err = line.Err
+			break
+		}
+		// fmt.Println(line.Line)
+		lines = append(lines, line.Line)
+	}
+	fmt.Println("Outside loop")
+	output := strings.Join(lines, "\n")
+	fmt.Println(output)
+
+	// sanitize output by stripping out any ansi characters.
+	output = ansi.Strip(output)
+	return TerraformInitResponse{
+		Output: fmt.Sprintf("%s\n", output),
+	}, nil
 }
 
 // Terraform Plan
