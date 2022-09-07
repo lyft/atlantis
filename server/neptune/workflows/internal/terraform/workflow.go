@@ -102,7 +102,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return errors.Wrap(err, "running plan job")
 	}
 
-	// // Wait for plan review signal
+	// Wait for plan review signal
 	var planReview PlanReview
 	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-steps")
 	more := signalChan.Receive(ctx, &planReview)
@@ -120,7 +120,10 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}
 
 	// Cleanup
-	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{}).Get(ctx, nil)
+	var cleanupResponse activities.CleanupResponse
+	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{
+		LocalRoot: fetchRootResponse.LocalRoot,
+	}).Get(ctx, &cleanupResponse)
 	if err != nil {
 		return errors.Wrap(err, "cleaning up")
 	}

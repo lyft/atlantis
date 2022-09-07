@@ -30,11 +30,10 @@ type TerraformConfig struct {
 
 // Config is TemporalWorker specific user config
 type Config struct {
-	AuthCfg            AuthConfig
-	ServerCfg          ServerConfig
-	TemporalCfg        valid.Temporal
-	LogStreamingJobCfg valid.Jobs
-	TerraformCfg       TerraformConfig
+	AuthCfg      AuthConfig
+	ServerCfg    ServerConfig
+	TemporalCfg  valid.Temporal
+	TerraformCfg TerraformConfig
 
 	DataDir     string
 	CtxLogger   logging.Logger

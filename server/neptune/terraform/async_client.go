@@ -14,6 +14,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/core/terraform/helpers"
+	"github.com/runatlantis/atlantis/server/logging"
 )
 
 // Setting the buffer size to 10mb
@@ -36,7 +37,7 @@ func NewAsyncClient(
 	tfDownloader terraform.Downloader,
 	usePluginCache bool,
 ) (*AsyncClient, error) {
-	version, err := GetDefaultVersion(defaultVersionStr, defaultVersionFlagName)
+	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting default version")
 	}
@@ -70,8 +71,13 @@ func NewAsyncClient(
 
 }
 
+type commandBuilder interface {
+	Build(v *version.Version, path string, args []string) (*exec.Cmd, error)
+}
+
 type AsyncClient struct {
 	CommandBuilder commandBuilder
+	Logger         logging.Logger
 }
 
 func (c *AsyncClient) RunCommandAsync(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan helpers.Line {
@@ -88,7 +94,7 @@ func (c *AsyncClient) RunCommandAsync(ctx context.Context, jobID string, path st
 
 		cmd, err := c.CommandBuilder.Build(v, path, args)
 		if err != nil {
-			// prjCtx.Log.ErrorContext(prjCtx.RequestCtx, err.Error())
+			c.Logger.ErrorContext(ctx, err.Error())
 			outCh <- helpers.Line{Err: err}
 			return
 		}
@@ -103,7 +109,7 @@ func (c *AsyncClient) RunCommandAsync(ctx context.Context, jobID string, path st
 		err = cmd.Start()
 		if err != nil {
 			err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
-			// prjCtx.Log.ErrorContext(prjCtx.RequestCtx, err.Error())
+			c.Logger.ErrorContext(ctx, err.Error())
 			outCh <- helpers.Line{Err: err}
 			return
 		}
@@ -131,10 +137,10 @@ func (c *AsyncClient) RunCommandAsync(ctx context.Context, jobID string, path st
 		// We're done now. Send an error if there was one.
 		if err != nil {
 			err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
-			// prjCtx.Log.ErrorContext(prjCtx.RequestCtx, err.Error())
+			c.Logger.ErrorContext(ctx, err.Error())
 			outCh <- helpers.Line{Err: err}
 		} else {
-			// prjCtx.Log.InfoContext(prjCtx.RequestCtx, fmt.Sprintf("successfully ran %q in %q", cmd.String(), path))
+			c.Logger.InfoContext(ctx, fmt.Sprintf("successfully ran %q in %q", cmd.String(), path))
 		}
 	}()
 
@@ -152,7 +158,7 @@ func (c *AsyncClient) WriteOutput(stdReader io.ReadCloser, outCh chan helpers.Li
 	}
 }
 
-func GetDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
+func getDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
 	if overrideVersion != "" {
 		v, err := version.NewVersion(overrideVersion)
 		if err != nil {

@@ -91,7 +91,7 @@ func NewClientWithVersionCache(
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	versionCache cache.ExecutionVersionCache,
 ) (*DefaultClient, error) {
-	version, err := GetDefaultVersion(defaultVersionStr, defaultVersionFlagName)
+	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting default version")
@@ -293,7 +293,7 @@ func isAsyncEligibleCommand(cmd string) bool {
 	return false
 }
 
-func GetDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
+func getDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
 	if overrideVersion != "" {
 		v, err := version.NewVersion(overrideVersion)
 		if err != nil {

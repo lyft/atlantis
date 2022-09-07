@@ -11,10 +11,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 )
 
-type commandBuilder interface {
-	Build(v *version.Version, path string, args []string) (*exec.Cmd, error)
-}
-
 type CommandBuilder struct {
 	defaultVersion          *version.Version
 	versionCache            cache.ExecutionVersionCache

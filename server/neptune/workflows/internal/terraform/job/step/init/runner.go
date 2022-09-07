@@ -24,7 +24,6 @@ func (r *Runner) Run(executionContext *job.ExecutionContext, localRoot *root.Loc
 		Step:      step,
 		Envs:      executionContext.Envs,
 		TfVersion: executionContext.TfVersion,
-		JobID:     "1234",
 		Path:      executionContext.Path,
 	}).Get(executionContext, &resp)
 	if err != nil {

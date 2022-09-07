@@ -4,7 +4,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	job_model "github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/uber-go/tally/v4"
 	"go.temporal.io/sdk/workflow"
@@ -12,8 +11,6 @@ import (
 
 // Export anything that callers need such as requests, signals, etc.
 type TerraformRequest = terraform.Request
-
-type JobExecutionContext = job_model.ExecutionContext
 
 type TerraformActivities struct {
 	activities.Terraform

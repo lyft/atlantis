@@ -14,23 +14,22 @@ import (
 	"github.com/uber-go/tally/v4"
 )
 
-type TerraformExec interface {
+type terraformExec interface {
 	RunCommandAsync(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan helpers.Line
 }
 
 type terraformActivities struct {
-	TerraformExecutor TerraformExec
+	TerraformExecutor terraformExec
 	DefaultTFVersion  *version.Version
 	Scope             tally.Scope
 }
 
 // Terraform Init
-
 type TerraformInitRequest struct {
 	Step      job.Step
 	Envs      map[string]string
-	TfVersion string
 	JobID     string
+	TfVersion string
 	Path      string
 }
 
@@ -53,10 +52,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	terraformInitVerb := []string{"init"}
 	terraformInitArgs := []string{"-input=false"}
 	finalArgs := common.DeDuplicateExtraArgs(terraformInitArgs, request.Step.ExtraArgs)
-
 	terraformInitCmd := append(terraformInitVerb, finalArgs...)
-
-	fmt.Println("Hello world")
 
 	outCh := t.TerraformExecutor.RunCommandAsync(ctx, request.JobID, request.Path, terraformInitCmd, request.Envs, tfVersion)
 	var lines []string
@@ -65,12 +61,9 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 			err = line.Err
 			break
 		}
-		// fmt.Println(line.Line)
 		lines = append(lines, line.Line)
 	}
-	fmt.Println("Outside loop")
 	output := strings.Join(lines, "\n")
-	fmt.Println(output)
 
 	// sanitize output by stripping out any ansi characters.
 	output = ansi.Strip(output)
