@@ -123,6 +123,9 @@ func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *va
 				Credentials: workflows.AppCredentials{
 					InstallationToken: event.InstallationToken,
 				},
+				HeadCommit: workflows.HeadCommit{
+					Ref: fmt.Sprintf("refs/heads/%s", event.Ref.Name),
+				},
 			},
 			Root: workflows.Root{
 				Name: rootCfg.Name,

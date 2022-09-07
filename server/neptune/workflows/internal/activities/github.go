@@ -132,6 +132,7 @@ type FetchRootRequest struct {
 	Repo         internal.Repo
 	Root         root.Root
 	DeploymentId string
+	Revision     string
 }
 
 type FetchRootResponse struct {
@@ -161,7 +162,7 @@ func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootReque
 	if resp.StatusCode != http.StatusFound {
 		return FetchRootResponse{}, errors.Errorf("getting repo archive link returns non-302 status %d", resp.StatusCode)
 	}
-	downloadLink := a.LinkBuilder.BuildDownloadLinkFromArchive(archiveLink, request.Root, request.Repo)
+	downloadLink := a.LinkBuilder.BuildDownloadLinkFromArchive(archiveLink, request.Root, request.Repo, request.Revision)
 	err = getter.Get(destinationPath, downloadLink, getter.WithContext(ctx))
 	if err != nil {
 		return FetchRootResponse{}, errors.Wrap(err, "fetching and extracting zip")
