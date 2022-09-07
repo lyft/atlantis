@@ -96,6 +96,7 @@ func NewServer(config *neptune.Config) (*Server, error) {
 		config.DataDir,
 		config.Scope.SubScope("terraform"),
 		config.ServerCfg.URL,
+		config.CtxLogger,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")

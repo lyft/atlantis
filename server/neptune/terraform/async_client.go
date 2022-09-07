@@ -36,13 +36,14 @@ func NewAsyncClient(
 	tfDownloadURL string,
 	tfDownloader terraform.Downloader,
 	usePluginCache bool,
+	logger logging.Logger,
 ) (*AsyncClient, error) {
 	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting default version")
 	}
 
-	loader := terraform.NewVersionLoader(&terraform.DefaultDownloader{}, tfDownloadURL)
+	loader := terraform.NewVersionLoader(tfDownloader, tfDownloadURL)
 
 	versionCache := cache.NewExecutionVersionLayeredLoadingCache(
 		"terraform",
@@ -67,6 +68,7 @@ func NewAsyncClient(
 
 	return &AsyncClient{
 		CommandBuilder: builder,
+		Logger:         logger,
 	}, nil
 
 }

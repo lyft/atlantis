@@ -4,6 +4,7 @@ import (
 	"net/url"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
@@ -19,8 +20,8 @@ type TerraformActivities struct {
 	activities.Terraform
 }
 
-func NewTerraformActivities(config neptune.TerraformConfig, dataDir string, scope tally.Scope, serverURL *url.URL) (*TerraformActivities, error) {
-	terraformActivities, err := activities.NewTerraform(config, dataDir, scope, serverURL)
+func NewTerraformActivities(config neptune.TerraformConfig, dataDir string, scope tally.Scope, serverURL *url.URL, logger logging.Logger) (*TerraformActivities, error) {
+	terraformActivities, err := activities.NewTerraform(config, dataDir, scope, serverURL, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}
