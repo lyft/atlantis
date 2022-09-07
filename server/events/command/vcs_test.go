@@ -86,6 +86,7 @@ func TestUpdateCombined(t *testing.T) {
 				StatusName:  expSrc,
 				Description: c.expDescrip,
 				CommandName: c.command.TitleString(),
+				DetailsURL:  command.InfraDocsOpSummaryURL,
 			})
 		})
 	}
@@ -163,6 +164,7 @@ func TestUpdateCombinedCount(t *testing.T) {
 				CommandName: c.command.TitleString(),
 				NumSuccess:  strconv.FormatInt(int64(c.numSuccess), 10),
 				NumTotal:    strconv.FormatInt(int64(c.numTotal), 10),
+				DetailsURL:  command.InfraDocsOpSummaryURL,
 			})
 		})
 	}

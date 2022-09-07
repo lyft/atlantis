@@ -11,6 +11,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 )
 
+const InfraDocsOpSummaryURL = "https://infradocs.lyft.net/deploy/infrastructure-as-code/intro.html#understanding-operation-summary"
+
 // VCSStatusUpdater updates the status of a commit with the VCS host. We set
 // the status to signify whether the plan/apply succeeds.
 type VCSStatusUpdater struct {
@@ -23,13 +25,15 @@ func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo,
 	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
 
 	request := types.UpdateStatusRequest{
-		Repo:             repo,
-		PullNum:          pull.Num,
-		Ref:              pull.HeadCommit,
-		StatusName:       src,
-		State:            status,
-		Description:      descrip,
-		DetailsURL:       "",
+		Repo:        repo,
+		PullNum:     pull.Num,
+		Ref:         pull.HeadCommit,
+		StatusName:  src,
+		State:       status,
+		Description: descrip,
+
+		// Pass in a link to infra docs for aggregate operation checkruns to avoid routing users to a broken link
+		DetailsURL:       InfraDocsOpSummaryURL,
 		PullCreationTime: pull.CreatedAt,
 		StatusId:         statusId,
 		CommandName:      titleString(cmdName),
@@ -51,13 +55,15 @@ func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.
 	}
 
 	request := types.UpdateStatusRequest{
-		Repo:             repo,
-		PullNum:          pull.Num,
-		Ref:              pull.HeadCommit,
-		StatusName:       src,
-		State:            status,
-		Description:      fmt.Sprintf("%d/%d projects %s successfully.", numSuccess, numTotal, cmdVerb),
-		DetailsURL:       "",
+		Repo:        repo,
+		PullNum:     pull.Num,
+		Ref:         pull.HeadCommit,
+		StatusName:  src,
+		State:       status,
+		Description: fmt.Sprintf("%d/%d projects %s successfully.", numSuccess, numTotal, cmdVerb),
+
+		// Pass in a link to infra docs for aggregate operation checkruns to avoid routing users to a broken link
+		DetailsURL:       InfraDocsOpSummaryURL,
 		PullCreationTime: pull.CreatedAt,
 		StatusId:         statusId,
 		CommandName:      titleString(cmdName),
