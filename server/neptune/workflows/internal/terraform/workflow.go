@@ -1,10 +1,10 @@
 package terraform
 
 import (
+	"context"
 	"net/url"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
@@ -18,9 +18,13 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type workflowActivities struct {
-	*activities.Terraform
-	*activities.Github
+type githubActivities interface {
+	FetchRoot(ctx context.Context, request activities.FetchRootRequest) (activities.FetchRootResponse, error)
+}
+
+type terraformActivities interface {
+	Cleanup(ctx context.Context, request activities.CleanupRequest) (activities.CleanupResponse, error)
+	GetWorkerInfo(ctx context.Context) (*activities.GetWorkerInfoResponse, error)
 }
 
 // jobRunner runs a deploy plan/apply job
@@ -62,28 +66,27 @@ func Workflow(ctx workflow.Context, request Request) error {
 }
 
 type Runner struct {
-	Activities *workflowActivities
-	JobRunner  jobRunner
-	Request    Request
-	Store      *state.WorkflowStore
+	GithubActivities    githubActivities
+	TerraformActivities terraformActivities
+	JobRunner           jobRunner
+	Request             Request
+	Store               *state.WorkflowStore
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
-	var a *workflowActivities
-
-	// Create a dummy route with the correct jobs path
-	route := &mux.Route{}
-	route.Path("/jobs/{job-id}")
+	var ta *activities.Terraform
+	var ga *activities.Github
 
 	cmdStepRunner := cmd.Runner{
-		Activity: a,
+		Activity: ta,
 	}
 
 	parent := workflow.GetInfo(ctx).ParentWorkflowExecution
 
 	return &Runner{
-		Activities: a,
-		Request:    request,
+		GithubActivities:    ga,
+		TerraformActivities: ta,
+		Request:             request,
 		JobRunner: job_runner.NewRunner(
 			&cmdStepRunner,
 			&env.Runner{
@@ -93,9 +96,6 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 		Store: state.NewWorkflowStore(
 			func(s *state.Workflow) error {
 				return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.WorkflowStateChangeSignal, s).Get(ctx, nil)
-			},
-			&state.OutputURLGenerator{
-				URLBuilder: route,
 			},
 		),
 	}
@@ -168,14 +168,14 @@ func (r *Runner) Apply(ctx workflow.Context, root *root.LocalRoot, serverURL *ur
 
 func (r *Runner) Run(ctx workflow.Context) error {
 	var response *activities.GetWorkerInfoResponse
-	err := workflow.ExecuteActivity(ctx, r.Activities.GetWorkerInfo).Get(ctx, &response)
+	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
 
 	if err != nil {
 		return errors.Wrap(err, "getting worker info")
 	}
 
 	var fetchRootResponse activities.FetchRootResponse
-	err = workflow.ExecuteActivity(ctx, r.Activities.FetchRoot, activities.FetchRootRequest{
+	err = workflow.ExecuteActivity(ctx, r.GithubActivities.FetchRoot, activities.FetchRootRequest{
 		Repo:         r.Request.Repo,
 		Root:         r.Request.Root,
 		DeploymentId: r.Request.DeploymentId,
@@ -195,7 +195,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 	// Cleanup
 	var cleanupResponse activities.CleanupResponse
-	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{
+	err = workflow.ExecuteActivity(ctx, r.TerraformActivities.Cleanup, activities.CleanupRequest{
 		LocalRoot: fetchRootResponse.LocalRoot,
 	}).Get(ctx, &cleanupResponse)
 	if err != nil {

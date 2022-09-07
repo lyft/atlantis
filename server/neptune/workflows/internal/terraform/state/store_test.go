@@ -24,9 +24,6 @@ func (n *testNotifier) notify(state *state.Workflow) error {
 
 func TestInitPlanJob(t *testing.T) {
 
-	route := &mux.Route{}
-	route.Path("/jobs/{job-id}")
-
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
 
@@ -44,9 +41,6 @@ func TestInitPlanJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
-		&state.OutputURLGenerator{
-			URLBuilder: route,
-		},
 	)
 
 	jobID := bytes.NewBufferString("1234")
@@ -78,9 +72,6 @@ func TestInitApplyJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
-		&state.OutputURLGenerator{
-			URLBuilder: route,
-		},
 	)
 
 	jobID := bytes.NewBufferString("1234")
@@ -111,9 +102,6 @@ func TestUpdateApplyJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
-		&state.OutputURLGenerator{
-			URLBuilder: route,
-		},
 	)
 
 	jobID := bytes.NewBufferString("1234")
@@ -150,9 +138,6 @@ func TestUpdatePlanJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
-		&state.OutputURLGenerator{
-			URLBuilder: route,
-		},
 	)
 
 	jobID := bytes.NewBufferString("1234")

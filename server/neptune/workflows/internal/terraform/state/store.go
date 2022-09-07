@@ -2,24 +2,40 @@ package state
 
 import (
 	"fmt"
+	"net/url"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
+
+type urlGenerator interface {
+	Generate(jobID fmt.Stringer, BaseURL fmt.Stringer) (*url.URL, error)
+}
 
 type UpdateNotifier func(state *Workflow) error
 
 type WorkflowStore struct {
 	state              *Workflow
 	notifier           UpdateNotifier
-	outputURLGenerator *OutputURLGenerator
+	outputURLGenerator urlGenerator
 }
 
-func NewWorkflowStore(notifier UpdateNotifier, urlGenerator *OutputURLGenerator) *WorkflowStore {
+func NewWorkflowStoreWithGenerator(notifier UpdateNotifier, g urlGenerator) *WorkflowStore {
 	return &WorkflowStore{
 		state:              &Workflow{},
 		notifier:           notifier,
-		outputURLGenerator: urlGenerator,
+		outputURLGenerator: g,
 	}
+}
+
+func NewWorkflowStore(notifier UpdateNotifier) *WorkflowStore {
+	// Create a dummy route with the correct jobs path
+	route := &mux.Route{}
+	route.Path("/jobs/{job-id}")
+	urlGenerator := &OutputURLGenerator{
+		URLBuilder: route,
+	}
+	return NewWorkflowStoreWithGenerator(notifier, urlGenerator)
 }
 
 func (s *WorkflowStore) InitPlanJob(jobID fmt.Stringer, serverURL fmt.Stringer) error {
