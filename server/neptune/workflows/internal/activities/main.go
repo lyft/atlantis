@@ -76,7 +76,6 @@ func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Sc
 		config.DefaultVersionFlagName,
 		config.DownloadURL,
 		&legacy_tf.DefaultDownloader{},
-		true,
 		logger,
 	)
 	if err != nil {

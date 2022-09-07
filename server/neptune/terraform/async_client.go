@@ -35,7 +35,6 @@ func NewAsyncClient(
 	defaultVersionFlagName string,
 	tfDownloadURL string,
 	tfDownloader terraform.Downloader,
-	usePluginCache bool,
 	logger logging.Logger,
 ) (*AsyncClient, error) {
 	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
@@ -58,12 +57,9 @@ func NewAsyncClient(
 	}
 
 	builder := &CommandBuilder{
-		defaultVersion: version,
-		versionCache:   versionCache,
-	}
-
-	if usePluginCache {
-		builder.terraformPluginCacheDir = cacheDir
+		defaultVersion:          version,
+		versionCache:            versionCache,
+		terraformPluginCacheDir: cacheDir,
 	}
 
 	return &AsyncClient{

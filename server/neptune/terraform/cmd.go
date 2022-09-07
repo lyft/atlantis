@@ -34,9 +34,7 @@ func (c *CommandBuilder) Build(v *version.Version, path string, args []string) (
 		"TF_IN_AUTOMATION=true",
 		fmt.Sprintf("ATLANTIS_TERRAFORM_VERSION=%s", v.String()),
 		fmt.Sprintf("DIR=%s", path),
-	}
-	if c.terraformPluginCacheDir != "" {
-		envVars = append(envVars, fmt.Sprintf("TF_PLUGIN_CACHE_DIR=%s", c.terraformPluginCacheDir))
+		fmt.Sprintf("TF_PLUGIN_CACHE_DIR=%s", c.terraformPluginCacheDir),
 	}
 	// Append current Atlantis process's environment variables, ex.
 	// AWS_ACCESS_KEY.
