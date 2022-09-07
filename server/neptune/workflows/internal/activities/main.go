@@ -12,10 +12,9 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune"
 	"github.com/runatlantis/atlantis/server/neptune/github"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
-	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
-
 	"github.com/uber-go/tally/v4"
 )
 
@@ -86,7 +85,7 @@ func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Sc
 		terraformActivities: &terraformActivities{
 			TerraformExecutor: tfClient,
 			DefaultTFVersion:  defaultTfVersion,
-			Scope:             scope.SubScope("terraform"),
+			Scope:             scope,
 		},
 	}, nil
 }
@@ -96,7 +95,7 @@ type Github struct {
 }
 
 type LinkBuilder interface {
-	BuildDownloadLinkFromArchive(archiveURL *url.URL, root root.Root, repo internal.Repo) string
+	BuildDownloadLinkFromArchive(archiveURL *url.URL, root root.Root, repo repo.Repo) string
 }
 
 func NewGithub(config githubapp.Config, scope tally.Scope, dataDir string) (*Github, error) {
