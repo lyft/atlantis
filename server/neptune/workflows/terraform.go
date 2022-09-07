@@ -2,7 +2,7 @@ package workflows
 
 import (
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/config"
+	"github.com/runatlantis/atlantis/server/neptune"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	job_model "github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -19,7 +19,7 @@ type TerraformActivities struct {
 	activities.Terraform
 }
 
-func NewTerraformActivities(config config.TerraformConfig, dataDir string, scope tally.Scope) (*TerraformActivities, error) {
+func NewTerraformActivities(config neptune.TerraformConfig, dataDir string, scope tally.Scope) (*TerraformActivities, error) {
 	terraformActivities, err := activities.NewTerraform(config, dataDir, scope)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")

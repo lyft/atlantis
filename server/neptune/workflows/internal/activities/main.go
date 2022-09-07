@@ -9,7 +9,7 @@ import (
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/config"
+	"github.com/runatlantis/atlantis/server/neptune"
 	"github.com/runatlantis/atlantis/server/neptune/github"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -52,7 +52,7 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform(config config.TerraformConfig, dataDir string, scope tally.Scope) (*Terraform, error) {
+func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Scope) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err

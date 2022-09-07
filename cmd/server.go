@@ -32,7 +32,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
-	neptune "github.com/runatlantis/atlantis/server/neptune/config"
+	"github.com/runatlantis/atlantis/server/neptune"
 	"github.com/runatlantis/atlantis/server/neptune/gateway"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker"
 	"github.com/spf13/cobra"
