@@ -35,6 +35,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/sync"
+	middleware "github.com/runatlantis/atlantis/server/neptune/github"
 	httpInternal "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
