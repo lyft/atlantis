@@ -16,6 +16,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type testOutputHandler struct{}
+
+func (t *testOutputHandler) Send(jobID string, msg string) {}
+
+func (t *testOutputHandler) Handle() {}
+
+func (t *testOutputHandler) Register(jobID string, receiver chan string) {}
+
+func (t *testOutputHandler) CloseJob(jobID string) {}
+
 type testCommandBuilder struct {
 	t       *testing.T
 	version *version.Version
@@ -53,8 +63,9 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
-		Logger:         logging.NewNoopCtxLogger(t),
+		CommandBuilder:    testCommandBuilder,
+		Logger:            logging.NewNoopCtxLogger(t),
+		StepOutputHandler: &testOutputHandler{},
 	}
 
 	outCh := client.RunCommandAsync(ctx, jobID, path, args, map[string]string{}, nil)
@@ -101,8 +112,9 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
-		Logger:         logging.NewNoopCtxLogger(t),
+		CommandBuilder:    testCommandBuilder,
+		Logger:            logging.NewNoopCtxLogger(t),
+		StepOutputHandler: &testOutputHandler{},
 	}
 
 	outCh := client.RunCommandAsync(ctx, jobID, path, args, map[string]string{}, nil)
@@ -130,8 +142,9 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
-		Logger:         logging.NewNoopCtxLogger(t),
+		CommandBuilder:    testCommandBuilder,
+		Logger:            logging.NewNoopCtxLogger(t),
+		StepOutputHandler: &testOutputHandler{},
 	}
 	outCh := client.RunCommandAsync(ctx, jobID, path, args, map[string]string{}, nil)
 
@@ -158,8 +171,9 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
-		Logger:         logging.NewNoopCtxLogger(t),
+		CommandBuilder:    testCommandBuilder,
+		Logger:            logging.NewNoopCtxLogger(t),
+		StepOutputHandler: &testOutputHandler{},
 	}
 	outCh := client.RunCommandAsync(ctx, jobID, path, args, map[string]string{}, nil)
 

@@ -15,6 +15,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/core/terraform/helpers"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 )
 
 // Setting the buffer size to 10mb
@@ -29,6 +30,7 @@ const BufioScannerBufferSize = 10 * 1024 * 1024
 var versionRegex = regexp.MustCompile("Terraform v(.*?)(\\s.*)?\n")
 
 func NewAsyncClient(
+	outputHandler *job.OutputHandler,
 	binDir string,
 	cacheDir string,
 	defaultVersionStr string,
@@ -66,7 +68,8 @@ func NewAsyncClient(
 	}
 
 	return &AsyncClient{
-		CommandBuilder: builder,
+		StepOutputHandler: outputHandler,
+		CommandBuilder:    builder,
 	}, nil
 
 }
@@ -75,9 +78,25 @@ type commandBuilder interface {
 	Build(v *version.Version, path string, args []string) (*exec.Cmd, error)
 }
 
+type ouptutHandler interface {
+	// Send will enqueue the msg and wait for Handle() to receive the message.
+	Send(jobID string, msg string)
+
+	// Listens for msg from channel
+	Handle()
+
+	// Register registers a channel and blocks until it is caught up. Callers should call this asynchronously when attempting
+	// to read the channel in the same goroutine
+	Register(jobID string, receiver chan string)
+
+	// Persists job to storage backend and marks operation complete
+	CloseJob(jobID string)
+}
+
 type AsyncClient struct {
-	CommandBuilder commandBuilder
-	Logger         logging.Logger
+	StepOutputHandler ouptutHandler
+	CommandBuilder    commandBuilder
+	Logger            logging.Logger
 }
 
 func (c *AsyncClient) RunCommandAsync(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan helpers.Line {
@@ -155,6 +174,7 @@ func (c *AsyncClient) WriteOutput(stdReader io.ReadCloser, outCh chan helpers.Li
 	for s.Scan() {
 		message := s.Text()
 		outCh <- helpers.Line{Line: message}
+		c.StepOutputHandler.Send(jobID, message)
 	}
 }
 

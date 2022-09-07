@@ -80,10 +80,16 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	// TODO: We should actually probably pass this with the revision because a revision
 	// can potentially change a root configuration
 	root := root.Root{
-		Name:  request.Root.Name,
-		Apply: job.Job{Steps: convertToInternalSteps(request.Root.Apply.Steps)},
-		Plan:  job.Job{Steps: convertToInternalSteps(request.Root.Plan.Steps)},
-		Path:  request.Root.RepoRelPath,
+		Name: request.Root.Name,
+		Apply: job.Job{
+			Steps: convertToInternalSteps(request.Root.Apply.Steps),
+			ID:    request.Root.Apply.ID,
+		},
+		Plan: job.Job{
+			Steps: convertToInternalSteps(request.Root.Plan.Steps),
+			ID:    request.Root.Plan.ID,
+		},
+		Path: request.Root.RepoRelPath,
 	}
 
 	// inject dependencies

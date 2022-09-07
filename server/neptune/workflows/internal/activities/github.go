@@ -2,42 +2,48 @@ package activities
 
 import (
 	"context"
+	"net/http"
+	"path/filepath"
+	"time"
+
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
-	"net/http"
-	"path/filepath"
-	"time"
 )
 
 const deploymentsDirName = "deployments"
 
 type githubActivities struct {
-	ClientCreator githubapp.ClientCreator
-	DataDir       string
-	LinkBuilder   LinkBuilder
+	ClientCreator   githubapp.ClientCreator
+	LinkBuilder     LinkBuilder
+	JobURLGenerator job.UrlGenerator
+
+	DataDir string
 }
 
 type CreateCheckRunRequest struct {
 	Title      string
 	Sha        string
+	Summary    string
+	JobID      string
 	Repo       internal.Repo
 	State      internal.CheckRunState
 	Conclusion internal.CheckRunConclusion
-	Summary    string
 }
 
 type UpdateCheckRunRequest struct {
 	Title      string
+	ID         int64
+	Summary    string
+	JobID      string
 	State      internal.CheckRunState
 	Conclusion internal.CheckRunConclusion
 	Repo       internal.Repo
-	ID         int64
-	Summary    string
 }
 
 type CreateCheckRunResponse struct {
@@ -48,6 +54,11 @@ type UpdateCheckRunResponse struct {
 }
 
 func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateCheckRunRequest) (UpdateCheckRunResponse, error) {
+	// TODO: Use this jobURL and populate the summary with the link to the log streaming UI
+	_, err := a.JobURLGenerator.GenerateJobURL(request.JobID)
+	if err != nil {
+		return UpdateCheckRunResponse{}, errors.Wrapf(err, "error generating job id")
+	}
 
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
@@ -84,6 +95,12 @@ func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateChe
 }
 
 func (a *githubActivities) CreateCheckRun(ctx context.Context, request CreateCheckRunRequest) (CreateCheckRunResponse, error) {
+	// TODO: Use this jobURL and populate the summary with the link to the log streaming UI
+	_, err := a.JobURLGenerator.GenerateJobURL(request.JobID)
+	if err != nil {
+		return CreateCheckRunResponse{}, errors.Wrapf(err, "error generating job id")
+	}
+
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
 		Text:    &request.Title,

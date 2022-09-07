@@ -11,6 +11,7 @@ import (
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune"
 	"github.com/runatlantis/atlantis/server/neptune/github"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
@@ -51,7 +52,7 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Scope) (*Terraform, error) {
+func NewTerraform(config neptune.TerraformConfig, outputHandler *job.OutputHandler, dataDir string, scope tally.Scope) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -68,6 +69,7 @@ func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Sc
 	}
 
 	tfClient, err := terraform.NewAsyncClient(
+		outputHandler,
 		binDir,
 		cacheDir,
 		config.DefaultVersionStr,
@@ -98,7 +100,7 @@ type LinkBuilder interface {
 	BuildDownloadLinkFromArchive(archiveURL *url.URL, root root.Root, repo repo.Repo) string
 }
 
-func NewGithub(config githubapp.Config, scope tally.Scope, dataDir string) (*Github, error) {
+func NewGithub(config githubapp.Config, scope tally.Scope, jobURLGenerator job.UrlGenerator, dataDir string) (*Github, error) {
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		config,
 		githubapp.WithClientMiddleware(

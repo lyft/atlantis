@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -45,12 +46,19 @@ type rootConfigBuilder interface {
 	Build(ctx context.Context, event Push) ([]*valid.MergedProjectCfg, error)
 }
 
+type idGenerator interface {
+	GenerateID() string
+}
+
 type PushHandler struct {
 	Allocator         feature.Allocator
 	Scheduler         scheduler
 	TemporalClient    signaler
 	Logger            logging.Logger
 	RootConfigBuilder rootConfigBuilder
+
+	// Extracting job ID generation into its own implementation for mocking
+	JobIdGenerator idGenerator
 }
 
 func (p *PushHandler) Handle(ctx context.Context, event Push) error {
@@ -128,9 +136,11 @@ func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *va
 				Name: rootCfg.Name,
 				Plan: workflows.Job{
 					Steps: p.generateSteps(rootCfg.DeploymentWorkflow.Plan.Steps),
+					ID:    p.JobIdGenerator.GenerateID(),
 				},
 				Apply: workflows.Job{
 					Steps: p.generateSteps(rootCfg.DeploymentWorkflow.Apply.Steps),
+					ID:    p.JobIdGenerator.GenerateID(),
 				},
 				RepoRelPath: rootCfg.RepoRelDir,
 			},

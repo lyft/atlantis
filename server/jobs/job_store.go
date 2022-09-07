@@ -2,8 +2,9 @@ package jobs
 
 import (
 	"fmt"
-	"github.com/uber-go/tally/v4"
 	"sync"
+
+	"github.com/uber-go/tally/v4"
 
 	"github.com/pkg/errors"
 )
@@ -31,7 +32,7 @@ type JobStore interface {
 
 	// Sets a job status to complete and triggers any associated workflow,
 	// e.g: if the status is complete, the job is flushed to the associated storage backend
-	SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error
+	SetJobCompleteStatus(jobID string, status JobStatus) error
 
 	// Removes a job from the store
 	RemoveJob(jobID string)
@@ -92,7 +93,7 @@ func (m *InMemoryJobStore) AppendOutput(jobID string, output string) error {
 	return nil
 }
 
-func (m *InMemoryJobStore) SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error {
+func (m *InMemoryJobStore) SetJobCompleteStatus(jobID string, status JobStatus) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -147,8 +148,8 @@ func (s StorageBackendJobStore) AppendOutput(jobID string, output string) error 
 	return s.JobStore.AppendOutput(jobID, output)
 }
 
-func (s *StorageBackendJobStore) SetJobCompleteStatus(jobID string, fullRepoName string, status JobStatus) error {
-	if err := s.JobStore.SetJobCompleteStatus(jobID, fullRepoName, status); err != nil {
+func (s *StorageBackendJobStore) SetJobCompleteStatus(jobID string, status JobStatus) error {
+	if err := s.JobStore.SetJobCompleteStatus(jobID, status); err != nil {
 		return err
 	}
 
@@ -158,7 +159,7 @@ func (s *StorageBackendJobStore) SetJobCompleteStatus(jobID string, fullRepoName
 	}
 	subScope := s.scope.SubScope("set_job_complete_status")
 	subScope.Counter("write_attempt").Inc(1)
-	ok, err := s.storageBackend.Write(jobID, job.Output, fullRepoName)
+	ok, err := s.storageBackend.Write(jobID, job.Output)
 	if err != nil {
 		return errors.Wrapf(err, "persisting job: %s", jobID)
 	}

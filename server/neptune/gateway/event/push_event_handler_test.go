@@ -17,6 +17,14 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
+type testJobIdGenerator struct {
+	id string
+}
+
+func (i *testJobIdGenerator) GenerateID() string {
+	return i.id
+}
+
 type testRun struct{}
 
 func (r testRun) GetID() string {
@@ -87,6 +95,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 	repoName := "repo"
 	repoURL := "www.nish.com"
 	sha := "12345"
+	jobId := "12"
 
 	t.Run("filters non branch types", func(t *testing.T) {
 		e := event.Push{
@@ -118,6 +127,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			TemporalClient:    testSignaler,
 			Logger:            logger,
 			RootConfigBuilder: &mockRootConfigBuilder{},
+			JobIdGenerator:    &testJobIdGenerator{id: jobId},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -157,6 +167,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			TemporalClient:    testSignaler,
 			Logger:            logger,
 			RootConfigBuilder: &mockRootConfigBuilder{},
+			JobIdGenerator:    &testJobIdGenerator{id: jobId},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -197,6 +208,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			TemporalClient:    testSignaler,
 			Logger:            logger,
 			RootConfigBuilder: &mockRootConfigBuilder{},
+			JobIdGenerator:    &testJobIdGenerator{id: jobId},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -215,6 +227,7 @@ func TestHandlePushEvent(t *testing.T) {
 	repoName := "repo"
 	repoURL := "www.nish.com"
 	sha := "12345"
+	jobId := "12"
 	repo := models.Repo{
 		FullName:      repoFullName,
 		Name:          repoName,
@@ -249,6 +262,7 @@ func TestHandlePushEvent(t *testing.T) {
 			TemporalClient:    testSignaler,
 			Logger:            logger,
 			RootConfigBuilder: &mockRootConfigBuilder{},
+			JobIdGenerator:    &testJobIdGenerator{id: jobId},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -274,6 +288,7 @@ func TestHandlePushEvent(t *testing.T) {
 			TemporalClient:    testSignaler,
 			Logger:            logger,
 			RootConfigBuilder: &mockRootConfigBuilder{},
+			JobIdGenerator:    &testJobIdGenerator{id: jobId},
 		}
 
 		err := handler.Handle(context.Background(), e)
@@ -305,9 +320,11 @@ func TestHandlePushEvent(t *testing.T) {
 					Name: testRoot,
 					Plan: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
+						ID:    jobId,
 					},
 					Apply: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
+						ID:    jobId,
 					},
 				},
 			},
@@ -340,6 +357,7 @@ func TestHandlePushEvent(t *testing.T) {
 			TemporalClient:    testSignaler,
 			Logger:            logger,
 			RootConfigBuilder: rootConfigBuilder,
+			JobIdGenerator:    &testJobIdGenerator{id: jobId},
 		}
 
 		err := handler.Handle(ctx, e)
@@ -371,9 +389,11 @@ func TestHandlePushEvent(t *testing.T) {
 					Name: testRoot,
 					Plan: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
+						ID:    jobId,
 					},
 					Apply: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
+						ID:    jobId,
 					},
 				},
 			},
@@ -408,6 +428,7 @@ func TestHandlePushEvent(t *testing.T) {
 			TemporalClient:    testSignaler,
 			Logger:            logger,
 			RootConfigBuilder: rootConfigBuilder,
+			JobIdGenerator:    &testJobIdGenerator{id: jobId},
 		}
 
 		err := handler.Handle(ctx, e)

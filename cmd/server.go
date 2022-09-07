@@ -516,6 +516,7 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 		return nil, err
 	}
 
+	// TODO: Add log streaming jobs config
 	cfg := &neptune.Config{
 		AuthCfg: neptune.AuthConfig{
 			SslCertFile: userConfig.SSLCertFile,
