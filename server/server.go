@@ -264,6 +264,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			FeatureAllocator: featureAllocator,
 			Logger:           ctxLogger,
 			GithubClient:     rawGithubClient,
+
+			// scope set to instrumented client's update_status which is futher subscoped to commit_status and checks in the client wrapper
+			Scope: statsScope.SubScope("github").SubScope("update_status"),
 		}
 
 		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, checksWrapperGhClient, statsScope, ctxLogger)
@@ -765,7 +768,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PrjCommandBuilder: projectCommandBuilder,
 		FeatureAllocator:  featureAllocator,
 	}
-  
+
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		projectCommandBuilder,
@@ -806,7 +809,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PrjCommandBuilder: prProjectCommandBuilder,
 		FeatureAllocator:  featureAllocator,
 	}
-  
+
 	prApprovePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
 		commitStatusUpdater,
 		prProjectCommandBuilder,
