@@ -10,6 +10,7 @@ import (
 	job_runner "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/cmd"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/env"
+	init_step_runner "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/init"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -76,11 +77,15 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 			&env.Runner{
 				CmdRunner: cmdStepRunner,
 			},
+			&init_step_runner.Runner{
+				Activity: a,
+			},
 		),
 	}
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
+
 	// Download files into disk
 	var fetchRootResponse activities.FetchRootResponse
 	err := workflow.ExecuteActivity(ctx, r.Activities.FetchRoot, activities.FetchRootRequest{
@@ -97,7 +102,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return errors.Wrap(err, "running plan job")
 	}
 
-	// Wait for plan review signal
+	// // Wait for plan review signal
 	var planReview PlanReview
 	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-steps")
 	more := signalChan.Receive(ctx, &planReview)
@@ -115,10 +120,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}
 
 	// Cleanup
-	var cleanupResponse activities.CleanupResponse
-	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{
-		LocalRoot: fetchRootResponse.LocalRoot,
-	}).Get(ctx, &cleanupResponse)
+	err = workflow.ExecuteActivity(ctx, r.Activities.Cleanup, activities.CleanupRequest{}).Get(ctx, nil)
 	if err != nil {
 		return errors.Wrap(err, "cleaning up")
 	}

@@ -105,7 +105,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
-	golang.org/x/net v0.0.0-20220531201128-c960675eff93
+	golang.org/x/net v0.0.0-20220531201128-c960675eff93 // indirect
 	golang.org/x/oauth2 v0.0.0-20210402161424-2e8d93401602 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
@@ -140,6 +140,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.13.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.16.0
 	github.com/graymeta/stow v0.2.7
+	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
+	github.com/lyft/odie v0.265.0
 	github.com/uber-go/tally/v4 v4.1.2
 	go.temporal.io/sdk/contrib/tally v0.1.0
 	logur.dev/adapter/zap v0.5.0
@@ -147,10 +149,13 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.2.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.5.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.4.1 // indirect
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.1 // indirect
-	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/lyft/mgo v2.6.1+incompatible // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rs/zerolog v1.27.0 // indirect
 )

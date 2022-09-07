@@ -20,6 +20,7 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/config"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
@@ -48,7 +49,7 @@ type Server struct {
 	GithubActivities    *workflows.GithubActivities
 }
 
-func NewServer(config *Config) (*Server, error) {
+func NewServer(config *config.Config) (*Server, error) {
 	jobsController := &controllers.JobsController{
 		AtlantisVersion:     config.ServerCfg.Version,
 		AtlantisURL:         config.ServerCfg.URL,
@@ -91,6 +92,8 @@ func NewServer(config *Config) (*Server, error) {
 	}
 
 	terraformActivities, err := workflows.NewTerraformActivities(
+		config.TerraformCfg,
+		config.DataDir,
 		config.Scope.SubScope("terraform"),
 	)
 	if err != nil {
