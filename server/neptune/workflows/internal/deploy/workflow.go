@@ -75,6 +75,9 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 		Credentials: github.AppCredentials{
 			InstallationToken: request.Repository.Credentials.InstallationToken,
 		},
+		HeadCommit: github.Commit{
+			Ref: request.Repository.HeadCommit.Ref,
+		},
 	}
 
 	// TODO: We should actually probably pass this with the revision because a revision
