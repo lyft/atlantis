@@ -412,8 +412,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.TFDownloadURL,
 		&terraform.DefaultDownloader{},
 		true,
-		projectCmdOutputHandler,
-		featureAllocator)
+		projectCmdOutputHandler)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform")
