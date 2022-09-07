@@ -47,11 +47,12 @@ func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
 type Terraform struct {
 	*terraformActivities
 	*executeCommandActivities
+	*workerInfoActivity
 	*notifyActivities
 	*cleanupActivities
 }
 
-func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Scope) (*Terraform, error) {
+func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Scope, serverURL *url.URL) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -82,6 +83,9 @@ func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Sc
 
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
+		workerInfoActivity: &workerInfoActivity{
+			ServerURL: serverURL,
+		},
 		terraformActivities: &terraformActivities{
 			TerraformExecutor: tfClient,
 			DefaultTFVersion:  defaultTfVersion,
