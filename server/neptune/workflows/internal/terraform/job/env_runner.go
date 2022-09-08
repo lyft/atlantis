@@ -1,18 +1,17 @@
-package env
+package job
 
 import (
 	"strings"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job/step/cmd"
 )
 
-type Runner struct {
-	CmdRunner cmd.Runner
+type EnvRunner struct {
+	CmdRunner CmdRunner
 }
 
-func (e *Runner) Run(executionContext *job.ExecutionContext, localRoot *root.LocalRoot, step job.Step) (string, error) {
+func (e *EnvRunner) Run(executionContext *job.ExecutionContext, localRoot *root.LocalRoot, step job.Step) (string, error) {
 	if step.EnvVarValue != "" {
 		return step.EnvVarValue, nil
 	}

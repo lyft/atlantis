@@ -1,4 +1,4 @@
-package init
+package job
 
 import (
 	"context"
@@ -14,11 +14,11 @@ type initActivities interface {
 	TerraformInit(ctx context.Context, request activities.TerraformInitRequest) (activities.TerraformInitResponse, error)
 }
 
-type Runner struct {
+type InitRunner struct {
 	Activity initActivities
 }
 
-func (r *Runner) Run(executionContext *job.ExecutionContext, localRoot *root.LocalRoot, step job.Step) (string, error) {
+func (r *InitRunner) Run(executionContext *job.ExecutionContext, localRoot *root.LocalRoot, step job.Step) (string, error) {
 	var resp activities.TerraformInitResponse
 	err := workflow.ExecuteActivity(executionContext.Context, r.Activity.TerraformInit, activities.TerraformInitRequest{
 		Step:      step,

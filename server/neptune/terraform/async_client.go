@@ -31,7 +31,7 @@ type Line struct {
 }
 
 // Setting the buffer size to 10mb
-const BufioScannerBufferSize = 10 * 1024 * 1024
+const bufioScannerBufferSize = 10 * 1024 * 1024
 
 // versionRegex extracts the version from `terraform version` output.
 //     Terraform v0.12.0-alpha4 (2c36829d3265661d8edbd5014de8090ea7e2a076)
@@ -65,7 +65,7 @@ func NewAsyncClient(
 		return nil, errors.Wrapf(err, "getting default terraform version %s", defaultVersion)
 	}
 
-	builder := &CommandBuilder{
+	builder := &commandBuilder{
 		defaultVersion:          version,
 		versionCache:            versionCache,
 		terraformPluginCacheDir: cfg.CacheDir,
@@ -78,7 +78,7 @@ func NewAsyncClient(
 
 }
 
-type commandBuilder interface {
+type cmddBuilder interface {
 	Build(v *version.Version, path string, args []string) (*exec.Cmd, error)
 }
 
@@ -157,7 +157,7 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 func (c *AsyncClient) WriteOutput(stdReader io.ReadCloser, outCh chan Line, jobID string) {
 	s := bufio.NewScanner(stdReader)
 	buf := []byte{}
-	s.Buffer(buf, BufioScannerBufferSize)
+	s.Buffer(buf, bufioScannerBufferSize)
 
 	for s.Scan() {
 		message := s.Text()

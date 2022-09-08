@@ -41,15 +41,15 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	}
 
 	// Build tf command
-	terraformInitCmd := terraform.CommandArguments{
+	cmd := terraform.CommandArguments{
 		Command:     terraform.Init,
 		CommandArgs: []string{"-input=false"},
 		ExtraArgs:   request.Step.ExtraArgs,
 	}.Build()
 
-	outCh := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, terraformInitCmd, request.Envs, tfVersion)
+	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd, request.Envs, tfVersion)
 	var lines []string
-	for line := range outCh {
+	for line := range ch {
 		if line.Err != nil {
 			err = errors.Wrap(line.Err, "executing command")
 			break
