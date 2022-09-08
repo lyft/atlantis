@@ -1,6 +1,14 @@
 package deploy
 
 // Types defined here should not be used internally, as our goal should be to eventually swap these out for something less brittle than json translation
+type RefType string
+
+const (
+	Unknown   RefType = "unknown"
+	BranchRef RefType = "branch"
+	TagRef    RefType = "tag"
+)
+
 type Request struct {
 	GHRequestID string
 	Repository  Repo
@@ -24,7 +32,12 @@ type Repo struct {
 }
 
 type Commit struct {
-	Ref string
+	Ref Ref
+}
+
+type Ref struct {
+	Name string
+	Type string
 }
 
 type AppCredentials struct {

@@ -147,7 +147,7 @@ func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootReque
 
 	destinationPath := filepath.Join(a.DataDir, deploymentsDirName, request.DeploymentId)
 	opts := &github.RepositoryContentGetOptions{
-		Ref: request.Repo.HeadCommit.Ref,
+		Ref: request.Repo.HeadCommit.Ref.String(),
 	}
 	client, err := a.ClientCreator.NewInstallationClient(request.Repo.Credentials.InstallationToken)
 	if err != nil {

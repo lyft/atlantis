@@ -124,8 +124,10 @@ func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *va
 					InstallationToken: event.InstallationToken,
 				},
 				HeadCommit: workflows.HeadCommit{
-					// we only support branch refs
-					Ref: fmt.Sprintf("refs/heads/%s", event.Ref.Name),
+					Ref: workflows.Ref{
+						Name: event.Ref.Name,
+						Type: string(event.Ref.Type),
+					},
 				},
 			},
 			Root: workflows.Root{

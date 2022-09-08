@@ -76,7 +76,10 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 			InstallationToken: request.Repository.Credentials.InstallationToken,
 		},
 		HeadCommit: github.Commit{
-			Ref: request.Repository.HeadCommit.Ref,
+			Ref: github.Ref{
+				Name: request.Repository.HeadCommit.Ref.Name,
+				Type: request.Repository.HeadCommit.Ref.Type,
+			},
 		},
 	}
 

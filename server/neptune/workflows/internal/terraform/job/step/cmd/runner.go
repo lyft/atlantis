@@ -25,7 +25,7 @@ func (r *Runner) Run(executionContext *job.ExecutionContext, localRoot *root.Loc
 		"REPO_NAME":    localRoot.Repo.Name,
 		"REPO_OWNER":   localRoot.Repo.Owner,
 		"DIR":          executionContext.Path,
-		"HEAD_COMMIT":  localRoot.Repo.HeadCommit.Ref,
+		"HEAD_COMMIT":  localRoot.Repo.HeadCommit.Ref.String(),
 		"PROJECT_NAME": localRoot.Root.Name,
 		"REPO_REL_DIR": relPath,
 		"USER_NAME":    localRoot.Repo.HeadCommit.Author.Username,
