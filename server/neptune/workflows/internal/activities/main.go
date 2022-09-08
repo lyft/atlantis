@@ -9,9 +9,9 @@ import (
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune"
 	"github.com/runatlantis/atlantis/server/neptune/github"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
@@ -41,7 +41,9 @@ type Deploy struct {
 
 func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
 	return &Deploy{
-		dbActivities: &dbActivities{},
+		dbActivities: &dbActivities{
+			Logger: &logger.ActivityLogger{},
+		},
 	}, nil
 }
 
@@ -53,7 +55,7 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Scope, serverURL *url.URL, logger logging.Logger) (*Terraform, error) {
+func NewTerraform(config neptune.TerraformConfig, dataDir string, serverURL *url.URL) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -69,14 +71,16 @@ func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Sc
 		return nil, errors.Wrapf(err, "parsing version %s", config.DefaultVersionStr)
 	}
 
+	tfClientConfig := terraform.ClientConfig{
+		BinDir:        binDir,
+		CacheDir:      cacheDir,
+		TfDownloadURL: config.DownloadURL,
+	}
+
 	tfClient, err := terraform.NewAsyncClient(
-		binDir,
-		cacheDir,
+		tfClientConfig,
 		config.DefaultVersionStr,
-		config.DefaultVersionFlagName,
-		config.DownloadURL,
 		&legacy_tf.DefaultDownloader{},
-		logger,
 	)
 	if err != nil {
 		return nil, err
@@ -88,9 +92,8 @@ func NewTerraform(config neptune.TerraformConfig, dataDir string, scope tally.Sc
 			ServerURL: serverURL,
 		},
 		terraformActivities: &terraformActivities{
-			TerraformExecutor: tfClient,
-			DefaultTFVersion:  defaultTfVersion,
-			Scope:             scope,
+			TerraformClient:  tfClient,
+			DefaultTFVersion: defaultTfVersion,
 		},
 	}, nil
 }
