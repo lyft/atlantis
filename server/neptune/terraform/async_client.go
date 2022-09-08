@@ -43,9 +43,9 @@ const BufioScannerBufferSize = 10 * 1024 * 1024
 var versionRegex = regexp.MustCompile("Terraform v(.*?)(\\s.*)?\n")
 
 func NewAsyncClient(
+	outputHandler *job.OutputHandler,
 	cfg ClientConfig,
 	defaultVersion string,
-	outputHandler *job.OutputHandler,
 	tfDownloader terraform.Downloader,
 ) (*AsyncClient, error) {
 	version, err := getDefaultVersion(defaultVersion)

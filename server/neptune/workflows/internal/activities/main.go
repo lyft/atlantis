@@ -56,7 +56,7 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler job.OutputHandler) (*Terraform, error) {
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler *job.OutputHandler) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err

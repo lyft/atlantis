@@ -26,6 +26,7 @@ import (
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/uber-go/tally/v4"
@@ -95,9 +96,9 @@ func NewServer(config *config.Config) (*Server, error) {
 
 	terraformActivities, err := workflows.NewTerraformActivities(
 		config.TerraformCfg,
-		jobOutputHandler,
 		config.DataDir,
 		config.ServerCfg.URL,
+		jobOutputHandler,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
