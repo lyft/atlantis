@@ -13,10 +13,23 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/core/terraform/helpers"
-	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 )
+
+type ClientConfig struct {
+	BinDir        string
+	CacheDir      string
+	TfDownloadURL string
+}
+
+// Line represents a line that was output from a terraform command.
+type Line struct {
+	// Line is the contents of the line (without the newline).
+	Line string
+	// Err is set if there was an error.
+	Err error
+}
 
 // Setting the buffer size to 10mb
 const BufioScannerBufferSize = 10 * 1024 * 1024
@@ -30,46 +43,40 @@ const BufioScannerBufferSize = 10 * 1024 * 1024
 var versionRegex = regexp.MustCompile("Terraform v(.*?)(\\s.*)?\n")
 
 func NewAsyncClient(
+	cfg ClientConfig,
+	defaultVersion string,
 	outputHandler *job.OutputHandler,
-	binDir string,
-	cacheDir string,
-	defaultVersionStr string,
-	defaultVersionFlagName string,
-	tfDownloadURL string,
 	tfDownloader terraform.Downloader,
-	usePluginCache bool,
 ) (*AsyncClient, error) {
-	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
+	version, err := getDefaultVersion(defaultVersion)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting default version")
 	}
 
-	loader := terraform.NewVersionLoader(&terraform.DefaultDownloader{}, tfDownloadURL)
+	loader := terraform.NewVersionLoader(tfDownloader, cfg.TfDownloadURL)
 
 	versionCache := cache.NewExecutionVersionLayeredLoadingCache(
 		"terraform",
-		binDir,
+		cfg.BinDir,
 		loader.LoadVersion,
 	)
 
 	// warm the cache with this version
 	_, err = versionCache.Get(version)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting default terraform version %s", defaultVersionStr)
+		return nil, errors.Wrapf(err, "getting default terraform version %s", defaultVersion)
 	}
 
 	builder := &CommandBuilder{
-		defaultVersion: version,
-		versionCache:   versionCache,
-	}
-
-	if usePluginCache {
-		builder.terraformPluginCacheDir = cacheDir
+		defaultVersion:          version,
+		versionCache:            versionCache,
+		terraformPluginCacheDir: cfg.CacheDir,
 	}
 
 	return &AsyncClient{
 		StepOutputHandler: outputHandler,
 		CommandBuilder:    builder,
+		Logger:            &logger.ActivityLogger{},
 	}, nil
 
 }
@@ -96,119 +103,93 @@ type ouptutHandler interface {
 type AsyncClient struct {
 	StepOutputHandler ouptutHandler
 	CommandBuilder    commandBuilder
-	Logger            logging.Logger
+	Logger            logger.Logger
 }
 
-func (c *AsyncClient) RunCommandAsync(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan helpers.Line {
-	outCh := make(chan helpers.Line)
+func (c *AsyncClient) RunCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan Line {
+	outCh := make(chan Line)
 
 	// We start a goroutine to do our work asynchronously and then immediately
 	// return our channels.
-	go func() {
-
-		// Ensure we close our channels when we exit.
-		defer func() {
-			close(outCh)
-		}()
-
-		cmd, err := c.CommandBuilder.Build(v, path, args)
-		if err != nil {
-			c.Logger.ErrorContext(ctx, err.Error())
-			outCh <- helpers.Line{Err: err}
-			return
-		}
-		stdout, _ := cmd.StdoutPipe()
-		stderr, _ := cmd.StderrPipe()
-		envVars := cmd.Env
-		for key, val := range customEnvVars {
-			envVars = append(envVars, fmt.Sprintf("%s=%s", key, val))
-		}
-		cmd.Env = envVars
-
-		err = cmd.Start()
-		if err != nil {
-			err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
-			c.Logger.ErrorContext(ctx, err.Error())
-			outCh <- helpers.Line{Err: err}
-			return
-		}
-
-		// Use a waitgroup to block until our stdout/err copying is complete.
-		wg := new(sync.WaitGroup)
-		wg.Add(2)
-		// Asynchronously copy from stdout/err to outCh.
-		go func() {
-			defer wg.Done()
-			c.WriteOutput(stdout, outCh, jobID)
-		}()
-		go func() {
-			defer wg.Done()
-			c.WriteOutput(stderr, outCh, jobID)
-		}()
-
-		// Wait for our copying to complete. This *must* be done before
-		// calling cmd.Wait(). (see https://github.com/golang/go/issues/19685)
-		wg.Wait()
-
-		// Wait for the command to complete.
-		err = cmd.Wait()
-
-		// We're done now. Send an error if there was one.
-		if err != nil {
-			err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
-			c.Logger.ErrorContext(ctx, err.Error())
-			outCh <- helpers.Line{Err: err}
-		} else {
-			c.Logger.InfoContext(ctx, fmt.Sprintf("successfully ran %q in %q", cmd.String(), path))
-		}
-	}()
-
+	go c.runCommand(ctx, jobID, path, args, customEnvVars, v, outCh)
 	return outCh
 }
 
-func (c *AsyncClient) WriteOutput(stdReader io.ReadCloser, outCh chan helpers.Line, jobID string) {
+func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version, outCh chan Line) {
+	// Ensure we close our channels when we exit.
+	defer func() {
+		close(outCh)
+	}()
+
+	cmd, err := c.CommandBuilder.Build(v, path, args)
+	if err != nil {
+		c.Logger.Error(ctx, err.Error())
+		outCh <- Line{Err: err}
+		return
+	}
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
+	envVars := cmd.Env
+	for key, val := range customEnvVars {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", key, val))
+	}
+	cmd.Env = envVars
+
+	err = cmd.Start()
+	if err != nil {
+		err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
+		c.Logger.Error(ctx, err.Error())
+		outCh <- Line{Err: err}
+		return
+	}
+
+	// Use a waitgroup to block until our stdout/err copying is complete.
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+	// Asynchronously copy from stdout/err to outCh.
+	go func() {
+		defer wg.Done()
+		c.WriteOutput(stdout, outCh, jobID)
+	}()
+	go func() {
+		defer wg.Done()
+		c.WriteOutput(stderr, outCh, jobID)
+	}()
+
+	// Wait for our copying to complete. This *must* be done before
+	// calling cmd.Wait(). (see https://github.com/golang/go/issues/19685)
+	wg.Wait()
+
+	// Wait for the command to complete.
+	err = cmd.Wait()
+
+	// We're done now. Send an error if there was one.
+	if err != nil {
+		err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
+		c.Logger.Error(ctx, err.Error())
+		outCh <- Line{Err: err}
+	} else {
+		c.Logger.Error(ctx, fmt.Sprintf("successfully ran %q in %q", cmd.String(), path))
+	}
+}
+
+func (c *AsyncClient) WriteOutput(stdReader io.ReadCloser, outCh chan Line, jobID string) {
 	s := bufio.NewScanner(stdReader)
 	buf := []byte{}
 	s.Buffer(buf, BufioScannerBufferSize)
 
 	for s.Scan() {
 		message := s.Text()
-		outCh <- helpers.Line{Line: message}
+		outCh <- Line{Line: message}
 		c.StepOutputHandler.Send(jobID, message)
 	}
 }
 
-func getDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
-	if overrideVersion != "" {
-		v, err := version.NewVersion(overrideVersion)
-		if err != nil {
-			return nil, errors.Wrapf(err, "parsing version %s", overrideVersion)
-		}
-
-		return v, nil
-	}
-
-	// look for the binary directly on disk and query the version
-	// we shouldn't really be doing this, but don't want to break existing clients.
-	// this implementation assumes that versions in the format our cache assumes
-	// and if thats the case we won't be redownloading the version of this binary to our cache
-	localPath, err := exec.LookPath("terraform")
+func getDefaultVersion(overrideVersion string) (*version.Version, error) {
+	v, err := version.NewVersion(overrideVersion)
 	if err != nil {
-		return nil, fmt.Errorf("terraform not found in $PATH. Set --%s or download terraform from https://www.terraform.io/downloads.html", versionFlagName)
+		return nil, errors.Wrapf(err, "parsing version %s", overrideVersion)
 	}
 
-	return getVersion(localPath)
-}
-
-func getVersion(tfBinary string) (*version.Version, error) {
-	versionOutBytes, err := exec.Command(tfBinary, "version").Output() // #nosec
-	versionOutput := string(versionOutBytes)
-	if err != nil {
-		return nil, errors.Wrapf(err, "running terraform version: %s", versionOutput)
-	}
-	match := versionRegex.FindStringSubmatch(versionOutput)
-	if len(match) <= 1 {
-		return nil, fmt.Errorf("could not parse terraform version from %s", versionOutput)
-	}
-	return version.NewVersion(match[1])
+	return v, nil
 }

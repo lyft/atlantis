@@ -9,8 +9,9 @@ import (
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/neptune"
 	"github.com/runatlantis/atlantis/server/neptune/github"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -41,18 +42,21 @@ type Deploy struct {
 
 func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
 	return &Deploy{
-		dbActivities: &dbActivities{},
+		dbActivities: &dbActivities{
+			Logger: &logger.ActivityLogger{},
+		},
 	}, nil
 }
 
 type Terraform struct {
 	*terraformActivities
 	*executeCommandActivities
+	*workerInfoActivity
 	*notifyActivities
 	*cleanupActivities
 }
 
-func NewTerraform(config neptune.TerraformConfig, outputHandler *job.OutputHandler, dataDir string, scope tally.Scope) (*Terraform, error) {
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler job.OutputHandler) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -68,15 +72,17 @@ func NewTerraform(config neptune.TerraformConfig, outputHandler *job.OutputHandl
 		return nil, errors.Wrapf(err, "parsing version %s", config.DefaultVersionStr)
 	}
 
+	tfClientConfig := terraform.ClientConfig{
+		BinDir:        binDir,
+		CacheDir:      cacheDir,
+		TfDownloadURL: config.DownloadURL,
+	}
+
 	tfClient, err := terraform.NewAsyncClient(
 		outputHandler,
-		binDir,
-		cacheDir,
+		tfClientConfig,
 		config.DefaultVersionStr,
-		config.DefaultVersionFlagName,
-		config.DownloadURL,
 		&legacy_tf.DefaultDownloader{},
-		true,
 	)
 	if err != nil {
 		return nil, err
@@ -84,10 +90,12 @@ func NewTerraform(config neptune.TerraformConfig, outputHandler *job.OutputHandl
 
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
+		workerInfoActivity: &workerInfoActivity{
+			ServerURL: serverURL,
+		},
 		terraformActivities: &terraformActivities{
-			TerraformExecutor: tfClient,
-			DefaultTFVersion:  defaultTfVersion,
-			Scope:             scope,
+			TerraformClient:  tfClient,
+			DefaultTFVersion: defaultTfVersion,
 		},
 	}, nil
 }

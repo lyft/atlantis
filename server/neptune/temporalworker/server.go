@@ -23,9 +23,9 @@ import (
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/uber-go/tally/v4"
@@ -53,7 +53,7 @@ type Server struct {
 	GithubActivities    *workflows.GithubActivities
 }
 
-func NewServer(config *neptune.Config) (*Server, error) {
+func NewServer(config *config.Config) (*Server, error) {
 	jobOutputHandler, err := createJobOutputHandler(config)
 	if err != nil {
 		return nil, errors.Wrap(err, "intializing project command output handler")
@@ -97,7 +97,7 @@ func NewServer(config *neptune.Config) (*Server, error) {
 		config.TerraformCfg,
 		jobOutputHandler,
 		config.DataDir,
-		config.Scope.SubScope("terraform"),
+		config.ServerCfg.URL,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")

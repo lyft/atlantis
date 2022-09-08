@@ -11,8 +11,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/core/terraform/helpers"
-	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -51,7 +50,6 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 	}
 	jobID := "1234"
 	echoCommand := exec.Command("sh", "-c", "echo hello")
-
 	ctx := context.Background()
 
 	testCommandBuilder := &testCommandBuilder{
@@ -64,11 +62,11 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder:    testCommandBuilder,
-		Logger:            logging.NewNoopCtxLogger(t),
+		Logger:            &logger.NoopLogger{},
 		StepOutputHandler: &testOutputHandler{},
 	}
 
-	outCh := client.RunCommandAsync(ctx, jobID, path, args, map[string]string{}, nil)
+	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
 
 	out, err := waitCh(outCh)
 	assert.Nil(t, err)
@@ -113,11 +111,11 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder:    testCommandBuilder,
-		Logger:            logging.NewNoopCtxLogger(t),
+		Logger:            &logger.NoopLogger{},
 		StepOutputHandler: &testOutputHandler{},
 	}
 
-	outCh := client.RunCommandAsync(ctx, jobID, path, args, map[string]string{}, nil)
+	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
 
 	out, err := waitCh(outCh)
 	assert.Nil(t, err)
@@ -143,10 +141,10 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder:    testCommandBuilder,
-		Logger:            logging.NewNoopCtxLogger(t),
+		Logger:            &logger.NoopLogger{},
 		StepOutputHandler: &testOutputHandler{},
 	}
-	outCh := client.RunCommandAsync(ctx, jobID, path, args, map[string]string{}, nil)
+	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
 
 	out, err := waitCh(outCh)
 	assert.Nil(t, err)
@@ -172,10 +170,10 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder:    testCommandBuilder,
-		Logger:            logging.NewNoopCtxLogger(t),
+		Logger:            &logger.NoopLogger{},
 		StepOutputHandler: &testOutputHandler{},
 	}
-	outCh := client.RunCommandAsync(ctx, jobID, path, args, map[string]string{}, nil)
+	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
 
 	out, err := waitCh(outCh)
 	assert.EqualError(t, err, fmt.Sprintf(`running "/bin/sh -c echo dying && exit 1" in %q: exit status 1`, path))
@@ -183,7 +181,7 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 	assert.Equal(t, "dying", out)
 }
 
-func waitCh(ch <-chan helpers.Line) (string, error) {
+func waitCh(ch <-chan Line) (string, error) {
 	var ls []string
 	for line := range ch {
 		if line.Err != nil {
