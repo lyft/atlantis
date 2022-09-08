@@ -1,4 +1,4 @@
-package neptune
+package config
 
 import (
 	"io"

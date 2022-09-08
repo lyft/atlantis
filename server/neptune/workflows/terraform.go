@@ -4,7 +4,7 @@ import (
 	"net/url"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -18,7 +18,7 @@ type TerraformActivities struct {
 	activities.Terraform
 }
 
-func NewTerraformActivities(config neptune.TerraformConfig, dataDir string, serverURL *url.URL) (*TerraformActivities, error) {
+func NewTerraformActivities(config config.TerraformConfig, dataDir string, serverURL *url.URL) (*TerraformActivities, error) {
 	terraformActivities, err := activities.NewTerraform(config, dataDir, serverURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")

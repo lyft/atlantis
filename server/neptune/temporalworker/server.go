@@ -20,9 +20,9 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/cli"
@@ -49,7 +49,7 @@ type Server struct {
 	GithubActivities    *workflows.GithubActivities
 }
 
-func NewServer(config *neptune.Config) (*Server, error) {
+func NewServer(config *config.Config) (*Server, error) {
 	jobsController := &controllers.JobsController{
 		AtlantisVersion:     config.ServerCfg.Version,
 		AtlantisURL:         config.ServerCfg.URL,
