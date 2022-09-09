@@ -64,6 +64,7 @@ func TestStateReceive(t *testing.T) {
 		State                      *state.Workflow
 		ExpectedCheckRunState      github.CheckRunState
 		ExpectedCheckRunConclusion github.CheckRunConclusion
+		ExpectedActions            []github.CheckRunAction
 	}{
 		{
 			State: &state.Workflow{
@@ -93,6 +94,10 @@ func TestStateReceive(t *testing.T) {
 			},
 			ExpectedCheckRunState:      github.CheckRunComplete,
 			ExpectedCheckRunConclusion: github.CheckRunSuccess,
+			ExpectedActions: []github.CheckRunAction{
+				github.CreatePlanReviewAction(github.Approved),
+				github.CreatePlanReviewAction(github.Reject),
+			},
 		},
 		{
 			State: &state.Workflow{
@@ -154,6 +159,7 @@ func TestStateReceive(t *testing.T) {
 				},
 				Summary: markdown.RenderWorkflowStateTmpl(c.State),
 				ID:      1,
+				Actions: c.ExpectedActions,
 			}).Return(activities.UpdateCheckRunResponse{}, nil)
 
 			env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{

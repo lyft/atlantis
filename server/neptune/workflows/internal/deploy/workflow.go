@@ -11,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -93,7 +94,7 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	var a *workerActivities
 
 	revisionQueue := queue.NewQueue()
-	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, repo, root, a)
+	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, repo, root, a, sideeffect.GenerateUUID)
 	tfWorkflowRunner := terraform.NewWorkflowRunner(repo, a, tfWorkflow)
 
 	worker := &queue.Worker{
