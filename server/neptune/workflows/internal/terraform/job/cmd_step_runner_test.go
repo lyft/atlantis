@@ -38,7 +38,7 @@ func testCmdWorkflow(ctx workflow.Context, r request) (string, error) {
 	}
 
 	var a *testCmdExecuteActivity
-	cmdStepRunner := runner.CmdRunner{
+	cmdStepRunner := runner.CmdStepRunner{
 		Activity: a,
 	}
 

@@ -52,8 +52,8 @@ func testEnvWorkflow(ctx workflow.Context, r request) (string, error) {
 	}
 
 	var a *testCmdExecuteActivity
-	envStepRunner := runner.EnvRunner{
-		CmdRunner: runner.CmdRunner{
+	envStepRunner := runner.EnvStepRunner{
+		CmdStepRunner: runner.CmdStepRunner{
 			Activity: a,
 		},
 	}
@@ -127,7 +127,7 @@ func TestEnvRunne_EnvVarValueSet(t *testing.T) {
 		EnvVarValue: "TEST_VALUE",
 	}
 
-	runner := runner.EnvRunner{}
+	runner := runner.EnvStepRunner{}
 
 	out, err := runner.Run(executioncontext, localRoot, step)
 	assert.Nil(t, err)

@@ -14,11 +14,11 @@ type executeCommandActivities interface {
 	ExecuteCommand(context.Context, activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error)
 }
 
-type CmdRunner struct {
+type CmdStepRunner struct {
 	Activity executeCommandActivities
 }
 
-func (r *CmdRunner) Run(executionContext *job.ExecutionContext, localRoot *root.LocalRoot, step job.Step) (string, error) {
+func (r *CmdStepRunner) Run(executionContext *job.ExecutionContext, localRoot *root.LocalRoot, step job.Step) (string, error) {
 	relPath := localRoot.RelativePathFromRepo()
 
 	envVars := map[string]string{

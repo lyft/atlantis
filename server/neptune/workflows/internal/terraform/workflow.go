@@ -75,7 +75,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	var ta *activities.Terraform
 	var ga *activities.Github
 
-	cmdStepRunner := runner.CmdRunner{
+	cmdStepRunner := runner.CmdStepRunner{
 		Activity: ta,
 	}
 
@@ -87,10 +87,10 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 		Request:             request,
 		JobRunner: runner.NewRunner(
 			&cmdStepRunner,
-			&runner.EnvRunner{
-				CmdRunner: cmdStepRunner,
+			&runner.EnvStepRunner{
+				CmdStepRunner: cmdStepRunner,
 			},
-			&runner.InitRunner{
+			&runner.InitStepRunner{
 				Activity: ta,
 			},
 		),
