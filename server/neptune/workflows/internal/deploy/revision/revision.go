@@ -2,10 +2,13 @@ package revision
 
 import (
 	"context"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -15,18 +18,19 @@ type NewRevisionRequest struct {
 }
 
 type Queue interface {
-	Push(queue.Message)
+	Push(terraform.DeploymentInfo)
 }
 
 type Activities interface {
 	CreateCheckRun(ctx context.Context, request activities.CreateCheckRunRequest) (activities.CreateCheckRunResponse, error)
 }
 
-func NewReceiver(ctx workflow.Context, queue Queue, repo github.Repo, activities Activities) *Receiver {
+func NewReceiver(ctx workflow.Context, queue Queue, repo github.Repo, root root.Root, activities Activities) *Receiver {
 	return &Receiver{
 		queue:      queue,
 		ctx:        ctx,
 		repo:       repo,
+		root:       root,
 		activities: activities,
 	}
 }
@@ -36,6 +40,7 @@ type Receiver struct {
 	ctx        workflow.Context
 	activities Activities
 	repo       github.Repo
+	root       root.Root
 }
 
 func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
@@ -51,12 +56,19 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		MaximumAttempts: 5,
 	})
 
-	var resp activities.CreateCheckRunResponse
+	// generate an id for this deployment and pass that to our check run
+	id, err := sideeffect.GenerateUUID(ctx)
 
-	err := workflow.ExecuteActivity(ctx, n.activities.CreateCheckRun, activities.CreateCheckRunRequest{
-		Title: "atlantis/deploy",
-		Sha:   request.Revision,
-		Repo:  n.repo,
+	if err != nil {
+		logger.Error(ctx, "generating deployment id", "err", err)
+	}
+
+	var resp activities.CreateCheckRunResponse
+	err = workflow.ExecuteActivity(ctx, n.activities.CreateCheckRun, activities.CreateCheckRunRequest{
+		Title:      "atlantis/deploy",
+		Sha:        request.Revision,
+		Repo:       n.repo,
+		ExternalID: id.String(),
 	}).Get(ctx, &resp)
 
 	// don't block on error here, we'll just try again later when we have our result.
@@ -64,7 +76,9 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		logger.Error(ctx, err.Error())
 	}
 
-	n.queue.Push(queue.Message{
+	n.queue.Push(terraform.DeploymentInfo{
+		ID:         id,
+		Root:       n.root,
 		Revision:   request.Revision,
 		CheckRunID: resp.ID,
 	})

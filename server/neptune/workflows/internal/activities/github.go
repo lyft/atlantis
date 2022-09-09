@@ -29,12 +29,14 @@ type CreateCheckRunRequest struct {
 	State      internal.CheckRunState
 	Conclusion internal.CheckRunConclusion
 	Summary    string
+	ExternalID string
 }
 
 type UpdateCheckRunRequest struct {
 	Title      string
 	State      internal.CheckRunState
 	Conclusion internal.CheckRunConclusion
+	Actions    []internal.CheckRunAction
 	Repo       internal.Repo
 	ID         int64
 	Summary    string
@@ -48,7 +50,6 @@ type UpdateCheckRunResponse struct {
 }
 
 func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateCheckRunRequest) (UpdateCheckRunResponse, error) {
-
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
 		Text:    &request.Title,
@@ -59,6 +60,17 @@ func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateChe
 		Name:   request.Title,
 		Status: github.String(string(request.State)),
 		Output: &output,
+	}
+
+	// update with any actions
+	if len(request.Actions) != 0 {
+		var actions []*github.CheckRunAction
+
+		for _, a := range request.Actions {
+			actions = append(actions, a.ToGithubAction())
+		}
+
+		opts.Actions = actions
 	}
 
 	// Conclusion is required if status is Completed
@@ -91,10 +103,11 @@ func (a *githubActivities) CreateCheckRun(ctx context.Context, request CreateChe
 	}
 
 	opts := github.CreateCheckRunOptions{
-		Name:    request.Title,
-		HeadSHA: request.Sha,
-		Status:  github.String("queued"),
-		Output:  &output,
+		Name:       request.Title,
+		HeadSHA:    request.Sha,
+		Status:     github.String("queued"),
+		Output:     &output,
+		ExternalID: &request.ExternalID,
 	}
 
 	var state internal.CheckRunState

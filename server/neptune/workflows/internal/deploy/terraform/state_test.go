@@ -45,7 +45,9 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error
 		}
 	})
 
-	receiver.Receive(ctx, ch, 1)
+	receiver.Receive(ctx, ch, terraform.DeploymentInfo{
+		CheckRunID: 1,
+	})
 
 	return nil
 }

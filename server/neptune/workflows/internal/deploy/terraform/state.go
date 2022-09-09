@@ -21,12 +21,12 @@ type StateReceiver struct {
 	Activity receiverActivities
 }
 
-func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, checkRunID int64) {
+func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
 	var workflowState *state.Workflow
 	c.Receive(ctx, &workflowState)
 
 	// TODO: if we never created a check run, there was likely some issue, we should attempt to create it again.
-	if checkRunID == 0 {
+	if deploymentInfo.CheckRunID == 0 {
 		logger.Error(ctx, "check run id is 0, skipping update of check run")
 		return
 	}
@@ -40,6 +40,26 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 	summary := markdown.RenderWorkflowStateTmpl(workflowState)
 	checkRunState, checkRunConclusion := determineCheckRunStateAndConclusion(workflowState)
 
+	request := activities.UpdateCheckRunRequest{
+		Title:      "atlantis/deploy",
+		State:      checkRunState,
+		Repo:       n.Repo,
+		ID:         deploymentInfo.CheckRunID,
+		Summary:    summary,
+		Conclusion: checkRunConclusion,
+	}
+
+	if workflowState.Plan.Status == state.SuccessJobStatus && workflowState.Apply == nil {
+		request.Actions = []github.CheckRunAction{
+			github.PlanReviewAction{
+				ActionType: github.Approved,
+			},
+			github.PlanReviewAction{
+				ActionType: github.Reject,
+			},
+		}
+	}
+
 	// cap our retries for non-terminal states to allow for at least some progress
 	if checkRunState != github.CheckRunComplete {
 		ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
@@ -49,14 +69,7 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 
 	// TODO: should we block here? maybe we can just make this async
 	var resp activities.UpdateCheckRunResponse
-	err := workflow.ExecuteActivity(ctx, n.Activity.UpdateCheckRun, activities.UpdateCheckRunRequest{
-		Title:      "atlantis/deploy",
-		State:      checkRunState,
-		Repo:       n.Repo,
-		ID:         checkRunID,
-		Summary:    summary,
-		Conclusion: checkRunConclusion,
-	}).Get(ctx, &resp)
+	err := workflow.ExecuteActivity(ctx, n.Activity.UpdateCheckRun, request).Get(ctx, &resp)
 
 	if err != nil {
 		logger.Error(ctx, "updating check run", "err", err)

@@ -7,8 +7,9 @@ import (
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
@@ -16,15 +17,15 @@ import (
 )
 
 type testQueue struct {
-	Queue []queue.Message
+	Queue []terraform.DeploymentInfo
 }
 
-func (q *testQueue) Push(msg queue.Message) {
+func (q *testQueue) Push(msg terraform.DeploymentInfo) {
 	q.Queue = append(q.Queue, msg)
 }
 
 type response struct {
-	Queue   []queue.Message
+	Queue   []terraform.DeploymentInfo
 	Timeout bool
 }
 
@@ -44,7 +45,7 @@ func testWorkflow(ctx workflow.Context) (response, error) {
 
 	var a *testActivities
 
-	receiver := revision.NewReceiver(ctx, queue, github.Repo{Name: "nish"}, a)
+	receiver := revision.NewReceiver(ctx, queue, github.Repo{Name: "nish"}, root.Root{Name: "root"}, a)
 	selector := workflow.NewSelector(ctx)
 
 	selector.AddReceive(workflow.GetSignalChannel(ctx, "test-signal"), receiver.Receive)
@@ -93,10 +94,11 @@ func TestEnqueue(t *testing.T) {
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 
-	assert.Equal(t, []queue.Message{
+	assert.Equal(t, []terraform.DeploymentInfo{
 		{
 			Revision:   rev,
 			CheckRunID: 1,
+			Root:       root.Root{Name: "root"},
 		},
 	}, resp.Queue)
 	assert.False(t, resp.Timeout)

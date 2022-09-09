@@ -93,13 +93,11 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	var a *workerActivities
 
 	revisionQueue := queue.NewQueue()
-	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, repo, a)
+	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, repo, root, a)
 	tfWorkflowRunner := terraform.NewWorkflowRunner(repo, a, tfWorkflow)
 
 	worker := &queue.Worker{
 		Queue:                   revisionQueue,
-		Repo:                    repo,
-		Root:                    root,
 		TerraformWorkflowRunner: tfWorkflowRunner,
 	}
 
