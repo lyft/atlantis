@@ -7,7 +7,6 @@ import (
 )
 
 type dbActivities struct {
-	Logger logger.Logger
 }
 
 type FetchLatestDeploymentRequest struct {
@@ -21,7 +20,7 @@ type FetchLatestDeploymentResponse struct {
 }
 
 func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
-	a.Logger.Info(ctx, "fetching latest deployment")
+	logger.Info(ctx, "fetching latest deployment")
 
 	return FetchLatestDeploymentResponse{
 		ID:       "test-id",

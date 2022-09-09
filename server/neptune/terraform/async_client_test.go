@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,7 +51,6 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder: testCommandBuilder,
-		Logger:         &logger.NoopLogger{},
 	}
 
 	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
@@ -100,7 +98,6 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder: testCommandBuilder,
-		Logger:         &logger.NoopLogger{},
 	}
 
 	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
@@ -129,7 +126,6 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder: testCommandBuilder,
-		Logger:         &logger.NoopLogger{},
 	}
 	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
 
@@ -157,7 +153,6 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder: testCommandBuilder,
-		Logger:         &logger.NoopLogger{},
 	}
 	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
 

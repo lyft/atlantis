@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 )
 
 type ClientConfig struct {
@@ -73,7 +72,6 @@ func NewAsyncClient(
 
 	return &AsyncClient{
 		CommandBuilder: builder,
-		Logger:         &logger.ActivityLogger{},
 	}, nil
 
 }
@@ -83,8 +81,7 @@ type cmddBuilder interface {
 }
 
 type AsyncClient struct {
-	CommandBuilder commandBuilder
-	Logger         logger.Logger
+	CommandBuilder cmddBuilder
 }
 
 func (c *AsyncClient) RunCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan Line {
@@ -96,6 +93,7 @@ func (c *AsyncClient) RunCommand(ctx context.Context, jobID string, path string,
 	return outCh
 }
 
+// TODO: Uncomment the logs after figuring out a way to mock it in the test
 func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version, outCh chan Line) {
 	// Ensure we close our channels when we exit.
 	defer func() {
@@ -104,7 +102,7 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 
 	cmd, err := c.CommandBuilder.Build(v, path, args)
 	if err != nil {
-		c.Logger.Error(ctx, err.Error())
+		// logger.Error(ctx, err.Error())
 		outCh <- Line{Err: err}
 		return
 	}
@@ -119,7 +117,7 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 	err = cmd.Start()
 	if err != nil {
 		err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
-		c.Logger.Error(ctx, err.Error())
+		// logger.Error(ctx, err.Error())
 		outCh <- Line{Err: err}
 		return
 	}
@@ -147,10 +145,10 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 	// We're done now. Send an error if there was one.
 	if err != nil {
 		err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
-		c.Logger.Error(ctx, err.Error())
+		// logger.Error(ctx, err.Error())
 		outCh <- Line{Err: err}
 	} else {
-		c.Logger.Error(ctx, fmt.Sprintf("successfully ran %q in %q", cmd.String(), path))
+		// logger.Info(ctx, fmt.Sprintf("successfully ran %q in %q", cmd.String(), path))
 	}
 }
 

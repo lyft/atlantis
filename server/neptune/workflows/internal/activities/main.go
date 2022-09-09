@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/github"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -41,9 +40,7 @@ type Deploy struct {
 
 func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
 	return &Deploy{
-		dbActivities: &dbActivities{
-			Logger: &logger.ActivityLogger{},
-		},
+		dbActivities: &dbActivities{},
 	}, nil
 }
 
