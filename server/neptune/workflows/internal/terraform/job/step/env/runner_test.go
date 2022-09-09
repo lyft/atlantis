@@ -23,7 +23,8 @@ const (
 	RepoPath    = "test/repo"
 	ProjectName = "test-project"
 	ProjectPath = "test/repo/project"
-	RepoRef     = "main"
+	RefName     = "main"
+	RefType     = "branch"
 	Dir         = "test-path"
 	UserName    = "test-user"
 )
@@ -100,7 +101,8 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 				Owner: RepoOwner,
 				HeadCommit: github.Commit{
 					Ref: github.Ref{
-						Name: RepoRef,
+						Name: RefName,
+						Type: RefType,
 					},
 					Author: github.User{
 						Username: UserName,

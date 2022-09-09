@@ -144,10 +144,13 @@ type FetchRootResponse struct {
 func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootRequest) (FetchRootResponse, error) {
 	ctx, cancel := temporal.StartHeartbeat(ctx, 10*time.Second)
 	defer cancel()
-
+	ref, err := request.Repo.HeadCommit.Ref.String()
+	if err != nil {
+		return FetchRootResponse{}, errors.Wrap(err, "processing request ref")
+	}
 	destinationPath := filepath.Join(a.DataDir, deploymentsDirName, request.DeploymentId)
 	opts := &github.RepositoryContentGetOptions{
-		Ref: request.Repo.HeadCommit.Ref.String(),
+		Ref: ref,
 	}
 	client, err := a.ClientCreator.NewInstallationClient(request.Repo.Credentials.InstallationToken)
 	if err != nil {
