@@ -1,6 +1,11 @@
 package terraform
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/pkg/errors"
+)
 
 type Operation int
 
@@ -22,70 +27,93 @@ func (t Operation) String() string {
 	return ""
 }
 
+// argument is the key value pair passed into the terraform command
+type argument struct {
+	Key   string
+	Value string
+}
+
+func (a argument) build() string {
+	return fmt.Sprintf("-%s=%s", a.Key, a.Value)
+}
+
+func newArgumentList(args []string) ([]argument, error) {
+	arguments := []argument{}
+	for _, arg := range args {
+		typedArgument, err := newArgument(arg)
+		if err != nil {
+			return []argument{}, errors.Wrap(err, "building argument list")
+		}
+		arguments = append(arguments, typedArgument)
+	}
+	return arguments, nil
+}
+
+func newArgument(arg string) (argument, error) {
+	// Remove any forward dashes and spaces
+	arg = strings.TrimLeft(arg, "- ")
+	coll := strings.Split(arg, "=")
+
+	if len(coll) != 2 {
+		return argument{}, errors.New(fmt.Sprintf("cannot parse argument: %s. argument can only have one =", arg))
+	}
+
+	return argument{
+		Key:   coll[0],
+		Value: coll[1],
+	}, nil
+}
+
 type CommandArguments struct {
 	Command     Operation
-	CommandArgs []string
-	ExtraArgs   []string
+	CommandArgs []argument
+	ExtraArgs   []argument
+}
+
+func NewCommandArguments(command Operation, commandArgs []string, extraArgs []string) (*CommandArguments, error) {
+	extraArguments, err := newArgumentList(extraArgs)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing extra arguments")
+	}
+
+	commandArguments, err := newArgumentList(commandArgs)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing command arguments")
+	}
+
+	return &CommandArguments{
+		Command:     command,
+		ExtraArgs:   extraArguments,
+		CommandArgs: commandArguments,
+	}, nil
 }
 
 func (t CommandArguments) Build() []string {
-	return append([]string{t.Command.String()}, t.deDuplicateExtraArgs()...)
-}
-
-func stringInSlice(stringSlice []string, target string) bool {
-	for _, value := range stringSlice {
-		if value == target {
-			return true
-		}
-	}
-	return false
-}
-
-func (t CommandArguments) deDuplicateExtraArgs() []string {
-	// work if any of the core args have been overridden
 	finalArgs := []string{}
-	usedExtraArgs := []string{}
+	usedExtraArgsIndex := map[int]bool{}
 	for _, arg := range t.CommandArgs {
-		override := ""
-		prefix := arg
-		argSplit := strings.Split(arg, "=")
-		if len(argSplit) == 2 {
-			prefix = argSplit[0]
-		}
-		for _, extraArgOrig := range t.ExtraArgs {
-			extraArg := extraArgOrig
-			if strings.HasPrefix(extraArg, prefix) {
-				override = extraArgOrig
-				break
-			}
-			if strings.HasPrefix(extraArg, "--") {
-				extraArg = extraArgOrig[1:]
-				if strings.HasPrefix(extraArg, prefix) {
-					override = extraArgOrig
-					break
-				}
-			}
-			if strings.HasPrefix(prefix, "--") {
-				prefixWithoutDash := prefix[1:]
-				if strings.HasPrefix(extraArg, prefixWithoutDash) {
-					override = extraArgOrig
-					break
-				}
-			}
 
+		overrideIndex := -1
+		for i, overrideArg := range t.ExtraArgs {
+			if overrideArg.Key == arg.Key {
+				usedExtraArgsIndex[i] = true
+				overrideIndex = i
+			}
 		}
-		if override != "" {
-			finalArgs = append(finalArgs, override)
-			usedExtraArgs = append(usedExtraArgs, override)
+
+		if overrideIndex != -1 {
+			finalArgs = append(finalArgs, t.ExtraArgs[overrideIndex].build())
 		} else {
-			finalArgs = append(finalArgs, arg)
+			finalArgs = append(finalArgs, arg.build())
 		}
 	}
-	// add any extra args that are not overrides
-	for _, extraArg := range t.ExtraArgs {
-		if !stringInSlice(usedExtraArgs, extraArg) {
-			finalArgs = append(finalArgs, extraArg)
+
+	// Append unused extra arguments to final args
+	for i, extraArg := range t.ExtraArgs {
+		if _, ok := usedExtraArgsIndex[i]; !ok {
+			finalArgs = append(finalArgs, extraArg.build())
 		}
 	}
-	return finalArgs
+
+	return append([]string{t.Command.String()}, finalArgs...)
 }

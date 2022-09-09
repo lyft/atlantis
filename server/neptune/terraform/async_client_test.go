@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/stretchr/testify/assert"
+	"go.temporal.io/sdk/testsuite"
 )
 
 type testOutputHandler struct{}
@@ -44,13 +44,17 @@ func (t *testCommandBuilder) Build(v *version.Version, path string, args []strin
 }
 
 func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
+
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestActivityEnvironment()
+
 	path := "some/path"
 	args := []string{
 		"ARG1=$ARG1",
 	}
 	jobID := "1234"
 	echoCommand := exec.Command("sh", "-c", "echo hello")
-	ctx := context.Background()
+	// ctx := context.Background()
 
 	testCommandBuilder := &testCommandBuilder{
 		t:       t,
@@ -61,20 +65,28 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder:    testCommandBuilder,
-		Logger:            &logger.NoopLogger{},
 		StepOutputHandler: &testOutputHandler{},
+		CommandBuilder:    testCommandBuilder,
 	}
 
-	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
+	testFunc := func(ctx context.Context) (string, error) {
+		ch := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
+		return waitCh(ch)
+	}
+	env.RegisterActivity(testFunc)
+	resp, err := env.ExecuteActivity(testFunc)
+	assert.NoError(t, err)
 
-	out, err := waitCh(outCh)
-	assert.Nil(t, err)
+	var out string
+	assert.Nil(t, resp.Get(&out))
 	assert.Equal(t, "hello", out)
 }
 
 // Our implementation is bottlenecked on large output due to the way we pipe each line.
 func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestActivityEnvironment()
+
 	path := "some/path"
 	args := []string{
 		"ARG1=$ARG1",
@@ -100,7 +112,6 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 	cmdStr := fmt.Sprintf("cat %s", filename)
 	cat := exec.Command("sh", "-c", cmdStr)
 
-	ctx := context.Background()
 	testCommandBuilder := &testCommandBuilder{
 		t:       t,
 		version: nil,
@@ -111,18 +122,27 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder:    testCommandBuilder,
-		Logger:            &logger.NoopLogger{},
 		StepOutputHandler: &testOutputHandler{},
+		CommandBuilder:    testCommandBuilder,
 	}
 
-	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
+	testFunc := func(ctx context.Context) (string, error) {
+		ch := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
+		return waitCh(ch)
+	}
+	env.RegisterActivity(testFunc)
+	resp, err := env.ExecuteActivity(testFunc)
+	assert.NoError(t, err)
 
-	out, err := waitCh(outCh)
-	assert.Nil(t, err)
+	var out string
+	assert.Nil(t, resp.Get(&out))
 	assert.Equal(t, strings.TrimRight(exp, "\n"), out)
 }
 
 func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestActivityEnvironment()
+
 	path := "some/path"
 	args := []string{
 		"ARG1=$ARG1",
@@ -130,7 +150,6 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	jobID := "1234"
 	echoCommand := exec.Command("sh", "-c", "echo stderr >&2")
 
-	ctx := context.Background()
 	testCommandBuilder := &testCommandBuilder{
 		t:       t,
 		version: nil,
@@ -141,17 +160,25 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	}
 	client := &AsyncClient{
 		CommandBuilder:    testCommandBuilder,
-		Logger:            &logger.NoopLogger{},
 		StepOutputHandler: &testOutputHandler{},
 	}
-	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
+	testFunc := func(ctx context.Context) (string, error) {
+		ch := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
+		return waitCh(ch)
+	}
+	env.RegisterActivity(testFunc)
+	resp, err := env.ExecuteActivity(testFunc)
+	assert.NoError(t, err)
 
-	out, err := waitCh(outCh)
-	assert.Nil(t, err)
+	var out string
+	assert.Nil(t, resp.Get(&out))
 	assert.Equal(t, "stderr", out)
 }
 
 func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestActivityEnvironment()
+
 	path := "some/path"
 	args := []string{
 		"ARG1=$ARG1",
@@ -159,7 +186,6 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 	jobID := "1234"
 	echoCommand := exec.Command("sh", "-c", "echo dying && exit 1")
 
-	ctx := context.Background()
 	testCommandBuilder := &testCommandBuilder{
 		t:       t,
 		version: nil,
@@ -169,16 +195,17 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder:    testCommandBuilder,
-		Logger:            &logger.NoopLogger{},
 		StepOutputHandler: &testOutputHandler{},
+		CommandBuilder:    testCommandBuilder,
 	}
-	outCh := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
 
-	out, err := waitCh(outCh)
-	assert.EqualError(t, err, fmt.Sprintf(`running "/bin/sh -c echo dying && exit 1" in %q: exit status 1`, path))
-	// Test that we still get our output.
-	assert.Equal(t, "dying", out)
+	testFunc := func(ctx context.Context) (string, error) {
+		ch := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
+		return waitCh(ch)
+	}
+	env.RegisterActivity(testFunc)
+	_, err := env.ExecuteActivity(testFunc)
+	assert.ErrorContains(t, err, fmt.Sprintf(`running "/bin/sh -c echo dying && exit 1" in %q: exit status 1`, path))
 }
 
 func waitCh(ch <-chan Line) (string, error) {

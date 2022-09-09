@@ -11,13 +11,22 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 )
 
-type terraformClient interface {
+const DisableInputArg = "-input=false"
+
+type TerraformClient interface {
 	RunCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan terraform.Line
 }
 
 type terraformActivities struct {
-	TerraformClient  terraformClient
+	TerraformClient  TerraformClient
 	DefaultTFVersion *version.Version
+}
+
+func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version) *terraformActivities {
+	return &terraformActivities{
+		TerraformClient:  client,
+		DefaultTFVersion: defaultTfVersion,
+	}
 }
 
 // Terraform Init
@@ -40,16 +49,18 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 		return TerraformInitResponse{}, err
 	}
 
-	// Build tf command
-	terraformInitCmd := terraform.CommandArguments{
-		Command:     terraform.Init,
-		CommandArgs: []string{"-input=false"},
-		ExtraArgs:   request.Step.ExtraArgs,
-	}.Build()
+	cmd, err := terraform.NewCommandArguments(
+		terraform.Init,
+		[]string{DisableInputArg},
+		request.Step.ExtraArgs,
+	)
+	if err != nil {
+		return TerraformInitResponse{}, errors.Wrap(err, "building command arguments")
+	}
 
-	outCh := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, terraformInitCmd, request.Envs, tfVersion)
+	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd.Build(), request.Envs, tfVersion)
 	var lines []string
-	for line := range outCh {
+	for line := range ch {
 		if line.Err != nil {
 			err = errors.Wrap(line.Err, "executing command")
 			break

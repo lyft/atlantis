@@ -32,7 +32,7 @@ type Line struct {
 }
 
 // Setting the buffer size to 10mb
-const BufioScannerBufferSize = 10 * 1024 * 1024
+const bufioScannerBufferSize = 10 * 1024 * 1024
 
 // versionRegex extracts the version from `terraform version` output.
 //     Terraform v0.12.0-alpha4 (2c36829d3265661d8edbd5014de8090ea7e2a076)
@@ -67,7 +67,7 @@ func NewAsyncClient(
 		return nil, errors.Wrapf(err, "getting default terraform version %s", defaultVersion)
 	}
 
-	builder := &CommandBuilder{
+	builder := &commandBuilder{
 		defaultVersion:          version,
 		versionCache:            versionCache,
 		terraformPluginCacheDir: cfg.CacheDir,
@@ -76,12 +76,11 @@ func NewAsyncClient(
 	return &AsyncClient{
 		StepOutputHandler: outputHandler,
 		CommandBuilder:    builder,
-		Logger:            &logger.ActivityLogger{},
 	}, nil
 
 }
 
-type commandBuilder interface {
+type cmdBuilder interface {
 	Build(v *version.Version, path string, args []string) (*exec.Cmd, error)
 }
 
@@ -102,8 +101,7 @@ type ouptutHandler interface {
 
 type AsyncClient struct {
 	StepOutputHandler ouptutHandler
-	CommandBuilder    commandBuilder
-	Logger            logger.Logger
+	CommandBuilder    cmdBuilder
 }
 
 func (c *AsyncClient) RunCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan Line {
@@ -123,7 +121,7 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 
 	cmd, err := c.CommandBuilder.Build(v, path, args)
 	if err != nil {
-		c.Logger.Error(ctx, err.Error())
+		logger.Error(ctx, errors.Wrapf(err, "building command: %s", args).Error())
 		outCh <- Line{Err: err}
 		return
 	}
@@ -137,8 +135,7 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 
 	err = cmd.Start()
 	if err != nil {
-		err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
-		c.Logger.Error(ctx, err.Error())
+		logger.Error(ctx, errors.Wrapf(err, "running %q in %q", cmd.String(), path).Error())
 		outCh <- Line{Err: err}
 		return
 	}
@@ -166,17 +163,17 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 	// We're done now. Send an error if there was one.
 	if err != nil {
 		err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
-		c.Logger.Error(ctx, err.Error())
+		logger.Error(ctx, err.Error())
 		outCh <- Line{Err: err}
 	} else {
-		c.Logger.Error(ctx, fmt.Sprintf("successfully ran %q in %q", cmd.String(), path))
+		logger.Info(ctx, fmt.Sprintf("successfully ran %q in %q", cmd.String(), path))
 	}
 }
 
 func (c *AsyncClient) WriteOutput(stdReader io.ReadCloser, outCh chan Line, jobID string) {
 	s := bufio.NewScanner(stdReader)
 	buf := []byte{}
-	s.Buffer(buf, BufioScannerBufferSize)
+	s.Buffer(buf, bufioScannerBufferSize)
 
 	for s.Scan() {
 		message := s.Text()

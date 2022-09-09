@@ -11,13 +11,13 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 )
 
-type CommandBuilder struct {
+type commandBuilder struct {
 	defaultVersion          *version.Version
 	versionCache            cache.ExecutionVersionCache
 	terraformPluginCacheDir string
 }
 
-func (c *CommandBuilder) Build(v *version.Version, path string, args []string) (*exec.Cmd, error) {
+func (c *commandBuilder) Build(v *version.Version, path string, args []string) (*exec.Cmd, error) {
 	if v == nil {
 		v = c.defaultVersion
 	}
