@@ -2,6 +2,10 @@ package activities
 
 import (
 	"context"
+	"net/http"
+	"path/filepath"
+	"time"
+
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/palantir/go-githubapp/githubapp"
@@ -9,9 +13,6 @@ import (
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
-	"net/http"
-	"path/filepath"
-	"time"
 )
 
 const deploymentsDirName = "deployments"
@@ -27,19 +28,17 @@ type CreateCheckRunRequest struct {
 	Sha        string
 	Repo       internal.Repo
 	State      internal.CheckRunState
-	Conclusion internal.CheckRunConclusion
 	Summary    string
 	ExternalID string
 }
 
 type UpdateCheckRunRequest struct {
-	Title      string
-	State      internal.CheckRunState
-	Conclusion internal.CheckRunConclusion
-	Actions    []internal.CheckRunAction
-	Repo       internal.Repo
-	ID         int64
-	Summary    string
+	Title   string
+	State   internal.CheckRunState
+	Actions []internal.CheckRunAction
+	Repo    internal.Repo
+	ID      int64
+	Summary string
 }
 
 type CreateCheckRunResponse struct {
@@ -56,9 +55,11 @@ func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateChe
 		Summary: &request.Summary,
 	}
 
+	state, conclusion := getCheckStateAndConclusion(request.State)
+
 	opts := github.UpdateCheckRunOptions{
 		Name:   request.Title,
-		Status: github.String(string(request.State)),
+		Status: github.String(state),
 		Output: &output,
 	}
 
@@ -73,9 +74,8 @@ func (a *githubActivities) UpdateCheckRun(ctx context.Context, request UpdateChe
 		opts.Actions = actions
 	}
 
-	// Conclusion is required if status is Completed
-	if request.State == internal.CheckRunComplete {
-		opts.Conclusion = github.String(string(request.Conclusion))
+	if conclusion != "" {
+		opts.Conclusion = github.String(conclusion)
 	}
 
 	client, err := a.ClientCreator.NewInstallationClient(request.Repo.Credentials.InstallationToken)
@@ -102,26 +102,18 @@ func (a *githubActivities) CreateCheckRun(ctx context.Context, request CreateChe
 		Summary: &request.Summary,
 	}
 
+	state, conclusion := getCheckStateAndConclusion(request.State)
+
 	opts := github.CreateCheckRunOptions{
 		Name:       request.Title,
 		HeadSHA:    request.Sha,
-		Status:     github.String("queued"),
+		Status:     &state,
 		Output:     &output,
 		ExternalID: &request.ExternalID,
 	}
 
-	var state internal.CheckRunState
-	if request.State == internal.CheckRunState("") {
-		state = internal.CheckRunQueued
-	} else {
-		state = request.State
-	}
-
-	opts.Status = github.String(string(state))
-
-	// Conclusion is required if status is Completed
-	if state == internal.CheckRunComplete {
-		opts.Conclusion = github.String(string(request.Conclusion))
+	if conclusion != "" {
+		opts.Conclusion = &conclusion
 	}
 
 	client, err := a.ClientCreator.NewInstallationClient(request.Repo.Credentials.InstallationToken)
@@ -139,6 +131,30 @@ func (a *githubActivities) CreateCheckRun(ctx context.Context, request CreateChe
 	return CreateCheckRunResponse{
 		ID: run.GetID(),
 	}, nil
+}
+
+func getCheckStateAndConclusion(internalState internal.CheckRunState) (string, string) {
+	var state string
+	var conclusion string
+	// checks are weird in that success and failure are defined in the conclusion, and the state
+	// is just marked as complete, let's just deal with that stuff here because it's not intuitive for
+	// callers
+	switch internalState {
+
+	// default to queued if we have nothing
+	case internal.CheckRunUnknown:
+		state = string(internal.CheckRunQueued)
+	case internal.CheckRunFailure:
+		state = "complete"
+		conclusion = "failure"
+	case internal.CheckRunSuccess:
+		state = "complete"
+		conclusion = "success"
+	default:
+		state = string(internalState)
+	}
+
+	return state, conclusion
 }
 
 type FetchRootRequest struct {

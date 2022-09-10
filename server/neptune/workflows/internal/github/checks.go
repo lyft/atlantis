@@ -7,7 +7,6 @@ import (
 )
 
 type CheckRunState string
-type CheckRunConclusion string
 
 type CheckRunAction struct {
 	Description string
@@ -36,11 +35,11 @@ func CreatePlanReviewAction(t PlanReviewActionType) CheckRunAction {
 type PlanReviewActionType string
 
 const (
-	CheckRunSuccess  CheckRunConclusion = "success"
-	CheckRunFailure  CheckRunConclusion = "failure"
-	CheckRunComplete CheckRunState      = "completed"
-	CheckRunPending  CheckRunState      = "in_progress"
-	CheckRunQueued   CheckRunState      = "queued"
+	CheckRunSuccess CheckRunState = "success"
+	CheckRunFailure CheckRunState = "failure"
+	CheckRunPending CheckRunState = "in_progress"
+	CheckRunQueued  CheckRunState = "queued"
+	CheckRunUnknown CheckRunState = ""
 
 	Approved PlanReviewActionType = "approved"
 	Reject   PlanReviewActionType = "reject"

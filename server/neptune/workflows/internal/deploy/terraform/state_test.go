@@ -61,10 +61,9 @@ func TestStateReceive(t *testing.T) {
 	}
 
 	cases := []struct {
-		State                      *state.Workflow
-		ExpectedCheckRunState      github.CheckRunState
-		ExpectedCheckRunConclusion github.CheckRunConclusion
-		ExpectedActions            []github.CheckRunAction
+		State                 *state.Workflow
+		ExpectedCheckRunState github.CheckRunState
+		ExpectedActions       []github.CheckRunAction
 	}{
 		{
 			State: &state.Workflow{
@@ -82,8 +81,7 @@ func TestStateReceive(t *testing.T) {
 					Status: state.FailedJobStatus,
 				},
 			},
-			ExpectedCheckRunState:      github.CheckRunComplete,
-			ExpectedCheckRunConclusion: github.CheckRunFailure,
+			ExpectedCheckRunState: github.CheckRunFailure,
 		},
 		{
 			State: &state.Workflow{
@@ -92,8 +90,7 @@ func TestStateReceive(t *testing.T) {
 					Status: state.SuccessJobStatus,
 				},
 			},
-			ExpectedCheckRunState:      github.CheckRunComplete,
-			ExpectedCheckRunConclusion: github.CheckRunSuccess,
+			ExpectedCheckRunState: github.CheckRunPending,
 			ExpectedActions: []github.CheckRunAction{
 				github.CreatePlanReviewAction(github.Approved),
 				github.CreatePlanReviewAction(github.Reject),
@@ -123,8 +120,7 @@ func TestStateReceive(t *testing.T) {
 					Status: state.FailedJobStatus,
 				},
 			},
-			ExpectedCheckRunState:      github.CheckRunComplete,
-			ExpectedCheckRunConclusion: github.CheckRunFailure,
+			ExpectedCheckRunState: github.CheckRunFailure,
 		},
 		{
 			State: &state.Workflow{
@@ -137,8 +133,7 @@ func TestStateReceive(t *testing.T) {
 					Status: state.SuccessJobStatus,
 				},
 			},
-			ExpectedCheckRunState:      github.CheckRunComplete,
-			ExpectedCheckRunConclusion: github.CheckRunSuccess,
+			ExpectedCheckRunState: github.CheckRunSuccess,
 		},
 	}
 
@@ -151,9 +146,8 @@ func TestStateReceive(t *testing.T) {
 			env.RegisterActivity(a)
 
 			env.OnActivity(a.UpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
-				Title:      "atlantis/deploy",
-				State:      c.ExpectedCheckRunState,
-				Conclusion: c.ExpectedCheckRunConclusion,
+				Title: "atlantis/deploy",
+				State: c.ExpectedCheckRunState,
 				Repo: github.Repo{
 					Name: "hello",
 				},
