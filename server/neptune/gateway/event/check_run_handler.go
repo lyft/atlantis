@@ -3,11 +3,15 @@ package event
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 )
+
+const RequestedActionType = "requested_action"
 
 type CheckRunAction interface {
 	GetType() string
@@ -24,12 +28,15 @@ type RequestedActionChecksAction struct {
 }
 
 func (a RequestedActionChecksAction) GetType() string {
-	return "requested_action"
+	return RequestedActionType
 }
 
 type CheckRun struct {
 	Action     CheckRunAction
 	ExternalID string
+	Name       string
+	Repo       models.Repo
+	User       string
 }
 
 type CheckRunHandler struct {
@@ -38,13 +45,19 @@ type CheckRunHandler struct {
 }
 
 func (h *CheckRunHandler) Handle(ctx context.Context, event CheckRun) error {
-	if event.Action.GetType() != "requested_action" {
-		h.Logger.Debug("ignoring checks event that isn't a requested action")
+	// first let's make sure this is an atlantis check run
+	if !strings.HasPrefix(event.Name, "atlantis") {
+		h.Logger.DebugContext(ctx, "Ignoring non-atlantis checks event")
+		return nil
+	}
+
+	// we only handle requested action types
+	if event.Action.GetType() != RequestedActionType {
+		h.Logger.DebugContext(ctx, "ignoring checks event that isn't a requested action")
 		return nil
 	}
 
 	action, ok := event.Action.(RequestedActionChecksAction)
-
 	if !ok {
 		return fmt.Errorf("event action type does not match string type.  This is likely a code bug")
 	}
@@ -63,14 +76,16 @@ func (h *CheckRunHandler) Handle(ctx context.Context, event CheckRun) error {
 		workflows.TerraformPlanReviewSignalName,
 		workflows.TerraformPlanReviewSignalRequest{
 			Status: status,
+			User:   event.User,
 		})
 
 	if err != nil {
 		return errors.Wrapf(err, "signaling workflow with id: %s", event.ExternalID)
 	}
 
-	return nil
+	h.Logger.InfoContext(ctx, fmt.Sprintf("Signaled workflow with id %s, review status, %d", event.ExternalID, status))
 
+	return nil
 }
 
 func toPlanReviewStatus(action RequestedActionChecksAction) (workflows.TerraformPlanReviewStatus, error) {

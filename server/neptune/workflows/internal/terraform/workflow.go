@@ -33,6 +33,9 @@ type jobRunner interface {
 type PlanStatus int
 type PlanReviewSignalRequest struct {
 	Status PlanStatus
+
+	// TODO: Output this info to the checks UI
+	User string
 }
 
 const (

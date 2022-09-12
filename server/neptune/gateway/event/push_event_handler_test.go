@@ -41,6 +41,7 @@ const testRoot = "testroot"
 type testSignaler struct {
 	t                    *testing.T
 	expectedWorkflowID   string
+	expectedRunID        string
 	expectedSignalName   string
 	expectedSignalArg    interface{}
 	expectedOptions      client.StartWorkflowOptions
@@ -53,9 +54,12 @@ type testSignaler struct {
 
 func (s *testSignaler) SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error {
 	s.called = true
-	// TODO finish this
+	assert.Equal(s.t, s.expectedWorkflowID, workflowID)
+	assert.Equal(s.t, s.expectedRunID, runID)
+	assert.Equal(s.t, s.expectedSignalName, signalName)
+	assert.Equal(s.t, s.expectedSignalArg, arg)
 
-	return nil
+	return s.expectedErr
 }
 
 func (s *testSignaler) SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{},

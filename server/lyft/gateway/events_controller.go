@@ -90,6 +90,7 @@ func NewVCSEventsController(
 				commentHandler,
 				prHandler,
 				pushHandler,
+				checkRunHandler,
 				allowDraftPRs,
 				repoConverter,
 				pullConverter,
