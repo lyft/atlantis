@@ -31,13 +31,17 @@ type jobRunner interface {
 }
 
 type PlanStatus int
-type PlanReview struct {
+type PlanReviewSignalRequest struct {
 	Status PlanStatus
 }
 
 const (
 	Approved PlanStatus = iota
 	Rejected
+)
+
+const (
+	PlanReviewSignalName = "planreview"
 )
 
 func Workflow(ctx workflow.Context, request Request) error {
@@ -141,8 +145,8 @@ func (r *Runner) Apply(ctx workflow.Context, root *root.LocalRoot, serverURL *ur
 	}
 
 	// Wait for plan review signal
-	var planReview PlanReview
-	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-steps")
+	var planReview PlanReviewSignalRequest
+	signalChan := workflow.GetSignalChannel(ctx, PlanReviewSignalName)
 	_ = signalChan.Receive(ctx, &planReview)
 
 	if planReview.Status == Rejected {

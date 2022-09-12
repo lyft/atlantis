@@ -180,7 +180,7 @@ func TestSuccess(t *testing.T) {
 
 	// send approval of plan
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("planreview-repo-steps", terraform.PlanReview{
+		env.SignalWorkflow("planreview-repo-steps", terraform.PlanReviewSignalRequest{
 			Status: terraform.Approved,
 		})
 	}, 5*time.Second)
@@ -265,7 +265,7 @@ func TestPlanRejection(t *testing.T) {
 
 	// send approval of plan
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("planreview-repo-steps", terraform.PlanReview{
+		env.SignalWorkflow("planreview-repo-steps", terraform.PlanReviewSignalRequest{
 			Status: terraform.Rejected,
 		})
 	}, 5*time.Second)
@@ -372,7 +372,7 @@ func TestCleanupError(t *testing.T) {
 
 	// send approval of plan
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("planreview-repo-steps", terraform.PlanReview{
+		env.SignalWorkflow("planreview-repo-steps", terraform.PlanReviewSignalRequest{
 			Status: terraform.Approved,
 		})
 	}, 5*time.Second)

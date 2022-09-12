@@ -51,6 +51,13 @@ type testSignaler struct {
 	called bool
 }
 
+func (s *testSignaler) SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error {
+	s.called = true
+	// TODO finish this
+
+	return nil
+}
+
 func (s *testSignaler) SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{},
 	options client.StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (client.WorkflowRun, error) {
 
