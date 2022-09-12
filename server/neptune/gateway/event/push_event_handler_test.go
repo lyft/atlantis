@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -208,6 +209,9 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 }
 
 func TestHandlePushEvent(t *testing.T) {
+	version, err := version.NewVersion("1.0.3")
+	assert.NoError(t, err)
+
 	logger := logging.NewNoopCtxLogger(t)
 
 	repoFullName := "nish/repo"
@@ -309,6 +313,7 @@ func TestHandlePushEvent(t *testing.T) {
 					Apply: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
 					},
+					TfVersion: version.String(),
 				},
 			},
 		}
@@ -327,6 +332,7 @@ func TestHandlePushEvent(t *testing.T) {
 				Plan:  valid.DefaultPlanStage,
 				Apply: valid.DefaultApplyStage,
 			},
+			TerraformVersion: version,
 		}
 		rootCfgs := []*valid.MergedProjectCfg{
 			&rootCfg,
@@ -375,6 +381,7 @@ func TestHandlePushEvent(t *testing.T) {
 					Apply: workflows.Job{
 						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
 					},
+					TfVersion: version.String(),
 				},
 			},
 			expectedErr: assert.AnError,
@@ -395,6 +402,7 @@ func TestHandlePushEvent(t *testing.T) {
 				Plan:  valid.DefaultPlanStage,
 				Apply: valid.DefaultApplyStage,
 			},
+			TerraformVersion: version,
 		}
 		rootCfgs := []*valid.MergedProjectCfg{
 			&rootCfg,
