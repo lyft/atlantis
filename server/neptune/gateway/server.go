@@ -102,6 +102,9 @@ func NewServer(config Config) (*Server, error) {
 	globalCfg := valid.NewGlobalCfg()
 	if config.EnablePlatformMode {
 		globalCfg = globalCfg.EnablePlatformMode()
+		ctxLogger.Warn("Platform Mode enabled")
+	} else {
+		ctxLogger.Warn("Platform Mode disabled")
 	}
 	validator := &cfgParser.ParserValidator{}
 	if config.RepoConfig != "" {

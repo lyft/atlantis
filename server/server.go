@@ -187,6 +187,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	if userConfig.EnablePlatformMode {
 		globalCfg = globalCfg.EnablePlatformMode()
+		ctxLogger.Warn("Platform Mode enabled")
+	} else {
+		ctxLogger.Warn("Platform Mode disabled")
 	}
 
 	if userConfig.RepoConfig != "" {
