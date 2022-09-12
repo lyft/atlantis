@@ -93,7 +93,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 }
 
 func (t *terraformActivities) resolveVersion(v string) (*version.Version, error) {
-	// Use default version if comfigured version is empty
+	// Use default version if configured version is empty
 	if v == "" {
 		return t.DefaultTFVersion, nil
 	}
