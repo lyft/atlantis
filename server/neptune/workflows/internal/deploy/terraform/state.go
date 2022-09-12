@@ -50,7 +50,7 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 
 	if workflowState.Plan.Status == state.SuccessJobStatus && workflowState.Apply == nil {
 		request.Actions = []github.CheckRunAction{
-			github.CreatePlanReviewAction(github.Approved),
+			github.CreatePlanReviewAction(github.Approve),
 			github.CreatePlanReviewAction(github.Reject),
 		}
 	}

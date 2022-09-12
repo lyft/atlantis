@@ -41,6 +41,6 @@ const (
 	CheckRunQueued  CheckRunState = "queued"
 	CheckRunUnknown CheckRunState = ""
 
-	Approved PlanReviewActionType = "approved"
+	Approve PlanReviewActionType = "approve"
 	Reject   PlanReviewActionType = "reject"
 )

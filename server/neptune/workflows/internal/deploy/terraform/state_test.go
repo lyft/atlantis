@@ -92,7 +92,7 @@ func TestStateReceive(t *testing.T) {
 			},
 			ExpectedCheckRunState: github.CheckRunPending,
 			ExpectedActions: []github.CheckRunAction{
-				github.CreatePlanReviewAction(github.Approved),
+				github.CreatePlanReviewAction(github.Approve),
 				github.CreatePlanReviewAction(github.Reject),
 			},
 		},
