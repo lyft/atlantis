@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -133,6 +134,7 @@ func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *va
 					Steps: p.generateSteps(rootCfg.DeploymentWorkflow.Apply.Steps),
 				},
 				RepoRelPath: rootCfg.RepoRelDir,
+				TfVersion:   rootCfg.TerraformVersion.String(),
 			},
 		},
 	)

@@ -31,6 +31,7 @@ type Root struct {
 	Apply       Job
 	Plan        Job
 	RepoRelPath string
+	TfVersion   string
 }
 
 type Job struct {
