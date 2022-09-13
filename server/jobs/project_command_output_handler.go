@@ -2,9 +2,8 @@ package jobs
 
 import (
 	"fmt"
-	"sync"
-
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
+	"sync"
 
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -164,7 +163,7 @@ func (p *AsyncProjectCommandOutputHandler) CloseJob(jobID string, repo models.Re
 	p.receiverRegistry.CloseAndRemoveReceiversForJob(jobID)
 
 	// Update job status and persist to storage if configured
-	if err := p.JobStore.SetJobCompleteStatus(jobID, Complete); err != nil {
+	if err := p.JobStore.SetJobCompleteStatus(jobID, repo.FullName, Complete); err != nil {
 		p.logger.Error(fmt.Sprintf("updating jobs status to complete, %v", err))
 	}
 }

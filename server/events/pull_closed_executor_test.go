@@ -14,11 +14,10 @@
 package events_test
 
 import (
-	"io/ioutil"
-	"testing"
-
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/uber-go/tally/v4"
+	"io/ioutil"
+	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/db"
@@ -37,19 +36,9 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
+	jobmocks "github.com/runatlantis/atlantis/server/jobs/mocks"
 	. "github.com/runatlantis/atlantis/testing"
 )
-
-type testStorageBackend struct {
-}
-
-func (t *testStorageBackend) Read(key string) ([]string, error) {
-	return []string{}, nil
-}
-
-func (t *testStorageBackend) Write(key string, logs []string) (bool, error) {
-	return true, nil
-}
 
 func TestCleanUpPullWorkspaceErrorf(t *testing.T) {
 	t.Log("when workspace.Delete returns an error, we return it")
@@ -213,7 +202,7 @@ func TestCleanUpLogStreaming(t *testing.T) {
 
 		// Create Log streaming resources
 		prjCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
-		storageBackend := &testStorageBackend{}
+		storageBackend := jobmocks.NewMockStorageBackend()
 		prjCmdOutHandler := jobs.NewAsyncProjectCommandOutputHandler(prjCmdOutput, logger, jobs.NewJobStore(storageBackend, tally.NewTestScope("test", map[string]string{})), filter.LogFilter{})
 		ctx := command.ProjectContext{
 			BaseRepo:    fixtures.GithubRepo,

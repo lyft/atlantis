@@ -198,21 +198,11 @@ func NewGlobalCfg() GlobalCfg {
 		AllowedOverrides:     []string{},
 		CheckoutStrategy:     "branch",
 	}
-
-	jobs := Jobs{
-		StorageBackend: &StorageBackend{
-			BackendConfig: &S3{
-				BucketName: "atlantis-staging-jobs",
-			},
-		},
-	}
-
 	globalCfg := GlobalCfg{
 		WorkflowMode: DefaultWorkflowMode,
 		Workflows: map[string]Workflow{
 			DefaultWorkflowName: defaultWorkflow,
 		},
-		Jobs: jobs,
 	}
 
 	globalCfg.Repos = []Repo{repo}

@@ -16,7 +16,7 @@ type PartitionKeyGenerator interface {
 // PartitionRegistry is the registry holding each partition
 // and is responsible for registering/deregistering new buffers
 type PartitionRegistry interface {
-	Register(jobID string, buffer chan string)
+	Register(key string, buffer chan string)
 }
 
 type Multiplexor interface {
