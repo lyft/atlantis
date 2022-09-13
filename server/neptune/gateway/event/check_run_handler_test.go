@@ -90,7 +90,7 @@ func TestCheckRunHandler(t *testing.T) {
 		}
 		e := event.CheckRun{
 			Action: event.RequestedActionChecksAction{
-				Identifier: "approve",
+				Identifier: "Approve",
 			},
 			ExternalID: workflowID,
 			User:       user,
@@ -120,7 +120,7 @@ func TestCheckRunHandler(t *testing.T) {
 		}
 		e := event.CheckRun{
 			Action: event.RequestedActionChecksAction{
-				Identifier: "approve",
+				Identifier: "Approve",
 			},
 			ExternalID: workflowID,
 			User:       user,
