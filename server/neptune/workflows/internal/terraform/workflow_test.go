@@ -82,7 +82,7 @@ type jobRunner struct {
 	expectedError error
 }
 
-func (r *jobRunner) Run(ctx workflow.Context, j job.Job, localRoot *root.LocalRoot) (string, error) {
+func (r *jobRunner) Run(ctx workflow.Context, j job.Job, jobId string, localRoot *root.LocalRoot) (string, error) {
 	return "", r.expectedError
 }
 

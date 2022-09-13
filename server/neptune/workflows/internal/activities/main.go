@@ -11,6 +11,7 @@ import (
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/github"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
@@ -52,7 +53,7 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL) (*Terraform, error) {
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler *job.OutputHandler) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -78,6 +79,7 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		tfClientConfig,
 		config.DefaultVersionStr,
 		&legacy_tf.DefaultDownloader{},
+		outputHandler,
 	)
 	if err != nil {
 		return nil, err

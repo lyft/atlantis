@@ -10,8 +10,10 @@ type ExecutionContext struct {
 	Envs      map[string]string
 	TfVersion string
 	workflow.Context
+	JobID string
 }
 
 type Job struct {
 	Steps []Step
+	ID    string
 }

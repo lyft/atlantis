@@ -15,6 +15,16 @@ import (
 	"go.temporal.io/sdk/testsuite"
 )
 
+type testJobOutputHandler struct{}
+
+func (t *testJobOutputHandler) Send(jobId string, msg string) {}
+
+func (t *testJobOutputHandler) Handle() {}
+
+func (t *testJobOutputHandler) Register(jobID string, receiver chan string) {}
+
+func (t *testJobOutputHandler) CloseJob(jobID string) {}
+
 type testCommandBuilder struct {
 	t       *testing.T
 	version *version.Version
@@ -55,7 +65,8 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
+		CommandBuilder:   testCommandBuilder,
+		JobOutputHandler: &testJobOutputHandler{},
 	}
 
 	testFunc := func(ctx context.Context) (string, error) {
@@ -110,7 +121,8 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
+		CommandBuilder:   testCommandBuilder,
+		JobOutputHandler: &testJobOutputHandler{},
 	}
 
 	testFunc := func(ctx context.Context) (string, error) {
@@ -146,7 +158,8 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
+		CommandBuilder:   testCommandBuilder,
+		JobOutputHandler: &testJobOutputHandler{},
 	}
 	testFunc := func(ctx context.Context) (string, error) {
 		ch := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
@@ -181,7 +194,8 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
+		CommandBuilder:   testCommandBuilder,
+		JobOutputHandler: &testJobOutputHandler{},
 	}
 
 	testFunc := func(ctx context.Context) (string, error) {

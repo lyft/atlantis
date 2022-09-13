@@ -30,6 +30,7 @@ func NewRunner(runStepRunner stepRunner, envStepRunner stepRunner, initStepRunne
 func (r *jobRunner) Run(
 	ctx workflow.Context,
 	terraformJob job.Job,
+	jobID string,
 	localRoot *root.LocalRoot,
 ) (string, error) {
 	var outputs []string
@@ -40,6 +41,7 @@ func (r *jobRunner) Run(
 		Path:      localRoot.Path,
 		Envs:      map[string]string{},
 		TfVersion: localRoot.Root.TfVersion,
+		JobID:     jobID,
 	}
 
 	for _, step := range terraformJob.Steps {
