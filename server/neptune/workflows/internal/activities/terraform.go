@@ -15,7 +15,7 @@ import (
 
 const (
 	DisableInputArg = "-input=false"
-	RefreshArg      = "-refresh"
+	RefreshArg      = "-refresh=true"
 	OutArg          = "-out"
 	PlanOutputFile  = "output.tfplan"
 )
@@ -66,7 +66,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	}
 
 	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd.Build(), request.Envs, tfVersion)
-	_, err = t.readTerraformOutput(ch)
+	_, err = t.readCommandOutput(ch)
 	if err != nil {
 		return TerraformInitResponse{}, errors.Wrap(err, "processing command output")
 	}
@@ -95,14 +95,14 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	planFile := filepath.Join(request.Path, PlanOutputFile)
 	cmd, err := terraform.NewCommandArguments(
 		terraform.Plan,
-		[]string{DisableInputArg, fmt.Sprintf("%s=%s", RefreshArg, "true"), fmt.Sprintf("%s=%s", OutArg, planFile)},
+		[]string{DisableInputArg, RefreshArg, fmt.Sprintf("%s=%s", OutArg, planFile)},
 		request.Step.ExtraArgs,
 	)
 	if err != nil {
 		return TerraformPlanResponse{}, errors.Wrap(err, "building command arguments")
 	}
 	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd.Build(), request.Envs, tfVersion)
-	_, err = t.readTerraformOutput(ch)
+	_, err = t.readCommandOutput(ch)
 	if err != nil {
 		return TerraformPlanResponse{}, errors.Wrap(err, "processing command output")
 	}
@@ -137,7 +137,7 @@ func (t *terraformActivities) resolveVersion(v string) (*version.Version, error)
 	return t.DefaultTFVersion, nil
 }
 
-func (t *terraformActivities) readTerraformOutput(ch <-chan terraform.Line) (string, error) {
+func (t *terraformActivities) readCommandOutput(ch <-chan terraform.Line) (string, error) {
 	var err error
 	var lines []string
 	for line := range ch {
