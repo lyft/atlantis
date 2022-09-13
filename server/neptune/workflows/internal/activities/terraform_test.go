@@ -112,8 +112,8 @@ func TestTerraformInit_ExtraArgsTakesPrecedenceOverCommandArgs(t *testing.T) {
 	req := activities.TerraformInitRequest{
 		Args: []terraform.Argument{
 			{
-				Key: "input",
-				Value: "false",
+				Key:   "input",
+				Value: "true",
 			},
 		},
 		Envs:      map[string]string{},
