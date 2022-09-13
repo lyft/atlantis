@@ -27,7 +27,7 @@ func (r *PlanStepRunner) Run(executionContext *job.ExecutionContext, _ *root.Loc
 		Path:      executionContext.Path,
 	}).Get(executionContext, &resp)
 	if err != nil {
-		return "", errors.Wrap(err, "running terraform init activity")
+		return "", errors.Wrap(err, "running terraform plan activity")
 	}
 	return resp.Output, nil
 }
