@@ -70,6 +70,8 @@ func (h *CheckRunHandler) Handle(ctx context.Context, event CheckRun) error {
 
 	err = h.TemporalClient.SignalWorkflow(
 		ctx,
+
+		// assumed that we're using the check run external id as our workflow id
 		event.ExternalID,
 		// keeping this empty is fine since temporal will find the currently running workflow
 		"",
@@ -90,9 +92,9 @@ func (h *CheckRunHandler) Handle(ctx context.Context, event CheckRun) error {
 
 func toPlanReviewStatus(action RequestedActionChecksAction) (workflows.TerraformPlanReviewStatus, error) {
 	switch action.Identifier {
-	case "approve":
+	case "Approve":
 		return workflows.ApprovedPlanReviewStatus, nil
-	case "reject":
+	case "Reject":
 		return workflows.RejectedPlanReviewStatus, nil
 	}
 
