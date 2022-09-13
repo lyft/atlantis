@@ -167,7 +167,7 @@ func (s Server) Start() error {
 	}()
 
 	go func() {
-		s.JobOutputHandler.Handle()
+		s.JobOutputHandler.Handle(context.Background())
 	}()
 
 	<-stop
@@ -225,12 +225,12 @@ func createJobsController(config *neptune.Config, jobOutputHandler *job.OutputHa
 }
 
 func createJobOutputHandler(config *neptune.Config) (*job.OutputHandler, error) {
-	storageBackend, err := jobs.NewStorageBackend(config.LogStreamingJobCfg, config.CtxLogger, config.Scope.SubScope("getprojectjobs"))
+	storageBackend, err := job.NewStorageBackend(config.LogStreamingJobCfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
 
-	jobStore := jobs.NewJobStore(storageBackend, config.Scope.SubScope("jobstore"))
+	jobStore := job.NewStore(storageBackend)
 	logFilter := filter.LogFilter{
 		Regexes: config.TerraformCfg.LogFilters.Regexes,
 	}
@@ -240,7 +240,6 @@ func createJobOutputHandler(config *neptune.Config) (*job.OutputHandler, error) 
 		JobOutput:        jobOutputChan,
 		JobStore:         jobStore,
 		ReceiverRegistry: jobs.NewReceiverRegistry(),
-		Logger:           config.CtxLogger,
 		LogFilter:        logFilter,
 	}, nil
 }

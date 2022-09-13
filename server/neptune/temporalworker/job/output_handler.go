@@ -1,11 +1,12 @@
 package job
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/jobs"
-	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
 )
 
 type OutputLine struct {
@@ -13,19 +14,23 @@ type OutputLine struct {
 	Line  string
 }
 
-// Wraps the original project command output handler with neptune specific logic
+type JobStore interface {
+	Get(ctx context.Context, jobID string) (*Job, error)
+	AppendOutput(jobID string, output string) error
+	CloseAndPersistJob(ctx context.Context, jobID string, status JobStatus) error
+	RemoveJob(jobID string)
+}
+
 type OutputHandler struct {
 	// Main channel that receives output from the terraform client
 	JobOutput chan *OutputLine
 
-	// Storage for plan/apply jobs
-	JobStore jobs.JobStore
+	// Storage  for plan/apply jobs
+	JobStore JobStore
 
 	// Registry to track active connections for a job
 	ReceiverRegistry jobs.ReceiverRegistry
-
-	Logger    logging.Logger
-	LogFilter filter.LogFilter
+	LogFilter        filter.LogFilter
 }
 
 func (s *OutputHandler) Send(jobId string, msg string) {
@@ -35,7 +40,7 @@ func (s *OutputHandler) Send(jobId string, msg string) {
 	}
 }
 
-func (s *OutputHandler) Handle() {
+func (s *OutputHandler) Handle(ctx context.Context) {
 	for msg := range s.JobOutput {
 		// Filter out log lines from job output
 		if s.LogFilter.ShouldFilterLine(msg.Line) {
@@ -54,15 +59,15 @@ func (s *OutputHandler) Handle() {
 		// Append new log to the output buffer for the job
 		err := s.JobStore.AppendOutput(msg.JobID, msg.Line)
 		if err != nil {
-			s.Logger.Warn(fmt.Sprintf("appending log: %s for job: %s: %v", msg.Line, msg.JobID, err))
+			logger.Warn(ctx, fmt.Sprintf("appending log: %s for job: %s: %v", msg.Line, msg.JobID, err))
 		}
 	}
 }
 
-func (s *OutputHandler) Register(jobID string, receiver chan string) {
-	job, err := s.JobStore.Get(jobID)
+func (s *OutputHandler) Register(ctx context.Context, jobID string, receiver chan string) {
+	job, err := s.JobStore.Get(ctx, jobID)
 	if err != nil || job == nil {
-		s.Logger.Error(fmt.Sprintf("getting job: %s, err: %v", jobID, err))
+		logger.Error(ctx, fmt.Sprintf("getting job: %s, err: %v", jobID, err))
 		return
 	}
 
@@ -72,7 +77,7 @@ func (s *OutputHandler) Register(jobID string, receiver chan string) {
 	}
 
 	// Close connection if job is complete
-	if job.Status == jobs.Complete {
+	if job.Status == Complete {
 		close(receiver)
 		return
 	}
@@ -82,12 +87,12 @@ func (s *OutputHandler) Register(jobID string, receiver chan string) {
 
 }
 
-func (s *OutputHandler) CloseJob(jobID string) {
+func (s *OutputHandler) CloseJob(ctx context.Context, jobID string) {
 	// Close active connections and remove receivers from registry
 	s.ReceiverRegistry.CloseAndRemoveReceiversForJob(jobID)
 
 	// Update job status and persist to storage if configured
-	if err := s.JobStore.SetJobCompleteStatus(jobID, jobs.Complete); err != nil {
-		s.Logger.Error(fmt.Sprintf("updating jobs status to complete, %v", err))
+	if err := s.JobStore.CloseAndPersistJob(ctx, jobID, Complete); err != nil {
+		logger.Error(ctx, fmt.Sprintf("updating jobs status to complete, %v", err))
 	}
 }

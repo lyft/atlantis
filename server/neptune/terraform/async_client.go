@@ -86,9 +86,9 @@ type cmddBuilder interface {
 
 type OutputHandler interface {
 	Send(jobId string, msg string)
-	Handle()
-	Register(jobID string, receiver chan string)
-	CloseJob(jobID string)
+	Handle(ctx context.Context)
+	Register(ctx context.Context, jobID string, receiver chan string)
+	CloseJob(ctx context.Context, jobID string)
 }
 
 type AsyncClient struct {
