@@ -9,6 +9,7 @@ import (
 	"github.com/graymeta/stow"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/uber-go/tally/v4"
 )
@@ -17,11 +18,13 @@ const OutputPrefix = "output"
 const PageSize = 100
 
 type StorageBackend interface {
-	Read(ctx context.Context, key string) ([]string, error)
+	Read(key string) ([]string, error)
+
+	// Activity context available
 	Write(ctx context.Context, key string, logs []string) (bool, error)
 }
 
-func NewStorageBackend(jobs valid.Jobs) (StorageBackend, error) {
+func NewStorageBackend(jobs valid.Jobs, logger logging.Logger) (StorageBackend, error) {
 	if jobs.StorageBackend == nil {
 		return &NoopStorageBackend{}, nil
 	}
@@ -39,15 +42,17 @@ func NewStorageBackend(jobs valid.Jobs) (StorageBackend, error) {
 	return &storageBackend{
 		location:      location,
 		containerName: containerName,
+		logger:        logger,
 	}, nil
 }
 
 type storageBackend struct {
 	location      stow.Location
 	containerName string
+	logger        logging.Logger
 }
 
-func (s *storageBackend) Read(ctx context.Context, key string) (logs []string, err error) {
+func (s *storageBackend) Read(key string) (logs []string, err error) {
 
 	// Read from  /output directory
 	key = fmt.Sprintf("%s/%s", OutputPrefix, key)
@@ -89,7 +94,7 @@ func (s *storageBackend) Read(ctx context.Context, key string) (logs []string, e
 		return stow.Walk(container, key, PageSize, readContainerFn)
 	}
 
-	logger.Info(ctx, fmt.Sprintf("reading object for job: %s in container: %s", key, s.containerName))
+	s.logger.Info(fmt.Sprintf("reading object for job: %s in container: %s", key, s.containerName))
 	err = stow.WalkContainers(s.location, s.containerName, PageSize, readLocationFn)
 	return
 }
@@ -145,8 +150,8 @@ type InstrumenetedStorageBackend struct {
 	writeSuccesses tally.Counter
 }
 
-func (i *InstrumenetedStorageBackend) Read(ctx context.Context, key string) ([]string, error) {
-	logs, err := i.StorageBackend.Read(ctx, key)
+func (i *InstrumenetedStorageBackend) Read(key string) ([]string, error) {
+	logs, err := i.StorageBackend.Read(key)
 	if err != nil {
 		i.readFailures.Inc(1)
 	}
@@ -166,7 +171,7 @@ func (i *InstrumenetedStorageBackend) Write(ctx context.Context, key string, log
 // Used when log persistence is not configured
 type NoopStorageBackend struct{}
 
-func (s *NoopStorageBackend) Read(ctx context.Context, key string) ([]string, error) {
+func (s *NoopStorageBackend) Read(key string) ([]string, error) {
 	return []string{}, nil
 }
 

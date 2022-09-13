@@ -166,8 +166,9 @@ func (s Server) Start() error {
 		}
 	}()
 
+	// Start job output handler listener
 	go func() {
-		s.JobOutputHandler.Handle(context.Background())
+		s.JobOutputHandler.Handle()
 	}()
 
 	<-stop
@@ -225,7 +226,7 @@ func createJobsController(config *neptune.Config, jobOutputHandler *job.OutputHa
 }
 
 func createJobOutputHandler(config *neptune.Config) (*job.OutputHandler, error) {
-	storageBackend, err := job.NewStorageBackend(config.LogStreamingJobCfg)
+	storageBackend, err := job.NewStorageBackend(config.LogStreamingJobCfg, config.CtxLogger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
@@ -241,5 +242,6 @@ func createJobOutputHandler(config *neptune.Config) (*job.OutputHandler, error) 
 		JobStore:         jobStore,
 		ReceiverRegistry: jobs.NewReceiverRegistry(),
 		LogFilter:        logFilter,
+		Logger:           config.CtxLogger,
 	}, nil
 }

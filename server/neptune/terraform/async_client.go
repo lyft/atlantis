@@ -85,9 +85,14 @@ type cmddBuilder interface {
 }
 
 type OutputHandler interface {
+	// Run as a go routine when starting up temporal server
+	Handle()
+
+	// register chan when user visits log streaming UI
+	Register(jobID string, receiver chan string)
+
+	// Activity context available
 	Send(jobId string, msg string)
-	Handle(ctx context.Context)
-	Register(ctx context.Context, jobID string, receiver chan string)
 	CloseJob(ctx context.Context, jobID string)
 }
 
@@ -109,6 +114,9 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 	// Ensure we close our channels when we exit.
 	defer func() {
 		close(outCh)
+
+		// Close Job and Persist to storage
+		c.JobOutputHandler.CloseJob(ctx, jobID)
 	}()
 
 	cmd, err := c.CommandBuilder.Build(v, path, args)

@@ -531,12 +531,13 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 			DefaultVersionStr:      userConfig.DefaultTFVersion,
 			DownloadURL:            userConfig.TFDownloadURL,
 		},
-		DataDir:     userConfig.DataDir,
-		TemporalCfg: globalCfg.Temporal,
-		App:         appConfig,
-		CtxLogger:   ctxLogger,
-		Scope:       scope,
-		StatsCloser: closer,
+		LogStreamingJobCfg: globalCfg.Jobs,
+		DataDir:            userConfig.DataDir,
+		TemporalCfg:        globalCfg.Temporal,
+		App:                appConfig,
+		CtxLogger:          ctxLogger,
+		Scope:              scope,
+		StatsCloser:        closer,
 	}
 	return temporalworker.NewServer(cfg)
 }

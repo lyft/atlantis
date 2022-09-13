@@ -2,11 +2,12 @@ package valid
 
 import (
 	"fmt"
+	"regexp"
+
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/s3"
 	version "github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/logging"
-	"regexp"
 )
 
 const MergeableApplyReq = "mergeable"
@@ -198,11 +199,20 @@ func NewGlobalCfg() GlobalCfg {
 		CheckoutStrategy:     "branch",
 	}
 
+	jobs := Jobs{
+		StorageBackend: &StorageBackend{
+			BackendConfig: &S3{
+				BucketName: "atlantis-staging-jobs",
+			},
+		},
+	}
+
 	globalCfg := GlobalCfg{
 		WorkflowMode: DefaultWorkflowMode,
 		Workflows: map[string]Workflow{
 			DefaultWorkflowName: defaultWorkflow,
 		},
+		Jobs: jobs,
 	}
 
 	globalCfg.Repos = []Repo{repo}

@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/uber-go/tally/v4"
 )
 
 type JobStatus int
@@ -36,7 +35,7 @@ type InMemoryStore struct {
 	lock sync.RWMutex
 }
 
-func (m *InMemoryStore) Get(ctx context.Context, jobID string) (*Job, error) {
+func (m *InMemoryStore) Get(jobID string) (*Job, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -94,17 +93,16 @@ func (m *InMemoryStore) RemoveJob(jobID string) {
 type StorageBackendJobStore struct {
 	JobStore
 	storageBackend StorageBackend
-	scope          tally.Scope
 }
 
-func (s *StorageBackendJobStore) Get(ctx context.Context, jobID string) (*Job, error) {
+func (s *StorageBackendJobStore) Get(jobID string) (*Job, error) {
 	// Get job from memory
-	if jobInMem, _ := s.JobStore.Get(ctx, jobID); jobInMem != nil {
+	if jobInMem, _ := s.JobStore.Get(jobID); jobInMem != nil {
 		return jobInMem, nil
 	}
 
 	// Get from storage backend if not in memory
-	logs, err := s.storageBackend.Read(ctx, jobID)
+	logs, err := s.storageBackend.Read(jobID)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading from backend storage")
 	}
@@ -119,17 +117,17 @@ func (s StorageBackendJobStore) AppendOutput(jobID string, output string) error 
 	return s.JobStore.AppendOutput(jobID, output)
 }
 
-func (s *StorageBackendJobStore) SetJobCompleteStatus(ctx context.Context, jobID string, status JobStatus) error {
+func (s *StorageBackendJobStore) CloseAndPersistJob(ctx context.Context, jobID string, status JobStatus) error {
 	if err := s.JobStore.CloseAndPersistJob(ctx, jobID, status); err != nil {
 		return err
 	}
 
-	job, err := s.JobStore.Get(ctx, jobID)
+	job, err := s.JobStore.Get(jobID)
 	if err != nil || job == nil {
 		return errors.Wrapf(err, "retrieving job: %s from memory store", jobID)
 	}
-	subScope := s.scope.SubScope("set_job_complete_status")
-	subScope.Counter("write_attempt").Inc(1)
+	// subScope := s.scope.SubScope("set_job_complete_status")
+	// subScope.Counter("write_attempt").Inc(1)
 	ok, err := s.storageBackend.Write(ctx, jobID, job.Output)
 	if err != nil {
 		return errors.Wrapf(err, "persisting job: %s", jobID)
