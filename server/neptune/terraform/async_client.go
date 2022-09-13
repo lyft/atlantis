@@ -74,7 +74,8 @@ func NewAsyncClient(
 	}
 
 	return &AsyncClient{
-		CommandBuilder: builder,
+		CommandBuilder:   builder,
+		JobOutputHandler: outputHandler,
 	}, nil
 
 }
