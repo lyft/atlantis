@@ -15,5 +15,4 @@ type ExecutionContext struct {
 
 type Job struct {
 	Steps []Step
-	ID    string
 }

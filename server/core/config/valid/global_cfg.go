@@ -2,12 +2,11 @@ package valid
 
 import (
 	"fmt"
-	"regexp"
-
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/s3"
 	version "github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/logging"
+	"regexp"
 )
 
 const MergeableApplyReq = "mergeable"
@@ -198,6 +197,7 @@ func NewGlobalCfg() GlobalCfg {
 		AllowedOverrides:     []string{},
 		CheckoutStrategy:     "branch",
 	}
+
 	globalCfg := GlobalCfg{
 		WorkflowMode: DefaultWorkflowMode,
 		Workflows: map[string]Workflow{
