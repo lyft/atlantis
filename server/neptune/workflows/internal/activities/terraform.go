@@ -2,13 +2,12 @@ package activities
 
 import (
 	"context"
-	"strings"
 
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/events/terraform/ansi"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
+	job_model "github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 )
 
 const DisableInputArg = "-input=false"
@@ -20,6 +19,7 @@ type TerraformClient interface {
 type terraformActivities struct {
 	TerraformClient  TerraformClient
 	DefaultTFVersion *version.Version
+	OutputHandler    *job.OutputHandler
 }
 
 func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version) *terraformActivities {
@@ -31,7 +31,7 @@ func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Ve
 
 // Terraform Init
 type TerraformInitRequest struct {
-	Step      job.Step
+	Step      job_model.Step
 	Envs      map[string]string
 	JobID     string
 	TfVersion string
@@ -59,18 +59,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	}
 
 	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd.Build(), request.Envs, tfVersion)
-	var lines []string
-	for line := range ch {
-		if line.Err != nil {
-			err = errors.Wrap(line.Err, "executing command")
-			break
-		}
-		lines = append(lines, line.Line)
-	}
-	output := strings.Join(lines, "\n")
-
-	// sanitize output by stripping out any ansi characters.
-	output = ansi.Strip(output)
+	t.OutputHandler.ReadOutput(request.JobID, ch)
 	return TerraformInitResponse{}, nil
 }
 

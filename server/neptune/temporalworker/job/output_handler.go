@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
-	"github.com/runatlantis/atlantis/server/jobs"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/terraform"
 )
 
 type OutputLine struct {
@@ -16,7 +17,7 @@ type OutputLine struct {
 
 type JobStore interface {
 	Get(jobID string) (*Job, error)
-	AppendOutput(jobID string, output string) error
+	Write(jobID string, output string) error
 	RemoveJob(jobID string)
 
 	// Activity context available
@@ -31,18 +32,24 @@ type OutputHandler struct {
 	JobStore JobStore
 
 	// Registry to track active connections for a job
-	ReceiverRegistry jobs.ReceiverRegistry
+	ReceiverRegistry ReceiverRegistry
 	LogFilter        filter.LogFilter
 
 	// Setting struct level Logger since not all methods have access to activity context
 	Logger logging.Logger
 }
 
-func (s *OutputHandler) Send(jobId string, msg string) {
-	s.JobOutput <- &OutputLine{
-		JobID: jobId,
-		Line:  msg,
+func (s *OutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) error {
+	for line := range ch {
+		if line.Err != nil {
+			return errors.Wrap(line.Err, "executing command")
+		}
+		s.JobOutput <- &OutputLine{
+			JobID: jobID,
+			Line:  line.Line,
+		}
 	}
+	return nil
 }
 
 func (s *OutputHandler) Handle() {
@@ -52,48 +59,18 @@ func (s *OutputHandler) Handle() {
 			continue
 		}
 
-		// Write logs to all active connections
-		for ch := range s.ReceiverRegistry.GetReceivers(msg.JobID) {
-			select {
-			case ch <- msg.Line:
-			default:
-				s.ReceiverRegistry.RemoveReceiver(msg.JobID, ch)
-			}
-		}
+		s.ReceiverRegistry.Broadcast(*msg)
 
 		// Append new log to the output buffer for the job
-		err := s.JobStore.AppendOutput(msg.JobID, msg.Line)
+		err := s.JobStore.Write(msg.JobID, msg.Line)
 		if err != nil {
 			s.Logger.Warn(fmt.Sprintf("appending log: %s for job: %s: %v", msg.Line, msg.JobID, err))
 		}
 	}
 }
 
-func (s *OutputHandler) Register(jobID string, receiver chan string) {
-	job, err := s.JobStore.Get(jobID)
-	if err != nil || job == nil {
-		s.Logger.Error(fmt.Sprintf("getting job: %s, err: %v", jobID, err))
-		return
-	}
-
-	// Back fill contents from the output buffer
-	for _, line := range job.Output {
-		receiver <- line
-	}
-
-	// Close connection if job is complete
-	if job.Status == Complete {
-		close(receiver)
-		return
-	}
-
-	// add receiver to registry after backfilling contents from the buffer
-	s.ReceiverRegistry.AddReceiver(jobID, receiver)
-
-}
-
 // Called from inside an activity so activity context is available
-func (s *OutputHandler) CloseJob(ctx context.Context, jobID string) {
+func (s *OutputHandler) Close(ctx context.Context, jobID string) {
 	// Close active connections and remove receivers from registry
 
 	s.ReceiverRegistry.CloseAndRemoveReceiversForJob(jobID)

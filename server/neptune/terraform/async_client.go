@@ -14,7 +14,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/logger"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
+	// "github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 )
 
 type ClientConfig struct {
@@ -46,7 +46,6 @@ func NewAsyncClient(
 	cfg ClientConfig,
 	defaultVersion string,
 	tfDownloader terraform.Downloader,
-	outputHandler *job.OutputHandler,
 ) (*AsyncClient, error) {
 	version, err := getDefaultVersion(defaultVersion)
 	if err != nil {
@@ -74,8 +73,7 @@ func NewAsyncClient(
 	}
 
 	return &AsyncClient{
-		CommandBuilder:   builder,
-		JobOutputHandler: outputHandler,
+		CommandBuilder: builder,
 	}, nil
 
 }
@@ -178,7 +176,6 @@ func (c *AsyncClient) WriteOutput(stdReader io.ReadCloser, outCh chan Line, jobI
 	for s.Scan() {
 		message := s.Text()
 		outCh <- Line{Line: message}
-		c.JobOutputHandler.Send(jobID, message)
 	}
 }
 

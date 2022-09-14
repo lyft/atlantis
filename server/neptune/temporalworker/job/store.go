@@ -45,7 +45,7 @@ func (m *InMemoryStore) Get(jobID string) (*Job, error) {
 	return m.jobs[jobID], nil
 }
 
-func (m *InMemoryStore) AppendOutput(jobID string, output string) error {
+func (m *InMemoryStore) Write(jobID string, output string) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -113,8 +113,8 @@ func (s *StorageBackendJobStore) Get(jobID string) (*Job, error) {
 	}, nil
 }
 
-func (s StorageBackendJobStore) AppendOutput(jobID string, output string) error {
-	return s.JobStore.AppendOutput(jobID, output)
+func (s StorageBackendJobStore) Write(jobID string, output string) error {
+	return s.JobStore.Write(jobID, output)
 }
 
 func (s *StorageBackendJobStore) CloseAndPersistJob(ctx context.Context, jobID string, status JobStatus) error {

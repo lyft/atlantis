@@ -79,7 +79,6 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		tfClientConfig,
 		config.DefaultVersionStr,
 		&legacy_tf.DefaultDownloader{},
-		outputHandler,
 	)
 	if err != nil {
 		return nil, err
@@ -92,6 +91,7 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		},
 		terraformActivities: &terraformActivities{
 			TerraformClient:  tfClient,
+			OutputHandler:    outputHandler,
 			DefaultTFVersion: defaultTfVersion,
 		},
 	}, nil
