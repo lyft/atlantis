@@ -2,6 +2,7 @@ package terraform
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -24,6 +25,15 @@ type Argument struct {
 
 func (a Argument) build() string {
 	return fmt.Sprintf("-%s=%s", a.Key, a.Value)
+}
+
+// argument is the key value pair passed into the terraform command
+type Flag struct {
+	Value string
+}
+
+func (f Flag) build() string {
+	return fmt.Sprintf("-%s", f.Value)
 }
 
 // takes in a list of key/value argument pairs and parses them.
@@ -56,47 +66,72 @@ func newArgument(arg string) (Argument, error) {
 	}, nil
 }
 
-type CommandArguments struct {
-	Command     Operation
-	CommandArgs []Argument
-	ExtraArgs   []Argument
+type SubCommand struct {
+	op    Operation
+	args  []Argument
+	flags []Flag
 }
 
-func NewCommandArguments(command Operation, commandArgs []Argument, extraArgs ...Argument) (*CommandArguments, error) {
-
-	return &CommandArguments{
-		Command:     command,
-		ExtraArgs:   extraArgs,
-		CommandArgs: commandArgs,
-	}, nil
+func NewSubCommand(op Operation) *SubCommand {
+	return &SubCommand{
+		op: op,
+	}
 }
 
-func (t CommandArguments) Build() []string {
-	finalArgs := []string{}
-	usedExtraArgsIndex := map[int]bool{}
-	for _, arg := range t.CommandArgs {
+// WithArgs dedups incoming args using a "last one wins" approach
+// and sets them appropriately on the receiver
+func (c *SubCommand) WithArgs(args ...Argument) *SubCommand {
+	c.args = c.dedup(args)
+	return c
+}
 
-		overrideIndex := -1
-		for i, overrideArg := range t.ExtraArgs {
-			if overrideArg.Key == arg.Key {
-				usedExtraArgsIndex[i] = true
-				overrideIndex = i
-			}
-		}
+func (c *SubCommand) WithFlags(flags ...Flag) *SubCommand {
+	c.flags = flags
+	return c
+}
 
-		if overrideIndex != -1 {
-			finalArgs = append(finalArgs, t.ExtraArgs[overrideIndex].build())
-		} else {
-			finalArgs = append(finalArgs, arg.build())
-		}
+func (c *SubCommand) Build() []string {
+	var result []string
+
+	// first append operation
+	result = append(result, string(c.op))
+
+	// apend all args
+	for _, a := range c.args {
+		result = append(result, a.build())
 	}
 
-	// Append unused extra arguments to final args
-	for i, extraArg := range t.ExtraArgs {
-		if _, ok := usedExtraArgsIndex[i]; !ok {
-			finalArgs = append(finalArgs, extraArg.build())
-		}
+	// append all flags
+	for _, f := range c.flags {
+		result = append(result, f.build())
 	}
 
-	return append([]string{string(t.Command)}, finalArgs...)
+	return result
+}
+
+func (c *SubCommand) dedup(args []Argument) []Argument {
+	tmp := map[string]string{}
+	var finalArgs []Argument
+
+	for _, a := range args {
+		tmp[a.Key] = a.Value
+	}
+
+	// let's sort our keys to ensure a deterministic order
+	// for testing at least
+	var keys []string
+	for k, _ := range tmp {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+
+	for _, k := range keys {
+		finalArgs = append(finalArgs, Argument{
+			Key:   k,
+			Value: tmp[k],
+		})
+	}
+
+	return finalArgs
 }
