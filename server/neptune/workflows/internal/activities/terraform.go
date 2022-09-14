@@ -120,6 +120,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 }
 
 // Terraform Apply
+
 type TerraformApplyRequest struct {
 	Args      []terraform.Argument
 	Envs      map[string]string
@@ -148,9 +149,6 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	args = append(args, request.Args...)
 
 	cmd := terraform.NewSubCommand(terraform.Apply).WithInput(planFile).WithArgs(args...)
-	if err != nil {
-		return TerraformApplyResponse{}, errors.Wrap(err, "building command arguments")
-	}
 	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd, request.Envs, tfVersion)
 	_, err = t.readCommandOutput(ch)
 	if err != nil {
