@@ -77,12 +77,12 @@ func NewAsyncClient(
 
 }
 
-type cmddBuilder interface {
+type cmdBuilder interface {
 	Build(v *version.Version, path string, subcommand *SubCommand) (*exec.Cmd, error)
 }
 
 type AsyncClient struct {
-	CommandBuilder cmddBuilder
+	CommandBuilder cmdBuilder
 }
 
 func (c *AsyncClient) RunCommand(ctx context.Context, jobID string, path string, subcommand *SubCommand, customEnvVars map[string]string, v *version.Version) <-chan Line {

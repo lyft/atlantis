@@ -17,7 +17,7 @@ const (
 	Show  Operation = "show"
 )
 
-// argument is the key value pair passed into the terraform command
+// Argument is the key value pair passed into the terraform command
 type Argument struct {
 	Key   string
 	Value string
@@ -27,7 +27,7 @@ func (a Argument) build() string {
 	return fmt.Sprintf("-%s=%s", a.Key, a.Value)
 }
 
-// argument is the key value pair passed into the terraform command
+// Flag is an argument with only a value
 type Flag struct {
 	Value string
 }
@@ -96,7 +96,7 @@ func (c *SubCommand) Build() []string {
 	// first append operation
 	result = append(result, string(c.op))
 
-	// apend all args
+	// append all args
 	for _, a := range c.args {
 		result = append(result, a.build())
 	}
