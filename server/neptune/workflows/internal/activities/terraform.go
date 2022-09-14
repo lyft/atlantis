@@ -1,14 +1,19 @@
 package activities
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"io"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/terraform/ansi"
-	"github.com/runatlantis/atlantis/server/neptune/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/terraform"
 )
 
 var DisableInputArg = terraform.Argument{
@@ -26,8 +31,11 @@ const (
 	PlanOutputFile = "output.tfplan"
 )
 
+// Setting the buffer size to 10mb
+const bufioScannerBufferSize = 10 * 1024 * 1024
+
 type TerraformClient interface {
-	RunCommand(ctx context.Context, jobID string, path string, subcommand *terraform.SubCommand, customEnvVars map[string]string, v *version.Version) <-chan terraform.Line
+	RunCommand(ctx context.Context, request *terraform.RunCommandRequest, options ...terraform.RunOptions) error
 }
 
 type terraformActivities struct {
@@ -66,12 +74,16 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 		DisableInputArg,
 	}
 	args = append(args, request.Args...)
-	cmd := terraform.NewSubCommand(terraform.Init).WithArgs(args...)
 
-	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd, request.Envs, tfVersion)
-	_, err = t.readCommandOutput(ch)
+	r := &terraform.RunCommandRequest{
+		RootPath:          request.Path,
+		SubCommand:        terraform.NewSubCommand(terraform.Init).WithArgs(args...),
+		AdditionalEnvVars: request.Envs,
+		Version:           tfVersion,
+	}
+	err = t.runCommandWithOutputStream(ctx, r)
 	if err != nil {
-		return TerraformInitResponse{}, errors.Wrap(err, "processing command output")
+		return TerraformInitResponse{}, errors.Wrap(err, "running init command")
 	}
 	return TerraformInitResponse{}, nil
 }
@@ -96,7 +108,6 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		return TerraformPlanResponse{}, err
 	}
 	planFile := filepath.Join(request.Path, PlanOutputFile)
-
 	args := []terraform.Argument{
 		DisableInputArg,
 		RefreshArg,
@@ -107,16 +118,73 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	}
 	args = append(args, request.Args...)
 
-	cmd := terraform.NewSubCommand(terraform.Plan).WithArgs(args...)
-	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd, request.Envs, tfVersion)
-	_, err = t.readCommandOutput(ch)
+	planRequest := &terraform.RunCommandRequest{
+		RootPath:          request.Path,
+		SubCommand:        terraform.NewSubCommand(terraform.Plan).WithArgs(args...),
+		AdditionalEnvVars: request.Envs,
+		Version:           tfVersion,
+	}
+	err = t.runCommandWithOutputStream(ctx, planRequest)
 	if err != nil {
-		return TerraformPlanResponse{}, errors.Wrap(err, "processing command output")
+		return TerraformPlanResponse{}, errors.Wrap(err, "running plan command")
+	}
+
+	// let's run terraform show right after to get the plan as a structured object
+	showRequest := &terraform.RunCommandRequest{
+		RootPath: request.Path,
+		SubCommand: terraform.NewSubCommand(terraform.Show).WithFlags(terraform.Flag{
+			Value: "json",
+		}),
+		AdditionalEnvVars: request.Envs,
+		Version:           tfVersion,
+	}
+
+	showResultBuffer := &bytes.Buffer{}
+	err = t.TerraformClient.RunCommand(ctx, showRequest, terraform.RunOptions{
+		StdOut: showResultBuffer,
+		StdErr: showResultBuffer,
+	})
+
+	// we shouldn't fail our activity just because show failed. Summaries aren't that critical.
+	if err != nil {
+		logger.Error(ctx, "error with terraform show", "err", err)
 	}
 
 	return TerraformPlanResponse{
-		PlanFile: planFile,
+		PlanFile: filepath.Join(request.Path, PlanOutputFile),
 	}, nil
+}
+
+func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, request *terraform.RunCommandRequest) error {
+	reader, writer := io.Pipe()
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	var err error
+	go func() {
+		defer wg.Done()
+		defer writer.Close()
+		err = t.TerraformClient.RunCommand(ctx, request, terraform.RunOptions{
+			StdOut: writer,
+			StdErr: writer,
+		})
+	}()
+
+	s := bufio.NewScanner(reader)
+
+	buf := []byte{}
+	s.Buffer(buf, bufioScannerBufferSize)
+
+	for s.Scan() {
+		// TODO: forward to global channel
+		// message := s.Text()
+		// ch <- terraform.Line{Line: message}
+	}
+
+	wg.Wait()
+
+	return err
 }
 
 // Terraform Apply
@@ -145,21 +213,13 @@ func (t *terraformActivities) resolveVersion(v string) (*version.Version, error)
 	return t.DefaultTFVersion, nil
 }
 
-func (t *terraformActivities) readCommandOutput(ch <-chan terraform.Line) (string, error) {
-	var err error
+func (t *terraformActivities) readCommandOutput(ch <-chan terraform.Line) string {
 	var lines []string
 	for line := range ch {
-		if line.Err != nil {
-			err = errors.Wrap(line.Err, "executing command")
-			break
-		}
 		lines = append(lines, line.Line)
-	}
-	if err != nil {
-		return "", err
 	}
 	output := strings.Join(lines, "\n")
 	// sanitize output by stripping out any ansi characters.
 	output = ansi.Strip(output)
-	return output, nil
+	return output
 }

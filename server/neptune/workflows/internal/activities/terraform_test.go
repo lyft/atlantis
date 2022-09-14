@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/neptune/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"

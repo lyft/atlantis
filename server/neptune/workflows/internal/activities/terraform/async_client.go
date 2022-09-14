@@ -7,13 +7,11 @@ import (
 	"io"
 	"os/exec"
 	"regexp"
-	"sync"
 
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 )
 
 type ClientConfig struct {
@@ -26,8 +24,6 @@ type ClientConfig struct {
 type Line struct {
 	// Line is the contents of the line (without the newline).
 	Line string
-	// Err is set if there was an error.
-	Err error
 }
 
 // Setting the buffer size to 10mb
@@ -78,81 +74,81 @@ func NewAsyncClient(
 }
 
 type cmdBuilder interface {
-	Build(v *version.Version, path string, subcommand *SubCommand) (*exec.Cmd, error)
+	Build(ctx context.Context, v *version.Version, path string, subcommand *SubCommand) (*exec.Cmd, error)
 }
 
 type AsyncClient struct {
 	CommandBuilder cmdBuilder
 }
 
-func (c *AsyncClient) RunCommand(ctx context.Context, jobID string, path string, subcommand *SubCommand, customEnvVars map[string]string, v *version.Version) <-chan Line {
-	outCh := make(chan Line)
-
-	// We start a goroutine to do our work asynchronously and then immediately
-	// return our channels.
-	go c.runCommand(ctx, jobID, path, subcommand, customEnvVars, v, outCh)
-	return outCh
+type RunOptions struct {
+	StdOut io.Writer
+	StdErr io.Writer
 }
 
-func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string, subcommand *SubCommand, customEnvVars map[string]string, v *version.Version, outCh chan Line) {
-	// Ensure we close our channels when we exit.
-	defer func() {
-		close(outCh)
+type RunCommandRequest struct {
+	RootPath          string
+	SubCommand        *SubCommand
+	AdditionalEnvVars map[string]string
+	Version           *version.Version
+}
+
+func (c *AsyncClient) runWithCustomIOWriter(ctx context.Context, request RunCommandRequest) error {
+	reader, writer := io.Pipe()
+	outCh := make(chan Line)
+
+	options := RunOptions{
+		StdOut: writer,
+		StdErr: writer,
+	}
+
+	go func() {
+		defer writer.Close()
+		c.RunCommand(ctx, request, options)
 	}()
 
-	cmd, err := c.CommandBuilder.Build(v, path, subcommand)
-	if err != nil {
-		logger.Error(ctx, errors.Wrapf(err, "building command").Error())
-		outCh <- Line{Err: err}
-		return
+	s := bufio.NewScanner(reader)
+
+	buf := []byte{}
+	s.Buffer(buf, bufioScannerBufferSize)
+
+	for s.Scan() {
+		message := s.Text()
+		outCh <- Line{Line: message}
 	}
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
+}
+
+func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest, options ...RunOptions) error {
+	cmd, err := c.CommandBuilder.Build(ctx, request.Version, request.RootPath, request.SubCommand)
+	if err != nil {
+		return errors.Wrapf(err, "building command")
+	}
+
+	for _, option := range options {
+		if option.StdOut != nil {
+			cmd.Stdout = option.StdOut
+		}
+
+		if option.StdErr != nil {
+			cmd.Stderr = option.StdErr
+		}
+	}
+
 	envVars := cmd.Env
-	for key, val := range customEnvVars {
+	for key, val := range request.AdditionalEnvVars {
 		envVars = append(envVars, fmt.Sprintf("%s=%s", key, val))
 	}
-	cmd.Env = envVars
 
-	err = cmd.Start()
-	if err != nil {
-		logger.Error(ctx, errors.Wrapf(err, "running %q in %q", cmd.String(), path).Error())
-		outCh <- Line{Err: err}
-		return
+	if err := cmd.Run(); err != nil {
+		return errors.Wrap(err, "running terraform command")
 	}
 
-	// Use a waitgroup to block until our stdout/err copying is complete.
-	wg := new(sync.WaitGroup)
-	wg.Add(2)
-	// Asynchronously copy from stdout/err to outCh.
-	go func() {
-		defer wg.Done()
-		c.WriteOutput(stdout, outCh, jobID)
-	}()
-	go func() {
-		defer wg.Done()
-		c.WriteOutput(stderr, outCh, jobID)
-	}()
-
-	// Wait for our copying to complete. This *must* be done before
-	// calling cmd.Wait(). (see https://github.com/golang/go/issues/19685)
-	wg.Wait()
-
-	// Wait for the command to complete.
-	err = cmd.Wait()
-
-	// We're done now. Send an error if there was one.
-	if err != nil {
-		err = errors.Wrapf(err, "running %q in %q", cmd.String(), path)
-		logger.Error(ctx, err.Error())
-		outCh <- Line{Err: err}
-	} else {
-		logger.Info(ctx, fmt.Sprintf("successfully ran %q in %q", cmd.String(), path))
-	}
+	return nil
 }
 
 func (c *AsyncClient) WriteOutput(stdReader io.ReadCloser, outCh chan Line, jobID string) {
 	s := bufio.NewScanner(stdReader)
+
 	buf := []byte{}
 	s.Buffer(buf, bufioScannerBufferSize)
 

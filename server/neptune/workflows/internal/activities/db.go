@@ -3,7 +3,7 @@ package activities
 import (
 	"context"
 
-	"github.com/runatlantis/atlantis/server/neptune/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/logger"
 )
 
 type dbActivities struct {
