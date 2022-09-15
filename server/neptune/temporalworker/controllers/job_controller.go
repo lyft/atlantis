@@ -8,15 +8,16 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
 	"github.com/runatlantis/atlantis/server/controllers/websocket"
-	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/logging"
+	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/uber-go/tally/v4"
 )
 
-type JobIDKeyGenerator struct{}
+type JobKeyGenerator struct{}
 
-func (g JobIDKeyGenerator) Generate(r *http.Request) (string, error) {
+func (g JobKeyGenerator) Generate(r *http.Request) (string, error) {
 	jobID, ok := mux.Vars(r)["job-id"]
 	if !ok {
 		return "", fmt.Errorf("internal error: no job-id in route")
@@ -25,16 +26,49 @@ func (g JobIDKeyGenerator) Generate(r *http.Request) (string, error) {
 	return jobID, nil
 }
 
+func NewJobsController(
+	serverCfg neptune.ServerConfig,
+	store job.JobStore,
+	receiverRegistry job.ReceiverRegistry,
+	scope tally.Scope,
+	logger logging.Logger,
+) *JobsController {
+	jobPartitionRegistry := job.PartitionRegistry{
+		ReceiverRegistry: receiverRegistry,
+		Store:            store,
+		Logger:           logger,
+	}
+
+	wsMux := websocket.NewInstrumentedMultiplexor(
+		websocket.NewMultiplexor(
+			logger,
+			JobKeyGenerator{},
+			jobPartitionRegistry,
+		),
+		scope.SubScope("http.getjob"),
+	)
+
+	return &JobsController{
+		AtlantisVersion:     serverCfg.Version,
+		AtlantisURL:         serverCfg.URL,
+		KeyGenerator:        JobKeyGenerator{},
+		StatsScope:          scope,
+		Logger:              logger,
+		ProjectJobsTemplate: templates.ProjectJobsTemplate,
+		WsMux:               wsMux,
+	}
+}
+
 type JobsController struct {
-	AtlantisVersion          string
-	AtlantisURL              *url.URL
-	Logger                   logging.Logger
-	ProjectJobsTemplate      templates.TemplateWriter
-	ProjectJobsErrorTemplate templates.TemplateWriter
-	Db                       *db.BoltDB
-	WsMux                    websocket.Multiplexor
-	StatsScope               tally.Scope
-	KeyGenerator             JobIDKeyGenerator
+	AtlantisVersion string
+	AtlantisURL     *url.URL
+
+	WsMux               websocket.Multiplexor
+	ProjectJobsTemplate templates.TemplateWriter
+	KeyGenerator        JobKeyGenerator
+
+	StatsScope tally.Scope
+	Logger     logging.Logger
 }
 
 func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) error {
@@ -74,7 +108,6 @@ func (j *JobsController) getProjectJobsWS(w http.ResponseWriter, r *http.Request
 		j.respond(w, http.StatusBadRequest, err.Error())
 		return err
 	}
-
 	return nil
 }
 

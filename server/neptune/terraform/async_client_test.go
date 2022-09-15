@@ -65,8 +65,7 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder:   testCommandBuilder,
-		JobOutputHandler: &testJobOutputHandler{},
+		CommandBuilder: testCommandBuilder,
 	}
 
 	testFunc := func(ctx context.Context) (string, error) {
@@ -121,8 +120,7 @@ func TestDefaultClient_RunCommandAsync_BigOutput(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder:   testCommandBuilder,
-		JobOutputHandler: &testJobOutputHandler{},
+		CommandBuilder: testCommandBuilder,
 	}
 
 	testFunc := func(ctx context.Context) (string, error) {
@@ -158,8 +156,7 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder:   testCommandBuilder,
-		JobOutputHandler: &testJobOutputHandler{},
+		CommandBuilder: testCommandBuilder,
 	}
 	testFunc := func(ctx context.Context) (string, error) {
 		ch := client.RunCommand(ctx, jobID, path, args, map[string]string{}, nil)
@@ -194,8 +191,7 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 		err:     nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder:   testCommandBuilder,
-		JobOutputHandler: &testJobOutputHandler{},
+		CommandBuilder: testCommandBuilder,
 	}
 
 	testFunc := func(ctx context.Context) (string, error) {

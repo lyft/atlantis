@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
@@ -24,7 +25,32 @@ type JobStore interface {
 	Close(ctx context.Context, jobID string, status JobStatus) error
 }
 
-type OutputHandler struct {
+func NewOuptutHandler(
+	jobStore JobStore,
+	receiverRegistry ReceiverRegistry,
+	logFilters valid.TerraformLogFilters,
+	logger logging.Logger) *JobOutputHandler {
+	logFilter := filter.LogFilter{
+		Regexes: logFilters.Regexes,
+	}
+
+	jobOutputChan := make(chan *OutputLine)
+	return &JobOutputHandler{
+		JobOutput:        jobOutputChan,
+		JobStore:         jobStore,
+		ReceiverRegistry: receiverRegistry,
+		LogFilter:        logFilter,
+		Logger:           logger,
+	}
+}
+
+type OutputHandler interface {
+	Handle()
+	ReadOutput(jobID string, ch <-chan terraform.Line) error
+	Close(ctx context.Context, jobID string)
+}
+
+type JobOutputHandler struct {
 	// Main channel that receives output from the terraform client
 	JobOutput chan *OutputLine
 
@@ -39,7 +65,7 @@ type OutputHandler struct {
 	Logger logging.Logger
 }
 
-func (s *OutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) error {
+func (s *JobOutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) error {
 	for line := range ch {
 		fmt.Println(line)
 
@@ -54,7 +80,7 @@ func (s *OutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) error
 	return nil
 }
 
-func (s *OutputHandler) Handle() {
+func (s *JobOutputHandler) Handle() {
 	for msg := range s.JobOutput {
 		// Filter out log lines from job output
 		if s.LogFilter.ShouldFilterLine(msg.Line) {
@@ -72,7 +98,7 @@ func (s *OutputHandler) Handle() {
 }
 
 // Called from inside an activity so activity context is available
-func (s *OutputHandler) Close(ctx context.Context, jobID string) {
+func (s *JobOutputHandler) Close(ctx context.Context, jobID string) {
 	// Close active connections and remove receivers from registry
 
 	s.ReceiverRegistry.CloseAndRemoveReceiversForJob(jobID)

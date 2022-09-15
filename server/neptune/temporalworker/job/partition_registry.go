@@ -7,7 +7,7 @@ import (
 )
 
 type PartitionRegistry struct {
-	ReceiverRegistry *receiverRegistry
+	ReceiverRegistry ReceiverRegistry
 	Store            JobStore
 	Logger           logging.Logger
 }

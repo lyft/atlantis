@@ -17,16 +17,12 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/controllers"
-	"github.com/runatlantis/atlantis/server/controllers/templates"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
-	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/controllers"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker/websocket"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/cli"
@@ -47,7 +43,7 @@ type Server struct {
 	StatsScope       tally.Scope
 	StatsCloser      io.Closer
 	TemporalClient   client.Client
-	JobOutputHandler job.OutputHandler
+	JobOutputHandler job.JobOutputHandler
 
 	DeployActivities    *workflows.DeployActivities
 	TerraformActivities *workflows.TerraformActivities
@@ -55,64 +51,23 @@ type Server struct {
 }
 
 func NewServer(config *config.Config) (*Server, error) {
-	storageBackend, err := job.NewStorageBackend(config.LogStreamingJobCfg, config.CtxLogger)
+	// Build dependencies required for output handler and controller
+	jobStore, err := job.NewStorageBackedStore(config.JobCfg, config.CtxLogger)
 	if err != nil {
-		return nil, errors.Wrapf(err, "initializing storage backend")
+		return nil, errors.Wrapf(err, "initializing job store")
 	}
-
-	jobStore := job.NewStore(storageBackend)
 	receiverRegistry := job.NewReceiverRegistry()
 
-	jobPartitionRegistry := job.PartitionRegistry{
-		ReceiverRegistry: receiverRegistry,
-		Store:            jobStore,
-		Logger:           config.CtxLogger,
-	}
-
-	logFilter := filter.LogFilter{
-		Regexes: config.TerraformCfg.LogFilters.Regexes,
-	}
-
-	jobOutputChan := make(chan *job.OutputLine)
-
-	outputHandler := &job.OutputHandler{
-		JobOutput:        jobOutputChan,
-		JobStore:         jobStore,
-		ReceiverRegistry: receiverRegistry,
-		LogFilter:        logFilter,
-		Logger:           config.CtxLogger,
-	}
-
-	projectJobsScope := config.Scope.SubScope("getprojectjobs")
-
-	wsMux := websocket.NewInstrumentedMultiplexor(
-		websocket.NewMultiplexor(
-			config.CtxLogger,
-			controllers.JobIDKeyGenerator{},
-			jobPartitionRegistry,
-		),
-		projectJobsScope,
-	)
-
-	jobsController := &controllers.JobsController{
-		AtlantisVersion:     config.ServerCfg.Version,
-		AtlantisURL:         config.ServerCfg.URL,
-		KeyGenerator:        controllers.JobIDKeyGenerator{},
-		StatsScope:          config.Scope,
-		Logger:              config.CtxLogger,
-		ProjectJobsTemplate: templates.ProjectJobsTemplate,
-		WsMux:               wsMux,
-	}
-
-	if err != nil {
-		return nil, errors.Wrap(err, "intializing project command output handler")
-	}
+	// terraform job output handler
+	jobOutputHandler := job.NewOuptutHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
+	jobsController := controllers.NewJobsController(config.ServerCfg, jobStore, receiverRegistry, config.Scope, config.CtxLogger)
 
 	// temporal client + worker initialization
 	temporalClient, err := temporal.NewClient(config.Scope, config.CtxLogger, config.TemporalCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing temporal client")
 	}
+
 	// router initialization
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods("GET")
@@ -144,7 +99,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.TerraformCfg,
 		config.DataDir,
 		config.ServerCfg.URL,
-		outputHandler,
+		jobOutputHandler,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
@@ -166,7 +121,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		StatsScope:          config.Scope,
 		StatsCloser:         config.StatsCloser,
 		TemporalClient:      temporalClient,
-		JobOutputHandler:    *outputHandler,
+		JobOutputHandler:    *jobOutputHandler,
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
@@ -246,26 +201,4 @@ func Healthz(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data) // nolint: errcheck
-}
-
-func createJobsController(config *neptune.Config, jobPartitionRegistry *job.PartitionRegistry) *controllers.JobsController {
-	projectJobsScope := config.Scope.SubScope("getprojectjobs")
-	wsMux := websocket.NewInstrumentedMultiplexor(
-		websocket.NewMultiplexor(
-			config.CtxLogger,
-			controllers.JobIDKeyGenerator{},
-			jobPartitionRegistry,
-		),
-		projectJobsScope,
-	)
-
-	return &controllers.JobsController{
-		AtlantisVersion:     config.ServerCfg.Version,
-		AtlantisURL:         config.ServerCfg.URL,
-		KeyGenerator:        controllers.JobIDKeyGenerator{},
-		StatsScope:          config.Scope,
-		Logger:              config.CtxLogger,
-		ProjectJobsTemplate: templates.ProjectJobsTemplate,
-		WsMux:               wsMux,
-	}
 }

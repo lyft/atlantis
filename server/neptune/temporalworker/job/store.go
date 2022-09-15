@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/logging"
 )
 
 type JobStatus int
@@ -20,13 +22,18 @@ type Job struct {
 	Status JobStatus
 }
 
-func NewStore(storageBackend StorageBackend) JobStore {
+func NewStorageBackedStore(config valid.Jobs, logger logging.Logger) (*StorageBackendJobStore, error) {
+	storageBackend, err := NewStorageBackend(config, logger)
+	if err != nil {
+		return nil, errors.Wrapf(err, "initializing storage backend")
+	}
+
 	return &StorageBackendJobStore{
 		JobStore: &InMemoryStore{
 			jobs: map[string]*Job{},
 		},
 		storageBackend: storageBackend,
-	}
+	}, nil
 }
 
 // Memory Job store deals with handling jobs in memory

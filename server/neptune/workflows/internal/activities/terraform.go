@@ -19,13 +19,14 @@ type TerraformClient interface {
 type terraformActivities struct {
 	TerraformClient  TerraformClient
 	DefaultTFVersion *version.Version
-	OutputHandler    *job.OutputHandler
+	OutputHandler    job.OutputHandler
 }
 
-func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version) *terraformActivities {
+func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, outputHandler job.OutputHandler) *terraformActivities {
 	return &terraformActivities{
 		TerraformClient:  client,
 		DefaultTFVersion: defaultTfVersion,
+		OutputHandler:    outputHandler,
 	}
 }
 

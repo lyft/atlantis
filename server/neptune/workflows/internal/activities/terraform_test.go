@@ -12,6 +12,16 @@ import (
 	"go.temporal.io/sdk/testsuite"
 )
 
+type testJobOutputHandler struct{}
+
+func (t *testJobOutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) error {
+	return nil
+}
+
+func (t *testJobOutputHandler) Handle() {}
+
+func (t *testJobOutputHandler) Close(ctx context.Context, jobID string) {}
+
 type testTfClient struct {
 	t             *testing.T
 	ctx           context.Context
@@ -79,7 +89,7 @@ func TestTerraformInit_TfVersionInRequestTakesPrecedence(t *testing.T) {
 		TfVersion: reqVersion,
 	}
 
-	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion)
+	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testJobOutputHandler{})
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -124,7 +134,7 @@ func TestTerraformInit_ExtraArgsTakesPrecedenceOverCommandArgs(t *testing.T) {
 		TfVersion: reqVersion,
 	}
 
-	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion)
+	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testJobOutputHandler{})
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
