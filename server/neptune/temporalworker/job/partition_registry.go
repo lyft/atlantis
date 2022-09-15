@@ -7,8 +7,8 @@ import (
 )
 
 type PartitionRegistry struct {
-	ReceiverRegistry ReceiverRegistry
-	Store            JobStore
+	ReceiverRegistry receiverRegistry
+	Store            store
 	Logger           logging.Logger
 }
 
@@ -19,7 +19,6 @@ func (p PartitionRegistry) Register(key string, buffer chan string) {
 		return
 	}
 
-	// Stream job output
 	for _, line := range job.Output {
 		buffer <- line
 	}

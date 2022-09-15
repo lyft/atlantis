@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/uber-go/tally/v4"
 )
 
 type JobStatus int
@@ -22,14 +23,21 @@ type Job struct {
 	Status JobStatus
 }
 
-func NewStorageBackedStore(config valid.Jobs, logger logging.Logger) (*StorageBackendJobStore, error) {
-	storageBackend, err := NewStorageBackend(config, logger)
+type store interface {
+	Get(jobID string) (*Job, error)
+	Write(jobID string, output string) error
+	Remove(jobID string)
+	Close(ctx context.Context, jobID string, status JobStatus) error
+}
+
+func NewStorageBackedStore(config valid.Jobs, logger logging.Logger, scope tally.Scope) (*StorageBackendJobStore, error) {
+	storageBackend, err := NewStorageBackend(config, logger, scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
 
 	return &StorageBackendJobStore{
-		JobStore: &InMemoryStore{
+		store: &InMemoryStore{
 			jobs: map[string]*Job{},
 		},
 		storageBackend: storageBackend,
@@ -89,7 +97,7 @@ func (m *InMemoryStore) Close(ctx context.Context, jobID string, status JobStatu
 	return nil
 }
 
-func (m *InMemoryStore) RemoveJob(jobID string) {
+func (m *InMemoryStore) Remove(jobID string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -98,13 +106,13 @@ func (m *InMemoryStore) RemoveJob(jobID string) {
 
 // Storage backend job store deals with handling jobs in backend storage
 type StorageBackendJobStore struct {
-	JobStore
+	store
 	storageBackend StorageBackend
 }
 
 func (s *StorageBackendJobStore) Get(jobID string) (*Job, error) {
 	// Get job from memory
-	if jobInMem, _ := s.JobStore.Get(jobID); jobInMem != nil {
+	if jobInMem, _ := s.store.Get(jobID); jobInMem != nil {
 		return jobInMem, nil
 	}
 
@@ -121,15 +129,15 @@ func (s *StorageBackendJobStore) Get(jobID string) (*Job, error) {
 }
 
 func (s StorageBackendJobStore) Write(jobID string, output string) error {
-	return s.JobStore.Write(jobID, output)
+	return s.store.Write(jobID, output)
 }
 
 func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status JobStatus) error {
-	if err := s.JobStore.Close(ctx, jobID, status); err != nil {
+	if err := s.store.Close(ctx, jobID, status); err != nil {
 		return err
 	}
 
-	job, err := s.JobStore.Get(jobID)
+	job, err := s.store.Get(jobID)
 	if err != nil || job == nil {
 		return errors.Wrapf(err, "retrieving job: %s from memory store", jobID)
 	}
@@ -142,11 +150,11 @@ func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status
 
 	// Remove from memory if successfully persisted
 	if ok {
-		s.JobStore.RemoveJob(jobID)
+		s.store.Remove(jobID)
 	}
 	return nil
 }
 
-func (s *StorageBackendJobStore) RemoveJob(jobID string) {
-	s.JobStore.RemoveJob(jobID)
+func (s *StorageBackendJobStore) Remove(jobID string) {
+	s.store.Remove(jobID)
 }

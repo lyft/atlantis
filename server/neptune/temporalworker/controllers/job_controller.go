@@ -1,35 +1,54 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 
 	"github.com/gorilla/mux"
 	"github.com/runatlantis/atlantis/server/controllers/templates"
-	"github.com/runatlantis/atlantis/server/controllers/websocket"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/logging"
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/controllers/websocket"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/uber-go/tally/v4"
 )
 
-type JobKeyGenerator struct{}
+type multiplexor interface {
+	Handle(w http.ResponseWriter, r *http.Request) error
+}
 
-func (g JobKeyGenerator) Generate(r *http.Request) (string, error) {
-	jobID, ok := mux.Vars(r)["job-id"]
-	if !ok {
-		return "", fmt.Errorf("internal error: no job-id in route")
-	}
+type receiverRegistry interface {
+	AddReceiver(jobID string, ch chan string)
+	Broadcast(msg job.OutputLine)
+	Close(jobID string)
+}
 
-	return jobID, nil
+type store interface {
+	Get(jobID string) (*job.Job, error)
+	Write(jobID string, output string) error
+	Remove(jobID string)
+	Close(ctx context.Context, jobID string, status job.JobStatus) error
+}
+
+type JobsController struct {
+	AtlantisVersion string
+	AtlantisURL     *url.URL
+
+	WsMux               multiplexor
+	JobsProjectTemplate templates.TemplateWriter
+	KeyGenerator        JobKeyGenerator
+
+	StatsScope tally.Scope
+	Logger     logging.Logger
 }
 
 func NewJobsController(
+	store store,
+	receiverRegistry receiverRegistry,
 	serverCfg neptune.ServerConfig,
-	store job.JobStore,
-	receiverRegistry job.ReceiverRegistry,
 	scope tally.Scope,
 	logger logging.Logger,
 ) *JobsController {
@@ -54,21 +73,9 @@ func NewJobsController(
 		KeyGenerator:        JobKeyGenerator{},
 		StatsScope:          scope,
 		Logger:              logger,
-		ProjectJobsTemplate: templates.ProjectJobsTemplate,
+		JobsProjectTemplate: templates.ProjectJobsTemplate,
 		WsMux:               wsMux,
 	}
-}
-
-type JobsController struct {
-	AtlantisVersion string
-	AtlantisURL     *url.URL
-
-	WsMux               websocket.Multiplexor
-	ProjectJobsTemplate templates.TemplateWriter
-	KeyGenerator        JobKeyGenerator
-
-	StatsScope tally.Scope
-	Logger     logging.Logger
 }
 
 func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) error {
@@ -85,7 +92,7 @@ func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) 
 		CleanedBasePath: j.AtlantisURL.Path,
 	}
 
-	if err = j.ProjectJobsTemplate.Execute(w, viewData); err != nil {
+	if err = j.JobsProjectTemplate.Execute(w, viewData); err != nil {
 		j.Logger.Error(err.Error())
 		return err
 	}
@@ -128,4 +135,16 @@ func (j *JobsController) respond(w http.ResponseWriter, responseCode int, format
 	j.Logger.Error(response)
 	w.WriteHeader(responseCode)
 	fmt.Fprintln(w, response)
+}
+
+// JobKeyGenerator generates job id from the request
+type JobKeyGenerator struct{}
+
+func (g JobKeyGenerator) Generate(r *http.Request) (string, error) {
+	jobID, ok := mux.Vars(r)["job-id"]
+	if !ok {
+		return "", fmt.Errorf("internal error: no job-id in route")
+	}
+
+	return jobID, nil
 }

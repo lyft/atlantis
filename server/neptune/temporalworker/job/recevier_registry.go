@@ -4,26 +4,24 @@ import (
 	"sync"
 )
 
-type ReceiverRegistry interface {
+type receiverRegistry interface {
 	AddReceiver(jobID string, ch chan string)
-	RemoveReceiver(jobID string, ch chan string)
-	GetReceivers(jobID string) map[chan string]bool
 	Broadcast(msg OutputLine)
-	CloseAndRemoveReceiversForJob(jobID string)
+	Close(jobID string)
 }
 
-type receiverRegistry struct {
+type ReceiverRegistry struct {
 	receivers map[string]map[chan string]bool
 	lock      sync.RWMutex
 }
 
-func NewReceiverRegistry() *receiverRegistry {
-	return &receiverRegistry{
+func NewReceiverRegistry() *ReceiverRegistry {
+	return &ReceiverRegistry{
 		receivers: map[string]map[chan string]bool{},
 	}
 }
 
-func (r *receiverRegistry) AddReceiver(jobID string, ch chan string) {
+func (r *ReceiverRegistry) AddReceiver(jobID string, ch chan string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -34,31 +32,17 @@ func (r *receiverRegistry) AddReceiver(jobID string, ch chan string) {
 	r.receivers[jobID][ch] = true
 }
 
-func (r *receiverRegistry) RemoveReceiver(jobID string, ch chan string) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	delete(r.receivers[jobID], ch)
-}
-
-func (r *receiverRegistry) Broadcast(msg OutputLine) {
-	for ch := range r.GetReceivers(msg.JobID) {
+func (r *ReceiverRegistry) Broadcast(msg OutputLine) {
+	for ch := range r.getReceivers(msg.JobID) {
 		select {
 		case ch <- msg.Line:
 		default:
-			r.RemoveReceiver(msg.JobID, ch)
+			r.removeReceiver(msg.JobID, ch)
 		}
 	}
 }
 
-func (r *receiverRegistry) GetReceivers(jobID string) map[chan string]bool {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
-	return r.receivers[jobID]
-}
-
-func (r *receiverRegistry) CloseAndRemoveReceiversForJob(jobID string) {
+func (r *ReceiverRegistry) Close(jobID string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -68,4 +52,18 @@ func (r *receiverRegistry) CloseAndRemoveReceiversForJob(jobID string) {
 	}
 
 	delete(r.receivers, jobID)
+}
+
+func (r *ReceiverRegistry) getReceivers(jobID string) map[chan string]bool {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.receivers[jobID]
+}
+
+func (r *ReceiverRegistry) removeReceiver(jobID string, ch chan string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	delete(r.receivers[jobID], ch)
 }

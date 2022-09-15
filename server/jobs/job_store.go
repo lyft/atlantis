@@ -2,8 +2,9 @@ package jobs
 
 import (
 	"fmt"
-	"github.com/uber-go/tally/v4"
 	"sync"
+
+	"github.com/uber-go/tally/v4"
 
 	"github.com/pkg/errors"
 )

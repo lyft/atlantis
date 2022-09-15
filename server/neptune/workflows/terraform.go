@@ -19,7 +19,7 @@ type TerraformActivities struct {
 	activities.Terraform
 }
 
-func NewTerraformActivities(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler *job.JobOutputHandler) (*TerraformActivities, error) {
+func NewTerraformActivities(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler *job.OutputHandler) (*TerraformActivities, error) {
 	terraformActivities, err := activities.NewTerraform(config, dataDir, serverURL, outputHandler)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")

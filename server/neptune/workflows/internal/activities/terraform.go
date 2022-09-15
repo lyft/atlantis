@@ -5,7 +5,6 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 	job_model "github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 )
@@ -16,13 +15,19 @@ type TerraformClient interface {
 	RunCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan terraform.Line
 }
 
+type outputHandler interface {
+	Handle()
+	ReadOutput(jobID string, ch <-chan terraform.Line) error
+	Close(ctx context.Context, jobID string)
+}
+
 type terraformActivities struct {
 	TerraformClient  TerraformClient
 	DefaultTFVersion *version.Version
-	OutputHandler    job.OutputHandler
+	OutputHandler    outputHandler
 }
 
-func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, outputHandler job.OutputHandler) *terraformActivities {
+func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, outputHandler outputHandler) *terraformActivities {
 	return &terraformActivities{
 		TerraformClient:  client,
 		DefaultTFVersion: defaultTfVersion,

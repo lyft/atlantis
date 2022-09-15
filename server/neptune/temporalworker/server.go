@@ -43,7 +43,7 @@ type Server struct {
 	StatsScope       tally.Scope
 	StatsCloser      io.Closer
 	TemporalClient   client.Client
-	JobOutputHandler job.JobOutputHandler
+	JobOutputHandler job.OutputHandler
 
 	DeployActivities    *workflows.DeployActivities
 	TerraformActivities *workflows.TerraformActivities
@@ -52,7 +52,7 @@ type Server struct {
 
 func NewServer(config *config.Config) (*Server, error) {
 	// Build dependencies required for output handler and controller
-	jobStore, err := job.NewStorageBackedStore(config.JobCfg, config.CtxLogger)
+	jobStore, err := job.NewStorageBackedStore(config.JobCfg, config.CtxLogger, config.Scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing job store")
 	}
@@ -60,7 +60,7 @@ func NewServer(config *config.Config) (*Server, error) {
 
 	// terraform job output handler
 	jobOutputHandler := job.NewOuptutHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
-	jobsController := controllers.NewJobsController(config.ServerCfg, jobStore, receiverRegistry, config.Scope, config.CtxLogger)
+	jobsController := controllers.NewJobsController(jobStore, receiverRegistry, config.ServerCfg, config.Scope, config.CtxLogger)
 
 	// temporal client + worker initialization
 	temporalClient, err := temporal.NewClient(config.Scope, config.CtxLogger, config.TemporalCfg)

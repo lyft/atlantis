@@ -16,59 +16,43 @@ type OutputLine struct {
 	Line  string
 }
 
-type JobStore interface {
-	Get(jobID string) (*Job, error)
-	Write(jobID string, output string) error
-	RemoveJob(jobID string)
-
-	// Activity context available
-	Close(ctx context.Context, jobID string, status JobStatus) error
+type outputHandler interface {
+	Handle()
+	ReadOutput(jobID string, ch <-chan terraform.Line) error
+	Close(ctx context.Context, jobID string)
 }
 
 func NewOuptutHandler(
-	jobStore JobStore,
-	receiverRegistry ReceiverRegistry,
+	jobStore store,
+	receiverRegistry receiverRegistry,
 	logFilters valid.TerraformLogFilters,
-	logger logging.Logger) *JobOutputHandler {
+	logger logging.Logger,
+) *OutputHandler {
+
 	logFilter := filter.LogFilter{
 		Regexes: logFilters.Regexes,
 	}
 
 	jobOutputChan := make(chan *OutputLine)
-	return &JobOutputHandler{
+	return &OutputHandler{
 		JobOutput:        jobOutputChan,
-		JobStore:         jobStore,
+		Store:            jobStore,
 		ReceiverRegistry: receiverRegistry,
 		LogFilter:        logFilter,
 		Logger:           logger,
 	}
 }
 
-type OutputHandler interface {
-	Handle()
-	ReadOutput(jobID string, ch <-chan terraform.Line) error
-	Close(ctx context.Context, jobID string)
-}
-
-type JobOutputHandler struct {
-	// Main channel that receives output from the terraform client
-	JobOutput chan *OutputLine
-
-	// Storage  for plan/apply jobs
-	JobStore JobStore
-
-	// Registry to track active connections for a job
-	ReceiverRegistry ReceiverRegistry
+type OutputHandler struct {
+	JobOutput        chan *OutputLine
+	Store            store
+	ReceiverRegistry receiverRegistry
 	LogFilter        filter.LogFilter
-
-	// Setting struct level Logger since not all methods have access to activity context
-	Logger logging.Logger
+	Logger           logging.Logger
 }
 
-func (s *JobOutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) error {
+func (s *OutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) error {
 	for line := range ch {
-		fmt.Println(line)
-
 		if line.Err != nil {
 			return errors.Wrap(line.Err, "executing command")
 		}
@@ -80,7 +64,7 @@ func (s *JobOutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) er
 	return nil
 }
 
-func (s *JobOutputHandler) Handle() {
+func (s *OutputHandler) Handle() {
 	for msg := range s.JobOutput {
 		// Filter out log lines from job output
 		if s.LogFilter.ShouldFilterLine(msg.Line) {
@@ -90,21 +74,18 @@ func (s *JobOutputHandler) Handle() {
 		s.ReceiverRegistry.Broadcast(*msg)
 
 		// Append new log to the output buffer for the job
-		err := s.JobStore.Write(msg.JobID, msg.Line)
+		err := s.Store.Write(msg.JobID, msg.Line)
 		if err != nil {
 			s.Logger.Warn(fmt.Sprintf("appending log: %s for job: %s: %v", msg.Line, msg.JobID, err))
 		}
 	}
 }
 
-// Called from inside an activity so activity context is available
-func (s *JobOutputHandler) Close(ctx context.Context, jobID string) {
-	// Close active connections and remove receivers from registry
-
-	s.ReceiverRegistry.CloseAndRemoveReceiversForJob(jobID)
+func (s *OutputHandler) Close(ctx context.Context, jobID string) {
+	s.ReceiverRegistry.Close(jobID)
 
 	// Update job status and persist to storage if configured
-	if err := s.JobStore.Close(ctx, jobID, Complete); err != nil {
+	if err := s.Store.Close(ctx, jobID, Complete); err != nil {
 		s.Logger.Error(fmt.Sprintf("updating jobs status to complete, %v", err))
 	}
 }

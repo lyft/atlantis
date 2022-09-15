@@ -19,12 +19,10 @@ const PageSize = 100
 
 type StorageBackend interface {
 	Read(key string) ([]string, error)
-
-	// Activity context available
 	Write(ctx context.Context, key string, logs []string) (bool, error)
 }
 
-func NewStorageBackend(jobs valid.Jobs, logger logging.Logger) (StorageBackend, error) {
+func NewStorageBackend(jobs valid.Jobs, logger logging.Logger, scope tally.Scope) (StorageBackend, error) {
 	if jobs.StorageBackend == nil {
 		return &NoopStorageBackend{}, nil
 	}
@@ -38,11 +36,17 @@ func NewStorageBackend(jobs valid.Jobs, logger logging.Logger) (StorageBackend, 
 		return nil, err
 	}
 
-	// TODO: Add instrumentation
-	return &storageBackend{
+	storageBackend := &storageBackend{
 		location:      location,
 		containerName: containerName,
 		logger:        logger,
+	}
+
+	return &InstrumenetedStorageBackend{
+		StorageBackend: storageBackend,
+		readFailures:   scope.SubScope("storage_backend").Counter("read_failure"),
+		writeFailures:  scope.SubScope("storage_backend").Counter("write_failure"),
+		writeSuccesses: scope.SubScope("storage_backend").Counter("write_success"),
 	}, nil
 }
 
