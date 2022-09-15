@@ -1,13 +1,16 @@
 package job
 
 import (
+	"context"
 	"sync"
 )
 
 type receiverRegistry interface {
 	AddReceiver(jobID string, ch chan string)
 	Broadcast(msg OutputLine)
-	Close(jobID string)
+
+	// Activity context
+	Close(ctx context.Context, jobID string)
 }
 
 type ReceiverRegistry struct {
@@ -42,7 +45,7 @@ func (r *ReceiverRegistry) Broadcast(msg OutputLine) {
 	}
 }
 
-func (r *ReceiverRegistry) Close(jobID string) {
+func (r *ReceiverRegistry) Close(ctx context.Context, jobID string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 

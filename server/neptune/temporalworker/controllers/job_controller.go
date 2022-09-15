@@ -23,7 +23,7 @@ type multiplexor interface {
 type receiverRegistry interface {
 	AddReceiver(jobID string, ch chan string)
 	Broadcast(msg job.OutputLine)
-	Close(jobID string)
+	Close(ctx context.Context, jobID string)
 }
 
 type store interface {

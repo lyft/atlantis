@@ -1,7 +1,6 @@
 package activities
 
 import (
-	"context"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -53,13 +52,7 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-type outputHandler interface {
-	Handle()
-	ReadOutput(jobID string, ch <-chan terraform.Line) error
-	Close(ctx context.Context, jobID string)
-}
-
-func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler outputHandler) (*Terraform, error) {
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler outputReader) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -97,7 +90,7 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		},
 		terraformActivities: &terraformActivities{
 			TerraformClient:  tfClient,
-			OutputHandler:    outputHandler,
+			OutputReader:     outputHandler,
 			DefaultTFVersion: defaultTfVersion,
 		},
 	}, nil

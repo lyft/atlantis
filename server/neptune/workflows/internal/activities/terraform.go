@@ -30,17 +30,22 @@ type TerraformClient interface {
 	RunCommand(ctx context.Context, jobID string, path string, subcommand *terraform.SubCommand, customEnvVars map[string]string, v *version.Version) <-chan terraform.Line
 }
 
+type outputReader interface {
+	Read(ctx context.Context, jobID string, ch <-chan terraform.Line) error
+	Close(ctx context.Context, jobID string)
+}
+
 type terraformActivities struct {
 	TerraformClient  TerraformClient
 	DefaultTFVersion *version.Version
-	OutputHandler    outputHandler
+	OutputReader     outputReader
 }
 
-func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, outputHandler outputHandler) *terraformActivities {
+func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, outputHandler outputReader) *terraformActivities {
 	return &terraformActivities{
 		TerraformClient:  client,
 		DefaultTFVersion: defaultTfVersion,
-		OutputHandler:    outputHandler,
+		OutputReader:     outputHandler,
 	}
 }
 
@@ -71,8 +76,12 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	cmd := terraform.NewSubCommand(terraform.Init).WithArgs(args...)
 
 	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd, request.Envs, tfVersion)
-	t.OutputHandler.ReadOutput(request.JobID, ch)
-	defer t.OutputHandler.Close(ctx, request.JobID)
+
+	// Read output and stream to active connections
+	if err := t.OutputReader.Read(ctx, request.JobID, ch); err != nil {
+		return TerraformInitResponse{}, errors.Wrap(err, "reading init output")
+	}
+	defer t.OutputReader.Close(ctx, request.JobID)
 	return TerraformInitResponse{}, nil
 }
 
@@ -109,8 +118,12 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 
 	cmd := terraform.NewSubCommand(terraform.Plan).WithArgs(args...)
 	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd, request.Envs, tfVersion)
-	t.OutputHandler.ReadOutput(request.JobID, ch)
-	defer t.OutputHandler.Close(ctx, request.JobID)
+
+	// Read output and stream to active connections
+	if err := t.OutputReader.Read(ctx, request.JobID, ch); err != nil {
+		return TerraformPlanResponse{}, errors.Wrap(err, "reading plan output")
+	}
+	defer t.OutputReader.Close(ctx, request.JobID)
 
 	return TerraformPlanResponse{
 		PlanFile: planFile,
@@ -148,8 +161,12 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 
 	cmd := terraform.NewSubCommand(terraform.Apply).WithInput(planFile).WithArgs(args...)
 	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd, request.Envs, tfVersion)
-	t.OutputHandler.ReadOutput(request.JobID, ch)
-	defer t.OutputHandler.Close(ctx, request.JobID)
+
+	// Read output and stream to active connections
+	if err := t.OutputReader.Read(ctx, request.JobID, ch); err != nil {
+		return TerraformApplyResponse{}, errors.Wrap(err, "reading apply output")
+	}
+	defer t.OutputReader.Close(ctx, request.JobID)
 
 	return TerraformApplyResponse{}, nil
 }

@@ -18,7 +18,7 @@ type OutputLine struct {
 
 type outputHandler interface {
 	Handle()
-	ReadOutput(jobID string, ch <-chan terraform.Line) error
+	Read(jobID string, ch <-chan terraform.Line) error
 	Close(ctx context.Context, jobID string)
 }
 
@@ -51,7 +51,7 @@ type OutputHandler struct {
 	Logger           logging.Logger
 }
 
-func (s *OutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) error {
+func (s *OutputHandler) Read(ctx context.Context, jobID string, ch <-chan terraform.Line) error {
 	for line := range ch {
 		if line.Err != nil {
 			return errors.Wrap(line.Err, "executing command")
@@ -82,7 +82,7 @@ func (s *OutputHandler) Handle() {
 }
 
 func (s *OutputHandler) Close(ctx context.Context, jobID string) {
-	s.ReceiverRegistry.Close(jobID)
+	s.ReceiverRegistry.Close(ctx, jobID)
 
 	// Update job status and persist to storage if configured
 	if err := s.Store.Close(ctx, jobID, Complete); err != nil {
