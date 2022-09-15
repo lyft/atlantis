@@ -52,7 +52,7 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler outputReader) (*Terraform, error) {
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, streamHandler streamHandler) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		},
 		terraformActivities: &terraformActivities{
 			TerraformClient:  tfClient,
-			OutputReader:     outputHandler,
+			StreamHandler:    streamHandler,
 			DefaultTFVersion: defaultTfVersion,
 		},
 	}, nil

@@ -16,3 +16,8 @@ type ExecutionContext struct {
 type Job struct {
 	Steps []Step
 }
+
+type JobInstance struct {
+	Job
+	JobID string
+}

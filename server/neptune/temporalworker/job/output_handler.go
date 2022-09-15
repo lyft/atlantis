@@ -16,25 +16,25 @@ type OutputLine struct {
 	Line  string
 }
 
-type outputHandler interface {
+type streamHandler interface {
 	Handle()
-	Read(jobID string, ch <-chan terraform.Line) error
+	Stream(jobID string, ch <-chan terraform.Line) error
 	Close(ctx context.Context, jobID string)
 }
 
-func NewOuptutHandler(
+func NewStreamHandler(
 	jobStore store,
 	receiverRegistry receiverRegistry,
 	logFilters valid.TerraformLogFilters,
 	logger logging.Logger,
-) *OutputHandler {
+) *StreamHandler {
 
 	logFilter := filter.LogFilter{
 		Regexes: logFilters.Regexes,
 	}
 
 	jobOutputChan := make(chan *OutputLine)
-	return &OutputHandler{
+	return &StreamHandler{
 		JobOutput:        jobOutputChan,
 		Store:            jobStore,
 		ReceiverRegistry: receiverRegistry,
@@ -43,7 +43,7 @@ func NewOuptutHandler(
 	}
 }
 
-type OutputHandler struct {
+type StreamHandler struct {
 	JobOutput        chan *OutputLine
 	Store            store
 	ReceiverRegistry receiverRegistry
@@ -51,7 +51,7 @@ type OutputHandler struct {
 	Logger           logging.Logger
 }
 
-func (s *OutputHandler) Read(ctx context.Context, jobID string, ch <-chan terraform.Line) error {
+func (s *StreamHandler) Stream(ctx context.Context, jobID string, ch <-chan terraform.Line) error {
 	for line := range ch {
 		if line.Err != nil {
 			return errors.Wrap(line.Err, "executing command")
@@ -64,7 +64,7 @@ func (s *OutputHandler) Read(ctx context.Context, jobID string, ch <-chan terraf
 	return nil
 }
 
-func (s *OutputHandler) Handle() {
+func (s *StreamHandler) Handle() {
 	for msg := range s.JobOutput {
 		// Filter out log lines from job output
 		if s.LogFilter.ShouldFilterLine(msg.Line) {
@@ -81,7 +81,7 @@ func (s *OutputHandler) Handle() {
 	}
 }
 
-func (s *OutputHandler) Close(ctx context.Context, jobID string) {
+func (s *StreamHandler) Close(ctx context.Context, jobID string) {
 	s.ReceiverRegistry.Close(ctx, jobID)
 
 	// Update job status and persist to storage if configured

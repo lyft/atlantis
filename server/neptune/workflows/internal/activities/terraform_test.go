@@ -11,13 +11,13 @@ import (
 	"go.temporal.io/sdk/testsuite"
 )
 
-type testJobOutputReader struct{}
+type testStreamHandler struct{}
 
-func (t *testJobOutputReader) Read(ctx context.Context, jobID string, ch <-chan terraform.Line) error {
+func (t *testStreamHandler) Stream(ctx context.Context, jobID string, ch <-chan terraform.Line) error {
 	return nil
 }
 
-func (t *testJobOutputReader) Close(ctx context.Context, jobID string) {}
+func (t *testStreamHandler) Close(ctx context.Context, jobID string) {}
 
 type testTfClient struct {
 	t             *testing.T
@@ -87,7 +87,7 @@ func TestTerraformInit_TfVersionInRequestTakesPrecedence(t *testing.T) {
 		TfVersion: reqVersion,
 	}
 
-	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testJobOutputReader{})
+	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testStreamHandler{})
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -138,7 +138,7 @@ func TestTerraformInit_ExtraArgsTakesPrecedenceOverCommandArgs(t *testing.T) {
 		TfVersion: reqVersion,
 	}
 
-	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testJobOutputReader{})
+	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testStreamHandler{})
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -191,7 +191,7 @@ func TestTerraformPlan(t *testing.T) {
 		TfVersion: reqVersion,
 	}
 
-	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testJobOutputReader{})
+	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testStreamHandler{})
 	env.RegisterActivity(tfActivity)
 
 	resp, err := env.ExecuteActivity(tfActivity.TerraformPlan, req)
@@ -243,7 +243,7 @@ func TestTerraformApply(t *testing.T) {
 		TfVersion: reqVersion,
 	}
 
-	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testJobOutputReader{})
+	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testStreamHandler{})
 	env.RegisterActivity(tfActivity)
 
 	resp, err := env.ExecuteActivity(tfActivity.TerraformApply, req)
@@ -300,7 +300,7 @@ func TestTerraformApply_TargetFailure(t *testing.T) {
 		},
 	}
 
-	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testJobOutputReader{})
+	tfActivity := activities.NewTerraformActivities(&testTfClient, defaultTfVersion, &testStreamHandler{})
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformApply, req)

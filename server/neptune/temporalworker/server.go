@@ -43,7 +43,7 @@ type Server struct {
 	StatsScope       tally.Scope
 	StatsCloser      io.Closer
 	TemporalClient   client.Client
-	JobOutputHandler job.OutputHandler
+	JobStreamHandler *job.StreamHandler
 
 	DeployActivities    *workflows.DeployActivities
 	TerraformActivities *workflows.TerraformActivities
@@ -59,7 +59,7 @@ func NewServer(config *config.Config) (*Server, error) {
 	receiverRegistry := job.NewReceiverRegistry()
 
 	// terraform job output handler
-	jobOutputHandler := job.NewOuptutHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
+	jobStreamHandler := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
 	jobsController := controllers.NewJobsController(jobStore, receiverRegistry, config.ServerCfg, config.Scope, config.CtxLogger)
 
 	// temporal client + worker initialization
@@ -99,7 +99,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.TerraformCfg,
 		config.DataDir,
 		config.ServerCfg.URL,
-		jobOutputHandler,
+		jobStreamHandler,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
@@ -121,7 +121,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		StatsScope:          config.Scope,
 		StatsCloser:         config.StatsCloser,
 		TemporalClient:      temporalClient,
-		JobOutputHandler:    *jobOutputHandler,
+		JobStreamHandler:    jobStreamHandler,
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
@@ -168,7 +168,7 @@ func (s Server) Start() error {
 
 	// Start job output handler listener
 	go func() {
-		s.JobOutputHandler.Handle()
+		s.JobStreamHandler.Handle()
 	}()
 
 	<-stop

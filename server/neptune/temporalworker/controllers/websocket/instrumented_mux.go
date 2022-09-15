@@ -6,19 +6,19 @@ import (
 	"github.com/uber-go/tally/v4"
 )
 
-type InstrumentedMultiplexor struct {
+type InstrumentedStorageBackend struct {
 	Multiplexor
 	NumWsConnections tally.Counter
 }
 
 func NewInstrumentedMultiplexor(multiplexor Multiplexor, statsScope tally.Scope) Multiplexor {
-	return &InstrumentedMultiplexor{
+	return &InstrumentedStorageBackend{
 		Multiplexor:      multiplexor,
 		NumWsConnections: statsScope.SubScope("websocket").Counter("connections"),
 	}
 }
 
-func (i *InstrumentedMultiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
+func (i *InstrumentedStorageBackend) Handle(w http.ResponseWriter, r *http.Request) error {
 	i.NumWsConnections.Inc(1)
 	return i.Multiplexor.Handle(w, r)
 }

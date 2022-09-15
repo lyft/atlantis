@@ -3,7 +3,6 @@ package websocket
 import (
 	"net/http"
 
-	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -30,13 +29,8 @@ type multiplexor struct {
 }
 
 func NewMultiplexor(log logging.Logger, keyGenerator partitionKeyGenerator, registry partitionRegistry) *multiplexor {
-	upgrader := websocket.Upgrader{}
-	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	return &multiplexor{
-		writer: &Writer{
-			upgrader: upgrader,
-			log:      log,
-		},
+		writer:       NewWriter(log),
 		keyGenerator: keyGenerator,
 		registry:     registry,
 	}

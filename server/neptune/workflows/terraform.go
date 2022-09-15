@@ -29,13 +29,13 @@ type TerraformActivities struct {
 	activities.Terraform
 }
 
-type outputReader interface {
-	Read(ctx context.Context, jobID string, ch <-chan terraform_model.Line) error
+type streamHandler interface {
+	Stream(ctx context.Context, jobID string, ch <-chan terraform_model.Line) error
 	Close(ctx context.Context, jobID string)
 }
 
-func NewTerraformActivities(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputReader outputReader) (*TerraformActivities, error) {
-	terraformActivities, err := activities.NewTerraform(config, dataDir, serverURL, outputReader)
+func NewTerraformActivities(config config.TerraformConfig, dataDir string, serverURL *url.URL, streamHandler streamHandler) (*TerraformActivities, error) {
+	terraformActivities, err := activities.NewTerraform(config, dataDir, serverURL, streamHandler)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}

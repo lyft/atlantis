@@ -14,7 +14,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/logger"
-	// "github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 )
 
 type ClientConfig struct {
