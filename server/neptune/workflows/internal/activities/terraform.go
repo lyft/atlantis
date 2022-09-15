@@ -73,7 +73,12 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	args = append(args, request.Args...)
 	cmd := terraform.NewSubCommand(terraform.Init).WithArgs(args...)
 
-	_ = t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd, request.Envs, tfVersion)
+	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd, request.Envs, tfVersion)
+	// Read output and stream to active connections
+	// Stream is closed after we run the plan activity since both of them share the same job ID
+	if err := t.StreamHandler.Stream(ctx, request.JobID, ch); err != nil {
+		return TerraformInitResponse{}, errors.Wrap(err, "reading plan output")
+	}
 	return TerraformInitResponse{}, nil
 }
 
