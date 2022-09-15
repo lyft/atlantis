@@ -55,9 +55,6 @@ func (m *multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
 	// TODO: make buffer size configurable
 	buffer := make(chan string, 1000)
 
-	// Note: Here we register the key without checking if the job exists because
-	// if the job DNE, the job is marked complete and we close the ws conn immediately
-
 	// spinning up a goroutine for this since we are attempting to block on the read side.
 	go m.registry.Register(key, buffer)
 

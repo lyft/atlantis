@@ -82,24 +82,13 @@ type cmddBuilder interface {
 	Build(v *version.Version, path string, args []string) (*exec.Cmd, error)
 }
 
-type OutputHandler interface {
-	// Run as a go routine when starting up temporal server
-	Handle()
-
-	// register chan when user visits log streaming UI
-	Register(jobID string, receiver chan string)
-
-	// Activity context available
-	Send(jobId string, msg string)
-	CloseJob(ctx context.Context, jobID string)
-}
-
 type AsyncClient struct {
 	CommandBuilder cmddBuilder
 }
 
 func (c *AsyncClient) RunCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan Line {
 	outCh := make(chan Line)
+
 	// We start a goroutine to do our work asynchronously and then immediately
 	// return our channels.
 	go c.runCommand(ctx, jobID, path, args, customEnvVars, v, outCh)
@@ -113,7 +102,6 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 	}()
 
 	cmd, err := c.CommandBuilder.Build(v, path, args)
-	fmt.Println(cmd.String())
 	if err != nil {
 		logger.Error(ctx, errors.Wrapf(err, "building command: %s", args).Error())
 		outCh <- Line{Err: err}

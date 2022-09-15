@@ -80,7 +80,6 @@ func NewJobsController(
 
 func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) error {
 	jobID, err := j.KeyGenerator.Generate(r)
-
 	if err != nil {
 		j.respond(w, http.StatusBadRequest, err.Error())
 		return err
@@ -91,7 +90,6 @@ func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) 
 		ProjectPath:     jobID,
 		CleanedBasePath: j.AtlantisURL.Path,
 	}
-
 	if err = j.JobsProjectTemplate.Execute(w, viewData); err != nil {
 		j.Logger.Error(err.Error())
 		return err
@@ -110,7 +108,6 @@ func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) 
 
 func (j *JobsController) getProjectJobsWS(w http.ResponseWriter, r *http.Request) error {
 	err := j.WsMux.Handle(w, r)
-
 	if err != nil {
 		j.respond(w, http.StatusBadRequest, err.Error())
 		return err

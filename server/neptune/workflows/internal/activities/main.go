@@ -1,6 +1,7 @@
 package activities
 
 import (
+	"context"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/github"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
@@ -53,7 +53,13 @@ type Terraform struct {
 	*cleanupActivities
 }
 
-func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler *job.OutputHandler) (*Terraform, error) {
+type outputHandler interface {
+	Handle()
+	ReadOutput(jobID string, ch <-chan terraform.Line) error
+	Close(ctx context.Context, jobID string)
+}
+
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, outputHandler outputHandler) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err

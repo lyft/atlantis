@@ -51,7 +51,7 @@ type Server struct {
 }
 
 func NewServer(config *config.Config) (*Server, error) {
-	// Build dependencies required for output handler and controller
+	// Build dependencies required for output handler and jobs controller
 	jobStore, err := job.NewStorageBackedStore(config.JobCfg, config.CtxLogger, config.Scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing job store")

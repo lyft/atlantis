@@ -15,12 +15,6 @@ type TerraformClient interface {
 	RunCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan terraform.Line
 }
 
-type outputHandler interface {
-	Handle()
-	ReadOutput(jobID string, ch <-chan terraform.Line) error
-	Close(ctx context.Context, jobID string)
-}
-
 type terraformActivities struct {
 	TerraformClient  TerraformClient
 	DefaultTFVersion *version.Version

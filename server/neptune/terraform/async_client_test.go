@@ -15,16 +15,6 @@ import (
 	"go.temporal.io/sdk/testsuite"
 )
 
-type testJobOutputHandler struct{}
-
-func (t *testJobOutputHandler) Send(jobId string, msg string) {}
-
-func (t *testJobOutputHandler) Handle() {}
-
-func (t *testJobOutputHandler) Register(jobID string, receiver chan string) {}
-
-func (t *testJobOutputHandler) CloseJob(ctx context.Context, jobID string) {}
-
 type testCommandBuilder struct {
 	t       *testing.T
 	version *version.Version
