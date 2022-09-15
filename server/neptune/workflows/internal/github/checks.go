@@ -26,7 +26,7 @@ func (a CheckRunAction) ToGithubAction() *github.CheckRunAction {
 
 func CreatePlanReviewAction(t PlanReviewActionType) CheckRunAction {
 	return CheckRunAction{
-		Description: fmt.Sprintf("%s this plan to proceed to the apply", string(t)),
+		Description: fmt.Sprintf("%s this plan to proceed", string(t)),
 		Label:       string(t),
 	}
 
@@ -41,6 +41,6 @@ const (
 	CheckRunQueued  CheckRunState = "queued"
 	CheckRunUnknown CheckRunState = ""
 
-	Approve PlanReviewActionType = "approve"
-	Reject   PlanReviewActionType = "reject"
+	Approve PlanReviewActionType = "Approve"
+	Reject  PlanReviewActionType = "Reject"
 )

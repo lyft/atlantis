@@ -103,13 +103,20 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 
 	var s []state.Workflow
 
+	runnerReq := terraform.Request{
+		Root:         testLocalRoot.Root,
+		Repo:         testGithubRepo,
+		DeploymentId: testDeploymentID,
+	}
+
 	subject := &terraform.Runner{
 		GithubActivities:    gAct,
 		TerraformActivities: tAct,
-		Request: terraform.Request{
-			Root:         testLocalRoot.Root,
-			Repo:         testGithubRepo,
-			DeploymentId: testDeploymentID,
+		Request:             runnerReq,
+		RootFetcher: &terraform.RootFetcher{
+			Request: runnerReq,
+			Ta: tAct,
+			Ga: gAct,
 		},
 		JobRunner: runner,
 		Store: state.NewWorkflowStoreWithGenerator(
@@ -180,7 +187,7 @@ func TestSuccess(t *testing.T) {
 
 	// send approval of plan
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("planreview-repo-steps", terraform.PlanReview{
+		env.SignalWorkflow("planreview", terraform.PlanReviewSignalRequest{
 			Status: terraform.Approved,
 		})
 	}, 5*time.Second)
@@ -198,6 +205,14 @@ func TestSuccess(t *testing.T) {
 	assert.Equal(t, []state.Workflow{
 		{
 			Plan: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
 				Status: state.InProgressJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
@@ -207,6 +222,20 @@ func TestSuccess(t *testing.T) {
 		{
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Apply: &state.Job{
+				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
 				},
@@ -263,9 +292,9 @@ func TestPlanRejection(t *testing.T) {
 		LocalRoot: testLocalRoot,
 	}, nil)
 
-	// send approval of plan
+	// send rejection of plan
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("planreview-repo-steps", terraform.PlanReview{
+		env.SignalWorkflow("planreview", terraform.PlanReviewSignalRequest{
 			Status: terraform.Rejected,
 		})
 	}, 5*time.Second)
@@ -281,6 +310,14 @@ func TestPlanRejection(t *testing.T) {
 	// assert results are expected
 	env.AssertExpectations(t)
 	assert.Equal(t, []state.Workflow{
+		{
+			Plan: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
 		{
 			Plan: &state.Job{
 				Status: state.InProgressJobStatus,
@@ -305,7 +342,7 @@ func TestPlanRejection(t *testing.T) {
 				},
 			},
 			Apply: &state.Job{
-				Status: state.InProgressJobStatus,
+				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
 				},
@@ -357,7 +394,7 @@ func TestFetchRootError(t *testing.T) {
 	env.AssertExpectations(t)
 }
 
-func TestCleanupError(t *testing.T) {
+func TestCleanupErrorReturnsNoError(t *testing.T) {
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
 	ga := &githubActivities{}
@@ -372,7 +409,7 @@ func TestCleanupError(t *testing.T) {
 
 	// send approval of plan
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("planreview-repo-steps", terraform.PlanReview{
+		env.SignalWorkflow("planreview", terraform.PlanReviewSignalRequest{
 			Status: terraform.Approved,
 		})
 	}, 5*time.Second)
@@ -385,5 +422,5 @@ func TestCleanupError(t *testing.T) {
 	env.AssertExpectations(t)
 	var resp response
 	err := env.GetWorkflowResult(&resp)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
