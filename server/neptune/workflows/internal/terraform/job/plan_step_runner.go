@@ -11,30 +11,29 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type initActivities interface {
-	TerraformInit(ctx context.Context, request activities.TerraformInitRequest) (activities.TerraformInitResponse, error)
+type planActivities interface {
+	TerraformPlan(ctx context.Context, request activities.TerraformPlanRequest) (activities.TerraformPlanResponse, error)
 }
 
-type InitStepRunner struct {
-	Activity initActivities
+type PlanStepRunner struct {
+	Activity planActivities
 }
 
-func (r *InitStepRunner) Run(executionContext *job.ExecutionContext, localRoot *root.LocalRoot, step job.Step) (string, error) {
+func (r *PlanStepRunner) Run(executionContext *job.ExecutionContext, _ *root.LocalRoot, step job.Step) (string, error) {
 	args, err := terraform.NewArgumentList(step.ExtraArgs)
 
 	if err != nil {
 		return "", errors.Wrapf(err, "creating argument list")
 	}
-	var resp activities.TerraformInitResponse
-	err = workflow.ExecuteActivity(executionContext.Context, r.Activity.TerraformInit, activities.TerraformInitRequest{
+	var resp activities.TerraformPlanResponse
+	err = workflow.ExecuteActivity(executionContext.Context, r.Activity.TerraformPlan, activities.TerraformPlanRequest{
 		Args:      args,
 		Envs:      executionContext.Envs,
 		TfVersion: executionContext.TfVersion,
 		Path:      executionContext.Path,
-		JobID:     executionContext.JobID,
 	}).Get(executionContext, &resp)
 	if err != nil {
-		return "", errors.Wrap(err, "running terraform init activity")
+		return "", errors.Wrap(err, "running terraform plan activity")
 	}
 	return resp.Output, nil
 }

@@ -31,13 +31,20 @@ type jobRunner interface {
 }
 
 type PlanStatus int
-type PlanReview struct {
+type PlanReviewSignalRequest struct {
 	Status PlanStatus
+
+	// TODO: Output this info to the checks UI
+	User string
 }
 
 const (
 	Approved PlanStatus = iota
 	Rejected
+)
+
+const (
+	PlanReviewSignalName = "planreview"
 )
 
 func Workflow(ctx workflow.Context, request Request) error {
@@ -69,6 +76,7 @@ type Runner struct {
 	JobRunner           jobRunner
 	Request             Request
 	Store               *state.WorkflowStore
+	RootFetcher         *RootFetcher
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
@@ -93,7 +101,18 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 			&runner.InitStepRunner{
 				Activity: ta,
 			},
+			&runner.PlanStepRunner{
+				Activity: ta,
+			},
+			&runner.ApplyStepRunner{
+				Activity: ta,
+			},
 		),
+		RootFetcher: &RootFetcher{
+			Request: request,
+			Ga:      ga,
+			Ta:      ta,
+		},
 		Store: state.NewWorkflowStore(
 			func(s *state.Workflow) error {
 				return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.WorkflowStateChangeSignal, s).Get(ctx, nil)
@@ -110,6 +129,10 @@ func (r *Runner) Plan(ctx workflow.Context, root *root.LocalRoot, serverURL *url
 
 	if err := r.Store.InitPlanJob(jobID, serverURL); err != nil {
 		return errors.Wrap(err, "initializing job")
+	}
+
+	if err := r.Store.UpdatePlanJobWithStatus(state.InProgressJobStatus); err != nil {
+		return errors.Wrap(err, "updating job with in-progress status")
 	}
 
 	_, err = r.JobRunner.Run(ctx, r.Request.Root.Plan, jobID.String(), root)
@@ -137,31 +160,36 @@ func (r *Runner) Apply(ctx workflow.Context, root *root.LocalRoot, serverURL *ur
 	}
 
 	if err := r.Store.InitApplyJob(jobID, serverURL); err != nil {
-		return errors.Wrap(err, "initializing apply job")
+		return errors.Wrap(err, "initializing job")
 	}
 
 	// Wait for plan review signal
-	var planReview PlanReview
-	signalChan := workflow.GetSignalChannel(ctx, "planreview-repo-steps")
+	var planReview PlanReviewSignalRequest
+	signalChan := workflow.GetSignalChannel(ctx, PlanReviewSignalName)
 	_ = signalChan.Receive(ctx, &planReview)
 
 	if planReview.Status == Rejected {
 		if err := r.Store.UpdateApplyJobWithStatus(state.RejectedJobStatus); err != nil {
-			return errors.Wrap(err, "updating apply job with rejected status")
+			return errors.Wrap(err, "updating job with rejected status")
 		}
 		return nil
 	}
+
+	if err := r.Store.UpdateApplyJobWithStatus(state.InProgressJobStatus); err != nil {
+		return errors.Wrap(err, "updating job with in-progress status")
+	}
+
 	_, err = r.JobRunner.Run(ctx, r.Request.Root.Apply, jobID.String(), root)
 	if err != nil {
 
 		if err := r.Store.UpdateApplyJobWithStatus(state.FailedJobStatus); err != nil {
-			return errors.Wrap(err, "updating apply job with failed status")
+			return errors.Wrap(err, "updating job with failed status")
 		}
-		return errors.Wrap(err, "running plan job")
+		return errors.Wrap(err, "running job")
 	}
 
 	if err := r.Store.UpdateApplyJobWithStatus(state.SuccessJobStatus); err != nil {
-		return errors.Wrap(err, "updating apply job with success status")
+		return errors.Wrap(err, "updating job with success status")
 	}
 
 	return nil
@@ -175,33 +203,26 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return errors.Wrap(err, "getting worker info")
 	}
 
-	var fetchRootResponse activities.FetchRootResponse
-	err = workflow.ExecuteActivity(ctx, r.GithubActivities.FetchRoot, activities.FetchRootRequest{
-		Repo:         r.Request.Repo,
-		Root:         r.Request.Root,
-		DeploymentId: r.Request.DeploymentId,
-		Revision:     r.Request.Revision,
-	}).Get(ctx, &fetchRootResponse)
+	root, cleanup, err := r.RootFetcher.Fetch(ctx)
+	defer func() {
+		err := cleanup()
+
+		if err != nil {
+			logger.Warn(ctx, "error cleaning up local root", "err", err)
+		}
+	}()
 
 	if err != nil {
 		return errors.Wrap(err, "fetching root")
 	}
 
-	if err := r.Plan(ctx, fetchRootResponse.LocalRoot, response.ServerURL); err != nil {
+	if err := r.Plan(ctx, root, response.ServerURL); err != nil {
 		return errors.Wrap(err, "running plan job")
 	}
 
-	if err := r.Apply(ctx, fetchRootResponse.LocalRoot, response.ServerURL); err != nil {
+	if err := r.Apply(ctx, root, response.ServerURL); err != nil {
 		return errors.Wrap(err, "running apply job")
 	}
 
-	// Cleanup
-	var cleanupResponse activities.CleanupResponse
-	err = workflow.ExecuteActivity(ctx, r.TerraformActivities.Cleanup, activities.CleanupRequest{
-		LocalRoot: fetchRootResponse.LocalRoot,
-	}).Get(ctx, &cleanupResponse)
-	if err != nil {
-		return errors.Wrap(err, "cleaning up")
-	}
 	return nil
 }
