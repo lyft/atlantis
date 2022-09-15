@@ -63,7 +63,7 @@ func (m *InMemoryStore) Write(jobID string, output string) error {
 	return nil
 }
 
-func (m *InMemoryStore) CloseAndPersistJob(ctx context.Context, jobID string, status JobStatus) error {
+func (m *InMemoryStore) Close(ctx context.Context, jobID string, status JobStatus) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -117,8 +117,8 @@ func (s StorageBackendJobStore) Write(jobID string, output string) error {
 	return s.JobStore.Write(jobID, output)
 }
 
-func (s *StorageBackendJobStore) CloseAndPersistJob(ctx context.Context, jobID string, status JobStatus) error {
-	if err := s.JobStore.CloseAndPersistJob(ctx, jobID, status); err != nil {
+func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status JobStatus) error {
+	if err := s.JobStore.Close(ctx, jobID, status); err != nil {
 		return err
 	}
 

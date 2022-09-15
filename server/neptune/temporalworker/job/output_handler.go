@@ -21,7 +21,7 @@ type JobStore interface {
 	RemoveJob(jobID string)
 
 	// Activity context available
-	CloseAndPersistJob(ctx context.Context, jobID string, status JobStatus) error
+	Close(ctx context.Context, jobID string, status JobStatus) error
 }
 
 type OutputHandler struct {
@@ -41,6 +41,8 @@ type OutputHandler struct {
 
 func (s *OutputHandler) ReadOutput(jobID string, ch <-chan terraform.Line) error {
 	for line := range ch {
+		fmt.Println(line)
+
 		if line.Err != nil {
 			return errors.Wrap(line.Err, "executing command")
 		}
@@ -76,7 +78,7 @@ func (s *OutputHandler) Close(ctx context.Context, jobID string) {
 	s.ReceiverRegistry.CloseAndRemoveReceiversForJob(jobID)
 
 	// Update job status and persist to storage if configured
-	if err := s.JobStore.CloseAndPersistJob(ctx, jobID, Complete); err != nil {
+	if err := s.JobStore.Close(ctx, jobID, Complete); err != nil {
 		s.Logger.Error(fmt.Sprintf("updating jobs status to complete, %v", err))
 	}
 }

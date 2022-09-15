@@ -1,6 +1,8 @@
 package job
 
-import "sync"
+import (
+	"sync"
+)
 
 type ReceiverRegistry interface {
 	AddReceiver(jobID string, ch chan string)

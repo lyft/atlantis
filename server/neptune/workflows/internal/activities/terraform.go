@@ -60,6 +60,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 
 	ch := t.TerraformClient.RunCommand(ctx, request.JobID, request.Path, cmd.Build(), request.Envs, tfVersion)
 	t.OutputHandler.ReadOutput(request.JobID, ch)
+	defer t.OutputHandler.Close(ctx, request.JobID)
 	return TerraformInitResponse{}, nil
 }
 

@@ -15,7 +15,7 @@ import (
 
 func NewClient(scope tally.Scope, logger logur.Logger, cfg valid.Temporal) (client.Client, error) {
 	opts := client.Options{
-		Namespace:          cfg.Namespace,
+		HostPort:           "127.0.0.1:7233",
 		MetricsHandler:     temporaltally.NewMetricsHandler(scope),
 		Logger:             logur.LoggerToKV(logger),
 		ContextPropagators: []workflow.ContextPropagator{&ctxPropagator{}},

@@ -95,13 +95,11 @@ type OutputHandler interface {
 }
 
 type AsyncClient struct {
-	CommandBuilder   cmddBuilder
-	JobOutputHandler OutputHandler
+	CommandBuilder cmddBuilder
 }
 
 func (c *AsyncClient) RunCommand(ctx context.Context, jobID string, path string, args []string, customEnvVars map[string]string, v *version.Version) <-chan Line {
 	outCh := make(chan Line)
-
 	// We start a goroutine to do our work asynchronously and then immediately
 	// return our channels.
 	go c.runCommand(ctx, jobID, path, args, customEnvVars, v, outCh)
@@ -112,12 +110,10 @@ func (c *AsyncClient) runCommand(ctx context.Context, jobID string, path string,
 	// Ensure we close our channels when we exit.
 	defer func() {
 		close(outCh)
-
-		// Close Job and Persist to storage
-		c.JobOutputHandler.CloseJob(ctx, jobID)
 	}()
 
 	cmd, err := c.CommandBuilder.Build(v, path, args)
+	fmt.Println(cmd.String())
 	if err != nil {
 		logger.Error(ctx, errors.Wrapf(err, "building command: %s", args).Error())
 		outCh <- Line{Err: err}
