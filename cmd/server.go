@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/docker/docker/pkg/fileutils"
@@ -386,6 +387,8 @@ var int64Flags = map[string]int64Flag{
 // ValidLogLevels are the valid log levels that can be set
 var ValidLogLevels = []string{"debug", "info", "warn", "error"}
 
+var LogFilterRegexStrings = []string{"Authorization", "X-Amz-Security-Token"}
+
 type stringFlag struct {
 	description  string
 	defaultValue string
@@ -496,6 +499,7 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build context logger")
 	}
+
 	globalCfg := valid.NewGlobalCfg()
 	validator := &cfgParser.ParserValidator{}
 	if userConfig.RepoConfig != "" {
@@ -521,6 +525,13 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 		return nil, err
 	}
 
+	// TODO: Evaluate how to pass log filters to the temporal worker
+	var logFilterRegexes []*regexp.Regexp
+	for _, filterString := range LogFilterRegexStrings {
+		regex, _ := regexp.Compile(filterString)
+		logFilterRegexes = append(logFilterRegexes, regex)
+	}
+
 	cfg := &neptune.Config{
 		AuthCfg: neptune.AuthConfig{
 			SslCertFile: userConfig.SSLCertFile,
@@ -535,6 +546,9 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 			DefaultVersionFlagName: config.DefaultTFVersionFlag,
 			DefaultVersionStr:      userConfig.DefaultTFVersion,
 			DownloadURL:            userConfig.TFDownloadURL,
+			LogFilters: valid.TerraformLogFilters{
+				Regexes: logFilterRegexes,
+			},
 		},
 		JobCfg:      globalCfg.Jobs,
 		DataDir:     userConfig.DataDir,
