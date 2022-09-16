@@ -1,4 +1,4 @@
-package job
+package job_test
 
 import (
 	"context"
@@ -6,81 +6,20 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/stretchr/testify/assert"
 )
-
-type testReceiverRegistry struct {
-	t     *testing.T
-	JobID string
-	Ch    chan string
-	Msg   OutputLine
-}
-
-func (t *testReceiverRegistry) AddReceiver(jobID string, ch chan string) {
-	assert.Equal(t.t, t.JobID, jobID)
-	assert.Equal(t.t, t.Ch, ch)
-}
-
-func (t *testReceiverRegistry) Broadcast(msg OutputLine) {
-	assert.Equal(t.t, t.Msg, msg)
-}
-
-func (t *testReceiverRegistry) Close(ctx context.Context, jobID string) {
-}
-
-type strictTestReceiverRegistry struct {
-	t           *testing.T
-	addReceiver struct {
-		runners []*testReceiverRegistry
-		count   int
-	}
-	broadcast struct {
-		runners []*testReceiverRegistry
-		count   int
-	}
-	close struct {
-		runners []*testReceiverRegistry
-		count   int
-	}
-}
-
-func (t strictTestReceiverRegistry) AddReceiver(jobID string, ch chan string) {
-	if t.addReceiver.count > len(t.addReceiver.runners)-1 {
-		t.t.FailNow()
-	}
-	t.addReceiver.runners[t.addReceiver.count].AddReceiver(jobID, ch)
-	t.addReceiver.count += 1
-	return
-}
-
-func (t strictTestReceiverRegistry) Broadcast(msg OutputLine) {
-	if t.broadcast.count > len(t.broadcast.runners)-1 {
-		t.t.FailNow()
-	}
-	t.broadcast.runners[t.broadcast.count].Broadcast(msg)
-	t.broadcast.count += 1
-	return
-}
-
-func (t strictTestReceiverRegistry) Close(ctx context.Context, jobID string) {
-	if t.close.count > len(t.close.runners)-1 {
-		t.t.FailNow()
-	}
-	t.close.runners[t.close.count].Close(ctx, jobID)
-	t.close.count += 1
-	return
-}
 
 type testStore struct {
 	t      *testing.T
 	JobID  string
 	Output string
 	Err    error
-	Job    Job
-	Status JobStatus
+	Job    job.Job
+	Status job.JobStatus
 }
 
-func (t *testStore) Get(jobID string) (*Job, error) {
+func (t *testStore) Get(jobID string) (*job.Job, error) {
 	assert.Equal(t.t, t.JobID, jobID)
 	return &t.Job, t.Err
 }
@@ -95,7 +34,7 @@ func (t *testStore) Remove(jobID string) {
 	assert.Equal(t.t, t.JobID, jobID)
 }
 
-func (t *testStore) Close(ctx context.Context, jobID string, status JobStatus) error {
+func (t *testStore) Close(ctx context.Context, jobID string, status job.JobStatus) error {
 	assert.Equal(t.t, t.JobID, jobID)
 	assert.Equal(t.t, t.Status, status)
 	return t.Err
@@ -121,7 +60,7 @@ type strictTestStore struct {
 	}
 }
 
-func (t strictTestStore) Get(jobID string) (*Job, error) {
+func (t strictTestStore) Get(jobID string) (*job.Job, error) {
 	if t.get.count > len(t.get.runners)-1 {
 		t.t.FailNow()
 	}
@@ -148,7 +87,7 @@ func (t strictTestStore) Remove(jobID string) {
 	return
 }
 
-func (t strictTestStore) Close(ctx context.Context, jobID string, status JobStatus) error {
+func (t strictTestStore) Close(ctx context.Context, jobID string, status job.JobStatus) error {
 	if t.close.count > len(t.close.runners)-1 {
 		t.t.FailNow()
 	}
@@ -165,12 +104,12 @@ func TestPartitionRegistry_Register(t *testing.T) {
 		testStore := &testStore{
 			t:     t,
 			JobID: jobID,
-			Job: Job{
-				Status: Complete,
+			Job: job.Job{
+				Status: job.Complete,
 				Output: logs,
 			},
 		}
-		partitionRegistry := PartitionRegistry{
+		partitionRegistry := job.PartitionRegistry{
 			ReceiverRegistry: &testReceiverRegistry{},
 			Store:            testStore,
 			Logger:           logging.NewNoopCtxLogger(t),
@@ -200,8 +139,8 @@ func TestPartitionRegistry_Register(t *testing.T) {
 					&testStore{
 						t:     t,
 						JobID: jobID,
-						Job: Job{
-							Status: Processing,
+						Job: job.Job{
+							Status: job.Processing,
 							Output: logs,
 						},
 					},
@@ -224,7 +163,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 			},
 		}
 
-		partitionRegistry := PartitionRegistry{
+		partitionRegistry := job.PartitionRegistry{
 			ReceiverRegistry: receiverRegistry,
 			Store:            testStore,
 			Logger:           logging.NewNoopCtxLogger(t),
@@ -249,8 +188,8 @@ func TestPartitionRegistry_Register(t *testing.T) {
 					&testStore{
 						t:     t,
 						JobID: jobID,
-						Job: Job{
-							Status: Complete,
+						Job: job.Job{
+							Status: job.Complete,
 							Output: logs,
 						},
 					},
@@ -273,7 +212,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 			},
 		}
 
-		partitionRegistry := PartitionRegistry{
+		partitionRegistry := job.PartitionRegistry{
 			ReceiverRegistry: receiverRegistry,
 			Store:            testStore,
 			Logger:           logging.NewNoopCtxLogger(t),

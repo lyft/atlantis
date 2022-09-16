@@ -8,6 +8,68 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type testReceiverRegistry struct {
+	t     *testing.T
+	JobID string
+	Ch    chan string
+	Msg   job.OutputLine
+}
+
+func (t *testReceiverRegistry) AddReceiver(jobID string, ch chan string) {
+	assert.Equal(t.t, t.JobID, jobID)
+	assert.Equal(t.t, t.Ch, ch)
+}
+
+func (t *testReceiverRegistry) Broadcast(msg job.OutputLine) {
+	assert.Equal(t.t, t.Msg, msg)
+}
+
+func (t *testReceiverRegistry) Close(ctx context.Context, jobID string) {
+}
+
+type strictTestReceiverRegistry struct {
+	t           *testing.T
+	addReceiver struct {
+		runners []*testReceiverRegistry
+		count   int
+	}
+	broadcast struct {
+		runners []*testReceiverRegistry
+		count   int
+	}
+	close struct {
+		runners []*testReceiverRegistry
+		count   int
+	}
+}
+
+func (t strictTestReceiverRegistry) AddReceiver(jobID string, ch chan string) {
+	if t.addReceiver.count > len(t.addReceiver.runners)-1 {
+		t.t.FailNow()
+	}
+	t.addReceiver.runners[t.addReceiver.count].AddReceiver(jobID, ch)
+	t.addReceiver.count += 1
+	return
+}
+
+func (t strictTestReceiverRegistry) Broadcast(msg job.OutputLine) {
+	if t.broadcast.count > len(t.broadcast.runners)-1 {
+		t.t.FailNow()
+	}
+	t.broadcast.runners[t.broadcast.count].Broadcast(msg)
+	t.broadcast.count += 1
+	return
+}
+
+func (t strictTestReceiverRegistry) Close(ctx context.Context, jobID string) {
+	if t.close.count > len(t.close.runners)-1 {
+		t.t.FailNow()
+	}
+	t.close.runners[t.close.count].Close(ctx, jobID)
+	t.close.count += 1
+	return
+}
+
 func TestReceiverRegistry(t *testing.T) {
 	jobID := "1234"
 	outputMsg := "a"

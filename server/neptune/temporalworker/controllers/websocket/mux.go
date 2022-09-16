@@ -7,6 +7,8 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+const BufferSize = 1000
+
 type partitionKeyGenerator interface {
 	Generate(r *http.Request) (string, error)
 }
@@ -20,8 +22,7 @@ type Multiplexor interface {
 }
 
 // Multiplexor is responsible for handling the data transfer between the storage layer
-// and the registry. Note this is still a WIP as right now the registry is assumed to handle
-// everything.
+// and the registry.
 type multiplexor struct {
 	writer       *Writer
 	keyGenerator partitionKeyGenerator
@@ -46,8 +47,7 @@ func (m *multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Buffer size set to 1000 to ensure messages get queued.
-	// TODO: make buffer size configurable
-	buffer := make(chan string, 1000)
+	buffer := make(chan string, BufferSize)
 
 	// spinning up a goroutine for this since we are attempting to block on the read side.
 	go m.registry.Register(key, buffer)

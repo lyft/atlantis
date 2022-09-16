@@ -1,4 +1,4 @@
-package job
+package job_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,7 +29,7 @@ func TestStreamHandler_Handle(t *testing.T) {
 	outputMsg := "a"
 
 	t.Run("broadcasts and stores filtered logs", func(t *testing.T) {
-		outputCh := make(chan *OutputLine)
+		outputCh := make(chan *job.OutputLine)
 		logs := []string{outputMsg, fmt.Sprintf("[%s] New Line", regexString)}
 		testJobStore := &strictTestStore{
 			t: t,
@@ -54,7 +55,7 @@ func TestStreamHandler_Handle(t *testing.T) {
 				runners: []*testReceiverRegistry{
 					&testReceiverRegistry{
 						t: t,
-						Msg: OutputLine{
+						Msg: job.OutputLine{
 							JobID: jobID,
 							Line:  outputMsg,
 						},
@@ -63,7 +64,7 @@ func TestStreamHandler_Handle(t *testing.T) {
 			},
 		}
 
-		streamHandler := StreamHandler{
+		streamHandler := job.StreamHandler{
 			JobOutput:        outputCh,
 			Store:            testJobStore,
 			ReceiverRegistry: testReceiverRegistry,
@@ -74,7 +75,7 @@ func TestStreamHandler_Handle(t *testing.T) {
 		go streamHandler.Handle()
 
 		for _, line := range logs {
-			outputCh <- &OutputLine{
+			outputCh <- &job.OutputLine{
 				JobID: jobID,
 				Line:  line,
 			}
@@ -91,8 +92,8 @@ func TestStreamHandler_Stream(t *testing.T) {
 		logs := []string{outputMsg, outputMsg}
 
 		// Buffered channel to simplify testing since it's not blocking
-		mainTfCh := make(chan *OutputLine, len(logs))
-		streamHandler := StreamHandler{
+		mainTfCh := make(chan *job.OutputLine, len(logs))
+		streamHandler := job.StreamHandler{
 			JobOutput:        mainTfCh,
 			Store:            &testStore{},
 			ReceiverRegistry: &testReceiverRegistry{},
@@ -135,8 +136,8 @@ func TestStreamHandler_Stream(t *testing.T) {
 		}
 
 		// Buffered channel to simplify testing since it's not blocking
-		mainTfCh := make(chan *OutputLine, len(logs))
-		streamHandler := StreamHandler{
+		mainTfCh := make(chan *job.OutputLine, len(logs))
+		streamHandler := job.StreamHandler{
 			JobOutput:        mainTfCh,
 			Store:            &testStore{},
 			ReceiverRegistry: &testReceiverRegistry{},
@@ -185,12 +186,12 @@ func TestStreamHandler_Close(t *testing.T) {
 					&testStore{
 						t:      t,
 						JobID:  jobID,
-						Status: Complete,
+						Status: job.Complete,
 					},
 				},
 			},
 		}
-		streamHandler := StreamHandler{
+		streamHandler := job.StreamHandler{
 			Store:            testStore,
 			ReceiverRegistry: testReceiverRegistry,
 			Logger:           logging.NewNoopCtxLogger(t),

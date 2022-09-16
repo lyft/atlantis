@@ -10,7 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/stretchr/testify/assert"
 
-	// . "github.com/petergtz/pegomock"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -27,90 +26,6 @@ type testStorageBackend struct {
 		resp bool
 		err  error
 	}
-}
-
-type testStore struct {
-	t      *testing.T
-	JobID  string
-	Output string
-	Err    error
-	Job    job.Job
-}
-
-func (t *testStore) Get(jobID string) (*job.Job, error) {
-	assert.Equal(t.t, t.JobID, jobID)
-	return &t.Job, t.Err
-}
-
-func (t *testStore) Write(jobID string, output string) error {
-	assert.Equal(t.t, t.JobID, jobID)
-	assert.Equal(t.t, t.Output, output)
-	return t.Err
-}
-
-func (t *testStore) Remove(jobID string) {
-	assert.Equal(t.t, t.JobID, jobID)
-}
-
-func (t *testStore) Close(ctx context.Context, jobID string) error {
-	assert.Equal(t.t, t.JobID, jobID)
-	return t.Err
-}
-
-type strictTestStore struct {
-	t   *testing.T
-	get struct {
-		runners []*testStore
-		count   int
-	}
-	write struct {
-		runners []*testStore
-		count   int
-	}
-	remove struct {
-		runners []*testStore
-		count   int
-	}
-	close struct {
-		runners []*testStore
-		count   int
-	}
-}
-
-func (t strictTestStore) Get(jobID string) (*job.Job, error) {
-	if t.get.count > len(t.get.runners)-1 {
-		t.t.FailNow()
-	}
-	job, err := t.get.runners[t.get.count].Get(jobID)
-	t.get.count += 1
-	return job, err
-}
-
-func (t strictTestStore) Write(jobID string, output string) error {
-	if t.write.count > len(t.write.runners)-1 {
-		t.t.FailNow()
-	}
-	err := t.write.runners[t.write.count].Write(jobID, output)
-	t.write.count += 1
-	return err
-}
-
-func (t strictTestStore) Remove(jobID string) {
-	if t.remove.count > len(t.remove.runners)-1 {
-		t.t.FailNow()
-	}
-	t.remove.runners[t.remove.count].Remove(jobID)
-	t.remove.count += 1
-	return
-}
-
-func (t strictTestStore) Close(ctx context.Context, jobID string) error {
-	if t.close.count > len(t.close.runners)-1 {
-		t.t.FailNow()
-	}
-	err := t.close.runners[t.close.count].Close(ctx, jobID)
-	t.close.count += 1
-	return err
 }
 
 func (t *testStorageBackend) Read(key string) ([]string, error) {

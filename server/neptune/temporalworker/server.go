@@ -15,6 +15,7 @@ import (
 
 	"go.temporal.io/sdk/client"
 
+	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -24,6 +25,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/controllers"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
+	"github.com/runatlantis/atlantis/server/static"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
@@ -71,6 +73,7 @@ func NewServer(config *config.Config) (*Server, error) {
 	// router initialization
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods("GET")
+	router.PathPrefix("/static/").Handler(http.FileServer(&assetfs.AssetFS{Asset: static.Asset, AssetDir: static.AssetDir, AssetInfo: static.AssetInfo}))
 	router.HandleFunc("/jobs/{job-id}", jobsController.GetProjectJobs).Methods("GET").Name(ProjectJobsViewRouteName)
 	router.HandleFunc("/jobs/{job-id}/ws", jobsController.GetProjectJobsWS).Methods("GET")
 	n := negroni.New(&negroni.Recovery{
@@ -167,6 +170,7 @@ func (s Server) Start() error {
 	}()
 
 	// Start job output handler listener
+	// [WENGINES-4746] TODO: Clean up resources and exit gracefully on SIGTERM
 	go func() {
 		s.JobStreamHandler.Handle()
 	}()

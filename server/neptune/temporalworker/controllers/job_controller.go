@@ -58,10 +58,12 @@ func NewJobsController(
 		Logger:           logger,
 	}
 
+	keyGenerator := JobKeyGenerator{}
+
 	wsMux := websocket.NewInstrumentedMultiplexor(
 		websocket.NewMultiplexor(
 			logger,
-			JobKeyGenerator{},
+			keyGenerator,
 			jobPartitionRegistry,
 		),
 		scope.SubScope("http.getjob"),
@@ -70,7 +72,7 @@ func NewJobsController(
 	return &JobsController{
 		AtlantisVersion:     serverCfg.Version,
 		AtlantisURL:         serverCfg.URL,
-		KeyGenerator:        JobKeyGenerator{},
+		KeyGenerator:        keyGenerator,
 		StatsScope:          scope,
 		Logger:              logger,
 		JobsProjectTemplate: templates.ProjectJobsTemplate,
