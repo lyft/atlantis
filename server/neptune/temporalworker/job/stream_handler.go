@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/runatlantis/atlantis/server/neptune/terraform"
 )
 
@@ -23,7 +24,7 @@ type streamHandler interface {
 }
 
 func NewStreamHandler(
-	jobStore store,
+	jobStore Store,
 	receiverRegistry receiverRegistry,
 	logFilters valid.TerraformLogFilters,
 	logger logging.Logger,
@@ -45,7 +46,7 @@ func NewStreamHandler(
 
 type StreamHandler struct {
 	JobOutput        chan *OutputLine
-	Store            store
+	Store            Store
 	ReceiverRegistry receiverRegistry
 	LogFilter        filter.LogFilter
 	Logger           logging.Logger
@@ -86,6 +87,6 @@ func (s *StreamHandler) Close(ctx context.Context, jobID string) {
 
 	// Update job status and persist to storage if configured
 	if err := s.Store.Close(ctx, jobID, Complete); err != nil {
-		s.Logger.Error(fmt.Sprintf("updating jobs status to complete, %v", err))
+		logger.Error(ctx, fmt.Sprintf("updating jobs status to complete, %v", err))
 	}
 }

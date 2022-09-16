@@ -56,7 +56,7 @@ type storageBackend struct {
 	logger        logging.Logger
 }
 
-func (s *storageBackend) Read(key string) (logs []string, err error) {
+func (s storageBackend) Read(key string) (logs []string, err error) {
 
 	// Read from  /output directory
 	key = fmt.Sprintf("%s/%s", OutputPrefix, key)
@@ -103,7 +103,7 @@ func (s *storageBackend) Read(key string) (logs []string, err error) {
 	return
 }
 
-func (s *storageBackend) Write(ctx context.Context, key string, logs []string) (bool, error) {
+func (s storageBackend) Write(ctx context.Context, key string, logs []string) (bool, error) {
 	// Write to /output directory
 	key = fmt.Sprintf("%s/%s", OutputPrefix, key)
 

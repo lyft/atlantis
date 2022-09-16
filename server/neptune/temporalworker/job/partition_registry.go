@@ -8,7 +8,7 @@ import (
 
 type PartitionRegistry struct {
 	ReceiverRegistry receiverRegistry
-	Store            store
+	Store            Store
 	Logger           logging.Logger
 }
 

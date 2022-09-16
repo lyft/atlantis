@@ -20,9 +20,7 @@ func NewWriter(log logging.Logger) *Writer {
 
 type Writer struct {
 	upgrader websocket.Upgrader
-
-	//TODO: Remove dependency on atlantis logger here if we upstream this.
-	log logging.Logger
+	log      logging.Logger
 }
 
 func (w *Writer) Write(rw http.ResponseWriter, r *http.Request, input chan string) error {
