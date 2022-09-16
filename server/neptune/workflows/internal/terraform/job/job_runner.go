@@ -14,25 +14,27 @@ type stepRunner interface {
 }
 
 type jobRunner struct {
-	EnvStepRunner  stepRunner
-	CmdStepRunner  stepRunner
-	InitStepRunner stepRunner
-	PlanStepRunner stepRunner
+	EnvStepRunner   stepRunner
+	CmdStepRunner   stepRunner
+	InitStepRunner  stepRunner
+	PlanStepRunner  stepRunner
+	ApplyStepRunner stepRunner
 }
 
-func NewRunner(runStepRunner stepRunner, envStepRunner stepRunner, initStepRunner stepRunner, planStepRunner stepRunner) *jobRunner {
+func NewRunner(runStepRunner stepRunner, envStepRunner stepRunner, initStepRunner stepRunner, planStepRunner stepRunner, applyStepRunner stepRunner) *jobRunner {
 	return &jobRunner{
-		CmdStepRunner:  runStepRunner,
-		EnvStepRunner:  envStepRunner,
-		InitStepRunner: initStepRunner,
-		PlanStepRunner: planStepRunner,
+		CmdStepRunner:   runStepRunner,
+		EnvStepRunner:   envStepRunner,
+		InitStepRunner:  initStepRunner,
+		PlanStepRunner:  planStepRunner,
+		ApplyStepRunner: applyStepRunner,
 	}
 }
 
 func (r *jobRunner) Run(
 	ctx workflow.Context,
-	terraformJob job.Job,
 	localRoot *root.LocalRoot,
+	jobInstance job.JobInstance,
 ) (string, error) {
 	var outputs []string
 
@@ -42,9 +44,10 @@ func (r *jobRunner) Run(
 		Path:      localRoot.Path,
 		Envs:      map[string]string{},
 		TfVersion: localRoot.Root.TfVersion,
+		JobID:     jobInstance.JobID,
 	}
 
-	for _, step := range terraformJob.Steps {
+	for _, step := range jobInstance.Job.Steps {
 		var out string
 		var err error
 
@@ -53,6 +56,8 @@ func (r *jobRunner) Run(
 			out, err = r.InitStepRunner.Run(jobExecutionCtx, localRoot, step)
 		case "plan":
 			out, err = r.PlanStepRunner.Run(jobExecutionCtx, localRoot, step)
+		case "apply":
+			out, err = r.ApplyStepRunner.Run(jobExecutionCtx, localRoot, step)
 		case "run":
 			out, err = r.CmdStepRunner.Run(jobExecutionCtx, localRoot, step)
 		case "env":
