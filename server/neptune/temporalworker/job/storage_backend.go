@@ -103,6 +103,7 @@ func (s storageBackend) Read(key string) (logs []string, err error) {
 	return
 }
 
+// Activity context since it's called from within an activity
 func (s storageBackend) Write(ctx context.Context, key string, logs []string) (bool, error) {
 	// Write to /output directory
 	key = fmt.Sprintf("%s/%s", OutputPrefix, key)

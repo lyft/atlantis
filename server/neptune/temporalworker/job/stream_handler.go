@@ -52,6 +52,7 @@ type StreamHandler struct {
 	Logger           logging.Logger
 }
 
+// Activity context since it's called from within an activity
 func (s *StreamHandler) Stream(ctx context.Context, jobID string, ch <-chan terraform.Line) error {
 	for line := range ch {
 		if line.Err != nil {
@@ -82,6 +83,7 @@ func (s *StreamHandler) Handle() {
 	}
 }
 
+// Activity context since it's called from within an activity
 func (s *StreamHandler) Close(ctx context.Context, jobID string) {
 	s.ReceiverRegistry.Close(ctx, jobID)
 

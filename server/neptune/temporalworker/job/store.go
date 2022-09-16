@@ -97,6 +97,7 @@ func (m *InMemoryStore) Write(jobID string, output string) error {
 	return nil
 }
 
+// Activity context since it's called from within an activity
 func (m *InMemoryStore) Close(ctx context.Context, jobID string, status JobStatus) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -151,6 +152,7 @@ func (s StorageBackendJobStore) Write(jobID string, output string) error {
 	return s.Store.Write(jobID, output)
 }
 
+// Activity context since it's called from within an activity
 func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status JobStatus) error {
 	if err := s.Store.Close(ctx, jobID, status); err != nil {
 		return err
@@ -160,8 +162,7 @@ func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status
 	if err != nil || job == nil {
 		return errors.Wrapf(err, "retrieving job: %s from memory store", jobID)
 	}
-	// subScope := s.scope.SubScope("set_job_complete_status")
-	// subScope.Counter("write_attempt").Inc(1)
+
 	ok, err := s.storageBackend.Write(ctx, jobID, job.Output)
 	if err != nil {
 		return errors.Wrapf(err, "persisting job: %s", jobID)

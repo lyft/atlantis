@@ -45,6 +45,7 @@ func (r *ReceiverRegistry) Broadcast(msg OutputLine) {
 	}
 }
 
+// Activity context since it's called from within an activity
 func (r *ReceiverRegistry) Close(ctx context.Context, jobID string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
