@@ -93,31 +93,6 @@ type RunCommandRequest struct {
 	Version           *version.Version
 }
 
-func (c *AsyncClient) runWithCustomIOWriter(ctx context.Context, request RunCommandRequest) error {
-	reader, writer := io.Pipe()
-	outCh := make(chan Line)
-
-	options := RunOptions{
-		StdOut: writer,
-		StdErr: writer,
-	}
-
-	go func() {
-		defer writer.Close()
-		c.RunCommand(ctx, request, options)
-	}()
-
-	s := bufio.NewScanner(reader)
-
-	buf := []byte{}
-	s.Buffer(buf, bufioScannerBufferSize)
-
-	for s.Scan() {
-		message := s.Text()
-		outCh <- Line{Line: message}
-	}
-}
-
 func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest, options ...RunOptions) error {
 	cmd, err := c.CommandBuilder.Build(ctx, request.Version, request.RootPath, request.SubCommand)
 	if err != nil {

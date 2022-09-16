@@ -100,6 +100,7 @@ type TerraformPlanRequest struct {
 type TerraformPlanResponse struct {
 	PlanFile string
 	Output   string
+	Summary  terraform.PlanSummary
 }
 
 func (t *terraformActivities) TerraformPlan(ctx context.Context, request TerraformPlanRequest) (TerraformPlanResponse, error) {
@@ -150,8 +151,15 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		logger.Error(ctx, "error with terraform show", "err", err)
 	}
 
+	summary, err := terraform.NewPlanSummaryFromJSON(showResultBuffer.Bytes())
+
+	if err != nil {
+		logger.Error(ctx, "error building plan summary", "err", err)
+	}
+
 	return TerraformPlanResponse{
 		PlanFile: filepath.Join(request.Path, PlanOutputFile),
+		Summary:  summary,
 	}, nil
 }
 

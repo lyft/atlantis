@@ -62,7 +62,7 @@ func NewProjectContext(
 		Log:                  ctx.Log,
 		Scope:                scope,
 		ProjectPlanStatus:    projectPlanStatus,
-		Pull:                 ctx.Pull,
+		Pull:                 ctx.Pull,   
 		ProjectName:          projCfg.Name,
 		ApplyRequirements:    projCfg.ApplyRequirements,
 		RePlanCmd:            planCmd,
