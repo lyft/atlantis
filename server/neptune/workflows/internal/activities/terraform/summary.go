@@ -21,6 +21,9 @@ type PlanSummary struct {
 // creation, deletion, update.
 // changes are only represented using addresses for now.
 func NewPlanSummaryFromJSON(b []byte) (PlanSummary, error) {
+	if len(b) == 0 {
+		return PlanSummary{}, nil
+	}
 	var plan tfjson.Plan
 	err := json.Unmarshal(b, &plan)
 

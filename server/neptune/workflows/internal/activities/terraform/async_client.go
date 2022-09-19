@@ -1,7 +1,6 @@
 package terraform
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -119,18 +118,6 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 	}
 
 	return nil
-}
-
-func (c *AsyncClient) WriteOutput(stdReader io.ReadCloser, outCh chan Line, jobID string) {
-	s := bufio.NewScanner(stdReader)
-
-	buf := []byte{}
-	s.Buffer(buf, bufioScannerBufferSize)
-
-	for s.Scan() {
-		message := s.Text()
-		outCh <- Line{Line: message}
-	}
 }
 
 func getDefaultVersion(overrideVersion string) (*version.Version, error) {
