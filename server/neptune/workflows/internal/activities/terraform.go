@@ -183,6 +183,7 @@ type TerraformApplyRequest struct {
 	JobID     string
 	TfVersion string
 	Path      string
+	PlanFile  string
 }
 
 type TerraformApplyResponse struct {
@@ -195,7 +196,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 		return TerraformApplyResponse{}, err
 	}
 
-	planFile := buildPlanFilePath(request.Path)
+	planFile := request.PlanFile
 	args := []terraform.Argument{DisableInputArg}
 	args = append(args, request.Args...)
 
