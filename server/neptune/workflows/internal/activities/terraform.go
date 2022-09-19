@@ -175,36 +175,6 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	}, nil
 }
 
-func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jobID string, request *terraform.RunCommandRequest) error {
-	reader, writer := io.Pipe()
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	var err error
-	go func() {
-		defer wg.Done()
-		defer writer.Close()
-		err = t.TerraformClient.RunCommand(ctx, request, terraform.RunOptions{
-			StdOut: writer,
-			StdErr: writer,
-		})
-	}()
-
-	s := bufio.NewScanner(reader)
-
-	buf := []byte{}
-	s.Buffer(buf, bufioScannerBufferSize)
-
-	for s.Scan() {
-		t.StreamHandler.Stream(jobID, s.Text())
-	}
-
-	wg.Wait()
-
-	return err
-}
-
 // Terraform Apply
 
 type TerraformApplyRequest struct {
@@ -244,13 +214,38 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	return TerraformApplyResponse{}, nil
 }
 
-func containsTargetFlag(args []terraform.Argument) bool {
-	for _, arg := range args {
-		if arg.Key == "target" {
-			return true
-		}
+func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jobID string, request *terraform.RunCommandRequest) error {
+	reader, writer := io.Pipe()
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	var err error
+	go func() {
+		defer wg.Done()
+		defer func() {
+			if e := writer.Close(); e != nil {
+				logger.Error(ctx, "closing pipe writer", "err", e)
+			}
+		}()
+		err = t.TerraformClient.RunCommand(ctx, request, terraform.RunOptions{
+			StdOut: writer,
+			StdErr: writer,
+		})
+	}()
+
+	s := bufio.NewScanner(reader)
+
+	buf := []byte{}
+	s.Buffer(buf, bufioScannerBufferSize)
+
+	for s.Scan() {
+		t.StreamHandler.Stream(jobID, s.Text())
 	}
-	return false
+
+	wg.Wait()
+
+	return err
 }
 
 func (t *terraformActivities) resolveVersion(v string) (*version.Version, error) {

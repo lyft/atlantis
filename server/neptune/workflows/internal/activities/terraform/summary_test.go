@@ -38,3 +38,22 @@ func TestSummary(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestSummary_replace(t *testing.T) {
+	plan := "{\"format_version\": \"1.0\",\"resource_changes\":[{\"change\":{\"actions\":[\"create\", \"delete\"]},\"address\":\"type.resource_replace\"}]}"
+	summary, err := terraform.NewPlanSummaryFromJSON([]byte(plan))
+	assert.NoError(t, err)
+
+	assert.Equal(t, terraform.PlanSummary{
+		Creations: []terraform.ResourceSummary{
+			{
+				Address: "type.resource_replace",
+			},
+		},
+		Deletions: []terraform.ResourceSummary{
+			{
+				Address: "type.resource_replace",
+			},
+		},
+	}, summary)
+}

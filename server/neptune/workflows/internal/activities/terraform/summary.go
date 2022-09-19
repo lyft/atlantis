@@ -39,11 +39,11 @@ func NewPlanSummaryFromJSON(b []byte) (PlanSummary, error) {
 			Address: c.Address,
 		}
 		actions := c.Change.Actions
-		if actions.Delete() || actions.Replace() || actions.DestroyBeforeCreate() {
+		if actions.Delete() || actions.Replace() {
 			deletions = append(deletions, summary)
 		}
 
-		if actions.Create() || actions.CreateBeforeDestroy() || actions.Replace() {
+		if actions.Create() || actions.Replace() {
 			creations = append(creations, summary)
 		}
 

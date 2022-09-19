@@ -15,12 +15,6 @@ type OutputLine struct {
 	Line  string
 }
 
-type streamHandler interface {
-	Handle()
-	Stream(jobID string, msg string) error
-	Close(ctx context.Context, jobID string)
-}
-
 func NewStreamHandler(
 	jobStore Store,
 	receiverRegistry receiverRegistry,
