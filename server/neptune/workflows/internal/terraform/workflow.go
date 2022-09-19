@@ -136,7 +136,9 @@ func (r *Runner) Plan(ctx workflow.Context, root *root.LocalRoot, serverURL *url
 		}
 		return response, errors.Wrap(err, "running job")
 	}
-	if err := r.Store.UpdatePlanJobWithStatus(state.SuccessJobStatus); err != nil {
+	if err := r.Store.UpdatePlanJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
+		PlanSummary: response.Summary,
+	}); err != nil {
 		logger.Error(ctx, "unable to update job with success status")
 		return response, errors.Wrap(err, "updating job with success status")
 	}
