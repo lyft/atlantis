@@ -58,10 +58,10 @@ func TestLyftGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 	)
 
 	cases := []struct {
-		description    string
-		statuses       []string
-		checks		   []string
-		expMergeable   bool
+		description  string
+		statuses     []string
+		checks       []string
+		expMergeable bool
 	}{
 		{
 			"sq-pending+owners-success+check-success",

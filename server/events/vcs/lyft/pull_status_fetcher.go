@@ -70,7 +70,7 @@ func (s *SQBasedPullStatusFetcher) FetchPullStatus(repo models.Repo, pull models
 	}, nil
 }
 
-func (s SQBasedPullStatusFetcher) isPRLocked(statuses []*github.RepoStatus, checks[]*github.CheckRun) (bool, error) {
+func (s SQBasedPullStatusFetcher) isPRLocked(statuses []*github.RepoStatus, checks []*github.CheckRun) (bool, error) {
 	rawMetadata := ""
 
 	// First check statuses

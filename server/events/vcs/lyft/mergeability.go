@@ -6,7 +6,7 @@ import (
 
 const (
 	SubmitQueueReadinessContext = "sq-ready-to-merge"
-	OwnersStatusContext               = "_owners-check"
+	OwnersStatusContext         = "_owners-check"
 )
 
 // NameStateFilter filters statuses that correspond to atlantis apply
@@ -33,10 +33,9 @@ func (f NameStateFilter) Filter(statuses []*github.RepoStatus) []*github.RepoSta
 	return filtered
 }
 
-
 type NameCheckFilter struct {
 	checkName string
-	status string
+	status    string
 }
 
 func NewSQCheckFilter() NameCheckFilter {
@@ -46,7 +45,7 @@ func NewSQCheckFilter() NameCheckFilter {
 func (f NameCheckFilter) Filter(checks []*github.CheckRun) []*github.CheckRun {
 	var filtered []*github.CheckRun
 	for _, check := range checks {
-		if check.GetStatus() == f.status && check.GetName() == f.checkName{
+		if check.GetStatus() == f.status && check.GetName() == f.checkName {
 			continue
 		}
 

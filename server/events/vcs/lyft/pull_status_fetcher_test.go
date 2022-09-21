@@ -83,7 +83,7 @@ func TestIsPRLocked(t *testing.T) {
 			[]*github.RepoStatus{},
 			[]*github.CheckRun{
 				{
-					Name:		 pointer(SubmitQueueReadinessContext),
+					Name: pointer(SubmitQueueReadinessContext),
 					Output: &github.CheckRunOutput{
 						Title: pointer("{\"pr_number\": 176, \"waiting\": [\"approval\", \"lock\"]}"),
 					},
@@ -96,7 +96,7 @@ func TestIsPRLocked(t *testing.T) {
 			[]*github.RepoStatus{},
 			[]*github.CheckRun{
 				{
-					Name:		 pointer(SubmitQueueReadinessContext),
+					Name: pointer(SubmitQueueReadinessContext),
 					Output: &github.CheckRunOutput{
 						Title: pointer("{\"pr_number\": 176, \"waiting\": [\"approval\"]}"),
 					},
@@ -109,7 +109,7 @@ func TestIsPRLocked(t *testing.T) {
 			[]*github.RepoStatus{},
 			[]*github.CheckRun{
 				{
-					Name:		 pointer(SubmitQueueReadinessContext),
+					Name: pointer(SubmitQueueReadinessContext),
 					Output: &github.CheckRunOutput{
 						Title: pointer(""),
 					},
