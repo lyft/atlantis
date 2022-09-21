@@ -113,6 +113,7 @@ func (r *jobRunner) apply(ctx *job.ExecutionContext, planFile string, step job.S
 		TfVersion: ctx.TfVersion,
 		Path:      ctx.Path,
 		JobID:     ctx.JobID,
+		PlanFile:  planFile,
 	}).Get(ctx, &resp)
 	if err != nil {
 		return errors.Wrap(err, "running terraform apply activity")

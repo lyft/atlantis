@@ -116,7 +116,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	if err != nil {
 		return TerraformPlanResponse{}, err
 	}
-	planFile := buildPlanFilePath(request.Path)
+	planFile := filepath.Join(request.Path, PlanOutputFile)
 
 	args := []terraform.Argument{
 		DisableInputArg,
@@ -264,8 +264,4 @@ func (t *terraformActivities) resolveVersion(v string) (*version.Version, error)
 		return version, nil
 	}
 	return t.DefaultTFVersion, nil
-}
-
-func buildPlanFilePath(path string) string {
-	return filepath.Join(path, PlanOutputFile)
 }
