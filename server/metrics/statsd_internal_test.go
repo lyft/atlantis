@@ -39,7 +39,7 @@ func TestPointTagReporter(t *testing.T) {
 			t.Parallel()
 
 			m := &mockReporter{}
-			p := pointTagReporter{
+			p := customTagReporter{
 				StatsReporter: m,
 				separator:     ",",
 			}

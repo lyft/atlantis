@@ -7,14 +7,14 @@ import (
 	"github.com/uber-go/tally/v4"
 )
 
-type pointTagReporter struct {
+type customTagReporter struct {
 	tally.StatsReporter
 
 	separator string
 }
 
 // https://github.com/influxdata/telegraf/blob/master/plugins/inputs/statsd/README.md#influx-statsd
-func (r *pointTagReporter) taggedName(name string, tags map[string]string) string {
+func (r *customTagReporter) taggedName(name string, tags map[string]string) string {
 	var b strings.Builder
 	b.WriteString(name)
 	for k, v := range tags {
@@ -26,23 +26,23 @@ func (r *pointTagReporter) taggedName(name string, tags map[string]string) strin
 	return b.String()
 }
 
-func (r *pointTagReporter) ReportCounter(name string, tags map[string]string, value int64) {
+func (r *customTagReporter) ReportCounter(name string, tags map[string]string, value int64) {
 	r.StatsReporter.ReportCounter(r.taggedName(name, tags), nil, value)
 }
 
-func (r *pointTagReporter) ReportGauge(name string, tags map[string]string, value float64) {
+func (r *customTagReporter) ReportGauge(name string, tags map[string]string, value float64) {
 	r.StatsReporter.ReportGauge(r.taggedName(name, tags), nil, value)
 }
 
-func (r *pointTagReporter) ReportTimer(name string, tags map[string]string, interval time.Duration) {
+func (r *customTagReporter) ReportTimer(name string, tags map[string]string, interval time.Duration) {
 	r.StatsReporter.ReportTimer(r.taggedName(name, tags), nil, interval)
 }
 
-func (r *pointTagReporter) ReportHistogramValueSamples(name string, tags map[string]string, buckets tally.Buckets, bucketLowerBound, bucketUpperBound float64, samples int64) {
+func (r *customTagReporter) ReportHistogramValueSamples(name string, tags map[string]string, buckets tally.Buckets, bucketLowerBound, bucketUpperBound float64, samples int64) {
 	r.StatsReporter.ReportHistogramValueSamples(r.taggedName(name, tags), nil, buckets, bucketLowerBound, bucketUpperBound, samples)
 }
 
-func (r *pointTagReporter) ReportHistogramDurationSamples(name string, tags map[string]string, buckets tally.Buckets, bucketLowerBound, bucketUpperBound time.Duration, samples int64) {
+func (r *customTagReporter) ReportHistogramDurationSamples(name string, tags map[string]string, buckets tally.Buckets, bucketLowerBound, bucketUpperBound time.Duration, samples int64) {
 	r.StatsReporter.ReportHistogramDurationSamples(r.taggedName(name, tags), nil, buckets, bucketLowerBound, bucketUpperBound, samples)
 }
 

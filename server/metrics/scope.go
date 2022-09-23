@@ -65,7 +65,7 @@ func newReporter(cfg valid.Metrics, logger logging.Logger) (tally.StatsReporter,
 		return base, nil
 	}
 
-	return &pointTagReporter{
+	return &customTagReporter{
 		StatsReporter: base,
 		separator:     statsdCfg.TagSeparator,
 	}, nil
