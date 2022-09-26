@@ -432,6 +432,8 @@ func (s *Server) Shutdown() error {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
 	}
 
+	s.TemporalClient.Close()
+
 	return nil
 }
 

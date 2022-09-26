@@ -204,6 +204,9 @@ func (s Server) Start() error {
 	if err := s.HttpServerProxy.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
 	}
+
+	s.TemporalClient.Close()
+
 	return nil
 }
 
