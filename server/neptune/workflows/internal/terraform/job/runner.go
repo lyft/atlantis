@@ -15,6 +15,7 @@ type terraformActivities interface {
 	TerraformInit(ctx context.Context, request activities.TerraformInitRequest) (activities.TerraformInitResponse, error)
 	TerraformPlan(ctx context.Context, request activities.TerraformPlanRequest) (activities.TerraformPlanResponse, error)
 	TerraformApply(ctx context.Context, request activities.TerraformApplyRequest) (activities.TerraformApplyResponse, error)
+	TerraformCloseJob(ctx context.Context, request activities.TerraformCloseJobRequest) (activities.TerraformCloseJobResponse, error)
 }
 
 // stepRunner runs individual run steps
@@ -28,10 +29,11 @@ type jobRunner struct {
 	CmdStepRunner stepRunner
 }
 
-func NewRunner(runStepRunner stepRunner, envStepRunner stepRunner) *jobRunner {
+func NewRunner(runStepRunner stepRunner, envStepRunner stepRunner, tfActivities terraformActivities) *jobRunner {
 	return &jobRunner{
 		CmdStepRunner: runStepRunner,
 		EnvStepRunner: envStepRunner,
+		Activity:      tfActivities,
 	}
 }
 
@@ -67,6 +69,12 @@ func (r *jobRunner) Plan(ctx workflow.Context, localRoot *root.LocalRoot, jobID 
 		}
 	}
 
+	// let's not fail this workfklow if closing the job fails since it's not critical to close the job for the tf workflow
+	var closeJobResp activities.TerraformCloseJobResponse
+	workflow.ExecuteActivity(ctx, r.Activity.TerraformCloseJob, activities.TerraformCloseJobRequest{
+		JobID: jobID,
+	}).Get(ctx, &closeJobResp)
+
 	return resp, nil
 }
 
@@ -96,6 +104,12 @@ func (r *jobRunner) Apply(ctx workflow.Context, localRoot *root.LocalRoot, jobID
 			return errors.Wrapf(err, "running step %s", step.StepName)
 		}
 	}
+
+	// let's not fail this workfklow if closing the job fails since it's not critical to close the job for the tf workflow
+	var closeJobResp activities.TerraformCloseJobResponse
+	workflow.ExecuteActivity(ctx, r.Activity.TerraformCloseJob, activities.TerraformCloseJobRequest{
+		JobID: jobID,
+	}).Get(ctx, &closeJobResp)
 
 	return nil
 }
@@ -138,6 +152,14 @@ func (r *jobRunner) plan(ctx *job.ExecutionContext, extraArgs []string) (activit
 	if err != nil {
 		return resp, errors.Wrap(err, "running terraform plan activity")
 	}
+
+	// Close terraform job
+	// let's not fail this workfklow if closing the job fails since it's not critical to close the job for the tf workflow
+	var closeJobResp activities.TerraformCloseJobResponse
+	err = workflow.ExecuteActivity(ctx, r.Activity.TerraformCloseJob, activities.TerraformCloseJobRequest{
+		JobID: ctx.JobID,
+	}).Get(ctx, &closeJobResp)
+
 	return resp, nil
 }
 

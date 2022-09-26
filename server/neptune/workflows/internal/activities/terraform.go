@@ -38,7 +38,7 @@ type TerraformClient interface {
 
 type streamHandler interface {
 	Stream(jobID string, msg string)
-	Close(ctx context.Context, jobID string)
+	Close(ctx context.Context, jobID string) error
 }
 
 type terraformActivities struct {
@@ -109,9 +109,6 @@ type TerraformPlanResponse struct {
 }
 
 func (t *terraformActivities) TerraformPlan(ctx context.Context, request TerraformPlanRequest) (TerraformPlanResponse, error) {
-	//TODO: move this to a separate activity that should be invoked at a higher level
-	defer t.StreamHandler.Close(ctx, request.JobID)
-
 	tfVersion, err := t.resolveVersion(request.TfVersion)
 	if err != nil {
 		return TerraformPlanResponse{}, err
@@ -213,6 +210,22 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	}
 
 	return TerraformApplyResponse{}, nil
+}
+
+type TerraformCloseJobRequest struct {
+	JobID string
+}
+
+type TerraformCloseJobResponse struct{}
+
+func (t *terraformActivities) TerraformCloseJob(ctx context.Context, request TerraformCloseJobRequest) (TerraformCloseJobResponse, error) {
+	err := t.StreamHandler.Close(ctx, request.JobID)
+	if err != nil {
+		logger.Error(ctx, "closing job", map[string]interface{}{
+			"jobId": request.JobID,
+		})
+	}
+	return TerraformCloseJobResponse{}, err
 }
 
 func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jobID string, request *terraform.RunCommandRequest) error {
