@@ -18,6 +18,7 @@ package models
 
 import (
 	"fmt"
+	"github.com/runatlantis/atlantis/server/vcs"
 	"net/url"
 	paths "path"
 	"regexp"
@@ -186,6 +187,7 @@ type PullRequest struct {
 	ClosedAt time.Time
 	// CreatedAt is the time the PR was created.
 	CreatedAt time.Time
+	HeadRef   vcs.Ref
 }
 
 type PullRequestState int

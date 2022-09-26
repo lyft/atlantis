@@ -44,7 +44,7 @@ type scheduler interface {
 }
 
 type rootConfigBuilder interface {
-	Build(ctx context.Context, event Push) ([]*valid.MergedProjectCfg, error)
+	Build(ctx context.Context, repo models.Repo, sha string, installationToken int64) ([]*valid.MergedProjectCfg, error)
 }
 
 type PushHandler struct {
@@ -86,7 +86,7 @@ func (p *PushHandler) Handle(ctx context.Context, event Push) error {
 }
 
 func (p *PushHandler) handle(ctx context.Context, event Push) error {
-	rootCfgs, err := p.RootConfigBuilder.Build(ctx, event)
+	rootCfgs, err := p.RootConfigBuilder.Build(ctx, event.Repo, event.Sha, event.InstallationToken)
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
 	}

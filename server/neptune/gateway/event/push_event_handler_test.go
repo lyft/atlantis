@@ -469,6 +469,6 @@ type mockRootConfigBuilder struct {
 	error       error
 }
 
-func (r *mockRootConfigBuilder) Build(_ context.Context, _ event.Push) ([]*valid.MergedProjectCfg, error) {
+func (r *mockRootConfigBuilder) Build(_ context.Context, _ models.Repo, _ string, _ int64) ([]*valid.MergedProjectCfg, error) {
 	return r.rootConfigs, r.error
 }
