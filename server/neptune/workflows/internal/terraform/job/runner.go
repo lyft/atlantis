@@ -46,6 +46,7 @@ func (r *jobRunner) Plan(ctx workflow.Context, localRoot *root.LocalRoot, jobID 
 		TfVersion: localRoot.Root.TfVersion,
 		JobID:     jobID,
 	}
+	defer r.closeTerraformJob(jobCtx)
 
 	var resp activities.TerraformPlanResponse
 
@@ -69,12 +70,6 @@ func (r *jobRunner) Plan(ctx workflow.Context, localRoot *root.LocalRoot, jobID 
 		}
 	}
 
-	// let's not fail this workfklow if closing the job fails since it's not critical to close the job for the tf workflow
-	var closeJobResp activities.TerraformCloseJobResponse
-	workflow.ExecuteActivity(ctx, r.Activity.TerraformCloseJob, activities.TerraformCloseJobRequest{
-		JobID: jobID,
-	}).Get(ctx, &closeJobResp)
-
 	return resp, nil
 }
 
@@ -87,6 +82,7 @@ func (r *jobRunner) Apply(ctx workflow.Context, localRoot *root.LocalRoot, jobID
 		TfVersion: localRoot.Root.TfVersion,
 		JobID:     jobID,
 	}
+	defer r.closeTerraformJob(jobCtx)
 
 	for _, step := range localRoot.Root.Apply.Steps {
 		var err error
@@ -104,12 +100,6 @@ func (r *jobRunner) Apply(ctx workflow.Context, localRoot *root.LocalRoot, jobID
 			return errors.Wrapf(err, "running step %s", step.StepName)
 		}
 	}
-
-	// let's not fail this workfklow if closing the job fails since it's not critical to close the job for the tf workflow
-	var closeJobResp activities.TerraformCloseJobResponse
-	workflow.ExecuteActivity(ctx, r.Activity.TerraformCloseJob, activities.TerraformCloseJobRequest{
-		JobID: jobID,
-	}).Get(ctx, &closeJobResp)
 
 	return nil
 }
@@ -189,4 +179,14 @@ func (r *jobRunner) runOptionalSteps(ctx *job.ExecutionContext, localRoot *root.
 	}
 
 	return nil
+}
+
+// Executes the TerraformCloseJob activity
+func (r *jobRunner) closeTerraformJob(ctx *job.ExecutionContext) {
+	var closeJobResp activities.TerraformCloseJobResponse
+
+	// let's not fail this workfklow if closing the job fails since it's not critical to close the job for the tf workflow
+	_ = workflow.ExecuteActivity(ctx, r.Activity.TerraformCloseJob, activities.TerraformCloseJobRequest{
+		JobID: ctx.JobID,
+	}).Get(ctx, &closeJobResp)
 }
