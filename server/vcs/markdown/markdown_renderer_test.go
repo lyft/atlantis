@@ -427,8 +427,6 @@ $$$
 					PolicyCheckSuccess: &models.PolicyCheckSuccess{
 						PolicyCheckOutput: "2 tests, 1 passed, 0 warnings, 0 failure, 0 exceptions",
 						LockURL:           "lock-url",
-						RePlanCmd:         "atlantis plan -d path -w workspace",
-						ApplyCmd:          "atlantis apply -d path -w workspace",
 					},
 					Workspace:   "workspace",
 					RepoRelDir:  "path",
@@ -561,8 +559,6 @@ $$$
 					PolicyCheckSuccess: &models.PolicyCheckSuccess{
 						PolicyCheckOutput: "4 tests, 4 passed, 0 warnings, 0 failures, 0 exceptions",
 						LockURL:           "lock-url",
-						ApplyCmd:          "atlantis apply -d path -w workspace",
-						RePlanCmd:         "atlantis plan -d path -w workspace",
 					},
 				},
 				{
@@ -572,8 +568,6 @@ $$$
 					PolicyCheckSuccess: &models.PolicyCheckSuccess{
 						PolicyCheckOutput: "4 tests, 4 passed, 0 warnings, 0 failures, 0 exceptions",
 						LockURL:           "lock-url2",
-						ApplyCmd:          "atlantis apply -d path2 -w workspace",
-						RePlanCmd:         "atlantis plan -d path2 -w workspace",
 					},
 				},
 			},
@@ -748,8 +742,6 @@ $$$
 					PolicyCheckSuccess: &models.PolicyCheckSuccess{
 						PolicyCheckOutput: "4 tests, 4 passed, 0 warnings, 0 failures, 0 exceptions",
 						LockURL:           "lock-url",
-						ApplyCmd:          "atlantis apply -d path -w workspace",
-						RePlanCmd:         "atlantis plan -d path -w workspace",
 					},
 				},
 				{
