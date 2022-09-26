@@ -217,14 +217,12 @@ type TerraformCloseJobRequest struct {
 	JobID string
 }
 
-type TerraformCloseJobResponse struct{}
-
-func (t *terraformActivities) TerraformCloseJob(ctx context.Context, request TerraformCloseJobRequest) (TerraformCloseJobResponse, error) {
+func (t *terraformActivities) TerraformCloseJob(ctx context.Context, request TerraformCloseJobRequest) error {
 	err := t.StreamHandler.Close(ctx, request.JobID)
 	if err != nil {
 		logger.Error(ctx, fmt.Sprintf("closing job with id: %s", request.JobID))
 	}
-	return TerraformCloseJobResponse{}, err
+	return err
 }
 
 func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jobID string, request *terraform.RunCommandRequest) error {

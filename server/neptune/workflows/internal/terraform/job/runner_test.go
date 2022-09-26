@@ -47,9 +47,8 @@ type testTerraformActivity struct {
 		err  error
 	}
 	close struct {
-		req  activities.TerraformCloseJobRequest
-		resp activities.TerraformCloseJobResponse
-		err  error
+		req activities.TerraformCloseJobRequest
+		err error
 	}
 }
 
@@ -67,9 +66,9 @@ func (t *testTerraformActivity) TerraformApply(ctx context.Context, request acti
 	return t.apply.resp, t.apply.err
 }
 
-func (t *testTerraformActivity) TerraformCloseJob(ctx context.Context, request activities.TerraformCloseJobRequest) (activities.TerraformCloseJobResponse, error) {
+func (t *testTerraformActivity) TerraformCloseJob(ctx context.Context, request activities.TerraformCloseJobRequest) error {
 	assert.Equal(t.t, t.close.req, request)
-	return t.close.resp, t.close.err
+	return t.close.err
 }
 
 // test workflow that runs the plan job
@@ -139,9 +138,8 @@ func TestJobRunner_Plan(t *testing.T) {
 				},
 			},
 			close: struct {
-				req  activities.TerraformCloseJobRequest
-				resp activities.TerraformCloseJobResponse
-				err  error
+				req activities.TerraformCloseJobRequest
+				err error
 			}{
 				req: activities.TerraformCloseJobRequest{
 					JobID: JobID,
@@ -179,9 +177,8 @@ func TestJobRunner_Plan(t *testing.T) {
 				},
 			},
 			close: struct {
-				req  activities.TerraformCloseJobRequest
-				resp activities.TerraformCloseJobResponse
-				err  error
+				req activities.TerraformCloseJobRequest
+				err error
 			}{
 				req: activities.TerraformCloseJobRequest{
 					JobID: JobID,
@@ -222,9 +219,8 @@ func TestJobRunner_Apply(t *testing.T) {
 				},
 			},
 			close: struct {
-				req  activities.TerraformCloseJobRequest
-				resp activities.TerraformCloseJobResponse
-				err  error
+				req activities.TerraformCloseJobRequest
+				err error
 			}{
 				req: activities.TerraformCloseJobRequest{
 					JobID: JobID,
@@ -258,9 +254,8 @@ func TestJobRunner_Apply(t *testing.T) {
 				},
 			},
 			close: struct {
-				req  activities.TerraformCloseJobRequest
-				resp activities.TerraformCloseJobResponse
-				err  error
+				req activities.TerraformCloseJobRequest
+				err error
 			}{
 				req: activities.TerraformCloseJobRequest{
 					JobID: JobID,
