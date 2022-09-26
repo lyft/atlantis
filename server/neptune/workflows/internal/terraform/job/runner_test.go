@@ -20,6 +20,20 @@ import (
 
 const JobID = "1234"
 
+var repo = github.Repo{
+	Name:  RepoName,
+	Owner: RepoOwner,
+	HeadCommit: github.Commit{
+		Ref: github.Ref{
+			Name: RefName,
+			Type: RefType,
+		},
+		Author: github.User{
+			Username: UserName,
+		},
+	},
+}
+
 type testTerraformActivity struct {
 	t    *testing.T
 	plan struct {
@@ -58,7 +72,8 @@ func (t *testTerraformActivity) TerraformCloseJob(ctx context.Context, request a
 	return t.close.resp, t.close.err
 }
 
-func testJobWorkflow(ctx workflow.Context, r terraform.Request) (activities.TerraformPlanResponse, error) {
+// test workflow that runs the plan job
+func testJobPlanWorkflow(ctx workflow.Context, r terraform.Request) (activities.TerraformPlanResponse, error) {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		ScheduleToCloseTimeout: 100 * time.Second,
 	})
@@ -79,6 +94,30 @@ func testJobWorkflow(ctx workflow.Context, r terraform.Request) (activities.Terr
 	var a *testTerraformActivity
 	jobRunner := job.NewRunner(&job.CmdStepRunner{}, &job.EnvStepRunner{}, a)
 	return jobRunner.Plan(jobExecutionCtx, &localRoot, JobID)
+}
+
+// test workflow that runs the plan job
+func testJobApplyWorkflow(ctx workflow.Context, r terraform.Request) error {
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		ScheduleToCloseTimeout: 100 * time.Second,
+	})
+
+	localRoot := root.LocalRoot{
+		Root: r.Root,
+		Repo: r.Repo,
+		Path: ProjectPath,
+	}
+
+	jobExecutionCtx := &job_model.ExecutionContext{
+		Context:   ctx,
+		Path:      ProjectPath,
+		Envs:      map[string]string{},
+		TfVersion: localRoot.Root.TfVersion,
+	}
+
+	var a *testTerraformActivity
+	jobRunner := job.NewRunner(&job.CmdStepRunner{}, &job.EnvStepRunner{}, a)
+	return jobRunner.Apply(jobExecutionCtx, &localRoot, JobID, "")
 }
 
 func TestJobRunner_Plan(t *testing.T) {
@@ -110,33 +149,11 @@ func TestJobRunner_Plan(t *testing.T) {
 			},
 		}
 		env.RegisterActivity(testTerraformActivity)
-		env.RegisterWorkflow(testJobWorkflow)
+		env.RegisterWorkflow(testJobPlanWorkflow)
 
-		env.ExecuteWorkflow(testJobWorkflow, terraform.Request{
-			Root: root.Root{
-				Name: ProjectName,
-				Path: "project",
-				Plan: job_model.Job{
-					Steps: []job_model.Step{
-						{
-							StepName: "plan",
-						},
-					},
-				},
-			},
-			Repo: github.Repo{
-				Name:  RepoName,
-				Owner: RepoOwner,
-				HeadCommit: github.Commit{
-					Ref: github.Ref{
-						Name: RefName,
-						Type: RefType,
-					},
-					Author: github.User{
-						Username: UserName,
-					},
-				},
-			},
+		env.ExecuteWorkflow(testJobPlanWorkflow, terraform.Request{
+			Root: getTestRootFor("plan"),
+			Repo: repo,
 		})
 
 		var resp activities.TerraformPlanResponse
@@ -173,33 +190,11 @@ func TestJobRunner_Plan(t *testing.T) {
 			},
 		}
 		env.RegisterActivity(testTerraformActivity)
-		env.RegisterWorkflow(testJobWorkflow)
+		env.RegisterWorkflow(testJobPlanWorkflow)
 
-		env.ExecuteWorkflow(testJobWorkflow, terraform.Request{
-			Root: root.Root{
-				Name: ProjectName,
-				Path: "project",
-				Plan: job_model.Job{
-					Steps: []job_model.Step{
-						{
-							StepName: "plan",
-						},
-					},
-				},
-			},
-			Repo: github.Repo{
-				Name:  RepoName,
-				Owner: RepoOwner,
-				HeadCommit: github.Commit{
-					Ref: github.Ref{
-						Name: RefName,
-						Type: RefType,
-					},
-					Author: github.User{
-						Username: UserName,
-					},
-				},
-			},
+		env.ExecuteWorkflow(testJobPlanWorkflow, terraform.Request{
+			Root: getTestRootFor("plan"),
+			Repo: repo,
 		})
 
 		var resp activities.TerraformPlanResponse
@@ -237,38 +232,12 @@ func TestJobRunner_Apply(t *testing.T) {
 			},
 		}
 		env.RegisterActivity(testTerraformActivity)
-		env.RegisterWorkflow(testJobWorkflow)
+		env.RegisterWorkflow(testJobApplyWorkflow)
 
-		env.ExecuteWorkflow(testJobWorkflow, terraform.Request{
-			Root: root.Root{
-				Name: ProjectName,
-				Path: "project",
-				Plan: job_model.Job{
-					Steps: []job_model.Step{
-						{
-							StepName: "apply",
-						},
-					},
-				},
-			},
-			Repo: github.Repo{
-				Name:  RepoName,
-				Owner: RepoOwner,
-				HeadCommit: github.Commit{
-					Ref: github.Ref{
-						Name: RefName,
-						Type: RefType,
-					},
-					Author: github.User{
-						Username: UserName,
-					},
-				},
-			},
+		env.ExecuteWorkflow(testJobApplyWorkflow, terraform.Request{
+			Root: getTestRootFor("apply"),
+			Repo: repo,
 		})
-
-		var resp activities.TerraformPlanResponse
-		err := env.GetWorkflowResult(&resp)
-		assert.NoError(t, err)
 	})
 
 	t.Run("should not fail apply operation when close job fails", func(t *testing.T) {
@@ -296,40 +265,29 @@ func TestJobRunner_Apply(t *testing.T) {
 				req: activities.TerraformCloseJobRequest{
 					JobID: JobID,
 				},
+				err: errors.New("error"),
 			},
 		}
 		env.RegisterActivity(testTerraformActivity)
-		env.RegisterWorkflow(testJobWorkflow)
+		env.RegisterWorkflow(testJobApplyWorkflow)
 
-		env.ExecuteWorkflow(testJobWorkflow, terraform.Request{
-			Root: root.Root{
-				Name: ProjectName,
-				Path: "project",
-				Plan: job_model.Job{
-					Steps: []job_model.Step{
-						{
-							StepName: "apply",
-						},
-					},
-				},
-			},
-			Repo: github.Repo{
-				Name:  RepoName,
-				Owner: RepoOwner,
-				HeadCommit: github.Commit{
-					Ref: github.Ref{
-						Name: RefName,
-						Type: RefType,
-					},
-					Author: github.User{
-						Username: UserName,
-					},
-				},
-			},
+		env.ExecuteWorkflow(testJobApplyWorkflow, terraform.Request{
+			Root: getTestRootFor("apply"),
+			Repo: repo,
 		})
-
-		var resp activities.TerraformPlanResponse
-		err := env.GetWorkflowResult(&resp)
-		assert.NoError(t, err)
 	})
+}
+
+func getTestRootFor(stepName string) root.Root {
+	return root.Root{
+		Name: ProjectName,
+		Path: "project",
+		Plan: job_model.Job{
+			Steps: []job_model.Step{
+				{
+					StepName: stepName,
+				},
+			},
+		},
+	}
 }
