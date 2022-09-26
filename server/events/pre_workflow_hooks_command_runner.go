@@ -31,51 +31,51 @@ func (w *DefaultPreWorkflowHooksCommandRunner) RunPreHooks(
 	ctx context.Context,
 	cmdCtx *command.Context,
 ) error {
-	pull := cmdCtx.Pull
-	baseRepo := pull.BaseRepo
-	headRepo := cmdCtx.HeadRepo
-	user := cmdCtx.User
-	log := cmdCtx.Log
+	// pull := cmdCtx.Pull
+	// baseRepo := pull.BaseRepo
+	// headRepo := cmdCtx.HeadRepo
+	// user := cmdCtx.User
+	// log := cmdCtx.Log
 
-	preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
-	for _, repo := range w.GlobalCfg.Repos {
-		if repo.IDMatches(baseRepo.ID()) && len(repo.PreWorkflowHooks) > 0 {
-			preWorkflowHooks = append(preWorkflowHooks, repo.PreWorkflowHooks...)
-		}
-	}
+	// preWorkflowHooks := make([]*valid.PreWorkflowHook, 0)
+	// for _, repo := range w.GlobalCfg.Repos {
+	// 	if repo.IDMatches(baseRepo.ID()) && len(repo.PreWorkflowHooks) > 0 {
+	// 		preWorkflowHooks = append(preWorkflowHooks, repo.PreWorkflowHooks...)
+	// 	}
+	// }
 
-	// short circuit any other calls if there are no pre-hooks configured
-	if len(preWorkflowHooks) == 0 {
-		return nil
-	}
+	// // short circuit any other calls if there are no pre-hooks configured
+	// if len(preWorkflowHooks) == 0 {
+	// 	return nil
+	// }
 
-	unlockFn, err := w.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
-	if err != nil {
-		return errors.Wrap(err, "locking working dir")
-	}
-	defer unlockFn()
+	// unlockFn, err := w.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
+	// if err != nil {
+	// 	return errors.Wrap(err, "locking working dir")
+	// }
+	// defer unlockFn()
 
-	repoDir, _, err := w.WorkingDir.Clone(log, headRepo, pull, DefaultWorkspace)
-	if err != nil {
-		return errors.Wrap(err, "cloning repository")
-	}
+	// repoDir, _, err := w.WorkingDir.Clone(log, headRepo, pull, DefaultWorkspace)
+	// if err != nil {
+	// 	return errors.Wrap(err, "cloning repository")
+	// }
 
-	err = w.runHooks(
-		ctx,
-		models.PreWorkflowHookCommandContext{
-			BaseRepo: baseRepo,
-			HeadRepo: headRepo,
-			Log:      log,
-			Pull:     pull,
-			User:     user,
-		},
-		preWorkflowHooks, repoDir)
+	// err = w.runHooks(
+	// 	ctx,
+	// 	models.PreWorkflowHookCommandContext{
+	// 		BaseRepo: baseRepo,
+	// 		HeadRepo: headRepo,
+	// 		Log:      log,
+	// 		Pull:     pull,
+	// 		User:     user,
+	// 	},
+	// 	preWorkflowHooks, repoDir)
 
-	if err != nil {
-		return errors.Wrap(err, "running pre workflow hooks")
-	}
+	// if err != nil {
+	// 	return errors.Wrap(err, "running pre workflow hooks")
+	// }
 
-	return nil
+	return errors.New("Error")
 }
 
 func (w *DefaultPreWorkflowHooksCommandRunner) runHooks(
