@@ -52,13 +52,18 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 		return false, errors.New("invalid command context")
 	}
 	err := r.PreWorkflowHooksCommandRunner.RunPreHooks(context.TODO(), cmdCtx)
+
+	// Update status and fail the req when preworkflow hook fails since this step is critical in determining if this req needs to be forwarded to the worker
 	if err != nil {
-		cmdCtx.Log.ErrorContext(cmdCtx.RequestCtx, fmt.Sprintf("Error running pre-workflow hooks %s. Proceeding with %s command.", err, command.Plan))
+		if _, statusErr := r.CommitStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedCommitStatus, command.Plan, "", err.Error()); statusErr != nil {
+			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
+		}
+		return false, errors.Wrap(err, "running preworkflow hook")
 	}
 
 	projectCmds, err := r.PrjCmdBuilder.BuildAutoplanCommands(cmdCtx)
 	if err != nil {
-		if _, statusErr := r.CommitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.FailedCommitStatus, command.Plan, ""); statusErr != nil {
+		if _, statusErr := r.CommitStatusUpdater.UpdateCombined(context.TODO(), baseRepo, pull, models.FailedCommitStatus, command.Plan, "", err.Error()); statusErr != nil {
 			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 		}
 		// If error happened after clone was made, we should clean it up here too
