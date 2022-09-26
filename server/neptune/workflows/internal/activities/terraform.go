@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"path/filepath"
 	"sync"
@@ -220,7 +219,7 @@ type TerraformCloseJobRequest struct {
 func (t *terraformActivities) TerraformCloseJob(ctx context.Context, request TerraformCloseJobRequest) error {
 	err := t.StreamHandler.Close(ctx, request.JobID)
 	if err != nil {
-		logger.Error(ctx, fmt.Sprintf("closing job with id: %s", request.JobID))
+		logger.Error(ctx, errors.Wrapf(err, "closing job with id: %s", request.JobID).Error())
 	}
 	return err
 }
