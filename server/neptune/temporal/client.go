@@ -43,7 +43,6 @@ func NewClient(logger logur.Logger, cfg valid.Temporal, options *Options) (clien
 		Interceptors:       options.Interceptors,
 	}
 
-	// default to app scope unless specified otherwise
 	var clientScope tally.Scope
 	var clientScopeCloser io.Closer
 	if options.StatsReporter != nil {
@@ -51,9 +50,8 @@ func NewClient(logger logur.Logger, cfg valid.Temporal, options *Options) (clien
 			Prefix:   StatsNamespace,
 			Reporter: options.StatsReporter,
 		}, time.Second)
+		opts.MetricsHandler = temporaltally.NewMetricsHandler(clientScope)
 	}
-
-	opts.MetricsHandler = temporaltally.NewMetricsHandler(clientScope)
 
 	if cfg.UseSystemCACert {
 		certs, err := x509.SystemCertPool()
