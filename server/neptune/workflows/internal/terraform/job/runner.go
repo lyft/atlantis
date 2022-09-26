@@ -153,13 +153,6 @@ func (r *jobRunner) plan(ctx *job.ExecutionContext, extraArgs []string) (activit
 		return resp, errors.Wrap(err, "running terraform plan activity")
 	}
 
-	// Close terraform job
-	// let's not fail this workfklow if closing the job fails since it's not critical to close the job for the tf workflow
-	var closeJobResp activities.TerraformCloseJobResponse
-	err = workflow.ExecuteActivity(ctx, r.Activity.TerraformCloseJob, activities.TerraformCloseJobRequest{
-		JobID: ctx.JobID,
-	}).Get(ctx, &closeJobResp)
-
 	return resp, nil
 }
 
