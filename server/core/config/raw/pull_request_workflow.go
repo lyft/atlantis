@@ -52,6 +52,8 @@ func (w PullRequestWorkflow) toValidStage(stage *Stage, defaultStage valid.Stage
 			s.ExtraArgs = append(s.ExtraArgs, "-lock=false")
 		}
 	}
+
+	return validStage
 }
 
 func (w PullRequestWorkflow) ToValid(name string) valid.Workflow {
