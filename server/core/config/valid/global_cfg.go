@@ -165,20 +165,6 @@ var DefaultPlanStage = Stage{
 	},
 }
 
-// DefaultLocklessPlanStage is the Atlantis default plan stage for PR workflows in
-// platform mode.
-var DefaultLocklessPlanStage = Stage{
-	Steps: []Step{
-		{
-			StepName: "init",
-		},
-		{
-			StepName:  "plan",
-			ExtraArgs: []string{"-lock=false"},
-		},
-	},
-}
-
 func NewGlobalCfg() GlobalCfg {
 	defaultWorkflow := Workflow{
 		Name:        DefaultWorkflowName,
