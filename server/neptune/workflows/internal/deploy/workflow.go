@@ -88,8 +88,8 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	// can potentially change a root configuration
 	root := root.Root{
 		Name:      request.Root.Name,
-		Apply:     job.Job{Steps: convertToInternalSteps(request.Root.Apply.Steps)},
-		Plan:      job.Job{Steps: convertToInternalSteps(request.Root.Plan.Steps)},
+		Apply:     job.Terraform{Steps: convertToInternalSteps(request.Root.Apply.Steps)},
+		Plan:      job.Plan{Terraform: job.Terraform{Steps: convertToInternalSteps(request.Root.Plan.Steps)}, Mode: convertToInternalMode(request.Root.PlanMode)},
 		Path:      request.Root.RepoRelPath,
 		TfVersion: request.Root.TfVersion,
 	}
@@ -184,6 +184,16 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	// wait on cancellation so we can gracefully terminate, unsure if temporal handles this for us,
 	// but just being safe.
 	wg.Wait(ctx)
+
+	return nil
+}
+
+//TODO: move these to the internal converter pattern to remove clutter from this file
+func convertToInternalMode(mode PlanMode) *job.PlanMode {
+	switch mode {
+	case DestroyPlanMode:
+		return job.NewDestroyPlanMode()
+	}
 
 	return nil
 }
