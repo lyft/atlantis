@@ -312,6 +312,7 @@ func TestHandlePushEvent(t *testing.T) {
 				TaskQueue: workflows.DeployTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{
+				Trigger: "merge",
 				Repository: workflows.Repo{
 					FullName: repoFullName,
 					Name:     repoName,
@@ -386,6 +387,7 @@ func TestHandlePushEvent(t *testing.T) {
 				TaskQueue: workflows.DeployTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{
+				Trigger: "merge",
 				Repository: workflows.Repo{
 					FullName: repoFullName,
 					Name:     repoName,

@@ -55,8 +55,9 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 	}
 
 	if shouldAllocate && command.ForceApply {
+		p.logger.InfoContext(ctx, "running force apply command")
 		return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
-			return p.handleForceApplyComment(ctx, event)
+			return p.forceApply(ctx, event)
 		})
 	}
 
@@ -75,7 +76,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 	return nil
 }
 
-func (p *CommentEventWorkerProxy) handleForceApplyComment(ctx context.Context, event Comment) error {
+func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment) error {
 	rootCfgs, err := p.rootConfigBuilder.Build(ctx, event.HeadRepo, event.Pull.HeadBranch, event.Pull.HeadCommit, event.InstallationToken)
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
@@ -112,8 +113,8 @@ func (p *CommentEventWorkerProxy) startWorkflow(ctx context.Context, event Comme
 		},
 		options,
 		workflows.Deploy,
-		// TODO: add other request params as we support them
 		workflows.DeployRequest{
+			Trigger: "manual",
 			Repository: workflows.Repo{
 				URL:      event.BaseRepo.CloneURL,
 				FullName: event.BaseRepo.FullName,

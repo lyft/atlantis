@@ -121,8 +121,8 @@ func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *va
 		},
 		options,
 		workflows.Deploy,
-		// TODO: add other request params as we support them
 		workflows.DeployRequest{
+			Trigger: "merge",
 			Repository: workflows.Repo{
 				URL:      event.Repo.CloneURL,
 				FullName: event.Repo.FullName,
