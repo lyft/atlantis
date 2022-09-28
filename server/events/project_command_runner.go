@@ -14,7 +14,6 @@
 package events
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -232,7 +231,7 @@ func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx command.ProjectContext) 
 		return nil, "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	outputs, err := p.StepsRunner.Run(context.TODO(), ctx, absPath)
+	outputs, err := p.StepsRunner.Run(ctx.RequestCtx, ctx, absPath)
 	if err != nil {
 		// Note: we are explicitly not unlocking the pr here since a failing
 		// policy check will require approval. This is a bit tricky and hacky
@@ -243,8 +242,6 @@ func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx command.ProjectContext) 
 
 	return &models.PolicyCheckSuccess{
 		PolicyCheckOutput: outputs,
-		RePlanCmd:         ctx.RePlanCmd,
-		ApplyCmd:          ctx.ApplyCmd,
 
 		// set this to false right now because we don't have this information
 		// TODO: refactor the templates in a sane way so we don't need this
@@ -269,7 +266,7 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx command.ProjectContext) (*model
 		return nil, "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
-	outputs, err := p.StepsRunner.Run(context.TODO(), ctx, projAbsPath)
+	outputs, err := p.StepsRunner.Run(ctx.RequestCtx, ctx, projAbsPath)
 
 	if err != nil {
 		return nil, "", fmt.Errorf("%s\n%s", err, outputs)
@@ -309,7 +306,7 @@ func (p *DefaultProjectCommandRunner) doApply(ctx command.ProjectContext) (apply
 	}
 	defer unlockFn()
 
-	outputs, err := p.StepsRunner.Run(context.TODO(), ctx, absPath)
+	outputs, err := p.StepsRunner.Run(ctx.RequestCtx, ctx, absPath)
 
 	p.Webhooks.Send(ctx.Log, webhooks.ApplyResult{ // nolint: errcheck
 		Workspace: ctx.Workspace,
@@ -347,7 +344,7 @@ func (p *DefaultProjectCommandRunner) doVersion(ctx command.ProjectContext) (ver
 	}
 	defer unlockFn()
 
-	outputs, err := p.StepsRunner.Run(context.TODO(), ctx, absPath)
+	outputs, err := p.StepsRunner.Run(ctx.RequestCtx, ctx, absPath)
 	if err != nil {
 		return "", "", fmt.Errorf("%s\n%s", err, outputs)
 	}
