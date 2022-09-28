@@ -129,8 +129,10 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		},
 	}
 	args = append(args, request.Args...)
-	flags := []terraform.Flag{
-		request.Mode.ToFlag(),
+	var flags []terraform.Flag
+
+	if request.Mode != nil {
+		flags = append(flags, request.Mode.ToFlag())
 	}
 
 	planRequest := &terraform.RunCommandRequest{

@@ -161,7 +161,8 @@ func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *va
 }
 
 func (p *PushHandler) generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PlanMode {
-	if cfg.Tags[Deprecated] == Destroy {
+	t, ok := cfg.Tags[Deprecated]
+	if ok && t == Destroy {
 		return workflows.DestroyPlanMode
 	}
 
