@@ -31,17 +31,17 @@ type Comment struct {
 	InstallationToken int64
 }
 
-func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, allocator feature.Allocator) *CommentEventWorkerProxy {
-	return &CommentEventWorkerProxy{logger: logger, snsWriter: snsWriter, allocator: allocator}
+func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, allocator feature.Allocator, rootConfigBuilder rootConfigBuilder, scheduler scheduler, temporalClient signaler) *CommentEventWorkerProxy {
+	return &CommentEventWorkerProxy{logger: logger, snsWriter: snsWriter, allocator: allocator, rootConfigBuilder: rootConfigBuilder, scheduler: scheduler, temporalClient: temporalClient}
 }
 
 type CommentEventWorkerProxy struct {
 	logger            logging.Logger
 	snsWriter         Writer
 	allocator         feature.Allocator
-	RootConfigBuilder rootConfigBuilder
-	Scheduler         scheduler
-	TemporalClient    signaler
+	rootConfigBuilder rootConfigBuilder
+	scheduler         scheduler
+	temporalClient    signaler
 }
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, command *command.Comment) error {
@@ -55,8 +55,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 	}
 
 	if shouldAllocate && command.ForceApply {
-		p.logger.WarnContext(ctx, "force apply comment")
-		return p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
+		return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
 			return p.handleForceApplyComment(ctx, event)
 		})
 	}
@@ -77,8 +76,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 }
 
 func (p *CommentEventWorkerProxy) handleForceApplyComment(ctx context.Context, event Comment) error {
-	p.logger.WarnContext(ctx, fmt.Sprintf("building force apply: %s %s %d", event.BaseRepo.FullName, event.Pull.HeadCommit, event.InstallationToken))
-	rootCfgs, err := p.RootConfigBuilder.Build(ctx, event.BaseRepo, event.Pull.HeadCommit, event.InstallationToken)
+	rootCfgs, err := p.rootConfigBuilder.Build(ctx, event.HeadRepo, event.Pull.HeadBranch, event.Pull.HeadCommit, event.InstallationToken)
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
 	}
@@ -105,7 +103,7 @@ func (p *CommentEventWorkerProxy) startWorkflow(ctx context.Context, event Comme
 		tfVersion = rootCfg.TerraformVersion.String()
 	}
 
-	run, err := p.TemporalClient.SignalWithStartWorkflow(
+	run, err := p.temporalClient.SignalWithStartWorkflow(
 		ctx,
 		fmt.Sprintf("%s||%s", event.BaseRepo.FullName, rootCfg.Name),
 		workflows.DeployNewRevisionSignalID,

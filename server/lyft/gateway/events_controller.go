@@ -62,7 +62,7 @@ func NewVCSEventsController(
 		commentParser,
 		repoAllowlistChecker,
 		vcsClient,
-		gateway_handlers.NewCommentEventWorkerProxy(logger, snsWriter, featureAllocator),
+		gateway_handlers.NewCommentEventWorkerProxy(logger, snsWriter, featureAllocator, rootConfigBuilder, scheduler, temporalClient),
 		logger,
 	)
 

@@ -66,6 +66,6 @@ func (e CommentEventConverter) Convert(comment *github.IssueCommentEvent) (event
 		VCSHost:           models.Github,
 		Timestamp:         eventTimestamp,
 		InstallationToken: installationToken,
-		//Comment:           comment.GetComment().GetBody(),
+		Comment:           comment.GetComment().GetBody(),
 	}, nil
 }
