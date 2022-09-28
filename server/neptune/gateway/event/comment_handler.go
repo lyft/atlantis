@@ -114,7 +114,7 @@ func (p *CommentEventWorkerProxy) startWorkflow(ctx context.Context, event Comme
 		options,
 		workflows.Deploy,
 		workflows.DeployRequest{
-			Trigger: "manual",
+			Trigger: workflows.ManualTrigger,
 			Repository: workflows.Repo{
 				URL:      event.BaseRepo.CloneURL,
 				FullName: event.BaseRepo.FullName,

@@ -1,12 +1,18 @@
 package deploy
 
 // Types defined here should not be used internally, as our goal should be to eventually swap these out for something less brittle than json translation
+type Trigger string
+
+const (
+	MergeTrigger  Trigger = "merge"
+	ManualTrigger Trigger = "manual"
+)
 
 type Request struct {
 	GHRequestID string
 	Repository  Repo
 	Root        Root
-	Trigger     string
+	Trigger     Trigger
 }
 
 type Repo struct {

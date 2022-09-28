@@ -19,6 +19,10 @@ type Step = deploy.Step
 type AppCredentials = deploy.AppCredentials
 type HeadCommit = deploy.Commit
 type Ref = deploy.Ref
+type Trigger = deploy.Trigger
+
+const ManualTrigger = deploy.ManualTrigger
+const MergeTrigger = deploy.MergeTrigger
 
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 

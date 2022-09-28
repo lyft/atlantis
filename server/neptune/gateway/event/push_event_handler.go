@@ -122,7 +122,7 @@ func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *va
 		options,
 		workflows.Deploy,
 		workflows.DeployRequest{
-			Trigger: "merge",
+			Trigger: workflows.MergeTrigger,
 			Repository: workflows.Repo{
 				URL:      event.Repo.CloneURL,
 				FullName: event.Repo.FullName,
