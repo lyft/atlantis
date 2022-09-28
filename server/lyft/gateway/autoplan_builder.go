@@ -63,7 +63,7 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 
 	projectCmds, err := r.PrjCmdBuilder.BuildAutoplanCommands(cmdCtx)
 	if err != nil {
-		if _, statusErr := r.CommitStatusUpdater.UpdateCombined(ctx, baseRepo, pull, models.FailedCommitStatus, command.Plan, "", ""); statusErr != nil {
+		if _, statusErr := r.CommitStatusUpdater.UpdateCombined(ctx, baseRepo, pull, models.FailedCommitStatus, command.Plan, "", err.Error()); statusErr != nil {
 			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 		}
 		// If error happened after clone was made, we should clean it up here too

@@ -49,10 +49,11 @@ type AsyncAutoplannerWorkerProxy struct {
 
 func (p *AsyncAutoplannerWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
 	go func() {
-		err := p.proxy.Handle(ctx, request, event)
+		// Passing background context to avoid context cancellation since the parent goroutine does not wait for this goroutine to finish execution.
+		err := p.proxy.Handle(context.Background(), request, event)
 
 		if err != nil {
-			p.logger.ErrorContext(ctx, err.Error())
+			p.logger.ErrorContext(context.Background(), err.Error())
 		}
 	}()
 	return nil
