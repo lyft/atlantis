@@ -86,7 +86,7 @@ func (p *PushHandler) Handle(ctx context.Context, event Push) error {
 }
 
 func (p *PushHandler) handle(ctx context.Context, event Push) error {
-	rootCfgs, err := p.RootConfigBuilder.Build(ctx, event.Repo, event.Repo.DefaultBranch, event.Sha, event.InstallationToken)
+	rootCfgs, err := p.RootConfigBuilder.Build(ctx, event.Repo, event.Ref.Name, event.Sha, event.InstallationToken)
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
 	}
@@ -104,6 +104,7 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 	return nil
 }
 
+// TODO: extract out into a separate startWorkflow interface both the push event and comment handler can share
 func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *valid.MergedProjectCfg) (client.WorkflowRun, error) {
 	options := client.StartWorkflowOptions{TaskQueue: workflows.DeployTaskQueue}
 

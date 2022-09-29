@@ -51,6 +51,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 
 	if err != nil {
 		p.logger.ErrorContext(ctx, "unable to allocate platform mode")
+		p.forwardToSns(ctx, request)
 		return nil
 	}
 
@@ -60,7 +61,9 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 			return p.forceApply(ctx, event)
 		})
 	}
-
+	return p.forwardToSns(ctx, request)
+}
+func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *http.BufferedRequest) error {
 	buffer := bytes.NewBuffer([]byte{})
 
 	if err := request.GetRequestWithContext(ctx).Write(buffer); err != nil {

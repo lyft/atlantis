@@ -18,7 +18,6 @@ package models
 
 import (
 	"fmt"
-	"github.com/runatlantis/atlantis/server/vcs"
 	"net/url"
 	paths "path"
 	"regexp"
@@ -26,6 +25,7 @@ import (
 	"time"
 
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/vcs"
 
 	"github.com/pkg/errors"
 )
