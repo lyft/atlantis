@@ -87,9 +87,15 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	// TODO: We should actually probably pass this with the revision because a revision
 	// can potentially change a root configuration
 	root := root.Root{
-		Name:      request.Root.Name,
-		Apply:     job.Terraform{Steps: convertToInternalSteps(request.Root.Apply.Steps)},
-		Plan:      job.Plan{Terraform: job.Terraform{Steps: convertToInternalSteps(request.Root.Plan.Steps)}, Mode: convertToInternalMode(request.Root.PlanMode)},
+		Name: request.Root.Name,
+		Apply: job.Terraform{
+			Steps: convertToInternalSteps(request.Root.Apply.Steps),
+		},
+		Plan: job.Plan{
+			Terraform: job.Terraform{
+				Steps: convertToInternalSteps(request.Root.Plan.Steps)},
+			Mode: convertToInternalMode(request.Root.PlanMode),
+		},
 		Path:      request.Root.RepoRelPath,
 		TfVersion: request.Root.TfVersion,
 	}
