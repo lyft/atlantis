@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/gateway/context"
-	"github.com/runatlantis/atlantis/server/neptune/workflows"
-	"go.temporal.io/sdk/client"
 	"time"
 
 	"github.com/pkg/errors"
@@ -31,8 +29,8 @@ type Comment struct {
 	InstallationToken int64
 }
 
-func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, allocator feature.Allocator, rootConfigBuilder rootConfigBuilder, scheduler scheduler, temporalClient signaler) *CommentEventWorkerProxy {
-	return &CommentEventWorkerProxy{logger: logger, snsWriter: snsWriter, allocator: allocator, rootConfigBuilder: rootConfigBuilder, scheduler: scheduler, temporalClient: temporalClient}
+func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, allocator feature.Allocator, rootConfigBuilder rootConfigBuilder, scheduler scheduler, deploySignaler deploySignaler, vcsClient vcs.Client) *CommentEventWorkerProxy {
+	return &CommentEventWorkerProxy{logger: logger, snsWriter: snsWriter, allocator: allocator, rootConfigBuilder: rootConfigBuilder, scheduler: scheduler, deploySignaler: deploySignaler, vcsClient: vcsClient}
 }
 
 type CommentEventWorkerProxy struct {
@@ -41,7 +39,8 @@ type CommentEventWorkerProxy struct {
 	allocator         feature.Allocator
 	rootConfigBuilder rootConfigBuilder
 	scheduler         scheduler
-	temporalClient    signaler
+	deploySignaler    deploySignaler
+	vcsClient         vcs.Client
 }
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, command *command.Comment) error {
@@ -51,12 +50,15 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 
 	if err != nil {
 		p.logger.ErrorContext(ctx, "unable to allocate platform mode")
-		p.forwardToSns(ctx, request)
-		return nil
+		return p.forwardToSns(ctx, request)
 	}
 
 	if shouldAllocate && command.ForceApply {
 		p.logger.InfoContext(ctx, "running force apply command")
+		warningMessage := "⚠️ WARNING ⚠️\n\n You have bypassed all apply requirements for this PR 🚀 . This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘 .\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
+		if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); commentErr != nil {
+			p.logger.ErrorContext(ctx, commentErr.Error())
+		}
 		return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
 			return p.forceApply(ctx, event)
 		})
@@ -87,7 +89,7 @@ func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment)
 	for _, rootCfg := range rootCfgs {
 		p.logger.WarnContext(ctx, fmt.Sprintf("starting workflow"))
 		ctx = context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
-		run, err := p.startWorkflow(ctx, event, rootCfg)
+		run, err := p.deploySignaler.SignalWithStartWorkflow(ctx, rootCfg, event.BaseRepo, event.Pull.HeadCommit, event.InstallationToken, event.Pull.HeadRef)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")
 		}
@@ -97,69 +99,4 @@ func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment)
 		})
 	}
 	return nil
-}
-
-func (p *CommentEventWorkerProxy) startWorkflow(ctx context.Context, event Comment, rootCfg *valid.MergedProjectCfg) (client.WorkflowRun, error) {
-	options := client.StartWorkflowOptions{TaskQueue: workflows.DeployTaskQueue}
-
-	var tfVersion string
-	if rootCfg.TerraformVersion != nil {
-		tfVersion = rootCfg.TerraformVersion.String()
-	}
-
-	run, err := p.temporalClient.SignalWithStartWorkflow(
-		ctx,
-		fmt.Sprintf("%s||%s", event.BaseRepo.FullName, rootCfg.Name),
-		workflows.DeployNewRevisionSignalID,
-		workflows.DeployNewRevisionSignalRequest{
-			Revision: event.Pull.HeadCommit,
-		},
-		options,
-		workflows.Deploy,
-		workflows.DeployRequest{
-			Trigger: workflows.ManualTrigger,
-			Repository: workflows.Repo{
-				URL:      event.BaseRepo.CloneURL,
-				FullName: event.BaseRepo.FullName,
-				Name:     event.BaseRepo.Name,
-				Owner:    event.BaseRepo.Owner,
-				Credentials: workflows.AppCredentials{
-					InstallationToken: event.InstallationToken,
-				},
-				HeadCommit: workflows.HeadCommit{
-					Ref: workflows.Ref{
-						Name: event.Pull.HeadRef.Name,
-						Type: string(event.Pull.HeadRef.Type),
-					},
-				},
-			},
-			Root: workflows.Root{
-				Name: rootCfg.Name,
-				Plan: workflows.Job{
-					Steps: p.generateSteps(rootCfg.DeploymentWorkflow.Plan.Steps),
-				},
-				Apply: workflows.Job{
-					Steps: p.generateSteps(rootCfg.DeploymentWorkflow.Apply.Steps),
-				},
-				RepoRelPath: rootCfg.RepoRelDir,
-				TfVersion:   tfVersion,
-			},
-		},
-	)
-	return run, err
-}
-
-func (p *CommentEventWorkerProxy) generateSteps(steps []valid.Step) []workflows.Step {
-	// NOTE: for deployment workflows, we won't support command level user requests for log level output verbosity
-	var workflowSteps []workflows.Step
-	for _, step := range steps {
-		workflowSteps = append(workflowSteps, workflows.Step{
-			StepName:    step.StepName,
-			ExtraArgs:   step.ExtraArgs,
-			RunCommand:  step.RunCommand,
-			EnvVarName:  step.EnvVarName,
-			EnvVarValue: step.EnvVarValue,
-		})
-	}
-	return workflowSteps
 }

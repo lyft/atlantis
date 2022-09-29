@@ -2,8 +2,6 @@ package event
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -11,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/gateway/context"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/sync"
-	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"
 	"go.temporal.io/sdk/client"
 )
@@ -33,14 +30,12 @@ type Push struct {
 	Action            PushAction
 }
 
-type signaler interface {
-	SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{},
-		options client.StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (client.WorkflowRun, error)
-	SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error
-}
-
 type scheduler interface {
 	Schedule(ctx context.Context, f sync.Executor) error
+}
+
+type deploySignaler interface {
+	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, repo models.Repo, revision string, installationToken int64, ref vcs.Ref) (client.WorkflowRun, error)
 }
 
 type rootConfigBuilder interface {
@@ -50,7 +45,7 @@ type rootConfigBuilder interface {
 type PushHandler struct {
 	Allocator         feature.Allocator
 	Scheduler         scheduler
-	TemporalClient    signaler
+	DeploySignaler    deploySignaler
 	Logger            logging.Logger
 	RootConfigBuilder rootConfigBuilder
 }
@@ -92,7 +87,7 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 	}
 	for _, rootCfg := range rootCfgs {
 		ctx = context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
-		run, err := p.startWorkflow(ctx, event, rootCfg)
+		run, err := p.DeploySignaler.SignalWithStartWorkflow(ctx, rootCfg, event.Repo, event.Sha, event.InstallationToken, event.Ref)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")
 		}
@@ -102,70 +97,4 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 		})
 	}
 	return nil
-}
-
-// TODO: extract out into a separate startWorkflow interface both the push event and comment handler can share
-func (p *PushHandler) startWorkflow(ctx context.Context, event Push, rootCfg *valid.MergedProjectCfg) (client.WorkflowRun, error) {
-	options := client.StartWorkflowOptions{TaskQueue: workflows.DeployTaskQueue}
-
-	var tfVersion string
-	if rootCfg.TerraformVersion != nil {
-		tfVersion = rootCfg.TerraformVersion.String()
-	}
-
-	run, err := p.TemporalClient.SignalWithStartWorkflow(
-		ctx,
-		fmt.Sprintf("%s||%s", event.Repo.FullName, rootCfg.Name),
-		workflows.DeployNewRevisionSignalID,
-		workflows.DeployNewRevisionSignalRequest{
-			Revision: event.Sha,
-		},
-		options,
-		workflows.Deploy,
-		workflows.DeployRequest{
-			Trigger: workflows.MergeTrigger,
-			Repository: workflows.Repo{
-				URL:      event.Repo.CloneURL,
-				FullName: event.Repo.FullName,
-				Name:     event.Repo.Name,
-				Owner:    event.Repo.Owner,
-				Credentials: workflows.AppCredentials{
-					InstallationToken: event.InstallationToken,
-				},
-				HeadCommit: workflows.HeadCommit{
-					Ref: workflows.Ref{
-						Name: event.Ref.Name,
-						Type: string(event.Ref.Type),
-					},
-				},
-			},
-			Root: workflows.Root{
-				Name: rootCfg.Name,
-				Plan: workflows.Job{
-					Steps: p.generateSteps(rootCfg.DeploymentWorkflow.Plan.Steps),
-				},
-				Apply: workflows.Job{
-					Steps: p.generateSteps(rootCfg.DeploymentWorkflow.Apply.Steps),
-				},
-				RepoRelPath: rootCfg.RepoRelDir,
-				TfVersion:   tfVersion,
-			},
-		},
-	)
-	return run, err
-}
-
-func (p *PushHandler) generateSteps(steps []valid.Step) []workflows.Step {
-	// NOTE: for deployment workflows, we won't support command level user requests for log level output verbosity
-	var workflowSteps []workflows.Step
-	for _, step := range steps {
-		workflowSteps = append(workflowSteps, workflows.Step{
-			StepName:    step.StepName,
-			ExtraArgs:   step.ExtraArgs,
-			RunCommand:  step.RunCommand,
-			EnvVarName:  step.EnvVarName,
-			EnvVarValue: step.EnvVarValue,
-		})
-	}
-	return workflowSteps
 }
