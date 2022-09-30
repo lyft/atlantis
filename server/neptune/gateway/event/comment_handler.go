@@ -7,6 +7,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/gateway/context"
+	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"time"
 
 	"github.com/pkg/errors"
@@ -89,7 +90,14 @@ func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment)
 	for _, rootCfg := range rootCfgs {
 		p.logger.WarnContext(ctx, fmt.Sprintf("starting workflow"))
 		ctx = context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
-		run, err := p.deploySignaler.SignalWithStartWorkflow(ctx, rootCfg, event.BaseRepo, event.Pull.HeadCommit, event.InstallationToken, event.Pull.HeadRef)
+		run, err := p.deploySignaler.SignalWithStartWorkflow(
+			ctx,
+			rootCfg,
+			event.BaseRepo,
+			event.Pull.HeadCommit,
+			event.InstallationToken,
+			event.Pull.HeadRef,
+			workflows.ManualTrigger)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")
 		}

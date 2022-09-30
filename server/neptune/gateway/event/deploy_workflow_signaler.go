@@ -31,7 +31,8 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 	repo models.Repo,
 	revision string,
 	installationToken int64,
-	ref vcs.Ref) (client.WorkflowRun, error) {
+	ref vcs.Ref,
+	trigger workflows.Trigger) (client.WorkflowRun, error) {
 
 	options := client.StartWorkflowOptions{TaskQueue: workflows.DeployTaskQueue}
 
@@ -50,7 +51,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 		options,
 		workflows.Deploy,
 		workflows.DeployRequest{
-			Trigger: workflows.MergeTrigger,
+			Trigger: trigger,
 			Repository: workflows.Repo{
 				URL:      repo.CloneURL,
 				FullName: repo.FullName,

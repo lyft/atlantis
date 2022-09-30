@@ -9,6 +9,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/gateway/context"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/sync"
+	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"
 	"go.temporal.io/sdk/client"
 )
@@ -35,7 +36,7 @@ type scheduler interface {
 }
 
 type deploySignaler interface {
-	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, repo models.Repo, revision string, installationToken int64, ref vcs.Ref) (client.WorkflowRun, error)
+	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, repo models.Repo, revision string, installationToken int64, ref vcs.Ref, trigger workflows.Trigger) (client.WorkflowRun, error)
 }
 
 type rootConfigBuilder interface {
@@ -87,7 +88,14 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 	}
 	for _, rootCfg := range rootCfgs {
 		ctx = context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
-		run, err := p.DeploySignaler.SignalWithStartWorkflow(ctx, rootCfg, event.Repo, event.Sha, event.InstallationToken, event.Ref)
+		run, err := p.DeploySignaler.SignalWithStartWorkflow(
+			ctx,
+			rootCfg,
+			event.Repo,
+			event.Sha,
+			event.InstallationToken,
+			event.Ref,
+			workflows.MergeTrigger)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")
 		}

@@ -114,7 +114,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 				TaskQueue: workflows.DeployTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{
-				Trigger: "merge",
+				Trigger: workflows.MergeTrigger,
 				Repository: workflows.Repo{
 					FullName: repoFullName,
 					Name:     repoName,
@@ -143,7 +143,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 		deploySignaler := event.DeployWorkflowSignaler{
 			TemporalClient: testSignaler,
 		}
-		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref)
+		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref, workflows.MergeTrigger)
 		assert.NoError(t, err)
 		assert.Equal(t, testRun{}, run)
 	})
@@ -173,7 +173,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 				TaskQueue: workflows.DeployTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{
-				Trigger: "merge",
+				Trigger: workflows.MergeTrigger,
 				Repository: workflows.Repo{
 					FullName: repoFullName,
 					Name:     repoName,
@@ -202,7 +202,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 		deploySignaler := event.DeployWorkflowSignaler{
 			TemporalClient: testSignaler,
 		}
-		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref)
+		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref, workflows.MergeTrigger)
 		assert.NoError(t, err)
 		assert.Equal(t, testRun{}, run)
 	})
@@ -279,7 +279,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 	deploySignaler := event.DeployWorkflowSignaler{
 		TemporalClient: testSignaler,
 	}
-	run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref)
+	run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref, workflows.MergeTrigger)
 	assert.Error(t, err)
 	assert.Equal(t, testRun{}, run)
 }
