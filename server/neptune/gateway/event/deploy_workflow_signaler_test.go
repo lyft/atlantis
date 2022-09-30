@@ -108,6 +108,18 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			expectedSignalName: workflows.DeployNewRevisionSignalID,
 			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 				Revision: sha,
+				Root: workflows.Root{
+					Name: testRoot,
+					Plan: workflows.Job{
+						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
+					},
+					Apply: workflows.Job{
+						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
+					},
+					TfVersion: version.String(),
+					PlanMode:  workflows.NormalPlanMode,
+					Trigger:   workflows.MergeTrigger,
+				},
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
@@ -125,18 +137,6 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 							Type: string(ref.Type),
 						},
 					},
-				},
-				Root: workflows.Root{
-					Name: testRoot,
-					Plan: workflows.Job{
-						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
-					},
-					Apply: workflows.Job{
-						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
-					},
-					TfVersion: version.String(),
-					PlanMode:  workflows.NormalPlanMode,
-					Trigger:   workflows.MergeTrigger,
 				},
 			},
 		}
@@ -167,6 +167,18 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			expectedSignalName: workflows.DeployNewRevisionSignalID,
 			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 				Revision: sha,
+				Root: workflows.Root{
+					Name: testRoot,
+					Plan: workflows.Job{
+						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
+					},
+					Apply: workflows.Job{
+						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
+					},
+					TfVersion: version.String(),
+					PlanMode:  workflows.DestroyPlanMode,
+					Trigger:   workflows.MergeTrigger,
+				},
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
@@ -184,18 +196,6 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 							Type: string(ref.Type),
 						},
 					},
-				},
-				Root: workflows.Root{
-					Name: testRoot,
-					Plan: workflows.Job{
-						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
-					},
-					Apply: workflows.Job{
-						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
-					},
-					TfVersion: version.String(),
-					PlanMode:  workflows.DestroyPlanMode,
-					Trigger:   workflows.MergeTrigger,
 				},
 			},
 		}
@@ -243,6 +243,18 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 		expectedSignalName: workflows.DeployNewRevisionSignalID,
 		expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 			Revision: sha,
+			Root: workflows.Root{
+				Name: testRoot,
+				Plan: workflows.Job{
+					Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
+				},
+				Apply: workflows.Job{
+					Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
+				},
+				TfVersion: version.String(),
+				PlanMode:  workflows.NormalPlanMode,
+				Trigger:   workflows.MergeTrigger,
+			},
 		},
 		expectedWorkflow: workflows.Deploy,
 		expectedOptions: client.StartWorkflowOptions{
@@ -260,18 +272,6 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 						Type: string(ref.Type),
 					},
 				},
-			},
-			Root: workflows.Root{
-				Name: testRoot,
-				Plan: workflows.Job{
-					Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
-				},
-				Apply: workflows.Job{
-					Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
-				},
-				TfVersion: version.String(),
-				PlanMode:  workflows.NormalPlanMode,
-				Trigger:   workflows.MergeTrigger,
 			},
 		},
 		expectedErr: expectedErr,
