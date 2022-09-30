@@ -35,12 +35,12 @@ const (
 // Note: This doesn't prevent issues with naming duplication that can come up when
 // registering multiple workflows to the same worker
 type Deploy struct {
-	*dbActivities
+	*storeActivities
 }
 
 func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
 	return &Deploy{
-		dbActivities: &dbActivities{},
+		storeActivities: &storeActivities{},
 	}, nil
 }
 
@@ -94,6 +94,10 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 			DefaultTFVersion: defaultTfVersion,
 		},
 	}, nil
+}
+
+type Store struct {
+	*storeActivities
 }
 
 type Github struct {

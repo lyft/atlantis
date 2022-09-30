@@ -204,3 +204,19 @@ func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootReque
 		LocalRoot: localRoot,
 	}, nil
 }
+
+type CompareCommitsRequest struct {
+	OldCommit string
+	NewCommit string
+}
+
+type CompareCommitsResponse struct {
+	IsDiverged bool
+}
+
+// Fetch last commit
+func (a *githubActivities) CompareCommits(ctx context.Context, request CompareCommitsRequest) (CompareCommitsResponse, error) {
+	return CompareCommitsResponse{
+		IsDiverged: true,
+	}, nil
+}

@@ -12,8 +12,12 @@ import (
 //go:embed templates/checkrun.tmpl
 var checkrunTemplateStr string
 
+//go:embed templates/checkrunlock.tmpl
+var checkrunLockTemplateStr string
+
 // panics if we can't read the template
 var checkrunTemplate = template.Must(template.New("").Parse(checkrunTemplateStr))
+var checkrunLockTemplate = template.Must(template.New("").Parse(checkrunLockTemplateStr))
 
 type checkrunTemplateData struct {
 	PlanStatus  string
@@ -21,6 +25,8 @@ type checkrunTemplateData struct {
 	ApplyStatus string
 	ApplyLogURL string
 }
+
+type checkrunLockTemplateData struct{}
 
 func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	planStatus, planLogURL := getJobStatusAndOutput(workflowState.Plan)
@@ -32,6 +38,10 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 		ApplyStatus: applyStatus,
 		ApplyLogURL: applyLogURL,
 	})
+}
+
+func RenderLockStateTmpl() string {
+	return renderTemplate(checkrunLockTemplate, checkrunLockTemplateData{})
 }
 
 func getJobStatusAndOutput(jobState *state.Job) (string, string) {

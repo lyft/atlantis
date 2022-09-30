@@ -92,3 +92,31 @@ func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState 
 	// this is a failure or rejection at this point
 	return github.CheckRunFailure
 }
+
+func (n *StateReceiver) ReceiveLockStatus(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
+	var lockState *state.Lock
+	c.Receive(ctx, &lockState)
+
+	// TODO: if we never created a check run, there was likely some issue, we should attempt to create it again.
+	if deploymentInfo.CheckRunID == 0 {
+		logger.Error(ctx, "check run id is 0, skipping update of check run")
+		return
+	}
+
+	request := activities.UpdateCheckRunRequest{
+		Title:   BuildCheckRunTitle(deploymentInfo.Root.Name),
+		State:   github.CheckRunQueued,
+		Repo:    n.Repo,
+		ID:      deploymentInfo.CheckRunID,
+		Summary: markdown.RenderLockStateTmpl(),
+		Actions: []github.CheckRunAction{github.CreateUnlockAction()},
+	}
+
+	// TODO: should we block here? maybe we can just make this async
+	var resp activities.UpdateCheckRunResponse
+	err := workflow.ExecuteActivity(ctx, n.Activity.UpdateCheckRun, request).Get(ctx, &resp)
+
+	if err != nil {
+		logger.Error(ctx, "updating check run", "err", err)
+	}
+}

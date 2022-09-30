@@ -6,12 +6,12 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/logger"
 )
 
-type dbActivities struct {
+type storeActivities struct {
 }
 
 type FetchLatestDeploymentRequest struct {
-	RepositoryURL string
-	RootName      string
+	RepositoryName string
+	RootName       string
 }
 
 type FetchLatestDeploymentResponse struct {
@@ -19,7 +19,7 @@ type FetchLatestDeploymentResponse struct {
 	Revision string
 }
 
-func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
+func (a *storeActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
 	logger.Info(ctx, "fetching latest deployment")
 
 	return FetchLatestDeploymentResponse{

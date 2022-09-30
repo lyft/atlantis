@@ -8,9 +8,10 @@ import (
 
 type JobStatus string
 
-const WorkflowStateChangeSignal = "terraform-workflow-state-change"
-
 const (
+	WorkflowStateChangeSignal = "terraform-workflow-state-change"
+	LockStateChangeSignal     = "terraform-lock-state-change"
+
 	WaitingJobStatus    JobStatus = "waiting"
 	InProgressJobStatus JobStatus = "in-progress"
 	RejectedJobStatus   JobStatus = "rejected"
@@ -19,7 +20,7 @@ const (
 )
 
 type JobOutput struct {
-	URL     *url.URL
+	URL *url.URL
 
 	// populated for plan jobs
 	Summary terraform.PlanSummary
@@ -33,4 +34,8 @@ type Job struct {
 type Workflow struct {
 	Plan  *Job
 	Apply *Job
+}
+
+type Lock struct {
+	Locked bool
 }

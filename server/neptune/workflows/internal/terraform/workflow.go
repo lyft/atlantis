@@ -17,6 +17,7 @@ import (
 
 type githubActivities interface {
 	FetchRoot(ctx context.Context, request activities.FetchRootRequest) (activities.FetchRootResponse, error)
+	CompareCommits(ctx context.Context, request activities.CompareCommitsRequest) (activities.CompareCommitsResponse, error)
 }
 
 type terraformActivities interface {
@@ -77,11 +78,13 @@ type Runner struct {
 	Request             Request
 	Store               *state.WorkflowStore
 	RootFetcher         *RootFetcher
+	RootLocker          *RootLocker
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
 	var ta *activities.Terraform
 	var ga *activities.Github
+	var sa *activities.Store
 
 	cmdStepRunner := runner.CmdStepRunner{
 		Activity: ta,
@@ -105,6 +108,9 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 			Ga:      ga,
 			Ta:      ta,
 		},
+		RootLocker: NewRootLocker(request, ga, sa, func(s *state.Lock) error {
+			return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.LockStateChangeSignal, s).Get(ctx, nil)
+		}),
 		Store: state.NewWorkflowStore(
 			func(s *state.Workflow) error {
 				return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.WorkflowStateChangeSignal, s).Get(ctx, nil)
@@ -196,6 +202,11 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 	if err != nil {
 		return errors.Wrap(err, "getting worker info")
+	}
+
+	err = r.RootLocker.Lock(ctx)
+	if err != nil {
+		return errors.Wrap(err, "validating if root needs to be locked")
 	}
 
 	root, cleanup, err := r.RootFetcher.Fetch(ctx)
