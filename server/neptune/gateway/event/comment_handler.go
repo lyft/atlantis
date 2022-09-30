@@ -40,14 +40,13 @@ func NewCommentEventWorkerProxy(
 	deploySignaler deploySignaler,
 	vcsClient vcs.Client) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
-		logger: logger,
-		snsWriter: snsWriter,
-		allocator: allocator,
-		rootConfigBuilder:
-			rootConfigBuilder,
-			scheduler: scheduler,
-			deploySignaler: deploySignaler,
-			vcsClient: vcsClient
+		logger:            logger,
+		snsWriter:         snsWriter,
+		allocator:         allocator,
+		rootConfigBuilder: rootConfigBuilder,
+		scheduler:         scheduler,
+		deploySignaler:    deploySignaler,
+		vcsClient:         vcsClient,
 	}
 }
 
