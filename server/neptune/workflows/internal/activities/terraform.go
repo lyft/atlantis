@@ -212,18 +212,6 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	return TerraformApplyResponse{}, nil
 }
 
-type TerraformCloseJobRequest struct {
-	JobID string
-}
-
-func (t *terraformActivities) TerraformCloseJob(ctx context.Context, request TerraformCloseJobRequest) error {
-	err := t.StreamHandler.Close(ctx, request.JobID)
-	if err != nil {
-		logger.Error(ctx, errors.Wrapf(err, "closing job with id: %s", request.JobID).Error())
-	}
-	return err
-}
-
 func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jobID string, request *terraform.RunCommandRequest) error {
 	reader, writer := io.Pipe()
 

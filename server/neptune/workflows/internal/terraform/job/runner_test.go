@@ -47,7 +47,7 @@ type testTerraformActivity struct {
 		err  error
 	}
 	close struct {
-		req activities.TerraformCloseJobRequest
+		req activities.CloseJobRequest
 		err error
 	}
 }
@@ -66,7 +66,7 @@ func (t *testTerraformActivity) TerraformApply(ctx context.Context, request acti
 	return t.apply.resp, t.apply.err
 }
 
-func (t *testTerraformActivity) TerraformCloseJob(ctx context.Context, request activities.TerraformCloseJobRequest) error {
+func (t *testTerraformActivity) CloseJob(ctx context.Context, request activities.CloseJobRequest) error {
 	assert.Equal(t.t, t.close.req, request)
 	return t.close.err
 }
@@ -138,10 +138,10 @@ func TestJobRunner_Plan(t *testing.T) {
 				},
 			},
 			close: struct {
-				req activities.TerraformCloseJobRequest
+				req activities.CloseJobRequest
 				err error
 			}{
-				req: activities.TerraformCloseJobRequest{
+				req: activities.CloseJobRequest{
 					JobID: JobID,
 				},
 			},
@@ -177,10 +177,10 @@ func TestJobRunner_Plan(t *testing.T) {
 				},
 			},
 			close: struct {
-				req activities.TerraformCloseJobRequest
+				req activities.CloseJobRequest
 				err error
 			}{
-				req: activities.TerraformCloseJobRequest{
+				req: activities.CloseJobRequest{
 					JobID: JobID,
 				},
 				err: errors.New("error"),
@@ -219,10 +219,10 @@ func TestJobRunner_Apply(t *testing.T) {
 				},
 			},
 			close: struct {
-				req activities.TerraformCloseJobRequest
+				req activities.CloseJobRequest
 				err error
 			}{
-				req: activities.TerraformCloseJobRequest{
+				req: activities.CloseJobRequest{
 					JobID: JobID,
 				},
 			},
@@ -254,10 +254,10 @@ func TestJobRunner_Apply(t *testing.T) {
 				},
 			},
 			close: struct {
-				req activities.TerraformCloseJobRequest
+				req activities.CloseJobRequest
 				err error
 			}{
-				req: activities.TerraformCloseJobRequest{
+				req: activities.CloseJobRequest{
 					JobID: JobID,
 				},
 				err: errors.New("error"),

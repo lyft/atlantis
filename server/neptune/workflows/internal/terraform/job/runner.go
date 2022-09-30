@@ -15,7 +15,7 @@ type terraformActivities interface {
 	TerraformInit(ctx context.Context, request activities.TerraformInitRequest) (activities.TerraformInitResponse, error)
 	TerraformPlan(ctx context.Context, request activities.TerraformPlanRequest) (activities.TerraformPlanResponse, error)
 	TerraformApply(ctx context.Context, request activities.TerraformApplyRequest) (activities.TerraformApplyResponse, error)
-	TerraformCloseJob(ctx context.Context, request activities.TerraformCloseJobRequest) error
+	TerraformCloseJob(ctx context.Context, request activities.CloseJobRequest) error
 }
 
 // stepRunner runs individual run steps
@@ -186,7 +186,7 @@ func (r *jobRunner) closeTerraformJob(ctx *job.ExecutionContext) {
 	var resp string
 
 	// let's not fail this workfklow if closing the job fails since it's not critical to close the job for the tf workflow
-	_ = workflow.ExecuteActivity(ctx, r.Activity.TerraformCloseJob, activities.TerraformCloseJobRequest{
+	_ = workflow.ExecuteActivity(ctx, r.Activity.TerraformCloseJob, activities.CloseJobRequest{
 		JobID: ctx.JobID,
 	}).Get(ctx, &resp)
 }
