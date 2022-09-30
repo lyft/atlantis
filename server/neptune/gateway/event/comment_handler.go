@@ -3,7 +3,6 @@ package event
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/gateway/context"
@@ -16,6 +15,8 @@ import (
 	"github.com/runatlantis/atlantis/server/http"
 	"github.com/runatlantis/atlantis/server/logging"
 )
+
+const warningMessage = "⚠️ WARNING ⚠️\n\n You have bypassed all apply requirements for this PR 🚀 . This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘 .\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
 
 // Comment is our internal representation of a vcs based comment event.
 type Comment struct {
@@ -30,8 +31,23 @@ type Comment struct {
 	InstallationToken int64
 }
 
-func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, allocator feature.Allocator, rootConfigBuilder rootConfigBuilder, scheduler scheduler, deploySignaler deploySignaler, vcsClient vcs.Client) *CommentEventWorkerProxy {
-	return &CommentEventWorkerProxy{logger: logger, snsWriter: snsWriter, allocator: allocator, rootConfigBuilder: rootConfigBuilder, scheduler: scheduler, deploySignaler: deploySignaler, vcsClient: vcsClient}
+func NewCommentEventWorkerProxy(
+	logger logging.Logger,
+	snsWriter Writer,
+	allocator feature.Allocator,
+	rootConfigBuilder rootConfigBuilder,
+	scheduler scheduler,
+	deploySignaler deploySignaler,
+	vcsClient vcs.Client) *CommentEventWorkerProxy {
+	return &CommentEventWorkerProxy{
+		logger:            logger,
+		snsWriter:         snsWriter,
+		allocator:         allocator,
+		rootConfigBuilder: rootConfigBuilder,
+		scheduler:         scheduler,
+		deploySignaler:    deploySignaler,
+		vcsClient:         vcsClient,
+	}
 }
 
 type CommentEventWorkerProxy struct {
@@ -56,7 +72,6 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 
 	if shouldAllocate && command.ForceApply {
 		p.logger.InfoContext(ctx, "running force apply command")
-		warningMessage := "⚠️ WARNING ⚠️\n\n You have bypassed all apply requirements for this PR 🚀 . This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘 .\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
 		if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); commentErr != nil {
 			p.logger.ErrorContext(ctx, commentErr.Error())
 		}
@@ -66,6 +81,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 	}
 	return p.forwardToSns(ctx, request)
 }
+
 func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *http.BufferedRequest) error {
 	buffer := bytes.NewBuffer([]byte{})
 
@@ -88,7 +104,6 @@ func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment)
 		return errors.Wrap(err, "generating roots")
 	}
 	for _, rootCfg := range rootCfgs {
-		p.logger.WarnContext(ctx, fmt.Sprintf("starting workflow"))
 		ctx = context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
 		run, err := p.deploySignaler.SignalWithStartWorkflow(
 			ctx,

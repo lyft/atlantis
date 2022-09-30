@@ -81,6 +81,7 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 			},
 		},
 	}
+
 	// inject dependencies
 
 	// temporal effectively "injects" this, it just cares about the method names,
