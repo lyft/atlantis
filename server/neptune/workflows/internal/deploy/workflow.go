@@ -74,12 +74,6 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 		Credentials: github.AppCredentials{
 			InstallationToken: request.Repository.Credentials.InstallationToken,
 		},
-		HeadCommit: github.Commit{
-			Ref: github.Ref{
-				Name: request.Repository.HeadCommit.Ref.Name,
-				Type: request.Repository.HeadCommit.Ref.Type,
-			},
-		},
 	}
 
 	// inject dependencies

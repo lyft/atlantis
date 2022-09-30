@@ -19,6 +19,7 @@ type idGenerator func(ctx workflow.Context) (uuid.UUID, error)
 type NewRevisionRequest struct {
 	Revision string
 	Root     request.Root
+	Ref      request.Ref
 }
 
 type Queue interface {
@@ -87,6 +88,10 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		Root:       root,
 		Revision:   request.Revision,
 		CheckRunID: resp.ID,
+		Ref: github.Ref{
+			Name: request.Ref.Name,
+			Type: request.Ref.Type,
+		},
 	})
 
 }

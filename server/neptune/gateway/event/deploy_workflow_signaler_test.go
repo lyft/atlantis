@@ -120,6 +120,10 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					PlanMode:  workflows.NormalPlanMode,
 					Trigger:   workflows.MergeTrigger,
 				},
+				Ref: workflows.Ref{
+					Name: ref.Name,
+					Type: string(ref.Type),
+				},
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
@@ -131,12 +135,6 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					Name:     repoName,
 					Owner:    repoOwner,
 					URL:      repoURL,
-					HeadCommit: workflows.HeadCommit{
-						Ref: workflows.Ref{
-							Name: ref.Name,
-							Type: string(ref.Type),
-						},
-					},
 				},
 			},
 		}
@@ -179,6 +177,10 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					PlanMode:  workflows.DestroyPlanMode,
 					Trigger:   workflows.MergeTrigger,
 				},
+				Ref: workflows.Ref{
+					Name: ref.Name,
+					Type: string(ref.Type),
+				},
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
@@ -190,12 +192,6 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					Name:     repoName,
 					Owner:    repoOwner,
 					URL:      repoURL,
-					HeadCommit: workflows.HeadCommit{
-						Ref: workflows.Ref{
-							Name: ref.Name,
-							Type: string(ref.Type),
-						},
-					},
 				},
 			},
 		}
@@ -255,6 +251,10 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				PlanMode:  workflows.NormalPlanMode,
 				Trigger:   workflows.MergeTrigger,
 			},
+			Ref: workflows.Ref{
+				Name: ref.Name,
+				Type: string(ref.Type),
+			},
 		},
 		expectedWorkflow: workflows.Deploy,
 		expectedOptions: client.StartWorkflowOptions{
@@ -266,12 +266,6 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				Name:     repoName,
 				Owner:    repoOwner,
 				URL:      repoURL,
-				HeadCommit: workflows.HeadCommit{
-					Ref: workflows.Ref{
-						Name: ref.Name,
-						Type: string(ref.Type),
-					},
-				},
 			},
 		},
 		expectedErr: expectedErr,

@@ -19,13 +19,10 @@ import (
 const (
 	RepoName    = "test-repo"
 	RepoOwner   = "test-owner"
-	RepoPath    = "test/repo"
 	ProjectName = "test-project"
 	ProjectPath = "test/repo/project"
 	RefName     = "main"
 	RefType     = "branch"
-	Dir         = "test-path"
-	UserName    = "test-user"
 )
 
 type request struct {
@@ -77,13 +74,12 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 		},
 		Path: ProjectPath,
 		EnvVars: map[string]string{
-			"BASE_REPO_NAME":    RepoName,
-			"BASE_REPO_OWNER":   RepoOwner,
-			"DIR":          ProjectPath,
-			"HEAD_COMMIT":  "refs/heads/main",
-			"PROJECT_NAME": ProjectName,
-			"REPO_REL_DIR": "project",
-			"USER_NAME":    UserName,
+			"BASE_REPO_NAME":  RepoName,
+			"BASE_REPO_OWNER": RepoOwner,
+			"DIR":             ProjectPath,
+			"HEAD_COMMIT":     "refs/heads/main",
+			"PROJECT_NAME":    ProjectName,
+			"REPO_REL_DIR":    "project",
 		},
 	}).Return(activities.ExecuteCommandResponse{
 		Output: "Hello World",
@@ -98,15 +94,6 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 			Repo: github.Repo{
 				Name:  RepoName,
 				Owner: RepoOwner,
-				HeadCommit: github.Commit{
-					Ref: github.Ref{
-						Name: RefName,
-						Type: RefType,
-					},
-					Author: github.User{
-						Username: UserName,
-					},
-				},
 			},
 		},
 		Step: job.Step{
