@@ -183,8 +183,7 @@ func (r *jobRunner) runOptionalSteps(ctx *job.ExecutionContext, localRoot *root.
 }
 
 func (r *jobRunner) closeTerraformJob(ctx *job.ExecutionContext) {
-	var resp string
 	workflow.ExecuteActivity(ctx, r.Activity.CloseJob, activities.CloseJobRequest{
 		JobID: ctx.JobID,
-	}).Get(ctx, &resp)
+	}).Get(ctx, nil)
 }
