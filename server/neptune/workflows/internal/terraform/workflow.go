@@ -38,6 +38,13 @@ type PlanReviewSignalRequest struct {
 	User string
 }
 
+type UnlockSignalRequest struct {
+	Unlock bool
+
+	// TODO: Output this info to the checks UI
+	User string
+}
+
 const (
 	Approved PlanStatus = iota
 	Rejected
@@ -45,6 +52,7 @@ const (
 
 const (
 	PlanReviewSignalName = "planreview"
+	UnlockSignalName     = "unlock"
 )
 
 func Workflow(ctx workflow.Context, request Request) error {

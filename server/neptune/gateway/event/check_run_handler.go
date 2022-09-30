@@ -61,16 +61,25 @@ func (h *CheckRunHandler) Handle(ctx context.Context, event CheckRun) error {
 	if !ok {
 		return fmt.Errorf("event action type does not match string type.  This is likely a code bug")
 	}
+	var err error
+	if action.Identifier == "Unlock" {
+		err = h.signalUnlockWorkflowChannel(ctx, event)
+	} else {
+		err = h.signalPlanReviewWorkflowChannel(ctx, event, action)
+	}
+	if err != nil {
+		return errors.Wrapf(err, "signaling workflow with id: %s", event.ExternalID)
+	}
+	return nil
+}
 
+func (h *CheckRunHandler) signalPlanReviewWorkflowChannel(ctx context.Context, event CheckRun, action RequestedActionChecksAction) error {
 	status, err := toPlanReviewStatus(action)
-
 	if err != nil {
 		return errors.Wrap(err, "converting action to plan status")
 	}
-
 	err = h.TemporalClient.SignalWorkflow(
 		ctx,
-
 		// assumed that we're using the check run external id as our workflow id
 		event.ExternalID,
 		// keeping this empty is fine since temporal will find the currently running workflow
@@ -80,14 +89,23 @@ func (h *CheckRunHandler) Handle(ctx context.Context, event CheckRun) error {
 			Status: status,
 			User:   event.User,
 		})
-
-	if err != nil {
-		return errors.Wrapf(err, "signaling workflow with id: %s", event.ExternalID)
-	}
-
 	h.Logger.InfoContext(ctx, fmt.Sprintf("Signaled workflow with id %s, review status, %d", event.ExternalID, status))
+	return err
+}
 
-	return nil
+func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event CheckRun) error {
+	err := h.TemporalClient.SignalWorkflow(
+		ctx,
+		// assumed that we're using the check run external id as our workflow id
+		event.ExternalID,
+		// keeping this empty is fine since temporal will find the currently running workflow
+		"",
+		workflows.TerraformUnlockSignalName,
+		workflows.TerraformUnlockSignalRequest{
+			Unlock: true,
+			User:   event.User,
+		})
+	return err
 }
 
 func toPlanReviewStatus(action RequestedActionChecksAction) (workflows.TerraformPlanReviewStatus, error) {
@@ -97,6 +115,5 @@ func toPlanReviewStatus(action RequestedActionChecksAction) (workflows.Terraform
 	case "Reject":
 		return workflows.RejectedPlanReviewStatus, nil
 	}
-
 	return workflows.RejectedPlanReviewStatus, fmt.Errorf("unknown action id %s", action.Identifier)
 }

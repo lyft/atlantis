@@ -72,7 +72,7 @@ func TestCheckRunHandler(t *testing.T) {
 		assert.False(t, signaler.called)
 	})
 
-	t.Run("signal success", func(t *testing.T) {
+	t.Run("plan signal success", func(t *testing.T) {
 		user := "nish"
 		workflowID := "wfid"
 		signaler := &testSignaler{
@@ -91,6 +91,35 @@ func TestCheckRunHandler(t *testing.T) {
 		e := event.CheckRun{
 			Action: event.RequestedActionChecksAction{
 				Identifier: "Approve",
+			},
+			ExternalID: workflowID,
+			User:       user,
+			Name:       "atlantis/deploy",
+		}
+		err := subject.Handle(context.Background(), e)
+		assert.NoError(t, err)
+		assert.True(t, signaler.called)
+	})
+
+	t.Run("unlock signal success", func(t *testing.T) {
+		user := "nish"
+		workflowID := "wfid"
+		signaler := &testSignaler{
+			t:                  t,
+			expectedWorkflowID: workflowID,
+			expectedSignalName: workflows.TerraformUnlockSignalName,
+			expectedSignalArg: workflows.TerraformUnlockSignalRequest{
+				Unlock: true,
+				User:   user,
+			},
+		}
+		subject := event.CheckRunHandler{
+			Logger:         logging.NewNoopCtxLogger(t),
+			TemporalClient: signaler,
+		}
+		e := event.CheckRun{
+			Action: event.RequestedActionChecksAction{
+				Identifier: "Unlock",
 			},
 			ExternalID: workflowID,
 			User:       user,

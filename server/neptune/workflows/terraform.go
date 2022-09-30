@@ -16,6 +16,7 @@ import (
 type TerraformRequest = terraform.Request
 
 type TerraformPlanReviewSignalRequest = terraform.PlanReviewSignalRequest
+type TerraformUnlockSignalRequest = terraform.UnlockSignalRequest
 
 type TerraformPlanReviewStatus = terraform.PlanStatus
 
@@ -23,6 +24,7 @@ const ApprovedPlanReviewStatus = terraform.Approved
 const RejectedPlanReviewStatus = terraform.Rejected
 
 const TerraformPlanReviewSignalName = terraform.PlanReviewSignalName
+const TerraformUnlockSignalName = terraform.UnlockSignalName
 
 type TerraformActivities struct {
 	activities.Terraform
