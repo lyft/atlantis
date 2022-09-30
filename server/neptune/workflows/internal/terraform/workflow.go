@@ -212,6 +212,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}
 
 	planResponse, err := r.Plan(ctx, root, response.ServerURL)
+
 	if err != nil {
 		return errors.Wrap(err, "running plan job")
 	}

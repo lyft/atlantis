@@ -182,7 +182,6 @@ func (r *jobRunner) runOptionalSteps(ctx *job.ExecutionContext, localRoot *root.
 	return nil
 }
 
-// Executes the TerraformCloseJob activity
 func (r *jobRunner) closeTerraformJob(ctx *job.ExecutionContext) {
 	var resp string
 	workflow.ExecuteActivity(ctx, r.Activity.CloseJob, activities.CloseJobRequest{
