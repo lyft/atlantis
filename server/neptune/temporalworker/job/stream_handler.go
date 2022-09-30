@@ -74,7 +74,7 @@ func (s *StreamHandler) Close(ctx context.Context, jobID string) error {
 
 	// Update job status and persist to storage if configured
 	if err := s.Store.Close(ctx, jobID, Complete); err != nil {
-		return errors.Wrapf(err, "closing job stream with ID: %s", jobID)
+		return errors.Wrapf(err, "closing job store for ID: %s", jobID)
 	}
 	return nil
 }

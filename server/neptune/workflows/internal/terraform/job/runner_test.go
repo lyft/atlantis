@@ -277,10 +277,12 @@ func getTestRootFor(stepName string) root.Root {
 	return root.Root{
 		Name: ProjectName,
 		Path: "project",
-		Plan: job_model.Job{
-			Steps: []job_model.Step{
-				{
-					StepName: stepName,
+		Plan: job_model.Plan{
+			Terraform: job_model.Terraform{
+				Steps: []job_model.Step{
+					{
+						StepName: stepName,
+					},
 				},
 			},
 		},

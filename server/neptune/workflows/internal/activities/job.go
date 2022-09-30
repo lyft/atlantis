@@ -22,7 +22,7 @@ type CloseJobRequest struct {
 func (t *jobActivities) CloseJob(ctx context.Context, request CloseJobRequest) error {
 	err := t.StreamCloser.Close(ctx, request.JobID)
 	if err != nil {
-		logger.Error(ctx, errors.Wrapf(err, "closing job with id: %s", request.JobID).Error())
+		logger.Error(ctx, errors.Wrapf(err, "closing job").Error())
 	}
 	return err
 }
