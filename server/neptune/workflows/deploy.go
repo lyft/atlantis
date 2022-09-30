@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/uber-go/tally/v4"
 	"go.temporal.io/sdk/workflow"
@@ -12,22 +13,21 @@ import (
 
 // Export anything that callers need such as requests, signals, etc.
 type DeployRequest = deploy.Request
-type Repo = deploy.Repo
-type Root = deploy.Root
-type Job = deploy.Job
-type Step = deploy.Step
-type AppCredentials = deploy.AppCredentials
-type HeadCommit = deploy.Commit
-type Ref = deploy.Ref
-type Trigger = deploy.Trigger
+type Repo = request.Repo
+type Root = request.Root
+type Job = request.Job
+type Step = request.Step
+type AppCredentials = request.AppCredentials
+type HeadCommit = request.Commit
+type Ref = request.Ref
+type PlanMode = request.PlanMode
+type Trigger = request.Trigger
 
-const ManualTrigger = deploy.ManualTrigger
-const MergeTrigger = deploy.MergeTrigger
+const DestroyPlanMode = request.DestroyPlanMode
+const NormalPlanMode = request.NormalPlanMode
 
-type PlanMode = deploy.PlanMode
-
-const DestroyPlanMode = deploy.DestroyPlanMode
-const NormalPlanMode = deploy.NormalPlanMode
+const ManualTrigger = request.ManualTrigger
+const MergeTrigger = request.MergeTrigger
 
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 

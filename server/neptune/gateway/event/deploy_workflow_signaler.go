@@ -47,6 +47,19 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 		workflows.DeployNewRevisionSignalID,
 		workflows.DeployNewRevisionSignalRequest{
 			Revision: revision,
+			Root: workflows.Root{
+				Name: rootCfg.Name,
+				Plan: workflows.Job{
+					Steps: d.generateSteps(rootCfg.DeploymentWorkflow.Plan.Steps),
+				},
+				Apply: workflows.Job{
+					Steps: d.generateSteps(rootCfg.DeploymentWorkflow.Apply.Steps),
+				},
+				RepoRelPath: rootCfg.RepoRelDir,
+				TfVersion:   tfVersion,
+				PlanMode:    d.generatePlanMode(rootCfg),
+				Trigger:     trigger,
+			},
 		},
 		options,
 		workflows.Deploy,
@@ -65,19 +78,6 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 						Type: string(ref.Type),
 					},
 				},
-			},
-			Root: workflows.Root{
-				Name: rootCfg.Name,
-				Plan: workflows.Job{
-					Steps: d.generateSteps(rootCfg.DeploymentWorkflow.Plan.Steps),
-				},
-				Apply: workflows.Job{
-					Steps: d.generateSteps(rootCfg.DeploymentWorkflow.Apply.Steps),
-				},
-				RepoRelPath: rootCfg.RepoRelDir,
-				TfVersion:   tfVersion,
-				PlanMode:    d.generatePlanMode(rootCfg),
-				Trigger:     trigger,
 			},
 		},
 	)
