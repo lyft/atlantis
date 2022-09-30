@@ -24,6 +24,11 @@ type Trigger = deploy.Trigger
 const ManualTrigger = deploy.ManualTrigger
 const MergeTrigger = deploy.MergeTrigger
 
+type PlanMode = deploy.PlanMode
+
+const DestroyPlanMode = deploy.DestroyPlanMode
+const NormalPlanMode = deploy.NormalPlanMode
+
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 
 var DeployTaskQueue = deploy.TaskQueue

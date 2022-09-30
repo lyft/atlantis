@@ -252,7 +252,7 @@ func TestHandlePushEvent(t *testing.T) {
 		handler := event.PushHandler{
 			Allocator:         allocator,
 			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
-			DeploySignaler:    &mockDeploySignaler{},
+			DeploySignaler:    &mockDeploySignaler{run: &testRun{}},
 			Logger:            logger,
 			RootConfigBuilder: rootConfigBuilder,
 		}

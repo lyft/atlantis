@@ -91,58 +91,121 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 
 	version, err := version.NewVersion("1.0.3")
 	assert.NoError(t, err)
-	rootCfg := valid.MergedProjectCfg{
-		Name: testRoot,
-		DeploymentWorkflow: valid.Workflow{
-			Plan:  valid.DefaultPlanStage,
-			Apply: valid.DefaultApplyStage,
-		},
-		TerraformVersion: version,
-	}
 
-	testSignaler := &testSignaler{
-		t:                  t,
-		expectedWorkflowID: fmt.Sprintf("%s||%s", repoFullName, testRoot),
-		expectedSignalName: workflows.DeployNewRevisionSignalID,
-		expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
-			Revision: sha,
-		},
-		expectedWorkflow: workflows.Deploy,
-		expectedOptions: client.StartWorkflowOptions{
-			TaskQueue: workflows.DeployTaskQueue,
-		},
-		expectedWorkflowArgs: workflows.DeployRequest{
-			Trigger: "merge",
-			Repository: workflows.Repo{
-				FullName: repoFullName,
-				Name:     repoName,
-				Owner:    repoOwner,
-				URL:      repoURL,
-				HeadCommit: workflows.HeadCommit{
-					Ref: workflows.Ref{
-						Name: ref.Name,
-						Type: string(ref.Type),
+	t.Run("success", func(t *testing.T) {
+		rootCfg := valid.MergedProjectCfg{
+			Name: testRoot,
+			DeploymentWorkflow: valid.Workflow{
+				Plan:  valid.DefaultPlanStage,
+				Apply: valid.DefaultApplyStage,
+			},
+			TerraformVersion: version,
+		}
+
+		testSignaler := &testSignaler{
+			t:                  t,
+			expectedWorkflowID: fmt.Sprintf("%s||%s", repoFullName, testRoot),
+			expectedSignalName: workflows.DeployNewRevisionSignalID,
+			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
+				Revision: sha,
+			},
+			expectedWorkflow: workflows.Deploy,
+			expectedOptions: client.StartWorkflowOptions{
+				TaskQueue: workflows.DeployTaskQueue,
+			},
+			expectedWorkflowArgs: workflows.DeployRequest{
+				Trigger: "merge",
+				Repository: workflows.Repo{
+					FullName: repoFullName,
+					Name:     repoName,
+					Owner:    repoOwner,
+					URL:      repoURL,
+					HeadCommit: workflows.HeadCommit{
+						Ref: workflows.Ref{
+							Name: ref.Name,
+							Type: string(ref.Type),
+						},
 					},
 				},
-			},
-			Root: workflows.Root{
-				Name: testRoot,
-				Plan: workflows.Job{
-					Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
+				Root: workflows.Root{
+					Name: testRoot,
+					Plan: workflows.Job{
+						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
+					},
+					Apply: workflows.Job{
+						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
+					},
+					TfVersion: version.String(),
+					PlanMode:  workflows.NormalPlanMode,
 				},
-				Apply: workflows.Job{
-					Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
-				},
-				TfVersion: version.String(),
 			},
-		},
-	}
-	deploySignaler := event.DeployWorkflowSignaler{
-		TemporalClient: testSignaler,
-	}
-	run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref)
-	assert.NoError(t, err)
-	assert.Equal(t, testRun{}, run)
+		}
+		deploySignaler := event.DeployWorkflowSignaler{
+			TemporalClient: testSignaler,
+		}
+		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref)
+		assert.NoError(t, err)
+		assert.Equal(t, testRun{}, run)
+	})
+
+	t.Run("success w/destroy", func(t *testing.T) {
+		rootCfg := valid.MergedProjectCfg{
+			Name: testRoot,
+			DeploymentWorkflow: valid.Workflow{
+				Plan:  valid.DefaultPlanStage,
+				Apply: valid.DefaultApplyStage,
+			},
+			Tags: map[string]string{
+				event.Deprecated: event.Destroy,
+			},
+			TerraformVersion: version,
+		}
+
+		testSignaler := &testSignaler{
+			t:                  t,
+			expectedWorkflowID: fmt.Sprintf("%s||%s", repoFullName, testRoot),
+			expectedSignalName: workflows.DeployNewRevisionSignalID,
+			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
+				Revision: sha,
+			},
+			expectedWorkflow: workflows.Deploy,
+			expectedOptions: client.StartWorkflowOptions{
+				TaskQueue: workflows.DeployTaskQueue,
+			},
+			expectedWorkflowArgs: workflows.DeployRequest{
+				Trigger: "merge",
+				Repository: workflows.Repo{
+					FullName: repoFullName,
+					Name:     repoName,
+					Owner:    repoOwner,
+					URL:      repoURL,
+					HeadCommit: workflows.HeadCommit{
+						Ref: workflows.Ref{
+							Name: ref.Name,
+							Type: string(ref.Type),
+						},
+					},
+				},
+				Root: workflows.Root{
+					Name: testRoot,
+					Plan: workflows.Job{
+						Steps: convertTestSteps(valid.DefaultPlanStage.Steps),
+					},
+					Apply: workflows.Job{
+						Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
+					},
+					TfVersion: version.String(),
+					PlanMode:  workflows.DestroyPlanMode,
+				},
+			},
+		}
+		deploySignaler := event.DeployWorkflowSignaler{
+			TemporalClient: testSignaler,
+		}
+		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref)
+		assert.NoError(t, err)
+		assert.Equal(t, testRun{}, run)
+	})
 }
 
 func TestSignalWithStartWorkflow_Failure(t *testing.T) {
@@ -208,6 +271,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 					Steps: convertTestSteps(valid.DefaultApplyStage.Steps),
 				},
 				TfVersion: version.String(),
+				PlanMode:  workflows.NormalPlanMode,
 			},
 		},
 		expectedErr: expectedErr,

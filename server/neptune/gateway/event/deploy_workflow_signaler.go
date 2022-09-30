@@ -16,6 +16,11 @@ type signaler interface {
 	SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error
 }
 
+const (
+	Deprecated = "deprecated"
+	Destroy    = "-destroy"
+)
+
 type DeployWorkflowSignaler struct {
 	TemporalClient signaler
 }
@@ -71,6 +76,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 				},
 				RepoRelPath: rootCfg.RepoRelDir,
 				TfVersion:   tfVersion,
+				PlanMode:    d.generatePlanMode(rootCfg),
 			},
 		},
 	)
@@ -90,4 +96,13 @@ func (d *DeployWorkflowSignaler) generateSteps(steps []valid.Step) []workflows.S
 		})
 	}
 	return workflowSteps
+}
+
+func (p *DeployWorkflowSignaler) generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PlanMode {
+	t, ok := cfg.Tags[Deprecated]
+	if ok && t == Destroy {
+		return workflows.DestroyPlanMode
+	}
+
+	return workflows.NormalPlanMode
 }
