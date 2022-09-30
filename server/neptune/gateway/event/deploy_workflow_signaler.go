@@ -51,7 +51,6 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 		options,
 		workflows.Deploy,
 		workflows.DeployRequest{
-			Trigger: trigger,
 			Repository: workflows.Repo{
 				URL:      repo.CloneURL,
 				FullName: repo.FullName,
@@ -78,6 +77,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 				RepoRelPath: rootCfg.RepoRelDir,
 				TfVersion:   tfVersion,
 				PlanMode:    d.generatePlanMode(rootCfg),
+				Trigger:     trigger,
 			},
 		},
 	)
