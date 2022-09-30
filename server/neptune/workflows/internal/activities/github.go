@@ -214,7 +214,7 @@ type CompareCommitsResponse struct {
 	IsDiverged bool
 }
 
-// Fetch last commit
+// TODO: implement
 func (a *githubActivities) CompareCommits(ctx context.Context, request CompareCommitsRequest) (CompareCommitsResponse, error) {
 	return CompareCommitsResponse{
 		IsDiverged: true,

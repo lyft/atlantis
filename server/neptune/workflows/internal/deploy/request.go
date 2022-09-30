@@ -12,7 +12,6 @@ type Request struct {
 	GHRequestID string
 	Repository  Repo
 	Root        Root
-	Trigger     Trigger
 }
 
 type Repo struct {
@@ -58,6 +57,7 @@ type Root struct {
 	RepoRelPath string
 	TfVersion   string
 	PlanMode    PlanMode
+	Trigger     Trigger
 }
 
 type Job struct {

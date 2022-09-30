@@ -19,7 +19,14 @@ type testStateReceiver struct {
 	payloads []testSignalPayload
 }
 
-func (r *testStateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo terraform.DeploymentInfo) {
+func (r *testStateReceiver) ReceiveLockState(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo terraform.DeploymentInfo) {
+	var payload testSignalPayload
+	c.Receive(ctx, &payload)
+
+	r.payloads = append(r.payloads, payload)
+}
+
+func (r *testStateReceiver) ReceiveWorkflowState(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo terraform.DeploymentInfo) {
 
 	var payload testSignalPayload
 	c.Receive(ctx, &payload)
@@ -31,13 +38,21 @@ type testSignalPayload struct {
 	S string
 }
 
-// signals parent twice with a sleep in between to mimic what our real terraform workflow would be like
+// signals parent 3x across different channels with a sleep in between to mimic a real terraform workflow
 func testTerraformWorkflow(ctx workflow.Context, request terraformWorkflow.Request) error {
 	info := workflow.GetInfo(ctx)
 	parentExecution := info.ParentWorkflowExecution
 
 	payload := testSignalPayload{
 		S: "hello",
+	}
+
+	if err := workflow.SignalExternalWorkflow(ctx, parentExecution.ID, parentExecution.RunID, state.LockStateChangeSignal, payload).Get(ctx, nil); err != nil {
+		return err
+	}
+
+	if err := workflow.Sleep(ctx, 5*time.Second); err != nil {
+		return err
 	}
 
 	if err := workflow.SignalExternalWorkflow(ctx, parentExecution.ID, parentExecution.RunID, state.WorkflowStateChangeSignal, payload).Get(ctx, nil); err != nil {
@@ -98,7 +113,7 @@ func TestWorkflowRunner_Run(t *testing.T) {
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 
-	assert.Len(t, resp.Payloads, 2)
+	assert.Len(t, resp.Payloads, 3)
 
 	for _, p := range resp.Payloads {
 		assert.Equal(t, testSignalPayload{

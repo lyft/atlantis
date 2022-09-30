@@ -19,6 +19,7 @@ type FetchLatestDeploymentResponse struct {
 	Revision string
 }
 
+// TODO: implement
 func (a *storeActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
 	logger.Info(ctx, "fetching latest deployment")
 

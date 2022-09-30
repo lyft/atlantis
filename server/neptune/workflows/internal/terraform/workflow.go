@@ -108,9 +108,14 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 			Ga:      ga,
 			Ta:      ta,
 		},
-		RootLocker: NewRootLocker(request, ga, sa, func(s *state.Lock) error {
-			return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.LockStateChangeSignal, s).Get(ctx, nil)
-		}),
+		RootLocker: &RootLocker{
+			Request: request,
+			Ga:      ga,
+			Sa:      sa,
+			Notifier: func(s *state.Lock) error {
+				return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.LockStateChangeSignal, s).Get(ctx, nil)
+			},
+		},
 		Store: state.NewWorkflowStore(
 			func(s *state.Workflow) error {
 				return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.WorkflowStateChangeSignal, s).Get(ctx, nil)

@@ -24,6 +24,8 @@ const (
 	testRootName     = "testroot"
 	testDeploymentID = "123"
 	testPath         = "rel/path"
+	testRevision     = "a1b2c3"
+	testOldRevision  = "d4e5f6"
 )
 
 var testGithubRepo = github.Repo{
@@ -60,7 +62,19 @@ func (g *testURLGenerator) Generate(jobID fmt.Stringer, BaseURL fmt.Stringer) (*
 	return url.Parse("www.test.com/jobs/1235")
 }
 
+type storeActivities struct{}
+
+func (a *storeActivities) FetchLatestDeployment(_ context.Context, _ activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error) {
+	//TODO implement me
+	return activities.FetchLatestDeploymentResponse{}, nil
+}
+
 type githubActivities struct{}
+
+func (a *githubActivities) CompareCommits(_ context.Context, _ activities.CompareCommitsRequest) (activities.CompareCommitsResponse, error) {
+	//TODO implement me
+	return activities.CompareCommitsResponse{}, nil
+}
 
 func (a *githubActivities) FetchRoot(_ context.Context, _ activities.FetchRootRequest) (activities.FetchRootResponse, error) {
 	return activities.FetchRootResponse{
@@ -105,6 +119,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 
 	var gAct *githubActivities
 	var tAct *terraformActivities
+	var sAct *storeActivities
 	runner := &jobRunner{}
 
 	var s []state.Workflow
@@ -113,6 +128,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		Root:         testLocalRoot.Root,
 		Repo:         testGithubRepo,
 		DeploymentId: testDeploymentID,
+		Revision:     testRevision,
 	}
 
 	subject := &terraform.Runner{
@@ -123,6 +139,12 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 			Request: runnerReq,
 			Ta:      tAct,
 			Ga:      gAct,
+		},
+		RootLocker: &terraform.RootLocker{
+			Request:  runnerReq,
+			Sa:       sAct,
+			Ga:       gAct,
+			Notifier: func(lockState *state.Lock) error { return nil },
 		},
 		JobRunner: runner,
 		Store: state.NewWorkflowStoreWithGenerator(
@@ -172,6 +194,7 @@ func TestSuccess(t *testing.T) {
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
 	ga := &githubActivities{}
+	sa := &storeActivities{}
 	ta := &terraformActivities{}
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ta)
@@ -180,10 +203,23 @@ func TestSuccess(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set activity expectations
+	env.OnActivity(sa.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
+		RepositoryName: testGithubRepo.Name,
+		RootName:       testRootName,
+	}).Return(activities.FetchLatestDeploymentResponse{
+		Revision: testOldRevision,
+	}, nil)
+	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		OldCommit: testOldRevision,
+		NewCommit: testRevision,
+	}).Return(activities.CompareCommitsResponse{
+		IsDiverged: false,
+	}, nil)
 	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentId: testDeploymentID,
+		Revision:     testRevision,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot: testLocalRoot,
 	}, nil)
@@ -283,6 +319,7 @@ func TestPlanRejection(t *testing.T) {
 	env := suite.NewTestWorkflowEnvironment()
 	ga := &githubActivities{}
 	ta := &terraformActivities{}
+	sa := &storeActivities{}
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ta)
 
@@ -290,10 +327,23 @@ func TestPlanRejection(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set activity expectations
+	env.OnActivity(sa.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
+		RepositoryName: testGithubRepo.Name,
+		RootName:       testRootName,
+	}).Return(activities.FetchLatestDeploymentResponse{
+		Revision: testOldRevision,
+	}, nil)
+	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		OldCommit: testOldRevision,
+		NewCommit: testRevision,
+	}).Return(activities.CompareCommitsResponse{
+		IsDiverged: false,
+	}, nil)
 	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentId: testDeploymentID,
+		Revision:     testRevision,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot: testLocalRoot,
 	}, nil)
@@ -376,14 +426,28 @@ func TestFetchRootError(t *testing.T) {
 	env := suite.NewTestWorkflowEnvironment()
 	ga := &githubActivities{}
 	ta := &terraformActivities{}
+	sa := &storeActivities{}
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ta)
 
 	// set activity expectations
+	env.OnActivity(sa.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
+		RepositoryName: testGithubRepo.Name,
+		RootName:       testRootName,
+	}).Return(activities.FetchLatestDeploymentResponse{
+		Revision: testOldRevision,
+	}, nil)
+	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		OldCommit: testOldRevision,
+		NewCommit: testRevision,
+	}).Return(activities.CompareCommitsResponse{
+		IsDiverged: false,
+	}, nil)
 	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentId: testDeploymentID,
+		Revision:     testRevision,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot: testLocalRoot,
 	}, assert.AnError)
@@ -405,10 +469,31 @@ func TestCleanupErrorReturnsNoError(t *testing.T) {
 	env := suite.NewTestWorkflowEnvironment()
 	ga := &githubActivities{}
 	ta := &terraformActivities{}
+	sa := &storeActivities{}
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ta)
 
 	// set activity expectations
+	env.OnActivity(sa.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
+		RepositoryName: testGithubRepo.Name,
+		RootName:       testRootName,
+	}).Return(activities.FetchLatestDeploymentResponse{
+		Revision: testOldRevision,
+	}, nil)
+	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		OldCommit: testOldRevision,
+		NewCommit: testRevision,
+	}).Return(activities.CompareCommitsResponse{
+		IsDiverged: false,
+	}, nil)
+	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
+		Repo:         testGithubRepo,
+		Root:         testLocalRoot.Root,
+		DeploymentId: testDeploymentID,
+		Revision:     testRevision,
+	}).Return(activities.FetchRootResponse{
+		LocalRoot: testLocalRoot,
+	}, nil)
 	env.OnActivity(ta.Cleanup, mock.Anything, activities.CleanupRequest{
 		LocalRoot: testLocalRoot,
 	}).Return(activities.CleanupResponse{}, assert.AnError)
@@ -430,3 +515,5 @@ func TestCleanupErrorReturnsNoError(t *testing.T) {
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 }
+
+// TODO: FetchLatestDeployment + CompareCommit failures

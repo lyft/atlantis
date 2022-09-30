@@ -98,7 +98,7 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 		},
 		Path:      request.Root.RepoRelPath,
 		TfVersion: request.Root.TfVersion,
-		Trigger:   root.Trigger(request.Trigger),
+		Trigger:   root.Trigger(request.Root.Trigger),
 	}
 
 	// inject dependencies

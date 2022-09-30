@@ -25,11 +25,11 @@ func (a *testActivities) UpdateCheckRun(ctx context.Context, request activities.
 	return activities.UpdateCheckRunResponse{}, nil
 }
 
-type stateReceiveRequest struct {
+type workflowStateReceiveRequest struct {
 	StatesToSend []*state.Workflow
 }
 
-func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error {
+func testReceiveWorkflowState(ctx workflow.Context, r workflowStateReceiveRequest) error {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		ScheduleToCloseTimeout: 5 * time.Second,
 	})
@@ -46,7 +46,7 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error
 		}
 	})
 
-	receiver.Receive(ctx, ch, terraform.DeploymentInfo{
+	receiver.ReceiveWorkflowState(ctx, ch, terraform.DeploymentInfo{
 		CheckRunID: 1,
 		Root:       root.Root{Name: "root"},
 	})
@@ -54,7 +54,36 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error
 	return nil
 }
 
-func TestStateReceive(t *testing.T) {
+type lockStateReceiveRequest struct {
+	StatesToSend []*state.Lock
+}
+
+func testReceiveLockState(ctx workflow.Context, r lockStateReceiveRequest) error {
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		ScheduleToCloseTimeout: 5 * time.Second,
+	})
+	ch := workflow.NewChannel(ctx)
+
+	receiver := &terraform.StateReceiver{
+		Repo:     github.Repo{Name: "hello"},
+		Activity: &testActivities{},
+	}
+
+	workflow.Go(ctx, func(ctx workflow.Context) {
+		for _, s := range r.StatesToSend {
+			ch.Send(ctx, s)
+		}
+	})
+
+	receiver.ReceiveLockState(ctx, ch, terraform.DeploymentInfo{
+		CheckRunID: 1,
+		Root:       root.Root{Name: "root"},
+	})
+
+	return nil
+}
+
+func TestStateReceiver_ReceiveWorkflowState(t *testing.T) {
 	outputURL, err := url.Parse("www.nish.com")
 	assert.NoError(t, err)
 
@@ -180,7 +209,7 @@ func TestStateReceive(t *testing.T) {
 				Actions: c.ExpectedActions,
 			}).Return(activities.UpdateCheckRunResponse{}, nil)
 
-			env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{
+			env.ExecuteWorkflow(testReceiveWorkflowState, workflowStateReceiveRequest{
 				StatesToSend: []*state.Workflow{c.State},
 			})
 
@@ -191,4 +220,36 @@ func TestStateReceive(t *testing.T) {
 
 		})
 	}
+}
+
+func TestStateReceiver_ReceiveLockState(t *testing.T) {
+	lockState := &state.Lock{Locked: true}
+	actions := []github.CheckRunAction{
+		github.CreateUnlockAction(),
+	}
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	var a = &testActivities{}
+	env.RegisterActivity(a)
+
+	env.OnActivity(a.UpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
+		Title: "atlantis/deploy: root",
+		State: github.CheckRunQueued,
+		Repo: github.Repo{
+			Name: "hello",
+		},
+		Summary: markdown.RenderLockStateTmpl(),
+		ID:      1,
+		Actions: actions,
+	}).Return(activities.UpdateCheckRunResponse{}, nil)
+
+	env.ExecuteWorkflow(testReceiveLockState, lockStateReceiveRequest{
+		StatesToSend: []*state.Lock{lockState},
+	})
+
+	env.AssertExpectations(t)
+
+	err := env.GetWorkflowResult(nil)
+	assert.NoError(t, err)
 }

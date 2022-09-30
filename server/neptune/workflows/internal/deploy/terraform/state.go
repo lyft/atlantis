@@ -21,7 +21,7 @@ type StateReceiver struct {
 	Activity receiverActivities
 }
 
-func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
+func (n *StateReceiver) ReceiveWorkflowState(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
 	var workflowState *state.Workflow
 	c.Receive(ctx, &workflowState)
 
@@ -93,7 +93,7 @@ func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState 
 	return github.CheckRunFailure
 }
 
-func (n *StateReceiver) ReceiveLockStatus(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
+func (n *StateReceiver) ReceiveLockState(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
 	var lockState *state.Lock
 	c.Receive(ctx, &lockState)
 

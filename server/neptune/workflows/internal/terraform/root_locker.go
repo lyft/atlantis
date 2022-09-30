@@ -17,27 +17,18 @@ type storeActivities interface {
 type LockNotifier func(lockState *state.Lock) error
 
 type RootLocker struct {
-	request  Request
-	notifier LockNotifier
-	ga       githubActivities
-	sa       storeActivities
-}
-
-func NewRootLocker(request Request, ga githubActivities, sa storeActivities, notifier LockNotifier) *RootLocker {
-	return &RootLocker{
-		request:  request,
-		notifier: notifier,
-		ga:       ga,
-		sa:       sa,
-	}
+	Request  Request
+	Notifier LockNotifier
+	Ga       githubActivities
+	Sa       storeActivities
 }
 
 func (r *RootLocker) Lock(ctx workflow.Context) error {
 	// Fetch root's latest revision
 	var fetchLatestDeploymentResponse *activities.FetchLatestDeploymentResponse
-	err := workflow.ExecuteActivity(ctx, r.sa.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
-		RepositoryName: r.request.Repo.Name,
-		RootName:       r.request.Root.Name,
+	err := workflow.ExecuteActivity(ctx, r.Sa.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
+		RepositoryName: r.Request.Repo.Name,
+		RootName:       r.Request.Root.Name,
 	}).Get(ctx, &fetchLatestDeploymentResponse)
 
 	if err != nil {
@@ -46,9 +37,9 @@ func (r *RootLocker) Lock(ctx workflow.Context) error {
 
 	// Compare with requested revision
 	var compareCommitsResponse *activities.CompareCommitsResponse
-	err = workflow.ExecuteActivity(ctx, r.ga.CompareCommits, activities.CompareCommitsRequest{
+	err = workflow.ExecuteActivity(ctx, r.Ga.CompareCommits, activities.CompareCommitsRequest{
 		OldCommit: fetchLatestDeploymentResponse.Revision,
-		NewCommit: r.request.Revision,
+		NewCommit: r.Request.Revision,
 	}).Get(ctx, &compareCommitsResponse)
 
 	if err != nil {
@@ -56,8 +47,8 @@ func (r *RootLocker) Lock(ctx workflow.Context) error {
 	}
 
 	// Notify parent workflow + wait for unlock signal if request is from diverged commit that was merged
-	if compareCommitsResponse.IsDiverged && r.request.Root.Trigger == root.MergeTrigger {
-		err = r.notifier(&state.Lock{Locked: true})
+	if compareCommitsResponse.IsDiverged && r.Request.Root.Trigger == root.MergeTrigger {
+		err = r.Notifier(&state.Lock{Locked: true})
 		if err != nil {
 			return err
 		}

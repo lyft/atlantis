@@ -114,7 +114,6 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 				TaskQueue: workflows.DeployTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{
-				Trigger: workflows.MergeTrigger,
 				Repository: workflows.Repo{
 					FullName: repoFullName,
 					Name:     repoName,
@@ -137,6 +136,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					},
 					TfVersion: version.String(),
 					PlanMode:  workflows.NormalPlanMode,
+					Trigger:   workflows.MergeTrigger,
 				},
 			},
 		}
@@ -173,7 +173,6 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 				TaskQueue: workflows.DeployTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{
-				Trigger: workflows.MergeTrigger,
 				Repository: workflows.Repo{
 					FullName: repoFullName,
 					Name:     repoName,
@@ -196,6 +195,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					},
 					TfVersion: version.String(),
 					PlanMode:  workflows.DestroyPlanMode,
+					Trigger:   workflows.MergeTrigger,
 				},
 			},
 		}
@@ -249,7 +249,6 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 			TaskQueue: workflows.DeployTaskQueue,
 		},
 		expectedWorkflowArgs: workflows.DeployRequest{
-			Trigger: "merge",
 			Repository: workflows.Repo{
 				FullName: repoFullName,
 				Name:     repoName,
@@ -272,6 +271,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				},
 				TfVersion: version.String(),
 				PlanMode:  workflows.NormalPlanMode,
+				Trigger:   workflows.MergeTrigger,
 			},
 		},
 		expectedErr: expectedErr,

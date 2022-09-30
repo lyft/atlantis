@@ -11,8 +11,8 @@ import (
 type Workflow func(ctx workflow.Context, request terraform.Request) error
 
 type stateReceiver interface {
-	Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
-	ReceiveLockStatus(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
+	ReceiveWorkflowState(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
+	ReceiveLockState(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
 }
 
 func NewWorkflowRunner(repo github.Repo, a receiverActivities, w Workflow) *WorkflowRunner {
@@ -60,12 +60,12 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 	// handle accordingly
 	workflowCh := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
 	selector.AddReceive(workflowCh, func(c workflow.ReceiveChannel, _ bool) {
-		r.StateReceiver.Receive(ctx, c, deploymentInfo)
+		r.StateReceiver.ReceiveWorkflowState(ctx, c, deploymentInfo)
 	})
 
 	lockCh := workflow.GetSignalChannel(ctx, state.LockStateChangeSignal)
 	selector.AddReceive(lockCh, func(c workflow.ReceiveChannel, _ bool) {
-		r.StateReceiver.ReceiveLockStatus(ctx, c, deploymentInfo)
+		r.StateReceiver.ReceiveLockState(ctx, c, deploymentInfo)
 	})
 	var workflowComplete bool
 	var err error
