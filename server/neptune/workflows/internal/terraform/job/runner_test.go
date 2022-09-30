@@ -2,7 +2,6 @@ package job_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -158,46 +157,6 @@ func TestJobRunner_Plan(t *testing.T) {
 		err := env.GetWorkflowResult(&resp)
 		assert.NoError(t, err)
 	})
-
-	t.Run("should not fail plan operation when close job fails", func(t *testing.T) {
-		ts := testsuite.WorkflowTestSuite{}
-		env := ts.NewTestWorkflowEnvironment()
-		testTerraformActivity := &testTerraformActivity{
-			t: t,
-			plan: struct {
-				req  activities.TerraformPlanRequest
-				resp activities.TerraformPlanResponse
-				err  error
-			}{
-				req: activities.TerraformPlanRequest{
-					JobID: JobID,
-					Args:  []terraform_model.Argument{},
-					Envs:  map[string]string{},
-					Path:  ProjectPath,
-				},
-			},
-			close: struct {
-				req activities.CloseJobRequest
-				err error
-			}{
-				req: activities.CloseJobRequest{
-					JobID: JobID,
-				},
-				err: errors.New("error"),
-			},
-		}
-		env.RegisterActivity(testTerraformActivity)
-		env.RegisterWorkflow(testJobPlanWorkflow)
-
-		env.ExecuteWorkflow(testJobPlanWorkflow, terraform.Request{
-			Root: getTestRootFor("plan"),
-			Repo: repo,
-		})
-
-		var resp activities.TerraformPlanResponse
-		err := env.GetWorkflowResult(&resp)
-		assert.NoError(t, err)
-	})
 }
 
 func TestJobRunner_Apply(t *testing.T) {
@@ -225,42 +184,6 @@ func TestJobRunner_Apply(t *testing.T) {
 				req: activities.CloseJobRequest{
 					JobID: JobID,
 				},
-			},
-		}
-		env.RegisterActivity(testTerraformActivity)
-		env.RegisterWorkflow(testJobApplyWorkflow)
-
-		env.ExecuteWorkflow(testJobApplyWorkflow, terraform.Request{
-			Root: getTestRootFor("apply"),
-			Repo: repo,
-		})
-	})
-
-	t.Run("should not fail apply operation when close job fails", func(t *testing.T) {
-		ts := testsuite.WorkflowTestSuite{}
-		env := ts.NewTestWorkflowEnvironment()
-		testTerraformActivity := &testTerraformActivity{
-			t: t,
-			apply: struct {
-				req  activities.TerraformApplyRequest
-				resp activities.TerraformApplyResponse
-				err  error
-			}{
-				req: activities.TerraformApplyRequest{
-					JobID: JobID,
-					Args:  []terraform_model.Argument{},
-					Envs:  map[string]string{},
-					Path:  ProjectPath,
-				},
-			},
-			close: struct {
-				req activities.CloseJobRequest
-				err error
-			}{
-				req: activities.CloseJobRequest{
-					JobID: JobID,
-				},
-				err: errors.New("error"),
 			},
 		}
 		env.RegisterActivity(testTerraformActivity)
