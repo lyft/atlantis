@@ -60,6 +60,10 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 				PlanMode:    d.generatePlanMode(rootCfg),
 				Trigger:     trigger,
 			},
+			Ref: workflows.Ref{
+				Name: ref.Name,
+				Type: string(ref.Type),
+			},
 		},
 		options,
 		workflows.Deploy,
@@ -71,12 +75,6 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 				Owner:    repo.Owner,
 				Credentials: workflows.AppCredentials{
 					InstallationToken: installationToken,
-				},
-				HeadCommit: workflows.HeadCommit{
-					Ref: workflows.Ref{
-						Name: ref.Name,
-						Type: string(ref.Type),
-					},
 				},
 			},
 		},
