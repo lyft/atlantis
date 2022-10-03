@@ -37,10 +37,10 @@ const (
 	ProjectJobsViewRouteName = "project-jobs-detail"
 
 	// Equal to default terraform timeout
-	TemporalWorkerTimeout = 60 * 60 * time.Second
+	TemporalWorkerTimeout = time.Hour
 
 	// 5 minutes to allow cleaning up the job store
-	StreamHandlerTimeout = 5 * 60 * time.Second
+	StreamHandlerTimeout = 5 * time.Minute
 )
 
 type Server struct {

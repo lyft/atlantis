@@ -21,7 +21,6 @@ type StreamHandler interface {
 	CleanUp(ctx context.Context) error
 }
 
-// TODO: Return streaming channel
 func NewStreamHandler(
 	jobStore Store,
 	receiverRegistry ReceiverRegistry,
