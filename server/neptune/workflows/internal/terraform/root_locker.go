@@ -2,6 +2,7 @@ package terraform
 
 import (
 	"context"
+	"errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
@@ -9,8 +10,7 @@ import (
 )
 
 const (
-	UnlockSignalName = "unlock"
-	DivergedStatus   = "diverged"
+	DivergedStatus = "diverged"
 )
 
 type storeActivities interface {
@@ -52,13 +52,21 @@ func (r *RootLocker) Lock(ctx workflow.Context) error {
 
 	// Notify parent workflow + wait for unlock signal if request is from diverged commit that was merged
 	if compareCommitsResponse.Status == DivergedStatus && r.Request.Root.Trigger == root.MergeTrigger {
-		err = r.Notifier(&state.Lock{Locked: true})
-		if err != nil {
-			return err
-		}
-		signalChan := workflow.GetSignalChannel(ctx, UnlockSignalName)
-		var unlock bool
-		_ = signalChan.Receive(ctx, &unlock)
+		return r.RequestAndWaitForUnlockSignal(ctx)
+	}
+	return nil
+}
+
+func (r *RootLocker) RequestAndWaitForUnlockSignal(ctx workflow.Context) error {
+	err := r.Notifier(&state.Lock{Locked: true})
+	if err != nil {
+		return err
+	}
+	signalChan := workflow.GetSignalChannel(ctx, UnlockSignalName)
+	var unlockRequest UnlockSignalRequest
+	_ = signalChan.Receive(ctx, &unlockRequest)
+	if !unlockRequest.Unlock {
+		return errors.New("received a false unlock signal, this is a bug")
 	}
 	return nil
 }

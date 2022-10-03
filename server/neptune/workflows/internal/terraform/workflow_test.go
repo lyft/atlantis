@@ -53,6 +53,7 @@ var testLocalRoot = &root.LocalRoot{
 				},
 			},
 		},
+		Trigger: root.MergeTrigger,
 	},
 	Path: testPath,
 	Repo: testGithubRepo,
@@ -234,6 +235,137 @@ func TestSuccess(t *testing.T) {
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("planreview", terraform.PlanReviewSignalRequest{
 			Status: terraform.Approved,
+		})
+	}, 5*time.Second)
+
+	// execute workflow
+	env.ExecuteWorkflow(testTerraformWorkflow, request{})
+	assert.True(t, env.IsWorkflowCompleted())
+
+	var resp response
+	err = env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	// assert results are expected
+	env.AssertExpectations(t)
+	assert.Equal(t, []state.Workflow{
+		{
+			Plan: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.InProgressJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Apply: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Apply: &state.Job{
+				Status: state.InProgressJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Apply: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+	}, resp.States)
+}
+
+func TestSuccessDivergeUnlock(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	ga := &githubActivities{}
+	sa := &storeActivities{}
+	ta := &terraformActivities{}
+	env.RegisterActivity(ga)
+	env.RegisterActivity(ta)
+
+	outputURL, err := url.Parse("www.test.com/jobs/1235")
+	assert.NoError(t, err)
+
+	// set activity expectations
+	env.OnActivity(sa.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
+		RepositoryName: testGithubRepo.Name,
+		RootName:       testRootName,
+	}).Return(activities.FetchLatestDeploymentResponse{
+		Revision: testOldRevision,
+	}, nil)
+	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		Repo:      testGithubRepo,
+		OldCommit: testOldRevision,
+		NewCommit: testRevision,
+	}).Return(activities.CompareCommitsResponse{
+		Status: testDivergedStatus,
+	}, nil)
+	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
+		Repo:         testGithubRepo,
+		Root:         testLocalRoot.Root,
+		DeploymentId: testDeploymentID,
+		Revision:     testRevision,
+	}).Return(activities.FetchRootResponse{
+		LocalRoot: testLocalRoot,
+	}, nil)
+	env.OnActivity(ta.Cleanup, mock.Anything, activities.CleanupRequest{
+		LocalRoot: testLocalRoot,
+	}).Return(activities.CleanupResponse{}, nil)
+
+	// send approval of plan
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow("planreview", terraform.PlanReviewSignalRequest{
+			Status: terraform.Approved,
+		})
+	}, 5*time.Second)
+
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow("unlock", terraform.UnlockSignalRequest{
+			Unlock: true,
 		})
 	}, 5*time.Second)
 
@@ -520,6 +652,42 @@ func TestCleanupErrorReturnsNoError(t *testing.T) {
 	var resp response
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
+}
+
+func TestCompareCommitsError(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	ga := &githubActivities{}
+	ta := &terraformActivities{}
+	sa := &storeActivities{}
+	env.RegisterActivity(ga)
+	env.RegisterActivity(ta)
+
+	// set activity expectations
+	env.OnActivity(sa.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
+		RepositoryName: testGithubRepo.Name,
+		RootName:       testRootName,
+	}).Return(activities.FetchLatestDeploymentResponse{
+		Revision: testOldRevision,
+	}, nil)
+	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		Repo:      testGithubRepo,
+		OldCommit: testOldRevision,
+		NewCommit: testRevision,
+	}).Return(activities.CompareCommitsResponse{
+		Status: testAheadStatus,
+	}, assert.AnError)
+
+	// execute workflow
+	env.ExecuteWorkflow(testTerraformWorkflow, request{})
+	assert.True(t, env.IsWorkflowCompleted())
+
+	var resp response
+	err := env.GetWorkflowResult(&resp)
+	assert.Error(t, err)
+
+	// assert results are expected
+	env.AssertExpectations(t)
 }
 
 // TODO: FetchLatestDeployment
