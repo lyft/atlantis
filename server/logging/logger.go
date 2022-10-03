@@ -65,7 +65,7 @@ func NewLoggerFromLevel(lvl LogLevel) (*logger, error) {
 
 	return &logger{
 		LoggerFacade: ctxLogger,
-		Closer:       &closer{},
+		Closer:       structuredLogger,
 	}, nil
 
 }
