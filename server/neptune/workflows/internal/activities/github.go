@@ -217,8 +217,19 @@ type CompareCommitsResponse struct {
 }
 
 func (a *githubActivities) CompareCommits(ctx context.Context, request CompareCommitsRequest) (CompareCommitsResponse, error) {
-	// TODO: implement
+	// we don't need the paged results
+	opts := &github.ListOptions{}
+	client, err := a.ClientCreator.NewInstallationClient(request.Repo.Credentials.InstallationToken)
+	if err != nil {
+		return CompareCommitsResponse{}, errors.Wrap(err, "creating installation client")
+	}
+
+	res, resp, err := client.Repositories.CompareCommits(ctx, request.Repo.Owner, request.Repo.Name, request.OldCommit, request.NewCommit, opts)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return CompareCommitsResponse{}, errors.Wrap(err, "comparing commits")
+	}
+
 	return CompareCommitsResponse{
-		Status: "diverged",
+		Status: res.GetStatus(),
 	}, nil
 }
