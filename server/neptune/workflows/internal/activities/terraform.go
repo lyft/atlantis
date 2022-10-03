@@ -112,9 +112,6 @@ type TerraformPlanResponse struct {
 }
 
 func (t *terraformActivities) TerraformPlan(ctx context.Context, request TerraformPlanRequest) (TerraformPlanResponse, error) {
-	//TODO: move this to a separate activity that should be invoked at a higher level
-	defer t.StreamHandler.CloseJob(ctx, request.JobID)
-
 	tfVersion, err := t.resolveVersion(request.TfVersion)
 	if err != nil {
 		return TerraformPlanResponse{}, err

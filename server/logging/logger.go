@@ -45,12 +45,6 @@ type logger struct {
 	Closer
 }
 
-type closer struct{}
-
-func (c *closer) Close() error {
-	return nil
-}
-
 func NewLoggerFromLevel(lvl LogLevel) (*logger, error) {
 	structuredLogger, err := NewStructuredLoggerFromLevel(lvl)
 	if err != nil {
@@ -65,7 +59,7 @@ func NewLoggerFromLevel(lvl LogLevel) (*logger, error) {
 
 	return &logger{
 		LoggerFacade: ctxLogger,
-		Closer:       &closer{},
+		Closer:       structuredLogger,
 	}, nil
 
 }
