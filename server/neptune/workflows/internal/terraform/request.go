@@ -10,5 +10,4 @@ type Request struct {
 	Repo         github.Repo
 	DeploymentId string
 	Revision     string
-	Ref          github.Ref
 }

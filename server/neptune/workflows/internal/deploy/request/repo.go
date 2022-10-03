@@ -22,6 +22,7 @@ type Repo struct {
 	URL string
 
 	Credentials AppCredentials
+	Ref         Ref
 }
 
 type Ref struct {

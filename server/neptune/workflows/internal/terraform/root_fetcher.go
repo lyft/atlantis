@@ -18,7 +18,6 @@ func (r *RootFetcher) Fetch(ctx workflow.Context) (*root.LocalRoot, func() error
 	var fetchRootResponse activities.FetchRootResponse
 	err := workflow.ExecuteActivity(ctx, r.Ga.FetchRoot, activities.FetchRootRequest{
 		Repo:         r.Request.Repo,
-		Ref:          r.Request.Ref,
 		Root:         r.Request.Root,
 		DeploymentId: r.Request.DeploymentId,
 		Revision:     r.Request.Revision,

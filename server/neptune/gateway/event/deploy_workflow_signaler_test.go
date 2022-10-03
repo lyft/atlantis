@@ -120,23 +120,22 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					PlanMode:  workflows.NormalPlanMode,
 					Trigger:   workflows.MergeTrigger,
 				},
-				Ref: workflows.Ref{
-					Name: ref.Name,
-					Type: string(ref.Type),
+				Repo: workflows.Repo{
+					FullName: repoFullName,
+					Name:     repoName,
+					Owner:    repoOwner,
+					URL:      repoURL,
+					Ref: workflows.Ref{
+						Name: ref.Name,
+						Type: string(ref.Type),
+					},
 				},
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
 				TaskQueue: workflows.DeployTaskQueue,
 			},
-			expectedWorkflowArgs: workflows.DeployRequest{
-				Repository: workflows.Repo{
-					FullName: repoFullName,
-					Name:     repoName,
-					Owner:    repoOwner,
-					URL:      repoURL,
-				},
-			},
+			expectedWorkflowArgs: workflows.DeployRequest{},
 		}
 		deploySignaler := event.DeployWorkflowSignaler{
 			TemporalClient: testSignaler,
@@ -177,23 +176,22 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					PlanMode:  workflows.DestroyPlanMode,
 					Trigger:   workflows.MergeTrigger,
 				},
-				Ref: workflows.Ref{
-					Name: ref.Name,
-					Type: string(ref.Type),
+				Repo: workflows.Repo{
+					FullName: repoFullName,
+					Name:     repoName,
+					Owner:    repoOwner,
+					URL:      repoURL,
+					Ref: workflows.Ref{
+						Name: ref.Name,
+						Type: string(ref.Type),
+					},
 				},
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
 				TaskQueue: workflows.DeployTaskQueue,
 			},
-			expectedWorkflowArgs: workflows.DeployRequest{
-				Repository: workflows.Repo{
-					FullName: repoFullName,
-					Name:     repoName,
-					Owner:    repoOwner,
-					URL:      repoURL,
-				},
-			},
+			expectedWorkflowArgs: workflows.DeployRequest{},
 		}
 		deploySignaler := event.DeployWorkflowSignaler{
 			TemporalClient: testSignaler,
@@ -251,24 +249,23 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				PlanMode:  workflows.NormalPlanMode,
 				Trigger:   workflows.MergeTrigger,
 			},
-			Ref: workflows.Ref{
-				Name: ref.Name,
-				Type: string(ref.Type),
+			Repo: workflows.Repo{
+				FullName: repoFullName,
+				Name:     repoName,
+				Owner:    repoOwner,
+				URL:      repoURL,
+				Ref: workflows.Ref{
+					Name: ref.Name,
+					Type: string(ref.Type),
+				},
 			},
 		},
 		expectedWorkflow: workflows.Deploy,
 		expectedOptions: client.StartWorkflowOptions{
 			TaskQueue: workflows.DeployTaskQueue,
 		},
-		expectedWorkflowArgs: workflows.DeployRequest{
-			Repository: workflows.Repo{
-				FullName: repoFullName,
-				Name:     repoName,
-				Owner:    repoOwner,
-				URL:      repoURL,
-			},
-		},
-		expectedErr: expectedErr,
+		expectedWorkflowArgs: workflows.DeployRequest{},
+		expectedErr:          expectedErr,
 	}
 	deploySignaler := event.DeployWorkflowSignaler{
 		TemporalClient: testSignaler,

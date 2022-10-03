@@ -13,7 +13,7 @@ type DeploymentInfo struct {
 	CheckRunID int64
 	Revision   string
 	Root       root.Root
-	Ref        github.Ref
+	Repo       github.Repo
 }
 
 func BuildCheckRunTitle(rootName string) string {
