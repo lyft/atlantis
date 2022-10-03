@@ -28,7 +28,11 @@ func (t *testStreamHandler) Stream(jobID string, msg string) {
 
 }
 
-func (t *testStreamHandler) Close(ctx context.Context, jobID string) error {
+func (t *testStreamHandler) CloseJob(ctx context.Context, jobID string) error {
+	return nil
+}
+
+func (t *testStreamHandler) CleanUp(ctx context.Context) error {
 	return nil
 }
 

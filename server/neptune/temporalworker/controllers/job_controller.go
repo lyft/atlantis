@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -20,19 +19,6 @@ type multiplexor interface {
 	Handle(w http.ResponseWriter, r *http.Request) error
 }
 
-type receiverRegistry interface {
-	AddReceiver(jobID string, ch chan string)
-	Broadcast(msg job.OutputLine)
-	Close(ctx context.Context, jobID string)
-}
-
-type store interface {
-	Get(jobID string) (*job.Job, error)
-	Write(jobID string, output string) error
-	Remove(jobID string)
-	Close(ctx context.Context, jobID string, status job.JobStatus) error
-}
-
 type JobsController struct {
 	AtlantisVersion string
 	AtlantisURL     *url.URL
@@ -46,8 +32,8 @@ type JobsController struct {
 }
 
 func NewJobsController(
-	store store,
-	receiverRegistry receiverRegistry,
+	store job.Store,
+	receiverRegistry job.ReceiverRegistry,
 	serverCfg neptune.ServerConfig,
 	scope tally.Scope,
 	logger logging.Logger,

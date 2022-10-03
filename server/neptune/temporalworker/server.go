@@ -35,6 +35,8 @@ const (
 	AtlantisNamespace        = "atlantis"
 	DeployTaskqueue          = "deploy"
 	ProjectJobsViewRouteName = "project-jobs-detail"
+	TemporalWorkerTimeout    = 10 * time.Second
+	StreamHandlerTimeout     = 10 * time.Second
 )
 
 type Server struct {
@@ -44,7 +46,8 @@ type Server struct {
 	StatsScope       tally.Scope
 	StatsCloser      io.Closer
 	TemporalClient   *temporal.ClientWrapper
-	JobStreamHandler *job.StreamHandler
+	JobStreamHandler job.StreamHandler
+	JobStream        chan *job.OutputLine
 
 	DeployActivities    *workflows.DeployActivities
 	TerraformActivities *workflows.TerraformActivities
@@ -71,7 +74,8 @@ func NewServer(config *config.Config) (*Server, error) {
 	receiverRegistry := job.NewReceiverRegistry()
 
 	// terraform job output handler
-	jobStreamHandler := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
+	jobStreamChan := make(chan *job.OutputLine)
+	jobStreamHandler := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, jobStreamChan, config.CtxLogger)
 	jobsController := controllers.NewJobsController(jobStore, receiverRegistry, config.ServerCfg, scope, config.CtxLogger)
 
 	// temporal client + worker initialization
@@ -139,6 +143,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		StatsCloser:         statsCloser,
 		TemporalClient:      temporalClient,
 		JobStreamHandler:    jobStreamHandler,
+		JobStream:           jobStreamChan,
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
@@ -154,9 +159,14 @@ func (s Server) Start() error {
 
 	go func() {
 		defer wg.Done()
+
+		// Close job stream when temporalworker exits to allow gracefully shutting downt the stream handler
+		defer close(s.JobStream)
+
 		// pass the underlying client otherwise this will panic()
 		w := worker.New(s.TemporalClient.Client, workflows.DeployTaskQueue, worker.Options{
 			EnableSessionWorker: true,
+			WorkerStopTimeout:   TemporalWorkerTimeout,
 		})
 		w.RegisterActivity(s.TerraformActivities)
 		w.RegisterActivity(s.DeployActivities)
@@ -185,9 +195,17 @@ func (s Server) Start() error {
 	}()
 
 	// Start job output handler listener
-	// [WENGINES-4746] TODO: Clean up resources and exit gracefully on SIGTERM
 	go func() {
+		// Returns when the job output chan is closed which happens only after the temporal worker
+		// has gracefully shut down
 		s.JobStreamHandler.Handle()
+
+		// On cleanup, stream handler closes all active receivers and persists jobs in memory
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.JobStreamHandler.CleanUp(ctx); err != nil {
+			s.Logger.Error(err.Error())
+		}
 	}()
 
 	<-stop
@@ -198,7 +216,7 @@ func (s Server) Start() error {
 		s.Logger.Error(err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), StreamHandlerTimeout)
 	defer cancel()
 	if err := s.HttpServerProxy.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
