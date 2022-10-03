@@ -35,8 +35,12 @@ const (
 	AtlantisNamespace        = "atlantis"
 	DeployTaskqueue          = "deploy"
 	ProjectJobsViewRouteName = "project-jobs-detail"
-	TemporalWorkerTimeout    = 10 * time.Second
-	StreamHandlerTimeout     = 10 * time.Second
+
+	// Equal to default terraform timeout
+	TemporalWorkerTimeout = 60 * 60 * time.Second
+
+	// 5 minutes to allow cleaning up the job store
+	StreamHandlerTimeout = 5 * 60 * time.Second
 )
 
 type Server struct {
@@ -160,9 +164,6 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		// Close job stream when temporalworker exits to allow gracefully shutting downt the stream handler
-		defer close(s.JobStream)
-
 		// pass the underlying client otherwise this will panic()
 		w := worker.New(s.TemporalClient.Client, workflows.DeployTaskQueue, worker.Options{
 			EnableSessionWorker: true,
@@ -196,27 +197,30 @@ func (s Server) Start() error {
 
 	// Start job output handler listener
 	go func() {
-		// Returns when the job output chan is closed which happens only after the temporal worker
+		// Exits when the job output chan is closed which happens only after the temporal worker
 		// has gracefully shut down
 		s.JobStreamHandler.Handle()
-
-		// On cleanup, stream handler closes all active receivers and persists jobs in memory
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := s.JobStreamHandler.CleanUp(ctx); err != nil {
-			s.Logger.Error(err.Error())
-		}
 	}()
 
 	<-stop
 	wg.Wait()
+
+	// Close job stream when temporalworker exits to allow gracefully shutting down the stream handler
+	close(s.JobStream)
+
+	// On cleanup, stream handler closes all active receivers and persists jobs in memory
+	ctx, cancel := context.WithTimeout(context.Background(), StreamHandlerTimeout)
+	defer cancel()
+	if err := s.JobStreamHandler.CleanUp(ctx); err != nil {
+		s.Logger.Error(err.Error())
+	}
 
 	// flush stats before shutdown
 	if err := s.StatsCloser.Close(); err != nil {
 		s.Logger.Error(err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), StreamHandlerTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), StreamHandlerTimeout)
 	defer cancel()
 	if err := s.HttpServerProxy.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
