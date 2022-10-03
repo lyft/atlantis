@@ -202,7 +202,6 @@ func (s *StorageBackendJobStore) Cleanup(ctx context.Context) error {
 		if err != nil {
 			s.logger.ErrorContext(ctx, fmt.Sprintf("failed to persist job %s on cleanup: %s", jobID, err))
 			failedJobs = append(failedJobs, jobID)
-			continue
 		}
 	}
 
