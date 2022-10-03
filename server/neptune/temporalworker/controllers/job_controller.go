@@ -19,6 +19,14 @@ type multiplexor interface {
 	Handle(w http.ResponseWriter, r *http.Request) error
 }
 
+type receiverRegistry interface {
+	AddReceiver(jobID string, ch chan string)
+}
+
+type store interface {
+	Get(jobID string) (*job.Job, error)
+}
+
 type JobsController struct {
 	AtlantisVersion string
 	AtlantisURL     *url.URL
@@ -29,14 +37,6 @@ type JobsController struct {
 
 	StatsScope tally.Scope
 	Logger     logging.Logger
-}
-
-type receiverRegistry interface {
-	AddReceiver(jobID string, ch chan string)
-}
-
-type store interface {
-	Get(jobID string) (*job.Job, error)
 }
 
 func NewJobsController(
