@@ -8,7 +8,10 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const UnlockSignalName = "unlock"
+const (
+	UnlockSignalName = "unlock"
+	DivergedStatus   = "diverged"
+)
 
 type storeActivities interface {
 	FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error)
@@ -38,6 +41,7 @@ func (r *RootLocker) Lock(ctx workflow.Context) error {
 	// Compare with requested revision
 	var compareCommitsResponse *activities.CompareCommitsResponse
 	err = workflow.ExecuteActivity(ctx, r.Ga.CompareCommits, activities.CompareCommitsRequest{
+		Repo:      r.Request.Repo,
 		OldCommit: fetchLatestDeploymentResponse.Revision,
 		NewCommit: r.Request.Revision,
 	}).Get(ctx, &compareCommitsResponse)
@@ -47,7 +51,7 @@ func (r *RootLocker) Lock(ctx workflow.Context) error {
 	}
 
 	// Notify parent workflow + wait for unlock signal if request is from diverged commit that was merged
-	if compareCommitsResponse.IsDiverged && r.Request.Root.Trigger == root.MergeTrigger {
+	if compareCommitsResponse.Status == DivergedStatus && r.Request.Root.Trigger == root.MergeTrigger {
 		err = r.Notifier(&state.Lock{Locked: true})
 		if err != nil {
 			return err

@@ -20,12 +20,14 @@ import (
 )
 
 const (
-	testRepoName     = "testrepo"
-	testRootName     = "testroot"
-	testDeploymentID = "123"
-	testPath         = "rel/path"
-	testRevision     = "a1b2c3"
-	testOldRevision  = "d4e5f6"
+	testRepoName       = "testrepo"
+	testRootName       = "testroot"
+	testDeploymentID   = "123"
+	testPath           = "rel/path"
+	testRevision       = "a1b2c3"
+	testOldRevision    = "d4e5f6"
+	testAheadStatus    = "ahead"
+	testDivergedStatus = "diverged"
 )
 
 var testGithubRepo = github.Repo{
@@ -210,10 +212,11 @@ func TestSuccess(t *testing.T) {
 		Revision: testOldRevision,
 	}, nil)
 	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		Repo:      testGithubRepo,
 		OldCommit: testOldRevision,
 		NewCommit: testRevision,
 	}).Return(activities.CompareCommitsResponse{
-		IsDiverged: false,
+		Status: testAheadStatus,
 	}, nil)
 	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testGithubRepo,
@@ -334,10 +337,11 @@ func TestPlanRejection(t *testing.T) {
 		Revision: testOldRevision,
 	}, nil)
 	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		Repo:      testGithubRepo,
 		OldCommit: testOldRevision,
 		NewCommit: testRevision,
 	}).Return(activities.CompareCommitsResponse{
-		IsDiverged: false,
+		Status: testAheadStatus,
 	}, nil)
 	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testGithubRepo,
@@ -438,10 +442,11 @@ func TestFetchRootError(t *testing.T) {
 		Revision: testOldRevision,
 	}, nil)
 	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		Repo:      testGithubRepo,
 		OldCommit: testOldRevision,
 		NewCommit: testRevision,
 	}).Return(activities.CompareCommitsResponse{
-		IsDiverged: false,
+		Status: testAheadStatus,
 	}, nil)
 	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testGithubRepo,
@@ -481,10 +486,11 @@ func TestCleanupErrorReturnsNoError(t *testing.T) {
 		Revision: testOldRevision,
 	}, nil)
 	env.OnActivity(ga.CompareCommits, mock.Anything, activities.CompareCommitsRequest{
+		Repo:      testGithubRepo,
 		OldCommit: testOldRevision,
 		NewCommit: testRevision,
 	}).Return(activities.CompareCommitsResponse{
-		IsDiverged: false,
+		Status: testAheadStatus,
 	}, nil)
 	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
 		Repo:         testGithubRepo,
@@ -516,4 +522,4 @@ func TestCleanupErrorReturnsNoError(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TODO: FetchLatestDeployment + CompareCommit failures
+// TODO: FetchLatestDeployment

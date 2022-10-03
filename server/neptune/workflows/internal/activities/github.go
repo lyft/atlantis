@@ -209,15 +209,16 @@ func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootReque
 type CompareCommitsRequest struct {
 	OldCommit string
 	NewCommit string
+	Repo      internal.Repo
 }
 
 type CompareCommitsResponse struct {
-	IsDiverged bool
+	Status string
 }
 
-// TODO: implement
 func (a *githubActivities) CompareCommits(ctx context.Context, request CompareCommitsRequest) (CompareCommitsResponse, error) {
+	// TODO: implement
 	return CompareCommitsResponse{
-		IsDiverged: true,
+		Status: "diverged",
 	}, nil
 }
