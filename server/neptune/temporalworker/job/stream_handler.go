@@ -14,26 +14,19 @@ type OutputLine struct {
 	Line  string
 }
 
-type StreamHandler interface {
-	Stream(jobID string, msg string)
-	Handle()
-	CloseJob(ctx context.Context, jobID string) error
-	CleanUp(ctx context.Context) error
-}
-
 func NewStreamHandler(
 	jobStore Store,
 	receiverRegistry ReceiverRegistry,
 	logFilters valid.TerraformLogFilters,
 	streamChan chan *OutputLine,
 	logger logging.Logger,
-) StreamHandler {
+) *StreamHandler {
 
 	logFilter := filter.LogFilter{
 		Regexes: logFilters.Regexes,
 	}
 
-	return &streamHandler{
+	return &StreamHandler{
 		JobOutput:        streamChan,
 		Store:            jobStore,
 		ReceiverRegistry: receiverRegistry,
@@ -42,7 +35,7 @@ func NewStreamHandler(
 	}
 }
 
-type streamHandler struct {
+type StreamHandler struct {
 	JobOutput        chan *OutputLine
 	Store            Store
 	ReceiverRegistry ReceiverRegistry
@@ -50,14 +43,14 @@ type streamHandler struct {
 	Logger           logging.Logger
 }
 
-func (s *streamHandler) Stream(jobID string, msg string) {
+func (s *StreamHandler) Stream(jobID string, msg string) {
 	s.JobOutput <- &OutputLine{
 		JobID: jobID,
 		Line:  msg,
 	}
 }
 
-func (s *streamHandler) Handle() {
+func (s *StreamHandler) Handle() {
 	for msg := range s.JobOutput {
 		// Filter out log lines from job output
 		if s.LogFilter.ShouldFilterLine(msg.Line) {
@@ -75,12 +68,12 @@ func (s *streamHandler) Handle() {
 }
 
 // Activity context since it's called from within an activity
-func (s *streamHandler) CloseJob(ctx context.Context, jobID string) error {
+func (s *StreamHandler) CloseJob(ctx context.Context, jobID string) error {
 	s.ReceiverRegistry.Close(ctx, jobID)
 	return s.Store.Close(ctx, jobID, Complete)
 }
 
-func (s *streamHandler) CleanUp(ctx context.Context) error {
+func (s *StreamHandler) CleanUp(ctx context.Context) error {
 	s.ReceiverRegistry.CleanUp()
 	return s.Store.Cleanup(ctx)
 }

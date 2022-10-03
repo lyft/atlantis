@@ -50,7 +50,7 @@ type Server struct {
 	StatsScope       tally.Scope
 	StatsCloser      io.Closer
 	TemporalClient   *temporal.ClientWrapper
-	JobStreamHandler job.StreamHandler
+	JobStreamHandler *job.StreamHandler
 	JobStream        chan *job.OutputLine
 
 	DeployActivities    *workflows.DeployActivities

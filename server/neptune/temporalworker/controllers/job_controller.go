@@ -31,9 +31,17 @@ type JobsController struct {
 	Logger     logging.Logger
 }
 
+type receiverRegistry interface {
+	AddReceiver(jobID string, ch chan string)
+}
+
+type store interface {
+	Get(jobID string) (*job.Job, error)
+}
+
 func NewJobsController(
-	store job.Store,
-	receiverRegistry job.ReceiverRegistry,
+	store store,
+	receiverRegistry receiverRegistry,
 	serverCfg neptune.ServerConfig,
 	scope tally.Scope,
 	logger logging.Logger,
