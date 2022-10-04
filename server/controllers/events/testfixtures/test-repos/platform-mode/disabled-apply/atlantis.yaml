@@ -2,5 +2,6 @@ version: 3
 projects:
   - dir: staging
     workspace: staging
+    workflow_mode_type: platform
     autoplan:
       when_modified: ["**/*.tf*"]

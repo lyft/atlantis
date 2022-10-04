@@ -62,7 +62,6 @@ const (
 	DisableApplyFlag           = "disable-apply"
 	DisableAutoplanFlag        = "disable-autoplan"
 	DisableMarkdownFoldingFlag = "disable-markdown-folding"
-	EnablePlatformModeFlag     = "enable-platform-mode"
 	EnableRegExpCmdFlag        = "enable-regexp-cmd"
 	EnableDiffMarkdownFormat   = "enable-diff-markdown-format"
 	FFOwnerFlag                = "ff-owner"

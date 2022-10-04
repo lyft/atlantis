@@ -1,1 +1,1 @@
-**Apply Failed**: Atlantis apply is being deprecated, please merge the PR to apply your changes
+atlantis apply is disabled for this project. Please track the deployment when the PR is merged. 

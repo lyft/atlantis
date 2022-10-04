@@ -55,7 +55,6 @@ type Config struct {
 	AppCfg                    githubapp.Config
 	RepoAllowList             string
 	MaxProjectsPerPR          int
-	EnablePlatformMode        bool
 	FFOwner                   string
 	FFRepo                    string
 	FFBranch                  string
