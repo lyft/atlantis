@@ -83,11 +83,13 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 func (n *StateReceiver) storeDeploymentInfo(ctx workflow.Context, deploymentInfo DeploymentInfo) error {
 	// TODO: Call StoreDeploymentInfo and persist deployment info
 	err := workflow.ExecuteActivity(ctx, n.Activity.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
-		ID:         deploymentInfo.ID.String(),
-		CheckRunID: deploymentInfo.CheckRunID,
-		Revision:   deploymentInfo.Revision,
-		Root:       deploymentInfo.Root,
-		RepoName:   n.Repo.Name,
+		DeploymentInfo: activities.DeploymentInfo{
+			ID:         deploymentInfo.ID.String(),
+			CheckRunID: deploymentInfo.CheckRunID,
+			Revision:   deploymentInfo.Revision,
+			Root:       deploymentInfo.Root,
+		},
+		RepoName: n.Repo.Name,
 	}).Get(ctx, nil)
 	if err != nil {
 		return errors.Wrap(err, "persisting deployment info")

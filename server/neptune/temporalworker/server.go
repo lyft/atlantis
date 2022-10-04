@@ -113,7 +113,6 @@ func NewServer(config *config.Config) (*Server, error) {
 	deployActivities, err := workflows.NewDeployActivities(
 		config.App,
 		scope.SubScope("deploy"),
-		awsCfg,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")
@@ -123,6 +122,8 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.TerraformCfg,
 		config.DataDir,
 		config.ServerCfg.URL,
+		awsCfg,
+		config.DeploymentInfoBucketName,
 		jobStreamHandler,
 	)
 	if err != nil {

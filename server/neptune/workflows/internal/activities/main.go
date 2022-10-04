@@ -40,13 +40,9 @@ type Deploy struct {
 	*dbActivities
 }
 
-func NewDeploy(config githubapp.Config, scope tally.Scope, awsCfg aws.Config) (*Deploy, error) {
-	s3client := s3.NewFromConfig(awsCfg)
+func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
 	return &Deploy{
-		dbActivities: &dbActivities{
-			S3Client:   s3client,
-			BucketName: "atlantis-staging-jobs",
-		},
+		dbActivities: &dbActivities{},
 	}, nil
 }
 
@@ -57,9 +53,10 @@ type Terraform struct {
 	*notifyActivities
 	*cleanupActivities
 	*jobActivities
+	*dbActivities
 }
 
-func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, streamHandler streamHandler) (*Terraform, error) {
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, awsCfg aws.Config, deploymentInfoBucketName string, streamHandler streamHandler) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -90,6 +87,7 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		return nil, err
 	}
 
+	s3client := s3.NewFromConfig(awsCfg)
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
 		workerInfoActivity: &workerInfoActivity{
@@ -102,6 +100,10 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		},
 		jobActivities: &jobActivities{
 			StreamCloser: streamHandler,
+		},
+		dbActivities: &dbActivities{
+			S3Client:   s3client,
+			BucketName: deploymentInfoBucketName,
 		},
 	}, nil
 }

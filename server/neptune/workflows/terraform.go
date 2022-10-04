@@ -3,6 +3,7 @@ package workflows
 import (
 	"net/url"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
@@ -28,8 +29,8 @@ type TerraformActivities struct {
 	activities.Terraform
 }
 
-func NewTerraformActivities(config config.TerraformConfig, dataDir string, serverURL *url.URL, streamHandler *job.StreamHandler) (*TerraformActivities, error) {
-	terraformActivities, err := activities.NewTerraform(config, dataDir, serverURL, streamHandler)
+func NewTerraformActivities(config config.TerraformConfig, dataDir string, serverURL *url.URL, awsCfg aws.Config, deploymentInfoBucketName string, streamHandler *job.StreamHandler) (*TerraformActivities, error) {
+	terraformActivities, err := activities.NewTerraform(config, dataDir, serverURL, awsCfg, deploymentInfoBucketName, streamHandler)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}
