@@ -22,8 +22,6 @@ type githubActivities interface {
 type terraformActivities interface {
 	Cleanup(ctx context.Context, request activities.CleanupRequest) (activities.CleanupResponse, error)
 	GetWorkerInfo(ctx context.Context) (*activities.GetWorkerInfoResponse, error)
-	FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error)
-	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
 }
 
 // jobRunner runs a deploy plan/apply job
@@ -194,18 +192,18 @@ func (r *Runner) Apply(ctx workflow.Context, root *root.LocalRoot, serverURL *ur
 
 func (r *Runner) Run(ctx workflow.Context) error {
 	// Fetch latest deployment
-	var fetchDeploymentResp activities.FetchLatestDeploymentResponse
-	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
-		RepositoryName: r.Request.Repo.Name,
-		RootName:       r.Request.Root.Name,
-	}).Get(ctx, &fetchDeploymentResp)
-	if err != nil {
-		return errors.Wrap(err, "fetching latest deployment")
-	}
+	// var fetchDeploymentResp activities.FetchLatestDeploymentResponse
+	// err := workflow.ExecuteActivity(ctx, r.TerraformActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
+	// 	RepositoryName: r.Request.Repo.Name,
+	// 	RootName:       r.Request.Root.Name,
+	// }).Get(ctx, &fetchDeploymentResp)
+	// if err != nil {
+	// 	return errors.Wrap(err, "fetching latest deployment")
+	// }
 	// TODO: Compare commmits to validate the revision.
 
 	var response *activities.GetWorkerInfoResponse
-	err = workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
+	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
 
 	if err != nil {
 		return errors.Wrap(err, "getting worker info")
@@ -233,19 +231,5 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	if err := r.Apply(ctx, root, response.ServerURL, planResponse.PlanFile); err != nil {
 		return errors.Wrap(err, "running apply job")
 	}
-
-	err = workflow.ExecuteActivity(ctx, n.Activity.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
-		DeploymentInfo: activities.DeploymentInfo{
-			ID:         deploymentInfo.ID.String(),
-			CheckRunID: deploymentInfo.CheckRunID,
-			Revision:   deploymentInfo.Revision,
-			Root:       deploymentInfo.Root,
-		},
-		RepoName: n.Repo.Name,
-	}).Get(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "persisting deployment info")
-	}
-
 	return nil
 }

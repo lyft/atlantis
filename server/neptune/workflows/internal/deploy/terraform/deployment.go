@@ -11,6 +11,7 @@ type DeploymentInfo struct {
 	ID         uuid.UUID
 	CheckRunID int64
 	Revision   string
+	RepoName   string
 	Root       root.Root
 }
 

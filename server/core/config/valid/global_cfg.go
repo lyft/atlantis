@@ -2,11 +2,12 @@ package valid
 
 import (
 	"fmt"
+	"regexp"
+
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/s3"
 	version "github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/logging"
-	"regexp"
 )
 
 const MergeableApplyReq = "mergeable"
@@ -47,6 +48,7 @@ type GlobalCfg struct {
 	PolicySets           PolicySets
 	Metrics              Metrics
 	Jobs                 Jobs
+	Deployments          Deployments
 	TerraformLogFilter   TerraformLogFilters
 	Temporal             Temporal
 }
@@ -57,6 +59,10 @@ type BackendConfigurer interface {
 	GetConfigMap() stow.Config
 	GetConfiguredBackend() string
 	GetContainerName() string
+}
+
+type Deployments struct {
+	StorageBackend *StorageBackend
 }
 
 type Jobs struct {

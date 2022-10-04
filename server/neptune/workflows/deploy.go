@@ -1,8 +1,8 @@
 package workflows
 
 import (
-	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
@@ -39,8 +39,8 @@ type DeployActivities struct {
 	activities.Deploy
 }
 
-func NewDeployActivities(appConfig githubapp.Config, scope tally.Scope) (*DeployActivities, error) {
-	deployActivities, err := activities.NewDeploy(appConfig, scope)
+func NewDeployActivities(deployment valid.Deployments, scope tally.Scope) (*DeployActivities, error) {
+	deployActivities, err := activities.NewDeploy(scope, deployment)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")

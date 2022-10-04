@@ -21,6 +21,7 @@ type GlobalCfg struct {
 	PolicySets           PolicySets           `yaml:"policies" json:"policies"`
 	Metrics              Metrics              `yaml:"metrics" json:"metrics"`
 	Jobs                 Jobs                 `yaml:"jobs" json:"jobs"`
+	Deployments          Deployments          `yaml:"deployments" json:"deployments"`
 	TerraformLogFilters  TerraformLogFilters  `yaml:"terraform_log_filters" json:"terraform_log_filters"`
 	Temporal             Temporal             `yaml:"temporal" json:"temporal"`
 }

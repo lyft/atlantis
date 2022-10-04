@@ -5,14 +5,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/github"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/terraform"
 	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
@@ -40,9 +40,17 @@ type Deploy struct {
 	*dbActivities
 }
 
-func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
+func NewDeploy(scope tally.Scope, deployments valid.Deployments) (*Deploy, error) {
+
+	deploymentStore, err := deployment.NewStore(deployments, scope)
+	if err != nil {
+		return nil, errors.Wrap(err, "initialiing deployment info store")
+	}
+
 	return &Deploy{
-		dbActivities: &dbActivities{},
+		dbActivities: &dbActivities{
+			DeploymentInfoStore: deploymentStore,
+		},
 	}, nil
 }
 
@@ -53,10 +61,9 @@ type Terraform struct {
 	*notifyActivities
 	*cleanupActivities
 	*jobActivities
-	*dbActivities
 }
 
-func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, awsCfg aws.Config, deploymentInfoBucketName string, streamHandler streamHandler) (*Terraform, error) {
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, streamHandler streamHandler) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -87,7 +94,6 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		return nil, err
 	}
 
-	s3client := s3.NewFromConfig(awsCfg)
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
 		workerInfoActivity: &workerInfoActivity{
@@ -100,10 +106,6 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		},
 		jobActivities: &jobActivities{
 			StreamCloser: streamHandler,
-		},
-		dbActivities: &dbActivities{
-			S3Client:   s3client,
-			BucketName: deploymentInfoBucketName,
 		},
 	}, nil
 }

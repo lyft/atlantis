@@ -87,6 +87,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		Root:       root,
 		Revision:   request.Revision,
 		CheckRunID: resp.ID,
+		RepoName:   n.repo.Name,
 	})
 
 }

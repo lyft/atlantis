@@ -1,7 +1,11 @@
 package terraform
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
@@ -14,7 +18,12 @@ type stateReceiver interface {
 	Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
 }
 
-func NewWorkflowRunner(repo github.Repo, a receiverActivities, w Workflow) *WorkflowRunner {
+type dbActivities interface {
+	FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error)
+	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
+}
+
+func NewWorkflowRunner(repo github.Repo, a receiverActivities, db dbActivities, w Workflow) *WorkflowRunner {
 	return &WorkflowRunner{
 		Repo:     repo,
 		Workflow: w,
@@ -22,6 +31,7 @@ func NewWorkflowRunner(repo github.Repo, a receiverActivities, w Workflow) *Work
 			Repo:     repo,
 			Activity: a,
 		},
+		DbActivities: db,
 	}
 }
 
@@ -29,9 +39,21 @@ type WorkflowRunner struct {
 	StateReceiver stateReceiver
 	Repo          github.Repo
 	Workflow      Workflow
+	DbActivities  dbActivities
 }
 
 func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo) error {
+	var resp activities.FetchLatestDeploymentResponse
+	err := workflow.ExecuteActivity(ctx, r.DbActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
+		RepositoryName: deploymentInfo.RepoName,
+		RootName:       deploymentInfo.Root.Name,
+	}).Get(ctx, &resp)
+	if err != nil {
+		return errors.Wrap(err, "fetching latest deployment")
+	}
+
+	// TODO: Compare commits to validate revision
+
 	id := deploymentInfo.ID
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		WorkflowID: id.String(),
@@ -42,7 +64,6 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 		DeploymentId: id.String(),
 		Revision:     deploymentInfo.Revision,
 	}
-
 	future := workflow.ExecuteChildWorkflow(ctx, r.Workflow, terraformWorkflowRequest)
 	return r.awaitWorkflow(ctx, future, deploymentInfo)
 }
@@ -61,6 +82,7 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 	selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {
 		r.StateReceiver.Receive(ctx, c, deploymentInfo)
 	})
+
 	var workflowComplete bool
 	var err error
 	selector.AddFuture(future, func(f workflow.Future) {
@@ -79,5 +101,20 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 	if err != nil {
 		return errors.Wrap(err, "executing terraform workflow")
 	}
+
+	// Persist deployment info
+	err = workflow.ExecuteActivity(ctx, r.DbActivities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: deployment.DeploymentInfo{
+			ID:         deploymentInfo.ID.String(),
+			CheckRunID: deploymentInfo.CheckRunID,
+			Revision:   deploymentInfo.Revision,
+			Root:       deploymentInfo.Root,
+			RepoName:   deploymentInfo.RepoName,
+		},
+	}).Get(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "persisting deployment info")
+	}
+
 	return nil
 }

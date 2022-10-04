@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	aws "github.com/aws/aws-sdk-go-v2/config"
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -105,13 +104,8 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	awsCfg, err := aws.LoadDefaultConfig(context.Background())
-	if err != nil {
-		panic("Failed to load configuration")
-	}
-
 	deployActivities, err := workflows.NewDeployActivities(
-		config.App,
+		config.DeploymentConfig,
 		scope.SubScope("deploy"),
 	)
 	if err != nil {
@@ -122,8 +116,6 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.TerraformCfg,
 		config.DataDir,
 		config.ServerCfg.URL,
-		awsCfg,
-		config.DeploymentInfoBucketName,
 		jobStreamHandler,
 	)
 	if err != nil {
