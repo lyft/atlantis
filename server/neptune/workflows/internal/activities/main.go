@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
@@ -38,9 +40,13 @@ type Deploy struct {
 	*dbActivities
 }
 
-func NewDeploy(config githubapp.Config, scope tally.Scope) (*Deploy, error) {
+func NewDeploy(config githubapp.Config, scope tally.Scope, awsCfg aws.Config) (*Deploy, error) {
+	s3client := s3.NewFromConfig(awsCfg)
 	return &Deploy{
-		dbActivities: &dbActivities{},
+		dbActivities: &dbActivities{
+			S3Client:   s3client,
+			BucketName: "atlantis-staging-jobs",
+		},
 	}, nil
 }
 

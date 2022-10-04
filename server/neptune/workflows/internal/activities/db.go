@@ -1,22 +1,39 @@
 package activities
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
+// Downloader is implemented by manager.Downloader
+type s3Client interface {
+	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
+}
+
 type dbActivities struct {
+	S3Client   s3Client
+	BucketName string
 }
 
 type FetchLatestDeploymentRequest struct {
-	RepositoryURL string
-	RootName      string
+	RepositoryName string
+	RootName       string
 }
 
 type FetchLatestDeploymentResponse struct {
-	ID       string
-	Revision string
+	ID         string
+	CheckRunID int64
+	Revision   string
+	Root       root.Root
 }
 
 func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
@@ -26,4 +43,45 @@ func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchL
 		ID:       "test-id",
 		Revision: "1234",
 	}, nil
+}
+
+type StoreLatestDeploymentRequest struct {
+	ID         string
+	CheckRunID int64
+	Revision   string
+	Root       root.Root
+	RepoName   string
+}
+
+type DeploymentInfo struct {
+	ID         string
+	CheckRunID int64
+	Revision   string
+	Root       root.Root
+}
+
+func (a *dbActivities) StoreLatestDeployment(ctx context.Context, request StoreLatestDeploymentRequest) error {
+	logger.Info(ctx, "storing latest deployment")
+	object, err := json.Marshal(DeploymentInfo{
+		ID:         request.ID,
+		CheckRunID: request.CheckRunID,
+		Revision:   request.Revision,
+		Root:       request.Root,
+	})
+	if err != nil {
+		return errors.Wrap(err, "marshalling deployment object")
+	}
+	key := fmt.Sprintf("deployments/%s/%s/deployment.json", request.RepoName, request.Root.Name)
+	uploadInput := &s3.PutObjectInput{
+		Body:        bytes.NewReader(object),
+		Bucket:      &a.BucketName,
+		Key:         aws.String(key),
+		ContentType: aws.String("application/json"),
+	}
+	_, err = a.S3Client.PutObject(ctx, uploadInput)
+	if err != nil {
+		return errors.Wrapf(err, "uploading deployment info for %s", request.ID)
+	}
+
+	return nil
 }

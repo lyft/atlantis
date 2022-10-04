@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
@@ -39,8 +40,8 @@ type DeployActivities struct {
 	activities.Deploy
 }
 
-func NewDeployActivities(appConfig githubapp.Config, scope tally.Scope) (*DeployActivities, error) {
-	deployActivities, err := activities.NewDeploy(appConfig, scope)
+func NewDeployActivities(appConfig githubapp.Config, scope tally.Scope, awsCfg aws.Config) (*DeployActivities, error) {
+	deployActivities, err := activities.NewDeploy(appConfig, scope, awsCfg)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")

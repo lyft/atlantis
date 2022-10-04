@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	aws "github.com/aws/aws-sdk-go-v2/config"
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -104,9 +105,15 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
+	awsCfg, err := aws.LoadDefaultConfig(context.Background())
+	if err != nil {
+		panic("Failed to load configuration")
+	}
+
 	deployActivities, err := workflows.NewDeployActivities(
 		config.App,
 		scope.SubScope("deploy"),
+		awsCfg,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")

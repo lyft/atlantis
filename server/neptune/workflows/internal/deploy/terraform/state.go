@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -14,6 +15,7 @@ import (
 
 type receiverActivities interface {
 	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
+	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
 }
 
 type StateReceiver struct {
@@ -70,6 +72,27 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 	if err != nil {
 		logger.Error(ctx, "updating check run", "err", err)
 	}
+
+	// Store deployment info if apply job is success
+	if workflowState.Apply != nil && workflowState.Apply.Status == state.SuccessJobStatus {
+		logger.Info(ctx, "storing latest deployment info")
+		n.storeDeploymentInfo(ctx, deploymentInfo)
+	}
+}
+
+func (n *StateReceiver) storeDeploymentInfo(ctx workflow.Context, deploymentInfo DeploymentInfo) error {
+	// TODO: Call StoreDeploymentInfo and persist deployment info
+	err := workflow.ExecuteActivity(ctx, n.Activity.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
+		ID:         deploymentInfo.ID.String(),
+		CheckRunID: deploymentInfo.CheckRunID,
+		Revision:   deploymentInfo.Revision,
+		Root:       deploymentInfo.Root,
+		RepoName:   n.Repo.Name,
+	}).Get(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "persisting deployment info")
+	}
+	return nil
 }
 
 func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState {

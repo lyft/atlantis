@@ -25,6 +25,14 @@ func (a *testActivities) UpdateCheckRun(ctx context.Context, request activities.
 	return activities.UpdateCheckRunResponse{}, nil
 }
 
+func (a *testActivities) FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error) {
+	return activities.FetchLatestDeploymentResponse{}, nil
+}
+
+func (a *testActivities) StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error {
+	return nil
+}
+
 type stateReceiveRequest struct {
 	StatesToSend []*state.Workflow
 }
