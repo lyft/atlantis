@@ -101,9 +101,6 @@ func NewServer(config Config) (*Server, error) {
 	}
 
 	globalCfg := valid.NewGlobalCfg()
-	if config.EnablePlatformMode {
-		globalCfg = globalCfg.EnablePlatformMode()
-	}
 	validator := &cfgParser.ParserValidator{}
 	if config.RepoConfig != "" {
 		globalCfg, err = validator.ParseGlobalCfg(config.RepoConfig, globalCfg)

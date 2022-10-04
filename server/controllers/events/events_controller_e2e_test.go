@@ -22,6 +22,7 @@ import (
 	events_controllers "github.com/runatlantis/atlantis/server/controllers/events"
 	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
 	"github.com/runatlantis/atlantis/server/core/config"
+	lyftCommand "github.com/runatlantis/atlantis/server/lyft/command"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/locking"
@@ -35,7 +36,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/apply"
 	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 
@@ -600,7 +600,6 @@ func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 			w := httptest.NewRecorder()
 			// reset userConfig
 			userConfig := &server.UserConfig{}
-			userConfig.EnablePlatformMode = true
 			userConfig.EnablePolicyChecks = true
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
@@ -708,10 +707,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	locker := events.NewDefaultWorkingDirLocker()
 	parser := &config.ParserValidator{}
 
-	if userConfig.EnablePlatformMode {
-		globalCfg = globalCfg.EnablePlatformMode()
-	}
-
 	expCfgPath := filepath.Join(absRepoPath(t, repoFixtureDir), "repos.yaml")
 	if _, err := os.Stat(expCfgPath); err == nil {
 		globalCfg, err = parser.ParseGlobalCfg(expCfgPath, globalCfg)
@@ -738,11 +733,9 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
 		WithInstrumentation(statsScope)
 
-	if userConfig.EnablePlatformMode {
-		projectContextBuilder = wrappers.
-			WrapProjectContext(events.NewPRProjectCommandContextBuilder(commentParser)).
+	projectContextBuilder = wrappers.
+			WrapProjectContext(events.NewPlatformModeProjectCommandContextBuilder(commentParser, projectContextBuilder, ctxLogger, featureAllocator)).
 			WithInstrumentation(statsScope)
-	}
 
 	if userConfig.EnablePolicyChecks {
 		projectContextBuilder = projectContextBuilder.EnablePolicyChecks(commentParser)
@@ -826,19 +819,27 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	applyRequirementHandler := &events.AggregateApplyRequirements{
 		WorkingDir: workingDir,
 	}
-
-	prjCmdRunner := wrappers.WrapProjectRunner(
-		events.NewProjectCommandRunner(
-			stepsRunner,
-			workingDir,
-			webhookSender,
-			locker,
-			applyRequirementHandler,
-		),
+	unwrappedRunner := events.NewProjectCommandRunner(
+		stepsRunner,
+		workingDir,
+		webhookSender,
+		locker,
+		applyRequirementHandler,
 	)
 
-	if !userConfig.EnablePlatformMode {
-		prjCmdRunner = prjCmdRunner.WithSync(projectLocker, lockURLGenerator)
+	legacyPrjCmdRunner := wrappers.WrapProjectRunner(
+		unwrappedRunner,
+	).WithSync(projectLocker, lockURLGenerator)
+
+	platformModePrjCmdRunner := wrappers.WrapProjectRunner(
+		unwrappedRunner,
+	)
+
+	prjCmdRunner := &lyftCommand.PlatformModeProjectRunner{
+		PlatformModeRunner: platformModePrjCmdRunner,
+		PrModeRunner: legacyPrjCmdRunner,
+		Allocator: featureAllocator,
+		Logger: ctxLogger,
 	}
 
 	dbUpdater := &events.DBUpdater{
@@ -907,22 +908,19 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	var applyCommandRunner command.Runner
 	e2ePullReqStatusFetcher := lyft_vcs.NewSQBasedPullStatusFetcher(ghClient, vcs.NewLyftPullMergeabilityChecker("atlantis"))
-	if userConfig.EnablePlatformMode {
-		applyCommandRunner = apply.NewDisabledRunner(pullUpdater)
-	} else {
-		applyCommandRunner = events.NewApplyCommandRunner(
-			vcsClient,
-			false,
-			applyLocker,
-			e2eStatusUpdater,
-			projectCommandBuilder,
-			prjCmdRunner,
-			pullUpdater,
-			dbUpdater,
-			parallelPoolSize,
-			e2ePullReqStatusFetcher,
-		)
-	}
+
+	applyCommandRunner = events.NewApplyCommandRunner(
+		vcsClient,
+		false,
+		applyLocker,
+		e2eStatusUpdater,
+		projectCommandBuilder,
+		prjCmdRunner,
+		pullUpdater,
+		dbUpdater,
+		parallelPoolSize,
+		e2ePullReqStatusFetcher,
+	)
 
 	commentCommandRunnerByCmd := map[command.Name]command.Runner{
 		command.Plan:            planCommandRunner,
