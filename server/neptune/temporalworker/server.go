@@ -206,6 +206,7 @@ func (s Server) Start() error {
 	wg.Wait()
 
 	// Close job stream when temporalworker exits to allow gracefully shutting down the stream handler
+	s.Logger.Info("Closing job output channel")
 	close(s.JobStream)
 
 	// On cleanup, stream handler closes all active receivers and persists jobs in memory
