@@ -39,8 +39,6 @@ type TerraformClient interface {
 
 type streamHandler interface {
 	Stream(jobID string, msg string)
-	CloseJob(ctx context.Context, jobID string) error
-	CleanUp(ctx context.Context) error
 }
 
 type terraformActivities struct {

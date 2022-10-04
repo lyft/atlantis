@@ -63,7 +63,7 @@ func TestStreamHandler_Handle(t *testing.T) {
 			},
 		}
 
-		streamHandler := job.NewStreamHandler(
+		streamHandler := job.NewTestStreamHandler(
 			testJobStore,
 			testReceiverRegistry,
 			valid.TerraformLogFilters(logFilter),
@@ -92,7 +92,7 @@ func TestStreamHandler_Stream(t *testing.T) {
 
 		// Buffered channel to simplify testing since it's not blocking
 		mainTfCh := make(chan *job.OutputLine, len(logs))
-		streamHandler := job.NewStreamHandler(
+		streamHandler := job.NewTestStreamHandler(
 			&testStore{},
 			&testReceiverRegistry{},
 			valid.TerraformLogFilters{},
@@ -157,7 +157,7 @@ func TestStreamHandler_Close(t *testing.T) {
 				},
 			},
 		}
-		streamHandler := job.NewStreamHandler(
+		streamHandler := job.NewTestStreamHandler(
 			testStore,
 			testReceiverRegistry,
 			valid.TerraformLogFilters{},
@@ -198,7 +198,7 @@ func TestStreamHandler_Cleanup(t *testing.T) {
 				},
 			},
 		}
-		streamHandler := job.NewStreamHandler(
+		streamHandler := job.NewTestStreamHandler(
 			testStore,
 			testReceiverRegistry,
 			valid.TerraformLogFilters{},

@@ -9,12 +9,14 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+type StreamCloserFn func()
+
 type OutputLine struct {
 	JobID string
 	Line  string
 }
 
-func NewStreamHandler(
+func NewTestStreamHandler(
 	jobStore Store,
 	receiverRegistry ReceiverRegistry,
 	logFilters valid.TerraformLogFilters,
@@ -33,6 +35,31 @@ func NewStreamHandler(
 		LogFilter:        logFilter,
 		Logger:           logger,
 	}
+}
+
+func NewStreamHandler(
+	jobStore Store,
+	receiverRegistry ReceiverRegistry,
+	logFilters valid.TerraformLogFilters,
+	logger logging.Logger,
+) (*StreamHandler, StreamCloserFn) {
+
+	logFilter := filter.LogFilter{
+		Regexes: logFilters.Regexes,
+	}
+
+	streamChan := make(chan *OutputLine)
+	streamCloserFn := func() {
+		close(streamChan)
+	}
+
+	return &StreamHandler{
+		JobOutput:        streamChan,
+		Store:            jobStore,
+		ReceiverRegistry: receiverRegistry,
+		LogFilter:        logFilter,
+		Logger:           logger,
+	}, streamCloserFn
 }
 
 type StreamHandler struct {

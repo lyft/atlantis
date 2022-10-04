@@ -44,14 +44,14 @@ const (
 )
 
 type Server struct {
-	Logger           logging.Logger
-	HttpServerProxy  *neptune_http.ServerProxy
-	Port             int
-	StatsScope       tally.Scope
-	StatsCloser      io.Closer
-	TemporalClient   *temporal.ClientWrapper
-	JobStreamHandler *job.StreamHandler
-	JobStream        chan *job.OutputLine
+	Logger            logging.Logger
+	HttpServerProxy   *neptune_http.ServerProxy
+	Port              int
+	StatsScope        tally.Scope
+	StatsCloser       io.Closer
+	TemporalClient    *temporal.ClientWrapper
+	JobStreamHandler  *job.StreamHandler
+	JobStreamCloserFn job.StreamCloserFn
 
 	DeployActivities    *workflows.DeployActivities
 	TerraformActivities *workflows.TerraformActivities
@@ -78,8 +78,7 @@ func NewServer(config *config.Config) (*Server, error) {
 	receiverRegistry := job.NewReceiverRegistry()
 
 	// terraform job output handler
-	jobStreamChan := make(chan *job.OutputLine)
-	jobStreamHandler := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, jobStreamChan, config.CtxLogger)
+	jobStreamHandler, streamCloserFn := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
 	jobsController := controllers.NewJobsController(jobStore, receiverRegistry, config.ServerCfg, scope, config.CtxLogger)
 
 	// temporal client + worker initialization
@@ -147,7 +146,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		StatsCloser:         statsCloser,
 		TemporalClient:      temporalClient,
 		JobStreamHandler:    jobStreamHandler,
-		JobStream:           jobStreamChan,
+		JobStreamCloserFn:   streamCloserFn,
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
@@ -159,10 +158,13 @@ func (s Server) Start() error {
 	defer s.Logger.Close()
 	defer s.TemporalClient.Close()
 	var wg sync.WaitGroup
-	wg.Add(1)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
+
+		// Close job stream when temporalworker exits to allow gracefully shutting down the stream handler
+		defer s.JobStreamCloserFn()
 
 		// pass the underlying client otherwise this will panic()
 		w := worker.New(s.TemporalClient.Client, workflows.DeployTaskQueue, worker.Options{
@@ -196,7 +198,10 @@ func (s Server) Start() error {
 	}()
 
 	// Start job output handler listener
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
 		// Exits when the job output chan is closed which happens only after the temporal worker
 		// has gracefully shut down
 		s.JobStreamHandler.Handle()
@@ -205,9 +210,7 @@ func (s Server) Start() error {
 	<-stop
 	wg.Wait()
 
-	// Close job stream when temporalworker exits to allow gracefully shutting down the stream handler
-	s.Logger.Info("Closing job output channel")
-	close(s.JobStream)
+	s.Logger.Info("Cleaning up stream handler")
 
 	// On cleanup, stream handler closes all active receivers and persists jobs in memory
 	ctx, cancel := context.WithTimeout(context.Background(), StreamHandlerTimeout)
