@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,8 @@ import (
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
+
+var deploymentId = uuid.New()
 
 type testDbActivities struct {
 }
@@ -78,16 +81,17 @@ func parentWorkflow(ctx workflow.Context, r request) (response, error) {
 	var da *testDbActivities
 	runner := &terraform.WorkflowRunner{
 		StateReceiver: receiver,
-		Repo:          github.Repo{},
-		Workflow:      testTerraformWorkflow,
-		DbActivities:  da,
+		Repo: github.Repo{
+			Owner: "owner",
+			Name:  "test",
+		},
+		Workflow:     testTerraformWorkflow,
+		DbActivities: da,
 	}
 
-	uuid, err := sideeffect.GenerateUUID(ctx)
-
-	if err != nil {
-		return response{}, nil
-	}
+	// hardcoding deploymentID since there is no way to mock sideffects atm
+	// https://github.com/temporalio/sdk-go/issues/916
+	uuid := deploymentId
 
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{StartToCloseTimeout: 10 * time.Second})
 	if err := runner.Run(ctx, terraform.DeploymentInfo{
@@ -107,14 +111,26 @@ func parentWorkflow(ctx workflow.Context, r request) (response, error) {
 func TestWorkflowRunner_Run(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-
 	env.RegisterWorkflow(testTerraformWorkflow)
 
 	a := &testDbActivities{}
 	env.RegisterActivity(a)
 
-	env.OnActivity(a.FetchLatestDeployment, mock.Anything, mock.Anything).Return(activities.FetchLatestDeploymentResponse{}, nil)
-	env.OnActivity(a.StoreLatestDeployment, mock.Anything, mock.Anything).Return(nil)
+	env.OnActivity(a.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
+		FullRepositoryName: "owner/test",
+	}).Return(activities.FetchLatestDeploymentResponse{}, nil)
+
+	env.OnActivity(a.StoreLatestDeployment, mock.Anything, activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: deployment.Info{
+			CheckRunID: 1,
+			Revision:   "1234",
+			Repo: deployment.Repo{
+				Owner: "owner",
+				Name:  "test",
+			},
+			ID: deploymentId.String(),
+		},
+	}).Return(nil)
 	env.ExecuteWorkflow(parentWorkflow, request{})
 
 	var resp response
