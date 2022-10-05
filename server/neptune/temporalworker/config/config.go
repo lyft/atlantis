@@ -38,8 +38,7 @@ type Config struct {
 	//TODO: combine this with above
 	StatsNamespace string
 
-	DataDir                  string
-	CtxLogger                logging.Logger
-	App                      githubapp.Config
-	DeploymentInfoBucketName string
+	DataDir   string
+	CtxLogger logging.Logger
+	App       githubapp.Config
 }

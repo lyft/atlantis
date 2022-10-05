@@ -191,17 +191,6 @@ func (r *Runner) Apply(ctx workflow.Context, root *root.LocalRoot, serverURL *ur
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
-	// Fetch latest deployment
-	// var fetchDeploymentResp activities.FetchLatestDeploymentResponse
-	// err := workflow.ExecuteActivity(ctx, r.TerraformActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
-	// 	RepositoryName: r.Request.Repo.Name,
-	// 	RootName:       r.Request.Root.Name,
-	// }).Get(ctx, &fetchDeploymentResp)
-	// if err != nil {
-	// 	return errors.Wrap(err, "fetching latest deployment")
-	// }
-	// TODO: Compare commmits to validate the revision.
-
 	var response *activities.GetWorkerInfoResponse
 	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
 
@@ -231,5 +220,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	if err := r.Apply(ctx, root, response.ServerURL, planResponse.PlanFile); err != nil {
 		return errors.Wrap(err, "running apply job")
 	}
+
 	return nil
 }

@@ -76,6 +76,7 @@ func (g GlobalCfg) Validate() error {
 		validation.Field(&g.DeploymentWorkflows),
 		validation.Field(&g.Metrics),
 		validation.Field(&g.Jobs),
+		validation.Field(&g.Deployments),
 		validation.Field(&g.TerraformLogFilters),
 	)
 	if err != nil {
@@ -164,6 +165,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		PolicySets:           policySets,
 		Metrics:              g.Metrics.ToValid(),
 		Jobs:                 g.Jobs.ToValid(),
+		Deployments:          g.Deployments.ToValid(),
 		TerraformLogFilter:   g.TerraformLogFilters.ToValid(),
 		Temporal:             g.Temporal.ToValid(),
 	}

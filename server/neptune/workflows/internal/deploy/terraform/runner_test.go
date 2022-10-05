@@ -1,9 +1,11 @@
 package terraform_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
@@ -11,9 +13,21 @@ import (
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
+
+type testDbActivities struct {
+}
+
+func (t *testDbActivities) FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error) {
+	return activities.FetchLatestDeploymentResponse{}, nil
+}
+
+func (t *testDbActivities) StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error {
+	return nil
+}
 
 type testStateReceiver struct {
 	payloads []testSignalPayload
@@ -60,10 +74,13 @@ type response struct {
 
 func parentWorkflow(ctx workflow.Context, r request) (response, error) {
 	receiver := &testStateReceiver{}
+
+	var da *testDbActivities
 	runner := &terraform.WorkflowRunner{
 		StateReceiver: receiver,
 		Repo:          github.Repo{},
 		Workflow:      testTerraformWorkflow,
+		DbActivities:  da,
 	}
 
 	uuid, err := sideeffect.GenerateUUID(ctx)
@@ -72,6 +89,7 @@ func parentWorkflow(ctx workflow.Context, r request) (response, error) {
 		return response{}, nil
 	}
 
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{StartToCloseTimeout: 10 * time.Second})
 	if err := runner.Run(ctx, terraform.DeploymentInfo{
 		ID:         uuid,
 		Revision:   "1234",
@@ -92,6 +110,11 @@ func TestWorkflowRunner_Run(t *testing.T) {
 
 	env.RegisterWorkflow(testTerraformWorkflow)
 
+	a := &testDbActivities{}
+	env.RegisterActivity(a)
+
+	env.OnActivity(a.FetchLatestDeployment, mock.Anything, mock.Anything).Return(activities.FetchLatestDeploymentResponse{}, nil)
+	env.OnActivity(a.StoreLatestDeployment, mock.Anything, mock.Anything).Return(nil)
 	env.ExecuteWorkflow(parentWorkflow, request{})
 
 	var resp response
