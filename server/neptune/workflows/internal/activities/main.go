@@ -40,7 +40,7 @@ type Deploy struct {
 	*dbActivities
 }
 
-func NewDeploy(scope tally.Scope, deployments valid.Deployments) (*Deploy, error) {
+func NewDeploy(deployments valid.Deployments, scope tally.Scope) (*Deploy, error) {
 
 	deploymentStore, err := deployment.NewStore(deployments, scope)
 	if err != nil {

@@ -4,19 +4,16 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deployment"
 )
 
-// Downloader is implemented by manager.Downloader
 type store interface {
-	GetDeploymentInfo(ctx context.Context, repo string, root string) (*deployment.DeploymentInfo, error)
-	SetDeploymentInfo(ctx context.Context, repo string, root string, ddeploymentInfo deployment.DeploymentInfo) error
+	GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*deployment.Info, error)
+	SetDeploymentInfo(ctx context.Context, deploymentInfo deployment.Info) error
 }
 
 type dbActivities struct {
 	DeploymentInfoStore store
-	BucketName          string
 }
 
 type FetchLatestDeploymentRequest struct {
@@ -25,31 +22,29 @@ type FetchLatestDeploymentRequest struct {
 }
 
 type FetchLatestDeploymentResponse struct {
-	DeploymentInfo deployment.DeploymentInfo
+	DeploymentInfo deployment.Info
 }
 
 func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
-	logger.Info(ctx, "fetching latest deployment")
 	deploymentInfo, err := a.DeploymentInfoStore.GetDeploymentInfo(ctx, request.RepositoryName, request.RootName)
 	if err != nil {
 		return FetchLatestDeploymentResponse{}, errors.Wrapf(err, "fetching deployment info for %s/%s", request.RepositoryName, request.RootName)
 	}
+
 	return FetchLatestDeploymentResponse{
 		DeploymentInfo: *deploymentInfo,
 	}, nil
 }
 
 type StoreLatestDeploymentRequest struct {
-	DeploymentInfo deployment.DeploymentInfo
-	RepoName       string
+	DeploymentInfo deployment.Info
 }
 
 func (a *dbActivities) StoreLatestDeployment(ctx context.Context, request StoreLatestDeploymentRequest) error {
-	logger.Info(ctx, "storing latest deployment")
-	err := a.DeploymentInfoStore.SetDeploymentInfo(ctx, request.RepoName, request.DeploymentInfo.Root.Name, request.DeploymentInfo)
-	if err != nil {
-		return errors.Wrapf(err, "uploading deployment info for %s", request.DeploymentInfo.ID)
-	}
+	err := a.DeploymentInfoStore.SetDeploymentInfo(ctx, request.DeploymentInfo)
 
+	if err != nil {
+		return errors.Wrapf(err, "uploading deployment info for %s/%s [%s] ", request.DeploymentInfo.Repo.GetFullName(), request.DeploymentInfo.Root.Name, request.DeploymentInfo.ID)
+	}
 	return nil
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
@@ -104,12 +104,15 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 
 	// Persist deployment info
 	err = workflow.ExecuteActivity(ctx, r.DbActivities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
-		DeploymentInfo: deployment.DeploymentInfo{
+		DeploymentInfo: deployment.Info{
 			ID:         deploymentInfo.ID.String(),
 			CheckRunID: deploymentInfo.CheckRunID,
 			Revision:   deploymentInfo.Revision,
 			Root:       deploymentInfo.Root,
-			RepoName:   deploymentInfo.RepoName,
+			Repo: deployment.Repo{
+				Name:  r.Repo.Name,
+				Owner: r.Repo.Owner,
+			},
 		},
 	}).Get(ctx, nil)
 	if err != nil {

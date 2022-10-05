@@ -39,8 +39,8 @@ type DeployActivities struct {
 	activities.Deploy
 }
 
-func NewDeployActivities(deployment valid.Deployments, scope tally.Scope) (*DeployActivities, error) {
-	deployActivities, err := activities.NewDeploy(scope, deployment)
+func NewDeployActivities(deploymentCfg valid.Deployments, scope tally.Scope) (*DeployActivities, error) {
+	deployActivities, err := activities.NewDeploy(deploymentCfg, scope)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")
