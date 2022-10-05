@@ -10,19 +10,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deployment"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/uber-go/tally/v4"
 )
 
 const OutputPrefix = "deployments"
-
-type DeploymentInfo struct {
-	ID         string
-	CheckRunID int64
-	Revision   string
-	Root       root.Root
-	RepoName   string
-}
 
 func NewStore(deploymentCfg valid.Deployments, scope tally.Scope) (*instrumentedStore, error) {
 	if deploymentCfg.StorageBackend == nil {
@@ -75,7 +66,7 @@ func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName
 	var deploymentInfo deployment.Info
 	err = decoder.Decode(&deploymentInfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "unmarshalling item")
+		return nil, errors.Wrap(err, "decoding item")
 	}
 
 	return &deploymentInfo, nil

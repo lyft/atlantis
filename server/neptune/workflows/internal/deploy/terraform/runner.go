@@ -45,8 +45,8 @@ type WorkflowRunner struct {
 func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo) error {
 	var resp activities.FetchLatestDeploymentResponse
 	err := workflow.ExecuteActivity(ctx, r.DbActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
-		RepositoryName: deploymentInfo.RepoName,
-		RootName:       deploymentInfo.Root.Name,
+		FullRepositoryName: r.Repo.GetFullName(),
+		RootName:           deploymentInfo.Root.Name,
 	}).Get(ctx, &resp)
 	if err != nil {
 		return errors.Wrap(err, "fetching latest deployment")

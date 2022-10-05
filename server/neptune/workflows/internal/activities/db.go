@@ -17,8 +17,8 @@ type dbActivities struct {
 }
 
 type FetchLatestDeploymentRequest struct {
-	RepositoryName string
-	RootName       string
+	FullRepositoryName string
+	RootName           string
 }
 
 type FetchLatestDeploymentResponse struct {
@@ -26,9 +26,9 @@ type FetchLatestDeploymentResponse struct {
 }
 
 func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
-	deploymentInfo, err := a.DeploymentInfoStore.GetDeploymentInfo(ctx, request.RepositoryName, request.RootName)
+	deploymentInfo, err := a.DeploymentInfoStore.GetDeploymentInfo(ctx, request.FullRepositoryName, request.RootName)
 	if err != nil {
-		return FetchLatestDeploymentResponse{}, errors.Wrapf(err, "fetching deployment info for %s/%s", request.RepositoryName, request.RootName)
+		return FetchLatestDeploymentResponse{}, errors.Wrapf(err, "fetching deployment info for %s/%s", request.FullRepositoryName, request.RootName)
 	}
 
 	return FetchLatestDeploymentResponse{

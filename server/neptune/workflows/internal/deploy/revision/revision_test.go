@@ -115,7 +115,6 @@ func TestEnqueue(t *testing.T) {
 			Revision:   rev,
 			CheckRunID: 1,
 			Root:       root.Root{Name: "root"},
-			RepoName:   "nish",
 			ID:         id,
 		},
 	}, resp.Queue)
