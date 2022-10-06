@@ -77,7 +77,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		isValid, err := w.isRequestRevisionValid(ctx, msg)
 		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("Validating deploy request revision %s: %s", msg.Revision, err.Error))
+			logger.Error(ctx, fmt.Sprintf("Validating deploy request revision %s: %s", msg.Revision, err.Error()))
 		}
 
 		if !isValid {
