@@ -32,8 +32,8 @@ type Config struct {
 	ServerCfg             ServerConfig
 	TemporalCfg           valid.Temporal
 	TerraformCfg          TerraformConfig
-	JobStoreConfig        valid.Store
-	DeploymentStoreConfig valid.Store
+	JobStoreConfig        valid.StoreConfig
+	DeploymentStoreConfig valid.StoreConfig
 	Metrics               valid.Metrics
 	//TODO: combine this with above
 	StatsNamespace   string

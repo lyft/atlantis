@@ -27,6 +27,8 @@ type FetchLatestDeploymentResponse struct {
 
 func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
 	deploymentInfo, err := a.DeploymentInfoStore.GetDeploymentInfo(ctx, request.FullRepositoryName, request.RootName)
+
+	// TODO: Investigate how to handle new roots since deployment info dne for this root yet.
 	if err != nil {
 		return FetchLatestDeploymentResponse{}, errors.Wrapf(err, "fetching deployment info for %s/%s", request.FullRepositoryName, request.RootName)
 	}

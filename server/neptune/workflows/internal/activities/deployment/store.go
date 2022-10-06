@@ -8,17 +8,13 @@ import (
 	"github.com/pkg/errors"
 	internal_stow "github.com/runatlantis/atlantis/server/neptune/stow"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
-	"github.com/uber-go/tally/v4"
 )
 
 const OutputPrefix = "deployments"
 
-func NewStore(stowClient *internal_stow.Client, scope tally.Scope) (*instrumentedStore, error) {
-	return &instrumentedStore{
-		store: &store{
-			client: stowClient,
-		},
-		scope: scope.SubScope("store"),
+func NewStore(stowClient *internal_stow.Client) (*store, error) {
+	return &store{
+		client: stowClient,
 	}, nil
 
 }
@@ -62,39 +58,4 @@ func (s *store) SetDeploymentInfo(ctx context.Context, deploymentInfo root.Deplo
 
 func buildKey(repo string, root string) string {
 	return fmt.Sprintf("%s/%s/%s/deployment.json", OutputPrefix, repo, root)
-}
-
-type instrumentedStore struct {
-	*store
-	scope tally.Scope
-}
-
-func (i *instrumentedStore) GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*root.DeploymentInfo, error) {
-	failureCount := i.scope.Counter("read_failure")
-	successCount := i.scope.Counter("read_success")
-	latency := i.scope.Timer("read_latency")
-	span := latency.Start()
-	defer span.Stop()
-
-	deploymentInfo, err := i.store.GetDeploymentInfo(ctx, repoName, rootName)
-	if err != nil {
-		failureCount.Inc(1)
-	}
-	successCount.Inc(1)
-	return deploymentInfo, err
-}
-
-func (i *instrumentedStore) SetDeploymentInfo(ctx context.Context, deploymentInfo root.DeploymentInfo) error {
-	failureCount := i.scope.Counter("write_failure")
-	successCount := i.scope.Counter("write_success")
-	latency := i.scope.Timer("write_latency")
-	span := latency.Start()
-	defer span.Stop()
-
-	err := i.store.SetDeploymentInfo(ctx, deploymentInfo)
-	if err != nil {
-		failureCount.Inc(1)
-	}
-	successCount.Inc(1)
-	return err
 }

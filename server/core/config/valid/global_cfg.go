@@ -38,6 +38,12 @@ const (
 	PlatformWorkflowMode
 )
 
+type BackendType string
+
+const (
+	S3Backend BackendType = "s3"
+)
+
 // GlobalCfg is the final parsed version of server-side repo config.
 type GlobalCfg struct {
 	WorkflowMode         WorkflowModeType
@@ -53,18 +59,12 @@ type GlobalCfg struct {
 	Temporal             Temporal
 }
 
-type BackendType string
-
-const (
-	S3Backend BackendType = "s3"
-)
-
 type Persistence struct {
-	Deployments Store
-	Jobs        Store
+	Deployments StoreConfig
+	Jobs        StoreConfig
 }
 
-type Store struct {
+type StoreConfig struct {
 	ContainerName string
 	Prefix        string
 	BackendType   BackendType

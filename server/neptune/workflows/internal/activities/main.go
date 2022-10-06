@@ -41,14 +41,14 @@ type Deploy struct {
 	*dbActivities
 }
 
-func NewDeploy(deploymentStoreCfg valid.Store, scope tally.Scope) (*Deploy, error) {
+func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
 
 	stowClient, err := stow.NewClient(deploymentStoreCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "intializing stow client")
 	}
 
-	deploymentStore, err := deployment.NewStore(stowClient, scope)
+	deploymentStore, err := deployment.NewStore(stowClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deployment info store")
 	}

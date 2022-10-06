@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/stow"
-	"github.com/uber-go/tally/v4"
 )
 
 const OutputPrefix = "output"
@@ -20,13 +19,10 @@ type StorageBackend interface {
 	Write(ctx context.Context, key string, logs []string) (bool, error)
 }
 
-func NewStorageBackend(stowClient stow.Client, logger logging.Logger, scope tally.Scope) (StorageBackend, error) {
-	return &InstrumentedStorageBackend{
-		StorageBackend: &storageBackend{
-			client: stowClient,
-			logger: logger,
-		},
-		scope: scope.SubScope("storage_backend"),
+func NewStorageBackend(stowClient stow.Client, logger logging.Logger) (StorageBackend, error) {
+	return &storageBackend{
+		client: stowClient,
+		logger: logger,
 	}, nil
 }
 
@@ -68,40 +64,6 @@ func (s storageBackend) Write(ctx context.Context, key string, logs []string) (b
 
 	s.logger.Info(fmt.Sprintf("successfully uploaded object for job: %s", key))
 	return true, nil
-}
-
-// Adds instrumentation to storage backend
-type InstrumentedStorageBackend struct {
-	StorageBackend
-
-	scope tally.Scope
-}
-
-func (i *InstrumentedStorageBackend) Read(ctx context.Context, key string) ([]string, error) {
-	failureCount := i.scope.Counter("read_failure")
-	latency := i.scope.Timer("read_latency")
-	span := latency.Start()
-	defer span.Stop()
-	logs, err := i.StorageBackend.Read(ctx, key)
-	if err != nil {
-		failureCount.Inc(1)
-	}
-	return logs, err
-}
-
-func (i *InstrumentedStorageBackend) Write(ctx context.Context, key string, logs []string) (bool, error) {
-	failureCount := i.scope.Counter("write_failure")
-	successCount := i.scope.Counter("write_success")
-	latency := i.scope.Timer("write_latency")
-	span := latency.Start()
-	defer span.Stop()
-	ok, err := i.StorageBackend.Write(ctx, key, logs)
-	if err != nil {
-		failureCount.Inc(1)
-		return ok, err
-	}
-	successCount.Inc(1)
-	return ok, err
 }
 
 // Used when log persistence is not configured

@@ -12,14 +12,15 @@ type Persistence struct {
 	DefaultStore string `yaml:"default_store" json:"default_store"`
 	// DataStores contains the configuration for all datastores
 	DataStores DataStores `yaml:"data_stores" json:"data_stores"`
+	// Adds a prefix to the storage container
+	Prefix string `yaml:"prefix" json:"prefix"`
 
 	DeploymentStore string `yaml:"deployment_store" json:"deployment_store"`
 	JobStore        string `yaml:"job_store" json:"job_store"`
-	Prefix          string `yaml:"prefix" json:"prefix"`
 }
 
 func (p Persistence) Validate() error {
-	// Get all configured data store names
+	// Get all configured data stores
 	dsNames := []interface{}{}
 	for dsName := range p.DataStores {
 		dsNames = append(dsNames, dsName)
@@ -56,13 +57,13 @@ func (p Persistence) ToValid() valid.Persistence {
 	}
 }
 
-func buildValidStore(dataStore DataStore) valid.Store {
-	var validStore valid.Store
+func buildValidStore(dataStore DataStore) valid.StoreConfig {
+	var validStore valid.StoreConfig
 
 	// Serially checks for non-nil supported backends
 	switch {
 	case dataStore.S3 != nil:
-		validStore = valid.Store{
+		validStore = valid.StoreConfig{
 			ContainerName: dataStore.S3.BucketName,
 			BackendType:   valid.S3Backend,
 

@@ -64,7 +64,7 @@ func NewServer(config *config.Config) (*Server, error) {
 	}
 
 	// Build dependencies required for output handler and jobs controller
-	jobStore, err := job.NewStorageBackedStore(config.JobStoreConfig, config.CtxLogger, scope)
+	jobStore, err := job.NewStorageBackedStore(config.JobStoreConfig, config.CtxLogger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing job store")
 	}
@@ -104,10 +104,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	deployActivities, err := workflows.NewDeployActivities(
-		config.DeploymentStoreConfig,
-		scope.SubScope("deploy"),
-	)
+	deployActivities, err := workflows.NewDeployActivities(config.DeploymentStoreConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")
 	}

@@ -13,7 +13,7 @@ import (
 
 type CloserFn func()
 
-func NewClient(storeConfig valid.Store) (*Client, error) {
+func NewClient(storeConfig valid.StoreConfig) (*Client, error) {
 	location, err := stow.Dial(string(storeConfig.BackendType), storeConfig.Config)
 	if err != nil {
 		return nil, err

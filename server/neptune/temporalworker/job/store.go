@@ -9,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/stow"
-	"github.com/uber-go/tally/v4"
 )
 
 type JobStatus int
@@ -31,13 +30,13 @@ type Store interface {
 	Close(ctx context.Context, jobID string, status JobStatus) error
 }
 
-func NewStorageBackedStore(jobStoreConfig valid.Store, logger logging.Logger, scope tally.Scope) (*StorageBackendJobStore, error) {
+func NewStorageBackedStore(jobStoreConfig valid.StoreConfig, logger logging.Logger) (*StorageBackendJobStore, error) {
 	stowClient, err := stow.NewClient(jobStoreConfig)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing stow client")
 	}
 
-	storageBackend, err := NewStorageBackend(*stowClient, logger, scope)
+	storageBackend, err := NewStorageBackend(*stowClient, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
