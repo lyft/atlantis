@@ -9,8 +9,8 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -114,12 +114,12 @@ func (w *Worker) isRequestRevisionValid(ctx workflow.Context, deploymentInfo ter
 
 func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
 	err := workflow.ExecuteActivity(ctx, w.DbActivities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
-		DeploymentInfo: deployment.Info{
+		DeploymentInfo: root.DeploymentInfo{
 			ID:         deploymentInfo.ID.String(),
 			CheckRunID: deploymentInfo.CheckRunID,
 			Revision:   deploymentInfo.Revision,
 			Root:       deploymentInfo.Root,
-			Repo: deployment.Repo{
+			Repo: root.Repo{
 				Name:  w.Repo.Name,
 				Owner: w.Repo.Owner,
 			},

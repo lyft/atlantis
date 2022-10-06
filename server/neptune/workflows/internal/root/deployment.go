@@ -1,9 +1,7 @@
-package deployment
+package root
 
 import (
 	"fmt"
-
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
 type Repo struct {
@@ -15,10 +13,10 @@ func (r *Repo) GetFullName() string {
 	return fmt.Sprintf("%s/%s", r.Owner, r.Name)
 }
 
-type Info struct {
+type DeploymentInfo struct {
 	ID         string
 	CheckRunID int64
 	Revision   string
 	Repo       Repo
-	Root       root.Root
+	Root       Root
 }

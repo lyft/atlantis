@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	internal_stow "github.com/runatlantis/atlantis/server/neptune/stow"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deployment"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/uber-go/tally/v4"
 )
 
@@ -27,7 +27,7 @@ type store struct {
 	client *internal_stow.Client
 }
 
-func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*deployment.Info, error) {
+func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*root.DeploymentInfo, error) {
 	key := buildKey(repoName, rootName)
 
 	reader, closer, err := s.client.Get(ctx, key)
@@ -38,7 +38,7 @@ func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName
 
 	decoder := json.NewDecoder(reader)
 
-	var deploymentInfo deployment.Info
+	var deploymentInfo root.DeploymentInfo
 	err = decoder.Decode(&deploymentInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "decoding item")
@@ -47,7 +47,7 @@ func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName
 	return &deploymentInfo, nil
 }
 
-func (s *store) SetDeploymentInfo(ctx context.Context, deploymentInfo deployment.Info) error {
+func (s *store) SetDeploymentInfo(ctx context.Context, deploymentInfo root.DeploymentInfo) error {
 	key := buildKey(deploymentInfo.Repo.GetFullName(), deploymentInfo.Root.Name)
 	object, err := json.Marshal(deploymentInfo)
 	if err != nil {
@@ -69,7 +69,7 @@ type instrumentedStore struct {
 	scope tally.Scope
 }
 
-func (i *instrumentedStore) GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*deployment.Info, error) {
+func (i *instrumentedStore) GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*root.DeploymentInfo, error) {
 	failureCount := i.scope.Counter("read_failure")
 	successCount := i.scope.Counter("read_success")
 	latency := i.scope.Timer("read_latency")
@@ -84,7 +84,7 @@ func (i *instrumentedStore) GetDeploymentInfo(ctx context.Context, repoName stri
 	return deploymentInfo, err
 }
 
-func (i *instrumentedStore) SetDeploymentInfo(ctx context.Context, deploymentInfo deployment.Info) error {
+func (i *instrumentedStore) SetDeploymentInfo(ctx context.Context, deploymentInfo root.DeploymentInfo) error {
 	failureCount := i.scope.Counter("write_failure")
 	successCount := i.scope.Counter("write_success")
 	latency := i.scope.Timer("write_latency")
