@@ -78,10 +78,16 @@ func (w *Worker) Work(ctx workflow.Context) {
 		isValid, err := w.isRequestRevisionValid(ctx, msg)
 		if err != nil {
 			logger.Error(ctx, fmt.Sprintf("Validating deploy request revision %s: %s", msg.Revision, err.Error()))
+
+			// TODO: Update the checkrun with relevant info
+			continue
 		}
 
 		if !isValid {
 			logger.Info(ctx, fmt.Sprintf("ID: %s Deploy Request Revision: %s is not valid", msg.ID, msg.Revision))
+
+			// TODO: Update the checkrun with relevant info
+			continue
 		}
 
 		err = w.TerraformWorkflowRunner.Run(ctx, msg)
