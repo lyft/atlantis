@@ -533,13 +533,14 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 			DownloadURL:            userConfig.TFDownloadURL,
 			LogFilters:             globalCfg.TerraformLogFilter,
 		},
-		JobCfg:         globalCfg.Jobs,
-		DataDir:        userConfig.DataDir,
-		TemporalCfg:    globalCfg.Temporal,
-		App:            appConfig,
-		CtxLogger:      ctxLogger,
-		StatsNamespace: userConfig.StatsNamespace,
-		Metrics:        globalCfg.Metrics,
+		JobStoreConfig:        globalCfg.Persistence.Jobs,
+		DeploymentStoreConfig: globalCfg.Persistence.Deployments,
+		DataDir:               userConfig.DataDir,
+		TemporalCfg:           globalCfg.Temporal,
+		App:                   appConfig,
+		CtxLogger:             ctxLogger,
+		StatsNamespace:        userConfig.StatsNamespace,
+		Metrics:               globalCfg.Metrics,
 	}
 	return temporalworker.NewServer(cfg)
 }

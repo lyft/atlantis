@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/stow"
 	"github.com/uber-go/tally/v4"
 )
 
@@ -24,14 +25,19 @@ type Job struct {
 }
 
 type Store interface {
-	Get(jobID string) (*Job, error)
-	Write(jobID string, output string) error
+	Get(ctx context.Context, jobID string) (*Job, error)
+	Write(ctx context.Context, jobID string, output string) error
 	Remove(jobID string)
 	Close(ctx context.Context, jobID string, status JobStatus) error
 }
 
-func NewStorageBackedStore(config valid.Jobs, logger logging.Logger, scope tally.Scope) (*StorageBackendJobStore, error) {
-	storageBackend, err := NewStorageBackend(config, logger, scope)
+func NewStorageBackedStore(jobStoreConfig valid.Store, logger logging.Logger, scope tally.Scope) (*StorageBackendJobStore, error) {
+	stowClient, err := stow.NewClient(jobStoreConfig)
+	if err != nil {
+		return nil, errors.Wrapf(err, "initializing stow client")
+	}
+
+	storageBackend, err := NewStorageBackend(*stowClient, logger, scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
@@ -69,7 +75,7 @@ type InMemoryStore struct {
 	lock sync.RWMutex
 }
 
-func (m *InMemoryStore) Get(jobID string) (*Job, error) {
+func (m *InMemoryStore) Get(ctx context.Context, jobID string) (*Job, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -79,7 +85,7 @@ func (m *InMemoryStore) Get(jobID string) (*Job, error) {
 	return m.jobs[jobID], nil
 }
 
-func (m *InMemoryStore) Write(jobID string, output string) error {
+func (m *InMemoryStore) Write(ctx context.Context, jobID string, output string) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -130,14 +136,14 @@ type StorageBackendJobStore struct {
 	storageBackend StorageBackend
 }
 
-func (s *StorageBackendJobStore) Get(jobID string) (*Job, error) {
+func (s *StorageBackendJobStore) Get(ctx context.Context, jobID string) (*Job, error) {
 	// Get job from memory
-	if jobInMem, _ := s.Store.Get(jobID); jobInMem != nil {
+	if jobInMem, _ := s.Store.Get(ctx, jobID); jobInMem != nil {
 		return jobInMem, nil
 	}
 
 	// Get from storage backend if not in memory
-	logs, err := s.storageBackend.Read(jobID)
+	logs, err := s.storageBackend.Read(ctx, jobID)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading from backend storage")
 	}
@@ -148,8 +154,8 @@ func (s *StorageBackendJobStore) Get(jobID string) (*Job, error) {
 	}, nil
 }
 
-func (s StorageBackendJobStore) Write(jobID string, output string) error {
-	return s.Store.Write(jobID, output)
+func (s StorageBackendJobStore) Write(ctx context.Context, jobID string, output string) error {
+	return s.Store.Write(ctx, jobID, output)
 }
 
 // Activity context since it's called from within an activity
@@ -158,7 +164,7 @@ func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status
 		return err
 	}
 
-	job, err := s.Store.Get(jobID)
+	job, err := s.Store.Get(ctx, jobID)
 	if err != nil || job == nil {
 		return errors.Wrapf(err, "retrieving job: %s from memory store", jobID)
 	}

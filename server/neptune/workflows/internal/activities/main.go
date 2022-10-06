@@ -11,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/github"
+	"github.com/runatlantis/atlantis/server/neptune/stow"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/terraform"
@@ -40,9 +41,14 @@ type Deploy struct {
 	*dbActivities
 }
 
-func NewDeploy(deploymentCfg valid.Deployments, scope tally.Scope) (*Deploy, error) {
+func NewDeploy(deploymentStoreCfg valid.Store, scope tally.Scope) (*Deploy, error) {
 
-	deploymentStore, err := deployment.NewStore(deploymentCfg, scope)
+	stowClient, err := stow.NewClient(deploymentStoreCfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "intializing stow client")
+	}
+
+	deploymentStore, err := deployment.NewStore(stowClient, scope)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deployment info store")
 	}

@@ -39,7 +39,7 @@ type DeployActivities struct {
 	activities.Deploy
 }
 
-func NewDeployActivities(deploymentCfg valid.Deployments, scope tally.Scope) (*DeployActivities, error) {
+func NewDeployActivities(deploymentCfg valid.Store, scope tally.Scope) (*DeployActivities, error) {
 	deployActivities, err := activities.NewDeploy(deploymentCfg, scope)
 
 	if err != nil {

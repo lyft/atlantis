@@ -22,7 +22,7 @@ type FetchLatestDeploymentRequest struct {
 }
 
 type FetchLatestDeploymentResponse struct {
-	DeploymentInfo deployment.Info
+	DeploymentInfo *deployment.Info
 }
 
 func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
@@ -32,7 +32,7 @@ func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchL
 	}
 
 	return FetchLatestDeploymentResponse{
-		DeploymentInfo: *deploymentInfo,
+		DeploymentInfo: deploymentInfo,
 	}, nil
 }
 

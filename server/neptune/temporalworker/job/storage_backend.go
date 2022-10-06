@@ -6,10 +6,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/graymeta/stow"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/stow"
 	"github.com/uber-go/tally/v4"
 )
 
@@ -17,63 +16,37 @@ const OutputPrefix = "output"
 const PageSize = 100
 
 type StorageBackend interface {
-	Read(key string) ([]string, error)
+	Read(ctx context.Context, key string) ([]string, error)
 	Write(ctx context.Context, key string, logs []string) (bool, error)
 }
 
-func NewStorageBackend(jobs valid.Jobs, logger logging.Logger, scope tally.Scope) (StorageBackend, error) {
-	if jobs.StorageBackend == nil {
-		return &NoopStorageBackend{}, nil
-	}
-
-	config := jobs.StorageBackend.BackendConfig.GetConfigMap()
-	backend := jobs.StorageBackend.BackendConfig.GetConfiguredBackend()
-	containerName := jobs.StorageBackend.BackendConfig.GetContainerName()
-
-	location, err := stow.Dial(backend, config)
-	if err != nil {
-		return nil, err
-	}
-
-	storageBackend := &storageBackend{
-		location:      location,
-		containerName: containerName,
-		logger:        logger,
-	}
-
+func NewStorageBackend(stowClient stow.Client, logger logging.Logger, scope tally.Scope) (StorageBackend, error) {
 	return &InstrumentedStorageBackend{
-		StorageBackend: storageBackend,
-		scope:          scope.SubScope("storage_backend"),
+		StorageBackend: &storageBackend{
+			client: stowClient,
+			logger: logger,
+		},
+		scope: scope.SubScope("storage_backend"),
 	}, nil
 }
 
 type storageBackend struct {
-	location      stow.Location
-	containerName string
-	logger        logging.Logger
+	client stow.Client
+	logger logging.Logger
 }
 
-func (s storageBackend) Read(key string) (logs []string, err error) {
-	s.logger.Info(fmt.Sprintf("reading object for job: %s in container: %s", key, s.containerName))
-
-	container, err := s.location.Container(s.containerName)
-	if err != nil {
-		return []string{}, errors.Wrap(err, "resolving container")
-	}
-
+func (s storageBackend) Read(ctx context.Context, key string) (logs []string, err error) {
 	key = fmt.Sprintf("%s/%s", OutputPrefix, key)
-	item, err := container.Item(key)
-	if err != nil {
-		return []string{}, errors.Wrap(err, "getting item")
-	}
 
-	r, err := item.Open()
+	s.logger.Info(fmt.Sprintf("reading object for job: %s", key))
+	reader, closer, err := s.client.Get(ctx, key)
 	if err != nil {
-		return []string{}, errors.Wrap(err, "reading item")
+		return nil, errors.Wrap(err, "getting item")
 	}
+	defer closer()
 
 	buf := new(strings.Builder)
-	_, err = io.Copy(buf, r)
+	_, err = io.Copy(buf, reader)
 	if err != nil {
 		return []string{}, errors.Wrapf(err, "copying to buffer")
 	}
@@ -84,17 +57,11 @@ func (s storageBackend) Read(key string) (logs []string, err error) {
 
 // Activity context since it's called from within an activity
 func (s storageBackend) Write(ctx context.Context, key string, logs []string) (bool, error) {
-	container, err := s.location.Container(s.containerName)
-	if err != nil {
-		return false, errors.Wrap(err, "resolving container")
-	}
-
 	logString := strings.Join(logs, "\n")
-	size := int64(len(logString))
-	reader := strings.NewReader(logString)
-
 	key = fmt.Sprintf("%s/%s", OutputPrefix, key)
-	_, err = container.Put(key, reader, size, nil)
+	object := []byte(logString)
+
+	err := s.client.Set(ctx, key, object)
 	if err != nil {
 		return false, errors.Wrapf(err, "uploading object for job: %s", key)
 	}
@@ -110,12 +77,12 @@ type InstrumentedStorageBackend struct {
 	scope tally.Scope
 }
 
-func (i *InstrumentedStorageBackend) Read(key string) ([]string, error) {
+func (i *InstrumentedStorageBackend) Read(ctx context.Context, key string) ([]string, error) {
 	failureCount := i.scope.Counter("read_failure")
 	latency := i.scope.Timer("read_latency")
 	span := latency.Start()
 	defer span.Stop()
-	logs, err := i.StorageBackend.Read(key)
+	logs, err := i.StorageBackend.Read(ctx, key)
 	if err != nil {
 		failureCount.Inc(1)
 	}

@@ -1,38 +1,22 @@
 package deployment
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 
-	"github.com/graymeta/stow"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	internal_stow "github.com/runatlantis/atlantis/server/neptune/stow"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deployment"
 	"github.com/uber-go/tally/v4"
 )
 
 const OutputPrefix = "deployments"
 
-func NewStore(deploymentCfg valid.Deployments, scope tally.Scope) (*instrumentedStore, error) {
-	if deploymentCfg.StorageBackend == nil {
-		return nil, errors.New("error initializing deployment info store")
-	}
-
-	config := deploymentCfg.StorageBackend.BackendConfig.GetConfigMap()
-	backend := deploymentCfg.StorageBackend.BackendConfig.GetConfiguredBackend()
-	containerName := deploymentCfg.StorageBackend.BackendConfig.GetContainerName()
-
-	location, err := stow.Dial(backend, config)
-	if err != nil {
-		return nil, err
-	}
-
+func NewStore(stowClient *internal_stow.Client, scope tally.Scope) (*instrumentedStore, error) {
 	return &instrumentedStore{
 		store: &store{
-			location:      location,
-			containerName: containerName,
+			client: stowClient,
 		},
 		scope: scope.SubScope("store"),
 	}, nil
@@ -40,28 +24,19 @@ func NewStore(deploymentCfg valid.Deployments, scope tally.Scope) (*instrumented
 }
 
 type store struct {
-	location      stow.Location
-	containerName string
+	client *internal_stow.Client
 }
 
 func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*deployment.Info, error) {
-	container, err := s.location.Container(s.containerName)
-	if err != nil {
-		return nil, errors.Wrap(err, "resolving container")
-	}
-
 	key := buildKey(repoName, rootName)
-	item, err := container.Item(key)
+
+	reader, closer, err := s.client.Get(ctx, key)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting item")
 	}
+	defer closer()
 
-	r, err := item.Open()
-	if err != nil {
-		return nil, errors.Wrap(err, "reading item")
-	}
-
-	decoder := json.NewDecoder(r)
+	decoder := json.NewDecoder(reader)
 
 	var deploymentInfo deployment.Info
 	err = decoder.Decode(&deploymentInfo)
@@ -73,22 +48,15 @@ func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName
 }
 
 func (s *store) SetDeploymentInfo(ctx context.Context, deploymentInfo deployment.Info) error {
-	container, err := s.location.Container(s.containerName)
-	if err != nil {
-		return errors.Wrap(err, "resolving container")
-	}
-
+	key := buildKey(deploymentInfo.Repo.GetFullName(), deploymentInfo.Root.Name)
 	object, err := json.Marshal(deploymentInfo)
 	if err != nil {
 		return errors.Wrap(err, "marshalling deployment info")
 	}
-
-	key := buildKey(deploymentInfo.Repo.GetFullName(), deploymentInfo.Root.Name)
-	_, err = container.Put(key, bytes.NewReader(object), int64(len(object)), nil)
+	err = s.client.Set(ctx, key, object)
 	if err != nil {
-		return errors.Wrap(err, "writing to container")
+		return errors.Wrap(err, "writing to store")
 	}
-
 	return nil
 }
 

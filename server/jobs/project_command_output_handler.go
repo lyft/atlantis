@@ -1,9 +1,11 @@
 package jobs
 
 import (
+	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"sync"
+
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -44,7 +46,7 @@ type ProjectCommandOutputHandler interface {
 
 	// Register registers a channel and blocks until it is caught up. Callers should call this asynchronously when attempting
 	// to read the channel in the same goroutine
-	Register(jobID string, receiver chan string)
+	Register(ctx context.Context, jobID string, receiver chan string)
 
 	// Cleans up resources for a pull
 	CleanUp(pullInfo PullInfo)
@@ -136,7 +138,7 @@ func (p *AsyncProjectCommandOutputHandler) Handle() {
 	}
 }
 
-func (p *AsyncProjectCommandOutputHandler) Register(jobID string, connection chan string) {
+func (p *AsyncProjectCommandOutputHandler) Register(ctx context.Context, jobID string, connection chan string) {
 	job, err := p.JobStore.Get(jobID)
 	if err != nil || job == nil {
 		p.logger.Error(fmt.Sprintf("getting job: %s, err: %v", jobID, err))

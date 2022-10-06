@@ -86,12 +86,11 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 
 	// temporal effectively "injects" this, it just cares about the method names,
 	// so we're modeling our own DI around this.
-	var ga *activities.Github
-	var da *activities.Deploy
+	var a *workerActivities
 
 	revisionQueue := queue.NewQueue()
-	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, repo, ga, sideeffect.GenerateUUID)
-	tfWorkflowRunner := terraform.NewWorkflowRunner(repo, ga, da, tfWorkflow)
+	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, repo, a, sideeffect.GenerateUUID)
+	tfWorkflowRunner := terraform.NewWorkflowRunner(repo, a, tfWorkflow)
 
 	worker := &queue.Worker{
 		Queue:                   revisionQueue,
