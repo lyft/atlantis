@@ -1281,7 +1281,7 @@ func ensureRunningConftest(t *testing.T) {
 		t.Logf("could not parse contest version from %s", versionOutput)
 		t.FailNow()
 	}
-	localVersion, err := version.NewVersion(match[3])
+	localVersion, err := version.NewVersion(match[1])
 	Ok(t, err)
 	minVersion, err := version.NewVersion(ConftestVersion)
 	Ok(t, err)
@@ -1327,7 +1327,7 @@ func ensureRunning014(t *testing.T) {
 //	   => 0.11.10
 var versionRegex = regexp.MustCompile("Terraform v(.*?)(\\s.*)?\n")
 
-var versionConftestRegex = regexp.MustCompile("(Version)|(Conftest): (.*?)(\\s.*)?\n")
+var versionConftestRegex = regexp.MustCompile("Version: (.*?)(\\s.*)?\n")
 
 type testLockURLGenerator struct{}
 
