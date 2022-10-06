@@ -7,9 +7,17 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+type receiverAdder interface {
+	AddReceiver(jobID string, ch chan string)
+}
+
+type storeGetter interface {
+	Get(ctx context.Context, jobID string) (*Job, error)
+}
+
 type PartitionRegistry struct {
-	ReceiverRegistry receiverRegistry
-	Store            Store
+	ReceiverRegistry receiverAdder
+	Store            storeGetter
 	Logger           logging.Logger
 }
 

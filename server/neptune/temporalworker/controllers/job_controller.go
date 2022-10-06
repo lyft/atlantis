@@ -22,15 +22,10 @@ type multiplexor interface {
 
 type receiverRegistry interface {
 	AddReceiver(jobID string, ch chan string)
-	Broadcast(msg job.OutputLine)
-	Close(ctx context.Context, jobID string)
 }
 
 type store interface {
 	Get(ctx context.Context, jobID string) (*job.Job, error)
-	Write(ctx context.Context, jobID string, output string) error
-	Remove(jobID string)
-	Close(ctx context.Context, jobID string, status job.JobStatus) error
 }
 
 type JobsController struct {

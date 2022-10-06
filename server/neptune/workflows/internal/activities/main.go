@@ -13,6 +13,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/github"
 	"github.com/runatlantis/atlantis/server/neptune/stow"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/terraform"
 	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -69,7 +70,7 @@ type Terraform struct {
 	*jobActivities
 }
 
-func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, streamHandler streamHandler) (*Terraform, error) {
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, streamHandler *job.StreamHandler) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
