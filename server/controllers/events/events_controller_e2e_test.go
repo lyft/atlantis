@@ -77,12 +77,10 @@ func (m *NoopTFDownloader) GetAny(dst, src string, opts ...getter.ClientOption) 
 	return nil
 }
 
-type LocalConftestCache struct {
-	conftestPath string
-}
+type LocalConftestCache struct{}
 
 func (m *LocalConftestCache) Get(key *version.Version) (string, error) {
-	return m.conftestPath, nil
+	return exec.LookPath(fmt.Sprintf("conftest%s", ConftestVersion))
 }
 
 func TestGitHubWorkflow(t *testing.T) {
@@ -652,7 +650,6 @@ func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 
 type e2eOptions struct {
 	featureConfig ffclient.Retriever
-	conftestPath  string
 }
 
 func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig, ghClient vcs.IGithubClient, options ...e2eOptions) (string, events_controllers.VCSEventsController, locking.ApplyLocker) {
@@ -681,6 +678,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	lockURLGenerator := &testLockURLGenerator{}
 	webhookSender := &testWebhookSender{}
+
 	conftestCache := &LocalConftestCache{}
 	downloader := &NoopTFDownloader{}
 	overrideCloneURL := fmt.Sprintf("file://%s", repoDir)
