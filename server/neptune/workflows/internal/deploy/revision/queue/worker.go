@@ -24,6 +24,16 @@ type dbActivities interface {
 	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
 }
 
+type githubActivities interface {
+	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
+	CompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
+}
+
+type workerActivites interface {
+	dbActivities
+	githubActivities
+}
+
 type WorkerState string
 
 const (
@@ -35,7 +45,7 @@ const (
 type Worker struct {
 	Queue                   *Queue
 	TerraformWorkflowRunner terraformWorkflowRunner
-	DbActivities            dbActivities
+	Activity                workerActivites
 	Repo                    github.Repo
 	// mutable
 	state WorkerState
@@ -75,7 +85,8 @@ func (w *Worker) Work(ctx workflow.Context) {
 		ctx := workflow.WithValue(ctx, internal_context.SHAKey, msg.Revision)
 		ctx = workflow.WithValue(ctx, internal_context.DeploymentIDKey, msg.ID)
 
-		isValid, err := w.isRequestRevisionValid(ctx, msg)
+		// TODO: Skip revision validation if it's a Force Apply
+		aheadBy, err := w.deployRequestRevisionIsAheadBy(ctx, msg)
 		if err != nil {
 			logger.Error(ctx, fmt.Sprintf("Validating deploy request revision %s: %s", msg.Revision, err.Error()))
 
@@ -83,13 +94,18 @@ func (w *Worker) Work(ctx workflow.Context) {
 			continue
 		}
 
-		if !isValid {
-			logger.Info(ctx, fmt.Sprintf("ID: %s Deploy Request Revision: %s is not valid", msg.ID, msg.Revision))
-
-			// TODO: Update the checkrun with relevant info
+		switch {
+		case aheadBy == 0:
+			// TODO: Update checkrun with relevant Info [Revision is already deployed]
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision is identical to the Deploy Request Revision: %s, skipping deploy", msg.Revision))
+			continue
+		case aheadBy < 0:
+			// TODO: Update checkrun with relevant Info [Revision is behind the current deployed version]
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision is ahead of the Deploy Request Revision: %s, skipping deploy", msg.Revision))
 			continue
 		}
 
+		// Run the terraform workflow if revision is ahead by at least 1 commit
 		err = w.TerraformWorkflowRunner.Run(ctx, msg)
 		if err != nil {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
@@ -102,24 +118,38 @@ func (w *Worker) Work(ctx workflow.Context) {
 	}
 }
 
-func (w *Worker) isRequestRevisionValid(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (bool, error) {
+func (w *Worker) deployRequestRevisionIsAheadBy(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (int, error) {
 	// Fetch latest deployment
 	var resp activities.FetchLatestDeploymentResponse
-	err := workflow.ExecuteActivity(ctx, w.DbActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
+	err := workflow.ExecuteActivity(ctx, w.Activity.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
 		FullRepositoryName: w.Repo.GetFullName(),
 		RootName:           deploymentInfo.Root.Name,
 	}).Get(ctx, &resp)
 	if err != nil {
-		return false, errors.Wrap(err, "fetching latest deployment")
+		return 0, errors.Wrap(err, "fetching latest deployment")
 	}
 
-	// TODO: Validate revision by comparing the deploy request revision with the latest deployed
-	return true, nil
+	// skip compare commit if deploy request revision is the same as latest deployed revision
+	if deploymentInfo.Revision == resp.DeploymentInfo.Revision {
+		return 0, nil
+	}
+
+	var compareCommitResp activities.CompareCommitResponse
+	err = workflow.ExecuteActivity(ctx, w.Activity.CompareCommit, activities.CompareCommitRequest{
+		DeployRequestRevision:  deploymentInfo.Revision,
+		LatestDeployedRevision: resp.DeploymentInfo.Revision,
+		Repo:                   w.Repo,
+	}).Get(ctx, &compareCommitResp)
+	if err != nil {
+		return 0, errors.Wrap(err, "comparing revision")
+	}
+
+	return compareCommitResp.DeployRequestRevisionAheadBy, nil
 
 }
 
 func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
-	err := workflow.ExecuteActivity(ctx, w.DbActivities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
+	err := workflow.ExecuteActivity(ctx, w.Activity.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID:         deploymentInfo.ID.String(),
 			CheckRunID: deploymentInfo.CheckRunID,

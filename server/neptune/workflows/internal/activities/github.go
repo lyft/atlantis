@@ -204,3 +204,40 @@ func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootReque
 		LocalRoot: localRoot,
 	}, nil
 }
+
+type CompareCommitRequest struct {
+	DeployRequestRevision  string
+	LatestDeployedRevision string
+	Repo                   internal.Repo
+}
+
+type CompareCommitResponse struct {
+	DeployRequestRevisionAheadBy int
+}
+
+func (a *githubActivities) CompareCommit(ctx context.Context, request CompareCommitRequest) (CompareCommitResponse, error) {
+	client, err := a.ClientCreator.NewInstallationClient(request.Repo.Credentials.InstallationToken)
+	if err != nil {
+		return CompareCommitResponse{}, errors.Wrap(err, "creating installation client")
+	}
+
+	comparison, resp, err := client.Repositories.CompareCommits(ctx, request.Repo.Owner, request.Repo.Name, request.LatestDeployedRevision, request.DeployRequestRevision, &github.ListOptions{})
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return CompareCommitResponse{}, errors.Wrap(err, "comparing commits")
+	}
+
+	if comparison.GetStatus() == "" {
+		return CompareCommitResponse{}, errors.New("nil commit comparison status")
+	}
+
+	// aheadBy is 0 when behindBy gt 0. We subtract to give a negative value which indicates the deploy request revision is behind
+	aheadBy := comparison.GetAheadBy()
+	behindBy := comparison.GetBehindBy()
+	if behindBy > 0 {
+		aheadBy -= behindBy
+	}
+
+	return CompareCommitResponse{
+		DeployRequestRevisionAheadBy: aheadBy,
+	}, nil
+}
