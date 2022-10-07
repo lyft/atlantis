@@ -36,20 +36,24 @@ func NewClient(storeConfig valid.StoreConfig) (*Client, error) {
 	}
 
 	return &Client{
-		location:      location,
-		containerName: storeConfig.ContainerName,
+		Location:      location,
+		ContainerName: storeConfig.ContainerName,
 	}, nil
 }
 
+type containerResolver interface {
+	Container(id string) (stow.Container, error)
+}
+
 type Client struct {
-	location      stow.Location
-	containerName string
-	prefix        string
+	Location      containerResolver
+	ContainerName string
+	Prefix        string
 }
 
 // Return custom errors for the caller to be able to distinguish when container is not found vs item is not found
 func (c *Client) Get(ctx context.Context, key string) (io.ReadCloser, CloserFn, error) {
-	container, err := c.location.Container(c.containerName)
+	container, err := c.Location.Container(c.ContainerName)
 	if err != nil {
 		return nil, nil, &ContainerNotFoundError{
 			Err: err,
@@ -80,7 +84,7 @@ func (c *Client) Get(ctx context.Context, key string) (io.ReadCloser, CloserFn, 
 }
 
 func (c *Client) Set(ctx context.Context, key string, object []byte) error {
-	container, err := c.location.Container(c.containerName)
+	container, err := c.Location.Container(c.ContainerName)
 	if err != nil {
 		return errors.Wrap(err, "resolving container")
 	}
@@ -94,5 +98,5 @@ func (c *Client) Set(ctx context.Context, key string, object []byte) error {
 }
 
 func (c *Client) addPrefix(key string) string {
-	return fmt.Sprintf("%s/%s", c.prefix, key)
+	return fmt.Sprintf("%s/%s", c.Prefix, key)
 }
