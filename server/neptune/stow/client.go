@@ -11,6 +11,22 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 )
 
+type ContainerNotFoundError struct {
+	Err error
+}
+
+func (c *ContainerNotFoundError) Error() string {
+	return fmt.Sprintf("container not found: %s", c.Err.Error())
+}
+
+type ItemNotFoundError struct {
+	Err error
+}
+
+func (i *ItemNotFoundError) Error() string {
+	return fmt.Sprintf("item not found: %s", i.Err.Error())
+}
+
 type CloserFn func()
 
 func NewClient(storeConfig valid.StoreConfig) (*Client, error) {
@@ -31,15 +47,23 @@ type Client struct {
 	prefix        string
 }
 
+// Return custom errors for the caller to be able to distinguish when container is not found vs item is not found
 func (c *Client) Get(ctx context.Context, key string) (io.ReadCloser, CloserFn, error) {
 	container, err := c.location.Container(c.containerName)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "resolving container")
+		return nil, nil, &ContainerNotFoundError{
+			Err: err,
+		}
 	}
 
 	key = c.addPrefix(key)
 	item, err := container.Item(key)
 	if err != nil {
+		if errors.Is(err, stow.ErrNotFound) {
+			return nil, nil, &ItemNotFoundError{
+				Err: err,
+			}
+		}
 		return nil, nil, errors.Wrap(err, "getting item")
 	}
 

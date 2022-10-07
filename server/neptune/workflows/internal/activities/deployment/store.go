@@ -28,7 +28,17 @@ func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName
 
 	reader, closer, err := s.client.Get(ctx, key)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting item")
+		switch err.(type) {
+		// Fail if container is not found
+		case *internal_stow.ContainerNotFoundError:
+			return nil, err
+
+		// First deploy for this root
+		case *internal_stow.ItemNotFoundError:
+			return &root.DeploymentInfo{}, nil
+		default:
+			return nil, errors.Wrap(err, "getting item")
+		}
 	}
 	defer closer()
 

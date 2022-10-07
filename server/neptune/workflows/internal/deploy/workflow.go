@@ -96,6 +96,7 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 		Queue:                   revisionQueue,
 		TerraformWorkflowRunner: tfWorkflowRunner,
 		DbActivities:            a,
+		Repo:                    repo,
 	}
 
 	return &Runner{
