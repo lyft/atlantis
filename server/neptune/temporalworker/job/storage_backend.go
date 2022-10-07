@@ -19,7 +19,7 @@ type StorageBackend interface {
 	Write(ctx context.Context, key string, logs []string) (bool, error)
 }
 
-func NewStorageBackend(stowClient stow.Client, logger logging.Logger) (StorageBackend, error) {
+func NewStorageBackend(stowClient *stow.Client, logger logging.Logger) (StorageBackend, error) {
 	return &storageBackend{
 		client: stowClient,
 		logger: logger,
@@ -27,7 +27,7 @@ func NewStorageBackend(stowClient stow.Client, logger logging.Logger) (StorageBa
 }
 
 type storageBackend struct {
-	client stow.Client
+	client *stow.Client
 	logger logging.Logger
 }
 

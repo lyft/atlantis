@@ -38,7 +38,7 @@ func NewStorageBackedStore(jobStoreConfig valid.StoreConfig, logger logging.Logg
 		return nil, errors.Wrapf(err, "initializing stow client")
 	}
 
-	storageBackend, err := NewStorageBackend(*stowClient, logger)
+	storageBackend, err := NewStorageBackend(stowClient, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}

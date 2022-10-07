@@ -122,7 +122,7 @@ func TestWorker(t *testing.T) {
 		},
 	}
 
-	repo := root.Repo{
+	repo := github.Repo{
 		Owner: "owner",
 		Name:  "test",
 	}

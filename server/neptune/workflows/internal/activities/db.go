@@ -27,8 +27,6 @@ type FetchLatestDeploymentResponse struct {
 
 func (a *dbActivities) FetchLatestDeployment(ctx context.Context, request FetchLatestDeploymentRequest) (FetchLatestDeploymentResponse, error) {
 	deploymentInfo, err := a.DeploymentInfoStore.GetDeploymentInfo(ctx, request.FullRepositoryName, request.RootName)
-
-	// TODO: Investigate how to handle new roots since deployment info dne for this root yet.
 	if err != nil {
 		return FetchLatestDeploymentResponse{}, errors.Wrapf(err, "fetching deployment info for %s/%s", request.FullRepositoryName, request.RootName)
 	}
@@ -44,9 +42,9 @@ type StoreLatestDeploymentRequest struct {
 
 func (a *dbActivities) StoreLatestDeployment(ctx context.Context, request StoreLatestDeploymentRequest) error {
 	err := a.DeploymentInfoStore.SetDeploymentInfo(ctx, request.DeploymentInfo)
-
 	if err != nil {
 		return errors.Wrapf(err, "uploading deployment info for %s/%s [%s] ", request.DeploymentInfo.Repo.GetFullName(), request.DeploymentInfo.Root.Name, request.DeploymentInfo.ID)
 	}
+
 	return nil
 }

@@ -125,10 +125,7 @@ func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo te
 			CheckRunID: deploymentInfo.CheckRunID,
 			Revision:   deploymentInfo.Revision,
 			Root:       deploymentInfo.Root,
-			Repo: root.Repo{
-				Name:  w.Repo.Name,
-				Owner: w.Repo.Owner,
-			},
+			Repo:       w.Repo,
 		},
 	}).Get(ctx, nil)
 	if err != nil {
