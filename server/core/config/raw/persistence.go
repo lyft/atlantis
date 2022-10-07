@@ -27,7 +27,7 @@ func (p Persistence) Validate() error {
 	}
 
 	return validation.ValidateStruct(&p,
-		validation.Field(&p.DefaultStore, validation.Required, validation.In(dsNames...)),
+		validation.Field(&p.DefaultStore, validation.In(dsNames...)),
 		validation.Field(&p.DeploymentStore, validation.In(dsNames)),
 		validation.Field(&p.JobStore, validation.In(dsNames)),
 		validation.Field(&p.DataStores),

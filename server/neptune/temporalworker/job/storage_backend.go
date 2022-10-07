@@ -69,7 +69,7 @@ func (s storageBackend) Write(ctx context.Context, key string, logs []string) (b
 // Used when log persistence is not configured
 type NoopStorageBackend struct{}
 
-func (s *NoopStorageBackend) Read(key string) ([]string, error) {
+func (s *NoopStorageBackend) Read(ctx context.Context, key string) ([]string, error) {
 	return []string{}, nil
 }
 
