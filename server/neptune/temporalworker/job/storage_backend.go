@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/stow"
+	"github.com/runatlantis/atlantis/server/neptune/storage"
 )
 
 const OutputPrefix = "output"
@@ -19,7 +19,7 @@ type StorageBackend interface {
 	Write(ctx context.Context, key string, logs []string) (bool, error)
 }
 
-func NewStorageBackend(stowClient *stow.Client, logger logging.Logger) (StorageBackend, error) {
+func NewStorageBackend(stowClient *storage.Client, logger logging.Logger) (StorageBackend, error) {
 	return &storageBackend{
 		client: stowClient,
 		logger: logger,
@@ -27,7 +27,7 @@ func NewStorageBackend(stowClient *stow.Client, logger logging.Logger) (StorageB
 }
 
 type storageBackend struct {
-	client *stow.Client
+	client *storage.Client
 	logger logging.Logger
 }
 
@@ -35,11 +35,11 @@ func (s storageBackend) Read(ctx context.Context, key string) (logs []string, er
 	key = fmt.Sprintf("%s/%s", OutputPrefix, key)
 
 	s.logger.Info(fmt.Sprintf("reading object for job: %s", key))
-	reader, closer, err := s.client.Get(ctx, key)
+	reader, err := s.client.Get(ctx, key)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting item")
 	}
-	defer closer()
+	defer reader.Close()
 
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, reader)

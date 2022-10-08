@@ -1,4 +1,4 @@
-package stow_test
+package storage_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/graymeta/stow"
-	internal_stow "github.com/runatlantis/atlantis/server/neptune/stow"
+	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -72,16 +72,15 @@ func TestClient_Get(t *testing.T) {
 			err:  expErr,
 		}
 
-		client := internal_stow.Client{
+		client := storage.Client{
 			Location:      location,
 			ContainerName: containerName,
 			Prefix:        prefix,
 		}
 
-		readCloser, closerFn, err := client.Get(context.Background(), id)
+		readCloser, err := client.Get(context.Background(), id)
 		assert.Nil(t, readCloser)
-		assert.Nil(t, closerFn)
-		assert.Equal(t, &internal_stow.ContainerNotFoundError{
+		assert.Equal(t, &storage.ContainerNotFoundError{
 			Err: expErr,
 		}, err)
 
@@ -106,16 +105,15 @@ func TestClient_Get(t *testing.T) {
 			container: container,
 		}
 
-		client := internal_stow.Client{
+		client := storage.Client{
 			Location:      location,
 			ContainerName: containerName,
 			Prefix:        prefix,
 		}
 
-		readCloser, closerFn, err := client.Get(context.Background(), id)
+		readCloser, err := client.Get(context.Background(), id)
 		assert.Nil(t, readCloser)
-		assert.Nil(t, closerFn)
-		assert.Equal(t, &internal_stow.ItemNotFoundError{
+		assert.Equal(t, &storage.ItemNotFoundError{
 			Err: stow.ErrNotFound,
 		}, err)
 	})

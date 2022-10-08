@@ -6,7 +6,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/neptune/stow"
+	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/stretchr/testify/assert"
@@ -17,14 +17,13 @@ type testStowClient struct {
 	get struct {
 		key        string
 		readCloser io.ReadCloser
-		closerFn   stow.CloserFn
 		err        error
 	}
 }
 
-func (t *testStowClient) Get(ctx context.Context, key string) (io.ReadCloser, stow.CloserFn, error) {
+func (t *testStowClient) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	assert.Equal(t.t, t.get.key, key)
-	return t.get.readCloser, t.get.closerFn, t.get.err
+	return t.get.readCloser, t.get.err
 }
 
 // Unused
@@ -44,11 +43,10 @@ func TestStore_GetDeploymentInfo(t *testing.T) {
 			get: struct {
 				key        string
 				readCloser io.ReadCloser
-				closerFn   stow.CloserFn
 				err        error
 			}{
 				key: key,
-				err: &stow.ContainerNotFoundError{Err: clientErr},
+				err: &storage.ContainerNotFoundError{Err: clientErr},
 			},
 		}
 		store, err := deployment.NewStore(stowClient)
@@ -56,7 +54,7 @@ func TestStore_GetDeploymentInfo(t *testing.T) {
 
 		deploymentInfo, err := store.GetDeploymentInfo(context.TODO(), repoName, rootName)
 		assert.Nil(t, deploymentInfo)
-		assert.Equal(t, err, &stow.ContainerNotFoundError{Err: clientErr})
+		assert.Equal(t, err, &storage.ContainerNotFoundError{Err: clientErr})
 	})
 
 	t.Run("empty deployment object when item not found", func(t *testing.T) {
@@ -65,11 +63,10 @@ func TestStore_GetDeploymentInfo(t *testing.T) {
 			get: struct {
 				key        string
 				readCloser io.ReadCloser
-				closerFn   stow.CloserFn
 				err        error
 			}{
 				key: key,
-				err: &stow.ItemNotFoundError{Err: clientErr},
+				err: &storage.ItemNotFoundError{Err: clientErr},
 			},
 		}
 		store, err := deployment.NewStore(stowClient)

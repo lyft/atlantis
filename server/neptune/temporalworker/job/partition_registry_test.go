@@ -81,7 +81,7 @@ func (t strictTestStore) Write(ctx context.Context, jobID string, output string)
 	if t.write.count > len(t.write.runners)-1 {
 		t.t.FailNow()
 	}
-	err := t.write.runners[t.write.count].Write(context.Background(), jobID, output)
+	err := t.write.runners[t.write.count].Write(context.TODO(), jobID, output)
 	t.write.count += 1
 	return err
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/stow"
+	"github.com/runatlantis/atlantis/server/neptune/storage"
 )
 
 type JobStatus int
@@ -33,7 +33,7 @@ type Store interface {
 }
 
 func NewStorageBackedStore(jobStoreConfig valid.StoreConfig, logger logging.Logger) (*StorageBackendJobStore, error) {
-	stowClient, err := stow.NewClient(jobStoreConfig)
+	stowClient, err := storage.NewClient(jobStoreConfig)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing stow client")
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	internal_context "github.com/runatlantis/atlantis/server/neptune/context"
+	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
@@ -37,8 +37,10 @@ type Worker struct {
 	TerraformWorkflowRunner terraformWorkflowRunner
 	DbActivities            dbActivities
 	Repo                    github.Repo
+
 	// mutable
-	state WorkerState
+	state            WorkerState
+	LatestDeployment *root.DeploymentInfo
 }
 
 // Work pops work off the queue and if the queue is empty,
@@ -72,37 +74,37 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		msg := w.Queue.Pop()
 
-		ctx := workflow.WithValue(ctx, internal_context.SHAKey, msg.Revision)
-		ctx = workflow.WithValue(ctx, internal_context.DeploymentIDKey, msg.ID)
+		ctx := workflow.WithValue(ctx, internalContext.SHAKey, msg.Revision)
+		ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, msg.ID)
 
-		isValid, err := w.isRequestRevisionValid(ctx, msg)
-		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("Validating deploy request revision %s: %s", msg.Revision, err.Error()))
-
-			// TODO: Update the checkrun with relevant info
-			continue
+		// This should only happen on startup
+		// If we fail to fetch the latest deployment, log and exit the workflow
+		if w.LatestDeployment == nil {
+			w.LatestDeployment, err = w.fetchLatestDeployment(ctx, msg)
+			if err != nil {
+				logger.Error(ctx, fmt.Sprint("Unable to fetch latest deployment, worker is shutting down", err.Error()))
+				return
+			}
 		}
 
-		if !isValid {
-			logger.Info(ctx, fmt.Sprintf("ID: %s Deploy Request Revision: %s is not valid", msg.ID, msg.Revision))
-
-			// TODO: Update the checkrun with relevant info
-			continue
-		}
+		// TODO: Validate revision before executing the workflow
 
 		err = w.TerraformWorkflowRunner.Run(ctx, msg)
 		if err != nil {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
 		}
 
-		err = w.persistLatestDeployment(ctx, msg)
+		latestDeployment, err := w.persistLatestDeployment(ctx, msg)
 		if err != nil {
 			logger.Error(ctx, "failed to persist latest deploy job")
 		}
+
+		// Update the latest deployment in memory
+		w.LatestDeployment = latestDeployment
 	}
 }
 
-func (w *Worker) isRequestRevisionValid(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (bool, error) {
+func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
 	// Fetch latest deployment
 	var resp activities.FetchLatestDeploymentResponse
 	err := workflow.ExecuteActivity(ctx, w.DbActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
@@ -110,28 +112,27 @@ func (w *Worker) isRequestRevisionValid(ctx workflow.Context, deploymentInfo ter
 		RootName:           deploymentInfo.Root.Name,
 	}).Get(ctx, &resp)
 	if err != nil {
-		return false, errors.Wrap(err, "fetching latest deployment")
+		return nil, errors.Wrap(err, "fetching latest deployment")
 	}
 
-	// TODO: Validate revision by comparing the deploy request revision with the latest deployed
-	return true, nil
-
+	return resp.DeploymentInfo, nil
 }
 
-func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
+func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
+	latestDeploymentInfo := root.DeploymentInfo{
+		ID:         deploymentInfo.ID.String(),
+		CheckRunID: deploymentInfo.CheckRunID,
+		Revision:   deploymentInfo.Revision,
+		Root:       deploymentInfo.Root,
+		Repo:       w.Repo,
+	}
 	err := workflow.ExecuteActivity(ctx, w.DbActivities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
-		DeploymentInfo: root.DeploymentInfo{
-			ID:         deploymentInfo.ID.String(),
-			CheckRunID: deploymentInfo.CheckRunID,
-			Revision:   deploymentInfo.Revision,
-			Root:       deploymentInfo.Root,
-			Repo:       w.Repo,
-		},
+		DeploymentInfo: latestDeploymentInfo,
 	}).Get(ctx, nil)
 	if err != nil {
-		return errors.Wrap(err, "persisting deployment info")
+		return nil, errors.Wrap(err, "persisting deployment info")
 	}
-	return nil
+	return &latestDeploymentInfo, nil
 }
 
 func (w *Worker) GetState() WorkerState {

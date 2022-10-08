@@ -1,4 +1,4 @@
-package stow
+package storage
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ type ContainerNotFoundError struct {
 }
 
 func (c *ContainerNotFoundError) Error() string {
-	return fmt.Sprintf("container not found: %s", c.Err.Error())
+	return errors.Wrap(c.Err, "container not found").Error()
 }
 
 type ItemNotFoundError struct {
@@ -24,10 +24,8 @@ type ItemNotFoundError struct {
 }
 
 func (i *ItemNotFoundError) Error() string {
-	return fmt.Sprintf("item not found: %s", i.Err.Error())
+	return errors.Wrap(i.Err, "item not found").Error()
 }
-
-type CloserFn func()
 
 func NewClient(storeConfig valid.StoreConfig) (*Client, error) {
 	location, err := stow.Dial(string(storeConfig.BackendType), storeConfig.Config)
@@ -52,10 +50,10 @@ type Client struct {
 }
 
 // Return custom errors for the caller to be able to distinguish when container is not found vs item is not found
-func (c *Client) Get(ctx context.Context, key string) (io.ReadCloser, CloserFn, error) {
+func (c *Client) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	container, err := c.Location.Container(c.ContainerName)
 	if err != nil {
-		return nil, nil, &ContainerNotFoundError{
+		return nil, &ContainerNotFoundError{
 			Err: err,
 		}
 	}
@@ -64,23 +62,19 @@ func (c *Client) Get(ctx context.Context, key string) (io.ReadCloser, CloserFn, 
 	item, err := container.Item(key)
 	if err != nil {
 		if errors.Is(err, stow.ErrNotFound) {
-			return nil, nil, &ItemNotFoundError{
+			return nil, &ItemNotFoundError{
 				Err: err,
 			}
 		}
-		return nil, nil, errors.Wrap(err, "getting item")
+		return nil, errors.Wrap(err, "getting item")
 	}
 
 	r, err := item.Open()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "reading item")
+		return nil, errors.Wrap(err, "reading item")
 	}
 
-	closerFn := func() {
-		r.Close()
-	}
-
-	return r, closerFn, nil
+	return r, nil
 }
 
 func (c *Client) Set(ctx context.Context, key string, object []byte) error {

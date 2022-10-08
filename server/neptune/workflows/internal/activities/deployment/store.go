@@ -7,15 +7,14 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/stow"
-	internal_stow "github.com/runatlantis/atlantis/server/neptune/stow"
+	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
 const OutputPrefix = "deployments"
 
 type client interface {
-	Get(ctx context.Context, key string) (io.ReadCloser, stow.CloserFn, error)
+	Get(ctx context.Context, key string) (io.ReadCloser, error)
 	Set(ctx context.Context, key string, object []byte) error
 }
 
@@ -33,23 +32,23 @@ type store struct {
 func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*root.DeploymentInfo, error) {
 	key := BuildKey(repoName, rootName)
 
-	reader, closer, err := s.stowClient.Get(ctx, key)
+	reader, err := s.stowClient.Get(ctx, key)
 	if err != nil {
 		switch err.(type) {
 
 		// Fail if container is not found
-		case *internal_stow.ContainerNotFoundError:
+		case *storage.ContainerNotFoundError:
 			return nil, err
 
 		// First deploy for this root
-		case *internal_stow.ItemNotFoundError:
+		case *storage.ItemNotFoundError:
 			return &root.DeploymentInfo{}, nil
 
 		default:
 			return nil, errors.Wrap(err, "getting item")
 		}
 	}
-	defer closer()
+	defer reader.Close()
 
 	decoder := json.NewDecoder(reader)
 
