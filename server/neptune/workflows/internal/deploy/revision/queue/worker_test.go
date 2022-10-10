@@ -17,6 +17,12 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+type testRevisionValidator struct{}
+
+func (v *testRevisionValidator) IsValidRevision(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error) {
+	return true, nil
+}
+
 type testTerraformWorkflowRunner struct{}
 
 func (r testTerraformWorkflowRunner) Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
@@ -52,7 +58,8 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	worker := queue.Worker{
 		Queue:                   q,
 		TerraformWorkflowRunner: &testTerraformWorkflowRunner{},
-		DbActivities:            wa,
+		DbActivity:              wa,
+		RevisionValidator:       &testRevisionValidator{},
 		Repo: github.Repo{
 			Owner: "owner",
 			Name:  "test",
@@ -82,7 +89,8 @@ func TestWorker(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
-	da := testDeployActivity{}
+	da := &testDeployActivity{}
+	env.RegisterActivity(da)
 	// we set this callback so we can query the state of the queue
 	// after all processing has complete to determine whether we should
 	// shutdown the worker

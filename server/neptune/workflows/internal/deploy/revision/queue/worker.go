@@ -29,6 +29,10 @@ type githubActivities interface {
 	CompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
 }
 
+type revisionValidator interface {
+	IsValidRevision(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error)
+}
+
 type workerActivites interface {
 	dbActivities
 	githubActivities
@@ -45,8 +49,9 @@ const (
 type Worker struct {
 	Queue                   *Queue
 	TerraformWorkflowRunner terraformWorkflowRunner
-	Activity                workerActivites
+	DbActivity              dbActivities
 	Repo                    github.Repo
+	RevisionValidator       revisionValidator
 
 	// mutable
 	state            WorkerState
@@ -97,24 +102,14 @@ func (w *Worker) Work(ctx workflow.Context) {
 			}
 		}
 
-		// TODO: Skip revision validation if it's a Force Apply
-		aheadBy, err := w.deployRequestRevisionIsAheadBy(ctx, msg)
+		isValidRevision, err := w.RevisionValidator.IsValidRevision(ctx, w.Repo, msg, w.LatestDeployment)
 		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("Validating deploy request revision %s: %s", msg.Revision, err.Error()))
-
-			// TODO: Update the checkrun with relevant info
+			logger.Error(ctx, fmt.Sprint("Unable to validate deploy request revision, skipping deploy", err.Error()))
 			continue
 		}
 
-		switch {
-		case aheadBy == 0:
-			// TODO: Update checkrun with relevant Info [Revision is already deployed]
-			logger.Info(ctx, fmt.Sprintf("Deployed Revision is identical to the Deploy Request Revision: %s, skipping deploy", msg.Revision))
-			continue
-		case aheadBy < 0:
-			// TODO: Update checkrun with relevant Info [Revision is behind the current deployed version]
-			logger.Info(ctx, fmt.Sprintf("Deployed Revision is ahead of the Deploy Request Revision: %s, skipping deploy", msg.Revision))
-			continue
+		if !isValidRevision {
+			logger.Info(ctx, fmt.Sprintf("Invalid revision, skipping deploy"))
 		}
 
 		// Run the terraform workflow if revision is ahead by at least 1 commit
@@ -133,29 +128,10 @@ func (w *Worker) Work(ctx workflow.Context) {
 	}
 }
 
-func (w *Worker) deployRequestRevisionIsAheadBy(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (int, error) {
-	// skip compare commit if deploy request revision is the same as latest deployed revision
-	if deploymentInfo.Revision == w.LatestDeployment.Revision {
-		return 0, nil
-	}
-
-	var compareCommitResp activities.CompareCommitResponse
-	err := workflow.ExecuteActivity(ctx, w.Activity.CompareCommit, activities.CompareCommitRequest{
-		DeployRequestRevision:  deploymentInfo.Revision,
-		LatestDeployedRevision: w.LatestDeployment.Revision,
-		Repo:                   w.Repo,
-	}).Get(ctx, &compareCommitResp)
-	if err != nil {
-		return 0, errors.Wrap(err, "comparing revision")
-	}
-
-	return compareCommitResp.DeployRequestRevisionAheadBy, nil
-}
-
 func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
 	// Fetch latest deployment
 	var resp activities.FetchLatestDeploymentResponse
-	err := workflow.ExecuteActivity(ctx, w.Activity.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
+	err := workflow.ExecuteActivity(ctx, w.DbActivity.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
 		FullRepositoryName: w.Repo.GetFullName(),
 		RootName:           deploymentInfo.Root.Name,
 	}).Get(ctx, &resp)
@@ -174,7 +150,7 @@ func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo te
 		Root:       deploymentInfo.Root,
 		Repo:       w.Repo,
 	}
-	err := workflow.ExecuteActivity(ctx, w.Activity.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
+	err := workflow.ExecuteActivity(ctx, w.DbActivity.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: latestDeploymentInfo,
 	}).Get(ctx, nil)
 	if err != nil {
