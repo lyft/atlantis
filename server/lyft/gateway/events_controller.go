@@ -19,8 +19,6 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-const githubHeader = "X-Github-Event"
-
 type scheduler interface {
 	Schedule(ctx context.Context, f sync.Executor) error
 }

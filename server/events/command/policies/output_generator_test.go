@@ -125,7 +125,7 @@ func (t *strictTestPolicyCheckCommandRunner) PolicyCheck(prjCtx command.ProjectC
 		t.t.FailNow()
 	}
 	res := t.runners[t.count].PolicyCheck(prjCtx)
-	t.count += 1
+	t.count++
 	return res
 }
 

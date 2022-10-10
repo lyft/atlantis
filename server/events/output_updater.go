@@ -19,7 +19,7 @@ type OutputUpdater interface {
 
 // JobURLGenerator generates urls to view project's progress.
 type jobURLGenerator interface {
-	GenerateProjectJobURL(jobId string) (string, error)
+	GenerateProjectJobURL(jobID string) (string, error)
 }
 
 type renderer interface {
@@ -79,8 +79,8 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Ref:              ctx.Pull.HeadCommit,
 			PullNum:          ctx.Pull.Num,
 			PullCreationTime: ctx.Pull.CreatedAt,
-			StatusId:         projectResult.StatusId,
-			DetailsURL:       c.buildJobURL(ctx, projectResult.Command, projectResult.JobId),
+			StatusID:         projectResult.StatusID,
+			DetailsURL:       c.buildJobURL(ctx, projectResult.Command, projectResult.JobID),
 			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),
 			State:            c.resolveState(projectResult),
 

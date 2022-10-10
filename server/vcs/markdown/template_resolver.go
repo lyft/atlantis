@@ -1,10 +1,11 @@
 package markdown
 
 import (
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"io/ioutil"
 	"strings"
 	"text/template"
+
+	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 
 	_ "embed"
 
@@ -220,8 +221,8 @@ func (m *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, outp
 }
 
 func (m *TemplateResolver) getPlanTmpl(common commonData, baseRepo models.Repo, templateOverrides map[string]string, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
-	if file_name, ok := templateOverrides["plan"]; ok {
-		if content, err := ioutil.ReadFile(file_name); err == nil {
+	if fileName, ok := templateOverrides["plan"]; ok {
+		if content, err := ioutil.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
 		}
 	}
@@ -240,8 +241,8 @@ func (m *TemplateResolver) getPlanTmpl(common commonData, baseRepo models.Repo, 
 }
 
 func (m *TemplateResolver) getApplyTmpl(templateOverrides map[string]string, numPrjResults int) *template.Template {
-	if file_name, ok := templateOverrides["apply"]; ok {
-		if content, err := ioutil.ReadFile(file_name); err == nil {
+	if fileName, ok := templateOverrides["apply"]; ok {
+		if content, err := ioutil.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
 		}
 	}
@@ -253,8 +254,8 @@ func (m *TemplateResolver) getApplyTmpl(templateOverrides map[string]string, num
 }
 
 func (m *TemplateResolver) getVersionTmpl(templateOverrides map[string]string, common commonData, numPrjResults int, numVersionSuccesses int) *template.Template {
-	if file_name, ok := templateOverrides["version"]; ok {
-		if content, err := ioutil.ReadFile(file_name); err == nil {
+	if fileName, ok := templateOverrides["version"]; ok {
+		if content, err := ioutil.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
 		}
 	}

@@ -124,11 +124,11 @@ func (m *Renderer) countSuccesses(results []command.ProjectResult) (numPlanSucce
 	for _, result := range results {
 		switch {
 		case result.PlanSuccess != nil:
-			numPlanSuccesses += 1
+			numPlanSuccesses++
 		case result.PolicyCheckSuccess != nil:
-			numPolicyCheckSuccesses += 1
+			numPolicyCheckSuccesses++
 		case result.VersionSuccess != "":
-			numVersionSuccesses += 1
+			numVersionSuccesses++
 		}
 	}
 	return

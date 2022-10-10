@@ -2,10 +2,10 @@ package command
 
 import (
 	"context"
-	"time"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/uber-go/tally/v4"
+	"time"
 )
 
 // CommandTrigger represents the how the command was triggered

@@ -542,7 +542,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectContextBuilder = projectContextBuilder.EnablePolicyChecks(commentParser)
 	}
 
-
 	projectCommandBuilder := events.NewProjectCommandBuilder(
 		projectContextBuilder,
 		validator,

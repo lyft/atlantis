@@ -34,9 +34,9 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
 	"github.com/runatlantis/atlantis/server/logging"
+	event_types "github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	github_request "github.com/runatlantis/atlantis/server/vcs/provider/github/request"
-	event_types "github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/uber-go/tally/v4"
 	gitlab "github.com/xanzy/go-gitlab"
 )
@@ -75,13 +75,13 @@ type prEventHandler interface {
 	Handle(ctx context.Context, request *httputils.BufferedRequest, event event_types.PullRequest) error
 }
 
-type unsupportedPushEventHandler struct {}
+type unsupportedPushEventHandler struct{}
 
 func (h unsupportedPushEventHandler) Handle(ctx context.Context, event event_types.Push) error {
 	return fmt.Errorf("push events are not supported in this context")
 }
 
-type unsupportedCheckRunEventHandler struct {}
+type unsupportedCheckRunEventHandler struct{}
 
 func (h unsupportedCheckRunEventHandler) Handle(ctx context.Context, event event_types.CheckRun) error {
 	return fmt.Errorf("check run events are not supported in this context")

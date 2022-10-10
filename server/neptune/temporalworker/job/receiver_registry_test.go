@@ -55,7 +55,7 @@ func (t strictTestReceiverRegistry) AddReceiver(jobID string, ch chan string) {
 		t.t.FailNow()
 	}
 	t.addReceiver.runners[t.addReceiver.count].AddReceiver(jobID, ch)
-	t.addReceiver.count += 1
+	t.addReceiver.count++
 	return
 }
 
@@ -64,7 +64,7 @@ func (t strictTestReceiverRegistry) Broadcast(msg job.OutputLine) {
 		t.t.FailNow()
 	}
 	t.broadcast.runners[t.broadcast.count].Broadcast(msg)
-	t.broadcast.count += 1
+	t.broadcast.count++
 	return
 }
 
@@ -73,7 +73,7 @@ func (t strictTestReceiverRegistry) Close(ctx context.Context, jobID string) {
 		t.t.FailNow()
 	}
 	t.close.runners[t.close.count].Close(ctx, jobID)
-	t.close.count += 1
+	t.close.count++
 	return
 }
 
@@ -82,7 +82,7 @@ func (t *strictTestReceiverRegistry) CleanUp() {
 		t.t.FailNow()
 	}
 	t.cleanup.runners[t.cleanup.count].CleanUp()
-	t.cleanup.count += 1
+	t.cleanup.count++
 	return
 }
 
