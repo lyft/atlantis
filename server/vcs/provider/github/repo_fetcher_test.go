@@ -213,7 +213,7 @@ func appendCommit(t *testing.T, repoDir string, fileName string, commitMessage s
 	runCmd(t, repoDir, "git", "config", "--local", "user.name", "atlantisbot")
 	output := runCmd(t, repoDir, "git", "commit", "-m", commitMessage)
 	// hacky regex to fetch commit sha
-	re := regexp.MustCompile(`\\w+]`)
+	re := regexp.MustCompile(`\w+]`)
 	commitResult := re.FindString(output)
 	sha := commitResult[:len(commitResult)-1]
 	runCmd(t, repoDir, "git", "branch", "branch", "-f")

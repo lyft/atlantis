@@ -32,7 +32,7 @@ func (mock *MockProjectLocker) TryLock(requestCtx context.Context, log logging.L
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectLocker().")
 	}
-	params := []pegomock.Param{log, requestCtx, pull, user, workspace, project}
+	params := []pegomock.Param{requestCtx, log, pull, user, workspace, project}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("TryLock", params, []reflect.Type{reflect.TypeOf((**events.TryLockResponse)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 *events.TryLockResponse
 	var ret1 error
