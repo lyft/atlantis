@@ -54,12 +54,12 @@ type GlobalCfg struct {
 	PolicySets           PolicySets
 	Metrics              Metrics
 	Jobs                 Jobs
-	Persistence          Persistence
+	PersistenceConfig    PersistenceConfig
 	TerraformLogFilter   TerraformLogFilters
 	Temporal             Temporal
 }
 
-type Persistence struct {
+type PersistenceConfig struct {
 	Deployments StoreConfig
 	Jobs        StoreConfig
 }

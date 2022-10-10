@@ -165,7 +165,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		PolicySets:           policySets,
 		Metrics:              g.Metrics.ToValid(),
 		Jobs:                 g.Jobs.ToValid(),
-		Persistence:          g.Persistence.ToValid(),
+		PersistenceConfig:    g.Persistence.ToValid(),
 		TerraformLogFilter:   g.TerraformLogFilters.ToValid(),
 		Temporal:             g.Temporal.ToValid(),
 	}

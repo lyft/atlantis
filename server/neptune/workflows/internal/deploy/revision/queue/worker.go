@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	internal_context "github.com/runatlantis/atlantis/server/neptune/context"
+	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
@@ -47,8 +47,10 @@ type Worker struct {
 	TerraformWorkflowRunner terraformWorkflowRunner
 	Activity                workerActivites
 	Repo                    github.Repo
+
 	// mutable
-	state WorkerState
+	state            WorkerState
+	LatestDeployment *root.DeploymentInfo
 }
 
 // Work pops work off the queue and if the queue is empty,
@@ -82,8 +84,18 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		msg := w.Queue.Pop()
 
-		ctx := workflow.WithValue(ctx, internal_context.SHAKey, msg.Revision)
-		ctx = workflow.WithValue(ctx, internal_context.DeploymentIDKey, msg.ID)
+		ctx := workflow.WithValue(ctx, internalContext.SHAKey, msg.Revision)
+		ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, msg.ID)
+
+		// This should only happen on startup
+		// If we fail to fetch the latest deployment, log and exit the workflow
+		if w.LatestDeployment == nil {
+			w.LatestDeployment, err = w.fetchLatestDeployment(ctx, msg)
+			if err != nil {
+				logger.Error(ctx, fmt.Sprint("Unable to fetch latest deployment, worker is shutting down", err.Error()))
+				return
+			}
+		}
 
 		// TODO: Skip revision validation if it's a Force Apply
 		aheadBy, err := w.deployRequestRevisionIsAheadBy(ctx, msg)
@@ -111,33 +123,26 @@ func (w *Worker) Work(ctx workflow.Context) {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
 		}
 
-		err = w.persistLatestDeployment(ctx, msg)
+		latestDeployment, err := w.persistLatestDeployment(ctx, msg)
 		if err != nil {
 			logger.Error(ctx, "failed to persist latest deploy job")
 		}
+
+		// Update the latest deployment in memory
+		w.LatestDeployment = latestDeployment
 	}
 }
 
 func (w *Worker) deployRequestRevisionIsAheadBy(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (int, error) {
-	// Fetch latest deployment
-	var resp activities.FetchLatestDeploymentResponse
-	err := workflow.ExecuteActivity(ctx, w.Activity.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
-		FullRepositoryName: w.Repo.GetFullName(),
-		RootName:           deploymentInfo.Root.Name,
-	}).Get(ctx, &resp)
-	if err != nil {
-		return 0, errors.Wrap(err, "fetching latest deployment")
-	}
-
 	// skip compare commit if deploy request revision is the same as latest deployed revision
-	if deploymentInfo.Revision == resp.DeploymentInfo.Revision {
+	if deploymentInfo.Revision == w.LatestDeployment.Revision {
 		return 0, nil
 	}
 
 	var compareCommitResp activities.CompareCommitResponse
-	err = workflow.ExecuteActivity(ctx, w.Activity.CompareCommit, activities.CompareCommitRequest{
+	err := workflow.ExecuteActivity(ctx, w.Activity.CompareCommit, activities.CompareCommitRequest{
 		DeployRequestRevision:  deploymentInfo.Revision,
-		LatestDeployedRevision: resp.DeploymentInfo.Revision,
+		LatestDeployedRevision: w.LatestDeployment.Revision,
 		Repo:                   w.Repo,
 	}).Get(ctx, &compareCommitResp)
 	if err != nil {
@@ -145,26 +150,37 @@ func (w *Worker) deployRequestRevisionIsAheadBy(ctx workflow.Context, deployment
 	}
 
 	return compareCommitResp.DeployRequestRevisionAheadBy, nil
-
 }
 
-func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
+func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
+	// Fetch latest deployment
+	var resp activities.FetchLatestDeploymentResponse
+	err := workflow.ExecuteActivity(ctx, w.Activity.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
+		FullRepositoryName: w.Repo.GetFullName(),
+		RootName:           deploymentInfo.Root.Name,
+	}).Get(ctx, &resp)
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching latest deployment")
+	}
+
+	return resp.DeploymentInfo, nil
+}
+
+func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
+	latestDeploymentInfo := root.DeploymentInfo{
+		ID:         deploymentInfo.ID.String(),
+		CheckRunID: deploymentInfo.CheckRunID,
+		Revision:   deploymentInfo.Revision,
+		Root:       deploymentInfo.Root,
+		Repo:       w.Repo,
+	}
 	err := workflow.ExecuteActivity(ctx, w.Activity.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
-		DeploymentInfo: root.DeploymentInfo{
-			ID:         deploymentInfo.ID.String(),
-			CheckRunID: deploymentInfo.CheckRunID,
-			Revision:   deploymentInfo.Revision,
-			Root:       deploymentInfo.Root,
-			Repo: root.Repo{
-				Name:  w.Repo.Name,
-				Owner: w.Repo.Owner,
-			},
-		},
+		DeploymentInfo: latestDeploymentInfo,
 	}).Get(ctx, nil)
 	if err != nil {
-		return errors.Wrap(err, "persisting deployment info")
+		return nil, errors.Wrap(err, "persisting deployment info")
 	}
-	return nil
+	return &latestDeploymentInfo, nil
 }
 
 func (w *Worker) GetState() WorkerState {

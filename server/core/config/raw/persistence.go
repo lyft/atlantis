@@ -12,7 +12,9 @@ type Persistence struct {
 	DefaultStore string `yaml:"default_store" json:"default_store"`
 	// DataStores contains the configuration for all datastores
 	DataStores DataStores `yaml:"data_stores" json:"data_stores"`
-	// Adds a prefix to the storage container
+
+	// Adds a prefix when reading/writing to/from the storage container
+	// Eg: if prefix = "deploy-job-artifacts", deployment-keys="/deploy-job-artifacts/deployments/..."" and job_keys="/deploy-job-artifacts/jobs/..."
 	Prefix string `yaml:"prefix" json:"prefix"`
 
 	DeploymentStore string `yaml:"deployment_store" json:"deployment_store"`
@@ -27,14 +29,14 @@ func (p Persistence) Validate() error {
 	}
 
 	return validation.ValidateStruct(&p,
-		validation.Field(&p.DefaultStore, validation.Required, validation.In(dsNames...)),
-		validation.Field(&p.DeploymentStore, validation.In(dsNames)),
-		validation.Field(&p.JobStore, validation.In(dsNames)),
+		validation.Field(&p.DefaultStore, validation.In(dsNames...)),
+		validation.Field(&p.DeploymentStore, validation.In(dsNames...)),
+		validation.Field(&p.JobStore, validation.In(dsNames...)),
 		validation.Field(&p.DataStores),
 	)
 }
 
-func (p Persistence) ToValid() valid.Persistence {
+func (p Persistence) ToValid() valid.PersistenceConfig {
 	validDefaultStore := buildValidStore(p.DataStores[p.DefaultStore])
 
 	// Override if configured
@@ -51,7 +53,7 @@ func (p Persistence) ToValid() valid.Persistence {
 		validDeploymentStore = buildValidStore(p.DataStores[p.DeploymentStore])
 	}
 
-	return valid.Persistence{
+	return valid.PersistenceConfig{
 		Deployments: validDeploymentStore,
 		Jobs:        validJobStore,
 	}

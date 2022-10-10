@@ -1,22 +1,13 @@
 package root
 
 import (
-	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 )
-
-type Repo struct {
-	Owner string
-	Name  string
-}
-
-func (r *Repo) GetFullName() string {
-	return fmt.Sprintf("%s/%s", r.Owner, r.Name)
-}
 
 type DeploymentInfo struct {
 	ID         string
 	CheckRunID int64
 	Revision   string
-	Repo       Repo
+	Repo       github.Repo
 	Root       Root
 }
