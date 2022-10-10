@@ -19,7 +19,7 @@ import (
 
 type testRevisionValidator struct{}
 
-func (v *testRevisionValidator) IsValidRevision(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error) {
+func (v *testRevisionValidator) IsRevisionValid(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error) {
 	return true, nil
 }
 
@@ -58,7 +58,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	worker := queue.Worker{
 		Queue:                   q,
 		TerraformWorkflowRunner: &testTerraformWorkflowRunner{},
-		DbActivity:              wa,
+		DbActivities:            wa,
 		RevisionValidator:       &testRevisionValidator{},
 		Repo: github.Repo{
 			Owner: "owner",

@@ -44,7 +44,7 @@ func testValidatorWorkflow(ctx workflow.Context, r testValidateWorklflowReq) (bo
 		ScheduleToCloseTimeout: 5 * time.Second,
 	})
 
-	return validator.IsValidRevision(ctx, r.Repo, r.DeployReqRevision, &r.LatestDeployedRevision)
+	return validator.IsRevisionValid(ctx, r.Repo, r.DeployReqRevision, &r.LatestDeployedRevision)
 }
 
 func TestValidator_IsRevisionValid(t *testing.T) {

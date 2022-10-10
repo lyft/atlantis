@@ -2,9 +2,11 @@ package revision
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
@@ -19,7 +21,7 @@ type Validator struct {
 	Activity githubActivities
 }
 
-func (v *Validator) IsValidRevision(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error) {
+func (v *Validator) IsRevisionValid(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error) {
 	aheadBy, err := v.deployRequestRevisionIsAheadBy(ctx, repo, deployedRequestRevision, latestDeployedRevision)
 	if err != nil {
 		// TODO: Update the checkrun
@@ -29,12 +31,12 @@ func (v *Validator) IsValidRevision(ctx workflow.Context, repo github.Repo, depl
 	switch {
 	// TODO: Update checkrun [Deployed Revision is identical to the deploy request revision]
 	case aheadBy == 0:
-		// logger.Info(ctx, fmt.Sprintf("Deployed Revision is identical to the Deploy Request Revision: %s, skipping deploy", msg.Revision))
+		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s.", latestDeployedRevision.Revision, deployedRequestRevision.Revision))
 		return false, nil
 
 	// TODO: Update checkrun [Deployed Revision is ahead of the deploy request revision]
 	case aheadBy < 0:
-		// logger.Info(ctx, fmt.Sprintf("Deployed Revision is ahead of the Deploy Request Revision: %s, skipping deploy", msg.Revision))
+		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s.", latestDeployedRevision.Revision, deployedRequestRevision.Revision))
 		return false, nil
 	}
 

@@ -24,18 +24,8 @@ type dbActivities interface {
 	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
 }
 
-type githubActivities interface {
-	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
-	CompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
-}
-
 type revisionValidator interface {
-	IsValidRevision(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error)
-}
-
-type workerActivites interface {
-	dbActivities
-	githubActivities
+	IsRevisionValid(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error)
 }
 
 type WorkerState string
@@ -49,7 +39,7 @@ const (
 type Worker struct {
 	Queue                   *Queue
 	TerraformWorkflowRunner terraformWorkflowRunner
-	DbActivity              dbActivities
+	DbActivities            dbActivities
 	Repo                    github.Repo
 	RevisionValidator       revisionValidator
 
@@ -102,7 +92,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 			}
 		}
 
-		isValidRevision, err := w.RevisionValidator.IsValidRevision(ctx, w.Repo, msg, w.LatestDeployment)
+		isValidRevision, err := w.RevisionValidator.IsRevisionValid(ctx, w.Repo, msg, w.LatestDeployment)
 		if err != nil {
 			logger.Error(ctx, fmt.Sprint("Unable to validate deploy request revision, skipping deploy", err.Error()))
 			continue
@@ -110,9 +100,9 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		if !isValidRevision {
 			logger.Info(ctx, fmt.Sprintf("Invalid revision, skipping deploy"))
+			continue
 		}
 
-		// Run the terraform workflow if revision is ahead by at least 1 commit
 		err = w.TerraformWorkflowRunner.Run(ctx, msg)
 		if err != nil {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
@@ -131,7 +121,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
 	// Fetch latest deployment
 	var resp activities.FetchLatestDeploymentResponse
-	err := workflow.ExecuteActivity(ctx, w.DbActivity.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
+	err := workflow.ExecuteActivity(ctx, w.DbActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
 		FullRepositoryName: w.Repo.GetFullName(),
 		RootName:           deploymentInfo.Root.Name,
 	}).Get(ctx, &resp)
@@ -150,7 +140,7 @@ func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo te
 		Root:       deploymentInfo.Root,
 		Repo:       w.Repo,
 	}
-	err := workflow.ExecuteActivity(ctx, w.DbActivity.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
+	err := workflow.ExecuteActivity(ctx, w.DbActivities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: latestDeploymentInfo,
 	}).Get(ctx, nil)
 	if err != nil {

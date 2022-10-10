@@ -222,12 +222,12 @@ func (a *githubActivities) CompareCommit(ctx context.Context, request CompareCom
 	}
 
 	comparison, resp, err := client.Repositories.CompareCommits(ctx, request.Repo.Owner, request.Repo.Name, request.LatestDeployedRevision, request.DeployRequestRevision, &github.ListOptions{})
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return CompareCommitResponse{}, errors.Wrap(err, "comparing commits")
 	}
 
-	if comparison.GetStatus() == "" {
-		return CompareCommitResponse{}, errors.New("nil commit comparison status")
+	if comparison.GetStatus() == "" || resp.StatusCode != http.StatusOK {
+		return CompareCommitResponse{}, errors.New("invalid commit comparison status")
 	}
 
 	// aheadBy is 0 when behindBy gt 0. We subtract to give a negative value which indicates the deploy request revision is behind
