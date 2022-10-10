@@ -59,8 +59,6 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		ta := &testValidatorActivity{}
-		env.RegisterActivity(ta)
-
 		deployReqRevision := terraform.DeploymentInfo{
 			Revision: "1234",
 		}
@@ -93,9 +91,6 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
-		ta := &testValidatorActivity{}
-		env.RegisterActivity(ta)
-
 		deployReqRevision := terraform.DeploymentInfo{
 			Revision: "1234",
 		}
@@ -121,8 +116,6 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		ta := &testValidatorActivity{}
-		env.RegisterActivity(ta)
-
 		deployReqRevision := terraform.DeploymentInfo{
 			Revision: "1234",
 		}
@@ -156,8 +149,6 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		ta := &testValidatorActivity{}
-		env.RegisterActivity(ta)
-
 		deployReqRevision := terraform.DeploymentInfo{
 			Revision: "1234",
 		}

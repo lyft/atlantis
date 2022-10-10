@@ -90,7 +90,6 @@ func TestWorker(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	da := &testDeployActivity{}
-	env.RegisterActivity(da)
 	// we set this callback so we can query the state of the queue
 	// after all processing has complete to determine whether we should
 	// shutdown the worker
