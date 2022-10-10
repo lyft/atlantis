@@ -8,58 +8,26 @@ import (
 )
 
 type Persistence struct {
-	// DefaultStore is the name of the default data store to use
-	DefaultStore string `yaml:"default_store" json:"default_store"`
-	// DataStores contains the configuration for all datastores
-	DataStores DataStores `yaml:"data_stores" json:"data_stores"`
+	DefaultStore DataStore `yaml:"default_store" json:"default_store"`
 
-	// Adds a prefix when reading/writing to/from the storage container
-	// Eg: if prefix = "deploy-job-artifacts", deployment-keys="/deploy-job-artifacts/deployments/..."" and job_keys="/deploy-job-artifacts/jobs/..."
-	Prefix string `yaml:"prefix" json:"prefix"`
-
-	DeploymentStore string `yaml:"deployment_store" json:"deployment_store"`
-	JobStore        string `yaml:"job_store" json:"job_store"`
+	DeploymentStorePrefix string `yaml:"deployment_store_prefix" json:"deployment_store_prefix"`
+	JobStorePrefix        string `yaml:"job_store_prefix" json:"job_store_prefix"`
 }
 
 func (p Persistence) Validate() error {
-	// Get all configured data stores
-	dsNames := []interface{}{}
-	for dsName := range p.DataStores {
-		dsNames = append(dsNames, dsName)
-	}
-
 	return validation.ValidateStruct(&p,
-		validation.Field(&p.DefaultStore, validation.In(dsNames...)),
-		validation.Field(&p.DeploymentStore, validation.In(dsNames...)),
-		validation.Field(&p.JobStore, validation.In(dsNames...)),
-		validation.Field(&p.DataStores),
+		validation.Field(&p.DefaultStore, validation.Required),
 	)
 }
 
 func (p Persistence) ToValid() valid.PersistenceConfig {
-	validDefaultStore := buildValidStore(p.DataStores[p.DefaultStore])
-
-	// Override if configured
-	validJobStore := validDefaultStore
-	if p.JobStore != "" {
-		validJobStore = buildValidStore(p.DataStores[p.JobStore])
-	} else {
-		validJobStore = validDefaultStore
-	}
-
-	// Override if configured
-	validDeploymentStore := validDefaultStore
-	if p.DeploymentStore != "" {
-		validDeploymentStore = buildValidStore(p.DataStores[p.DeploymentStore])
-	}
-
 	return valid.PersistenceConfig{
-		Deployments: validDeploymentStore,
-		Jobs:        validJobStore,
+		Deployments: buildValidStore(p.DefaultStore, p.DeploymentStorePrefix),
+		Jobs:        buildValidStore(p.DefaultStore, p.JobStorePrefix),
 	}
 }
 
-func buildValidStore(dataStore DataStore) valid.StoreConfig {
+func buildValidStore(dataStore DataStore, prefix string) valid.StoreConfig {
 	var validStore valid.StoreConfig
 
 	// Serially checks for non-nil supported backends
@@ -68,7 +36,7 @@ func buildValidStore(dataStore DataStore) valid.StoreConfig {
 		validStore = valid.StoreConfig{
 			ContainerName: dataStore.S3.BucketName,
 			BackendType:   valid.S3Backend,
-
+			Prefix:        prefix,
 			// Hard coding iam auth type since we only support this for now
 			Config: stow.ConfigMap{
 				stow_s3.ConfigAuthType: "iam",
@@ -77,8 +45,6 @@ func buildValidStore(dataStore DataStore) valid.StoreConfig {
 	}
 	return validStore
 }
-
-type DataStores map[string]DataStore
 
 type DataStore struct {
 	S3 *S3 `yaml:"s3" json:"s3"`
