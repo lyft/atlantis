@@ -47,7 +47,7 @@ type terraformActivities struct {
 	StreamHandler    streamHandler
 }
 
-func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, streamHandler streamHandler) *terraformActivities {
+func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, streamHandler streamHandler) *terraformActivities { //nolint:golint
 	return &terraformActivities{
 		TerraformClient:  client,
 		DefaultTFVersion: defaultTfVersion,

@@ -24,7 +24,7 @@ type jobURLGenerator interface {
 
 type renderer interface {
 	Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string
-	RenderProject(prjRes command.ProjectResult, cmdName command.Name, baseRepo models.Repo) string
+	RenderProject(prjRes command.ProjectResult, cmdName fmt.Stringer, baseRepo models.Repo) string
 }
 
 type checksClient interface {
@@ -160,9 +160,9 @@ func (c *ChecksOutputUpdater) buildStatusName(cmd PullCommand, options vcs.Statu
 func (c *ChecksOutputUpdater) resolveState(result command.ProjectResult) models.CommitStatus {
 	if result.Error != nil || result.Failure != "" {
 		return models.FailedCommitStatus
-	} else {
-		return models.SuccessCommitStatus
 	}
+
+	return models.SuccessCommitStatus
 }
 
 // Default prj output updater which writes to the pull req comment

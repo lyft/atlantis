@@ -165,7 +165,7 @@ func (a *ApplyStepRunner) runRemoteApply(
 			// Check if the plan is as expected.
 			planChangedErr = a.remotePlanChanged(string(planfileBytes), strings.Join(lines, "\n"), tfVersion)
 			if planChangedErr != nil {
-				prjCtx.Log.ErrorContext(prjCtx.RequestCtx, fmt.Sprintf("plan generated during apply does not match expected plan, aborting"))
+				prjCtx.Log.ErrorContext(prjCtx.RequestCtx, "plan generated during apply does not match expected plan, aborting")
 				inCh <- "no\n"
 				// Need to continue so we read all the lines, otherwise channel
 				// sender (in TerraformClient) will block indefinitely waiting

@@ -143,7 +143,7 @@ func (p *PlanCommandRunner) run(ctx *command.Context, cmd *command.Comment) {
 	// Only run commands in parallel if enabled
 	var result command.Result
 	if p.isParallelEnabled(projectCmds) {
-		ctx.Log.InfoContext(ctx.RequestCtx, fmt.Sprintf("Running applies in parallel"))
+		ctx.Log.InfoContext(ctx.RequestCtx, "Running applies in parallel")
 		result = runProjectCmdsParallel(projectCmds, p.prjCmdRunner.Plan, p.parallelPoolSize)
 	} else {
 		result = runProjectCmds(projectCmds, p.prjCmdRunner.Plan)
@@ -204,17 +204,6 @@ func (p *PlanCommandRunner) updateCommitStatus(ctx *command.Context, pullStatus 
 		statusID,
 	); err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
-	}
-}
-
-// deletePlans deletes all plans generated in this ctx.
-func (p *PlanCommandRunner) deletePlans(ctx *command.Context) {
-	pullDir, err := p.workingDir.GetPullDir(ctx.Pull.BaseRepo, ctx.Pull)
-	if err != nil {
-		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("getting pull dir: %s", err))
-	}
-	if err := p.pendingPlanFinder.DeletePlans(pullDir); err != nil {
-		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("deleting pending plans: %s", err))
 	}
 }
 

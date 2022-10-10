@@ -1057,7 +1057,8 @@ func (s *Server) Start() error {
 		s.CtxLogger.Error(err.Error())
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second) // nolint: vet
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // nolint: vet
+	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
 	}

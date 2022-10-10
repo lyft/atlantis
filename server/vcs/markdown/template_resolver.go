@@ -7,7 +7,7 @@ import (
 
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 
-	_ "embed"
+	_ "embed" // embedding files
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -203,8 +203,8 @@ func (t *TemplateResolver) buildTemplate(projectOutputType ProjectOutputType, vc
 // templates that collapse the output to make the comment smaller on initial
 // load. Some VCS providers or versions of VCS providers don't support this
 // syntax.
-func (m *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, output string) bool {
-	if m.DisableMarkdownFolding {
+func (t *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, output string) bool {
+	if t.DisableMarkdownFolding {
 		return false
 	}
 
@@ -213,14 +213,14 @@ func (m *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, outp
 		return false
 	}
 
-	if vcsHost == models.Gitlab && !m.GitlabSupportsCommonMark {
+	if vcsHost == models.Gitlab && !t.GitlabSupportsCommonMark {
 		return false
 	}
 
 	return strings.Count(output, "\n") > maxUnwrappedLines
 }
 
-func (m *TemplateResolver) getPlanTmpl(common commonData, baseRepo models.Repo, templateOverrides map[string]string, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
+func (t *TemplateResolver) getPlanTmpl(common commonData, baseRepo models.Repo, templateOverrides map[string]string, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
 	if fileName, ok := templateOverrides["plan"]; ok {
 		if content, err := ioutil.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
@@ -240,7 +240,7 @@ func (m *TemplateResolver) getPlanTmpl(common commonData, baseRepo models.Repo, 
 	}
 }
 
-func (m *TemplateResolver) getApplyTmpl(templateOverrides map[string]string, numPrjResults int) *template.Template {
+func (t *TemplateResolver) getApplyTmpl(templateOverrides map[string]string, numPrjResults int) *template.Template {
 	if fileName, ok := templateOverrides["apply"]; ok {
 		if content, err := ioutil.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
@@ -248,12 +248,11 @@ func (m *TemplateResolver) getApplyTmpl(templateOverrides map[string]string, num
 	}
 	if numPrjResults == 1 {
 		return template.Must(template.New("").Parse(singleProjectApplyTmpl))
-	} else {
-		return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(multiProjectApplyTmpl))
 	}
+	return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(multiProjectApplyTmpl))
 }
 
-func (m *TemplateResolver) getVersionTmpl(templateOverrides map[string]string, common commonData, numPrjResults int, numVersionSuccesses int) *template.Template {
+func (t *TemplateResolver) getVersionTmpl(templateOverrides map[string]string, common commonData, numPrjResults int, numVersionSuccesses int) *template.Template {
 	if fileName, ok := templateOverrides["version"]; ok {
 		if content, err := ioutil.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))

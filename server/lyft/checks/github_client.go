@@ -45,7 +45,7 @@ const (
 )
 
 // github checks conclusion
-type ChecksConclusion int
+type ChecksConclusion int //nolint:golint
 
 const (
 	Neutral ChecksConclusion = iota
@@ -96,7 +96,7 @@ func (e CheckStatus) String() string {
 }
 
 // [WENGINES-4643] TODO: Remove this wrapper and add checks implementation to UpdateStatus() directly after github checks is stable
-type ChecksClientWrapper struct {
+type ChecksClientWrapper struct { //nolint:golint
 	*vcs.GithubClient
 	FeatureAllocator feature.Allocator
 	Logger           logging.Logger

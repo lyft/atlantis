@@ -57,7 +57,7 @@ func (a *ApprovePoliciesCommandRunner) Run(ctx *command.Context, cmd *command.Co
 	}
 
 	if len(projectCmds) == 0 {
-		ctx.Log.InfoContext(ctx.RequestCtx, fmt.Sprintf("determined there was no project to run approve_policies in"))
+		ctx.Log.InfoContext(ctx.RequestCtx, "determined there was no project to run approve_policies in")
 		// If there were no projects modified, we set successful commit statuses
 		// with 0/0 projects approve_policies successfully because some users require
 		// the Atlantis status to be passing for all pull requests.

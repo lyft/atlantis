@@ -3,6 +3,7 @@ package events_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -43,7 +44,7 @@ func (t *testRenderer) Render(res command.Result, cmdName command.Name, baseRepo
 
 	return t.expectedOutput
 }
-func (t *testRenderer) RenderProject(prjRes command.ProjectResult, cmdName command.Name, baseRepo models.Repo) string {
+func (t *testRenderer) RenderProject(prjRes command.ProjectResult, cmdName fmt.Stringer, baseRepo models.Repo) string {
 	assert.Equal(t.t, t.expectedProjectResult, prjRes)
 	assert.Equal(t.t, t.expectedCmdName, cmdName)
 	assert.Equal(t.t, t.expectedRepo, baseRepo)

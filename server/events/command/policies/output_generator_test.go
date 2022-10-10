@@ -80,8 +80,7 @@ func TestPolicyCheckOutputGenerator(t *testing.T) {
 
 		prjCmdRunner := strictTestPolicyCheckCommandRunner{
 			runners: []*testPolicyCheckCommandRunner{
-				&testPolicyCheckCommandRunner{
-					t:              t,
+				{
 					expectedPrjCtx: policyCheckPrjCtx,
 					result:         result,
 				},
@@ -101,18 +100,6 @@ func TestPolicyCheckOutputGenerator(t *testing.T) {
 
 }
 
-type testPolicyCheckCmdRunner struct {
-	t              *testing.T
-	expectedPrjCtx command.ProjectContext
-
-	result command.ProjectResult
-	called bool
-}
-
-func (t *testPolicyCheckCmdRunner) PolicyCheck(ctx command.ProjectContext) command.ProjectResult {
-	return t.result
-}
-
 type strictTestPolicyCheckCommandRunner struct {
 	t *testing.T
 
@@ -130,7 +117,6 @@ func (t *strictTestPolicyCheckCommandRunner) PolicyCheck(prjCtx command.ProjectC
 }
 
 type testPolicyCheckCommandRunner struct {
-	t              *testing.T
 	expectedPrjCtx command.ProjectContext
 
 	called bool

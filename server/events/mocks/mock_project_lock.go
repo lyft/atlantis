@@ -28,7 +28,7 @@ func NewMockProjectLocker(options ...pegomock.Option) *MockProjectLocker {
 func (mock *MockProjectLocker) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockProjectLocker) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockProjectLocker) TryLock(log logging.Logger, requestCtx context.Context, pull models.PullRequest, user models.User, workspace string, project models.Project) (*events.TryLockResponse, error) {
+func (mock *MockProjectLocker) TryLock(requestCtx context.Context, log logging.Logger, pull models.PullRequest, user models.User, workspace string, project models.Project) (*events.TryLockResponse, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockProjectLocker().")
 	}

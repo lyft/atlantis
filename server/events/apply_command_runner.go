@@ -112,7 +112,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	// Only run commands in parallel if enabled
 	var result command.Result
 	if a.isParallelEnabled(projectCmds) {
-		ctx.Log.InfoContext(ctx.RequestCtx, fmt.Sprintf("Running applies in parallel"))
+		ctx.Log.InfoContext(ctx.RequestCtx, "Running applies in parallel")
 		result = runProjectCmdsParallel(projectCmds, a.prjCmdRunner.Apply, a.parallelPoolSize)
 	} else {
 		result = runProjectCmds(projectCmds, a.prjCmdRunner.Apply)

@@ -11,7 +11,7 @@ type projectContext struct {
 
 func WrapProjectContext(
 	projectCtxBuilder events.ProjectCommandContextBuilder,
-) *projectContext {
+) *projectContext { //nolint:golint
 	return &projectContext{
 		projectCtxBuilder,
 	}

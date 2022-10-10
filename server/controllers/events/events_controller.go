@@ -786,27 +786,27 @@ func (e *VCSEventsController) respond(w http.ResponseWriter, lvl logging.LogLeve
 	fmt.Fprintln(w, response)
 }
 
-func (c *VCSEventsController) getGitlabData(baseRepo models.Repo, pullNum int) (models.PullRequest, error) {
-	if c.GitlabMergeRequestGetter == nil {
+func (e *VCSEventsController) getGitlabData(baseRepo models.Repo, pullNum int) (models.PullRequest, error) {
+	if e.GitlabMergeRequestGetter == nil {
 		return models.PullRequest{}, errors.New("Atlantis not configured to support GitLab")
 	}
-	mr, err := c.GitlabMergeRequestGetter.GetMergeRequest(baseRepo.FullName, pullNum)
+	mr, err := e.GitlabMergeRequestGetter.GetMergeRequest(baseRepo.FullName, pullNum)
 	if err != nil {
 		return models.PullRequest{}, errors.Wrap(err, "making merge request API call to GitLab")
 	}
-	pull := c.Parser.ParseGitlabMergeRequest(mr, baseRepo)
+	pull := e.Parser.ParseGitlabMergeRequest(mr, baseRepo)
 	return pull, nil
 }
 
-func (c *VCSEventsController) getAzureDevopsData(baseRepo models.Repo, pullNum int) (models.PullRequest, models.Repo, error) {
-	if c.AzureDevopsPullGetter == nil {
+func (e *VCSEventsController) getAzureDevopsData(baseRepo models.Repo, pullNum int) (models.PullRequest, models.Repo, error) {
+	if e.AzureDevopsPullGetter == nil {
 		return models.PullRequest{}, models.Repo{}, errors.New("atlantis not configured to support Azure DevOps")
 	}
-	adPull, err := c.AzureDevopsPullGetter.GetPullRequest(baseRepo, pullNum)
+	adPull, err := e.AzureDevopsPullGetter.GetPullRequest(baseRepo, pullNum)
 	if err != nil {
 		return models.PullRequest{}, models.Repo{}, errors.Wrap(err, "making pull request API call to Azure DevOps")
 	}
-	pull, _, headRepo, err := c.Parser.ParseAzureDevopsPull(adPull)
+	pull, _, headRepo, err := e.Parser.ParseAzureDevopsPull(adPull)
 	if err != nil {
 		return pull, headRepo, errors.Wrap(err, "extracting required fields from comment data")
 	}

@@ -92,7 +92,6 @@ func (t strictTestStore) Remove(jobID string) {
 	}
 	t.remove.runners[t.remove.count].Remove(jobID)
 	t.remove.count++
-	return
 }
 
 func (t strictTestStore) Close(ctx context.Context, jobID string, status job.JobStatus) error {
@@ -153,7 +152,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 				count   int
 			}{
 				runners: []*testStore{
-					&testStore{
+					{
 						t:     t,
 						JobID: jobID,
 						Job: job.Job{
@@ -171,7 +170,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 				count   int
 			}{
 				runners: []*testReceiverRegistry{
-					&testReceiverRegistry{
+					{
 						t:     t,
 						JobID: jobID,
 						Ch:    buffer,
@@ -202,7 +201,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 				count   int
 			}{
 				runners: []*testStore{
-					&testStore{
+					{
 						t:     t,
 						JobID: jobID,
 						Job: job.Job{
@@ -220,7 +219,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 				count   int
 			}{
 				runners: []*testReceiverRegistry{
-					&testReceiverRegistry{
+					{
 						t:     t,
 						JobID: jobID,
 						Ch:    buffer,

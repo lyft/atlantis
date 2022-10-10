@@ -23,7 +23,7 @@ func NewStepsRunner(
 	versionStepRunner Runner,
 	runStepRunner CustomRunner,
 	envStepRunner EnvRunner,
-) *stepsRunner {
+) *stepsRunner { //nolint:golint
 	stepsRunner := &stepsRunner{}
 
 	stepsRunner.InitRunner = initStepRunner

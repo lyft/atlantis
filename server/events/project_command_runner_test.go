@@ -62,8 +62,8 @@ func TestDefaultProjectCommandRunner_Plan(t *testing.T) {
 		WithSync(mockLocker, mockURLGenerator{})
 
 	When(mockLocker.TryLock(
-		matchers.AnyLoggingLogger(),
 		matchers.AnyContextContext(),
+		matchers.AnyLoggingLogger(),
 		matchers.AnyModelsPullRequest(),
 		matchers.AnyModelsUser(),
 		AnyString(),
@@ -374,7 +374,7 @@ func TestProjectOutputWrapper(t *testing.T) {
 
 			mockCommitStatusUpdater := strictTestCommitStatusUpdater{
 				statusUpdaters: []*testCommitStatusUpdater{
-					&testCommitStatusUpdater{
+					{
 						t:           t,
 						expCtx:      context.TODO(),
 						expPrjCtx:   prjCtx,
@@ -385,7 +385,7 @@ func TestProjectOutputWrapper(t *testing.T) {
 						statusID:    "",
 						err:         nil,
 					},
-					&testCommitStatusUpdater{
+					{
 						t:           t,
 						expCtx:      context.TODO(),
 						expPrjCtx:   prjCtx,

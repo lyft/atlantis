@@ -64,7 +64,7 @@ type AsyncProjectCommandOutputHandler struct {
 	JobStore JobStore
 
 	// Registry to track active connections for a job
-	receiverRegistry ReceiverRegistry
+	receiverRegistry receiverRegistry
 
 	// Map to track jobs in a pull request
 	pullToJobMapping sync.Map

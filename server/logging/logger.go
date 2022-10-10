@@ -45,7 +45,7 @@ type logger struct {
 	Closer
 }
 
-func NewLoggerFromLevel(lvl LogLevel) (*logger, error) {
+func NewLoggerFromLevel(lvl LogLevel) (*logger, error) { //nolint:golint
 	structuredLogger, err := NewStructuredLoggerFromLevel(lvl)
 	if err != nil {
 		return &logger{}, err
