@@ -29,7 +29,7 @@ func (r *RootFetcher) Fetch(ctx workflow.Context) (*root.LocalRoot, func() error
 
 	return fetchRootResponse.LocalRoot, func() error {
 		var cleanupResponse activities.CleanupResponse
-		err = workflow.ExecuteActivity(ctx, r.Ta.Cleanup, activities.CleanupRequest{ //nolint:gosimple
+		err = workflow.ExecuteActivity(ctx, r.Ta.Cleanup, activities.CleanupRequest{ //nolint:gosimple // unnecessary to add a method to convert reponses
 			LocalRoot: fetchRootResponse.LocalRoot,
 		}).Get(ctx, &cleanupResponse)
 		if err != nil {

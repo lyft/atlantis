@@ -24,7 +24,7 @@ type stepRunner interface {
 	Run(executionContext *job.ExecutionContext, localRoot *root.LocalRoot, step job.Step) (string, error)
 }
 
-type JobRunner struct { //nolint:golint
+type JobRunner struct { ///nolint:golint // avoiding refactor while adding linter action
 	Activity      terraformActivities
 	EnvStepRunner stepRunner
 	CmdStepRunner stepRunner
