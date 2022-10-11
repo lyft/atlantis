@@ -41,7 +41,7 @@ type storageBackend struct {
 	logger logging.Logger
 }
 
-func (s *storageBackend) Read(ctx context.Context, key string) (logs []string, err error) {
+func (s *storageBackend) Read(ctx context.Context, key string) ([]string, error) {
 	s.logger.Info(fmt.Sprintf("reading object for job: %s", key))
 	reader, err := s.client.Get(ctx, key)
 	if err != nil {
@@ -55,8 +55,8 @@ func (s *storageBackend) Read(ctx context.Context, key string) (logs []string, e
 		return []string{}, errors.Wrapf(err, "copying to buffer")
 	}
 
-	logs = strings.Split(buf.String(), "\n")
-	return
+	logs := strings.Split(buf.String(), "\n")
+	return logs, nil
 }
 
 func (s *storageBackend) Write(ctx context.Context, key string, logs []string, _ string) (bool, error) {

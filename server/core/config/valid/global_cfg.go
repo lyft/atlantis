@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/graymeta/stow"
+	stow_s3 "github.com/graymeta/stow/s3"
 	version "github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/logging"
 )
@@ -67,6 +68,43 @@ type StoreConfig struct {
 	Prefix        string
 	BackendType   BackendType
 	Config        stow.Config
+}
+
+// Interface to configure the storage backends
+// Additional storage backends will implement this interface
+type BackendConfigurer interface {
+	GetConfigMap() stow.Config
+	GetConfiguredBackend() string
+	GetContainerName() string
+}
+
+type Jobs struct {
+	StorageBackend *StorageBackend
+}
+
+type StorageBackend struct {
+	BackendConfig BackendConfigurer
+}
+
+// S3 implementation for s3 backend storage
+type S3 struct {
+	BucketName string
+}
+
+func (s *S3) GetConfigMap() stow.Config {
+	// Only supports Iam auth type for now
+	// TODO: Add accesskeys auth type
+	return stow.ConfigMap{
+		stow_s3.ConfigAuthType: "iam",
+	}
+}
+
+func (s *S3) GetConfiguredBackend() string {
+	return "s3"
+}
+
+func (s *S3) GetContainerName() string {
+	return s.BucketName
 }
 
 type Metrics struct {

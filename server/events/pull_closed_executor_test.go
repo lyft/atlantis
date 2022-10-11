@@ -289,7 +289,7 @@ func TestCleanUpLogStreaming(t *testing.T) {
 		// Assert log streaming resources are cleaned up.
 		dfPrjCmdOutputHandler := prjCmdOutHandler.(*jobs.AsyncProjectCommandOutputHandler)
 
-		job, err := dfPrjCmdOutputHandler.JobStore.Get(context.TODO(), ctx.PullInfof())
+		job, err := dfPrjCmdOutputHandler.JobStore.Get(context.Background(), ctx.PullInfof())
 		Ok(t, err)
 
 		assert.Empty(t, job.Output)
