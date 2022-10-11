@@ -26,6 +26,10 @@ type dbActivities interface {
 	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
 }
 
+type revisionValidator interface {
+	IsRevisionValid(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error)
+}
+
 type WorkerState string
 
 const (
@@ -39,6 +43,7 @@ type Worker struct {
 	TerraformWorkflowRunner terraformWorkflowRunner
 	DbActivities            dbActivities
 	Repo                    github.Repo
+	RevisionValidator       revisionValidator
 
 	// mutable
 	state            WorkerState

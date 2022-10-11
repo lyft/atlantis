@@ -72,7 +72,7 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 			DeployRequestRevision:  deployReqRevision.Revision,
 			LatestDeployedRevision: latestDeployedRevision.Revision,
 		}).Return(activities.CompareCommitResponse{
-			DeployRequestRevisionAheadBy: 1,
+			CommitComparison: activities.DirectionAhead,
 		}, nil)
 
 		env.ExecuteWorkflow(testValidatorWorkflow, testValidateWorklflowReq{
@@ -129,7 +129,7 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 			DeployRequestRevision:  deployReqRevision.Revision,
 			LatestDeployedRevision: latestDeployedRevision.Revision,
 		}).Return(activities.CompareCommitResponse{
-			DeployRequestRevisionAheadBy: -1,
+			CommitComparison: activities.DirectionBehind,
 		}, nil)
 
 		env.ExecuteWorkflow(testValidatorWorkflow, testValidateWorklflowReq{
