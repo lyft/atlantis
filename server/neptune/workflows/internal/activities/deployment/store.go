@@ -11,25 +11,23 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
-const OutputPrefix = "deployments"
-
 type client interface {
 	Get(ctx context.Context, key string) (io.ReadCloser, error)
 	Set(ctx context.Context, key string, object []byte) error
 }
 
-func NewStore(stowClient client) (*store, error) {
-	return &store{
+func NewStore(stowClient client) (*Store, error) {
+	return &Store{
 		stowClient: stowClient,
 	}, nil
 
 }
 
-type store struct {
+type Store struct {
 	stowClient client
 }
 
-func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*root.DeploymentInfo, error) {
+func (s *Store) GetDeploymentInfo(ctx context.Context, repoName string, rootName string) (*root.DeploymentInfo, error) {
 	key := BuildKey(repoName, rootName)
 
 	reader, err := s.stowClient.Get(ctx, key)
@@ -61,7 +59,7 @@ func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName
 	return &deploymentInfo, nil
 }
 
-func (s *store) SetDeploymentInfo(ctx context.Context, deploymentInfo root.DeploymentInfo) error {
+func (s *Store) SetDeploymentInfo(ctx context.Context, deploymentInfo root.DeploymentInfo) error {
 	key := BuildKey(deploymentInfo.Repo.GetFullName(), deploymentInfo.Root.Name)
 	object, err := json.Marshal(deploymentInfo)
 	if err != nil {
@@ -76,5 +74,5 @@ func (s *store) SetDeploymentInfo(ctx context.Context, deploymentInfo root.Deplo
 }
 
 func BuildKey(repo string, root string) string {
-	return fmt.Sprintf("%s/%s/%s/deployment.json", OutputPrefix, repo, root)
+	return fmt.Sprintf("%s/%s/deployment.json", repo, root)
 }

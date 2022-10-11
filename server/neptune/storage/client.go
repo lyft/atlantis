@@ -30,7 +30,7 @@ func (i *ItemNotFoundError) Error() string {
 func NewClient(storeConfig valid.StoreConfig) (*Client, error) {
 	location, err := stow.Dial(string(storeConfig.BackendType), storeConfig.Config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "intializing stow client")
 	}
 
 	return &Client{
