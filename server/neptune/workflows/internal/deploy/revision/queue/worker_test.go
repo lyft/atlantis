@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -17,6 +16,12 @@ import (
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
+
+type testRevisionValidator struct{}
+
+func (t *testRevisionValidator) IsValid(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error) {
+	return true, nil
+}
 
 type testTerraformWorkflowRunner struct{}
 
@@ -58,7 +63,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 			Owner: "owner",
 			Name:  "test",
 		},
-		RevisionValidator: &revision.Validator{},
+		RevisionValidator: &testRevisionValidator{},
 	}
 
 	err := workflow.SetQueryHandler(ctx, "queue", func() (queueAndState, error) {

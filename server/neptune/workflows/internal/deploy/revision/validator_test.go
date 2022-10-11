@@ -2,10 +2,9 @@ package revision_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
@@ -22,6 +21,10 @@ type testValidatorActivity struct{}
 
 func (t *testValidatorActivity) CompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error) {
 	return activities.CompareCommitResponse{}, nil
+}
+
+func (t *testValidatorActivity) UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error) {
+	return activities.UpdateCheckRunResponse{}, nil
 }
 
 type testValidateWorklflowReq struct {
@@ -41,7 +44,7 @@ func testValidatorWorkflow(ctx workflow.Context, r testValidateWorklflowReq) (bo
 		ScheduleToCloseTimeout: 5 * time.Second,
 	})
 
-	return validator.IsRevisionValid(ctx, r.Repo, r.DeployReqRevision, &r.LatestDeployedRevision)
+	return validator.IsValid(ctx, r.Repo, r.DeployReqRevision, &r.LatestDeployedRevision)
 }
 
 func TestValidator_IsRevisionValid(t *testing.T) {
@@ -57,7 +60,11 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 
 		ta := &testValidatorActivity{}
 		deployReqRevision := terraform.DeploymentInfo{
-			Revision: "1234",
+			Root: root.Root{
+				Name: "test-root",
+			},
+			Revision:   "1234",
+			CheckRunID: 6789,
 		}
 
 		latestDeployedRevision := root.DeploymentInfo{
@@ -84,17 +91,32 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 		assert.Equal(t, true, resp)
 	})
 
-	t.Run("deploy request revison is identical to the latest deployed revision", func(t *testing.T) {
+	t.Run("deploy request revison is same as the latest deployed revision", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
+		ta := &testValidatorActivity{}
 		deployReqRevision := terraform.DeploymentInfo{
-			Revision: "1234",
+			Root: root.Root{
+				Name: "test-root",
+			},
+			Revision:   "1234",
+			CheckRunID: 6789,
 		}
 
 		latestDeployedRevision := root.DeploymentInfo{
 			Revision: "1234",
 		}
+
+		env.OnActivity(ta.UpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
+			Title:   terraform.BuildCheckRunTitle(deployReqRevision.Root.Name),
+			State:   github.CheckRunSuccess,
+			Repo:    repo,
+			ID:      deployReqRevision.CheckRunID,
+			Summary: revision.IdenticalRevisonSummary,
+		}).Return(activities.UpdateCheckRunResponse{
+			ID: deployReqRevision.CheckRunID,
+		}, nil)
 
 		env.ExecuteWorkflow(testValidatorWorkflow, testValidateWorklflowReq{
 			Repo:                   repo,
@@ -114,7 +136,11 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 
 		ta := &testValidatorActivity{}
 		deployReqRevision := terraform.DeploymentInfo{
-			Revision: "1234",
+			Root: root.Root{
+				Name: "test-root",
+			},
+			Revision:   "1234",
+			CheckRunID: 6789,
 		}
 
 		latestDeployedRevision := root.DeploymentInfo{
@@ -127,6 +153,63 @@ func TestValidator_IsRevisionValid(t *testing.T) {
 			LatestDeployedRevision: latestDeployedRevision.Revision,
 		}).Return(activities.CompareCommitResponse{
 			CommitComparison: activities.DirectionBehind,
+		}, nil)
+
+		env.OnActivity(ta.UpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
+			Title:   terraform.BuildCheckRunTitle(deployReqRevision.Root.Name),
+			State:   github.CheckRunSuccess,
+			Repo:    repo,
+			ID:      deployReqRevision.CheckRunID,
+			Summary: revision.DirectionBehindSummary,
+		}).Return(activities.UpdateCheckRunResponse{
+			ID: deployReqRevision.CheckRunID,
+		}, nil)
+
+		env.ExecuteWorkflow(testValidatorWorkflow, testValidateWorklflowReq{
+			Repo:                   repo,
+			DeployReqRevision:      deployReqRevision,
+			LatestDeployedRevision: latestDeployedRevision,
+		})
+
+		var resp bool
+		err := env.GetWorkflowResult(&resp)
+		assert.NoError(t, err)
+		assert.Equal(t, false, resp)
+	})
+
+	t.Run("deploy request revison is idenmtical to the latest deployed revision", func(t *testing.T) {
+		ts := testsuite.WorkflowTestSuite{}
+		env := ts.NewTestWorkflowEnvironment()
+
+		ta := &testValidatorActivity{}
+		deployReqRevision := terraform.DeploymentInfo{
+			Root: root.Root{
+				Name: "test-root",
+			},
+			Revision:   "1234",
+			CheckRunID: 6789,
+		}
+
+		latestDeployedRevision := root.DeploymentInfo{
+			Revision: "3455",
+		}
+
+		env.OnActivity(ta.CompareCommit, mock.Anything, activities.CompareCommitRequest{
+			Repo:                   repo,
+			DeployRequestRevision:  deployReqRevision.Revision,
+			LatestDeployedRevision: latestDeployedRevision.Revision,
+		}).Return(activities.CompareCommitResponse{
+			CommitComparison: activities.DirectionIdentical,
+		}, nil)
+
+		env.OnActivity(ta.UpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
+			Title:   terraform.BuildCheckRunTitle(deployReqRevision.Root.Name),
+			State:   github.CheckRunSuccess,
+			Repo:    repo,
+			ID:      deployReqRevision.CheckRunID,
+			Summary: revision.IdenticalRevisonSummary,
+		}).Return(activities.UpdateCheckRunResponse{
+			ID: deployReqRevision.CheckRunID,
 		}, nil)
 
 		env.ExecuteWorkflow(testValidatorWorkflow, testValidateWorklflowReq{

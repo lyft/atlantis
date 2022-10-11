@@ -27,7 +27,7 @@ type dbActivities interface {
 }
 
 type revisionValidator interface {
-	IsRevisionValid(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error)
+	IsValid(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error)
 }
 
 type WorkerState string
@@ -94,7 +94,15 @@ func (w *Worker) Work(ctx workflow.Context) {
 			}
 		}
 
-		// TODO: Validate revision before executing the workflow
+		isValidRevision, err := w.RevisionValidator.IsValid(ctx, w.Repo, msg, w.LatestDeployment)
+		if err != nil {
+			logger.Error(ctx, fmt.Sprintf("Unable to validate deploy request revision: %s, moving to next one: %s", msg.Revision, err.Error()))
+			continue
+		}
+
+		if !isValidRevision {
+			continue
+		}
 
 		err = w.TerraformWorkflowRunner.Run(ctx, msg)
 		if err != nil {

@@ -11,3 +11,10 @@ metrics:
 temporal:
   host: temporalite
   port: 7233
+
+persistence:
+  default_store:
+    s3:
+      bucket-name: atlantis-staging-jobs
+  job_store_prefix: output
+  deployment_store_prefix: deployments

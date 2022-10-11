@@ -13,8 +13,14 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+const (
+	IdenticalRevisonSummary = "This revision is identical to the current revision and will not be deployed"
+	DirectionBehindSummary  = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
+)
+
 type githubActivities interface {
 	CompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
+	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
 }
 
 // Validates the deploy request commit and updates the github Checkrun UI
@@ -22,9 +28,11 @@ type Validator struct {
 	Activity githubActivities
 }
 
-func (v *Validator) IsRevisionValid(ctx workflow.Context, repo github.Repo, deployRequest terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) (bool, error) {
+func (v *Validator) IsValid(ctx workflow.Context, repo github.Repo, deployRequest terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) (bool, error) {
 	if latestDeployment.Revision == deployRequest.Revision {
-		return false, nil
+		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s.", latestDeployment.Revision, deployRequest.Revision))
+		err := v.updateCheckRun(ctx, deployRequest, repo, IdenticalRevisonSummary)
+		return false, err
 	}
 
 	var compareCommitResp activities.CompareCommitResponse
@@ -39,14 +47,14 @@ func (v *Validator) IsRevisionValid(ctx workflow.Context, repo github.Repo, depl
 
 	switch compareCommitResp.CommitComparison {
 	case activities.DirectionIdentical:
-		// TODO: Update checkrun [Deployed Revision is identical to the deploy request revision]
 		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s.", latestDeployment.Revision, deployRequest.Revision))
-		return false, nil
+		err := v.updateCheckRun(ctx, deployRequest, repo, IdenticalRevisonSummary)
+		return false, err
 
 	case activities.DirectionBehind:
-		// TODO: Update checkrun [Deployed Revision is ahead of the deploy request revision]
 		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s.", latestDeployment.Revision, deployRequest.Revision))
-		return false, nil
+		err := v.updateCheckRun(ctx, deployRequest, repo, DirectionBehindSummary)
+		return false, err
 
 	case activities.DirectionDiverged:
 		// TODO: Check for Force Apply
@@ -54,10 +62,20 @@ func (v *Validator) IsRevisionValid(ctx workflow.Context, repo github.Repo, depl
 		return false, nil
 
 	case activities.DirectionAhead:
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is divergent from the Deploy Request Revision: %s.", latestDeployment.Revision, deployRequest.Revision))
+		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s.", latestDeployment.Revision, deployRequest.Revision))
 		return true, nil
 
 	default:
 		return false, fmt.Errorf("invalid commit comparison: %s", compareCommitResp.CommitComparison)
 	}
+}
+
+func (v *Validator) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, repo github.Repo, summary string) error {
+	return workflow.ExecuteActivity(ctx, v.Activity.UpdateCheckRun, activities.UpdateCheckRunRequest{
+		Title:   terraform.BuildCheckRunTitle(deployRequest.Root.Name),
+		State:   github.CheckRunSuccess,
+		Repo:    repo,
+		ID:      deployRequest.CheckRunID,
+		Summary: summary,
+	}).Get(ctx, nil)
 }
