@@ -84,6 +84,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		if w.LatestDeployment == nil {
 			w.LatestDeployment, err = w.fetchLatestDeployment(ctx, msg)
 			if err != nil {
+				logger.Error(ctx, fmt.Sprint("Unable to fetch latest deployment, worker is shutting down", err.Error()))
 				return
 			}
 		}
