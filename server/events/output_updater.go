@@ -19,12 +19,12 @@ type OutputUpdater interface {
 
 // JobURLGenerator generates urls to view project's progress.
 type jobURLGenerator interface {
-	GenerateProjectJobURL(jobId string) (string, error)
+	GenerateProjectJobURL(jobID string) (string, error)
 }
 
 type renderer interface {
 	Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string
-	RenderProject(prjRes command.ProjectResult, cmdName command.Name, baseRepo models.Repo) string
+	RenderProject(prjRes command.ProjectResult, cmdName fmt.Stringer, baseRepo models.Repo) string
 }
 
 type checksClient interface {
@@ -79,8 +79,8 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Ref:              ctx.Pull.HeadCommit,
 			PullNum:          ctx.Pull.Num,
 			PullCreationTime: ctx.Pull.CreatedAt,
-			StatusId:         projectResult.StatusId,
-			DetailsURL:       c.buildJobURL(ctx, projectResult.Command, projectResult.JobId),
+			StatusID:         projectResult.StatusID,
+			DetailsURL:       c.buildJobURL(ctx, projectResult.Command, projectResult.JobID),
 			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),
 			State:            c.resolveState(projectResult),
 
@@ -123,6 +123,10 @@ func (c *ChecksOutputUpdater) handleCommandFailure(ctx *command.Context, cmd Pul
 
 func (c *ChecksOutputUpdater) buildJobURL(ctx *command.Context, cmd command.Name, jobID string) string {
 
+	if jobID == "" {
+		return ""
+	}
+
 	// Only support streaming logs for plan and apply operation for now
 	if cmd == command.Plan || cmd == command.Apply {
 		jobURL, err := c.JobURLGenerator.GenerateProjectJobURL(jobID)
@@ -156,9 +160,9 @@ func (c *ChecksOutputUpdater) buildStatusName(cmd PullCommand, options vcs.Statu
 func (c *ChecksOutputUpdater) resolveState(result command.ProjectResult) models.CommitStatus {
 	if result.Error != nil || result.Failure != "" {
 		return models.FailedCommitStatus
-	} else {
-		return models.SuccessCommitStatus
 	}
+
+	return models.SuccessCommitStatus
 }
 
 // Default prj output updater which writes to the pull req comment
