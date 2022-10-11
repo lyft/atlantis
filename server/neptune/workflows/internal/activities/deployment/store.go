@@ -42,7 +42,7 @@ func (s *store) GetDeploymentInfo(ctx context.Context, repoName string, rootName
 
 		// First deploy for this root
 		case *storage.ItemNotFoundError:
-			return &root.DeploymentInfo{}, nil
+			return nil, nil
 
 		default:
 			return nil, errors.Wrap(err, "getting item")

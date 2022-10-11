@@ -81,7 +81,7 @@ func (t strictTestStore) Write(ctx context.Context, jobID string, output string)
 	if t.write.count > len(t.write.runners)-1 {
 		t.t.FailNow()
 	}
-	err := t.write.runners[t.write.count].Write(context.TODO(), jobID, output)
+	err := t.write.runners[t.write.count].Write(context.Background(), jobID, output)
 	t.write.count += 1
 	return err
 }
@@ -133,7 +133,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 		}
 
 		buffer := make(chan string, 100)
-		go partitionRegistry.Register(context.TODO(), jobID, buffer)
+		go partitionRegistry.Register(context.Background(), jobID, buffer)
 
 		receivedLogs := []string{}
 		for line := range buffer {
@@ -190,7 +190,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 			for range buffer {
 			}
 		}()
-		partitionRegistry.Register(context.TODO(), jobID, buffer)
+		partitionRegistry.Register(context.Background(), jobID, buffer)
 	})
 
 	t.Run("closes receiver after streaming complete job", func(t *testing.T) {
@@ -242,7 +242,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 			}
 			wg.Done()
 		}()
-		partitionRegistry.Register(context.TODO(), jobID, buffer)
+		partitionRegistry.Register(context.Background(), jobID, buffer)
 
 		// Read goroutine exits only when the buffer is closed
 		wg.Wait()
