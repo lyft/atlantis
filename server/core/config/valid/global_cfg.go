@@ -79,10 +79,6 @@ type BackendConfigurer interface {
 	GetContainerName() string
 }
 
-type Deployments struct {
-	StorageBackend *StorageBackend
-}
-
 type Jobs struct {
 	StorageBackend *StorageBackend
 }

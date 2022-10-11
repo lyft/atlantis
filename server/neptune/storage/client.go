@@ -36,6 +36,7 @@ func NewClient(storeConfig valid.StoreConfig) (*Client, error) {
 	return &Client{
 		Location:      location,
 		ContainerName: storeConfig.ContainerName,
+		Prefix:        storeConfig.Prefix,
 	}, nil
 }
 

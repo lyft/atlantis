@@ -11,7 +11,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 )
 
-const OutputPrefix = "output"
 const PageSize = 100
 
 type StorageBackend interface {
@@ -32,8 +31,6 @@ type storageBackend struct {
 }
 
 func (s storageBackend) Read(ctx context.Context, key string) (logs []string, err error) {
-	key = fmt.Sprintf("%s/%s", OutputPrefix, key)
-
 	s.logger.Info(fmt.Sprintf("reading object for job: %s", key))
 	reader, err := s.client.Get(ctx, key)
 	if err != nil {
@@ -54,7 +51,6 @@ func (s storageBackend) Read(ctx context.Context, key string) (logs []string, er
 // Activity context since it's called from within an activity
 func (s storageBackend) Write(ctx context.Context, key string, logs []string) (bool, error) {
 	logString := strings.Join(logs, "\n")
-	key = fmt.Sprintf("%s/%s", OutputPrefix, key)
 	object := []byte(logString)
 
 	err := s.client.Set(ctx, key, object)
