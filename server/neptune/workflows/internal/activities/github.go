@@ -21,7 +21,7 @@ const (
 	DirectionAhead     DiffDirection = "ahead"
 	DirectionBehind    DiffDirection = "behind"
 	DirectionIdentical DiffDirection = "identical"
-	DirectionDiverged  DiffDirection = "doiverged"
+	DirectionDiverged  DiffDirection = "diverged"
 )
 
 const deploymentsDirName = "deployments"
