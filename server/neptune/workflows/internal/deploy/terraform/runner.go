@@ -34,6 +34,7 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 	})
 	terraformWorkflowRequest := terraform.Request{
 		Root:         deploymentInfo.Root,
+		Repo:         deploymentInfo.Repo,
 		DeploymentID: id.String(),
 		Revision:     deploymentInfo.Revision,
 	}
