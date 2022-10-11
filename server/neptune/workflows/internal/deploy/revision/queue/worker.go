@@ -8,6 +8,7 @@ import (
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
@@ -94,14 +95,17 @@ func (w *Worker) Work(ctx workflow.Context) {
 			}
 		}
 
-		isValidRevision, err := w.RevisionValidator.IsValid(ctx, w.Repo, msg, w.LatestDeployment)
-		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("Unable to validate deploy request revision: %s, moving to next one: %s", msg.Revision, err.Error()))
-			continue
-		}
+		// Skip revision validation for Force Applies since we already know it's diverged
+		if msg.Root.Trigger == root.Trigger(request.MergeTrigger) {
+			isValidRevision, err := w.RevisionValidator.IsValid(ctx, w.Repo, msg, w.LatestDeployment)
+			if err != nil {
+				logger.Error(ctx, fmt.Sprintf("Unable to validate deploy request revision: %s, moving to next one: %s", msg.Revision, err.Error()))
+				continue
+			}
 
-		if !isValidRevision {
-			continue
+			if !isValidRevision {
+				continue
+			}
 		}
 
 		err = w.TerraformWorkflowRunner.Run(ctx, msg)

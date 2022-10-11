@@ -56,9 +56,9 @@ func (v *Validator) IsValid(ctx workflow.Context, repo github.Repo, deployReques
 		err := v.updateCheckRun(ctx, deployRequest, repo, DirectionBehindSummary)
 		return false, err
 
+	// we should not see DirectionDiverged commits since we skip revision validation for Force Applies. So, let's log an error and return invalid revision
 	case activities.DirectionDiverged:
-		// TODO: Check for Force Apply
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is divergent from the Deploy Request Revision: %s.", latestDeployment.Revision, deployRequest.Revision))
+		logger.Error(ctx, fmt.Sprintf("Deployed Revision: %s is divergent from the Deploy Request Revision: %s.", latestDeployment.Revision, deployRequest.Revision))
 		return false, nil
 
 	case activities.DirectionAhead:
