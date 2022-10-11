@@ -1,6 +1,7 @@
 package jobs_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -29,7 +30,7 @@ func TestJobStore_Get(t *testing.T) {
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
 
 		// Assert job
-		gotJob, err := jobStore.Get("1234")
+		gotJob, err := jobStore.Get(context.TODO(), "1234")
 		assert.NoError(t, err)
 		assert.Equal(t, expectedJob.Output, gotJob.Output)
 		assert.Equal(t, expectedJob.Status, gotJob.Status)
@@ -43,11 +44,11 @@ func TestJobStore_Get(t *testing.T) {
 			Output: expectedLogs,
 			Status: jobs.Complete,
 		}
-		When(storageBackend.Read(AnyString())).ThenReturn(expectedLogs, nil)
+		When(storageBackend.Read(matchers.AnyContextContext(), AnyString())).ThenReturn(expectedLogs, nil)
 
 		// Assert job
 		jobStore := jobs.NewJobStore(storageBackend, tally.NewTestScope("test", map[string]string{}))
-		gotJob, err := jobStore.Get("1234")
+		gotJob, err := jobStore.Get(context.TODO(), "1234")
 		assert.NoError(t, err)
 		assert.Equal(t, expectedJob.Output, gotJob.Output)
 		assert.Equal(t, expectedJob.Status, gotJob.Status)
@@ -57,11 +58,11 @@ func TestJobStore_Get(t *testing.T) {
 		// Setup job store
 		storageBackend := mocks.NewMockStorageBackend()
 		expectedError := fmt.Errorf("reading from backend storage: error")
-		When(storageBackend.Read(AnyString())).ThenReturn([]string{}, errors.New("error"))
+		When(storageBackend.Read(matchers.AnyContextContext(), AnyString())).ThenReturn([]string{}, errors.New("error"))
 
 		// Assert job
 		jobStore := jobs.NewJobStore(storageBackend, tally.NewTestScope("test", map[string]string{}))
-		gotJob, err := jobStore.Get("1234")
+		gotJob, err := jobStore.Get(context.TODO(), "1234")
 		assert.Empty(t, gotJob)
 		assert.EqualError(t, expectedError, err.Error())
 	})
@@ -79,7 +80,7 @@ func TestJobStore_AppendOutput(t *testing.T) {
 		jobStore.AppendOutput(jobID, output)
 
 		// Assert job
-		job, err := jobStore.Get(jobID)
+		job, err := jobStore.Get(context.TODO(), jobID)
 		Ok(t, err)
 		assert.Equal(t, job.Output, []string{output})
 		assert.Equal(t, job.Status, jobs.Processing)
@@ -96,7 +97,7 @@ func TestJobStore_AppendOutput(t *testing.T) {
 		jobStore.AppendOutput(jobID, output[1])
 
 		// Assert job
-		job, err := jobStore.Get(jobID)
+		job, err := jobStore.Get(context.TODO(), jobID)
 		Ok(t, err)
 		assert.Equal(t, job.Output, output)
 		assert.Equal(t, job.Status, jobs.Processing)
@@ -138,15 +139,15 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString(), AnyString())).ThenReturn(false, storageBackendErr)
+		When(storageBackend.Write(matchers.AnyContextContext(), AnyString(), matchers.AnySliceOfString(), AnyString())).ThenReturn(false, storageBackendErr)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetJobCompleteStatus(jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(context.TODO(), jobID, "test-repo", jobs.Complete)
 
 		// Assert storage backend error
 		assert.EqualError(t, err, expecterErr.Error())
 
 		// Assert the job is in memory
-		jobInMem, err := jobStore.Get(jobID)
+		jobInMem, err := jobStore.Get(context.TODO(), jobID)
 		Ok(t, err)
 		assert.Equal(t, jobInMem.Output, job.Output)
 		assert.Equal(t, job.Status, jobs.Complete)
@@ -165,12 +166,12 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		// Setup storage backend
 		storageBackend := &jobs.NoopStorageBackend{}
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetJobCompleteStatus(jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(context.TODO(), jobID, "test-repo", jobs.Complete)
 
 		assert.Nil(t, err)
 
 		// Assert the job is in memory
-		jobInMem, err := jobStore.Get(jobID)
+		jobInMem, err := jobStore.Get(context.TODO(), jobID)
 		Ok(t, err)
 		assert.Equal(t, jobInMem.Output, job.Output)
 		assert.Equal(t, job.Status, jobs.Complete)
@@ -188,13 +189,13 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(AnyString(), matchers.AnySliceOfString(), AnyString())).ThenReturn(true, nil)
+		When(storageBackend.Write(matchers.AnyContextContext(), AnyString(), matchers.AnySliceOfString(), AnyString())).ThenReturn(true, nil)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetJobCompleteStatus(jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(context.TODO(), jobID, "test-repo", jobs.Complete)
 		assert.Nil(t, err)
 
-		When(storageBackend.Read(jobID)).ThenReturn([]string{}, nil)
-		gotJob, err := jobStore.Get(jobID)
+		When(storageBackend.Read(context.TODO(), jobID)).ThenReturn([]string{}, nil)
+		gotJob, err := jobStore.Get(context.TODO(), jobID)
 		assert.Nil(t, err)
 		assert.Empty(t, gotJob.Output)
 	})
@@ -205,7 +206,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		jobID := "1234"
 		expectedErrString := fmt.Sprintf("job: %s does not exist", jobID)
 
-		err := jobStore.SetJobCompleteStatus(jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(context.TODO(), jobID, "test-repo", jobs.Complete)
 		assert.EqualError(t, err, expectedErrString)
 
 	})

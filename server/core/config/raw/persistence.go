@@ -37,6 +37,7 @@ func buildValidStore(dataStore DataStore, prefix string) valid.StoreConfig {
 			ContainerName: dataStore.S3.BucketName,
 			BackendType:   valid.S3Backend,
 			Prefix:        prefix,
+
 			// Hard coding iam auth type since we only support this for now
 			Config: stow.ConfigMap{
 				stow_s3.ConfigAuthType: "iam",
@@ -46,6 +47,8 @@ func buildValidStore(dataStore DataStore, prefix string) valid.StoreConfig {
 	return validStore
 }
 
+type DataStores map[string]DataStore
+
 type DataStore struct {
 	S3 *S3 `yaml:"s3" json:"s3"`
 
@@ -54,4 +57,14 @@ type DataStore struct {
 
 func (ds DataStore) Validate() error {
 	return validation.ValidateStruct(&ds, validation.Field(&ds.S3))
+}
+
+type S3 struct {
+	BucketName string `yaml:"bucket-name" json:"bucket-name"`
+}
+
+func (s S3) Validate() error {
+	return validation.ValidateStruct(&s,
+		validation.Field(&s.BucketName, validation.Required),
+	)
 }

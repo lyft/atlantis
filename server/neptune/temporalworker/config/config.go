@@ -37,7 +37,7 @@ type Config struct {
 	Metrics               valid.Metrics
 	//TODO: combine this with above
 	StatsNamespace   string
-	DeploymentConfig valid.Deployments
+	DeploymentConfig valid.StoreConfig
 
 	DataDir   string
 	CtxLogger logging.Logger

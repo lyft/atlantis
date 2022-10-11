@@ -20,7 +20,6 @@ type GlobalCfg struct {
 	DeploymentWorkflows  DeploymentWorkflows  `yaml:"deployment_workflows" json:"deployment_workflows"`
 	PolicySets           PolicySets           `yaml:"policies" json:"policies"`
 	Metrics              Metrics              `yaml:"metrics" json:"metrics"`
-	Jobs                 Jobs                 `yaml:"jobs" json:"jobs"`
 	TerraformLogFilters  TerraformLogFilters  `yaml:"terraform_log_filters" json:"terraform_log_filters"`
 	Temporal             Temporal             `yaml:"temporal" json:"temporal"`
 	Persistence          Persistence          `yaml:"persistence" json:"persistence"`
@@ -75,7 +74,6 @@ func (g GlobalCfg) Validate() error {
 		validation.Field(&g.PullRequestWorkflows),
 		validation.Field(&g.DeploymentWorkflows),
 		validation.Field(&g.Metrics),
-		validation.Field(&g.Jobs),
 		validation.Field(&g.TerraformLogFilters),
 		validation.Field(&g.Persistence),
 	)
@@ -164,7 +162,6 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		DeploymentWorkflows:  validDeploymentWorkflows,
 		PolicySets:           policySets,
 		Metrics:              g.Metrics.ToValid(),
-		Jobs:                 g.Jobs.ToValid(),
 		PersistenceConfig:    g.Persistence.ToValid(),
 		TerraformLogFilter:   g.TerraformLogFilters.ToValid(),
 		Temporal:             g.Temporal.ToValid(),
