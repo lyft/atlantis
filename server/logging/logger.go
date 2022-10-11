@@ -18,12 +18,12 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	context "github.com/runatlantis/atlantis/server/neptune/gateway/context"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 	logurzap "logur.dev/adapter/zap"
 	"logur.dev/logur"
-	context "github.com/runatlantis/atlantis/server/neptune/gateway/context"
 )
 
 // Logger is the logging interface used throughout the code.
@@ -45,7 +45,7 @@ type logger struct {
 	Closer
 }
 
-func NewLoggerFromLevel(lvl LogLevel) (*logger, error) {
+func NewLoggerFromLevel(lvl LogLevel) (*logger, error) { //nolint:golint // avoiding refactor while adding linter action
 	structuredLogger, err := NewStructuredLoggerFromLevel(lvl)
 	if err != nil {
 		return &logger{}, err
@@ -59,6 +59,7 @@ func NewLoggerFromLevel(lvl LogLevel) (*logger, error) {
 
 	return &logger{
 		LoggerFacade: ctxLogger,
+		Closer:       structuredLogger,
 	}, nil
 
 }

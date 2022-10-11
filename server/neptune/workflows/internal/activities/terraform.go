@@ -39,7 +39,6 @@ type TerraformClient interface {
 
 type streamHandler interface {
 	Stream(jobID string, msg string)
-	Close(ctx context.Context, jobID string) error
 }
 
 type terraformActivities struct {
@@ -48,7 +47,7 @@ type terraformActivities struct {
 	StreamHandler    streamHandler
 }
 
-func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, streamHandler streamHandler) *terraformActivities {
+func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, streamHandler streamHandler) *terraformActivities { //nolint:golint // avoiding refactor while adding linter action
 	return &terraformActivities{
 		TerraformClient:  client,
 		DefaultTFVersion: defaultTfVersion,

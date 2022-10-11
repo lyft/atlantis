@@ -27,6 +27,9 @@ func (t *testReceiverRegistry) Broadcast(msg job.OutputLine) {
 func (t *testReceiverRegistry) Close(ctx context.Context, jobID string) {
 }
 
+func (t *testReceiverRegistry) CleanUp() {
+}
+
 type strictTestReceiverRegistry struct {
 	t           *testing.T
 	addReceiver struct {
@@ -41,6 +44,10 @@ type strictTestReceiverRegistry struct {
 		runners []*testReceiverRegistry
 		count   int
 	}
+	cleanup struct {
+		runners []*testReceiverRegistry
+		count   int
+	}
 }
 
 func (t strictTestReceiverRegistry) AddReceiver(jobID string, ch chan string) {
@@ -48,8 +55,7 @@ func (t strictTestReceiverRegistry) AddReceiver(jobID string, ch chan string) {
 		t.t.FailNow()
 	}
 	t.addReceiver.runners[t.addReceiver.count].AddReceiver(jobID, ch)
-	t.addReceiver.count += 1
-	return
+	t.addReceiver.count++
 }
 
 func (t strictTestReceiverRegistry) Broadcast(msg job.OutputLine) {
@@ -57,8 +63,7 @@ func (t strictTestReceiverRegistry) Broadcast(msg job.OutputLine) {
 		t.t.FailNow()
 	}
 	t.broadcast.runners[t.broadcast.count].Broadcast(msg)
-	t.broadcast.count += 1
-	return
+	t.broadcast.count++
 }
 
 func (t strictTestReceiverRegistry) Close(ctx context.Context, jobID string) {
@@ -66,8 +71,15 @@ func (t strictTestReceiverRegistry) Close(ctx context.Context, jobID string) {
 		t.t.FailNow()
 	}
 	t.close.runners[t.close.count].Close(ctx, jobID)
-	t.close.count += 1
-	return
+	t.close.count++
+}
+
+func (t *strictTestReceiverRegistry) CleanUp() {
+	if t.cleanup.count > len(t.cleanup.runners)-1 {
+		t.t.FailNow()
+	}
+	t.cleanup.runners[t.cleanup.count].CleanUp()
+	t.cleanup.count++
 }
 
 func TestReceiverRegistry(t *testing.T) {

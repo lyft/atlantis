@@ -1,9 +1,7 @@
 package job_test
 
 import (
-	"context"
 	"testing"
-	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -13,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
-	"go.temporal.io/sdk/workflow"
 )
 
 const (
@@ -28,35 +25,6 @@ const (
 type request struct {
 	LocalRoot root.LocalRoot
 	Step      job.Step
-}
-
-type testEnvExecuteActivity struct {
-}
-
-func (a *testEnvExecuteActivity) ExecuteCommand(ctx context.Context, request activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error) {
-	return activities.ExecuteCommandResponse{}, nil
-}
-
-func testEnvWorkflow(ctx workflow.Context, r request) (string, error) {
-	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-		ScheduleToCloseTimeout: 5 * time.Second,
-	})
-
-	jobExecutionCtx := &job.ExecutionContext{
-		Context:   ctx,
-		Path:      ProjectPath,
-		Envs:      map[string]string{},
-		TfVersion: r.LocalRoot.Root.TfVersion,
-	}
-
-	var a *testCmdExecuteActivity
-	envStepRunner := runner.EnvStepRunner{
-		CmdStepRunner: runner.CmdStepRunner{
-			Activity: a,
-		},
-	}
-
-	return envStepRunner.Run(jobExecutionCtx, &r.LocalRoot, r.Step)
 }
 
 func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {

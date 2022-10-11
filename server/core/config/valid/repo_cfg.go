@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const TF_LOG_ENV_VAR = "TF_LOG"
+const TfLogEnvVar = "TF_LOG"
 
 // RepoCfg is the atlantis.yaml config after it's been parsed and validated.
 type RepoCfg struct {
@@ -22,6 +22,7 @@ type RepoCfg struct {
 	ParallelApply        bool
 	ParallelPlan         bool
 	ParallelPolicyCheck  bool
+	WorkflowModeType     WorkflowModeType
 }
 
 func (r RepoCfg) FindProjectsByDirWorkspace(repoRelDir string, workspace string) []Project {
@@ -222,7 +223,7 @@ type Workflow struct {
 func PrependLogEnvStep(steps []Step, logLevel string) []Step {
 	envStep := Step{
 		StepName:    "env",
-		EnvVarName:  TF_LOG_ENV_VAR,
+		EnvVarName:  TfLogEnvVar,
 		EnvVarValue: logLevel,
 	}
 	return append([]Step{envStep}, steps...)

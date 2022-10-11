@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -14,7 +15,7 @@ type partitionKeyGenerator interface {
 }
 
 type partitionRegistry interface {
-	Register(key string, buffer chan string)
+	Register(ctx context.Context, key string, buffer chan string)
 }
 
 type Multiplexor interface {
@@ -29,7 +30,7 @@ type multiplexor struct {
 	registry     partitionRegistry
 }
 
-func NewMultiplexor(log logging.Logger, keyGenerator partitionKeyGenerator, registry partitionRegistry) *multiplexor {
+func NewMultiplexor(log logging.Logger, keyGenerator partitionKeyGenerator, registry partitionRegistry) *multiplexor { //nolint:golint // avoiding refactor while adding linter action
 	return &multiplexor{
 		writer:       NewWriter(log),
 		keyGenerator: keyGenerator,
@@ -50,7 +51,7 @@ func (m *multiplexor) Handle(w http.ResponseWriter, r *http.Request) error {
 	buffer := make(chan string, BufferSize)
 
 	// spinning up a goroutine for this since we are attempting to block on the read side.
-	go m.registry.Register(key, buffer)
+	go m.registry.Register(context.Background(), key, buffer)
 
 	return errors.Wrapf(m.writer.Write(w, r, buffer), "writing to ws %s", key)
 }
