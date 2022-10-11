@@ -5,6 +5,7 @@ import (
 )
 
 type DeploymentInfo struct {
+	Version    string
 	ID         string
 	CheckRunID int64
 	Revision   string

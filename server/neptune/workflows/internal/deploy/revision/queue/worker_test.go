@@ -140,6 +140,7 @@ func TestWorker(t *testing.T) {
 	// Mock StoreLatestDeploymentRequest for both roots
 	env.OnActivity(da.StoreLatestDeployment, mock.Anything, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: root.DeploymentInfo{
+			Version:    queue.DeploymentInfoVersion,
 			ID:         uuid.UUID{}.String(),
 			CheckRunID: deploymentInfoList[0].CheckRunID,
 			Revision:   deploymentInfoList[0].Revision,
@@ -151,6 +152,7 @@ func TestWorker(t *testing.T) {
 	}).Return(nil)
 	env.OnActivity(da.StoreLatestDeployment, mock.Anything, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: root.DeploymentInfo{
+			Version:    queue.DeploymentInfoVersion,
 			ID:         uuid.UUID{}.String(),
 			CheckRunID: deploymentInfoList[1].CheckRunID,
 			Revision:   deploymentInfoList[1].Revision,

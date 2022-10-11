@@ -65,7 +65,7 @@ type AsyncProjectCommandOutputHandler struct {
 	JobStore JobStore
 
 	// Registry to track active connections for a job
-	receiverRegistry ReceiverRegistry
+	receiverRegistry receiverRegistry
 
 	// Map to track jobs in a pull request
 	pullToJobMapping sync.Map
@@ -191,7 +191,7 @@ func (p *AsyncProjectCommandOutputHandler) GetReceiverBufferForPull(jobID string
 	return p.receiverRegistry.GetReceivers(jobID)
 }
 
-func (p *AsyncProjectCommandOutputHandler) GetJobIdMapForPull(pullInfo PullInfo) map[string]bool {
+func (p *AsyncProjectCommandOutputHandler) GetJobIDMapForPull(pullInfo PullInfo) map[string]bool {
 	if value, ok := p.pullToJobMapping.Load(pullInfo); ok {
 		return value.(map[string]bool)
 	}

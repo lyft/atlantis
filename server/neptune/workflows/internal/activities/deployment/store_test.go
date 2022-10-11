@@ -8,7 +8,6 @@ import (
 
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,7 +73,7 @@ func TestStore_GetDeploymentInfo(t *testing.T) {
 
 		deploymentInfo, err := store.GetDeploymentInfo(context.TODO(), repoName, rootName)
 		assert.Nil(t, err)
-		assert.Equal(t, deploymentInfo, &root.DeploymentInfo{})
+		assert.Nil(t, deploymentInfo)
 
 	})
 }

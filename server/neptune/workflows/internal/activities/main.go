@@ -65,7 +65,6 @@ type Terraform struct {
 	*terraformActivities
 	*executeCommandActivities
 	*workerInfoActivity
-	*notifyActivities
 	*cleanupActivities
 	*jobActivities
 }

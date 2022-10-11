@@ -15,6 +15,8 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+const DeploymentInfoVersion = "1.0.0"
+
 type terraformWorkflowRunner interface {
 	Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error
 }
@@ -82,7 +84,6 @@ func (w *Worker) Work(ctx workflow.Context) {
 		if w.LatestDeployment == nil {
 			w.LatestDeployment, err = w.fetchLatestDeployment(ctx, msg)
 			if err != nil {
-				logger.Error(ctx, fmt.Sprint("Unable to fetch latest deployment, worker is shutting down", err.Error()))
 				return
 			}
 		}
@@ -94,6 +95,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
 		}
 
+		// TODO: Persist deployment on shutdown if it fails instead of blocking
 		latestDeployment, err := w.persistLatestDeployment(ctx, msg)
 		if err != nil {
 			logger.Error(ctx, "failed to persist latest deploy job")
@@ -120,6 +122,7 @@ func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terr
 
 func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
 	latestDeploymentInfo := root.DeploymentInfo{
+		Version:    DeploymentInfoVersion,
 		ID:         deploymentInfo.ID.String(),
 		CheckRunID: deploymentInfo.CheckRunID,
 		Revision:   deploymentInfo.Revision,

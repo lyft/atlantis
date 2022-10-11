@@ -73,7 +73,7 @@ func (t strictTestStore) Get(ctx context.Context, jobID string) (*job.Job, error
 		t.t.FailNow()
 	}
 	job, err := t.get.runners[t.get.count].Get(ctx, jobID)
-	t.get.count += 1
+	t.get.count++
 	return job, err
 }
 
@@ -81,8 +81,8 @@ func (t strictTestStore) Write(ctx context.Context, jobID string, output string)
 	if t.write.count > len(t.write.runners)-1 {
 		t.t.FailNow()
 	}
-	err := t.write.runners[t.write.count].Write(context.TODO(), jobID, output)
-	t.write.count += 1
+	err := t.write.runners[t.write.count].Write(ctx, jobID, output)
+	t.write.count++
 	return err
 }
 
@@ -91,8 +91,7 @@ func (t strictTestStore) Remove(jobID string) {
 		t.t.FailNow()
 	}
 	t.remove.runners[t.remove.count].Remove(jobID)
-	t.remove.count += 1
-	return
+	t.remove.count++
 }
 
 func (t strictTestStore) Close(ctx context.Context, jobID string, status job.JobStatus) error {
@@ -100,7 +99,7 @@ func (t strictTestStore) Close(ctx context.Context, jobID string, status job.Job
 		t.t.FailNow()
 	}
 	err := t.close.runners[t.close.count].Close(ctx, jobID, status)
-	t.close.count += 1
+	t.close.count++
 	return err
 }
 
@@ -109,7 +108,7 @@ func (t strictTestStore) Cleanup(ctx context.Context) error {
 		t.t.FailNow()
 	}
 	err := t.cleanup.runners[t.cleanup.count].Cleanup(ctx)
-	t.cleanup.count += 1
+	t.cleanup.count++
 	return err
 }
 
@@ -133,7 +132,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 		}
 
 		buffer := make(chan string, 100)
-		go partitionRegistry.Register(context.TODO(), jobID, buffer)
+		go partitionRegistry.Register(context.Background(), jobID, buffer)
 
 		receivedLogs := []string{}
 		for line := range buffer {
@@ -153,7 +152,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 				count   int
 			}{
 				runners: []*testStore{
-					&testStore{
+					{
 						t:     t,
 						JobID: jobID,
 						Job: job.Job{
@@ -171,7 +170,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 				count   int
 			}{
 				runners: []*testReceiverRegistry{
-					&testReceiverRegistry{
+					{
 						t:     t,
 						JobID: jobID,
 						Ch:    buffer,
@@ -190,7 +189,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 			for range buffer {
 			}
 		}()
-		partitionRegistry.Register(context.TODO(), jobID, buffer)
+		partitionRegistry.Register(context.Background(), jobID, buffer)
 	})
 
 	t.Run("closes receiver after streaming complete job", func(t *testing.T) {
@@ -202,7 +201,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 				count   int
 			}{
 				runners: []*testStore{
-					&testStore{
+					{
 						t:     t,
 						JobID: jobID,
 						Job: job.Job{
@@ -220,7 +219,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 				count   int
 			}{
 				runners: []*testReceiverRegistry{
-					&testReceiverRegistry{
+					{
 						t:     t,
 						JobID: jobID,
 						Ch:    buffer,
@@ -242,7 +241,7 @@ func TestPartitionRegistry_Register(t *testing.T) {
 			}
 			wg.Done()
 		}()
-		partitionRegistry.Register(context.TODO(), jobID, buffer)
+		partitionRegistry.Register(context.Background(), jobID, buffer)
 
 		// Read goroutine exits only when the buffer is closed
 		wg.Wait()

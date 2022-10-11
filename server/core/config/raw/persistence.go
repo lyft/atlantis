@@ -16,7 +16,7 @@ type Persistence struct {
 
 func (p Persistence) Validate() error {
 	return validation.ValidateStruct(&p,
-		validation.Field(&p.DefaultStore, validation.Required),
+		validation.Field(&p.DefaultStore),
 	)
 }
 
