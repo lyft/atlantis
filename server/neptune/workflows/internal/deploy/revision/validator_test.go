@@ -24,9 +24,6 @@ func (t *testValidatorActivity) CompareCommit(ctx context.Context, request activ
 	return activities.CompareCommitResponse{}, nil
 }
 
-type testValidateWorkflowResp struct {
-}
-
 type testValidateWorklflowReq struct {
 	Repo                   github.Repo
 	DeployReqRevision      terraform.DeploymentInfo
