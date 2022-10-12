@@ -61,16 +61,11 @@ func (h *CheckRunHandler) Handle(ctx context.Context, event CheckRun) error {
 	if !ok {
 		return fmt.Errorf("event action type does not match string type.  This is likely a code bug")
 	}
-	var err error
+
 	if action.Identifier == "Unlock" {
-		err = h.signalUnlockWorkflowChannel(ctx, event)
-	} else {
-		err = h.signalPlanReviewWorkflowChannel(ctx, event, action)
+		return h.signalUnlockWorkflowChannel(ctx, event)
 	}
-	if err != nil {
-		return errors.Wrapf(err, "signaling workflow with id: %s", event.ExternalID)
-	}
-	return nil
+	return h.signalPlanReviewWorkflowChannel(ctx, event, action)
 }
 
 func (h *CheckRunHandler) signalPlanReviewWorkflowChannel(ctx context.Context, event CheckRun, action RequestedActionChecksAction) error {
@@ -90,7 +85,10 @@ func (h *CheckRunHandler) signalPlanReviewWorkflowChannel(ctx context.Context, e
 			User:   event.User,
 		})
 	h.Logger.InfoContext(ctx, fmt.Sprintf("Signaled workflow with id %s, review status, %d", event.ExternalID, status))
-	return err
+	if err != nil {
+		return errors.Wrapf(err, "signaling workflow with id: %s", event.ExternalID)
+	}
+	return nil
 }
 
 func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event CheckRun) error {
@@ -104,7 +102,11 @@ func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event
 		workflows.DeployUnlockSignalRequest{
 			User: event.User,
 		})
-	return err
+	h.Logger.InfoContext(ctx, fmt.Sprintf("Signaled workflow with id %s to unlock", event.ExternalID))
+	if err != nil {
+		return errors.Wrapf(err, "signaling workflow with id: %s", event.ExternalID)
+	}
+	return nil
 }
 
 func toPlanReviewStatus(action RequestedActionChecksAction) (workflows.TerraformPlanReviewStatus, error) {
