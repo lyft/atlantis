@@ -105,7 +105,7 @@ func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event
 	err := h.TemporalClient.SignalWorkflow(
 		ctx,
 		// deploy workflow id is repo||root (the name of the check run is the root)
-		fmt.Sprintf("%s||%s", event.Repo.FullName, rootName),
+		buildDeployWorkflowID(event.Repo.FullName, rootName),
 		// keeping this empty is fine since temporal will find the currently running workflow
 		"",
 		workflows.DeployUnlockSignalName,
