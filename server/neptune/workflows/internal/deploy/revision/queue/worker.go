@@ -54,7 +54,6 @@ type Worker struct {
 	Queue                   *Queue
 	TerraformWorkflowRunner terraformWorkflowRunner
 	Activities              workerActivities
-	Repo                    github.Repo
 
 	// mutable
 	state            WorkerState
@@ -108,7 +107,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		// Skip comparing commits if deploy request revision is same as the latest deployed revision
 		if w.LatestDeployment.Revision == deployRequest.Revision {
 			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is same as the Deploy Request Revision: %s, moving to next one", w.LatestDeployment.Revision, deployRequest.Revision))
-			w.updateCheckRun(ctx, deployRequest, w.Repo, IdenticalRevisonSummary)
+			w.updateCheckRun(ctx, deployRequest, deployRequest.Repo, IdenticalRevisonSummary)
 			continue
 		}
 
@@ -116,7 +115,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		err = workflow.ExecuteActivity(ctx, w.Activities.CompareCommit, activities.CompareCommitRequest{
 			DeployRequestRevision:  deployRequest.Revision,
 			LatestDeployedRevision: w.LatestDeployment.Revision,
-			Repo:                   w.Repo,
+			Repo:                   deployRequest.Repo,
 		}).Get(ctx, &compareCommitResp)
 		if err != nil {
 			logger.Error(ctx, fmt.Sprintf("Unable to compare deploy request commit with the lates deployed commit: %s", err.Error()))
@@ -125,12 +124,12 @@ func (w *Worker) Work(ctx workflow.Context) {
 		switch compareCommitResp.CommitComparison {
 		case activities.DirectionIdentical:
 			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s, moving to next one", w.LatestDeployment.Revision, deployRequest.Revision))
-			w.updateCheckRun(ctx, deployRequest, w.Repo, IdenticalRevisonSummary)
+			w.updateCheckRun(ctx, deployRequest, deployRequest.Repo, IdenticalRevisonSummary)
 			continue
 
 		case activities.DirectionBehind:
 			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s, moving to next one", w.LatestDeployment.Revision, deployRequest.Revision))
-			w.updateCheckRun(ctx, deployRequest, w.Repo, DirectionBehindSummary)
+			w.updateCheckRun(ctx, deployRequest, deployRequest.Repo, DirectionBehindSummary)
 			continue
 
 		// TODO: Handle Force Applies
@@ -165,7 +164,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
 	var resp activities.FetchLatestDeploymentResponse
 	err := workflow.ExecuteActivity(ctx, w.Activities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
-		FullRepositoryName: w.Repo.GetFullName(),
+		FullRepositoryName: deploymentInfo.Repo.GetFullName(),
 		RootName:           deploymentInfo.Root.Name,
 	}).Get(ctx, &resp)
 	if err != nil {
@@ -182,7 +181,7 @@ func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo te
 		CheckRunID: deploymentInfo.CheckRunID,
 		Revision:   deploymentInfo.Revision,
 		Root:       deploymentInfo.Root,
-		Repo:       w.Repo,
+		Repo:       deploymentInfo.Repo,
 	}
 	err := workflow.ExecuteActivity(ctx, w.Activities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: latestDeploymentInfo,

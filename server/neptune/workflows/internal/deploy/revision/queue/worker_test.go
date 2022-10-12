@@ -61,10 +61,6 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		Queue:                   q,
 		TerraformWorkflowRunner: &testTerraformWorkflowRunner{},
 		Activities:              wa,
-		Repo: github.Repo{
-			Owner: "owner",
-			Name:  "test",
-		},
 	}
 
 	err := workflow.SetQueryHandler(ctx, "queue", func() (queueAndState, error) {
@@ -111,6 +107,11 @@ func TestWorker_FetchLatestDeploymentOnStartupOnly(t *testing.T) {
 
 	}, 10*time.Second)
 
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
 	deploymentInfoList := []terraform.DeploymentInfo{
 		{
 			ID:         uuid.UUID{},
@@ -119,6 +120,7 @@ func TestWorker_FetchLatestDeploymentOnStartupOnly(t *testing.T) {
 			Root: root.Root{
 				Name: "root_1",
 			},
+			Repo: repo,
 		},
 		{
 			ID:         uuid.UUID{},
@@ -127,12 +129,8 @@ func TestWorker_FetchLatestDeploymentOnStartupOnly(t *testing.T) {
 			Root: root.Root{
 				Name: "root_2",
 			},
+			Repo: repo,
 		},
-	}
-
-	repo := github.Repo{
-		Owner: "owner",
-		Name:  "test",
 	}
 
 	latestDeployment := root.DeploymentInfo{
@@ -382,6 +380,11 @@ func getTestArtifacts() (
 	compareCommitRequest activities.CompareCommitRequest,
 	storeDeploymentRequest activities.StoreLatestDeploymentRequest,
 ) {
+	repo = github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
 	deploymentInfo = terraform.DeploymentInfo{
 		ID:         uuid.UUID{},
 		Revision:   "1",
@@ -389,15 +392,11 @@ func getTestArtifacts() (
 		Root: root.Root{
 			Name: "root_1",
 		},
+		Repo: repo,
 	}
 
 	latestDeployedRevision = root.DeploymentInfo{
 		Revision: "3455",
-	}
-
-	repo = github.Repo{
-		Owner: "owner",
-		Name:  "test",
 	}
 
 	fetchDeploymentRequest = activities.FetchLatestDeploymentRequest{
