@@ -92,10 +92,16 @@ func (h *CheckRunHandler) signalPlanReviewWorkflowChannel(ctx context.Context, e
 }
 
 func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event CheckRun) error {
+	checkRunNameComponents := strings.Split(event.Name, " ")
+	if len(checkRunNameComponents) != 2 {
+		return fmt.Errorf("invalid check run name: %s", event.Name)
+	}
+	rootName := checkRunNameComponents[1]
+
 	err := h.TemporalClient.SignalWorkflow(
 		ctx,
-		// assumed that we're using the check run external id as our workflow id
-		event.ExternalID,
+		// deploy workflow id is repo||root (the name of the check run is the root)
+		fmt.Sprintf("%s||%s", event.Repo.FullName, rootName),
 		// keeping this empty is fine since temporal will find the currently running workflow
 		"",
 		workflows.DeployUnlockSignalName,

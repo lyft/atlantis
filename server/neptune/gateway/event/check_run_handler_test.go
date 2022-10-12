@@ -2,6 +2,7 @@ package event_test
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/events/models"
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/logging"
@@ -103,7 +104,7 @@ func TestCheckRunHandler(t *testing.T) {
 
 	t.Run("unlock signal success", func(t *testing.T) {
 		user := "nish"
-		workflowID := "wfid"
+		workflowID := "testrepo||testroot"
 		signaler := &testSignaler{
 			t:                  t,
 			expectedWorkflowID: workflowID,
@@ -122,7 +123,8 @@ func TestCheckRunHandler(t *testing.T) {
 			},
 			ExternalID: workflowID,
 			User:       user,
-			Name:       "atlantis/deploy",
+			Repo:       models.Repo{FullName: "testrepo"},
+			Name:       "atlantis/deploy: testroot",
 		}
 		err := subject.Handle(context.Background(), e)
 		assert.NoError(t, err)
