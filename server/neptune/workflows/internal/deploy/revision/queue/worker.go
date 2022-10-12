@@ -16,6 +16,7 @@ import (
 )
 
 const DeploymentInfoVersion = "1.0.0"
+const UpdateCheckrunRetryCount = 5
 
 const (
 	IdenticalRevisonSummary = "This revision is identical to the current revision and will not be deployed"
@@ -39,10 +40,6 @@ type githubActivities interface {
 type workerActivities interface {
 	dbActivities
 	githubActivities
-}
-
-type revisionValidator interface {
-	IsValid(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error)
 }
 
 type WorkerState string
@@ -108,8 +105,9 @@ func (w *Worker) Work(ctx workflow.Context) {
 			}
 		}
 
+		// Skip comparing commits if deploy request revision is same as the latest deployed revision
 		if w.LatestDeployment.Revision == deployRequest.Revision {
-			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is same as the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
 			w.updateCheckRun(ctx, deployRequest, w.Repo, IdenticalRevisonSummary)
 			continue
 		}
@@ -144,6 +142,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		default:
 			logger.Error(ctx, fmt.Sprintf("Invalid commit comparison response: %s", compareCommitResp.CommitComparison))
+			continue
 		}
 
 		err = w.TerraformWorkflowRunner.Run(ctx, deployRequest)
@@ -163,7 +162,6 @@ func (w *Worker) Work(ctx workflow.Context) {
 }
 
 func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
-	// Fetch latest deployment
 	var resp activities.FetchLatestDeploymentResponse
 	err := workflow.ExecuteActivity(ctx, w.Activities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
 		FullRepositoryName: w.Repo.GetFullName(),
@@ -198,8 +196,12 @@ func (w *Worker) GetState() WorkerState {
 	return w.state
 }
 
+// worker should not block on updating checkruns for invalid deploy requests so let's retry for UpdateCheckrunRetryCount only
 func (w *Worker) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, repo github.Repo, summary string) {
-	// TODO: Add retry policy
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		MaximumAttempts: UpdateCheckrunRetryCount,
+	})
+
 	err := workflow.ExecuteActivity(ctx, w.Activities.UpdateCheckRun, activities.UpdateCheckRunRequest{
 		Title:   terraform.BuildCheckRunTitle(deployRequest.Root.Name),
 		State:   github.CheckRunSuccess,
