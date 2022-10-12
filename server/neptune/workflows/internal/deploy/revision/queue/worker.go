@@ -9,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -38,7 +37,6 @@ type Worker struct {
 	Queue                   *Queue
 	TerraformWorkflowRunner terraformWorkflowRunner
 	DbActivities            dbActivities
-	Repo                    github.Repo
 
 	// mutable
 	state            WorkerState
@@ -84,6 +82,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		if w.LatestDeployment == nil {
 			w.LatestDeployment, err = w.fetchLatestDeployment(ctx, msg)
 			if err != nil {
+				logger.Error(ctx, fmt.Sprint("Unable to fetch latest deployment, worker is shutting down", err.Error()))
 				return
 			}
 		}
@@ -110,7 +109,7 @@ func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terr
 	// Fetch latest deployment
 	var resp activities.FetchLatestDeploymentResponse
 	err := workflow.ExecuteActivity(ctx, w.DbActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
-		FullRepositoryName: w.Repo.GetFullName(),
+		FullRepositoryName: deploymentInfo.Repo.GetFullName(),
 		RootName:           deploymentInfo.Root.Name,
 	}).Get(ctx, &resp)
 	if err != nil {
@@ -127,7 +126,7 @@ func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo te
 		CheckRunID: deploymentInfo.CheckRunID,
 		Revision:   deploymentInfo.Revision,
 		Root:       deploymentInfo.Root,
-		Repo:       w.Repo,
+		Repo:       deploymentInfo.Repo,
 	}
 	err := workflow.ExecuteActivity(ctx, w.DbActivities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: latestDeploymentInfo,

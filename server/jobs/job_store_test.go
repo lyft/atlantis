@@ -143,9 +143,9 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(matchers.AnyContextContext(), AnyString(), matchers.AnySliceOfString(), AnyString())).ThenReturn(false, storageBackendErr)
+		When(storageBackend.Write(matchers.AnyContextContext(), AnyString(), matchers.AnySliceOfString())).ThenReturn(false, storageBackendErr)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetJobCompleteStatus(context.Background(), jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(context.Background(), jobID, jobs.Complete)
 
 		// Assert storage backend error
 		assert.EqualError(t, err, expecterErr.Error())
@@ -170,7 +170,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		// Setup storage backend
 		storageBackend := &jobs.NoopStorageBackend{}
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetJobCompleteStatus(context.Background(), jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(context.Background(), jobID, jobs.Complete)
 
 		assert.Nil(t, err)
 
@@ -193,9 +193,9 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		// Setup storage backend
 		storageBackend := mocks.NewMockStorageBackend()
-		When(storageBackend.Write(matchers.AnyContextContext(), AnyString(), matchers.AnySliceOfString(), AnyString())).ThenReturn(true, nil)
+		When(storageBackend.Write(matchers.AnyContextContext(), AnyString(), matchers.AnySliceOfString())).ThenReturn(true, nil)
 		jobStore := jobs.NewTestJobStore(storageBackend, jobsMap)
-		err := jobStore.SetJobCompleteStatus(context.Background(), jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(context.Background(), jobID, jobs.Complete)
 		assert.Nil(t, err)
 
 		When(storageBackend.Read(context.Background(), jobID)).ThenReturn([]string{}, nil)
@@ -210,7 +210,7 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 		jobID := "1234"
 		expectedErrString := fmt.Sprintf("job: %s does not exist", jobID)
 
-		err := jobStore.SetJobCompleteStatus(context.Background(), jobID, "test-repo", jobs.Complete)
+		err := jobStore.SetJobCompleteStatus(context.Background(), jobID, jobs.Complete)
 		assert.EqualError(t, err, expectedErrString)
 
 	})

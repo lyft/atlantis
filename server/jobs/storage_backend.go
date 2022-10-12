@@ -23,7 +23,7 @@ type StorageBackend interface {
 	Read(ctx context.Context, key string) ([]string, error)
 
 	// Write logs to the storage backend
-	Write(ctx context.Context, key string, logs []string, fullRepoName string) (bool, error)
+	Write(ctx context.Context, key string, logs []string) (bool, error)
 }
 
 func NewStorageBackend(client *storage.Client, logger logging.Logger, featureAllocator feature.Allocator, scope tally.Scope) (StorageBackend, error) {
@@ -59,7 +59,7 @@ func (s *storageBackend) Read(ctx context.Context, key string) ([]string, error)
 	return logs, nil
 }
 
-func (s *storageBackend) Write(ctx context.Context, key string, logs []string, _ string) (bool, error) {
+func (s *storageBackend) Write(ctx context.Context, key string, logs []string) (bool, error) {
 	logString := strings.Join(logs, "\n")
 	object := []byte(logString)
 
@@ -91,13 +91,13 @@ func (i *InstrumentedStorageBackend) Read(ctx context.Context, key string) ([]st
 	return logs, err
 }
 
-func (i *InstrumentedStorageBackend) Write(ctx context.Context, key string, logs []string, fullRepoName string) (bool, error) {
+func (i *InstrumentedStorageBackend) Write(ctx context.Context, key string, logs []string) (bool, error) {
 	failureCount := i.scope.Counter("write_failure")
 	successCount := i.scope.Counter("write_success")
 	latency := i.scope.Timer("write_latency")
 	span := latency.Start()
 	defer span.Stop()
-	ok, err := i.StorageBackend.Write(ctx, key, logs, fullRepoName)
+	ok, err := i.StorageBackend.Write(ctx, key, logs)
 	if err != nil {
 		failureCount.Inc(1)
 		return ok, err
@@ -113,6 +113,6 @@ func (s *NoopStorageBackend) Read(ctx context.Context, key string) ([]string, er
 	return []string{}, nil
 }
 
-func (s *NoopStorageBackend) Write(ctx context.Context, key string, logs []string, fullRepoName string) (bool, error) {
+func (s *NoopStorageBackend) Write(ctx context.Context, key string, logs []string) (bool, error) {
 	return false, nil
 }
