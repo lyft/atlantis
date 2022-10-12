@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -12,6 +13,8 @@ import (
 )
 
 const RequestedActionType = "requested_action"
+
+var checkRunRegex = regexp.MustCompile("atlantis/deploy: (?P<name>.+)")
 
 type CheckRunAction interface {
 	GetType() string
@@ -92,11 +95,12 @@ func (h *CheckRunHandler) signalPlanReviewWorkflowChannel(ctx context.Context, e
 }
 
 func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event CheckRun) error {
-	checkRunNameComponents := strings.Split(event.Name, " ")
-	if len(checkRunNameComponents) != 2 {
-		return fmt.Errorf("invalid check run name: %s", event.Name)
+	// Parse out root from check run name
+	matches := checkRunRegex.FindStringSubmatch(event.Name)
+	if len(matches) != 2 {
+		return fmt.Errorf("unable to determine root name")
 	}
-	rootName := checkRunNameComponents[1]
+	rootName := matches[checkRunRegex.SubexpIndex("name")]
 
 	err := h.TemporalClient.SignalWorkflow(
 		ctx,

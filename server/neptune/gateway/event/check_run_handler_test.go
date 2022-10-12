@@ -131,6 +131,25 @@ func TestCheckRunHandler(t *testing.T) {
 		assert.True(t, signaler.called)
 	})
 
+	t.Run("invalid root name", func(t *testing.T) {
+		user := "nish"
+		workflowID := "testrepo||testroot"
+		subject := event.CheckRunHandler{
+			Logger: logging.NewNoopCtxLogger(t),
+		}
+		e := event.CheckRun{
+			Action: event.RequestedActionChecksAction{
+				Identifier: "Unlock",
+			},
+			ExternalID: workflowID,
+			User:       user,
+			Repo:       models.Repo{FullName: "testrepo"},
+			Name:       "atlantis/invalid: testroot",
+		}
+		err := subject.Handle(context.Background(), e)
+		assert.ErrorContains(t, err, "unable to determine root name")
+	})
+
 	t.Run("signal error", func(t *testing.T) {
 		user := "nish"
 		workflowID := "wfid"
