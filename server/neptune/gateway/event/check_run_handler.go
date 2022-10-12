@@ -61,19 +61,19 @@ func (h *CheckRunHandler) Handle(ctx context.Context, event CheckRun) error {
 	if !ok {
 		return fmt.Errorf("event action type does not match string type.  This is likely a code bug")
 	}
-
-	if action.Identifier == "Unlock" {
+	switch action.Identifier {
+	case "Unlock":
 		return h.signalUnlockWorkflowChannel(ctx, event)
+	case "Approve":
+		return h.signalPlanReviewWorkflowChannel(ctx, event, workflows.ApprovedPlanReviewStatus)
+	case "Reject":
+		return h.signalPlanReviewWorkflowChannel(ctx, event, workflows.RejectedPlanReviewStatus)
 	}
-	return h.signalPlanReviewWorkflowChannel(ctx, event, action)
+	return fmt.Errorf("unknown action id %s", action.Identifier)
 }
 
-func (h *CheckRunHandler) signalPlanReviewWorkflowChannel(ctx context.Context, event CheckRun, action RequestedActionChecksAction) error {
-	status, err := toPlanReviewStatus(action)
-	if err != nil {
-		return errors.Wrap(err, "converting action to plan status")
-	}
-	err = h.TemporalClient.SignalWorkflow(
+func (h *CheckRunHandler) signalPlanReviewWorkflowChannel(ctx context.Context, event CheckRun, status workflows.TerraformPlanReviewStatus) error {
+	err := h.TemporalClient.SignalWorkflow(
 		ctx,
 		// assumed that we're using the check run external id as our workflow id
 		event.ExternalID,
@@ -107,14 +107,4 @@ func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event
 	}
 	h.Logger.InfoContext(ctx, fmt.Sprintf("Signaled workflow with id %s to unlock", event.ExternalID))
 	return nil
-}
-
-func toPlanReviewStatus(action RequestedActionChecksAction) (workflows.TerraformPlanReviewStatus, error) {
-	switch action.Identifier {
-	case "Approve":
-		return workflows.ApprovedPlanReviewStatus, nil
-	case "Reject":
-		return workflows.RejectedPlanReviewStatus, nil
-	}
-	return workflows.RejectedPlanReviewStatus, fmt.Errorf("unknown action id %s", action.Identifier)
 }
