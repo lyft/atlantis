@@ -191,35 +191,23 @@ func TestWorker_FetchLatestDeploymentOnStartupOnly(t *testing.T) {
 	assert.Equal(t, queue.CompleteWorkerState, resp.EndState)
 	assert.True(t, resp.QueueIsEmpty)
 }
+
 func TestWorker_CompareCommit_SkipDeploy(t *testing.T) {
 	deploymentInfo, _, repo, fetchDeploymentRequest, fetchDeploymentResponse, compareCommitRequest, _ := getTestArtifacts()
 
 	cases := []struct {
 		description           string
 		compareCommitResponse activities.CompareCommitResponse
-		updateCheckrunRequst  activities.UpdateCheckRunRequest
+		updateCheckRunRequest activities.UpdateCheckRunRequest
 	}{
-		{
-			description: "identical",
-			compareCommitResponse: activities.CompareCommitResponse{
-				CommitComparison: activities.DirectionIdentical,
-			},
-			updateCheckrunRequst: activities.UpdateCheckRunRequest{
-				Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
-				State:   github.CheckRunSuccess,
-				Repo:    repo,
-				ID:      deploymentInfo.CheckRunID,
-				Summary: queue.IdenticalRevisonSummary,
-			},
-		},
 		{
 			description: "behind",
 			compareCommitResponse: activities.CompareCommitResponse{
 				CommitComparison: activities.DirectionBehind,
 			},
-			updateCheckrunRequst: activities.UpdateCheckRunRequest{
+			updateCheckRunRequest: activities.UpdateCheckRunRequest{
 				Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
-				State:   github.CheckRunSuccess,
+				State:   github.CheckRunFailure,
 				Repo:    repo,
 				ID:      deploymentInfo.CheckRunID,
 				Summary: queue.DirectionBehindSummary,
@@ -257,8 +245,8 @@ func TestWorker_CompareCommit_SkipDeploy(t *testing.T) {
 			}
 
 			env.OnActivity(da.FetchLatestDeployment, mock.Anything, fetchDeploymentRequest).Return(fetchDeploymentResponse, nil)
-			env.OnActivity(da.UpdateCheckRun, mock.Anything, c.updateCheckrunRequst).Return(activities.UpdateCheckRunResponse{
-				ID: c.updateCheckrunRequst.ID,
+			env.OnActivity(da.UpdateCheckRun, mock.Anything, c.updateCheckRunRequest).Return(activities.UpdateCheckRunResponse{
+				ID: c.updateCheckRunRequest.ID,
 			}, nil)
 			env.OnActivity(da.CompareCommit, mock.Anything, compareCommitRequest).Return(c.compareCommitResponse, nil)
 

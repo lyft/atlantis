@@ -2,6 +2,7 @@ package activities
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -236,7 +237,7 @@ func (a *githubActivities) CompareCommit(ctx context.Context, request CompareCom
 	}
 
 	if comparison.GetStatus() == "" || resp.StatusCode != http.StatusOK {
-		return CompareCommitResponse{}, errors.New("invalid commit comparison status")
+		return CompareCommitResponse{}, fmt.Errorf("invalid commit comparison status: %s, Status Code: %d", comparison.GetStatus(), resp.StatusCode)
 	}
 
 	return CompareCommitResponse{
