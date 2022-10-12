@@ -109,7 +109,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 			Repo:                   msg.Repo,
 		}).Get(ctx, &compareCommitResp)
 		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("Unable to compare deploy request commit with the lates deployed commit: %s", err.Error()))
+			logger.Error(ctx, fmt.Sprintf("Unable to compare deploy request commit with the latest deployed commit: %s", err.Error()))
 		}
 
 		if !w.isValidRevision(ctx, msg, compareCommitResp) {
