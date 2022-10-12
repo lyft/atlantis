@@ -23,13 +23,15 @@ func (t *testRevisionValidator) IsValid(ctx workflow.Context, repo github.Repo, 
 	return true, nil
 }
 
-type testTerraformWorkflowRunner struct{}
+type testTerraformWorkflowRunner struct {
+}
 
 func (r testTerraformWorkflowRunner) Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
 	return nil
 }
 
 type request struct {
+	t     *testing.T
 	Queue []terraform.DeploymentInfo
 }
 
@@ -58,12 +60,11 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	worker := queue.Worker{
 		Queue:                   q,
 		TerraformWorkflowRunner: &testTerraformWorkflowRunner{},
-		DbActivities:            wa,
+		Activities:              wa,
 		Repo: github.Repo{
 			Owner: "owner",
 			Name:  "test",
 		},
-		RevisionValidator: &testRevisionValidator{},
 	}
 
 	err := workflow.SetQueryHandler(ctx, "queue", func() (queueAndState, error) {
@@ -134,15 +135,18 @@ func TestWorker(t *testing.T) {
 		Name:  "test",
 	}
 
+	latestDeployedRev
+
 	// Mock FetchLatestDeploymentRequest for both roots
 	env.OnActivity(da.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
 		FullRepositoryName: "owner/test",
 		RootName:           deploymentInfoList[0].Root.Name,
 	}).Return(activities.FetchLatestDeploymentResponse{}, nil)
-	env.OnActivity(da.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
-		FullRepositoryName: "owner/test",
-		RootName:           deploymentInfoList[1].Root.Name,
-	}).Return(activities.FetchLatestDeploymentResponse{}, nil)
+
+	env.OnActivity(da.CompareCommit, mock.Anything, activities.CompareCommitRequest{
+		DeployRequestRevision: deploymentInfoList[0].Revision,
+		LatestDeployedRevision: ,
+	})
 
 	// Mock StoreLatestDeploymentRequest for both roots
 	env.OnActivity(da.StoreLatestDeployment, mock.Anything, activities.StoreLatestDeploymentRequest{
@@ -199,6 +203,242 @@ func TestWorker(t *testing.T) {
 	assert.True(t, resp.QueueIsEmpty)
 }
 
+func TestWorker_CompareCommit_SkipDeploy(t *testing.T) {
+
+	deploymentInfo := terraform.DeploymentInfo{
+		ID:         uuid.UUID{},
+		Revision:   "1",
+		CheckRunID: 1234,
+		Root: root.Root{
+			Name: "root_1",
+		},
+	}
+
+	latestDeployedRevision := root.DeploymentInfo{
+		Revision: "3455",
+	}
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	fetchDeploymentRequest := activities.FetchLatestDeploymentRequest{
+		FullRepositoryName: repo.GetFullName(),
+		RootName:           deploymentInfo.Root.Name,
+	}
+
+	fetchDeploymentResponse := activities.FetchLatestDeploymentResponse{
+		DeploymentInfo: &root.DeploymentInfo{
+			Revision: latestDeployedRevision.Revision,
+			Repo:     repo,
+		},
+	}
+
+	compareCommitRequest := activities.CompareCommitRequest{
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfo.Revision,
+		LatestDeployedRevision: latestDeployedRevision.Revision,
+	}
+
+	cases := []struct {
+		description           string
+		compareCommitResponse activities.CompareCommitResponse
+		updateCheckrunRequst  activities.UpdateCheckRunRequest
+	}{
+		{
+			description: "identical",
+			compareCommitResponse: activities.CompareCommitResponse{
+				CommitComparison: activities.DirectionIdentical,
+			},
+			updateCheckrunRequst: activities.UpdateCheckRunRequest{
+				Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
+				State:   github.CheckRunSuccess,
+				Repo:    repo,
+				ID:      deploymentInfo.CheckRunID,
+				Summary: queue.IdenticalRevisonSummary,
+			},
+		},
+		{
+			description: "behind",
+			compareCommitResponse: activities.CompareCommitResponse{
+				CommitComparison: activities.DirectionBehind,
+			},
+			updateCheckrunRequst: activities.UpdateCheckRunRequest{
+				Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
+				State:   github.CheckRunSuccess,
+				Repo:    repo,
+				ID:      deploymentInfo.CheckRunID,
+				Summary: queue.DirectionBehindSummary,
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.description, func(t *testing.T) {
+			ts := testsuite.WorkflowTestSuite{}
+			env := ts.NewTestWorkflowEnvironment()
+
+			da := testDeployActivity{}
+			// we set this callback so we can query the state of the queue
+			// after all processing has complete to determine whether we should
+			// shutdown the worker
+			env.RegisterDelayedCallback(func() {
+				encoded, err := env.QueryWorkflow("queue")
+
+				assert.NoError(t, err)
+
+				var q queueAndState
+				err = encoded.Get(&q)
+
+				assert.NoError(t, err)
+
+				assert.True(t, q.QueueIsEmpty)
+				assert.Equal(t, queue.WaitingWorkerState, q.State)
+
+				env.CancelWorkflow()
+
+			}, 10*time.Second)
+
+			deploymentInfoList := []terraform.DeploymentInfo{
+				deploymentInfo,
+			}
+
+			env.OnActivity(da.FetchLatestDeployment, mock.Anything, fetchDeploymentRequest).Return(fetchDeploymentResponse, nil)
+			env.OnActivity(da.UpdateCheckRun, mock.Anything, c.updateCheckrunRequst).Return(activities.UpdateCheckRunResponse{
+				ID: c.updateCheckrunRequst.ID,
+			}, nil)
+			env.OnActivity(da.CompareCommit, mock.Anything, compareCommitRequest).Return(c.compareCommitResponse, nil)
+
+			env.ExecuteWorkflow(testWorkflow, request{
+				Queue: deploymentInfoList,
+			})
+
+			var resp response
+			err := env.GetWorkflowResult(&resp)
+			assert.NoError(t, err)
+
+			assert.Equal(t, queue.CompleteWorkerState, resp.EndState)
+			assert.True(t, resp.QueueIsEmpty)
+		})
+	}
+
+}
+
+func TestWorker_CompareCommit_Deploy(t *testing.T) {
+
+	deploymentInfo := terraform.DeploymentInfo{
+		ID:         uuid.UUID{},
+		Revision:   "1",
+		CheckRunID: 1234,
+		Root: root.Root{
+			Name: "root_1",
+		},
+	}
+
+	latestDeployedRevision := root.DeploymentInfo{
+		Revision: "3455",
+	}
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	fetchDeploymentRequest := activities.FetchLatestDeploymentRequest{
+		FullRepositoryName: repo.GetFullName(),
+		RootName:           deploymentInfo.Root.Name,
+	}
+
+	fetchDeploymentResponse := activities.FetchLatestDeploymentResponse{
+		DeploymentInfo: &root.DeploymentInfo{
+			Revision: latestDeployedRevision.Revision,
+			Repo:     repo,
+		},
+	}
+
+	compareCommitRequest := activities.CompareCommitRequest{
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfo.Revision,
+		LatestDeployedRevision: latestDeployedRevision.Revision,
+	}
+
+	storeLatestDeploymentReq := activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: root.DeploymentInfo{
+			Version:    queue.DeploymentInfoVersion,
+			ID:         deploymentInfo.ID.String(),
+			CheckRunID: deploymentInfo.CheckRunID,
+			Revision:   deploymentInfo.Revision,
+			Root:       deploymentInfo.Root,
+			Repo:       repo,
+		},
+	}
+
+	cases := []struct {
+		description           string
+		compareCommitResponse activities.CompareCommitResponse
+	}{
+		{
+			description: "ahead",
+			compareCommitResponse: activities.CompareCommitResponse{
+				CommitComparison: activities.DirectionAhead,
+			},
+		},
+		{
+			description: "diverged",
+			compareCommitResponse: activities.CompareCommitResponse{
+				CommitComparison: activities.DirectionDiverged,
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.description, func(t *testing.T) {
+			ts := testsuite.WorkflowTestSuite{}
+			env := ts.NewTestWorkflowEnvironment()
+
+			da := testDeployActivity{}
+			// we set this callback so we can query the state of the queue
+			// after all processing has complete to determine whether we should
+			// shutdown the worker
+			env.RegisterDelayedCallback(func() {
+				encoded, err := env.QueryWorkflow("queue")
+
+				assert.NoError(t, err)
+
+				var q queueAndState
+				err = encoded.Get(&q)
+
+				assert.NoError(t, err)
+
+				assert.True(t, q.QueueIsEmpty)
+				assert.Equal(t, queue.WaitingWorkerState, q.State)
+
+				env.CancelWorkflow()
+
+			}, 10*time.Second)
+
+			deploymentInfoList := []terraform.DeploymentInfo{
+				deploymentInfo,
+			}
+
+			env.OnActivity(da.FetchLatestDeployment, mock.Anything, fetchDeploymentRequest).Return(fetchDeploymentResponse, nil)
+			env.OnActivity(da.CompareCommit, mock.Anything, compareCommitRequest).Return(c.compareCommitResponse, nil)
+			env.OnActivity(da.StoreLatestDeployment, mock.Anything, storeLatestDeploymentReq).Return(nil)
+
+			env.ExecuteWorkflow(testWorkflow, request{
+				Queue: deploymentInfoList,
+			})
+
+			var resp response
+			err := env.GetWorkflowResult(&resp)
+			assert.NoError(t, err)
+
+			assert.Equal(t, queue.CompleteWorkerState, resp.EndState)
+			assert.True(t, resp.QueueIsEmpty)
+		})
+	}
+
+}
+
 type testDeployActivity struct{}
 
 func (t *testDeployActivity) FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error) {
@@ -208,3 +448,15 @@ func (t *testDeployActivity) FetchLatestDeployment(ctx context.Context, request 
 func (t *testDeployActivity) StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error {
 	return nil
 }
+
+func (t *testDeployActivity) CompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error) {
+	return activities.CompareCommitResponse{}, nil
+}
+
+func (t *testDeployActivity) UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error) {
+	return activities.UpdateCheckRunResponse{}, nil
+}
+
+/*
+Worker
+*/

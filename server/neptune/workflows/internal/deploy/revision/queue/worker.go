@@ -8,7 +8,6 @@ import (
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
@@ -18,6 +17,11 @@ import (
 
 const DeploymentInfoVersion = "1.0.0"
 
+const (
+	IdenticalRevisonSummary = "This revision is identical to the current revision and will not be deployed"
+	DirectionBehindSummary  = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
+)
+
 type terraformWorkflowRunner interface {
 	Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error
 }
@@ -25,6 +29,16 @@ type terraformWorkflowRunner interface {
 type dbActivities interface {
 	FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error)
 	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
+}
+
+type githubActivities interface {
+	CompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
+	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
+}
+
+type workerActivities interface {
+	dbActivities
+	githubActivities
 }
 
 type revisionValidator interface {
@@ -42,9 +56,8 @@ const (
 type Worker struct {
 	Queue                   *Queue
 	TerraformWorkflowRunner terraformWorkflowRunner
-	DbActivities            dbActivities
+	Activities              workerActivities
 	Repo                    github.Repo
-	RevisionValidator       revisionValidator
 
 	// mutable
 	state            WorkerState
@@ -80,41 +93,66 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		w.state = WorkingWorkerState
 
-		msg := w.Queue.Pop()
+		deployRequest := w.Queue.Pop()
 
-		ctx := workflow.WithValue(ctx, internalContext.SHAKey, msg.Revision)
-		ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, msg.ID)
+		ctx := workflow.WithValue(ctx, internalContext.SHAKey, deployRequest.Revision)
+		ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, deployRequest.ID)
 
 		// This should only happen on startup
 		// If we fail to fetch the latest deployment, log and exit the workflow
 		if w.LatestDeployment == nil {
-			w.LatestDeployment, err = w.fetchLatestDeployment(ctx, msg)
+			w.LatestDeployment, err = w.fetchLatestDeployment(ctx, deployRequest)
 			if err != nil {
 				logger.Error(ctx, fmt.Sprint("Unable to fetch latest deployment, worker is shutting down", err.Error()))
 				return
 			}
 		}
 
-		// Skip revision validation for Force Applies since we already know it's diverged
-		if msg.Root.Trigger == root.Trigger(request.MergeTrigger) {
-			isValidRevision, err := w.RevisionValidator.IsValid(ctx, w.Repo, msg, w.LatestDeployment)
-			if err != nil {
-				logger.Error(ctx, fmt.Sprintf("Unable to validate deploy request revision: %s, moving to next one: %s", msg.Revision, err.Error()))
-				continue
-			}
-
-			if !isValidRevision {
-				continue
-			}
+		if w.LatestDeployment.Revision == deployRequest.Revision {
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+			w.updateCheckRun(ctx, deployRequest, w.Repo, IdenticalRevisonSummary)
+			continue
 		}
 
-		err = w.TerraformWorkflowRunner.Run(ctx, msg)
+		var compareCommitResp activities.CompareCommitResponse
+		err = workflow.ExecuteActivity(ctx, w.Activities.CompareCommit, activities.CompareCommitRequest{
+			DeployRequestRevision:  deployRequest.Revision,
+			LatestDeployedRevision: w.LatestDeployment.Revision,
+			Repo:                   w.Repo,
+		}).Get(ctx, &compareCommitResp)
+		if err != nil {
+			logger.Error(ctx, fmt.Sprintf("Unable to compare deploy request commit with the lates deployed commit: %s", err.Error()))
+		}
+
+		switch compareCommitResp.CommitComparison {
+		case activities.DirectionIdentical:
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+			w.updateCheckRun(ctx, deployRequest, w.Repo, IdenticalRevisonSummary)
+			continue
+
+		case activities.DirectionBehind:
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+			w.updateCheckRun(ctx, deployRequest, w.Repo, DirectionBehindSummary)
+			continue
+
+		// TODO: Handle Force Applies
+		case activities.DirectionDiverged:
+			logger.Error(ctx, fmt.Sprintf("Deployed Revision: %s is divergent from the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+
+		case activities.DirectionAhead:
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+
+		default:
+			logger.Error(ctx, fmt.Sprintf("Invalid commit comparison response: %s", compareCommitResp.CommitComparison))
+		}
+
+		err = w.TerraformWorkflowRunner.Run(ctx, deployRequest)
 		if err != nil {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
 		}
 
 		// TODO: Persist deployment on shutdown if it fails instead of blocking
-		latestDeployment, err := w.persistLatestDeployment(ctx, msg)
+		latestDeployment, err := w.persistLatestDeployment(ctx, deployRequest)
 		if err != nil {
 			logger.Error(ctx, "failed to persist latest deploy job")
 		}
@@ -127,7 +165,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
 	// Fetch latest deployment
 	var resp activities.FetchLatestDeploymentResponse
-	err := workflow.ExecuteActivity(ctx, w.DbActivities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
+	err := workflow.ExecuteActivity(ctx, w.Activities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
 		FullRepositoryName: w.Repo.GetFullName(),
 		RootName:           deploymentInfo.Root.Name,
 	}).Get(ctx, &resp)
@@ -147,7 +185,7 @@ func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo te
 		Root:       deploymentInfo.Root,
 		Repo:       w.Repo,
 	}
-	err := workflow.ExecuteActivity(ctx, w.DbActivities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
+	err := workflow.ExecuteActivity(ctx, w.Activities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: latestDeploymentInfo,
 	}).Get(ctx, nil)
 	if err != nil {
@@ -158,4 +196,18 @@ func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo te
 
 func (w *Worker) GetState() WorkerState {
 	return w.state
+}
+
+func (w *Worker) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, repo github.Repo, summary string) {
+	// TODO: Add retry policy
+	err := workflow.ExecuteActivity(ctx, w.Activities.UpdateCheckRun, activities.UpdateCheckRunRequest{
+		Title:   terraform.BuildCheckRunTitle(deployRequest.Root.Name),
+		State:   github.CheckRunSuccess,
+		Repo:    repo,
+		ID:      deployRequest.CheckRunID,
+		Summary: summary,
+	}).Get(ctx, nil)
+	if err != nil {
+		logger.Error(ctx, "failed to update checkrun: %s", err.Error())
+	}
 }
