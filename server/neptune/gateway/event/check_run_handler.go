@@ -100,10 +100,9 @@ func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event
 		event.ExternalID,
 		// keeping this empty is fine since temporal will find the currently running workflow
 		"",
-		workflows.TerraformUnlockSignalName,
-		workflows.TerraformUnlockSignalRequest{
-			Unlock: true,
-			User:   event.User,
+		workflows.DeployUnlockSignalName,
+		workflows.DeployUnlockSignalRequest{
+			User: event.User,
 		})
 	return err
 }

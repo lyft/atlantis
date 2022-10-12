@@ -52,7 +52,6 @@ const (
 
 const (
 	PlanReviewSignalName = "planreview"
-	UnlockSignalName     = "unlock"
 )
 
 func Workflow(ctx workflow.Context, request Request) error {

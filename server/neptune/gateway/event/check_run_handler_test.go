@@ -107,10 +107,9 @@ func TestCheckRunHandler(t *testing.T) {
 		signaler := &testSignaler{
 			t:                  t,
 			expectedWorkflowID: workflowID,
-			expectedSignalName: workflows.TerraformUnlockSignalName,
-			expectedSignalArg: workflows.TerraformUnlockSignalRequest{
-				Unlock: true,
-				User:   user,
+			expectedSignalName: workflows.DeployUnlockSignalName,
+			expectedSignalArg: workflows.DeployUnlockSignalRequest{
+				User: user,
 			},
 		}
 		subject := event.CheckRunHandler{
