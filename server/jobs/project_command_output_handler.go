@@ -165,7 +165,7 @@ func (p *AsyncProjectCommandOutputHandler) CloseJob(ctx context.Context, jobID s
 	p.receiverRegistry.CloseAndRemoveReceiversForJob(jobID)
 
 	// Update job status and persist to storage if configured
-	if err := p.JobStore.SetJobCompleteStatus(ctx, jobID, repo.FullName, Complete); err != nil {
+	if err := p.JobStore.SetJobCompleteStatus(ctx, jobID, Complete); err != nil {
 		p.logger.Error(fmt.Sprintf("updating jobs status to complete, %v", err))
 	}
 }
