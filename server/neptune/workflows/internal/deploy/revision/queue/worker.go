@@ -107,7 +107,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		// Skip comparing commits if deploy request revision is same as the latest deployed revision
 		if w.LatestDeployment.Revision == deployRequest.Revision {
-			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is same as the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is same as the Deploy Request Revision: %s, moving to next one", w.LatestDeployment.Revision, deployRequest.Revision))
 			w.updateCheckRun(ctx, deployRequest, w.Repo, IdenticalRevisonSummary)
 			continue
 		}
@@ -124,12 +124,12 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		switch compareCommitResp.CommitComparison {
 		case activities.DirectionIdentical:
-			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s, moving to next one", w.LatestDeployment.Revision, deployRequest.Revision))
 			w.updateCheckRun(ctx, deployRequest, w.Repo, IdenticalRevisonSummary)
 			continue
 
 		case activities.DirectionBehind:
-			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s, moving to next one", w.LatestDeployment.Revision, deployRequest.Revision))
 			w.updateCheckRun(ctx, deployRequest, w.Repo, DirectionBehindSummary)
 			continue
 
@@ -138,7 +138,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 			logger.Error(ctx, fmt.Sprintf("Deployed Revision: %s is divergent from the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
 
 		case activities.DirectionAhead:
-			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s.", w.LatestDeployment.Revision, deployRequest.Revision))
+			logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s", w.LatestDeployment.Revision, deployRequest.Revision))
 
 		default:
 			logger.Error(ctx, fmt.Sprintf("Invalid commit comparison response: %s", compareCommitResp.CommitComparison))
@@ -148,6 +148,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		err = w.TerraformWorkflowRunner.Run(ctx, deployRequest)
 		if err != nil {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
+			continue
 		}
 
 		// TODO: Persist deployment on shutdown if it fails instead of blocking
