@@ -17,12 +17,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type testRevisionValidator struct{}
-
-func (t *testRevisionValidator) IsValid(ctx workflow.Context, repo github.Repo, deployedRequestRevision terraform.DeploymentInfo, latestDeployedRevision *root.DeploymentInfo) (bool, error) {
-	return true, nil
-}
-
 type testTerraformWorkflowRunner struct {
 }
 
@@ -31,7 +25,6 @@ func (r testTerraformWorkflowRunner) Run(ctx workflow.Context, deploymentInfo te
 }
 
 type request struct {
-	t     *testing.T
 	Queue []terraform.DeploymentInfo
 }
 
