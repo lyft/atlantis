@@ -84,10 +84,10 @@ func (h *CheckRunHandler) signalPlanReviewWorkflowChannel(ctx context.Context, e
 			Status: status,
 			User:   event.User,
 		})
-	h.Logger.InfoContext(ctx, fmt.Sprintf("Signaled workflow with id %s, review status, %d", event.ExternalID, status))
 	if err != nil {
 		return errors.Wrapf(err, "signaling workflow with id: %s", event.ExternalID)
 	}
+	h.Logger.InfoContext(ctx, fmt.Sprintf("Signaled workflow with id %s, review status, %d", event.ExternalID, status))
 	return nil
 }
 
@@ -102,10 +102,10 @@ func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event
 		workflows.DeployUnlockSignalRequest{
 			User: event.User,
 		})
-	h.Logger.InfoContext(ctx, fmt.Sprintf("Signaled workflow with id %s to unlock", event.ExternalID))
 	if err != nil {
 		return errors.Wrapf(err, "signaling workflow with id: %s", event.ExternalID)
 	}
+	h.Logger.InfoContext(ctx, fmt.Sprintf("Signaled workflow with id %s to unlock", event.ExternalID))
 	return nil
 }
 
