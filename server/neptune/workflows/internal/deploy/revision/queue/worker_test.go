@@ -86,7 +86,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	}, nil
 }
 
-func TestWorker(t *testing.T) {
+func TestWorker_FetchLatestDeploymentOnStartupOnly(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
@@ -135,20 +135,35 @@ func TestWorker(t *testing.T) {
 		Name:  "test",
 	}
 
-	latestDeployedRev
+	latestDeployment := root.DeploymentInfo{
+		Revision: "2345",
+	}
 
-	// Mock FetchLatestDeploymentRequest for both roots
+	// Mock FetchLatestDeploymentRequest only once to assert it's only being called for the first deploy
 	env.OnActivity(da.FetchLatestDeployment, mock.Anything, activities.FetchLatestDeploymentRequest{
-		FullRepositoryName: "owner/test",
+		FullRepositoryName: repo.GetFullName(),
 		RootName:           deploymentInfoList[0].Root.Name,
-	}).Return(activities.FetchLatestDeploymentResponse{}, nil)
+	}).Return(activities.FetchLatestDeploymentResponse{
+		DeploymentInfo: &latestDeployment,
+	}, nil)
 
+	// Mock CompareCommits for both the deploy request
 	env.OnActivity(da.CompareCommit, mock.Anything, activities.CompareCommitRequest{
-		DeployRequestRevision: deploymentInfoList[0].Revision,
-		LatestDeployedRevision: ,
-	})
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfoList[0].Revision,
+		LatestDeployedRevision: latestDeployment.Revision,
+	}).Return(activities.CompareCommitResponse{
+		CommitComparison: activities.DirectionAhead,
+	}, nil)
+	env.OnActivity(da.CompareCommit, mock.Anything, activities.CompareCommitRequest{
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfoList[1].Revision,
+		LatestDeployedRevision: latestDeployment.Revision,
+	}).Return(activities.CompareCommitResponse{
+		CommitComparison: activities.DirectionAhead,
+	}, nil)
 
-	// Mock StoreLatestDeploymentRequest for both roots
+	// Mock StoreLatestDeploymentRequest for both requests
 	env.OnActivity(da.StoreLatestDeployment, mock.Anything, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			Version:    queue.DeploymentInfoVersion,
@@ -175,24 +190,7 @@ func TestWorker(t *testing.T) {
 	}).Return(nil)
 
 	env.ExecuteWorkflow(testWorkflow, request{
-		Queue: []terraform.DeploymentInfo{
-			{
-				ID:         uuid.UUID{},
-				Revision:   "1",
-				CheckRunID: 1234,
-				Root: root.Root{
-					Name: "root_1",
-				},
-			},
-			{
-				ID:         uuid.UUID{},
-				Revision:   "2",
-				CheckRunID: 5678,
-				Root: root.Root{
-					Name: "root_2",
-				},
-			},
-		},
+		Queue: deploymentInfoList,
 	})
 
 	var resp response
@@ -202,44 +200,8 @@ func TestWorker(t *testing.T) {
 	assert.Equal(t, queue.CompleteWorkerState, resp.EndState)
 	assert.True(t, resp.QueueIsEmpty)
 }
-
 func TestWorker_CompareCommit_SkipDeploy(t *testing.T) {
-
-	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "1",
-		CheckRunID: 1234,
-		Root: root.Root{
-			Name: "root_1",
-		},
-	}
-
-	latestDeployedRevision := root.DeploymentInfo{
-		Revision: "3455",
-	}
-
-	repo := github.Repo{
-		Owner: "owner",
-		Name:  "test",
-	}
-
-	fetchDeploymentRequest := activities.FetchLatestDeploymentRequest{
-		FullRepositoryName: repo.GetFullName(),
-		RootName:           deploymentInfo.Root.Name,
-	}
-
-	fetchDeploymentResponse := activities.FetchLatestDeploymentResponse{
-		DeploymentInfo: &root.DeploymentInfo{
-			Revision: latestDeployedRevision.Revision,
-			Repo:     repo,
-		},
-	}
-
-	compareCommitRequest := activities.CompareCommitRequest{
-		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Revision,
-		LatestDeployedRevision: latestDeployedRevision.Revision,
-	}
+	deploymentInfo, _, repo, fetchDeploymentRequest, fetchDeploymentResponse, compareCommitRequest, _ := getTestArtifacts()
 
 	cases := []struct {
 		description           string
@@ -325,54 +287,7 @@ func TestWorker_CompareCommit_SkipDeploy(t *testing.T) {
 }
 
 func TestWorker_CompareCommit_Deploy(t *testing.T) {
-
-	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "1",
-		CheckRunID: 1234,
-		Root: root.Root{
-			Name: "root_1",
-		},
-	}
-
-	latestDeployedRevision := root.DeploymentInfo{
-		Revision: "3455",
-	}
-
-	repo := github.Repo{
-		Owner: "owner",
-		Name:  "test",
-	}
-
-	fetchDeploymentRequest := activities.FetchLatestDeploymentRequest{
-		FullRepositoryName: repo.GetFullName(),
-		RootName:           deploymentInfo.Root.Name,
-	}
-
-	fetchDeploymentResponse := activities.FetchLatestDeploymentResponse{
-		DeploymentInfo: &root.DeploymentInfo{
-			Revision: latestDeployedRevision.Revision,
-			Repo:     repo,
-		},
-	}
-
-	compareCommitRequest := activities.CompareCommitRequest{
-		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Revision,
-		LatestDeployedRevision: latestDeployedRevision.Revision,
-	}
-
-	storeLatestDeploymentReq := activities.StoreLatestDeploymentRequest{
-		DeploymentInfo: root.DeploymentInfo{
-			Version:    queue.DeploymentInfoVersion,
-			ID:         deploymentInfo.ID.String(),
-			CheckRunID: deploymentInfo.CheckRunID,
-			Revision:   deploymentInfo.Revision,
-			Root:       deploymentInfo.Root,
-			Repo:       repo,
-		},
-	}
-
+	deploymentInfo, _, _, fetchDeploymentRequest, fetchDeploymentResponse, compareCommitRequest, storeLatestDeploymentReq := getTestArtifacts()
 	cases := []struct {
 		description           string
 		compareCommitResponse activities.CompareCommitResponse
@@ -457,6 +372,61 @@ func (t *testDeployActivity) UpdateCheckRun(ctx context.Context, request activit
 	return activities.UpdateCheckRunResponse{}, nil
 }
 
-/*
-Worker
-*/
+// Setup test artifacts for compare commit tests
+func getTestArtifacts() (
+	deploymentInfo terraform.DeploymentInfo,
+	latestDeployedRevision root.DeploymentInfo,
+	repo github.Repo,
+	fetchDeploymentRequest activities.FetchLatestDeploymentRequest,
+	fetchDeploymentResponse activities.FetchLatestDeploymentResponse,
+	compareCommitRequest activities.CompareCommitRequest,
+	storeDeploymentRequest activities.StoreLatestDeploymentRequest,
+) {
+	deploymentInfo = terraform.DeploymentInfo{
+		ID:         uuid.UUID{},
+		Revision:   "1",
+		CheckRunID: 1234,
+		Root: root.Root{
+			Name: "root_1",
+		},
+	}
+
+	latestDeployedRevision = root.DeploymentInfo{
+		Revision: "3455",
+	}
+
+	repo = github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	fetchDeploymentRequest = activities.FetchLatestDeploymentRequest{
+		FullRepositoryName: repo.GetFullName(),
+		RootName:           deploymentInfo.Root.Name,
+	}
+
+	fetchDeploymentResponse = activities.FetchLatestDeploymentResponse{
+		DeploymentInfo: &root.DeploymentInfo{
+			Revision: latestDeployedRevision.Revision,
+			Repo:     repo,
+		},
+	}
+
+	compareCommitRequest = activities.CompareCommitRequest{
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfo.Revision,
+		LatestDeployedRevision: latestDeployedRevision.Revision,
+	}
+
+	storeDeploymentRequest = activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: root.DeploymentInfo{
+			Version:    queue.DeploymentInfoVersion,
+			ID:         deploymentInfo.ID.String(),
+			CheckRunID: deploymentInfo.CheckRunID,
+			Revision:   deploymentInfo.Revision,
+			Root:       deploymentInfo.Root,
+			Repo:       repo,
+		},
+	}
+	return
+}
