@@ -27,7 +27,7 @@ func (q *testQueue) Push(msg terraform.DeploymentInfo) {
 }
 
 type req struct {
-	Id uuid.UUID
+	ID uuid.UUID
 }
 
 type response struct {
@@ -51,8 +51,8 @@ func testWorkflow(ctx workflow.Context, r req) (response, error) {
 
 	var a *testActivities
 
-	receiver := revision.NewReceiver(ctx, queue, github.Repo{Name: "nish"}, a, func(ctx workflow.Context) (uuid.UUID, error) {
-		return r.Id, nil
+	receiver := revision.NewReceiver(ctx, queue, a, func(ctx workflow.Context) (uuid.UUID, error) {
+		return r.ID, nil
 	})
 	selector := workflow.NewSelector(ctx)
 
@@ -84,6 +84,7 @@ func TestEnqueue(t *testing.T) {
 			Root: request.Root{
 				Name: "root",
 			},
+			Repo: request.Repo{Name: "nish"},
 		})
 	}, 0)
 
@@ -101,7 +102,7 @@ func TestEnqueue(t *testing.T) {
 	}).Return(activities.CreateCheckRunResponse{ID: 1}, nil)
 
 	env.ExecuteWorkflow(testWorkflow, req{
-		Id: id,
+		ID: id,
 	})
 	env.AssertExpectations(t)
 	assert.True(t, env.IsWorkflowCompleted())
@@ -116,6 +117,7 @@ func TestEnqueue(t *testing.T) {
 			CheckRunID: 1,
 			Root:       root.Root{Name: "root"},
 			ID:         id,
+			Repo:       github.Repo{Name: "nish"},
 		},
 	}, resp.Queue)
 	assert.False(t, resp.Timeout)

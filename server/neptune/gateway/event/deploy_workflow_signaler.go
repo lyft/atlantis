@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"fmt"
+
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
@@ -60,11 +61,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 				PlanMode:    d.generatePlanMode(rootCfg),
 				Trigger:     trigger,
 			},
-		},
-		options,
-		workflows.Deploy,
-		workflows.DeployRequest{
-			Repository: workflows.Repo{
+			Repo: workflows.Repo{
 				URL:      repo.CloneURL,
 				FullName: repo.FullName,
 				Name:     repo.Name,
@@ -72,14 +69,15 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 				Credentials: workflows.AppCredentials{
 					InstallationToken: installationToken,
 				},
-				HeadCommit: workflows.HeadCommit{
-					Ref: workflows.Ref{
-						Name: ref.Name,
-						Type: string(ref.Type),
-					},
+				Ref: workflows.Ref{
+					Name: ref.Name,
+					Type: string(ref.Type),
 				},
 			},
 		},
+		options,
+		workflows.Deploy,
+		workflows.DeployRequest{},
 	)
 	return run, err
 }
@@ -99,7 +97,7 @@ func (d *DeployWorkflowSignaler) generateSteps(steps []valid.Step) []workflows.S
 	return workflowSteps
 }
 
-func (p *DeployWorkflowSignaler) generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PlanMode {
+func (d *DeployWorkflowSignaler) generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PlanMode {
 	t, ok := cfg.Tags[Deprecated]
 	if ok && t == Destroy {
 		return workflows.DestroyPlanMode

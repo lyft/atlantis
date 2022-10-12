@@ -1,9 +1,7 @@
 package job_test
 
 import (
-	"context"
 	"testing"
-	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -13,53 +11,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
-	"go.temporal.io/sdk/workflow"
 )
 
 const (
 	RepoName    = "test-repo"
 	RepoOwner   = "test-owner"
-	RepoPath    = "test/repo"
 	ProjectName = "test-project"
 	ProjectPath = "test/repo/project"
 	RefName     = "main"
 	RefType     = "branch"
-	Dir         = "test-path"
-	UserName    = "test-user"
 )
 
 type request struct {
 	LocalRoot root.LocalRoot
 	Step      job.Step
-}
-
-type testEnvExecuteActivity struct {
-}
-
-func (a *testEnvExecuteActivity) ExecuteCommand(ctx context.Context, request activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error) {
-	return activities.ExecuteCommandResponse{}, nil
-}
-
-func testEnvWorkflow(ctx workflow.Context, r request) (string, error) {
-	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-		ScheduleToCloseTimeout: 5 * time.Second,
-	})
-
-	jobExecutionCtx := &job.ExecutionContext{
-		Context:   ctx,
-		Path:      ProjectPath,
-		Envs:      map[string]string{},
-		TfVersion: r.LocalRoot.Root.TfVersion,
-	}
-
-	var a *testCmdExecuteActivity
-	envStepRunner := runner.EnvStepRunner{
-		CmdStepRunner: runner.CmdStepRunner{
-			Activity: a,
-		},
-	}
-
-	return envStepRunner.Run(jobExecutionCtx, &r.LocalRoot, r.Step)
 }
 
 func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
@@ -77,13 +42,12 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 		},
 		Path: ProjectPath,
 		EnvVars: map[string]string{
-			"BASE_REPO_NAME":    RepoName,
-			"BASE_REPO_OWNER":   RepoOwner,
-			"DIR":          ProjectPath,
-			"HEAD_COMMIT":  "refs/heads/main",
-			"PROJECT_NAME": ProjectName,
-			"REPO_REL_DIR": "project",
-			"USER_NAME":    UserName,
+			"BASE_REPO_NAME":  RepoName,
+			"BASE_REPO_OWNER": RepoOwner,
+			"DIR":             ProjectPath,
+			"HEAD_COMMIT":     "refs/heads/main",
+			"PROJECT_NAME":    ProjectName,
+			"REPO_REL_DIR":    "project",
 		},
 	}).Return(activities.ExecuteCommandResponse{
 		Output: "Hello World",
@@ -98,15 +62,6 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 			Repo: github.Repo{
 				Name:  RepoName,
 				Owner: RepoOwner,
-				HeadCommit: github.Commit{
-					Ref: github.Ref{
-						Name: RefName,
-						Type: RefType,
-					},
-					Author: github.User{
-						Username: UserName,
-					},
-				},
 			},
 		},
 		Step: job.Step{

@@ -2,11 +2,12 @@ package valid
 
 import (
 	"fmt"
+	"regexp"
+
 	"github.com/graymeta/stow"
-	"github.com/graymeta/stow/s3"
+	stow_s3 "github.com/graymeta/stow/s3"
 	version "github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/logging"
-	"regexp"
 )
 
 const MergeableApplyReq = "mergeable"
@@ -37,9 +38,14 @@ const (
 	PlatformWorkflowMode
 )
 
+type BackendType string
+
+const (
+	S3Backend BackendType = "s3"
+)
+
 // GlobalCfg is the final parsed version of server-side repo config.
 type GlobalCfg struct {
-	WorkflowMode         WorkflowModeType
 	Repos                []Repo
 	Workflows            map[string]Workflow
 	PullRequestWorkflows map[string]Workflow
@@ -47,8 +53,21 @@ type GlobalCfg struct {
 	PolicySets           PolicySets
 	Metrics              Metrics
 	Jobs                 Jobs
+	PersistenceConfig    PersistenceConfig
 	TerraformLogFilter   TerraformLogFilters
 	Temporal             Temporal
+}
+
+type PersistenceConfig struct {
+	Deployments StoreConfig
+	Jobs        StoreConfig
+}
+
+type StoreConfig struct {
+	ContainerName string
+	Prefix        string
+	BackendType   BackendType
+	Config        stow.Config
 }
 
 // Interface to configure the storage backends
@@ -76,7 +95,7 @@ func (s *S3) GetConfigMap() stow.Config {
 	// Only supports Iam auth type for now
 	// TODO: Add accesskeys auth type
 	return stow.ConfigMap{
-		s3.ConfigAuthType: "iam",
+		stow_s3.ConfigAuthType: "iam",
 	}
 }
 
@@ -124,6 +143,7 @@ type MergedProjectCfg struct {
 	RepoCfgVersion      int
 	PolicySets          PolicySets
 	Tags                map[string]string
+	WorkflowMode        WorkflowModeType
 }
 
 // PreWorkflowHook is a map of custom run commands to run before workflows.
@@ -187,33 +207,6 @@ func NewGlobalCfg() GlobalCfg {
 		PolicyCheck: DefaultPolicyCheckStage,
 	}
 
-	var allowCustomWorkflows bool
-	repo := Repo{
-		IDRegex:              regexp.MustCompile(".*"),
-		BranchRegex:          regexp.MustCompile(".*"),
-		Workflow:             &defaultWorkflow,
-		AllowedWorkflows:     []string{},
-		ApplyRequirements:    []string{},
-		AllowCustomWorkflows: &allowCustomWorkflows,
-		AllowedOverrides:     []string{},
-		CheckoutStrategy:     "branch",
-	}
-
-	globalCfg := GlobalCfg{
-		WorkflowMode: DefaultWorkflowMode,
-		Workflows: map[string]Workflow{
-			DefaultWorkflowName: defaultWorkflow,
-		},
-	}
-
-	globalCfg.Repos = []Repo{repo}
-
-	return globalCfg
-}
-
-func (g GlobalCfg) EnablePlatformMode() GlobalCfg {
-	g.WorkflowMode = PlatformWorkflowMode
-
 	// defaultPullRequstWorkflow is only used in platform mode. By default it does not
 	// support apply stage, and plan stage run with -lock=false flag
 	pullRequestWorkflow := Workflow{
@@ -228,23 +221,35 @@ func (g GlobalCfg) EnablePlatformMode() GlobalCfg {
 		Plan:  DefaultPlanStage,
 	}
 
-	g.PullRequestWorkflows = map[string]Workflow{
-		DefaultWorkflowName: pullRequestWorkflow,
+	var allowCustomWorkflows bool
+	repo := Repo{
+		IDRegex:              regexp.MustCompile(".*"),
+		BranchRegex:          regexp.MustCompile(".*"),
+		Workflow:             &defaultWorkflow,
+		DeploymentWorkflow:   &deploymentWorkflow,
+		PullRequestWorkflow:  &pullRequestWorkflow,
+		AllowedWorkflows:     []string{},
+		ApplyRequirements:    []string{},
+		AllowCustomWorkflows: &allowCustomWorkflows,
+		AllowedOverrides:     []string{},
+		CheckoutStrategy:     "branch",
 	}
-	g.DeploymentWorkflows = map[string]Workflow{
-		DefaultWorkflowName: deploymentWorkflow,
+
+	globalCfg := GlobalCfg{
+		Workflows: map[string]Workflow{
+			DefaultWorkflowName: defaultWorkflow,
+		},
+		DeploymentWorkflows: map[string]Workflow{
+			DefaultWorkflowName: deploymentWorkflow,
+		},
+		PullRequestWorkflows: map[string]Workflow{
+			DefaultWorkflowName: pullRequestWorkflow,
+		},
 	}
 
-	repo := &g.Repos[0]
+	globalCfg.Repos = []Repo{repo}
 
-	repo.DeploymentWorkflow = &deploymentWorkflow
-	repo.PullRequestWorkflow = &pullRequestWorkflow
-
-	return g
-}
-
-func (g GlobalCfg) PlatformModeEnabled() bool {
-	return g.WorkflowMode == PlatformWorkflowMode
+	return globalCfg
 }
 
 // MergeProjectCfg merges proj and rCfg with the global config to return a
@@ -262,12 +267,8 @@ func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) Me
 	allowCustomWorkflows = *repo.AllowCustomWorkflows
 	workflow = *repo.Workflow
 
-	// If platform mode is enabled there will be at least default workflows,
-	// otherwise values will be nil
-	if g.PlatformModeEnabled() {
-		pullRequestWorkflow = *repo.PullRequestWorkflow
-		deploymentWorkflow = *repo.DeploymentWorkflow
-	}
+	pullRequestWorkflow = *repo.PullRequestWorkflow
+	deploymentWorkflow = *repo.DeploymentWorkflow
 
 	// If repos are allowed to override certain keys then override them.
 	for _, key := range repo.AllowedOverrides {
@@ -322,6 +323,7 @@ func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) Me
 		RepoCfgVersion:      rCfg.Version,
 		PolicySets:          g.PolicySets,
 		Tags:                proj.Tags,
+		WorkflowMode:        rCfg.WorkflowModeType,
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
@@ -36,7 +37,7 @@ func TestStreamHandler_Handle(t *testing.T) {
 				count   int
 			}{
 				runners: []*testStore{
-					&testStore{
+					{
 						t:      t,
 						JobID:  jobID,
 						Output: outputMsg,
@@ -51,7 +52,7 @@ func TestStreamHandler_Handle(t *testing.T) {
 				count   int
 			}{
 				runners: []*testReceiverRegistry{
-					&testReceiverRegistry{
+					{
 						t: t,
 						Msg: job.OutputLine{
 							JobID: jobID,
@@ -62,13 +63,13 @@ func TestStreamHandler_Handle(t *testing.T) {
 			},
 		}
 
-		streamHandler := job.StreamHandler{
-			JobOutput:        outputCh,
-			Store:            testJobStore,
-			ReceiverRegistry: testReceiverRegistry,
-			LogFilter:        logFilter,
-			Logger:           logging.NewNoopCtxLogger(t),
-		}
+		streamHandler := job.NewTestStreamHandler(
+			testJobStore,
+			testReceiverRegistry,
+			valid.TerraformLogFilters(logFilter),
+			outputCh,
+			logging.NewNoopCtxLogger(t),
+		)
 
 		go streamHandler.Handle()
 
@@ -91,13 +92,13 @@ func TestStreamHandler_Stream(t *testing.T) {
 
 		// Buffered channel to simplify testing since it's not blocking
 		mainTfCh := make(chan *job.OutputLine, len(logs))
-		streamHandler := &job.StreamHandler{
-			JobOutput:        mainTfCh,
-			Store:            &testStore{},
-			ReceiverRegistry: &testReceiverRegistry{},
-			Logger:           logging.NewNoopCtxLogger(t),
-		}
-
+		streamHandler := job.NewTestStreamHandler(
+			&testStore{},
+			&testReceiverRegistry{},
+			valid.TerraformLogFilters{},
+			mainTfCh,
+			logging.NewNoopCtxLogger(t),
+		)
 		go func() {
 			for _, line := range logs {
 				streamHandler.Stream(jobID, line)
@@ -126,14 +127,14 @@ func TestStreamHandler_Close(t *testing.T) {
 	jobID := "1234"
 
 	t.Run("closes receiver registry", func(t *testing.T) {
-		testReceiverRegistry := strictTestReceiverRegistry{
+		testReceiverRegistry := &strictTestReceiverRegistry{
 			t: t,
 			close: struct {
 				runners []*testReceiverRegistry
 				count   int
 			}{
 				runners: []*testReceiverRegistry{
-					&testReceiverRegistry{
+					{
 						t:     t,
 						JobID: jobID,
 					},
@@ -141,14 +142,14 @@ func TestStreamHandler_Close(t *testing.T) {
 			},
 		}
 
-		testStore := strictTestStore{
+		testStore := &strictTestStore{
 			t: t,
 			close: struct {
 				runners []*testStore
 				count   int
 			}{
 				runners: []*testStore{
-					&testStore{
+					{
 						t:      t,
 						JobID:  jobID,
 						Status: job.Complete,
@@ -156,11 +157,56 @@ func TestStreamHandler_Close(t *testing.T) {
 				},
 			},
 		}
-		streamHandler := job.StreamHandler{
-			Store:            testStore,
-			ReceiverRegistry: testReceiverRegistry,
-			Logger:           logging.NewNoopCtxLogger(t),
+		streamHandler := job.NewTestStreamHandler(
+			testStore,
+			testReceiverRegistry,
+			valid.TerraformLogFilters{},
+			nil,
+			logging.NewNoopCtxLogger(t),
+		)
+		err := streamHandler.CloseJob(context.Background(), jobID)
+		assert.NoError(t, err)
+	})
+}
+
+// Should clean up josb store and receiver registry
+func TestStreamHandler_Cleanup(t *testing.T) {
+	t.Run("cleans up store and receiver registry", func(t *testing.T) {
+		testReceiverRegistry := &strictTestReceiverRegistry{
+			t: t,
+			cleanup: struct {
+				runners []*testReceiverRegistry
+				count   int
+			}{
+				runners: []*testReceiverRegistry{
+					{
+						t: t,
+					},
+				},
+			},
 		}
-		streamHandler.Close(context.Background(), jobID)
+
+		testStore := &strictTestStore{
+			t: t,
+			cleanup: struct {
+				runners []*testStore
+				count   int
+			}{
+				runners: []*testStore{
+					{
+						t: t,
+					},
+				},
+			},
+		}
+		streamHandler := job.NewTestStreamHandler(
+			testStore,
+			testReceiverRegistry,
+			valid.TerraformLogFilters{},
+			nil,
+			logging.NewNoopCtxLogger(t),
+		)
+		err := streamHandler.CleanUp(context.Background())
+		assert.NoError(t, err)
 	})
 }

@@ -35,16 +35,23 @@ const (
 	AtlantisNamespace        = "atlantis"
 	DeployTaskqueue          = "deploy"
 	ProjectJobsViewRouteName = "project-jobs-detail"
+
+	// Equal to default terraform timeout
+	TemporalWorkerTimeout = time.Hour
+
+	// 5 minutes to allow cleaning up the job store
+	StreamHandlerTimeout = 5 * time.Minute
 )
 
 type Server struct {
-	Logger           logging.Logger
-	HttpServerProxy  *neptune_http.ServerProxy
-	Port             int
-	StatsScope       tally.Scope
-	StatsCloser      io.Closer
-	TemporalClient   *temporal.ClientWrapper
-	JobStreamHandler *job.StreamHandler
+	Logger            logging.Logger
+	HTTPServerProxy   *neptune_http.ServerProxy
+	Port              int
+	StatsScope        tally.Scope
+	StatsCloser       io.Closer
+	TemporalClient    *temporal.ClientWrapper
+	JobStreamHandler  *job.StreamHandler
+	JobStreamCloserFn job.StreamCloserFn
 
 	DeployActivities    *workflows.DeployActivities
 	TerraformActivities *workflows.TerraformActivities
@@ -64,14 +71,14 @@ func NewServer(config *config.Config) (*Server, error) {
 	}
 
 	// Build dependencies required for output handler and jobs controller
-	jobStore, err := job.NewStorageBackedStore(config.JobCfg, config.CtxLogger, scope)
+	jobStore, err := job.NewStorageBackedStore(config.JobConfig, config.CtxLogger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing job store")
 	}
 	receiverRegistry := job.NewReceiverRegistry()
 
 	// terraform job output handler
-	jobStreamHandler := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
+	jobStreamHandler, streamCloserFn := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
 	jobsController := controllers.NewJobsController(jobStore, receiverRegistry, config.ServerCfg, scope, config.CtxLogger)
 
 	// temporal client + worker initialization
@@ -104,10 +111,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	deployActivities, err := workflows.NewDeployActivities(
-		config.App,
-		scope.SubScope("deploy"),
-	)
+	deployActivities, err := workflows.NewDeployActivities(config.DeploymentConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")
 	}
@@ -133,12 +137,13 @@ func NewServer(config *config.Config) (*Server, error) {
 
 	server := Server{
 		Logger:              config.CtxLogger,
-		HttpServerProxy:     httpServerProxy,
+		HTTPServerProxy:     httpServerProxy,
 		Port:                config.ServerCfg.Port,
 		StatsScope:          scope,
 		StatsCloser:         statsCloser,
 		TemporalClient:      temporalClient,
 		JobStreamHandler:    jobStreamHandler,
+		JobStreamCloserFn:   streamCloserFn,
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
@@ -150,13 +155,18 @@ func (s Server) Start() error {
 	defer s.Logger.Close()
 	defer s.TemporalClient.Close()
 	var wg sync.WaitGroup
-	wg.Add(1)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
+
+		// Close job stream when temporalworker exits to allow gracefully shutting down the stream handler
+		defer s.JobStreamCloserFn()
+
 		// pass the underlying client otherwise this will panic()
 		w := worker.New(s.TemporalClient.Client, workflows.DeployTaskQueue, worker.Options{
 			EnableSessionWorker: true,
+			WorkerStopTimeout:   TemporalWorkerTimeout,
 		})
 		w.RegisterActivity(s.TerraformActivities)
 		w.RegisterActivity(s.DeployActivities)
@@ -177,7 +187,7 @@ func (s Server) Start() error {
 	s.Logger.Info(fmt.Sprintf("Atlantis started - listening on port %v", s.Port))
 
 	go func() {
-		err := s.HttpServerProxy.ListenAndServe()
+		err := s.HTTPServerProxy.ListenAndServe()
 
 		if err != nil && err != http.ErrServerClosed {
 			s.Logger.Error(err.Error())
@@ -185,22 +195,35 @@ func (s Server) Start() error {
 	}()
 
 	// Start job output handler listener
-	// [WENGINES-4746] TODO: Clean up resources and exit gracefully on SIGTERM
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
+		// Exits when the job output chan is closed which happens only after the temporal worker
+		// has gracefully shut down
 		s.JobStreamHandler.Handle()
 	}()
 
 	<-stop
 	wg.Wait()
 
+	s.Logger.Info("Cleaning up stream handler")
+
+	// On cleanup, stream handler closes all active receivers and persists jobs in memory
+	ctx, cancel := context.WithTimeout(context.Background(), StreamHandlerTimeout)
+	defer cancel()
+	if err := s.JobStreamHandler.CleanUp(ctx); err != nil {
+		s.Logger.Error(err.Error())
+	}
+
 	// flush stats before shutdown
 	if err := s.StatsCloser.Close(); err != nil {
 		s.Logger.Error(err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := s.HttpServerProxy.Shutdown(ctx); err != nil {
+	if err := s.HTTPServerProxy.Shutdown(ctx); err != nil {
 		return cli.NewExitError(fmt.Sprintf("while shutting down: %s", err), 1)
 	}
 

@@ -23,6 +23,7 @@ type GlobalCfg struct {
 	Jobs                 Jobs                 `yaml:"jobs" json:"jobs"`
 	TerraformLogFilters  TerraformLogFilters  `yaml:"terraform_log_filters" json:"terraform_log_filters"`
 	Temporal             Temporal             `yaml:"temporal" json:"temporal"`
+	Persistence          Persistence          `yaml:"persistence" json:"persistence"`
 }
 
 // Repo is the raw schema for repos in the server-side repo config.
@@ -76,6 +77,7 @@ func (g GlobalCfg) Validate() error {
 		validation.Field(&g.Metrics),
 		validation.Field(&g.Jobs),
 		validation.Field(&g.TerraformLogFilters),
+		validation.Field(&g.Persistence),
 	)
 	if err != nil {
 		return err
@@ -122,11 +124,8 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 
 	defaultRepo := &defaultCfg.Repos[0]
 	validWorkflows := g.Workflows.ToValid(defaultCfg)
-	var validPullRequestWorkflows, validDeploymentWorkflows map[string]valid.Workflow
-	if defaultCfg.PlatformModeEnabled() {
-		validPullRequestWorkflows = g.PullRequestWorkflows.ToValid(defaultCfg)
-		validDeploymentWorkflows = g.DeploymentWorkflows.ToValid(defaultCfg)
-	}
+	validPullRequestWorkflows := g.PullRequestWorkflows.ToValid(defaultCfg)
+	validDeploymentWorkflows := g.DeploymentWorkflows.ToValid(defaultCfg)
 
 	// Handle the special case where they're redefining the default
 	// workflow. In this case, our default repo config references
@@ -155,7 +154,6 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 	repos = append(defaultCfg.Repos, repos...)
 
 	return valid.GlobalCfg{
-		WorkflowMode:         defaultCfg.WorkflowMode,
 		Repos:                repos,
 		Workflows:            validWorkflows,
 		PullRequestWorkflows: validPullRequestWorkflows,
@@ -163,18 +161,10 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		PolicySets:           policySets,
 		Metrics:              g.Metrics.ToValid(),
 		Jobs:                 g.Jobs.ToValid(),
+		PersistenceConfig:    g.Persistence.ToValid(),
 		TerraformLogFilter:   g.TerraformLogFilters.ToValid(),
 		Temporal:             g.Temporal.ToValid(),
 	}
-}
-
-func (g GlobalCfg) toValidWorkflows(workflows map[string]Workflow) map[string]valid.Workflow {
-	validWorkflows := make(map[string]valid.Workflow)
-	for k, v := range workflows {
-		validatedWorkflow := v.ToValid(k)
-		validWorkflows[k] = validatedWorkflow
-	}
-	return validWorkflows
 }
 
 // HasRegexID returns true if r is configured with a regex id instead of an
