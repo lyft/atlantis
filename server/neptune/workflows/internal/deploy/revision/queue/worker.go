@@ -60,8 +60,7 @@ type Worker struct {
 	Activities              workerActivities
 
 	// mutable
-	state            WorkerState
-	LatestDeployment *root.DeploymentInfo
+	state WorkerState
 }
 
 // Work pops work off the queue and if the queue is empty,
@@ -72,6 +71,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		w.state = CompleteWorkerState
 	}()
 
+	var latestDeployment *root.DeploymentInfo
 	for {
 		if w.Queue.IsEmpty() {
 			w.state = WaitingWorkerState
@@ -100,25 +100,23 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		// This should only happen on startup
 		// If we fail to fetch the latest deployment, log and exit the workflow
-		if w.LatestDeployment == nil {
-			w.LatestDeployment, err = w.fetchLatestDeployment(ctx, msg)
+		if latestDeployment == nil {
+			latestDeployment, err = w.fetchLatestDeployment(ctx, msg)
 			if err != nil {
 				logger.Error(ctx, fmt.Sprint("Unable to fetch latest deployment, worker is shutting down", err.Error()))
 				return
 			}
 		}
 
-		var compareCommitResp activities.CompareCommitResponse
-		err = workflow.ExecuteActivity(ctx, w.Activities.CompareCommit, activities.CompareCommitRequest{
-			DeployRequestRevision:  msg.Revision,
-			LatestDeployedRevision: w.LatestDeployment.Revision,
-			Repo:                   msg.Repo,
-		}).Get(ctx, &compareCommitResp)
+		// LatestDeployment is nil if this a first deploy for the root
+		shouldDeployRevision, err := w.proecessRevision(ctx, msg, latestDeployment)
 		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("Unable to compare deploy request commit with the latest deployed commit: %s", err.Error()))
+			logger.Error(ctx, "failed to process revision, moving to next one: %s", err.Error())
+			continue
 		}
 
-		if !w.isValidRevision(ctx, msg, compareCommitResp) {
+		if !shouldDeployRevision {
+			logger.Info(ctx, fmt.Sprintf("skipping deploy request: %s for root: %s at %s", msg.ID.String(), msg.Root.Name, msg.Revision))
 			continue
 		}
 
@@ -127,41 +125,63 @@ func (w *Worker) Work(ctx workflow.Context) {
 			logger.Error(ctx, "failed to deploy revision, moving to next one")
 			continue
 		}
+		latestDeployment = w.buildLatestDeployment(msg)
 
 		// TODO: Persist deployment on shutdown if it fails instead of blocking
-		latestDeployment, err := w.persistLatestDeployment(ctx, msg)
-		if err != nil {
+		if err = w.persistLatestDeployment(ctx, latestDeployment); err != nil {
 			logger.Error(ctx, "failed to persist latest deploy job")
 		}
-
-		// Update the latest deployment in memory
-		w.LatestDeployment = latestDeployment
 	}
 }
 
-func (w *Worker) isValidRevision(ctx workflow.Context, msg terraform.DeploymentInfo, resp activities.CompareCommitResponse) bool {
-	switch resp.CommitComparison {
+func (w *Worker) buildLatestDeployment(deployRequest terraform.DeploymentInfo) *root.DeploymentInfo {
+	return &root.DeploymentInfo{
+		Version:    DeploymentInfoVersion,
+		ID:         deployRequest.ID.String(),
+		CheckRunID: deployRequest.CheckRunID,
+		Revision:   deployRequest.Revision,
+		Root:       deployRequest.Root,
+		Repo:       deployRequest.Repo,
+	}
+}
+
+func (w *Worker) proecessRevision(ctx workflow.Context, deployRequest terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) (bool, error) {
+	// latest deployment is nil for a first deploy so we skip validation
+	if latestDeployment == nil {
+		logger.Info(ctx, fmt.Sprintf("Deploying root: %s at revision: %s for the first time", deployRequest.Root.Name, deployRequest.Revision))
+		return true, nil
+	}
+
+	var compareCommitResp activities.CompareCommitResponse
+	err := workflow.ExecuteActivity(ctx, w.Activities.CompareCommit, activities.CompareCommitRequest{
+		DeployRequestRevision:  deployRequest.Revision,
+		LatestDeployedRevision: latestDeployment.Revision,
+		Repo:                   deployRequest.Repo,
+	}).Get(ctx, &compareCommitResp)
+	if err != nil {
+		return false, errors.Wrap(err, "comparing committ")
+	}
+
+	switch compareCommitResp.CommitComparison {
 	case activities.DirectionBehind:
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s, moving to next one", w.LatestDeployment.Revision, msg.Revision))
-		w.updateCheckRun(ctx, msg, github.CheckRunFailure, DirectionBehindSummary)
-		return false
+		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s, moving to next one", latestDeployment.Revision, deployRequest.Revision))
+		return false, w.updateCheckRun(ctx, deployRequest, github.CheckRunFailure, DirectionBehindSummary)
 
 	case activities.DirectionIdentical:
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s", w.LatestDeployment.Revision, msg.Revision))
-		return true
+		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s", latestDeployment.Revision, deployRequest.Revision))
+		return true, nil
 
 	// TODO: Handle Force Applies
 	case activities.DirectionDiverged:
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is divergent from the Deploy Request Revision: %s.", w.LatestDeployment.Revision, msg.Revision))
-		return true
+		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is divergent from the Deploy Request Revision: %s.", latestDeployment.Revision, deployRequest.Revision))
+		return true, nil
 
 	case activities.DirectionAhead:
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s", w.LatestDeployment.Revision, msg.Revision))
-		return true
+		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s", latestDeployment.Revision, deployRequest.Revision))
+		return true, nil
 
 	default:
-		logger.Error(ctx, fmt.Sprintf("Invalid commit comparison response: %s", resp.CommitComparison))
-		return false
+		return false, fmt.Errorf("Invalid commit comparison response: %s", compareCommitResp.CommitComparison)
 	}
 }
 
@@ -178,22 +198,14 @@ func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terr
 	return resp.DeploymentInfo, nil
 }
 
-func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
-	latestDeploymentInfo := root.DeploymentInfo{
-		Version:    DeploymentInfoVersion,
-		ID:         deploymentInfo.ID.String(),
-		CheckRunID: deploymentInfo.CheckRunID,
-		Revision:   deploymentInfo.Revision,
-		Root:       deploymentInfo.Root,
-		Repo:       deploymentInfo.Repo,
-	}
+func (w *Worker) persistLatestDeployment(ctx workflow.Context, deploymentInfo *root.DeploymentInfo) error {
 	err := workflow.ExecuteActivity(ctx, w.Activities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
-		DeploymentInfo: latestDeploymentInfo,
+		DeploymentInfo: deploymentInfo,
 	}).Get(ctx, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "persisting deployment info")
+		return errors.Wrap(err, "persisting deployment info")
 	}
-	return &latestDeploymentInfo, nil
+	return nil
 }
 
 func (w *Worker) GetState() WorkerState {
@@ -201,7 +213,7 @@ func (w *Worker) GetState() WorkerState {
 }
 
 // worker should not block on updating checkruns for invalid deploy requests so let's retry for UpdateCheckrunRetryCount only
-func (w *Worker) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, state github.CheckRunState, summary string) {
+func (w *Worker) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, state github.CheckRunState, summary string) error {
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: UpdateCheckRunRetryCount,
 	})
@@ -214,6 +226,7 @@ func (w *Worker) updateCheckRun(ctx workflow.Context, deployRequest terraform.De
 		Summary: summary,
 	}).Get(ctx, nil)
 	if err != nil {
-		logger.Error(ctx, "failed to update checkrun: %s", err.Error())
+		return errors.Wrap(err, "updating checkrun")
 	}
+	return nil
 }
