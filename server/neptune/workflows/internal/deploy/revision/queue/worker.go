@@ -3,7 +3,6 @@ package queue
 import (
 	"context"
 	"fmt"
-
 	"github.com/pkg/errors"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
@@ -19,6 +18,7 @@ const (
 	UpdateCheckRunRetryCount = 5
 	DeploymentInfoVersion    = "1.0.0"
 	DirectionBehindSummary   = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
+	ForceApplySummary        = "The current deployment has diverged from the default branch, so we have locked the root. This is most likely the result of this PR performing a deployment. To override that lock and allow the main branch to perform new deployments, select the Unlock button."
 )
 
 type terraformWorkflowRunner interface {
@@ -108,17 +108,9 @@ func (w *Worker) Work(ctx workflow.Context) {
 			}
 		}
 
-		var compareCommitResp activities.CompareCommitResponse
-		err = workflow.ExecuteActivity(ctx, w.Activities.CompareCommit, activities.CompareCommitRequest{
-			DeployRequestRevision:  msg.Revision,
-			LatestDeployedRevision: w.LatestDeployment.Revision,
-			Repo:                   msg.Repo,
-		}).Get(ctx, &compareCommitResp)
+		err = w.processRevision(ctx, msg)
 		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("Unable to compare deploy request commit with the latest deployed commit: %s", err.Error()))
-		}
-
-		if !w.isValidRevision(ctx, msg, compareCommitResp) {
+			logger.Error(ctx, "failed to process revision, moving to next one")
 			continue
 		}
 
@@ -139,30 +131,31 @@ func (w *Worker) Work(ctx workflow.Context) {
 	}
 }
 
-func (w *Worker) isValidRevision(ctx workflow.Context, msg terraform.DeploymentInfo, resp activities.CompareCommitResponse) bool {
-	switch resp.CommitComparison {
-	case activities.DirectionBehind:
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s, moving to next one", w.LatestDeployment.Revision, msg.Revision))
-		w.updateCheckRun(ctx, msg, github.CheckRunFailure, DirectionBehindSummary)
-		return false
-
-	case activities.DirectionIdentical:
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is identical to the Deploy Request Revision: %s", w.LatestDeployment.Revision, msg.Revision))
-		return true
-
-	// TODO: Handle Force Applies
-	case activities.DirectionDiverged:
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is divergent from the Deploy Request Revision: %s.", w.LatestDeployment.Revision, msg.Revision))
-		return true
-
-	case activities.DirectionAhead:
-		logger.Info(ctx, fmt.Sprintf("Deployed Revision: %s is ahead of the Deploy Request Revision: %s", w.LatestDeployment.Revision, msg.Revision))
-		return true
-
-	default:
-		logger.Error(ctx, fmt.Sprintf("Invalid commit comparison response: %s", resp.CommitComparison))
-		return false
+func (w *Worker) processRevision(ctx workflow.Context, msg terraform.DeploymentInfo) error {
+	var err error
+	var compareCommitResp activities.CompareCommitResponse
+	err = workflow.ExecuteActivity(ctx, w.Activities.CompareCommit, activities.CompareCommitRequest{
+		DeployRequestRevision:  msg.Revision,
+		LatestDeployedRevision: w.LatestDeployment.Revision,
+		Repo:                   msg.Repo,
+	}).Get(ctx, &compareCommitResp)
+	if err != nil {
+		logger.Error(ctx, fmt.Sprintf("unable to compare deploy request commit with the latest deployed commit: %s", err.Error()))
+		return err
 	}
+	//TODO: remove log? might be noisy
+	logger.Info(ctx, fmt.Sprintf("relationship of deployed to requested revision: %s", compareCommitResp.CommitComparison),
+		"deployed-revision", w.LatestDeployment.Revision,
+		"requested-revision", msg.Revision)
+
+	switch compareCommitResp.CommitComparison {
+	case activities.DirectionBehind:
+		w.updateCheckRun(ctx, msg, github.CheckRunFailure, DirectionBehindSummary)
+		return errors.New("requested revision is behind current one")
+	case activities.DirectionDiverged:
+		return w.lock(ctx, msg)
+	}
+	return nil
 }
 
 func (w *Worker) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) (*root.DeploymentInfo, error) {
@@ -216,4 +209,31 @@ func (w *Worker) updateCheckRun(ctx workflow.Context, deployRequest terraform.De
 	if err != nil {
 		logger.Error(ctx, "failed to update checkrun: %s", err.Error())
 	}
+}
+
+// For merged deployments, notify user of a force apply lock status and lock future deployments until signal is received
+func (w *Worker) lock(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
+	// We won't lock any manually triggered
+	if deploymentInfo.Root.Trigger == root.ManualTrigger {
+		return nil
+	}
+	request := activities.UpdateCheckRunRequest{
+		Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
+		State:   github.CheckRunPending,
+		Repo:    deploymentInfo.Repo,
+		ID:      deploymentInfo.CheckRunID,
+		Summary: ForceApplySummary,
+		Actions: []github.CheckRunAction{github.CreateUnlockAction()},
+	}
+	var resp activities.UpdateCheckRunResponse
+	err := workflow.ExecuteActivity(ctx, w.Activities.UpdateCheckRun, request).Get(ctx, &resp)
+	if err != nil {
+		return errors.Wrap(err, "updating check run")
+	}
+	// Wait for unlock signal
+	signalChan := workflow.GetSignalChannel(ctx, UnlockSignalName)
+	var unlockRequest UnlockSignalRequest
+	_ = signalChan.Receive(ctx, &unlockRequest)
+	// TODO: store info on user that unlocked revision, maybe within the check run?
+	return nil
 }

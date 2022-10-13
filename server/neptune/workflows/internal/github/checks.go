@@ -32,6 +32,14 @@ func CreatePlanReviewAction(t PlanReviewActionType) CheckRunAction {
 
 }
 
+func CreateUnlockAction() CheckRunAction {
+	return CheckRunAction{
+		Description: "Unlock this plan to proceed",
+		Label:       "Unlock",
+	}
+
+}
+
 type PlanReviewActionType string
 
 const (
