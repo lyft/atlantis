@@ -149,7 +149,7 @@ func TestWorker_FetchLatestDeploymentOnStartupOnly(t *testing.T) {
 	env.OnActivity(da.CompareCommit, mock.Anything, activities.CompareCommitRequest{
 		Repo:                   repo,
 		DeployRequestRevision:  deploymentInfoList[1].Revision,
-		LatestDeployedRevision: latestDeployment.Revision,
+		LatestDeployedRevision: deploymentInfoList[0].Revision,
 	}).Return(activities.CompareCommitResponse{
 		CommitComparison: activities.DirectionAhead,
 	}, nil)
@@ -183,6 +183,8 @@ func TestWorker_FetchLatestDeploymentOnStartupOnly(t *testing.T) {
 	env.ExecuteWorkflow(testWorkflow, request{
 		Queue: deploymentInfoList,
 	})
+
+	env.AssertExpectations(t)
 
 	var resp response
 	err := env.GetWorkflowResult(&resp)
@@ -254,6 +256,8 @@ func TestWorker_CompareCommit_SkipDeploy(t *testing.T) {
 				Queue: deploymentInfoList,
 			})
 
+			env.AssertExpectations(t)
+
 			var resp response
 			err := env.GetWorkflowResult(&resp)
 			assert.NoError(t, err)
@@ -322,6 +326,8 @@ func TestWorker_CompareCommit_Deploy(t *testing.T) {
 				Queue: deploymentInfoList,
 			})
 
+			env.AssertExpectations(t)
+
 			var resp response
 			err := env.GetWorkflowResult(&resp)
 			assert.NoError(t, err)
@@ -373,6 +379,8 @@ func TestWorker_FirstDeploy(t *testing.T) {
 	env.ExecuteWorkflow(testWorkflow, request{
 		Queue: deploymentInfoList,
 	})
+
+	env.AssertExpectations(t)
 
 	var resp response
 	err := env.GetWorkflowResult(&resp)
