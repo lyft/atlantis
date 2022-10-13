@@ -334,7 +334,10 @@ func TestWorker_CompareCommit_Deploy(t *testing.T) {
 }
 
 func TestWorker_FirstDeploy(t *testing.T) {
-	deploymentInfo, _, _, fetchDeploymentRequest, fetchDeploymentResponse, _, storeLatestDeploymentReq := getTestArtifacts()
+	deploymentInfo, _, _, fetchDeploymentRequest, _, _, storeLatestDeploymentReq := getTestArtifacts()
+	fetchDeploymentResponse := activities.FetchLatestDeploymentResponse{
+		DeploymentInfo: nil,
+	}
 
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()

@@ -108,7 +108,6 @@ func (w *Worker) Work(ctx workflow.Context) {
 			}
 		}
 
-		// LatestDeployment is nil if this a first deploy for the root
 		shouldDeployRevision, err := w.proecessRevision(ctx, msg, latestDeployment)
 		if err != nil {
 			logger.Error(ctx, "failed to process revision, moving to next one: %s", err.Error())
