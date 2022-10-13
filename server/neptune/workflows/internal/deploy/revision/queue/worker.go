@@ -112,9 +112,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		if !w.isValidRevision(msg, commitDirection) {
 			logger.Info(ctx, fmt.Sprintf("Deploy Request Revision: %s is not valid, moving to next one", msg.Revision))
-			if err := w.updateCheckRun(ctx, msg, github.CheckRunFailure, DirectionBehindSummary); err != nil {
-				logger.Error(ctx, "unable to update checkrun", err.Error())
-			}
+			w.updateCheckRun(ctx, msg, github.CheckRunFailure, DirectionBehindSummary)
 			continue
 		}
 
@@ -137,7 +135,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 	}
 }
 
-// TODO: Check if triger type is Manual for Diverged commits
+// TODO: Check if triger type is Manual for Diverged commits for FA
 func (w *Worker) isValidRevision(deployRequest terraform.DeploymentInfo, commitDirection activities.DiffDirection) bool {
 	return commitDirection != activities.DirectionBehind
 }
@@ -230,7 +228,7 @@ func (w *Worker) GetState() WorkerState {
 }
 
 // worker should not block on updating checkruns for invalid deploy requests so let's retry for UpdateCheckrunRetryCount only
-func (w *Worker) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, state github.CheckRunState, summary string) error {
+func (w *Worker) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, state github.CheckRunState, summary string) {
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: UpdateCheckRunRetryCount,
 	})
@@ -243,7 +241,6 @@ func (w *Worker) updateCheckRun(ctx workflow.Context, deployRequest terraform.De
 		Summary: summary,
 	}).Get(ctx, nil)
 	if err != nil {
-		return errors.Wrap(err, "updating checkrun")
+		logger.Error(ctx, "unable to update checkrun", err.Error())
 	}
-	return nil
 }
