@@ -16,5 +16,6 @@ jobs:
           cd /tmp && \
             curl -sSL https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz \
             | tar vxz \
-            && sudo mv -v conftest /usr/local/bin/conftest
+            && sudo cp conftest /usr/local/bin/conftest${CONFTEST_VERSION}
+            && sudo cp conftest /usr/local/bin/conftest
       - run: make test-all
