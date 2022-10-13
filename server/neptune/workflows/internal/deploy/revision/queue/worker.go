@@ -21,7 +21,7 @@ const (
 	DirectionBehindSummary   = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
 )
 
-type terraformWorkflowRunner interface {
+type TerraformWorkflowRunner interface {
 	Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error
 }
 
@@ -56,7 +56,7 @@ type UnlockSignalRequest struct {
 
 type Worker struct {
 	Queue                   *Queue
-	TerraformWorkflowRunner terraformWorkflowRunner
+	TerraformWorkflowRunner TerraformWorkflowRunner
 	Activities              workerActivities
 
 	// mutable

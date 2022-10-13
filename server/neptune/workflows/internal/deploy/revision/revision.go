@@ -9,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request/converter"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -18,6 +17,7 @@ type idGenerator func(ctx workflow.Context) (uuid.UUID, error)
 
 type NewRevisionRequest struct {
 	Revision string
+	User     request.User
 	Root     request.Root
 	Repo     request.Repo
 }
@@ -56,18 +56,8 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	c.Receive(n.ctx, &request)
 
 	root := converter.Root(request.Root)
-	repo := github.Repo{
-		Name:  request.Repo.Name,
-		Owner: request.Repo.Owner,
-		URL:   request.Repo.URL,
-		Credentials: github.AppCredentials{
-			InstallationToken: request.Repo.Credentials.InstallationToken,
-		},
-		Ref: github.Ref{
-			Name: request.Repo.Ref.Name,
-			Type: request.Repo.Ref.Type,
-		},
-	}
+	repo := converter.Repo(request.Repo)
+	user := converter.User(request.User)
 
 	ctx := workflow.WithRetryPolicy(n.ctx, temporal.RetryPolicy{
 		MaximumAttempts: 5,
@@ -99,5 +89,6 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		Revision:   request.Revision,
 		CheckRunID: resp.ID,
 		Repo:       repo,
+		User:       user,
 	})
 }

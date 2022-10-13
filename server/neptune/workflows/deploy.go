@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
@@ -19,6 +20,7 @@ type Job = request.Job
 type Step = request.Step
 type AppCredentials = request.AppCredentials
 type Ref = request.Ref
+type User = request.User
 type PlanMode = request.PlanMode
 type Trigger = request.Trigger
 
@@ -41,8 +43,8 @@ type DeployActivities struct {
 	activities.Deploy
 }
 
-func NewDeployActivities(deploymentCfg valid.StoreConfig) (*DeployActivities, error) {
-	deployActivities, err := activities.NewDeploy(deploymentCfg)
+func NewDeployActivities(deploymentCfg valid.StoreConfig, session client.ConfigProvider, topicArn string) (*DeployActivities, error) {
+	deployActivities, err := activities.NewDeploy(deploymentCfg, session, topicArn)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")

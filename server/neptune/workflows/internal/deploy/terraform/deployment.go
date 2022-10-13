@@ -2,6 +2,7 @@ package terraform
 
 import (
 	"fmt"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ type DeploymentInfo struct {
 	ID         uuid.UUID
 	CheckRunID int64
 	Revision   string
+	User       github.User
 	Root       root.Root
 	Repo       github.Repo
 }

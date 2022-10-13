@@ -9,6 +9,7 @@ type DeploymentInfo struct {
 	ID         string
 	CheckRunID int64
 	Revision   string
+	User       github.User
 	Repo       github.Repo
 	Root       Root
 }

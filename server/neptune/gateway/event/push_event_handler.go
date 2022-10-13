@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -36,7 +37,7 @@ type scheduler interface {
 }
 
 type deploySignaler interface {
-	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, repo models.Repo, revision string, installationToken int64, ref vcs.Ref, trigger workflows.Trigger) (client.WorkflowRun, error)
+	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, repo models.Repo, revision string, installationToken int64, ref vcs.Ref, sender vcs.User, trigger workflows.Trigger) (client.WorkflowRun, error)
 }
 
 type rootConfigBuilder interface {
@@ -95,6 +96,7 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 			event.Sha,
 			event.InstallationToken,
 			event.Ref,
+			event.Sender,
 			workflows.MergeTrigger)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/aws/aws-sdk-go/aws/client"
+	awsSns "github.com/aws/aws-sdk-go/service/sns"
 	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
@@ -14,6 +16,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/aws/sns"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/terraform"
 	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -40,10 +43,10 @@ const (
 // registering multiple workflows to the same worker
 type Deploy struct {
 	*dbActivities
+	*auditActivities
 }
 
-func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
-
+func NewDeploy(deploymentStoreCfg valid.StoreConfig, session client.ConfigProvider, topicArn string) (*Deploy, error) {
 	storageClient, err := storage.NewClient(deploymentStoreCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "intializing stow client")
@@ -57,6 +60,12 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
 	return &Deploy{
 		dbActivities: &dbActivities{
 			DeploymentInfoStore: deploymentStore,
+		},
+		auditActivities: &auditActivities{
+			SnsWriter: &sns.Writer{
+				Client:   awsSns.New(session),
+				TopicArn: &topicArn,
+			},
 		},
 	}, nil
 }
