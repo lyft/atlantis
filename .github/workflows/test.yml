@@ -4,9 +4,16 @@ jobs:
   test:
     name: runner / gotest
     runs-on: ubuntu-latest
+    env:
+      CONFTEST_VERSION: 0.25.0
     steps:
       - uses: actions/setup-go@v3
         with:
           go-version: 1.17
       - uses: actions/checkout@v3
+      - name: Conftest Install
+        run: |
+          curl -sSL https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz \
+            | tar vxz \
+            && sudo mv -v conftest /usr/local/bin/conftest
       - run: make test-all
