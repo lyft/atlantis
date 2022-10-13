@@ -6,11 +6,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CONFTEST_VERSION: 0.25.0
+      TERRAFORM_VERSION: 1.0.5
     steps:
       - uses: actions/setup-go@v3
         with:
           go-version: 1.17
       - uses: actions/checkout@v3
+      - name: Terraform Install
+        run: |
+          curl -LOks https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
+          sudo mkdir -p /usr/local/bin/tf/versions/${TERRAFORM_VERSION} && \
+          sudo unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip -d /usr/local/bin/tf/versions/${TERRAFORM_VERSION} && \
+          sudo ln -s /usr/local/bin/tf/versions/${TERRAFORM_VERSION}/terraform /usr/local/bin/terraform && \
+          rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
       - name: Conftest Install
         run: |
           cd /tmp && \
