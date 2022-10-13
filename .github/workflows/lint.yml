@@ -9,6 +9,8 @@ jobs:
     name: runner / golangci-lint
     runs-on: ubuntu-latest
     steps:
+      - name: setup
+        run: sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
       - uses: actions/setup-go@v3
         with:
           go-version: 1.17
