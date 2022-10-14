@@ -24,7 +24,7 @@ func (r *RootFetcher) Fetch(ctx workflow.Context) (*root.LocalRoot, func() error
 	}).Get(ctx, &fetchRootResponse)
 
 	if err != nil {
-		return nil, func() error { return nil }, err
+		return nil, nil, err
 	}
 
 	return fetchRootResponse.LocalRoot, func() error {
