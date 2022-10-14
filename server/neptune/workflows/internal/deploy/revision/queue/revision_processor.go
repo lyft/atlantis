@@ -35,6 +35,7 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 		return err
 	}
 
+	// TODO: remove log? it might be noisy
 	logger.Info(ctx, fmt.Sprintf("relationship of deployed to requested revision: %s", commitDirection),
 		"deployed-revision", latestDeployment.GetRevision(),
 		"requested-revision", requestedDeployment.Revision)
@@ -42,7 +43,7 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 	switch commitDirection {
 	case activities.DirectionBehind:
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary)
-		return errors.New("requested revision is behind current one")
+		return fmt.Errorf("requested revision %s is behind current one %s", requestedDeployment.Revision, latestDeployment.GetRevision())
 	case activities.DirectionDiverged:
 		return p.lock(ctx, requestedDeployment)
 	}
@@ -81,13 +82,13 @@ func (p *RevisionProcessor) updateCheckRun(ctx workflow.Context, deployRequest t
 		Summary: summary,
 	}).Get(ctx, nil)
 	if err != nil {
-		logger.Error(ctx, "unable to update checkrun", err.Error())
+		logger.Error(ctx, "unable to update check run", err.Error())
 	}
 }
 
 // For merged deployments, notify user of a force apply lock status and lock future deployments until signal is received
 func (p *RevisionProcessor) lock(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
-	// We won't lock any manually triggered
+	// We won't lock a manually triggered root
 	if deploymentInfo.Root.Trigger == root.ManualTrigger {
 		return nil
 	}
