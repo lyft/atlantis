@@ -2,6 +2,7 @@ package workflows_test
 
 import (
 	"context"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -16,12 +17,12 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	internalGithub "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
+	"go.temporal.io/sdk/worker"
 )
 
 type a struct {
@@ -34,15 +35,90 @@ func TestDeployWorkflow(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
-	dataDir := t.TempDir()
+	env.SetWorkerOptions(worker.Options{
+		EnableSessionWorker: true,
+	})
 
-	err := os.Mkdir(filepath.Join(dataDir, "container"), os.ModePerm)
-	assert.NoError(t, err)
+	s := initAndRegisterActivities(t, env)
 
+	env.RegisterWorkflow(workflows.Deploy)
+	env.RegisterWorkflow(workflows.Terraform)
+
+	env.RegisterDelayedCallback(func() {
+		signalWorkflow(env)
+	}, 5*time.Second)
+
+	env.ExecuteWorkflow(workflows.Deploy, workflows.DeployRequest{})
+	assert.NoError(t, env.GetWorkflowError())
+
+	// for now we just assert the correct number of updates were called.
+	// asserting the output itself is a bit overkill tbh.
+
+	// there should be 6 state changes that are reflected in our checks (3 state changes for plan and apply)
+	assert.Len(t, s.githubClient.Updates, 6)
+
+	// we should have output for 2 different jobs
+	assert.Len(t, s.streamCloser.CapturedJobOutput, 2)
+}
+
+func signalWorkflow(env *testsuite.TestWorkflowEnvironment) {
+	env.SignalWorkflow(workflows.DeployNewRevisionSignalID, workflows.DeployNewRevisionSignalRequest{
+		Revision: "12345",
+		Root: workflows.Root{
+			Name: "my test root",
+			Plan: workflows.Job{
+				Steps: []workflows.Step{
+					{
+						StepName: "init",
+					},
+					{
+						StepName: "plan",
+					},
+				},
+			},
+			Apply: workflows.Job{
+				Steps: []workflows.Step{
+					{
+						StepName: "apply",
+					},
+				},
+			},
+			RepoRelPath: "terraform/mytestroot",
+			PlanMode:    workflows.NormalPlanMode,
+
+			// auto approve since we are testing
+			PlanApprovalType: "auto",
+			Trigger:          workflows.MergeTrigger,
+		},
+		Repo: workflows.Repo{
+			FullName: "nish/repo",
+			Owner:    "nish",
+			Name:     "nish/repo",
+			Ref: workflows.Ref{
+				Type: "branch",
+				Name: "main",
+			},
+		},
+	})
+}
+
+type testSingletons struct {
+	a            *a
+	githubClient *testGithubClient
+	streamCloser *testStreamCloser
+}
+
+func buildConfig(t *testing.T) config.Config {
 	u, err := url.Parse("www.server.com")
 	assert.NoError(t, err)
 
-	cfg := config.Config{
+	dataDir := t.TempDir()
+
+	// storage client uses this for it's local backend.
+	err = os.Mkdir(filepath.Join(dataDir, "container"), os.ModePerm)
+	assert.NoError(t, err)
+
+	return config.Config{
 		DeploymentConfig: valid.StoreConfig{
 			BackendType: valid.LocalBackend,
 			Config: stow.ConfigMap{
@@ -61,72 +137,23 @@ func TestDeployWorkflow(t *testing.T) {
 		App: githubapp.Config{},
 	}
 
-	s := initAndRegisterActivities(t, env, cfg)
-
-	env.RegisterWorkflow(workflows.Deploy)
-	env.RegisterWorkflow(workflows.Terraform)
-
-	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(workflows.DeployNewRevisionSignalID, workflows.DeployNewRevisionSignalRequest{
-			Revision: "12345",
-			Root: workflows.Root{
-				Name: "my test root",
-				Plan: workflows.Job{
-					Steps: []workflows.Step{
-						{
-							StepName: "init",
-						},
-						{
-							StepName: "plan",
-						},
-					},
-				},
-				Apply: workflows.Job{
-					Steps: []workflows.Step{
-						{
-							StepName: "apply",
-						},
-					},
-				},
-				RepoRelPath: "terraform/mytestroot",
-				PlanMode:    workflows.NormalPlanMode,
-				Trigger:     workflows.MergeTrigger,
-			},
-		})
-	}, 5*time.Second)
-
-	env.RegisterDelayedCallback(func() {
-		err := env.SignalWorkflowByID(s.githubClient.DeploymentID, workflows.TerraformPlanReviewSignalName, workflows.TerraformPlanReviewSignalRequest{
-			Status: workflows.ApprovedPlanReviewStatus,
-		})
-
-		if err != nil {
-			panic(err)
-		}
-	}, 30*time.Second)
-	env.ExecuteWorkflow(workflows.Deploy, workflows.DeployRequest{})
-	assert.NoError(t, env.GetWorkflowError())
-
-	t.Log(s.githubClient.Updates)
-
-	t.Fail()
 }
 
-type testSingletons struct {
-	a            *a
-	githubClient *testGithubClient
-}
-
-func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment, cfg config.Config) *testSingletons {
+func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment) *testSingletons {
+	cfg := buildConfig(t)
 	deployActivities, err := workflows.NewDeployActivities(cfg.DeploymentConfig)
 
 	assert.NoError(t, err)
+
+	streamCloser := &testStreamCloser{
+		CapturedJobOutput: make(map[string][]string),
+	}
 
 	terraformActivities, err := activities.NewTerraform(
 		cfg.TerraformCfg,
 		cfg.DataDir,
 		cfg.ServerCfg.URL,
-		&testStreamCloser{},
+		streamCloser,
 		activities.TerraformOptions{
 			VersionCache: cache.NewLocalBinaryCache("terraform"),
 		},
@@ -159,25 +186,36 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 			DeployActivities: deployActivities,
 		},
 		githubClient: githubClient,
+		streamCloser: streamCloser,
 	}
 
 }
 
 type testStreamCloser struct {
-	*job.StreamHandler
+	CapturedJobOutput map[string][]string
 }
 
-func (sc *testStreamCloser) Stream(jobID string, msg string) {}
+func (sc *testStreamCloser) Stream(jobID string, msg string) {
+	v, ok := sc.CapturedJobOutput[jobID]
+
+	if !ok {
+		v = []string{}
+	}
+
+	v = append(v, msg)
+
+	sc.CapturedJobOutput[jobID] = v
+}
 
 func (sc *testStreamCloser) CloseJob(ctx context.Context, jobID string) error {
 	return nil
 }
 
 var fileContents = ` resource "null_resource" "null" {}
-}`
+`
 
 func GetLocalTestRoot(dst, src string, ctx context.Context) error {
-	err := os.Mkdir(dst, os.ModePerm)
+	err := os.MkdirAll(dst, os.ModePerm)
 
 	if err != nil {
 		return errors.Wrapf(err, "creating directory at %s", dst)
@@ -222,7 +260,7 @@ func (c *testGithubClient) UpdateCheckRun(ctx internalGithub.Context, owner, rep
 func (c *testGithubClient) GetArchiveLink(ctx internalGithub.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error) {
 	url, _ := url.Parse("www.testurl.com")
 
-	return url, &github.Response{}, nil
+	return url, &github.Response{Response: &http.Response{StatusCode: http.StatusFound}}, nil
 }
 func (c *testGithubClient) CompareCommits(ctx internalGithub.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error) {
 	return &github.CommitsComparison{
