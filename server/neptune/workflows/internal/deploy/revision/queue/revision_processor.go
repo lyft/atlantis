@@ -47,9 +47,13 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 	if err != nil {
 		return nil, err
 	}
-	commitDirection, err := p.getDeployRequestCommitDirection(ctx, requestedDeployment, latestDeployment)
-	if err != nil {
-		return nil, err
+	commitDirection := activities.DirectionAhead
+	// only fetch if last deployment exists
+	if latestDeployment != nil {
+		commitDirection, err = p.getDeployRequestCommitDirection(ctx, requestedDeployment, latestDeployment)
+		if err != nil {
+			return nil, err
+		}
 	}
 	switch commitDirection {
 	case activities.DirectionBehind:
@@ -76,10 +80,6 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 }
 
 func (p *RevisionProcessor) getDeployRequestCommitDirection(ctx workflow.Context, deployRequest terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) (activities.DiffDirection, error) {
-	// root being deployed for the first time
-	if latestDeployment == nil {
-		return activities.DirectionAhead, nil
-	}
 	var compareCommitResp activities.CompareCommitResponse
 	err := workflow.ExecuteActivity(ctx, p.Activities.CompareCommit, activities.CompareCommitRequest{
 		DeployRequestRevision:  deployRequest.Revision,
