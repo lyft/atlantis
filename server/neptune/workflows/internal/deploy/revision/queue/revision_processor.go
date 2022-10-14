@@ -26,7 +26,7 @@ const (
 	DirectionBehindSummary   = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
 	UpdateCheckRunRetryCount = 5
 
-	ForceApplySummary = "The current deployment has diverged from the default branch, so we have locked the root. This is most likely the result of this PR performing a deployment. To override that lock and allow the main branch to perform new deployments, select the Unlock button."
+	DivergedCommitsSummary = "The current deployment has diverged from the default branch, so we have locked the root. This is most likely the result of this PR performing a manual deployment. To override that lock and allow the main branch to perform new deployments, select the Unlock button."
 )
 
 func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) error {
@@ -35,17 +35,15 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 		return err
 	}
 
-	// TODO: remove log? it might be noisy
-	logger.Info(ctx, fmt.Sprintf("relationship of deployed to requested revision: %s", commitDirection),
-		"deployed-revision", latestDeployment.GetRevision(),
-		"requested-revision", requestedDeployment.Revision)
-
 	switch commitDirection {
 	case activities.DirectionBehind:
-		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary)
+		// always returns error for caller to skip revision
+		if err = p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil); err != nil {
+			logger.Error(ctx, "unable to update check run", err.Error())
+		}
 		return fmt.Errorf("requested revision %s is behind current one %s", requestedDeployment.Revision, latestDeployment.GetRevision())
 	case activities.DirectionDiverged:
-		return p.lock(ctx, requestedDeployment)
+		return p.waitForUserUnlock(ctx, requestedDeployment)
 	}
 	return nil
 }
@@ -69,39 +67,27 @@ func (p *RevisionProcessor) getDeployRequestCommitDirection(ctx workflow.Context
 }
 
 // worker should not block on updating check runs for invalid deploy requests so let's retry for UpdateCheckrunRetryCount only
-func (p *RevisionProcessor) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, state github.CheckRunState, summary string) {
+func (p *RevisionProcessor) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, state github.CheckRunState, summary string, actions []github.CheckRunAction) error {
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: UpdateCheckRunRetryCount,
 	})
-
-	err := workflow.ExecuteActivity(ctx, p.Activities.UpdateCheckRun, activities.UpdateCheckRunRequest{
+	return workflow.ExecuteActivity(ctx, p.Activities.UpdateCheckRun, activities.UpdateCheckRunRequest{
 		Title:   terraform.BuildCheckRunTitle(deployRequest.Root.Name),
 		State:   state,
 		Repo:    deployRequest.Repo,
 		ID:      deployRequest.CheckRunID,
 		Summary: summary,
+		Actions: actions,
 	}).Get(ctx, nil)
-	if err != nil {
-		logger.Error(ctx, "unable to update check run", err.Error())
-	}
 }
 
 // For merged deployments, notify user of a force apply lock status and lock future deployments until signal is received
-func (p *RevisionProcessor) lock(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
+func (p *RevisionProcessor) waitForUserUnlock(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
 	// We won't lock a manually triggered root
 	if deploymentInfo.Root.Trigger == root.ManualTrigger {
 		return nil
 	}
-	request := activities.UpdateCheckRunRequest{
-		Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
-		State:   github.CheckRunPending,
-		Repo:    deploymentInfo.Repo,
-		ID:      deploymentInfo.CheckRunID,
-		Summary: ForceApplySummary,
-		Actions: []github.CheckRunAction{github.CreateUnlockAction()},
-	}
-	var resp activities.UpdateCheckRunResponse
-	err := workflow.ExecuteActivity(ctx, p.Activities.UpdateCheckRun, request).Get(ctx, &resp)
+	err := p.updateCheckRun(ctx, deploymentInfo, github.CheckRunPending, DivergedCommitsSummary, []github.CheckRunAction{github.CreateUnlockAction()})
 	if err != nil {
 		return errors.Wrap(err, "updating check run")
 	}

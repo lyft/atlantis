@@ -6,6 +6,11 @@ import (
 	"github.com/google/go-github/v45/github"
 )
 
+const (
+	UnlockLabel       = "Unlock"
+	UnlockDescription = "Unlock this plan to proceed"
+)
+
 type CheckRunState string
 
 type CheckRunAction struct {
@@ -26,10 +31,9 @@ func (a CheckRunAction) ToGithubAction() *github.CheckRunAction {
 
 func CreateUnlockAction() CheckRunAction {
 	return CheckRunAction{
-		Description: "Unlock this plan to proceed",
-		Label:       "Unlock",
+		Description: UnlockDescription,
+		Label:       UnlockLabel,
 	}
-
 }
 
 func CreatePlanReviewAction(t PlanReviewActionType) CheckRunAction {

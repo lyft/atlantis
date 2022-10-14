@@ -372,7 +372,7 @@ func TestWorker_CompareCommit_DeployDiverged(t *testing.T) {
 		State:   github.CheckRunPending,
 		Repo:    deploymentInfo.Repo,
 		ID:      deploymentInfo.CheckRunID,
-		Summary: queue.ForceApplySummary,
+		Summary: queue.DivergedCommitsSummary,
 		Actions: []github.CheckRunAction{github.CreateUnlockAction()},
 	}
 
