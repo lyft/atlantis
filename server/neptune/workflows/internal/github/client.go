@@ -63,7 +63,6 @@ func (c *Client) GetArchiveLink(ctx Context, owner, repo string, archiveformat g
 
 }
 
-
 func (c *Client) CompareCommits(ctx Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error) {
 	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
 

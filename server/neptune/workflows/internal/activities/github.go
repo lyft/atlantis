@@ -21,12 +21,12 @@ type ClientContext struct {
 	context.Context
 }
 
-var HashiGetter = func(dst, src string, ctx context.Context) error {
+var HashiGetter = func(ctx context.Context, dst, src string) error {
 	return getter.Get(dst, src, getter.WithContext(ctx))
 }
 
 // wraps hashicorp's go getter to allow for testing
-type gogetter func(dst, src string, ctx context.Context) error
+type gogetter func(ctx context.Context, dst, src string) error
 
 type githubClient interface {
 	CreateCheckRun(ctx internal.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error)
@@ -215,7 +215,7 @@ func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootReque
 		return FetchRootResponse{}, errors.Errorf("getting repo archive link returns non-302 status %d", resp.StatusCode)
 	}
 	downloadLink := a.LinkBuilder.BuildDownloadLinkFromArchive(archiveLink, request.Root, request.Repo, request.Revision)
-	err = a.Getter(destinationPath, downloadLink, ctx)
+	err = a.Getter(ctx, destinationPath, downloadLink)
 	if err != nil {
 		return FetchRootResponse{}, errors.Wrap(err, "fetching and extracting zip")
 	}

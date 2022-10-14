@@ -214,7 +214,7 @@ func (sc *testStreamCloser) CloseJob(ctx context.Context, jobID string) error {
 var fileContents = ` resource "null_resource" "null" {}
 `
 
-func GetLocalTestRoot(dst, src string, ctx context.Context) error {
+func GetLocalTestRoot(ctx context.Context, dst, src string) error {
 	err := os.MkdirAll(dst, os.ModePerm)
 
 	if err != nil {
