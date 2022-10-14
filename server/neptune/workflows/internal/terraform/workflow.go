@@ -204,9 +204,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return errors.Wrap(err, "fetching root")
 	}
 	defer func() {
-		if cleanup == nil {
-			return
-		}
 		err := cleanup()
 
 		if err != nil {
