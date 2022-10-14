@@ -200,6 +200,9 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}
 
 	root, cleanup, err := r.RootFetcher.Fetch(ctx)
+	if err != nil {
+		return errors.Wrap(err, "fetching root")
+	}
 	defer func() {
 		if cleanup == nil {
 			return
@@ -210,10 +213,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			logger.Warn(ctx, "error cleaning up local root", "err", err)
 		}
 	}()
-
-	if err != nil {
-		return errors.Wrap(err, "fetching root")
-	}
 
 	planResponse, err := r.Plan(ctx, root, response.ServerURL)
 
