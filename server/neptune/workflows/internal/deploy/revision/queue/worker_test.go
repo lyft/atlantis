@@ -62,10 +62,11 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 
 	var wa *testDeployActivity
 	worker := queue.Worker{
-		Queue:                   q,
-		TerraformWorkflowRunner: &testTerraformWorkflowRunner{},
-		Activities:              wa,
-		RevisionProcessor:       &queue.RevisionProcessor{Activities: wa},
+		Queue: q,
+		RevisionProcessor: &queue.RevisionProcessor{
+			Activities:              wa,
+			TerraformWorkflowRunner: &testTerraformWorkflowRunner{},
+		},
 	}
 
 	err := workflow.SetQueryHandler(ctx, "queue", func() (queueAndState, error) {

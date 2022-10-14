@@ -74,13 +74,14 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	revisionQueue := queue.NewQueue()
 	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, a, sideeffect.GenerateUUID)
 	tfWorkflowRunner := terraform.NewWorkflowRunner(a, tfWorkflow)
-	revisionProcessor := &queue.RevisionProcessor{Activities: a}
+	revisionProcessor := &queue.RevisionProcessor{
+		Activities:              a,
+		TerraformWorkflowRunner: tfWorkflowRunner,
+	}
 
 	worker := &queue.Worker{
-		Queue:                   revisionQueue,
-		TerraformWorkflowRunner: tfWorkflowRunner,
-		Activities:              a,
-		RevisionProcessor:       revisionProcessor,
+		Queue:             revisionQueue,
+		RevisionProcessor: revisionProcessor,
 	}
 
 	return &Runner{

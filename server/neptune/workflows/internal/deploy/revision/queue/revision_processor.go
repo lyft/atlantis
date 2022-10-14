@@ -2,10 +2,8 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
@@ -13,13 +11,28 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+type terraformWorkflowRunner interface {
+	Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error
+}
+
+type dbActivities interface {
+	FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error)
+	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
+}
+
 type githubActivities interface {
 	CompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
 	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
 }
 
+type workerActivities interface {
+	dbActivities
+	githubActivities
+}
+
 type RevisionProcessor struct {
-	Activities githubActivities
+	Activities              workerActivities
+	TerraformWorkflowRunner terraformWorkflowRunner
 }
 
 const (
@@ -29,23 +42,37 @@ const (
 	DivergedCommitsSummary = "The current deployment has diverged from the default branch, so we have locked the root. This is most likely the result of this PR performing a manual deployment. To override that lock and allow the main branch to perform new deployments, select the Unlock button."
 )
 
-func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) error {
+func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) (*root.DeploymentInfo, error) {
+	latestDeployment, err := p.fetchLatestDeployment(ctx, requestedDeployment, latestDeployment)
+	if err != nil {
+		return nil, err
+	}
 	commitDirection, err := p.getDeployRequestCommitDirection(ctx, requestedDeployment, latestDeployment)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	switch commitDirection {
 	case activities.DirectionBehind:
 		// always returns error for caller to skip revision
 		if err = p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil); err != nil {
-			logger.Error(ctx, "unable to update check run", err.Error())
+			return nil, errors.Wrap(err, "updating check run")
 		}
-		return fmt.Errorf("requested revision %s is behind current one %s", requestedDeployment.Revision, latestDeployment.Revision)
 	case activities.DirectionDiverged:
-		return p.waitForUserUnlock(ctx, requestedDeployment)
+		if err = p.waitForUserUnlock(ctx, requestedDeployment); err != nil {
+			return nil, errors.Wrap(err, "waiting for user unlock")
+		}
 	}
-	return nil
+	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment)
+	if err != nil {
+		return nil, errors.Wrap(err, "running terraform workflow")
+	}
+	latestDeployment = p.buildLatestDeployment(requestedDeployment)
+
+	// TODO: Persist deployment on shutdown if it fails instead of blocking
+	if err = p.persistLatestDeployment(ctx, latestDeployment); err != nil {
+		return nil, errors.Wrap(err, "failed to persist latest deploy job")
+	}
+	return latestDeployment, nil
 }
 
 func (p *RevisionProcessor) getDeployRequestCommitDirection(ctx workflow.Context, deployRequest terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) (activities.DiffDirection, error) {
@@ -53,7 +80,6 @@ func (p *RevisionProcessor) getDeployRequestCommitDirection(ctx workflow.Context
 	if latestDeployment == nil {
 		return activities.DirectionAhead, nil
 	}
-
 	var compareCommitResp activities.CompareCommitResponse
 	err := workflow.ExecuteActivity(ctx, p.Activities.CompareCommit, activities.CompareCommitRequest{
 		DeployRequestRevision:  deployRequest.Revision,
@@ -96,5 +122,42 @@ func (p *RevisionProcessor) waitForUserUnlock(ctx workflow.Context, deploymentIn
 	var unlockRequest UnlockSignalRequest
 	_ = signalChan.Receive(ctx, &unlockRequest)
 	// TODO: store info on user that unlocked revision, maybe within the check run or just log it?
+	return nil
+}
+
+func (p *RevisionProcessor) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) (*root.DeploymentInfo, error) {
+	// Skip fetching latest deployment it it's already in memory
+	if latestDeployment != nil {
+		return latestDeployment, nil
+	}
+	var resp activities.FetchLatestDeploymentResponse
+	err := workflow.ExecuteActivity(ctx, p.Activities.FetchLatestDeployment, activities.FetchLatestDeploymentRequest{
+		FullRepositoryName: deploymentInfo.Repo.GetFullName(),
+		RootName:           deploymentInfo.Root.Name,
+	}).Get(ctx, &resp)
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching latest deployment")
+	}
+	return resp.DeploymentInfo, nil
+}
+
+func (p *RevisionProcessor) buildLatestDeployment(deployRequest terraform.DeploymentInfo) *root.DeploymentInfo {
+	return &root.DeploymentInfo{
+		Version:    DeploymentInfoVersion,
+		ID:         deployRequest.ID.String(),
+		CheckRunID: deployRequest.CheckRunID,
+		Revision:   deployRequest.Revision,
+		Root:       deployRequest.Root,
+		Repo:       deployRequest.Repo,
+	}
+}
+
+func (p *RevisionProcessor) persistLatestDeployment(ctx workflow.Context, deploymentInfo *root.DeploymentInfo) error {
+	err := workflow.ExecuteActivity(ctx, p.Activities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: deploymentInfo,
+	}).Get(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "persisting deployment info")
+	}
 	return nil
 }
