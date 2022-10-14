@@ -12,10 +12,3 @@ type DeploymentInfo struct {
 	Repo       github.Repo
 	Root       Root
 }
-
-func (i *DeploymentInfo) GetRevision() string {
-	if i == nil {
-		return ""
-	}
-	return i.Revision
-}

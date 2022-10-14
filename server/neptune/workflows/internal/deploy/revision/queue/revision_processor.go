@@ -41,7 +41,7 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 		if err = p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil); err != nil {
 			logger.Error(ctx, "unable to update check run", err.Error())
 		}
-		return fmt.Errorf("requested revision %s is behind current one %s", requestedDeployment.Revision, latestDeployment.GetRevision())
+		return fmt.Errorf("requested revision %s is behind current one %s", requestedDeployment.Revision, latestDeployment.Revision)
 	case activities.DirectionDiverged:
 		return p.waitForUserUnlock(ctx, requestedDeployment)
 	}
