@@ -24,6 +24,14 @@ func (a CheckRunAction) ToGithubAction() *github.CheckRunAction {
 	}
 }
 
+func CreateUnlockAction() CheckRunAction {
+	return CheckRunAction{
+		Description: "Unlock this plan to proceed",
+		Label:       "Unlock",
+	}
+
+}
+
 func CreatePlanReviewAction(t PlanReviewActionType) CheckRunAction {
 	return CheckRunAction{
 		Description: fmt.Sprintf("%s this plan to proceed", string(t)),
