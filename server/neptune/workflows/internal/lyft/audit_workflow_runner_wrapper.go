@@ -1,4 +1,4 @@
-package audit
+package lyft
 
 import (
 	"context"
@@ -68,7 +68,7 @@ func (w *WorkflowRunnerWrapper) emit(ctx workflow.Context, state activities.Atla
 			Root:       deploymentInfo.Root,
 			Repo:       deploymentInfo.Repo,
 		},
-		State: activities.AtlantisJobStateRunning,
+		State: state,
 	}).Get(ctx, nil)
 	if err != nil {
 		return errors.Wrap(err, "notifying deploy api")
