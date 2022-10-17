@@ -37,7 +37,6 @@ type UnlockSignalRequest struct {
 
 type Worker struct {
 	Queue             *Queue
-	Activities        workerActivities
 	RevisionProcessor revisionProcessor
 	// mutable
 	state WorkerState
