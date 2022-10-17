@@ -90,8 +90,8 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 		CloneURL: repoURL,
 	}
 
-	user := vcs.User{
-		Login: "test-user",
+	user := models.User{
+		Username: "test-user",
 	}
 
 	version, err := version.NewVersion("1.0.3")
@@ -126,7 +126,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					Trigger:   workflows.MergeTrigger,
 				},
 				User: workflows.User{
-					Name: user.Login,
+					Name: user.Username,
 				},
 				Repo: workflows.Repo{
 					FullName: repoFullName,
@@ -185,7 +185,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					Trigger:   workflows.MergeTrigger,
 				},
 				User: workflows.User{
-					Name: user.Login,
+					Name: user.Username,
 				},
 				Repo: workflows.Repo{
 					FullName: repoFullName,
@@ -224,8 +224,8 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 		Name: "main",
 	}
 
-	user := vcs.User{
-		Login: "test-user",
+	user := models.User{
+		Username: "test-user",
 	}
 
 	repo := models.Repo{
@@ -265,7 +265,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				Trigger:   workflows.MergeTrigger,
 			},
 			User: workflows.User{
-				Name: user.Login,
+				Name: user.Username,
 			},
 			Repo: workflows.Repo{
 				FullName: repoFullName,

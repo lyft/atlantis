@@ -8,17 +8,18 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"go.temporal.io/sdk/workflow"
 )
 
 type auditActivities interface {
-	NotifyDeployApi(ctx context.Context, request activities.NotifyDeployApiRequest) error
+	NotifyDeployAPI(ctx context.Context, request activities.NotifyDeployAPIRequest) error
 }
 
 type workflowRunnerActivities interface {
 	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
-	NotifyDeployApi(ctx context.Context, request activities.NotifyDeployApiRequest) error
+	auditActivities
 }
 
 func NewWorkflowRunnerWithAuditiing(a workflowRunnerActivities, w terraform.Workflow) *WorkflowRunnerWrapper {
@@ -39,18 +40,18 @@ type WorkflowRunnerWrapper struct {
 }
 
 func (w *WorkflowRunnerWrapper) Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
-	if err := w.emit(ctx, activities.AtlantisJobStateRunning, deploymentInfo); err != nil {
+	if err := w.emit(ctx, job.Running, deploymentInfo); err != nil {
 		return errors.Wrap(err, "emitting atlantis job event")
 	}
 
 	result := w.TerraformWorkflowRunner.Run(ctx, deploymentInfo)
 
 	if result != nil {
-		if err := w.emit(ctx, activities.AtlantisJobStateFailure, deploymentInfo); err != nil {
+		if err := w.emit(ctx, job.Failure, deploymentInfo); err != nil {
 			logger.Error(ctx, errors.Wrap(err, "failed to emit atlantis job event").Error())
 		}
 	} else {
-		if err := w.emit(ctx, activities.AtlantisJobStateSuccess, deploymentInfo); err != nil {
+		if err := w.emit(ctx, job.Success, deploymentInfo); err != nil {
 			logger.Error(ctx, errors.Wrap(err, "failed to emit atlantis job event").Error())
 		}
 	}
@@ -58,8 +59,8 @@ func (w *WorkflowRunnerWrapper) Run(ctx workflow.Context, deploymentInfo terrafo
 	return result
 }
 
-func (w *WorkflowRunnerWrapper) emit(ctx workflow.Context, state activities.AtlantisJobState, deploymentInfo terraform.DeploymentInfo) error {
-	err := workflow.ExecuteActivity(ctx, w.Activity.NotifyDeployApi, activities.NotifyDeployApiRequest{
+func (w *WorkflowRunnerWrapper) emit(ctx workflow.Context, state job.State, deploymentInfo terraform.DeploymentInfo) error {
+	err := workflow.ExecuteActivity(ctx, w.Activity.NotifyDeployAPI, activities.NotifyDeployAPIRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID:         deploymentInfo.ID.String(),
 			CheckRunID: deploymentInfo.CheckRunID,

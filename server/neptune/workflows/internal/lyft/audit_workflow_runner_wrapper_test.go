@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	deploy_tf "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/lyft"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -24,7 +25,7 @@ func (t *testWorkflowRunnerActivities) UpdateCheckRun(ctx context.Context, reque
 	return activities.UpdateCheckRunResponse{}, nil
 }
 
-func (t *testWorkflowRunnerActivities) NotifyDeployApi(ctx context.Context, request activities.NotifyDeployApiRequest) error {
+func (t *testWorkflowRunnerActivities) NotifyDeployAPI(ctx context.Context, request activities.NotifyDeployAPIRequest) error {
 	return nil
 }
 
@@ -34,10 +35,6 @@ func successTfWorkflow(ctx workflow.Context, request terraform.Request) error {
 
 func failTfWorkflow(ctx workflow.Context, request terraform.Request) error {
 	return errors.New("error")
-}
-
-type testDeployWorkflowRequest struct {
-	t *testing.T
 }
 
 type req struct {
@@ -69,18 +66,18 @@ func TestWorkflowRunnerWrapper_Success(t *testing.T) {
 
 	env.RegisterWorkflow(testWorkflow)
 	env.RegisterWorkflow(successTfWorkflow)
-	env.OnActivity(ta.NotifyDeployApi, mock.Anything, activities.NotifyDeployApiRequest{
+	env.OnActivity(ta.NotifyDeployAPI, mock.Anything, activities.NotifyDeployAPIRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID: id.String(),
 		},
-		State: activities.AtlantisJobStateRunning,
+		State: job.Running,
 	}).Return(nil)
 
-	env.OnActivity(ta.NotifyDeployApi, mock.Anything, activities.NotifyDeployApiRequest{
+	env.OnActivity(ta.NotifyDeployAPI, mock.Anything, activities.NotifyDeployAPIRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID: id.String(),
 		},
-		State: activities.AtlantisJobStateSuccess,
+		State: job.Success,
 	}).Return(nil)
 
 	env.ExecuteWorkflow(testWorkflow, req{
@@ -103,18 +100,18 @@ func TestWorkflowRunnerWrapper_Failure(t *testing.T) {
 
 	env.RegisterWorkflow(testWorkflow)
 	env.RegisterWorkflow(failTfWorkflow)
-	env.OnActivity(ta.NotifyDeployApi, mock.Anything, activities.NotifyDeployApiRequest{
+	env.OnActivity(ta.NotifyDeployAPI, mock.Anything, activities.NotifyDeployAPIRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID: id.String(),
 		},
-		State: activities.AtlantisJobStateRunning,
+		State: job.Running,
 	}).Return(nil)
 
-	env.OnActivity(ta.NotifyDeployApi, mock.Anything, activities.NotifyDeployApiRequest{
+	env.OnActivity(ta.NotifyDeployAPI, mock.Anything, activities.NotifyDeployAPIRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID: id.String(),
 		},
-		State: activities.AtlantisJobStateFailure,
+		State: job.Failure,
 	}).Return(nil)
 
 	env.ExecuteWorkflow(testWorkflow, req{

@@ -37,7 +37,7 @@ type scheduler interface {
 }
 
 type deploySignaler interface {
-	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, repo models.Repo, revision string, installationToken int64, ref vcs.Ref, sender vcs.User, trigger workflows.Trigger) (client.WorkflowRun, error)
+	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, repo models.Repo, revision string, installationToken int64, ref vcs.Ref, sender models.User, trigger workflows.Trigger) (client.WorkflowRun, error)
 }
 
 type rootConfigBuilder interface {
@@ -87,6 +87,9 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
 	}
+	user := models.User{
+		Username: event.Sender.Login,
+	}
 	for _, rootCfg := range rootCfgs {
 		ctx = context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
 		run, err := p.DeploySignaler.SignalWithStartWorkflow(
@@ -96,7 +99,7 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 			event.Sha,
 			event.InstallationToken,
 			event.Ref,
-			event.Sender,
+			user,
 			workflows.MergeTrigger)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")

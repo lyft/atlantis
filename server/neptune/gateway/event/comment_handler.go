@@ -9,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/gateway/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
-	core_vcs "github.com/runatlantis/atlantis/server/vcs"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/command"
@@ -105,10 +104,6 @@ func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment)
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
 	}
-
-	user := core_vcs.User{
-		Login: event.User.Username,
-	}
 	for _, rootCfg := range rootCfgs {
 		ctx = context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
 		run, err := p.deploySignaler.SignalWithStartWorkflow(
@@ -118,7 +113,7 @@ func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment)
 			event.Pull.HeadCommit,
 			event.InstallationToken,
 			event.Pull.HeadRef,
-			user,
+			event.User,
 			workflows.ManualTrigger)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")

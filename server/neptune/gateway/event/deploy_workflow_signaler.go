@@ -33,7 +33,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 	revision string,
 	installationToken int64,
 	ref vcs.Ref,
-	sender vcs.User,
+	sender models.User,
 	trigger workflows.Trigger) (client.WorkflowRun, error) {
 
 	options := client.StartWorkflowOptions{TaskQueue: workflows.DeployTaskQueue}
@@ -50,7 +50,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 		workflows.DeployNewRevisionSignalRequest{
 			Revision: revision,
 			User: workflows.User{
-				Name: sender.Login,
+				Name: sender.Username,
 			},
 			Root: workflows.Root{
 				Name: rootCfg.Name,
