@@ -618,13 +618,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB: boltdb,
 	}
 
-	pullOutputUpdater := events.PullOutputUpdater{
-		VCSClient:            vcsClient,
-		MarkdownRenderer:     markdownRenderer,
-		HidePrevPlanComments: userConfig.HidePrevPlanComments,
-	}
-
-	checksOutputUpdater := events.ChecksOutputUpdater{
+	checksOutputUpdater := &events.ChecksOutputUpdater{
 		VCSClient:        vcsClient,
 		MarkdownRenderer: markdownRenderer,
 		TitleBuilder:     vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName},
@@ -709,7 +703,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
-		&checksOutputUpdater,
+		checksOutputUpdater,
 		commitStatusUpdater,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -723,7 +717,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		projectCommandBuilder,
 		prjCmdRunner,
 		dbUpdater,
-		&checksOutputUpdater,
+		checksOutputUpdater,
 		policyCheckCommandRunner,
 		userConfig.ParallelPoolSize,
 	)
@@ -735,7 +729,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		&checksOutputUpdater,
+		checksOutputUpdater,
 		dbUpdater,
 		userConfig.ParallelPoolSize,
 		pullReqStatusFetcher,
@@ -751,7 +745,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		commitStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		&checksOutputUpdater,
+		checksOutputUpdater,
 		dbUpdater,
 		&policyCheckOutputGenerator,
 	)
@@ -761,9 +755,15 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 	)
 
+	pullOutputUpdater := &events.PullOutputUpdater{
+		VCSClient:            vcsClient,
+		MarkdownRenderer:     markdownRenderer,
+		HidePrevPlanComments: userConfig.HidePrevPlanComments,
+	}
+
 	// Using pull updater for version commands until we move off of PR comments entirely
 	versionCommandRunner := events.NewVersionCommandRunner(
-		&pullOutputUpdater,
+		pullOutputUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
