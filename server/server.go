@@ -657,7 +657,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	statusUpdater := command.ProjectStatusUpdater{
 		ProjectJobURLGenerator:     router,
 		JobCloser:                  projectCmdOutputHandler,
-		FeatureAllocator:           featureAllocator,
 		ProjectCommitStatusUpdater: commitStatusUpdater,
 	}
 
@@ -738,7 +737,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	policyCheckOutputGenerator := policies.CommandOutputGenerator{
 		PrjCommandRunner:  prjCmdRunner,
 		PrjCommandBuilder: projectCommandBuilder,
-		FeatureAllocator:  featureAllocator,
 	}
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
