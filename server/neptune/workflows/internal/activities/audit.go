@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
@@ -30,7 +29,7 @@ type AuditJobRequest struct {
 }
 
 func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) error {
-	isForceApply := req.DeploymentInfo.Root.Trigger == root.Trigger(request.ManualTrigger)
+	isForceApply := req.DeploymentInfo.Root.Trigger == root.ManualTrigger
 	atlantisJobEvent := &job.Event{
 		Version:        1,
 		ID:             req.DeploymentInfo.ID,

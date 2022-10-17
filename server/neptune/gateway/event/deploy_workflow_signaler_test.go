@@ -197,6 +197,9 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 						Type: string(ref.Type),
 					},
 				},
+				Tags: map[string]string{
+					event.Deprecated: event.Destroy,
+				},
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{

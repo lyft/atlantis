@@ -27,19 +27,18 @@ func (w *AuditWorkflowRunnerWrapper) Run(ctx workflow.Context, deploymentInfo te
 		return errors.Wrap(err, "emitting atlantis job event")
 	}
 
-	result := w.TerraformWorkflowRunner.Run(ctx, deploymentInfo)
-
-	if result != nil {
+	if tfRunErr := w.TerraformWorkflowRunner.Run(ctx, deploymentInfo); tfRunErr != nil {
 		if err := w.emit(ctx, job.Failure, deploymentInfo); err != nil {
 			logger.Error(ctx, errors.Wrap(err, "failed to emit atlantis job event").Error())
 		}
-	} else {
-		if err := w.emit(ctx, job.Success, deploymentInfo); err != nil {
-			logger.Error(ctx, errors.Wrap(err, "failed to emit atlantis job event").Error())
-		}
+		return tfRunErr
 	}
 
-	return result
+	if err := w.emit(ctx, job.Success, deploymentInfo); err != nil {
+		logger.Error(ctx, errors.Wrap(err, "failed to emit atlantis job event").Error())
+	}
+
+	return nil
 }
 
 func (w *AuditWorkflowRunnerWrapper) emit(ctx workflow.Context, state job.State, deploymentInfo terraform.DeploymentInfo) error {
