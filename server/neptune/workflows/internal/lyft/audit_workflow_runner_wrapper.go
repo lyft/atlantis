@@ -17,29 +17,12 @@ type auditActivities interface {
 	AuditJob(ctx context.Context, request activities.AuditJobRequest) error
 }
 
-type workflowRunnerActivities interface {
-	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
-	auditActivities
-}
-
-func NewWorkflowRunnerWithAuditiing(a workflowRunnerActivities, w terraform.Workflow) *WorkflowRunnerWrapper {
-	return &WorkflowRunnerWrapper{
-		Activity: a,
-		TerraformWorkflowRunner: &terraform.WorkflowRunner{
-			Workflow: w,
-			StateReceiver: &terraform.StateReceiver{
-				Activity: a,
-			},
-		},
-	}
-}
-
-type WorkflowRunnerWrapper struct {
+type AuditWorkflowRunnerWrapper struct {
 	Activity auditActivities
 	queue.TerraformWorkflowRunner
 }
 
-func (w *WorkflowRunnerWrapper) Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
+func (w *AuditWorkflowRunnerWrapper) Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error {
 	if err := w.emit(ctx, job.Running, deploymentInfo); err != nil {
 		return errors.Wrap(err, "emitting atlantis job event")
 	}
@@ -59,7 +42,7 @@ func (w *WorkflowRunnerWrapper) Run(ctx workflow.Context, deploymentInfo terrafo
 	return result
 }
 
-func (w *WorkflowRunnerWrapper) emit(ctx workflow.Context, state job.State, deploymentInfo terraform.DeploymentInfo) error {
+func (w *AuditWorkflowRunnerWrapper) emit(ctx workflow.Context, state job.State, deploymentInfo terraform.DeploymentInfo) error {
 	err := workflow.ExecuteActivity(ctx, w.Activity.AuditJob, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID:         deploymentInfo.ID.String(),

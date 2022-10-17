@@ -48,11 +48,17 @@ func testWorkflow(ctx workflow.Context, request req) error {
 	})
 
 	var ra *testWorkflowRunnerActivities
-	var wfRunner *lyft.WorkflowRunnerWrapper
+	var wfRunner *lyft.AuditWorkflowRunnerWrapper
 	if request.Success {
-		wfRunner = lyft.NewWorkflowRunnerWithAuditiing(ra, successTfWorkflow)
+		wfRunner = &lyft.AuditWorkflowRunnerWrapper{
+			Activity:                ra,
+			TerraformWorkflowRunner: deploy_tf.NewWorkflowRunner(ra, successTfWorkflow),
+		}
 	} else {
-		wfRunner = lyft.NewWorkflowRunnerWithAuditiing(ra, failTfWorkflow)
+		wfRunner = &lyft.AuditWorkflowRunnerWrapper{
+			Activity:                ra,
+			TerraformWorkflowRunner: deploy_tf.NewWorkflowRunner(ra, failTfWorkflow),
+		}
 	}
 
 	return wfRunner.Run(ctx, request.DeploymentInfo)
