@@ -27,7 +27,7 @@ type Push struct {
 	Repo              models.Repo
 	Ref               vcs.Ref
 	Sha               string
-	Sender            vcs.User
+	Sender            models.User
 	InstallationToken int64
 	Action            PushAction
 }
@@ -87,9 +87,6 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
 	}
-	user := models.User{
-		Username: event.Sender.Login,
-	}
 	for _, rootCfg := range rootCfgs {
 		ctx = context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
 		run, err := p.DeploySignaler.SignalWithStartWorkflow(
@@ -99,7 +96,7 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 			event.Sha,
 			event.InstallationToken,
 			event.Ref,
-			user,
+			event.Sender,
 			workflows.MergeTrigger)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")
