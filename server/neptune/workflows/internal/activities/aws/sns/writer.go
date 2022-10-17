@@ -1,8 +1,6 @@
 package sns
 
 import (
-	"context"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	awsSns "github.com/aws/aws-sdk-go/service/sns"
@@ -23,8 +21,4 @@ func (w *Writer) Write(payload []byte) error {
 		TopicArn: w.TopicArn,
 	})
 	return err
-}
-
-func (w *Writer) WriteWithContext(_ context.Context, payload []byte) error {
-	return w.Write(payload)
 }
