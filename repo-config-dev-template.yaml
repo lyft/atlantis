@@ -1,5 +1,5 @@
 repos:
-  - id: "*"
+  - id: {{ .Env.ALLOWED_REPOS }} 
     apply_requirements: []
     checkout_strategy: merge
 
@@ -11,20 +11,3 @@ metrics:
 temporal:
   host: temporalite
   port: 7233
-
-persistence: 
-  default_store:
-    s3:
-      bucket-name: atlantis-staging-jobs
-  job_store_prefix: output
-  deployment_store_prefix: deployments
-
-policies:
-  conftest_version: "0.25.0"
-  owners:
-    users:
-      - Aayyush
-  policy_sets:
-  - name: null_resource_policies
-    path: /Users/aayushgupta/src/atl-private/policies/null_resource_warning
-    source: local
