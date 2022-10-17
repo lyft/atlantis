@@ -16,6 +16,7 @@ type DeploymentInfo struct {
 	User       github.User
 	Root       root.Root
 	Repo       github.Repo
+	Tags       map[string]string
 }
 
 func BuildCheckRunTitle(rootName string) string {

@@ -11,6 +11,11 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
+const (
+	EnvironmentTagKey = "environment"
+	ProjectTagKey     = "service_name"
+)
+
 type writer interface {
 	Write([]byte) error
 }
@@ -32,9 +37,9 @@ func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) err
 		RootName:       req.DeploymentInfo.Root.Name,
 		JobType:        job.ApplyJob,
 		Repository:     req.DeploymentInfo.Repo.GetFullName(),
-		Environment:    ctx.Value("environment").(string),
+		Environment:    req.DeploymentInfo.Tags[EnvironmentTagKey],
 		InitiatingUser: req.DeploymentInfo.User.Username,
-		Project:        ctx.Value("service_name").(string),
+		Project:        req.DeploymentInfo.Tags[ProjectTagKey],
 		ForceApply:     isForceApply,
 		StartTime:      strconv.FormatInt(time.Now().Unix(), 10),
 		Revision:       req.DeploymentInfo.Revision,

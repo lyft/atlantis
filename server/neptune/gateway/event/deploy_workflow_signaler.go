@@ -78,6 +78,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 					Type: string(ref.Type),
 				},
 			},
+			Tags: rootCfg.Tags,
 		},
 		options,
 		workflows.Deploy,

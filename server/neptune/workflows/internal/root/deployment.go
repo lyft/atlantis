@@ -12,4 +12,5 @@ type DeploymentInfo struct {
 	User       github.User
 	Repo       github.Repo
 	Root       Root
+	Tags       map[string]string
 }

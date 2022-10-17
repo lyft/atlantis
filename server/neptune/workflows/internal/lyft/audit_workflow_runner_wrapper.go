@@ -51,6 +51,7 @@ func (w *AuditWorkflowRunnerWrapper) emit(ctx workflow.Context, state job.State,
 			User:       deploymentInfo.User,
 			Root:       deploymentInfo.Root,
 			Repo:       deploymentInfo.Repo,
+			Tags:       deploymentInfo.Tags,
 		},
 		State: state,
 	}).Get(ctx, nil)

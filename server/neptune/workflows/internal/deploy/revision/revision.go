@@ -20,6 +20,7 @@ type NewRevisionRequest struct {
 	User     request.User
 	Root     request.Root
 	Repo     request.Repo
+	Tags     map[string]string
 }
 
 type Queue interface {
@@ -90,5 +91,6 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		CheckRunID: resp.ID,
 		Repo:       repo,
 		User:       user,
+		Tags:       request.Tags,
 	})
 }
