@@ -19,12 +19,12 @@ type auditActivities struct {
 	SnsWriter writer
 }
 
-type NotifyDeployAPIRequest struct {
+type AuditJobRequest struct {
 	DeploymentInfo root.DeploymentInfo
 	State          job.State
 }
 
-func (a *auditActivities) NotifyDeployAPI(ctx context.Context, req NotifyDeployAPIRequest) error {
+func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) error {
 	isForceApply := req.DeploymentInfo.Root.Trigger == root.Trigger(request.ManualTrigger)
 	atlantisJobEvent := &job.Event{
 		Version:        1,

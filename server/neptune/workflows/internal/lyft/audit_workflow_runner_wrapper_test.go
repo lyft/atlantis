@@ -25,7 +25,7 @@ func (t *testWorkflowRunnerActivities) UpdateCheckRun(ctx context.Context, reque
 	return activities.UpdateCheckRunResponse{}, nil
 }
 
-func (t *testWorkflowRunnerActivities) NotifyDeployAPI(ctx context.Context, request activities.NotifyDeployAPIRequest) error {
+func (t *testWorkflowRunnerActivities) AuditJob(ctx context.Context, request activities.AuditJobRequest) error {
 	return nil
 }
 
@@ -66,14 +66,14 @@ func TestWorkflowRunnerWrapper_Success(t *testing.T) {
 
 	env.RegisterWorkflow(testWorkflow)
 	env.RegisterWorkflow(successTfWorkflow)
-	env.OnActivity(ta.NotifyDeployAPI, mock.Anything, activities.NotifyDeployAPIRequest{
+	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID: id.String(),
 		},
 		State: job.Running,
 	}).Return(nil)
 
-	env.OnActivity(ta.NotifyDeployAPI, mock.Anything, activities.NotifyDeployAPIRequest{
+	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID: id.String(),
 		},
@@ -100,14 +100,14 @@ func TestWorkflowRunnerWrapper_Failure(t *testing.T) {
 
 	env.RegisterWorkflow(testWorkflow)
 	env.RegisterWorkflow(failTfWorkflow)
-	env.OnActivity(ta.NotifyDeployAPI, mock.Anything, activities.NotifyDeployAPIRequest{
+	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID: id.String(),
 		},
 		State: job.Running,
 	}).Return(nil)
 
-	env.OnActivity(ta.NotifyDeployAPI, mock.Anything, activities.NotifyDeployAPIRequest{
+	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID: id.String(),
 		},

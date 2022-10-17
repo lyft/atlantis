@@ -14,7 +14,7 @@ import (
 )
 
 type auditActivities interface {
-	NotifyDeployAPI(ctx context.Context, request activities.NotifyDeployAPIRequest) error
+	AuditJob(ctx context.Context, request activities.AuditJobRequest) error
 }
 
 type workflowRunnerActivities interface {
@@ -60,7 +60,7 @@ func (w *WorkflowRunnerWrapper) Run(ctx workflow.Context, deploymentInfo terrafo
 }
 
 func (w *WorkflowRunnerWrapper) emit(ctx workflow.Context, state job.State, deploymentInfo terraform.DeploymentInfo) error {
-	err := workflow.ExecuteActivity(ctx, w.Activity.NotifyDeployAPI, activities.NotifyDeployAPIRequest{
+	err := workflow.ExecuteActivity(ctx, w.Activity.AuditJob, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
 			ID:         deploymentInfo.ID.String(),
 			CheckRunID: deploymentInfo.CheckRunID,
