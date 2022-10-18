@@ -14,12 +14,11 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/aws/sns"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/terraform"
-	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/aws/sns"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
+	internal "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/link"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
 const (
@@ -159,7 +158,7 @@ type Github struct {
 }
 
 type LinkBuilder interface {
-	BuildDownloadLinkFromArchive(archiveURL *url.URL, root root.Root, repo internal.Repo, revision string) string
+	BuildDownloadLinkFromArchive(archiveURL *url.URL, root terraform.Root, repo internal.Repo, revision string) string
 }
 
 func NewGithub(client githubClient, dataDir string, getter gogetter) (*Github, error) {

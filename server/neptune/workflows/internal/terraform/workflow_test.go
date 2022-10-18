@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	terraformModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
@@ -30,20 +30,20 @@ var testGithubRepo = github.Repo{
 	Name: testRepoName,
 }
 
-var testLocalRoot = &root.LocalRoot{
-	Root: root.Root{
+var testLocalRoot = &terraformModel.LocalRoot{
+	Root: terraformModel.Root{
 		Name: testRootName,
-		Plan: job.Plan{
-			Terraform: job.Terraform{
-				Steps: []job.Step{
+		Plan: terraformModel.PlanJob{
+			Job: execute.Job{
+				Steps: []execute.Step{
 					{
 						StepName: "step1",
 					},
 				},
 			},
 		},
-		Apply: job.Terraform{
-			Steps: []job.Step{
+		Apply: execute.Job{
+			Steps: []execute.Step{
 				{
 					StepName: "step2",
 				},
@@ -84,11 +84,11 @@ type jobRunner struct {
 	expectedError error
 }
 
-func (r *jobRunner) Apply(ctx workflow.Context, localRoot *root.LocalRoot, jobID string, planFile string) error {
+func (r *jobRunner) Apply(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, planFile string) error {
 	return r.expectedError
 }
 
-func (r *jobRunner) Plan(ctx workflow.Context, localRoot *root.LocalRoot, jobID string) (activities.TerraformPlanResponse, error) {
+func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string) (activities.TerraformPlanResponse, error) {
 	return activities.TerraformPlanResponse{}, r.expectedError
 }
 

@@ -15,10 +15,10 @@ type Writer struct {
 	TopicArn *string
 }
 
-func (w *Writer) Write(payload []byte) error {
+func (w *Writer) Write(payload []byte) (int, error) {
 	_, err := w.Client.Publish(&awsSns.PublishInput{
 		Message:  aws.String(string(payload)),
 		TopicArn: w.TopicArn,
 	})
-	return err
+	return len(payload), err
 }

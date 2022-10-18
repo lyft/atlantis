@@ -3,10 +3,10 @@ package terraform
 import (
 	"fmt"
 
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 
 	"github.com/google/uuid"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
 type DeploymentInfo struct {
@@ -14,7 +14,7 @@ type DeploymentInfo struct {
 	CheckRunID int64
 	Revision   string
 	User       github.User
-	Root       root.Root
+	Root       terraform.Root
 	Repo       github.Repo
 	Tags       map[string]string
 }

@@ -3,10 +3,10 @@ package job_test
 import (
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	runner "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -23,8 +23,8 @@ const (
 )
 
 type request struct {
-	LocalRoot root.LocalRoot
-	Step      job.Step
+	LocalRoot terraform.LocalRoot
+	Step      execute.Step
 }
 
 func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
@@ -36,7 +36,7 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 	env.RegisterWorkflow(testCmdWorkflow)
 
 	env.OnActivity(testExecuteActivity.ExecuteCommand, mock.Anything, activities.ExecuteCommandRequest{
-		Step: job.Step{
+		Step: execute.Step{
 			StepName:   "env",
 			RunCommand: "echo 'Hello World'",
 		},
@@ -54,8 +54,8 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 	}, nil)
 
 	env.ExecuteWorkflow(testCmdWorkflow, request{
-		LocalRoot: root.LocalRoot{
-			Root: root.Root{
+		LocalRoot: terraform.LocalRoot{
+			Root: terraform.Root{
 				Name: ProjectName,
 				Path: "project",
 			},
@@ -64,7 +64,7 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 				Owner: RepoOwner,
 			},
 		},
-		Step: job.Step{
+		Step: execute.Step{
 			StepName:   "env",
 			RunCommand: "echo 'Hello World'",
 		},
@@ -78,10 +78,10 @@ func TestEnvRunner_EnvVarValueNotSet(t *testing.T) {
 }
 
 func TestEnvRunne_EnvVarValueSet(t *testing.T) {
-	executioncontext := &job.ExecutionContext{}
-	localRoot := &root.LocalRoot{}
+	executioncontext := &runner.ExecutionContext{}
+	localRoot := &terraform.LocalRoot{}
 
-	step := job.Step{
+	step := execute.Step{
 		EnvVarName:  "TEST_VAR",
 		EnvVarValue: "TEST_VALUE",
 	}

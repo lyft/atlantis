@@ -1,8 +1,8 @@
 package converter
 
 import (
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 )
 
 func Repo(external request.Repo) github.Repo {

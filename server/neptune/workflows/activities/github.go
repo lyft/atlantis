@@ -11,9 +11,9 @@ import (
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/pkg/errors"
-	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
+	internal "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
 type ClientContext struct {
@@ -183,13 +183,13 @@ func getCheckStateAndConclusion(internalState internal.CheckRunState) (string, s
 
 type FetchRootRequest struct {
 	Repo         internal.Repo
-	Root         root.Root
+	Root         terraform.Root
 	DeploymentID string
 	Revision     string
 }
 
 type FetchRootResponse struct {
-	LocalRoot *root.LocalRoot
+	LocalRoot *terraform.LocalRoot
 }
 
 // FetchRoot fetches a link to the archive URL using the GH client, processes that URL into a download URL that the
@@ -219,7 +219,7 @@ func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootReque
 	if err != nil {
 		return FetchRootResponse{}, errors.Wrap(err, "fetching and extracting zip")
 	}
-	localRoot := root.BuildLocalRoot(request.Root, request.Repo, destinationPath)
+	localRoot := terraform.BuildLocalRoot(request.Root, request.Repo, destinationPath)
 	return FetchRootResponse{
 		LocalRoot: localRoot,
 	}, nil

@@ -4,12 +4,11 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -90,7 +89,7 @@ func (n *StateReceiver) updateCheckRun(ctx workflow.Context, workflowState *stat
 func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.JobStatus, deploymentInfo DeploymentInfo) error {
 	auditJobReq := activities.AuditJobRequest{
 		DeploymentInfo: deployment.Info{
-			Version:    queue.DeploymentInfoVersion,
+			Version:    "",
 			ID:         deploymentInfo.ID.String(),
 			CheckRunID: deploymentInfo.CheckRunID,
 			Revision:   deploymentInfo.Revision,

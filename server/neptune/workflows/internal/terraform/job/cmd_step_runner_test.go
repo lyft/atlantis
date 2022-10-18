@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	runner "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
@@ -30,7 +30,7 @@ func testCmdWorkflow(ctx workflow.Context, r request) (string, error) {
 		ScheduleToCloseTimeout: 5 * time.Second,
 	})
 
-	jobExecutionCtx := &job.ExecutionContext{
+	jobExecutionCtx := &runner.ExecutionContext{
 		Context:   ctx,
 		Path:      ProjectPath,
 		Envs:      map[string]string{},
@@ -70,8 +70,8 @@ func TestRunRunner_ShouldSetupEnvVars(t *testing.T) {
 	env.RegisterWorkflow(testCmdWorkflow)
 
 	env.ExecuteWorkflow(testCmdWorkflow, request{
-		LocalRoot: root.LocalRoot{
-			Root: root.Root{
+		LocalRoot: terraform.LocalRoot{
+			Root: terraform.Root{
 				Name: ProjectName,
 				Path: "project",
 			},
@@ -80,7 +80,7 @@ func TestRunRunner_ShouldSetupEnvVars(t *testing.T) {
 				Owner: RepoOwner,
 			},
 		},
-		Step: job.Step{},
+		Step: execute.Step{},
 	})
 
 	var resp string

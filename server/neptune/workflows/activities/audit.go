@@ -9,7 +9,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
 // AtlantisJobState represent current state of the job
@@ -80,7 +79,7 @@ type auditActivities struct {
 }
 
 func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) error {
-	isForceApply := req.DeploymentInfo.Root.Trigger == root.ManualTrigger
+	// isForceApply := req.DeploymentInfo.Root.Trigger == workflows.ManualTrigger
 	atlantisJobEvent := &AtlantisJobEvent{
 		Version:        1,
 		ID:             req.DeploymentInfo.ID,
@@ -88,11 +87,11 @@ func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) err
 		JobType:        AtlantisApplyJob,
 		Repository:     req.DeploymentInfo.Repo.GetFullName(),
 		InitiatingUser: req.DeploymentInfo.User.Username,
-		ForceApply:     isForceApply,
-		StartTime:      strconv.FormatInt(time.Now().Unix(), 10),
-		Revision:       req.DeploymentInfo.Revision,
-		Project:        req.DeploymentInfo.Tags[ProjectTagKey],
-		Environment:    req.DeploymentInfo.Tags[EnvironmentTagKey],
+		// ForceApply:     isForceApply,
+		StartTime:   strconv.FormatInt(time.Now().Unix(), 10),
+		Revision:    req.DeploymentInfo.Revision,
+		Project:     req.DeploymentInfo.Tags[ProjectTagKey],
+		Environment: req.DeploymentInfo.Tags[EnvironmentTagKey],
 	}
 
 	if req.State == AtlantisJobStateFailure || req.State == AtlantisJobStateSuccess {
