@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
@@ -20,7 +21,7 @@ type writer interface {
 }
 
 type AuditJobRequest struct {
-	DeploymentInfo root.DeploymentInfo
+	DeploymentInfo deployment.Info
 	State          job.State
 }
 

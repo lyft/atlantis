@@ -1,16 +1,17 @@
-package root
+package deployment
 
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
 )
 
-type DeploymentInfo struct {
+type Info struct {
 	Version    string
 	ID         string
 	CheckRunID int64
 	Revision   string
 	User       github.User
 	Repo       github.Repo
-	Root       Root
+	Root       root.Root
 	Tags       map[string]string
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/metrics"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -112,12 +111,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	session, err := aws.NewSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing new aws session")
-	}
-
-	deployActivities, err := workflows.NewDeployActivities(config.DeploymentConfig, session, config.LyftAuditJobsSnsTopicArn)
+	deployActivities, err := workflows.NewDeployActivities(config.DeploymentConfig, config.LyftAuditJobsSnsTopicArn)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")
 	}

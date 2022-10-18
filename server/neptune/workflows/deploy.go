@@ -1,7 +1,6 @@
 package workflows
 
 import (
-	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
@@ -43,8 +42,8 @@ type DeployActivities struct {
 	activities.Deploy
 }
 
-func NewDeployActivities(deploymentCfg valid.StoreConfig, session client.ConfigProvider, topicArn string) (*DeployActivities, error) {
-	deployActivities, err := activities.NewDeploy(deploymentCfg, session, topicArn)
+func NewDeployActivities(deploymentCfg valid.StoreConfig, topicArn string) (*DeployActivities, error) {
+	deployActivities, err := activities.NewDeploy(deploymentCfg, topicArn)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	deploy_tf "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
@@ -93,7 +94,7 @@ func TestWorkflowRunnerWrapper_Success(t *testing.T) {
 	env.RegisterWorkflow(testWorkflow)
 	env.RegisterWorkflow(successTfWorkflow)
 	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
-		DeploymentInfo: root.DeploymentInfo{
+		DeploymentInfo: deployment.Info{
 			Version:    queue.DeploymentInfoVersion,
 			ID:         id.String(),
 			CheckRunID: 1234,
@@ -107,7 +108,7 @@ func TestWorkflowRunnerWrapper_Success(t *testing.T) {
 	}).Return(nil)
 
 	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
-		DeploymentInfo: root.DeploymentInfo{
+		DeploymentInfo: deployment.Info{
 			Version:    queue.DeploymentInfoVersion,
 			ID:         id.String(),
 			CheckRunID: 1234,
@@ -165,7 +166,7 @@ func TestWorkflowRunnerWrapper_Failure(t *testing.T) {
 	env.RegisterWorkflow(testWorkflow)
 	env.RegisterWorkflow(failTfWorkflow)
 	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
-		DeploymentInfo: root.DeploymentInfo{
+		DeploymentInfo: deployment.Info{
 			Version:    queue.DeploymentInfoVersion,
 			ID:         id.String(),
 			CheckRunID: 1234,
@@ -179,7 +180,7 @@ func TestWorkflowRunnerWrapper_Failure(t *testing.T) {
 	}).Return(nil)
 
 	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
-		DeploymentInfo: root.DeploymentInfo{
+		DeploymentInfo: deployment.Info{
 			Version:    queue.DeploymentInfoVersion,
 			ID:         id.String(),
 			CheckRunID: 1234,

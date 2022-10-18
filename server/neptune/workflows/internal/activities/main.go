@@ -5,24 +5,21 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aws/aws-sdk-go/aws/client"
 	awsSns "github.com/aws/aws-sdk-go/service/sns"
 	"github.com/hashicorp/go-version"
-	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/github"
+	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/aws/sns"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/terraform"
-	repo "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
+	internal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/link"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
-	"github.com/uber-go/tally/v4"
 )
 
 const (
@@ -46,7 +43,7 @@ type Deploy struct {
 	*auditActivities
 }
 
-func NewDeploy(deploymentStoreCfg valid.StoreConfig, session client.ConfigProvider, topicArn string) (*Deploy, error) {
+func NewDeploy(deploymentStoreCfg valid.StoreConfig, topicArn string) (*Deploy, error) {
 	storageClient, err := storage.NewClient(deploymentStoreCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "intializing stow client")
@@ -55,6 +52,11 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig, session client.ConfigProvid
 	deploymentStore, err := deployment.NewStore(storageClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deployment info store")
+	}
+
+	session, err := aws.NewSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing new aws session")
 	}
 
 	return &Deploy{
@@ -78,7 +80,16 @@ type Terraform struct {
 	*jobActivities
 }
 
-func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, streamHandler *job.StreamHandler) (*Terraform, error) {
+type StreamCloser interface {
+	streamer
+	closer
+}
+
+type TerraformOptions struct {
+	VersionCache cache.ExecutionVersionCache
+}
+
+func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.URL, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -100,10 +111,28 @@ func NewTerraform(config config.TerraformConfig, dataDir string, serverURL *url.
 		TfDownloadURL: config.DownloadURL,
 	}
 
+	downloader := &legacy_tf.DefaultDownloader{}
+
+	loader := legacy_tf.NewVersionLoader(downloader, config.DownloadURL)
+
+	var versionCache cache.ExecutionVersionCache
+	for _, o := range opts {
+		versionCache = o.VersionCache
+	}
+
+	if versionCache == nil {
+		versionCache = cache.NewExecutionVersionLayeredLoadingCache(
+			"terraform",
+			binDir,
+			loader.LoadVersion,
+		)
+	}
+
 	tfClient, err := terraform.NewAsyncClient(
 		tfClientConfig,
 		config.DefaultVersionStr,
-		&legacy_tf.DefaultDownloader{},
+		downloader,
+		versionCache,
 	)
 	if err != nil {
 		return nil, err
@@ -130,24 +159,16 @@ type Github struct {
 }
 
 type LinkBuilder interface {
-	BuildDownloadLinkFromArchive(archiveURL *url.URL, root root.Root, repo repo.Repo, revision string) string
+	BuildDownloadLinkFromArchive(archiveURL *url.URL, root root.Root, repo internal.Repo, revision string) string
 }
 
-func NewGithub(config githubapp.Config, scope tally.Scope, dataDir string) (*Github, error) {
-	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
-		config,
-		githubapp.WithClientMiddleware(
-			github.ClientMetrics(scope.SubScope("app")),
-		))
-
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing client creator")
-	}
+func NewGithub(client githubClient, dataDir string, getter gogetter) (*Github, error) {
 	return &Github{
 		githubActivities: &githubActivities{
-			ClientCreator: clientCreator,
-			DataDir:       dataDir,
-			LinkBuilder:   link.Builder{},
+			Client:      client,
+			DataDir:     dataDir,
+			LinkBuilder: link.Builder{},
+			Getter:      getter,
 		},
 	}, nil
 }
