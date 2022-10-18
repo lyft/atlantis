@@ -19,13 +19,13 @@ type writer interface {
 	Write([]byte) error
 }
 
-type auditActivities struct {
-	SnsWriter writer
-}
-
 type AuditJobRequest struct {
 	DeploymentInfo root.DeploymentInfo
 	State          job.State
+}
+
+type auditActivities struct {
+	SnsWriter writer
 }
 
 func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) error {
@@ -36,12 +36,12 @@ func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) err
 		RootName:       req.DeploymentInfo.Root.Name,
 		JobType:        job.ApplyJob,
 		Repository:     req.DeploymentInfo.Repo.GetFullName(),
-		Environment:    req.DeploymentInfo.Tags[EnvironmentTagKey],
 		InitiatingUser: req.DeploymentInfo.User.Username,
-		Project:        req.DeploymentInfo.Tags[ProjectTagKey],
 		ForceApply:     isForceApply,
 		StartTime:      strconv.FormatInt(time.Now().Unix(), 10),
 		Revision:       req.DeploymentInfo.Revision,
+		Project:        req.DeploymentInfo.Tags[ProjectTagKey],
+		Environment:    req.DeploymentInfo.Tags[EnvironmentTagKey],
 	}
 
 	if req.State == job.Failure || req.State == job.Success {

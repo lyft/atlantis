@@ -13,10 +13,6 @@ import (
 
 const DeploymentInfoVersion = "1.0.0"
 
-type TerraformWorkflowRunner interface {
-	Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error
-}
-
 type revisionProcessor interface {
 	Process(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo, latestDeployment *root.DeploymentInfo) (*root.DeploymentInfo, error)
 }
@@ -38,6 +34,7 @@ type UnlockSignalRequest struct {
 type Worker struct {
 	Queue             *Queue
 	RevisionProcessor revisionProcessor
+
 	// mutable
 	state WorkerState
 }

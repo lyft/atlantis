@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
@@ -11,7 +12,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type terraformWorkflowRunner interface {
+type TerraformWorkflowRunner interface {
 	Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo) error
 }
 
@@ -32,7 +33,7 @@ type workerActivities interface {
 
 type RevisionProcessor struct {
 	Activities              workerActivities
-	TerraformWorkflowRunner terraformWorkflowRunner
+	TerraformWorkflowRunner TerraformWorkflowRunner
 }
 
 const (

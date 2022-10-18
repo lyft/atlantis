@@ -44,6 +44,7 @@ func (w *AuditWorkflowRunnerWrapper) Run(ctx workflow.Context, deploymentInfo te
 func (w *AuditWorkflowRunnerWrapper) emit(ctx workflow.Context, state job.State, deploymentInfo terraform.DeploymentInfo) error {
 	err := workflow.ExecuteActivity(ctx, w.Activity.AuditJob, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
+			Version:    queue.DeploymentInfoVersion,
 			ID:         deploymentInfo.ID.String(),
 			CheckRunID: deploymentInfo.CheckRunID,
 			Revision:   deploymentInfo.Revision,
