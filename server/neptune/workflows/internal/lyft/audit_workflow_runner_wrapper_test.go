@@ -8,7 +8,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	deploy_tf "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/lyft"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/root"
@@ -70,25 +72,63 @@ func TestWorkflowRunnerWrapper_Success(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 	ta := &testWorkflowRunnerActivities{}
 
+	rt := root.Root{
+		Name: "test-root",
+	}
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	tags := map[string]string{
+		activities.ProjectTagKey:     "test-project",
+		activities.EnvironmentTagKey: "test-environment",
+	}
+
+	user := github.User{
+		Username: "test-user",
+	}
+
 	env.RegisterWorkflow(testWorkflow)
 	env.RegisterWorkflow(successTfWorkflow)
 	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
-			ID: id.String(),
+			Version:    queue.DeploymentInfoVersion,
+			ID:         id.String(),
+			CheckRunID: 1234,
+			Revision:   "ff",
+			User:       user,
+			Root:       rt,
+			Repo:       repo,
+			Tags:       tags,
 		},
 		State: job.Running,
 	}).Return(nil)
 
 	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
-			ID: id.String(),
+			Version:    queue.DeploymentInfoVersion,
+			ID:         id.String(),
+			CheckRunID: 1234,
+			Revision:   "ff",
+			User:       user,
+			Root:       rt,
+			Repo:       repo,
+			Tags:       tags,
 		},
 		State: job.Success,
 	}).Return(nil)
 
 	env.ExecuteWorkflow(testWorkflow, req{
 		DeploymentInfo: deploy_tf.DeploymentInfo{
-			ID: id,
+			ID:         id,
+			CheckRunID: 1234,
+			Revision:   "ff",
+			User:       user,
+			Root:       rt,
+			Repo:       repo,
+			Tags:       tags,
 		},
 		Success: true,
 	})
@@ -104,25 +144,63 @@ func TestWorkflowRunnerWrapper_Failure(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 	ta := &testWorkflowRunnerActivities{}
 
+	rt := root.Root{
+		Name: "test-root",
+	}
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	tags := map[string]string{
+		activities.ProjectTagKey:     "test-project",
+		activities.EnvironmentTagKey: "test-environment",
+	}
+
+	user := github.User{
+		Username: "test-user",
+	}
+
 	env.RegisterWorkflow(testWorkflow)
 	env.RegisterWorkflow(failTfWorkflow)
 	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
-			ID: id.String(),
+			Version:    queue.DeploymentInfoVersion,
+			ID:         id.String(),
+			CheckRunID: 1234,
+			Revision:   "ff",
+			User:       user,
+			Root:       rt,
+			Repo:       repo,
+			Tags:       tags,
 		},
 		State: job.Running,
 	}).Return(nil)
 
 	env.OnActivity(ta.AuditJob, mock.Anything, activities.AuditJobRequest{
 		DeploymentInfo: root.DeploymentInfo{
-			ID: id.String(),
+			Version:    queue.DeploymentInfoVersion,
+			ID:         id.String(),
+			CheckRunID: 1234,
+			Revision:   "ff",
+			User:       user,
+			Root:       rt,
+			Repo:       repo,
+			Tags:       tags,
 		},
 		State: job.Failure,
 	}).Return(nil)
 
 	env.ExecuteWorkflow(testWorkflow, req{
 		DeploymentInfo: deploy_tf.DeploymentInfo{
-			ID: id,
+			ID:         id,
+			CheckRunID: 1234,
+			Revision:   "ff",
+			User:       user,
+			Root:       rt,
+			Repo:       repo,
+			Tags:       tags,
 		},
 		Success: false,
 	})
