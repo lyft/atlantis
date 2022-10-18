@@ -3,8 +3,11 @@ package terraform
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
@@ -12,7 +15,12 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+type auditActivities interface {
+	AuditJob(ctx context.Context, request activities.AuditJobRequest) error
+}
+
 type receiverActivities interface {
+	auditActivities
 	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
 }
 
@@ -36,6 +44,19 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		return
 	}
 
+	// emit audit events when Apply operation is run
+	if workflowState.Apply != nil {
+		if err := n.emitApplyEvents(ctx, workflowState.Apply.Status, deploymentInfo); err != nil {
+			logger.Error(ctx, errors.Wrap(err, "auditing apply job event").Error())
+		}
+	}
+
+	if err := n.updateCheckRun(ctx, workflowState, deploymentInfo); err != nil {
+		logger.Error(ctx, "updating check run", "err", err)
+	}
+}
+
+func (n *StateReceiver) updateCheckRun(ctx workflow.Context, workflowState *state.Workflow, deploymentInfo DeploymentInfo) error {
 	summary := markdown.RenderWorkflowStateTmpl(workflowState)
 	checkRunState := determineCheckRunState(workflowState)
 
@@ -63,12 +84,33 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 	}
 
 	// TODO: should we block here? maybe we can just make this async
-	var resp activities.UpdateCheckRunResponse
-	err := workflow.ExecuteActivity(ctx, n.Activity.UpdateCheckRun, request).Get(ctx, &resp)
+	return workflow.ExecuteActivity(ctx, n.Activity.UpdateCheckRun, request).Get(ctx, nil)
+}
 
-	if err != nil {
-		logger.Error(ctx, "updating check run", "err", err)
+func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.JobStatus, deploymentInfo DeploymentInfo) error {
+	auditJobReq := activities.AuditJobRequest{
+		DeploymentInfo: deployment.Info{
+			Version:    queue.DeploymentInfoVersion,
+			ID:         deploymentInfo.ID.String(),
+			CheckRunID: deploymentInfo.CheckRunID,
+			Revision:   deploymentInfo.Revision,
+			User:       deploymentInfo.User,
+			Root:       deploymentInfo.Root,
+			Repo:       deploymentInfo.Repo,
+			Tags:       deploymentInfo.Tags,
+		},
 	}
+
+	switch jobStatus {
+	case state.InProgressJobStatus:
+		auditJobReq.State = activities.AtlantisJobStateRunning
+	case state.SuccessJobStatus:
+		auditJobReq.State = activities.AtlantisJobStateSuccess
+	case state.FailedJobStatus, state.RejectedJobStatus:
+		auditJobReq.State = activities.AtlantisJobStateFailure
+	}
+
+	return workflow.ExecuteActivity(ctx, n.Activity.AuditJob, auditJobReq).Get(ctx, nil)
 }
 
 func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState {
