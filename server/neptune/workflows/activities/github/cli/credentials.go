@@ -19,7 +19,7 @@ import (
 
 type Credentials struct {
 	Cfg      githubapp.Config
-	FileLock file.RWLock
+	FileLock *file.RWLock
 
 	once      sync.Once
 	transport *ghinstallation.Transport

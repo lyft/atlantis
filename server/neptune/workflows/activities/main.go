@@ -105,7 +105,7 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 	downloader := &legacy_tf.DefaultDownloader{}
 	loader := legacy_tf.NewVersionLoader(downloader, config.DownloadURL)
 
-	gitCredentialsFileLock := file.RWLock{}
+	gitCredentialsFileLock := &file.RWLock{}
 
 	var versionCache cache.ExecutionVersionCache
 	var credentialsRefresher gitCredentialsRefresher
@@ -130,7 +130,8 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 
 	if credentialsRefresher == nil {
 		credentialsRefresher = &cli.Credentials{
-			Cfg: ghAppConfig,
+			Cfg:      ghAppConfig,
+			FileLock: gitCredentialsFileLock,
 		}
 	}
 

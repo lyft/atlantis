@@ -53,7 +53,7 @@ type terraformActivities struct {
 	StreamHandler          streamer
 	GHAppConfig            githubapp.Config
 	GitCLICredentials      gitCredentialsRefresher
-	GitCredentialsFileLock file.RWLock
+	GitCredentialsFileLock *file.RWLock
 }
 
 func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, streamHandler streamer) *terraformActivities { //nolint:revive // avoiding refactor while adding linter action
