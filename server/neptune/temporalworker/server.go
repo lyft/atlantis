@@ -119,6 +119,7 @@ func NewServer(config *config.Config) (*Server, error) {
 
 	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
+		config.App,
 		config.DataDir,
 		config.ServerCfg.URL,
 		jobStreamHandler,

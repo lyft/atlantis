@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/cli"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
@@ -44,12 +43,16 @@ type streamer interface {
 	Stream(jobID string, msg string)
 }
 
+type gitCredentialsRefresher interface {
+	Refresh(ctx context.Context, token int64) error
+}
+
 type terraformActivities struct {
 	TerraformClient        TerraformClient
 	DefaultTFVersion       *version.Version
 	StreamHandler          streamer
 	GHAppConfig            githubapp.Config
-	GitCLICredentials      cli.Credentials
+	GitCLICredentials      gitCredentialsRefresher
 	GitCredentialsFileLock file.RWLock
 }
 
