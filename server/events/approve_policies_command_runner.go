@@ -12,7 +12,7 @@ type commandOutputGenerator interface {
 }
 
 func NewApprovePoliciesCommandRunner(
-	vcsStatusUpdater VcsStatusUpdater,
+	vcsStatusUpdater VCSStatusUpdater,
 	prjCommandBuilder ProjectApprovePoliciesCommandBuilder,
 	prjCommandRunner ProjectApprovePoliciesCommandRunner,
 	outputUpdater OutputUpdater,
@@ -30,7 +30,7 @@ func NewApprovePoliciesCommandRunner(
 }
 
 type ApprovePoliciesCommandRunner struct {
-	vcsStatusUpdater           VcsStatusUpdater
+	vcsStatusUpdater           VCSStatusUpdater
 	outputUpdater              OutputUpdater
 	dbUpdater                  *DBUpdater
 	prjCmdBuilder              ProjectApprovePoliciesCommandBuilder

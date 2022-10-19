@@ -13,7 +13,7 @@ func NewApplyCommandRunner(
 	vcsClient vcs.Client,
 	disableApplyAll bool,
 	applyCommandLocker locking.ApplyLockChecker,
-	vcsStatusUpdater VcsStatusUpdater,
+	vcsStatusUpdater VCSStatusUpdater,
 	prjCommandBuilder ProjectApplyCommandBuilder,
 	prjCmdRunner ProjectApplyCommandRunner,
 	outputUpdater OutputUpdater,
@@ -39,7 +39,7 @@ type ApplyCommandRunner struct {
 	DisableApplyAll      bool
 	locker               locking.ApplyLockChecker
 	vcsClient            vcs.Client
-	vcsStatusUpdater     VcsStatusUpdater
+	vcsStatusUpdater     VCSStatusUpdater
 	prjCmdBuilder        ProjectApplyCommandBuilder
 	prjCmdRunner         ProjectApplyCommandRunner
 	outputUpdater        OutputUpdater

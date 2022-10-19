@@ -51,7 +51,7 @@ var workingDir events.WorkingDir
 var pendingPlanFinder *mocks.MockPendingPlanFinder
 var drainer *events.Drainer
 var deleteLockCommand *mocks.MockDeleteLockCommand
-var vcsUpdater *mocks.MockVcsStatusUpdater
+var vcsUpdater *mocks.MockVCSStatusUpdater
 var staleCommandChecker *mocks.MockStaleCommandChecker
 
 // TODO: refactor these into their own unit tests.
@@ -76,7 +76,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	projectCommandRunner = mocks.NewMockProjectCommandRunner()
 	workingDir = mocks.NewMockWorkingDir()
 	pendingPlanFinder = mocks.NewMockPendingPlanFinder()
-	vcsUpdater = mocks.NewMockVcsStatusUpdater()
+	vcsUpdater = mocks.NewMockVCSStatusUpdater()
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	defaultBoltDB, err := db.New(tmp)
@@ -184,7 +184,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             defaultBoltDB,
 		StaleCommandChecker:           staleCommandChecker,
-		VcsStatusUpdater:              vcsUpdater,
+		VCSStatusUpdater:              vcsUpdater,
 	}
 	return vcsClient
 }

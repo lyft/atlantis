@@ -784,13 +784,13 @@ locally at this time.
 			terraform := mocks.NewMockClient()
 
 			tfVersion, _ := version.NewVersion("0.11.12")
-			updater := mocks2.NewMockVcsStatusUpdater()
+			updater := mocks2.NewMockVCSStatusUpdater()
 			asyncTf := &remotePlanMock{}
 			s := runtime.PlanStepRunner{
 				TerraformExecutor: terraform,
 				DefaultTFVersion:  tfVersion,
 				AsyncTFExec:       asyncTf,
-				VcsStatusUpdater:  updater,
+				VCSStatusUpdater:  updater,
 			}
 			absProjectPath, cleanup := TempDir(t)
 			defer cleanup()

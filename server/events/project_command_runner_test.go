@@ -401,7 +401,7 @@ func TestProjectOutputWrapper(t *testing.T) {
 			projectUpdater := command.ProjectStatusUpdater{
 				JobCloser:               mockJobCloser,
 				ProjectJobURLGenerator:  mockJobURLGenerator,
-				ProjectVcsStatusUpdater: &mockCommitStatusUpdater,
+				ProjectVCSStatusUpdater: &mockCommitStatusUpdater,
 			}
 
 			runner := &events.ProjectOutputWrapper{

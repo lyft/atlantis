@@ -560,7 +560,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	planStepRunner := &runtime.PlanStepRunner{
 		TerraformExecutor: terraformClient,
 		DefaultTFVersion:  defaultTfVersion,
-		VcsStatusUpdater:  vcsStatusUpdater,
+		VCSStatusUpdater:  vcsStatusUpdater,
 		AsyncTFExec:       terraformClient,
 	}
 
@@ -584,7 +584,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	applyStepRunner := &runtime.ApplyStepRunner{
 		TerraformExecutor: terraformClient,
-		VcsStatusUpdater:  vcsStatusUpdater,
+		VCSStatusUpdater:  vcsStatusUpdater,
 		AsyncTFExec:       terraformClient,
 	}
 
@@ -657,7 +657,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	statusUpdater := command.ProjectStatusUpdater{
 		ProjectJobURLGenerator:  router,
 		JobCloser:               projectCmdOutputHandler,
-		ProjectVcsStatusUpdater: vcsStatusUpdater,
+		ProjectVCSStatusUpdater: vcsStatusUpdater,
 	}
 
 	legacyPrjCmdRunner := wrappers.
@@ -788,7 +788,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
 		StaleCommandChecker:           staleCommandChecker,
-		VcsStatusUpdater:              vcsStatusUpdater,
+		VCSStatusUpdater:              vcsStatusUpdater,
 		Logger:                        ctxLogger,
 	}
 

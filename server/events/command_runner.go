@@ -86,7 +86,7 @@ type DefaultCommandRunner struct {
 	CommentCommandRunnerByCmd     map[command.Name]command.Runner
 	Drainer                       *Drainer
 	PreWorkflowHooksCommandRunner PreWorkflowHooksCommandRunner
-	VcsStatusUpdater              VcsStatusUpdater
+	VCSStatusUpdater              VCSStatusUpdater
 	PullStatusFetcher             PullStatusFetcher
 	StaleCommandChecker           StaleCommandChecker
 	Logger                        logging.Logger
@@ -137,7 +137,7 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 
 	if err := c.PreWorkflowHooksCommandRunner.RunPreHooks(ctx, cmdCtx); err != nil {
 		c.Logger.ErrorContext(ctx, "Error running pre-workflow hooks", fields.PullRequestWithErr(pull, err))
-		_, err := c.VcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVcsStatus, command.Plan, "", err.Error())
+		_, err := c.VCSStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVcsStatus, command.Plan, "", err.Error())
 		if err != nil {
 			c.Logger.ErrorContext(ctx, err.Error())
 		}
@@ -209,7 +209,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 		}
 
 		c.Logger.ErrorContext(ctx, "Error running pre-workflow hooks", fields.PullRequestWithErr(pull, err))
-		_, err := c.VcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVcsStatus, cmdName, "", err.Error())
+		_, err := c.VCSStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVcsStatus, cmdName, "", err.Error())
 		if err != nil {
 			c.Logger.ErrorContext(ctx, err.Error())
 		}

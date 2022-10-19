@@ -24,14 +24,14 @@ var autoplanValidator gateway.AutoplanValidator
 var preWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
 var projectCommandBuilder *mocks.MockProjectCommandBuilder
 var drainer *events.Drainer
-var vcsStatusUpdater *mocks.MockVcsStatusUpdater
+var vcsStatusUpdater *mocks.MockVCSStatusUpdater
 var workingDir *mocks.MockWorkingDir
 var workingDirLocker *mocks.MockWorkingDirLocker
 
 func setupAutoplan(t *testing.T) *vcsmocks.MockClient {
 	RegisterMockTestingT(t)
 	projectCommandBuilder = mocks.NewMockProjectCommandBuilder()
-	vcsStatusUpdater = mocks.NewMockVcsStatusUpdater()
+	vcsStatusUpdater = mocks.NewMockVCSStatusUpdater()
 	workingDir = mocks.NewMockWorkingDir()
 	workingDirLocker = mocks.NewMockWorkingDirLocker()
 	vcsClient := vcsmocks.NewMockClient()
@@ -54,7 +54,7 @@ func setupAutoplan(t *testing.T) *vcsmocks.MockClient {
 		GlobalCfg:                     globalCfg,
 		OutputUpdater:                 pullUpdater,
 		PrjCmdBuilder:                 projectCommandBuilder,
-		VcsStatusUpdater:              vcsStatusUpdater,
+		VCSStatusUpdater:              vcsStatusUpdater,
 		WorkingDir:                    workingDir,
 		WorkingDirLocker:              workingDirLocker,
 	}

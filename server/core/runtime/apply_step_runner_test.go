@@ -259,10 +259,10 @@ Plan: 0 to add, 0 to change, 1 to destroy.`
 	RegisterMockTestingT(t)
 	tfOut := fmt.Sprintf(preConfirmOutFmt, planFileContents) + postConfirmOut
 	tfExec := &remoteApplyMock{LinesToSend: tfOut, DoneCh: make(chan bool)}
-	updater := mocks2.NewMockVcsStatusUpdater()
+	updater := mocks2.NewMockVCSStatusUpdater()
 	o := runtime.ApplyStepRunner{
 		AsyncTFExec:      tfExec,
-		VcsStatusUpdater: updater,
+		VCSStatusUpdater: updater,
 	}
 	tfVersion, _ := version.NewVersion("0.11.0")
 	ctx := context.Background()
@@ -325,7 +325,7 @@ Plan: 0 to add, 0 to change, 1 to destroy.`
 	}
 	o := runtime.ApplyStepRunner{
 		AsyncTFExec:      tfExec,
-		VcsStatusUpdater: mocks2.NewMockVcsStatusUpdater(),
+		VCSStatusUpdater: mocks2.NewMockVCSStatusUpdater(),
 	}
 	tfVersion, _ := version.NewVersion("0.11.0")
 

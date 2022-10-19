@@ -52,7 +52,7 @@ func TestProjectStatusUpdater_CloseJobWhenOperationComplete(t *testing.T) {
 	prjStatusUpdater := command.ProjectStatusUpdater{
 		ProjectJobURLGenerator:  &jobURLGenerator,
 		JobCloser:               &jobCloser,
-		ProjectVcsStatusUpdater: &commitStatusUpdater,
+		ProjectVCSStatusUpdater: &commitStatusUpdater,
 	}
 
 	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.SuccessVcsStatus)
@@ -87,7 +87,7 @@ func TestProjectStatusUpdater_DoNotCloseJobWhenInProgress(t *testing.T) {
 	prjStatusUpdater := command.ProjectStatusUpdater{
 		ProjectJobURLGenerator:  &jobURLGenerator,
 		JobCloser:               &jobCloser,
-		ProjectVcsStatusUpdater: &commitStatusUpdater,
+		ProjectVCSStatusUpdater: &commitStatusUpdater,
 	}
 
 	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.PendingVcsStatus)

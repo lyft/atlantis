@@ -19,7 +19,7 @@ import (
 // ApplyStepRunner runs `terraform apply`.
 type ApplyStepRunner struct {
 	TerraformExecutor TerraformExec
-	VcsStatusUpdater  StatusUpdater
+	VCSStatusUpdater  StatusUpdater
 	AsyncTFExec       AsyncTFExec
 }
 
@@ -128,7 +128,7 @@ func (a *ApplyStepRunner) runRemoteApply(
 
 	// updateStatusF will update the commit status and log any error.
 	updateStatusF := func(status models.VcsStatus, url string, statusID string) {
-		if _, err := a.VcsStatusUpdater.UpdateProject(ctx, prjCtx, command.Apply, status, url, statusID); err != nil {
+		if _, err := a.VCSStatusUpdater.UpdateProject(ctx, prjCtx, command.Apply, status, url, statusID); err != nil {
 			prjCtx.Log.ErrorContext(prjCtx.RequestCtx, fmt.Sprintf("unable to update status: %s", err))
 		}
 	}

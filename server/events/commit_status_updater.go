@@ -21,8 +21,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_vcs_status_updater.go VcsStatusUpdater
-type VcsStatusUpdater interface {
+//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_vcs_status_updater.go VCSStatusUpdater
+type VCSStatusUpdater interface {
 	// UpdateCombined updates the combined status of the head commit of pull.
 	// A combined status represents all the projects modified in the pull.
 	UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VcsStatus, cmdName fmt.Stringer, statusID string, output string) (string, error)

@@ -10,7 +10,7 @@ import (
 func NewPolicyCheckCommandRunner(
 	dbUpdater *DBUpdater,
 	outputUpdater OutputUpdater,
-	vcsStatusUpdater VcsStatusUpdater,
+	vcsStatusUpdater VCSStatusUpdater,
 	projectCommandRunner ProjectPolicyCheckCommandRunner,
 	parallelPoolSize int,
 ) *PolicyCheckCommandRunner {
@@ -26,7 +26,7 @@ func NewPolicyCheckCommandRunner(
 type PolicyCheckCommandRunner struct {
 	dbUpdater        *DBUpdater
 	outputUpdater    OutputUpdater
-	vcsStatusUpdater VcsStatusUpdater
+	vcsStatusUpdater VCSStatusUpdater
 	prjCmdRunner     ProjectPolicyCheckCommandRunner
 	parallelPoolSize int
 }

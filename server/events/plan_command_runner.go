@@ -12,7 +12,7 @@ func NewPlanCommandRunner(
 	vcsClient vcs.Client,
 	pendingPlanFinder PendingPlanFinder,
 	workingDir WorkingDir,
-	vcsStatusUpdater VcsStatusUpdater,
+	vcsStatusUpdater VCSStatusUpdater,
 	projectCommandBuilder ProjectPlanCommandBuilder,
 	projectCommandRunner ProjectPlanCommandRunner,
 	dbUpdater *DBUpdater,
@@ -36,7 +36,7 @@ func NewPlanCommandRunner(
 
 type PlanCommandRunner struct {
 	vcsClient                vcs.Client
-	vcsStatusUpdater         VcsStatusUpdater
+	vcsStatusUpdater         VCSStatusUpdater
 	pendingPlanFinder        PendingPlanFinder
 	workingDir               WorkingDir
 	prjCmdBuilder            ProjectPlanCommandBuilder
