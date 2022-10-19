@@ -109,19 +109,19 @@ func TestGitlabClient_SupportsCommonMark(t *testing.T) {
 
 func TestGitlabClient_UpdateStatus(t *testing.T) {
 	cases := []struct {
-		status   models.CommitStatus
+		status   models.VcsStatus
 		expState string
 	}{
 		{
-			models.PendingCommitStatus,
+			models.PendingVcsStatus,
 			"pending",
 		},
 		{
-			models.SuccessCommitStatus,
+			models.SuccessVcsStatus,
 			"success",
 		},
 		{
-			models.FailedCommitStatus,
+			models.FailedVcsStatus,
 			"failed",
 		},
 	}

@@ -19,7 +19,7 @@ type VCSStatusUpdater struct {
 	DefaultDetailsURL string
 }
 
-func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, statusID string, output string) (string, error) {
+func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VcsStatus, cmdName fmt.Stringer, statusID string, output string) (string, error) {
 	src := d.TitleBuilder.Build(cmdName.String())
 	descrip := fmt.Sprintf("%s %s", strings.Title(cmdName.String()), d.statusDescription(status))
 
@@ -39,7 +39,7 @@ func (d *VCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo,
 	return d.Client.UpdateStatus(ctx, request)
 }
 
-func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.CommitStatus, cmdName fmt.Stringer, numSuccess int, numTotal int, statusID string) (string, error) {
+func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VcsStatus, cmdName fmt.Stringer, numSuccess int, numTotal int, statusID string) (string, error) {
 	src := d.TitleBuilder.Build(cmdName.String())
 	cmdVerb := "unknown"
 
@@ -72,7 +72,7 @@ func (d *VCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.
 	return d.Client.UpdateStatus(ctx, request)
 }
 
-func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string, statusID string) (string, error) {
+func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.VcsStatus, url string, statusID string) (string, error) {
 	projectID := projectCtx.ProjectName
 	if projectID == "" {
 		projectID = fmt.Sprintf("%s/%s", projectCtx.RepoRelDir, projectCtx.Workspace)
@@ -102,14 +102,14 @@ func (d *VCSStatusUpdater) UpdateProject(ctx context.Context, projectCtx Project
 	return d.Client.UpdateStatus(ctx, request)
 }
 
-func (d *VCSStatusUpdater) statusDescription(status models.CommitStatus) string {
+func (d *VCSStatusUpdater) statusDescription(status models.VcsStatus) string {
 	var description string
 	switch status {
-	case models.PendingCommitStatus:
+	case models.PendingVcsStatus:
 		description = "in progress..."
-	case models.FailedCommitStatus:
+	case models.FailedVcsStatus:
 		description = "failed."
-	case models.SuccessCommitStatus:
+	case models.SuccessVcsStatus:
 		description = "succeeded."
 	}
 

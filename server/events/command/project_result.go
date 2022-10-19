@@ -20,15 +20,15 @@ type ProjectResult struct {
 	JobID              string
 }
 
-// CommitStatus returns the vcs commit status of this project result.
-func (p ProjectResult) CommitStatus() models.CommitStatus {
+// VcsStatus returns the vcs commit status of this project result.
+func (p ProjectResult) VcsStatus() models.VcsStatus {
 	if p.Error != nil {
-		return models.FailedCommitStatus
+		return models.FailedVcsStatus
 	}
 	if p.Failure != "" {
-		return models.FailedCommitStatus
+		return models.FailedVcsStatus
 	}
-	return models.SuccessCommitStatus
+	return models.SuccessVcsStatus
 }
 
 // PlanStatus returns the plan status.

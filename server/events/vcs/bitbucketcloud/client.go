@@ -168,11 +168,11 @@ func (b *Client) PullIsMergeable(repo models.Repo, pull models.PullRequest) (boo
 func (b *Client) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	bbState := "FAILED"
 	switch request.State {
-	case models.PendingCommitStatus:
+	case models.PendingVcsStatus:
 		bbState = "INPROGRESS"
-	case models.SuccessCommitStatus:
+	case models.SuccessVcsStatus:
 		bbState = "SUCCESSFUL"
-	case models.FailedCommitStatus:
+	case models.FailedVcsStatus:
 		bbState = "FAILED"
 	}
 

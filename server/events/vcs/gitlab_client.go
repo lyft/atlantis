@@ -235,11 +235,11 @@ func (g *GitlabClient) PullIsMergeable(repo models.Repo, pull models.PullRequest
 func (g *GitlabClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	gitlabState := gitlab.Failed
 	switch request.State {
-	case models.PendingCommitStatus:
+	case models.PendingVcsStatus:
 		gitlabState = gitlab.Pending
-	case models.FailedCommitStatus:
+	case models.FailedVcsStatus:
 		gitlabState = gitlab.Failed
-	case models.SuccessCommitStatus:
+	case models.SuccessVcsStatus:
 		gitlabState = gitlab.Success
 	}
 	_, _, err := g.Client.Commits.SetCommitStatus(request.Repo.FullName, request.Ref, &gitlab.SetCommitStatusOptions{

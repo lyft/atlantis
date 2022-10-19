@@ -28,10 +28,10 @@ var (
 )
 
 type PlanStepRunner struct {
-	TerraformExecutor   TerraformExec
-	DefaultTFVersion    *version.Version
-	CommitStatusUpdater StatusUpdater
-	AsyncTFExec         AsyncTFExec
+	TerraformExecutor TerraformExec
+	DefaultTFVersion  *version.Version
+	VcsStatusUpdater  StatusUpdater
+	AsyncTFExec       AsyncTFExec
 }
 
 func (p *PlanStepRunner) Run(ctx context.Context, prjCtx command.ProjectContext, extraArgs []string, path string, envs map[string]string) (string, error) {
@@ -247,8 +247,8 @@ func (p *PlanStepRunner) runRemotePlan(
 	envs map[string]string) (string, error) {
 
 	// updateStatusF will update the commit status and log any error.
-	updateStatusF := func(status models.CommitStatus, url string, statusID string) {
-		if _, err := p.CommitStatusUpdater.UpdateProject(ctx, prjCtx, command.Plan, status, url, statusID); err != nil {
+	updateStatusF := func(status models.VcsStatus, url string, statusID string) {
+		if _, err := p.VcsStatusUpdater.UpdateProject(ctx, prjCtx, command.Plan, status, url, statusID); err != nil {
 			prjCtx.Log.ErrorContext(prjCtx.RequestCtx, fmt.Sprintf("unable to update status: %s", err))
 		}
 	}
@@ -273,16 +273,16 @@ func (p *PlanStepRunner) runRemotePlan(
 			nextLineIsRunURL = true
 		} else if nextLineIsRunURL {
 			runURL = strings.TrimSpace(line.Line)
-			updateStatusF(models.PendingCommitStatus, runURL, prjCtx.StatusID)
+			updateStatusF(models.PendingVcsStatus, runURL, prjCtx.StatusID)
 			nextLineIsRunURL = false
 		}
 	}
 
 	output := strings.Join(lines, "\n")
 	if err != nil {
-		updateStatusF(models.FailedCommitStatus, runURL, prjCtx.StatusID)
+		updateStatusF(models.FailedVcsStatus, runURL, prjCtx.StatusID)
 	} else {
-		updateStatusF(models.SuccessCommitStatus, runURL, prjCtx.StatusID)
+		updateStatusF(models.SuccessVcsStatus, runURL, prjCtx.StatusID)
 	}
 	return output, err
 }
