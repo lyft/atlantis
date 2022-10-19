@@ -254,7 +254,7 @@ func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jo
 
 	wg.Wait()
 
-	return TerraformClientError{error: err}
+	return &TerraformClientError{error: err}
 }
 
 func (t *terraformActivities) resolveVersion(v string) (*version.Version, error) {
