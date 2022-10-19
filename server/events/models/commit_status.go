@@ -13,25 +13,25 @@
 
 package models
 
-// VcsStatus is the result of executing an Atlantis command for the commit.
+// VCSStatus is the result of executing an Atlantis command for the commit.
 // In Github the options are: error, failure, pending, success.
 // In Gitlab the options are: failed, canceled, pending, running, success.
 // We only support Failed, Pending, Success.
-type VcsStatus int
+type VCSStatus int
 
 const (
-	PendingVcsStatus VcsStatus = iota
-	SuccessVcsStatus
-	FailedVcsStatus
+	PendingVCSStatus VCSStatus = iota
+	SuccessVCSStatus
+	FailedVCSStatus
 )
 
-func (s VcsStatus) String() string {
+func (s VCSStatus) String() string {
 	switch s {
-	case PendingVcsStatus:
+	case PendingVCSStatus:
 		return "pending"
-	case SuccessVcsStatus:
+	case SuccessVCSStatus:
 		return "success"
-	case FailedVcsStatus:
+	case FailedVCSStatus:
 		return "failed"
 	}
 	return "failed"

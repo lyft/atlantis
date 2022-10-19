@@ -8,26 +8,26 @@ import (
 	models "github.com/runatlantis/atlantis/server/events/models"
 )
 
-func AnyModelsVcsStatus() models.VcsStatus {
-	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(models.VcsStatus))(nil)).Elem()))
-	var nullValue models.VcsStatus
+func AnyModelsVcsStatus() models.VCSStatus {
+	pegomock.RegisterMatcher(pegomock.NewAnyMatcher(reflect.TypeOf((*(models.VCSStatus))(nil)).Elem()))
+	var nullValue models.VCSStatus
 	return nullValue
 }
 
-func EqModelsVcsStatus(value models.VcsStatus) models.VcsStatus {
+func EqModelsVcsStatus(value models.VCSStatus) models.VCSStatus {
 	pegomock.RegisterMatcher(&pegomock.EqMatcher{Value: value})
-	var nullValue models.VcsStatus
+	var nullValue models.VCSStatus
 	return nullValue
 }
 
-func NotEqModelsVcsStatus(value models.VcsStatus) models.VcsStatus {
+func NotEqModelsVcsStatus(value models.VCSStatus) models.VCSStatus {
 	pegomock.RegisterMatcher(&pegomock.NotEqMatcher{Value: value})
-	var nullValue models.VcsStatus
+	var nullValue models.VCSStatus
 	return nullValue
 }
 
-func ModelsVcsStatusThat(matcher pegomock.ArgumentMatcher) models.VcsStatus {
+func ModelsVcsStatusThat(matcher pegomock.ArgumentMatcher) models.VCSStatus {
 	pegomock.RegisterMatcher(matcher)
-	var nullValue models.VcsStatus
+	var nullValue models.VCSStatus
 	return nullValue
 }

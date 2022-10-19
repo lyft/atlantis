@@ -21,14 +21,14 @@ type ProjectResult struct {
 }
 
 // VcsStatus returns the vcs commit status of this project result.
-func (p ProjectResult) VcsStatus() models.VcsStatus {
+func (p ProjectResult) VcsStatus() models.VCSStatus {
 	if p.Error != nil {
-		return models.FailedVcsStatus
+		return models.FailedVCSStatus
 	}
 	if p.Failure != "" {
-		return models.FailedVcsStatus
+		return models.FailedVCSStatus
 	}
-	return models.SuccessVcsStatus
+	return models.SuccessVCSStatus
 }
 
 // PlanStatus returns the plan status.

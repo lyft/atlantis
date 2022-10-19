@@ -30,37 +30,37 @@ import (
 
 func TestUpdateCombined(t *testing.T) {
 	cases := []struct {
-		status     models.VcsStatus
+		status     models.VCSStatus
 		command    command.Name
 		expDescrip string
 	}{
 		{
-			status:     models.PendingVcsStatus,
+			status:     models.PendingVCSStatus,
 			command:    command.Plan,
 			expDescrip: "Plan in progress...",
 		},
 		{
-			status:     models.FailedVcsStatus,
+			status:     models.FailedVCSStatus,
 			command:    command.Plan,
 			expDescrip: "Plan failed.",
 		},
 		{
-			status:     models.SuccessVcsStatus,
+			status:     models.SuccessVCSStatus,
 			command:    command.Plan,
 			expDescrip: "Plan succeeded.",
 		},
 		{
-			status:     models.PendingVcsStatus,
+			status:     models.PendingVCSStatus,
 			command:    command.Apply,
 			expDescrip: "Apply in progress...",
 		},
 		{
-			status:     models.FailedVcsStatus,
+			status:     models.FailedVCSStatus,
 			command:    command.Apply,
 			expDescrip: "Apply failed.",
 		},
 		{
-			status:     models.SuccessVcsStatus,
+			status:     models.SuccessVCSStatus,
 			command:    command.Apply,
 			expDescrip: "Apply succeeded.",
 		},
@@ -93,49 +93,49 @@ func TestUpdateCombined(t *testing.T) {
 
 func TestUpdateCombinedCount(t *testing.T) {
 	cases := []struct {
-		status     models.VcsStatus
+		status     models.VCSStatus
 		command    command.Name
 		numSuccess int
 		numTotal   int
 		expDescrip string
 	}{
 		{
-			status:     models.PendingVcsStatus,
+			status:     models.PendingVCSStatus,
 			command:    command.Plan,
 			numSuccess: 0,
 			numTotal:   2,
 			expDescrip: "0/2 projects planned successfully.",
 		},
 		{
-			status:     models.FailedVcsStatus,
+			status:     models.FailedVCSStatus,
 			command:    command.Plan,
 			numSuccess: 1,
 			numTotal:   2,
 			expDescrip: "1/2 projects planned successfully.",
 		},
 		{
-			status:     models.SuccessVcsStatus,
+			status:     models.SuccessVCSStatus,
 			command:    command.Plan,
 			numSuccess: 2,
 			numTotal:   2,
 			expDescrip: "2/2 projects planned successfully.",
 		},
 		{
-			status:     models.FailedVcsStatus,
+			status:     models.FailedVCSStatus,
 			command:    command.Apply,
 			numSuccess: 0,
 			numTotal:   2,
 			expDescrip: "0/2 projects applied successfully.",
 		},
 		{
-			status:     models.PendingVcsStatus,
+			status:     models.PendingVCSStatus,
 			command:    command.Apply,
 			numSuccess: 1,
 			numTotal:   2,
 			expDescrip: "1/2 projects applied successfully.",
 		},
 		{
-			status:     models.SuccessVcsStatus,
+			status:     models.SuccessVCSStatus,
 			command:    command.Apply,
 			numSuccess: 2,
 			numTotal:   2,
@@ -204,13 +204,13 @@ func TestDefaultCommitStatusUpdater_UpdateProjectSrc(t *testing.T) {
 				Workspace:   c.workspace,
 			},
 				command.Plan,
-				models.PendingVcsStatus,
+				models.PendingVCSStatus,
 				"url", "")
 			Ok(t, err)
 			client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
 				Repo:        models.Repo{},
 				PullNum:     0,
-				State:       models.PendingVcsStatus,
+				State:       models.PendingVCSStatus,
 				StatusName:  c.expSrc,
 				Description: "Plan in progress...",
 				DetailsURL:  "url",
@@ -228,37 +228,37 @@ func TestDefaultCommitStatusUpdater_UpdateProjectSrc(t *testing.T) {
 func TestDefaultCommitStatusUpdater_UpdateProject(t *testing.T) {
 	RegisterMockTestingT(t)
 	cases := []struct {
-		status     models.VcsStatus
+		status     models.VCSStatus
 		cmd        command.Name
 		expDescrip string
 	}{
 		{
-			models.PendingVcsStatus,
+			models.PendingVCSStatus,
 			command.Plan,
 			"Plan in progress...",
 		},
 		{
-			models.FailedVcsStatus,
+			models.FailedVCSStatus,
 			command.Plan,
 			"Plan failed.",
 		},
 		{
-			models.SuccessVcsStatus,
+			models.SuccessVCSStatus,
 			command.Plan,
 			"Plan succeeded.",
 		},
 		{
-			models.PendingVcsStatus,
+			models.PendingVCSStatus,
 			command.Apply,
 			"Apply in progress...",
 		},
 		{
-			models.FailedVcsStatus,
+			models.FailedVCSStatus,
 			command.Apply,
 			"Apply failed.",
 		},
 		{
-			models.SuccessVcsStatus,
+			models.SuccessVCSStatus,
 			command.Apply,
 			"Apply succeeded.",
 		},
@@ -305,13 +305,13 @@ func TestDefaultCommitStatusUpdater_UpdateProjectCustomStatusName(t *testing.T) 
 		Workspace:  "default",
 	},
 		command.Apply,
-		models.SuccessVcsStatus,
+		models.SuccessVCSStatus,
 		"url", "")
 	Ok(t, err)
 	client.VerifyWasCalledOnce().UpdateStatus(ctx, types.UpdateStatusRequest{
 		Repo:        models.Repo{},
 		PullNum:     0,
-		State:       models.SuccessVcsStatus,
+		State:       models.SuccessVCSStatus,
 		StatusName:  "custom/apply: ./default",
 		Description: "Apply succeeded.",
 		DetailsURL:  "url",

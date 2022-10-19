@@ -10,7 +10,7 @@ import (
 )
 
 type projectStatusUpdater interface {
-	UpdateProjectStatus(ctx command.ProjectContext, status models.VcsStatus) (string, error)
+	UpdateProjectStatus(ctx command.ProjectContext, status models.VCSStatus) (string, error)
 }
 
 type projectCommand struct {

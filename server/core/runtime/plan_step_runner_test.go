@@ -870,8 +870,8 @@ Plan: 0 to add, 0 to change, 1 to destroy.`, string(bytes))
 
 			// Ensure that the status was updated with the runURL.
 			runURL := "https://app.terraform.io/app/lkysow-enterprises/atlantis-tfe-test/runs/run-is4oVvJfrkud1KvE"
-			updater.VerifyWasCalledOnce().UpdateProject(ctx, prjCtx, command.Plan, models.PendingVcsStatus, runURL, "")
-			updater.VerifyWasCalledOnce().UpdateProject(ctx, prjCtx, command.Plan, models.SuccessVcsStatus, runURL, "")
+			updater.VerifyWasCalledOnce().UpdateProject(ctx, prjCtx, command.Plan, models.PendingVCSStatus, runURL, "")
+			updater.VerifyWasCalledOnce().UpdateProject(ctx, prjCtx, command.Plan, models.SuccessVCSStatus, runURL, "")
 		})
 	}
 }

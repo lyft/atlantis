@@ -26,7 +26,7 @@ type JobURLGenerator interface {
 type projectVCSStatusUpdater interface {
 	// UpdateProject sets the commit status for the project represented by
 	// ctx.
-	UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.VcsStatus, url string, statusID string) (string, error)
+	UpdateProject(ctx context.Context, projectCtx ProjectContext, cmdName fmt.Stringer, status models.VCSStatus, url string, statusID string) (string, error)
 }
 
 type ProjectStatusUpdater struct {
@@ -35,7 +35,7 @@ type ProjectStatusUpdater struct {
 	ProjectVCSStatusUpdater projectVCSStatusUpdater
 }
 
-func (p ProjectStatusUpdater) UpdateProjectStatus(ctx ProjectContext, status models.VcsStatus) (string, error) {
+func (p ProjectStatusUpdater) UpdateProjectStatus(ctx ProjectContext, status models.VCSStatus) (string, error) {
 	url, err := p.ProjectJobURLGenerator.GenerateProjectJobURL(ctx.JobID)
 	if err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("updating project PR status %v", err))
@@ -43,7 +43,7 @@ func (p ProjectStatusUpdater) UpdateProjectStatus(ctx ProjectContext, status mod
 	statusID, err := p.ProjectVCSStatusUpdater.UpdateProject(ctx.RequestCtx, ctx, ctx.CommandName, status, url, ctx.StatusID)
 
 	// Close the Job if the operation is complete
-	if status == models.SuccessVcsStatus || status == models.FailedVcsStatus {
+	if status == models.SuccessVCSStatus || status == models.FailedVCSStatus {
 		p.JobCloser.CloseJob(ctx.RequestCtx, ctx.JobID, ctx.BaseRepo)
 	}
 	return statusID, err

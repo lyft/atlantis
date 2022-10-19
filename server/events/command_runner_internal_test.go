@@ -14,7 +14,7 @@ func TestApplyUpdateCommitStatus(t *testing.T) {
 	cases := map[string]struct {
 		cmd           command.Name
 		pullStatus    models.PullStatus
-		expStatus     models.VcsStatus
+		expStatus     models.VCSStatus
 		expNumSuccess int
 		expNumTotal   int
 	}{
@@ -30,7 +30,7 @@ func TestApplyUpdateCommitStatus(t *testing.T) {
 					},
 				},
 			},
-			expStatus:     models.PendingVcsStatus,
+			expStatus:     models.PendingVCSStatus,
 			expNumSuccess: 1,
 			expNumTotal:   2,
 		},
@@ -46,7 +46,7 @@ func TestApplyUpdateCommitStatus(t *testing.T) {
 					},
 				},
 			},
-			expStatus:     models.SuccessVcsStatus,
+			expStatus:     models.SuccessVCSStatus,
 			expNumSuccess: 2,
 			expNumTotal:   2,
 		},
@@ -65,7 +65,7 @@ func TestApplyUpdateCommitStatus(t *testing.T) {
 					},
 				},
 			},
-			expStatus:     models.FailedVcsStatus,
+			expStatus:     models.FailedVCSStatus,
 			expNumSuccess: 1,
 			expNumTotal:   3,
 		},
@@ -92,7 +92,7 @@ func TestPlanUpdateCommitStatus(t *testing.T) {
 	cases := map[string]struct {
 		cmd           command.Name
 		pullStatus    models.PullStatus
-		expStatus     models.VcsStatus
+		expStatus     models.VCSStatus
 		expNumSuccess int
 		expNumTotal   int
 	}{
@@ -105,7 +105,7 @@ func TestPlanUpdateCommitStatus(t *testing.T) {
 					},
 				},
 			},
-			expStatus:     models.SuccessVcsStatus,
+			expStatus:     models.SuccessVCSStatus,
 			expNumSuccess: 1,
 			expNumTotal:   1,
 		},
@@ -127,7 +127,7 @@ func TestPlanUpdateCommitStatus(t *testing.T) {
 					},
 				},
 			},
-			expStatus:     models.FailedVcsStatus,
+			expStatus:     models.FailedVCSStatus,
 			expNumSuccess: 3,
 			expNumTotal:   4,
 		},
@@ -153,14 +153,14 @@ func TestPlanUpdateCommitStatus(t *testing.T) {
 type MockCSU struct {
 	CalledRepo       models.Repo
 	CalledPull       models.PullRequest
-	CalledStatus     models.VcsStatus
+	CalledStatus     models.VCSStatus
 	CalledCommand    string
 	CalledNumSuccess int
 	CalledNumTotal   int
 	CalledStatusID   string
 }
 
-func (m *MockCSU) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VcsStatus, command fmt.Stringer, numSuccess int, numTotal int, statusID string) (string, error) {
+func (m *MockCSU) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, command fmt.Stringer, numSuccess int, numTotal int, statusID string) (string, error) {
 	m.CalledRepo = repo
 	m.CalledPull = pull
 	m.CalledStatus = status
@@ -170,9 +170,9 @@ func (m *MockCSU) UpdateCombinedCount(ctx context.Context, repo models.Repo, pul
 	m.CalledStatusID = statusID
 	return "", nil
 }
-func (m *MockCSU) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VcsStatus, command fmt.Stringer, statusID string, output string) (string, error) {
+func (m *MockCSU) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, command fmt.Stringer, statusID string, output string) (string, error) {
 	return "", nil
 }
-func (m *MockCSU) UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.VcsStatus, url string, statusID string) (string, error) {
+func (m *MockCSU) UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.VCSStatus, url string, statusID string) (string, error) {
 	return "", nil
 }

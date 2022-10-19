@@ -28,7 +28,7 @@ func NewMockVCSStatusUpdater(options ...pegomock.Option) *MockVCSStatusUpdater {
 func (mock *MockVCSStatusUpdater) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockVCSStatusUpdater) FailHandler() pegomock.FailHandler      { return mock.fail }
 
-func (mock *MockVCSStatusUpdater) UpdateCombined(_param0 context.Context, _param1 models.Repo, _param2 models.PullRequest, _param3 models.VcsStatus, _param4 fmt.Stringer, _param5 string, _param6 string) (string, error) {
+func (mock *MockVCSStatusUpdater) UpdateCombined(_param0 context.Context, _param1 models.Repo, _param2 models.PullRequest, _param3 models.VCSStatus, _param4 fmt.Stringer, _param5 string, _param6 string) (string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockVCSStatusUpdater().")
 	}
@@ -47,7 +47,7 @@ func (mock *MockVCSStatusUpdater) UpdateCombined(_param0 context.Context, _param
 	return ret0, ret1
 }
 
-func (mock *MockVCSStatusUpdater) UpdateCombinedCount(_param0 context.Context, _param1 models.Repo, _param2 models.PullRequest, _param3 models.VcsStatus, _param4 fmt.Stringer, _param5 int, _param6 int, _param7 string) (string, error) {
+func (mock *MockVCSStatusUpdater) UpdateCombinedCount(_param0 context.Context, _param1 models.Repo, _param2 models.PullRequest, _param3 models.VCSStatus, _param4 fmt.Stringer, _param5 int, _param6 int, _param7 string) (string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockVCSStatusUpdater().")
 	}
@@ -66,7 +66,7 @@ func (mock *MockVCSStatusUpdater) UpdateCombinedCount(_param0 context.Context, _
 	return ret0, ret1
 }
 
-func (mock *MockVCSStatusUpdater) UpdateProject(_param0 context.Context, _param1 command.ProjectContext, _param2 fmt.Stringer, _param3 models.VcsStatus, _param4 string, _param5 string) (string, error) {
+func (mock *MockVCSStatusUpdater) UpdateProject(_param0 context.Context, _param1 command.ProjectContext, _param2 fmt.Stringer, _param3 models.VCSStatus, _param4 string, _param5 string) (string, error) {
 	if mock == nil {
 		panic("mock must not be nil. Use myMock := NewMockVCSStatusUpdater().")
 	}
@@ -122,7 +122,7 @@ type VerifierMockVCSStatusUpdater struct {
 	timeout                time.Duration
 }
 
-func (verifier *VerifierMockVCSStatusUpdater) UpdateCombined(_param0 context.Context, _param1 models.Repo, _param2 models.PullRequest, _param3 models.VcsStatus, _param4 fmt.Stringer, _param5 string, _param6 string) *MockVCSStatusUpdater_UpdateCombined_OngoingVerification {
+func (verifier *VerifierMockVCSStatusUpdater) UpdateCombined(_param0 context.Context, _param1 models.Repo, _param2 models.PullRequest, _param3 models.VCSStatus, _param4 fmt.Stringer, _param5 string, _param6 string) *MockVCSStatusUpdater_UpdateCombined_OngoingVerification {
 	params := []pegomock.Param{_param0, _param1, _param2, _param3, _param4, _param5, _param6}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "UpdateCombined", params, verifier.timeout)
 	return &MockVCSStatusUpdater_UpdateCombined_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -133,12 +133,12 @@ type MockVCSStatusUpdater_UpdateCombined_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockVCSStatusUpdater_UpdateCombined_OngoingVerification) GetCapturedArguments() (context.Context, models.Repo, models.PullRequest, models.VcsStatus, fmt.Stringer, string, string) {
+func (c *MockVCSStatusUpdater_UpdateCombined_OngoingVerification) GetCapturedArguments() (context.Context, models.Repo, models.PullRequest, models.VCSStatus, fmt.Stringer, string, string) {
 	_param0, _param1, _param2, _param3, _param4, _param5, _param6 := c.GetAllCapturedArguments()
 	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1], _param3[len(_param3)-1], _param4[len(_param4)-1], _param5[len(_param5)-1], _param6[len(_param6)-1]
 }
 
-func (c *MockVCSStatusUpdater_UpdateCombined_OngoingVerification) GetAllCapturedArguments() (_param0 []context.Context, _param1 []models.Repo, _param2 []models.PullRequest, _param3 []models.VcsStatus, _param4 []fmt.Stringer, _param5 []string, _param6 []string) {
+func (c *MockVCSStatusUpdater_UpdateCombined_OngoingVerification) GetAllCapturedArguments() (_param0 []context.Context, _param1 []models.Repo, _param2 []models.PullRequest, _param3 []models.VCSStatus, _param4 []fmt.Stringer, _param5 []string, _param6 []string) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]context.Context, len(c.methodInvocations))
@@ -153,9 +153,9 @@ func (c *MockVCSStatusUpdater_UpdateCombined_OngoingVerification) GetAllCaptured
 		for u, param := range params[2] {
 			_param2[u] = param.(models.PullRequest)
 		}
-		_param3 = make([]models.VcsStatus, len(c.methodInvocations))
+		_param3 = make([]models.VCSStatus, len(c.methodInvocations))
 		for u, param := range params[3] {
-			_param3[u] = param.(models.VcsStatus)
+			_param3[u] = param.(models.VCSStatus)
 		}
 		_param4 = make([]fmt.Stringer, len(c.methodInvocations))
 		for u, param := range params[4] {
@@ -173,7 +173,7 @@ func (c *MockVCSStatusUpdater_UpdateCombined_OngoingVerification) GetAllCaptured
 	return
 }
 
-func (verifier *VerifierMockVCSStatusUpdater) UpdateCombinedCount(_param0 context.Context, _param1 models.Repo, _param2 models.PullRequest, _param3 models.VcsStatus, _param4 fmt.Stringer, _param5 int, _param6 int, _param7 string) *MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification {
+func (verifier *VerifierMockVCSStatusUpdater) UpdateCombinedCount(_param0 context.Context, _param1 models.Repo, _param2 models.PullRequest, _param3 models.VCSStatus, _param4 fmt.Stringer, _param5 int, _param6 int, _param7 string) *MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification {
 	params := []pegomock.Param{_param0, _param1, _param2, _param3, _param4, _param5, _param6, _param7}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "UpdateCombinedCount", params, verifier.timeout)
 	return &MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -184,12 +184,12 @@ type MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification) GetCapturedArguments() (context.Context, models.Repo, models.PullRequest, models.VcsStatus, fmt.Stringer, int, int, string) {
+func (c *MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification) GetCapturedArguments() (context.Context, models.Repo, models.PullRequest, models.VCSStatus, fmt.Stringer, int, int, string) {
 	_param0, _param1, _param2, _param3, _param4, _param5, _param6, _param7 := c.GetAllCapturedArguments()
 	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1], _param3[len(_param3)-1], _param4[len(_param4)-1], _param5[len(_param5)-1], _param6[len(_param6)-1], _param7[len(_param7)-1]
 }
 
-func (c *MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification) GetAllCapturedArguments() (_param0 []context.Context, _param1 []models.Repo, _param2 []models.PullRequest, _param3 []models.VcsStatus, _param4 []fmt.Stringer, _param5 []int, _param6 []int, _param7 []string) {
+func (c *MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification) GetAllCapturedArguments() (_param0 []context.Context, _param1 []models.Repo, _param2 []models.PullRequest, _param3 []models.VCSStatus, _param4 []fmt.Stringer, _param5 []int, _param6 []int, _param7 []string) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]context.Context, len(c.methodInvocations))
@@ -204,9 +204,9 @@ func (c *MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification) GetAllCap
 		for u, param := range params[2] {
 			_param2[u] = param.(models.PullRequest)
 		}
-		_param3 = make([]models.VcsStatus, len(c.methodInvocations))
+		_param3 = make([]models.VCSStatus, len(c.methodInvocations))
 		for u, param := range params[3] {
-			_param3[u] = param.(models.VcsStatus)
+			_param3[u] = param.(models.VCSStatus)
 		}
 		_param4 = make([]fmt.Stringer, len(c.methodInvocations))
 		for u, param := range params[4] {
@@ -228,7 +228,7 @@ func (c *MockVCSStatusUpdater_UpdateCombinedCount_OngoingVerification) GetAllCap
 	return
 }
 
-func (verifier *VerifierMockVCSStatusUpdater) UpdateProject(_param0 context.Context, _param1 command.ProjectContext, _param2 fmt.Stringer, _param3 models.VcsStatus, _param4 string, _param5 string) *MockVCSStatusUpdater_UpdateProject_OngoingVerification {
+func (verifier *VerifierMockVCSStatusUpdater) UpdateProject(_param0 context.Context, _param1 command.ProjectContext, _param2 fmt.Stringer, _param3 models.VCSStatus, _param4 string, _param5 string) *MockVCSStatusUpdater_UpdateProject_OngoingVerification {
 	params := []pegomock.Param{_param0, _param1, _param2, _param3, _param4, _param5}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "UpdateProject", params, verifier.timeout)
 	return &MockVCSStatusUpdater_UpdateProject_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
@@ -239,12 +239,12 @@ type MockVCSStatusUpdater_UpdateProject_OngoingVerification struct {
 	methodInvocations []pegomock.MethodInvocation
 }
 
-func (c *MockVCSStatusUpdater_UpdateProject_OngoingVerification) GetCapturedArguments() (context.Context, command.ProjectContext, fmt.Stringer, models.VcsStatus, string, string) {
+func (c *MockVCSStatusUpdater_UpdateProject_OngoingVerification) GetCapturedArguments() (context.Context, command.ProjectContext, fmt.Stringer, models.VCSStatus, string, string) {
 	_param0, _param1, _param2, _param3, _param4, _param5 := c.GetAllCapturedArguments()
 	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1], _param3[len(_param3)-1], _param4[len(_param4)-1], _param5[len(_param5)-1]
 }
 
-func (c *MockVCSStatusUpdater_UpdateProject_OngoingVerification) GetAllCapturedArguments() (_param0 []context.Context, _param1 []command.ProjectContext, _param2 []fmt.Stringer, _param3 []models.VcsStatus, _param4 []string, _param5 []string) {
+func (c *MockVCSStatusUpdater_UpdateProject_OngoingVerification) GetAllCapturedArguments() (_param0 []context.Context, _param1 []command.ProjectContext, _param2 []fmt.Stringer, _param3 []models.VCSStatus, _param4 []string, _param5 []string) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]context.Context, len(c.methodInvocations))
@@ -259,9 +259,9 @@ func (c *MockVCSStatusUpdater_UpdateProject_OngoingVerification) GetAllCapturedA
 		for u, param := range params[2] {
 			_param2[u] = param.(fmt.Stringer)
 		}
-		_param3 = make([]models.VcsStatus, len(c.methodInvocations))
+		_param3 = make([]models.VCSStatus, len(c.methodInvocations))
 		for u, param := range params[3] {
-			_param3[u] = param.(models.VcsStatus)
+			_param3[u] = param.(models.VCSStatus)
 		}
 		_param4 = make([]string, len(c.methodInvocations))
 		for u, param := range params[4] {

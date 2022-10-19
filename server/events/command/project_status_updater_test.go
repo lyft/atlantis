@@ -31,7 +31,7 @@ type testCommitStatusUpdater struct {
 	expectedError    error
 }
 
-func (t *testCommitStatusUpdater) UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.VcsStatus, url string, statusID string) (string, error) {
+func (t *testCommitStatusUpdater) UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.VCSStatus, url string, statusID string) (string, error) {
 	return t.expectedStatusID, t.expectedError
 }
 
@@ -55,7 +55,7 @@ func TestProjectStatusUpdater_CloseJobWhenOperationComplete(t *testing.T) {
 		ProjectVCSStatusUpdater: &commitStatusUpdater,
 	}
 
-	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.SuccessVcsStatus)
+	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.SuccessVCSStatus)
 
 	if err != nil {
 		t.FailNow()
@@ -90,7 +90,7 @@ func TestProjectStatusUpdater_DoNotCloseJobWhenInProgress(t *testing.T) {
 		ProjectVCSStatusUpdater: &commitStatusUpdater,
 	}
 
-	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.PendingVcsStatus)
+	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.PendingVCSStatus)
 
 	if err != nil {
 		t.FailNow()

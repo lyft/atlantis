@@ -55,7 +55,7 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 	// Update status and fail the req when preworkflow hook fails since this step is critical in determining if this req needs to be forwarded to the worker
 	err := r.PreWorkflowHooksCommandRunner.RunPreHooks(ctx, cmdCtx)
 	if err != nil {
-		if _, statusErr := r.VCSStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVcsStatus, command.Plan, "", err.Error()); statusErr != nil {
+		if _, statusErr := r.VCSStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVCSStatus, command.Plan, "", err.Error()); statusErr != nil {
 			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 		}
 		return false, errors.Wrap(err, "running preworkflow hook")
@@ -63,7 +63,7 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 
 	projectCmds, err := r.PrjCmdBuilder.BuildAutoplanCommands(cmdCtx)
 	if err != nil {
-		if _, statusErr := r.VCSStatusUpdater.UpdateCombined(ctx, baseRepo, pull, models.FailedVcsStatus, command.Plan, "", ""); statusErr != nil {
+		if _, statusErr := r.VCSStatusUpdater.UpdateCombined(ctx, baseRepo, pull, models.FailedVCSStatus, command.Plan, "", ""); statusErr != nil {
 			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 		}
 		// If error happened after clone was made, we should clean it up here too
@@ -92,7 +92,7 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 	if len(projectCmds) == 0 {
 		cmdCtx.Log.InfoContext(cmdCtx.RequestCtx, "no modified projects have been found")
 		for _, cmd := range []command.Name{command.Plan, command.Apply, command.PolicyCheck} {
-			if _, err := r.VCSStatusUpdater.UpdateCombinedCount(ctx, baseRepo, pull, models.SuccessVcsStatus, cmd, 0, 0, ""); err != nil {
+			if _, err := r.VCSStatusUpdater.UpdateCombinedCount(ctx, baseRepo, pull, models.SuccessVCSStatus, cmd, 0, 0, ""); err != nil {
 				cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 			}
 		}

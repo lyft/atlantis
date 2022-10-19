@@ -79,7 +79,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	statusID, err := a.vcsStatusUpdater.UpdateCombined(ctx.RequestCtx, baseRepo, pull, models.PendingVcsStatus, cmd.CommandName(), "", "")
+	statusID, err := a.vcsStatusUpdater.UpdateCombined(ctx.RequestCtx, baseRepo, pull, models.PendingVCSStatus, cmd.CommandName(), "", "")
 	if err != nil {
 		ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
@@ -102,7 +102,7 @@ func (a *ApplyCommandRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	projectCmds, err = a.prjCmdBuilder.BuildApplyCommands(ctx, cmd)
 
 	if err != nil {
-		if _, statusErr := a.vcsStatusUpdater.UpdateCombined(ctx.RequestCtx, ctx.Pull.BaseRepo, ctx.Pull, models.FailedVcsStatus, cmd.CommandName(), statusID, ""); statusErr != nil {
+		if _, statusErr := a.vcsStatusUpdater.UpdateCombined(ctx.RequestCtx, ctx.Pull.BaseRepo, ctx.Pull, models.FailedVCSStatus, cmd.CommandName(), statusID, ""); statusErr != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 		}
 		a.outputUpdater.UpdateOutput(ctx, cmd, command.Result{Error: err})
@@ -145,17 +145,17 @@ func (a *ApplyCommandRunner) isParallelEnabled(projectCmds []command.ProjectCont
 func (a *ApplyCommandRunner) updateVcsStatus(ctx *command.Context, pullStatus models.PullStatus, statusID string) {
 	var numSuccess int
 	var numErrored int
-	status := models.SuccessVcsStatus
+	status := models.SuccessVCSStatus
 
 	numSuccess = pullStatus.StatusCount(models.AppliedPlanStatus)
 	numErrored = pullStatus.StatusCount(models.ErroredApplyStatus)
 
 	if numErrored > 0 {
-		status = models.FailedVcsStatus
+		status = models.FailedVCSStatus
 	} else if numSuccess < len(pullStatus.Projects) {
 		// If there are plans that haven't been applied yet, we'll use a pending
 		// status.
-		status = models.PendingVcsStatus
+		status = models.PendingVCSStatus
 	}
 
 	if _, err := a.vcsStatusUpdater.UpdateCombinedCount(

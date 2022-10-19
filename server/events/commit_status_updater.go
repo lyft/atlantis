@@ -25,11 +25,11 @@ import (
 type VCSStatusUpdater interface {
 	// UpdateCombined updates the combined status of the head commit of pull.
 	// A combined status represents all the projects modified in the pull.
-	UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VcsStatus, cmdName fmt.Stringer, statusID string, output string) (string, error)
+	UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, cmdName fmt.Stringer, statusID string, output string) (string, error)
 	// UpdateCombinedCount updates the combined status to reflect the
 	// numSuccess out of numTotal.
-	UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VcsStatus, cmdName fmt.Stringer, numSuccess int, numTotal int, statusID string) (string, error)
+	UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, cmdName fmt.Stringer, numSuccess int, numTotal int, statusID string) (string, error)
 	// UpdateProject sets the commit status for the project represented by
 	// ctx.
-	UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.VcsStatus, url string, statusID string) (string, error)
+	UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.VCSStatus, url string, statusID string) (string, error)
 }

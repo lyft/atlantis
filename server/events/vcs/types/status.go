@@ -9,7 +9,7 @@ import (
 type UpdateStatusRequest struct {
 	Repo        models.Repo
 	Ref         string
-	State       models.VcsStatus
+	State       models.VCSStatus
 	StatusName  string
 	Description string
 	DetailsURL  string
