@@ -59,6 +59,9 @@ func TestDeployWorkflow(t *testing.T) {
 
 	// we should have output for 2 different jobs
 	assert.Len(t, s.streamCloser.CapturedJobOutput, 2)
+
+	// we should emit 2 IN_PROGRESS and SUCCESS events
+	assert.Len(t, s.snsWriter.writes, 2)
 }
 
 func signalWorkflow(env *testsuite.TestWorkflowEnvironment) {
@@ -106,6 +109,7 @@ type testSingletons struct {
 	a            *a
 	githubClient *testGithubClient
 	streamCloser *testStreamCloser
+	snsWriter    *testSnsWriter
 }
 
 func buildConfig(t *testing.T) config.Config {
@@ -140,16 +144,22 @@ func buildConfig(t *testing.T) config.Config {
 }
 
 type testSnsWriter struct {
+	writes [][]byte
 }
 
 func (t *testSnsWriter) Write(p []byte) (n int, err error) {
+	t.writes = append(t.writes, p)
 	return 0, nil
 }
 
 func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment) *testSingletons {
 	cfg := buildConfig(t)
 
-	deployActivities, err := workflows.NewDeployActivities(cfg.DeploymentConfig, &testSnsWriter{})
+	snsWriter := &testSnsWriter{
+		writes: [][]byte{},
+	}
+
+	deployActivities, err := workflows.NewDeployActivities(cfg.DeploymentConfig, snsWriter)
 
 	assert.NoError(t, err)
 
@@ -195,6 +205,7 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 		},
 		githubClient: githubClient,
 		streamCloser: streamCloser,
+		snsWriter:    snsWriter,
 	}
 
 }

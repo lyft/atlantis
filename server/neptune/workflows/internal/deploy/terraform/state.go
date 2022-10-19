@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -43,11 +44,11 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 	}
 
 	// emit audit events when Apply operation is run
-	// if workflowState.Apply != nil {
-	// 	if err := n.emitApplyEvents(ctx, workflowState.Apply.Status, deploymentInfo); err != nil {
-	// 		logger.Error(ctx, errors.Wrap(err, "auditing apply job event").Error())
-	// 	}
-	// }
+	if workflowState.Apply != nil {
+		if err := n.emitApplyEvents(ctx, workflowState.Apply.Status, deploymentInfo); err != nil {
+			logger.Error(ctx, errors.Wrap(err, "auditing apply job event").Error())
+		}
+	}
 
 	if err := n.updateCheckRun(ctx, workflowState, deploymentInfo); err != nil {
 		logger.Error(ctx, "updating check run", "err", err)
@@ -86,9 +87,19 @@ func (n *StateReceiver) updateCheckRun(ctx workflow.Context, workflowState *stat
 }
 
 func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.JobStatus, deploymentInfo DeploymentInfo) error {
+	var atlantisJobState activities.AtlantisJobState
+	switch jobStatus {
+	case state.InProgressJobStatus:
+		atlantisJobState = activities.AtlantisJobStateRunning
+	case state.SuccessJobStatus:
+		atlantisJobState = activities.AtlantisJobStateSuccess
+	case state.FailedJobStatus:
+		atlantisJobState = activities.AtlantisJobStateFailure
+	}
+
 	auditJobReq := activities.AuditJobRequest{
 		DeploymentInfo: deployment.Info{
-			Version:    "",
+			Version:    deployment.DeploymentInfoVersion,
 			ID:         deploymentInfo.ID.String(),
 			CheckRunID: deploymentInfo.CheckRunID,
 			Revision:   deploymentInfo.Revision,
@@ -97,17 +108,7 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.Jo
 			Repo:       deploymentInfo.Repo,
 			Tags:       deploymentInfo.Tags,
 		},
-	}
-
-	switch jobStatus {
-	case state.InProgressJobStatus:
-		auditJobReq.State = activities.AtlantisJobStateRunning
-	case state.SuccessJobStatus:
-		auditJobReq.State = activities.AtlantisJobStateSuccess
-	case state.FailedJobStatus:
-		auditJobReq.State = activities.AtlantisJobStateFailure
-	default:
-		return nil
+		State: atlantisJobState,
 	}
 
 	return workflow.ExecuteActivity(ctx, n.Activity.AuditJob, auditJobReq).Get(ctx, nil)

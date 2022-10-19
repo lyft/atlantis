@@ -5,6 +5,8 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
+const DeploymentInfoVersion = "1.0.0"
+
 type Info struct {
 	Version    string
 	ID         string
