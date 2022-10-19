@@ -28,16 +28,15 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
-	lyft_checks "github.com/runatlantis/atlantis/server/lyft/checks"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	lyft_gateway "github.com/runatlantis/atlantis/server/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/sync"
-	middleware "github.com/runatlantis/atlantis/server/neptune/github"
 	httpInternal "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
+	middleware "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
@@ -149,17 +148,7 @@ func NewServer(config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing feature allocator")
 	}
 
-	// [WENGINES-4643] TODO: Remove this wrapped client once github checks is stable
-	checksWrapperGhClient := &lyft_checks.ChecksClientWrapper{
-		FeatureAllocator: featureAllocator,
-		Logger:           ctxLogger,
-		GithubClient:     rawGithubClient,
-
-		// scope set to instrumented client's update_status which is futher subscoped to commit_status and checks in the client wrapper
-		Scope: statsScope.SubScope("github").SubScope("update_status"),
-	}
-
-	vcsClient := vcs.NewInstrumentedGithubClient(rawGithubClient, checksWrapperGhClient, statsScope, ctxLogger)
+	vcsClient := vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
 
 	workingDirLocker := events.NewDefaultWorkingDirLocker()
 
@@ -196,24 +185,10 @@ func NewServer(config Config) (*Server, error) {
 		TemplateResolver:         templateResolver,
 	}
 
-	pullOutputUpdater := events.PullOutputUpdater{
-		VCSClient:            vcsClient,
-		MarkdownRenderer:     markdownRenderer,
-		HidePrevPlanComments: true,
-	}
-
-	checksOutputUpdater := events.ChecksOutputUpdater{
+	outputUpdater := &events.ChecksOutputUpdater{
 		VCSClient:        vcsClient,
 		MarkdownRenderer: markdownRenderer,
 		TitleBuilder:     vcs.StatusTitleBuilder{TitlePrefix: config.GithubStatusName},
-	}
-
-	// [WENGINES-4643] TODO: Remove pullOutputUpdater once github checks is stable
-	outputUpdater := &events.FeatureAwareChecksOutputUpdater{
-		ChecksOutputUpdater: checksOutputUpdater,
-		PullOutputUpdater:   pullOutputUpdater,
-		FeatureAllocator:    featureAllocator,
-		Logger:              ctxLogger,
 	}
 
 	session, err := aws.NewSession()

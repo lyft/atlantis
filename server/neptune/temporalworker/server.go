@@ -26,6 +26,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/controllers"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/aws/sns"
 	"github.com/runatlantis/atlantis/server/static"
 	"github.com/uber-go/tally/v4"
@@ -56,9 +57,9 @@ type Server struct {
 	JobStreamHandler  *job.StreamHandler
 	JobStreamCloserFn job.StreamCloserFn
 
-	DeployActivities    *workflows.DeployActivities
-	TerraformActivities *workflows.TerraformActivities
-	GithubActivities    *workflows.GithubActivities
+	DeployActivities    *activities.Deploy
+	TerraformActivities *activities.Terraform
+	GithubActivities    *activities.Github
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -123,13 +124,12 @@ func NewServer(config *config.Config) (*Server, error) {
 		Client:   awsSns.New(session),
 		TopicArn: &config.LyftAuditJobsSnsTopicArn,
 	}
-
-	deployActivities, err := workflows.NewDeployActivities(config.DeploymentConfig, snsWriter)
+	deployActivities, err := activities.NewDeploy(config.DeploymentConfig, snsWriter)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")
 	}
 
-	terraformActivities, err := workflows.NewTerraformActivities(
+	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
 		config.DataDir,
 		config.ServerCfg.URL,
@@ -139,7 +139,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}
 
-	githubActivities, err := workflows.NewGithubActivities(
+	githubActivities, err := activities.NewGithub(
 		config.App,
 		scope.SubScope("app"),
 		config.DataDir,
