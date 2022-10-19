@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/temporal"
@@ -95,6 +96,10 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.Jo
 		atlantisJobState = activities.AtlantisJobStateSuccess
 	case state.FailedJobStatus:
 		atlantisJobState = activities.AtlantisJobStateFailure
+
+	// no need to emit events on other states
+	default:
+		return nil
 	}
 
 	auditJobReq := activities.AuditJobRequest{
@@ -108,7 +113,8 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.Jo
 			Repo:       deploymentInfo.Repo,
 			Tags:       deploymentInfo.Tags,
 		},
-		State: atlantisJobState,
+		State:        atlantisJobState,
+		IsForceApply: deploymentInfo.Root.Trigger == terraform.ManualTrigger,
 	}
 
 	return workflow.ExecuteActivity(ctx, n.Activity.AuditJob, auditJobReq).Get(ctx, nil)

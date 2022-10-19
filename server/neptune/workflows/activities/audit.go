@@ -72,6 +72,7 @@ const (
 type AuditJobRequest struct {
 	DeploymentInfo deployment.Info
 	State          AtlantisJobState
+	IsForceApply   bool
 }
 
 type auditActivities struct {
@@ -79,7 +80,6 @@ type auditActivities struct {
 }
 
 func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) error {
-	// isForceApply := req.DeploymentInfo.Root.Trigger == workflows.ManualTrigger
 	atlantisJobEvent := &AtlantisJobEvent{
 		Version:        1,
 		ID:             req.DeploymentInfo.ID,
@@ -87,11 +87,11 @@ func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) err
 		JobType:        AtlantisApplyJob,
 		Repository:     req.DeploymentInfo.Repo.GetFullName(),
 		InitiatingUser: req.DeploymentInfo.User.Username,
-		// ForceApply:     isForceApply,
-		StartTime:   strconv.FormatInt(time.Now().Unix(), 10),
-		Revision:    req.DeploymentInfo.Revision,
-		Project:     req.DeploymentInfo.Tags[ProjectTagKey],
-		Environment: req.DeploymentInfo.Tags[EnvironmentTagKey],
+		ForceApply:     req.IsForceApply,
+		StartTime:      strconv.FormatInt(time.Now().Unix(), 10),
+		Revision:       req.DeploymentInfo.Revision,
+		Project:        req.DeploymentInfo.Tags[ProjectTagKey],
+		Environment:    req.DeploymentInfo.Tags[EnvironmentTagKey],
 	}
 
 	if req.State == AtlantisJobStateFailure || req.State == AtlantisJobStateSuccess {

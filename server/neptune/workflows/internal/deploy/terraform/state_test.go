@@ -74,6 +74,7 @@ func TestStateReceive(t *testing.T) {
 
 	deploymentInfo := deployment.Info{
 		ID:         internalDeploymentInfo.ID.String(),
+		Version:    deployment.DeploymentInfoVersion,
 		CheckRunID: internalDeploymentInfo.CheckRunID,
 		Root:       internalDeploymentInfo.Root,
 		Repo:       internalDeploymentInfo.Repo,
@@ -153,6 +154,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				DeploymentInfo: deploymentInfo,
 				State:          activities.AtlantisJobStateRunning,
+				IsForceApply:   false,
 			},
 		},
 		{
@@ -170,6 +172,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				DeploymentInfo: deploymentInfo,
 				State:          activities.AtlantisJobStateFailure,
+				IsForceApply:   false,
 			},
 		},
 		{
@@ -187,6 +190,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				DeploymentInfo: deploymentInfo,
 				State:          activities.AtlantisJobStateSuccess,
+				IsForceApply:   false,
 			},
 		},
 	}
