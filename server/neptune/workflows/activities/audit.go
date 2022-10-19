@@ -83,6 +83,7 @@ func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) err
 	atlantisJobEvent := &AtlantisJobEvent{
 		Version:        1,
 		ID:             req.DeploymentInfo.ID,
+		State:          req.State,
 		RootName:       req.DeploymentInfo.Root.Name,
 		JobType:        AtlantisApplyJob,
 		Repository:     req.DeploymentInfo.Repo.GetFullName(),
