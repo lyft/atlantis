@@ -14,6 +14,12 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
+// TerraformClientError can be used to assert a non-retryable error type for
+// callers of this activity
+type TerraformClientError struct {
+	error
+}
+
 var DisableInputArg = terraform.Argument{
 	Key:   "input",
 	Value: "false",
@@ -248,7 +254,7 @@ func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jo
 
 	wg.Wait()
 
-	return err
+	return TerraformClientError{error: err}
 }
 
 func (t *terraformActivities) resolveVersion(v string) (*version.Version, error) {
