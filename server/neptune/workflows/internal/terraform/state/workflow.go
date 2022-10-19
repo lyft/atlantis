@@ -28,19 +28,6 @@ type JobOutput struct {
 type Job struct {
 	Output *JobOutput
 	Status JobStatus
-
-	// Required fields
-	Revision       string `json:"revision"`
-	Repository     string `json:"repository"`
-	Environment    string `json:"environment"`
-	InitiatingUser string `json:"initiating_user"`
-	StartTime      string `json:"start_time"`
-	EndTime        string `json:"end_time"`
-	ForceApply     bool   `json:"force_apply"`
-	// Service name in the manifest.yaml
-	Project string `json:"project"`
-	// ProjectName in the atlantis.yaml
-	RootName string `json:"root_name"`
 }
 
 type Workflow struct {

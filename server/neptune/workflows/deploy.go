@@ -1,6 +1,8 @@
 package workflows
 
 import (
+	"io"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -42,8 +44,8 @@ type DeployActivities struct {
 	activities.Deploy
 }
 
-func NewDeployActivities(deploymentCfg valid.StoreConfig, topicArn string) (*DeployActivities, error) {
-	deployActivities, err := activities.NewDeploy(deploymentCfg, topicArn)
+func NewDeployActivities(deploymentCfg valid.StoreConfig, snsWriter io.Writer) (*DeployActivities, error) {
+	deployActivities, err := activities.NewDeploy(deploymentCfg, snsWriter)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")

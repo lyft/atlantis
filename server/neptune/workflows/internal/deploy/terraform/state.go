@@ -3,11 +3,10 @@ package terraform
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/temporal"
@@ -44,11 +43,11 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 	}
 
 	// emit audit events when Apply operation is run
-	if workflowState.Apply != nil {
-		if err := n.emitApplyEvents(ctx, workflowState.Apply.Status, deploymentInfo); err != nil {
-			logger.Error(ctx, errors.Wrap(err, "auditing apply job event").Error())
-		}
-	}
+	// if workflowState.Apply != nil {
+	// 	if err := n.emitApplyEvents(ctx, workflowState.Apply.Status, deploymentInfo); err != nil {
+	// 		logger.Error(ctx, errors.Wrap(err, "auditing apply job event").Error())
+	// 	}
+	// }
 
 	if err := n.updateCheckRun(ctx, workflowState, deploymentInfo); err != nil {
 		logger.Error(ctx, "updating check run", "err", err)
@@ -105,8 +104,10 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.Jo
 		auditJobReq.State = activities.AtlantisJobStateRunning
 	case state.SuccessJobStatus:
 		auditJobReq.State = activities.AtlantisJobStateSuccess
-	case state.FailedJobStatus, state.RejectedJobStatus:
+	case state.FailedJobStatus:
 		auditJobReq.State = activities.AtlantisJobStateFailure
+	default:
+		return nil
 	}
 
 	return workflow.ExecuteActivity(ctx, n.Activity.AuditJob, auditJobReq).Get(ctx, nil)

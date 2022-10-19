@@ -139,9 +139,17 @@ func buildConfig(t *testing.T) config.Config {
 
 }
 
+type testSnsWriter struct {
+}
+
+func (t *testSnsWriter) Write(p []byte) (n int, err error) {
+	return 0, nil
+}
+
 func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment) *testSingletons {
 	cfg := buildConfig(t)
-	deployActivities, err := workflows.NewDeployActivities(cfg.DeploymentConfig, cfg.LyftAuditJobsSnsTopicArn)
+
+	deployActivities, err := workflows.NewDeployActivities(cfg.DeploymentConfig, &testSnsWriter{})
 
 	assert.NoError(t, err)
 

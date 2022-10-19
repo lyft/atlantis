@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/activities/deployment"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 )
 
 // AtlantisJobState represent current state of the job

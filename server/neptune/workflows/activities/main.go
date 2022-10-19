@@ -1,20 +1,18 @@
 package activities
 
 import (
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 
-	awsSns "github.com/aws/aws-sdk-go/service/sns"
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/aws/sns"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/link"
@@ -42,7 +40,7 @@ type Deploy struct {
 	*auditActivities
 }
 
-func NewDeploy(deploymentStoreCfg valid.StoreConfig, topicArn string) (*Deploy, error) {
+func NewDeploy(deploymentStoreCfg valid.StoreConfig, snsWriter io.Writer) (*Deploy, error) {
 	storageClient, err := storage.NewClient(deploymentStoreCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "intializing stow client")
@@ -53,20 +51,12 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig, topicArn string) (*Deploy, 
 		return nil, errors.Wrap(err, "initializing deployment info store")
 	}
 
-	session, err := aws.NewSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing new aws session")
-	}
-
 	return &Deploy{
 		dbActivities: &dbActivities{
 			DeploymentInfoStore: deploymentStore,
 		},
 		auditActivities: &auditActivities{
-			SnsWriter: &sns.Writer{
-				Client:   awsSns.New(session),
-				TopicArn: &topicArn,
-			},
+			SnsWriter: snsWriter,
 		},
 	}, nil
 }

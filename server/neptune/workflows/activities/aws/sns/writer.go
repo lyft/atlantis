@@ -16,9 +16,12 @@ type Writer struct {
 }
 
 func (w *Writer) Write(payload []byte) (int, error) {
-	_, err := w.Client.Publish(&awsSns.PublishInput{
+	if _, err := w.Client.Publish(&awsSns.PublishInput{
 		Message:  aws.String(string(payload)),
 		TopicArn: w.TopicArn,
-	})
-	return len(payload), err
+	}); err != nil {
+		return 0, err
+	}
+
+	return len(payload), nil
 }

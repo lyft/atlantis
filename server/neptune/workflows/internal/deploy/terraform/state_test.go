@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
@@ -25,8 +27,13 @@ func (a *testActivities) UpdateCheckRun(ctx context.Context, request activities.
 	return activities.UpdateCheckRunResponse{}, nil
 }
 
+func (a *testActivities) AuditJob(ctx context.Context, request activities.AuditJobRequest) error {
+	return nil
+}
+
 type stateReceiveRequest struct {
-	StatesToSend []*state.Workflow
+	StatesToSend   []*state.Workflow
+	DeploymentInfo internalTerraform.DeploymentInfo
 }
 
 func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error {
@@ -45,11 +52,7 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error
 		}
 	})
 
-	receiver.Receive(ctx, ch, internalTerraform.DeploymentInfo{
-		CheckRunID: 1,
-		Root:       terraform.Root{Name: "root"},
-		Repo:       github.Repo{Name: "hello"},
-	})
+	receiver.Receive(ctx, ch, r.DeploymentInfo)
 
 	return nil
 }
@@ -62,10 +65,25 @@ func TestStateReceive(t *testing.T) {
 		URL: outputURL,
 	}
 
+	internalDeploymentInfo := internalTerraform.DeploymentInfo{
+		CheckRunID: 1,
+		ID:         uuid.New(),
+		Root:       terraform.Root{Name: "root"},
+		Repo:       github.Repo{Name: "hello"},
+	}
+
+	deploymentInfo := deployment.Info{
+		ID:         internalDeploymentInfo.ID.String(),
+		CheckRunID: internalDeploymentInfo.CheckRunID,
+		Root:       internalDeploymentInfo.Root,
+		Repo:       internalDeploymentInfo.Repo,
+	}
+
 	cases := []struct {
-		State                 *state.Workflow
-		ExpectedCheckRunState github.CheckRunState
-		ExpectedActions       []github.CheckRunAction
+		State                   *state.Workflow
+		ExpectedCheckRunState   github.CheckRunState
+		ExpectedAuditJobRequest *activities.AuditJobRequest
+		ExpectedActions         []github.CheckRunAction
 	}{
 		{
 			State: &state.Workflow{
@@ -132,6 +150,10 @@ func TestStateReceive(t *testing.T) {
 				},
 			},
 			ExpectedCheckRunState: github.CheckRunPending,
+			ExpectedAuditJobRequest: &activities.AuditJobRequest{
+				DeploymentInfo: deploymentInfo,
+				State:          activities.AtlantisJobStateRunning,
+			},
 		},
 		{
 			State: &state.Workflow{
@@ -145,6 +167,10 @@ func TestStateReceive(t *testing.T) {
 				},
 			},
 			ExpectedCheckRunState: github.CheckRunFailure,
+			ExpectedAuditJobRequest: &activities.AuditJobRequest{
+				DeploymentInfo: deploymentInfo,
+				State:          activities.AtlantisJobStateFailure,
+			},
 		},
 		{
 			State: &state.Workflow{
@@ -158,6 +184,10 @@ func TestStateReceive(t *testing.T) {
 				},
 			},
 			ExpectedCheckRunState: github.CheckRunSuccess,
+			ExpectedAuditJobRequest: &activities.AuditJobRequest{
+				DeploymentInfo: deploymentInfo,
+				State:          activities.AtlantisJobStateSuccess,
+			},
 		},
 	}
 
@@ -180,8 +210,16 @@ func TestStateReceive(t *testing.T) {
 				Actions: c.ExpectedActions,
 			}).Return(activities.UpdateCheckRunResponse{}, nil)
 
+			if c.ExpectedAuditJobRequest != nil {
+				env.OnActivity(a.AuditJob, mock.Anything, activities.AuditJobRequest{
+					DeploymentInfo: c.ExpectedAuditJobRequest.DeploymentInfo,
+					State:          c.ExpectedAuditJobRequest.State,
+				}).Return(nil)
+			}
+
 			env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{
-				StatesToSend: []*state.Workflow{c.State},
+				StatesToSend:   []*state.Workflow{c.State},
+				DeploymentInfo: internalDeploymentInfo,
 			})
 
 			env.AssertExpectations(t)
