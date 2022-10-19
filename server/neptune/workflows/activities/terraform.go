@@ -4,14 +4,18 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"github.com/hashicorp/go-version"
-	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"io"
 	"path/filepath"
 	"sync"
+
+	"github.com/hashicorp/go-version"
+	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/cli"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
 var DisableInputArg = terraform.Argument{
@@ -41,9 +45,12 @@ type streamer interface {
 }
 
 type terraformActivities struct {
-	TerraformClient  TerraformClient
-	DefaultTFVersion *version.Version
-	StreamHandler    streamer
+	TerraformClient        TerraformClient
+	DefaultTFVersion       *version.Version
+	StreamHandler          streamer
+	GHAppConfig            githubapp.Config
+	GitCLICredentials      cli.Credentials
+	GitCredentialsFileLock file.RWLock
 }
 
 func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, streamHandler streamer) *terraformActivities { //nolint:revive // avoiding refactor while adding linter action
@@ -55,13 +62,13 @@ func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Ve
 }
 
 // Terraform Init
-
 type TerraformInitRequest struct {
-	Args      []terraform.Argument
-	Envs      map[string]string
-	JobID     string
-	TfVersion string
-	Path      string
+	Args                 []terraform.Argument
+	Envs                 map[string]string
+	JobID                string
+	TfVersion            string
+	Path                 string
+	GithubInstallationID int64
 }
 
 type TerraformInitResponse struct {
@@ -88,6 +95,18 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 		AdditionalEnvVars: request.Envs,
 		Version:           tfVersion,
 	}
+
+	err = t.GitCLICredentials.Refresh(ctx, request.GithubInstallationID)
+	if err != nil {
+		logger.Warn(ctx, "Error refreshing git cli credentials. This is bug and will likely cause fetching of private modules to fail", "err", err)
+	}
+
+	// terraform init clones repos using git cli auth of which we chose git global configs.
+	// let's ensure we are locking access to this file so it's not rewritten to during the duration of our
+	// operation
+	t.GitCredentialsFileLock.RLock()
+	defer t.GitCredentialsFileLock.RUnlock()
+
 	err = t.runCommandWithOutputStream(ctx, request.JobID, r)
 	if err != nil {
 		return TerraformInitResponse{}, errors.Wrap(err, "running init command")
