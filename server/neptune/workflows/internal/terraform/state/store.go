@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -23,6 +24,7 @@ type WorkflowStore struct {
 
 type UpdateOptions struct {
 	PlanSummary terraform.PlanSummary
+	Timestamp   time.Time
 }
 
 func NewWorkflowStoreWithGenerator(notifier UpdateNotifier, g urlGenerator) *WorkflowStore {
@@ -85,6 +87,18 @@ func (s *WorkflowStore) UpdatePlanJobWithStatus(status JobStatus, options ...Upd
 }
 
 func (s *WorkflowStore) UpdateApplyJobWithStatus(status JobStatus, options ...UpdateOptions) error {
+	var timeStamp time.Time
+	for _, o := range options {
+		timeStamp = o.Timestamp
+	}
+
+	// add start and end time for apply job
+	if status == InProgressJobStatus {
+		s.state.Apply.StartTime = timeStamp
+	} else if status == FailedJobStatus || status == SuccessJobStatus {
+		s.state.Apply.EndTime = timeStamp
+	}
+
 	s.state.Apply.Status = status
 	return s.notifier(s.state)
 }

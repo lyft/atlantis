@@ -3,6 +3,7 @@ package terraform_test
 import (
 	"context"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -65,6 +66,8 @@ func TestStateReceive(t *testing.T) {
 		URL: outputURL,
 	}
 
+	stTime := time.Now()
+	endTime := stTime.Add(time.Second * 5)
 	internalDeploymentInfo := internalTerraform.DeploymentInfo{
 		CheckRunID: 1,
 		ID:         uuid.New(),
@@ -146,14 +149,16 @@ func TestStateReceive(t *testing.T) {
 					Status: state.SuccessJobStatus,
 				},
 				Apply: &state.Job{
-					Output: jobOutput,
-					Status: state.InProgressJobStatus,
+					Output:    jobOutput,
+					Status:    state.InProgressJobStatus,
+					StartTime: stTime,
 				},
 			},
 			ExpectedCheckRunState: github.CheckRunPending,
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				DeploymentInfo: deploymentInfo,
 				State:          activities.AtlantisJobStateRunning,
+				StartTime:      strconv.FormatInt(stTime.Unix(), 10),
 				IsForceApply:   false,
 			},
 		},
@@ -164,14 +169,18 @@ func TestStateReceive(t *testing.T) {
 					Status: state.SuccessJobStatus,
 				},
 				Apply: &state.Job{
-					Output: jobOutput,
-					Status: state.FailedJobStatus,
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
 				},
 			},
 			ExpectedCheckRunState: github.CheckRunFailure,
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				DeploymentInfo: deploymentInfo,
 				State:          activities.AtlantisJobStateFailure,
+				StartTime:      strconv.FormatInt(stTime.Unix(), 10),
+				EndTime:        strconv.FormatInt(endTime.Unix(), 10),
 				IsForceApply:   false,
 			},
 		},
@@ -182,14 +191,18 @@ func TestStateReceive(t *testing.T) {
 					Status: state.SuccessJobStatus,
 				},
 				Apply: &state.Job{
-					Output: jobOutput,
-					Status: state.SuccessJobStatus,
+					Output:    jobOutput,
+					Status:    state.SuccessJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
 				},
 			},
 			ExpectedCheckRunState: github.CheckRunSuccess,
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				DeploymentInfo: deploymentInfo,
 				State:          activities.AtlantisJobStateSuccess,
+				StartTime:      strconv.FormatInt(stTime.Unix(), 10),
+				EndTime:        strconv.FormatInt(endTime.Unix(), 10),
 				IsForceApply:   false,
 			},
 		},
@@ -218,6 +231,9 @@ func TestStateReceive(t *testing.T) {
 				env.OnActivity(a.AuditJob, mock.Anything, activities.AuditJobRequest{
 					DeploymentInfo: c.ExpectedAuditJobRequest.DeploymentInfo,
 					State:          c.ExpectedAuditJobRequest.State,
+					StartTime:      c.ExpectedAuditJobRequest.StartTime,
+					EndTime:        c.ExpectedAuditJobRequest.EndTime,
+					IsForceApply:   c.ExpectedAuditJobRequest.IsForceApply,
 				}).Return(nil)
 			}
 

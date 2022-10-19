@@ -2,6 +2,7 @@ package terraform
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -46,7 +47,7 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 
 	// emit audit events when Apply operation is run
 	if workflowState.Apply != nil {
-		if err := n.emitApplyEvents(ctx, workflowState.Apply.Status, deploymentInfo); err != nil {
+		if err := n.emitApplyEvents(ctx, workflowState.Apply, deploymentInfo); err != nil {
 			logger.Error(ctx, errors.Wrap(err, "auditing apply job event").Error())
 		}
 	}
@@ -87,15 +88,20 @@ func (n *StateReceiver) updateCheckRun(ctx workflow.Context, workflowState *stat
 	return workflow.ExecuteActivity(ctx, n.Activity.UpdateCheckRun, request).Get(ctx, nil)
 }
 
-func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.JobStatus, deploymentInfo DeploymentInfo) error {
+func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobState *state.Job, deploymentInfo DeploymentInfo) error {
 	var atlantisJobState activities.AtlantisJobState
-	switch jobStatus {
+	startTime := strconv.FormatInt(jobState.StartTime.Unix(), 10)
+
+	var endTime string
+	switch jobState.Status {
 	case state.InProgressJobStatus:
 		atlantisJobState = activities.AtlantisJobStateRunning
 	case state.SuccessJobStatus:
 		atlantisJobState = activities.AtlantisJobStateSuccess
+		endTime = strconv.FormatInt(jobState.EndTime.Unix(), 10)
 	case state.FailedJobStatus:
 		atlantisJobState = activities.AtlantisJobStateFailure
+		endTime = strconv.FormatInt(jobState.EndTime.Unix(), 10)
 
 	// no need to emit events on other states
 	default:
@@ -114,6 +120,8 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.Jo
 			Tags:           deploymentInfo.Tags,
 		},
 		State:        atlantisJobState,
+		StartTime:    startTime,
+		EndTime:      endTime,
 		IsForceApply: deploymentInfo.Root.Trigger == terraform.ManualTrigger,
 	}
 

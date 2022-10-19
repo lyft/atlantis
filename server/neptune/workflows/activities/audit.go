@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"strconv"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
@@ -72,6 +70,8 @@ const (
 type AuditJobRequest struct {
 	DeploymentInfo deployment.Info
 	State          AtlantisJobState
+	StartTime      string
+	EndTime        string
 	IsForceApply   bool
 }
 
@@ -89,14 +89,14 @@ func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) err
 		Repository:     req.DeploymentInfo.Repo.GetFullName(),
 		InitiatingUser: req.DeploymentInfo.InitiatingUser.Username,
 		ForceApply:     req.IsForceApply,
-		StartTime:      strconv.FormatInt(time.Now().Unix(), 10),
+		StartTime:      req.StartTime,
 		Revision:       req.DeploymentInfo.Revision,
 		Project:        req.DeploymentInfo.Tags[ProjectTagKey],
 		Environment:    req.DeploymentInfo.Tags[EnvironmentTagKey],
 	}
 
 	if req.State == AtlantisJobStateFailure || req.State == AtlantisJobStateSuccess {
-		atlantisJobEvent.EndTime = strconv.FormatInt(time.Now().Unix(), 10)
+		atlantisJobEvent.EndTime = req.EndTime
 	}
 
 	payload, err := atlantisJobEvent.Marshal()
