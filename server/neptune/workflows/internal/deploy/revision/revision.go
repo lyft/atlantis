@@ -16,11 +16,11 @@ import (
 type idGenerator func(ctx workflow.Context) (uuid.UUID, error)
 
 type NewRevisionRequest struct {
-	Revision string
-	User     request.User
-	Root     request.Root
-	Repo     request.Repo
-	Tags     map[string]string
+	Revision       string
+	InitiatingUser request.User
+	Root           request.Root
+	Repo           request.Repo
+	Tags           map[string]string
 }
 
 type Queue interface {
@@ -58,7 +58,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 
 	root := converter.Root(request.Root)
 	repo := converter.Repo(request.Repo)
-	user := converter.User(request.User)
+	user := converter.User(request.InitiatingUser)
 
 	ctx := workflow.WithRetryPolicy(n.ctx, temporal.RetryPolicy{
 		MaximumAttempts: 5,

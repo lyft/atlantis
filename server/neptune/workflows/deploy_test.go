@@ -60,7 +60,7 @@ func TestDeployWorkflow(t *testing.T) {
 	// we should have output for 2 different jobs
 	assert.Len(t, s.streamCloser.CapturedJobOutput, 2)
 
-	// we should emit 2 IN_PROGRESS and SUCCESS events
+	// we should emit 2 events: IN_PROGRESS and SUCCESS
 	assert.Len(t, s.snsWriter.writes, 2)
 }
 

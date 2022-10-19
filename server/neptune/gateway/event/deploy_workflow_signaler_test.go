@@ -125,7 +125,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					PlanMode:  workflows.NormalPlanMode,
 					Trigger:   workflows.MergeTrigger,
 				},
-				User: workflows.User{
+				InitiatingUser: workflows.User{
 					Name: user.Username,
 				},
 				Repo: workflows.Repo{
@@ -184,7 +184,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					PlanMode:  workflows.DestroyPlanMode,
 					Trigger:   workflows.MergeTrigger,
 				},
-				User: workflows.User{
+				InitiatingUser: workflows.User{
 					Name: user.Username,
 				},
 				Repo: workflows.Repo{
@@ -267,7 +267,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				PlanMode:  workflows.NormalPlanMode,
 				Trigger:   workflows.MergeTrigger,
 			},
-			User: workflows.User{
+			InitiatingUser: workflows.User{
 				Name: user.Username,
 			},
 			Repo: workflows.Repo{

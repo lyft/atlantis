@@ -49,7 +49,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 		workflows.DeployNewRevisionSignalID,
 		workflows.DeployNewRevisionSignalRequest{
 			Revision: revision,
-			User: workflows.User{
+			InitiatingUser: workflows.User{
 				Name: sender.Username,
 			},
 			Root: workflows.Root{

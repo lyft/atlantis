@@ -74,7 +74,7 @@ func TestStateReceive(t *testing.T) {
 
 	deploymentInfo := deployment.Info{
 		ID:         internalDeploymentInfo.ID.String(),
-		Version:    deployment.DeploymentInfoVersion,
+		Version:    deployment.InfoSchemaVersion,
 		CheckRunID: internalDeploymentInfo.CheckRunID,
 		Root:       internalDeploymentInfo.Root,
 		Repo:       internalDeploymentInfo.Repo,

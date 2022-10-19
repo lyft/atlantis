@@ -87,7 +87,7 @@ func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) err
 		RootName:       req.DeploymentInfo.Root.Name,
 		JobType:        AtlantisApplyJob,
 		Repository:     req.DeploymentInfo.Repo.GetFullName(),
-		InitiatingUser: req.DeploymentInfo.User.Username,
+		InitiatingUser: req.DeploymentInfo.InitiatingUser.Username,
 		ForceApply:     req.IsForceApply,
 		StartTime:      strconv.FormatInt(time.Now().Unix(), 10),
 		Revision:       req.DeploymentInfo.Revision,

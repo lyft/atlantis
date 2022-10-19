@@ -104,14 +104,14 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobStatus state.Jo
 
 	auditJobReq := activities.AuditJobRequest{
 		DeploymentInfo: deployment.Info{
-			Version:    deployment.DeploymentInfoVersion,
-			ID:         deploymentInfo.ID.String(),
-			CheckRunID: deploymentInfo.CheckRunID,
-			Revision:   deploymentInfo.Revision,
-			User:       deploymentInfo.User,
-			Root:       deploymentInfo.Root,
-			Repo:       deploymentInfo.Repo,
-			Tags:       deploymentInfo.Tags,
+			Version:        deployment.InfoSchemaVersion,
+			ID:             deploymentInfo.ID.String(),
+			CheckRunID:     deploymentInfo.CheckRunID,
+			Revision:       deploymentInfo.Revision,
+			InitiatingUser: deploymentInfo.User,
+			Root:           deploymentInfo.Root,
+			Repo:           deploymentInfo.Repo,
+			Tags:           deploymentInfo.Tags,
 		},
 		State:        atlantisJobState,
 		IsForceApply: deploymentInfo.Root.Trigger == terraform.ManualTrigger,
