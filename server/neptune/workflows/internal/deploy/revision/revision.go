@@ -121,6 +121,8 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		if err != nil {
 			logger.Error(ctx, "signaling proxy workflow, retry the deployment to proceed.")
 		}
+
+		n.queueLock.SetStatus(queue.Locked)
 	}
 
 	n.queue.Push(msg)
