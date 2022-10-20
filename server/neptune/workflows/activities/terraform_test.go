@@ -19,8 +19,8 @@ type testCredsRefresher struct {
 	t                      *testing.T
 }
 
-func (t *testCredsRefresher) Refresh(ctx context.Context, installationId int64) error {
-	assert.Equal(t.t, t.expectedInstallationID, installationId)
+func (t *testCredsRefresher) Refresh(ctx context.Context, installationID int64) error {
+	assert.Equal(t.t, t.expectedInstallationID, installationID)
 	t.called = true
 	return nil
 }
