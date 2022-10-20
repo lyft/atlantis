@@ -28,7 +28,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/metrics"
 
 	. "github.com/petergtz/pegomock"
@@ -52,7 +51,7 @@ var workingDir events.WorkingDir
 var pendingPlanFinder *mocks.MockPendingPlanFinder
 var drainer *events.Drainer
 var deleteLockCommand *mocks.MockDeleteLockCommand
-var commitUpdater *mocks.MockCommitStatusUpdater
+var vcsUpdater *mocks.MockVCSStatusUpdater
 var staleCommandChecker *mocks.MockStaleCommandChecker
 
 // TODO: refactor these into their own unit tests.
@@ -77,7 +76,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	projectCommandRunner = mocks.NewMockProjectCommandRunner()
 	workingDir = mocks.NewMockWorkingDir()
 	pendingPlanFinder = mocks.NewMockPendingPlanFinder()
-	commitUpdater = mocks.NewMockCommitStatusUpdater()
+	vcsUpdater = mocks.NewMockVCSStatusUpdater()
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
 	defaultBoltDB, err := db.New(tmp)
@@ -101,7 +100,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	policyCheckCommandRunner = events.NewPolicyCheckCommandRunner(
 		dbUpdater,
 		pullUpdater,
-		commitUpdater,
+		vcsUpdater,
 		projectCommandRunner,
 		parallelPoolSize,
 	)
@@ -110,7 +109,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		vcsClient,
 		pendingPlanFinder,
 		workingDir,
-		commitUpdater,
+		vcsUpdater,
 		projectCommandBuilder,
 		projectCommandRunner,
 		dbUpdater,
@@ -125,7 +124,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		vcsClient,
 		false,
 		applyLockChecker,
-		commitUpdater,
+		vcsUpdater,
 		projectCommandBuilder,
 		projectCommandRunner,
 		pullUpdater,
@@ -135,7 +134,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	)
 
 	approvePoliciesCommandRunner = events.NewApprovePoliciesCommandRunner(
-		commitUpdater,
+		vcsUpdater,
 		projectCommandBuilder,
 		projectCommandRunner,
 		pullUpdater,
@@ -143,7 +142,6 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		&policies.CommandOutputGenerator{
 			PrjCommandRunner:  projectCommandRunner,
 			PrjCommandBuilder: projectCommandBuilder,
-			FeatureAllocator:  mocksFeatureAllocator{},
 		},
 	)
 
@@ -186,7 +184,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             defaultBoltDB,
 		StaleCommandChecker:           staleCommandChecker,
-		CommitStatusUpdater:           commitUpdater,
+		VCSStatusUpdater:              vcsUpdater,
 	}
 	return vcsClient
 }
@@ -225,8 +223,8 @@ func TestRunCommentCommand_PreWorkflowHookError(t *testing.T) {
 			ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
 
 			ch.RunCommentCommand(ctx, fixtures.GithubRepo, modelPull.BaseRepo, modelPull, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: cmd}, time.Now())
-			_, _, _, status, cmdName, _, _ := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName(), AnyString(), AnyString()).GetCapturedArguments()
-			Equals(t, models.FailedCommitStatus, status)
+			_, _, _, status, cmdName, _, _ := vcsUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsVcsStatus(), matchers.AnyCommandName(), AnyString(), AnyString()).GetCapturedArguments()
+			Equals(t, models.FailedVCSStatus, status)
 			Equals(t, cmd, cmdName)
 		})
 	}
@@ -244,8 +242,8 @@ func TestRunCommentCommand_PreWorkflowHookError(t *testing.T) {
 		ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
 
 		ch.RunCommentCommand(ctx, fixtures.GithubRepo, modelPull.BaseRepo, modelPull, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: command.ApprovePolicies}, time.Now())
-		_, _, _, status, cmdName, _, _ := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName(), AnyString(), AnyString()).GetCapturedArguments()
-		Equals(t, models.FailedCommitStatus, status)
+		_, _, _, status, cmdName, _, _ := vcsUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsVcsStatus(), matchers.AnyCommandName(), AnyString(), AnyString()).GetCapturedArguments()
+		Equals(t, models.FailedVCSStatus, status)
 		Equals(t, command.PolicyCheck, cmdName)
 	})
 }
@@ -259,11 +257,11 @@ func TestRunCommentCommandApprovePolicy_NoProjects_SilenceEnabled(t *testing.T) 
 
 	ch.RunCommentCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, modelPull, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: command.ApprovePolicies}, time.Now())
 	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
-	commitUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
+	vcsUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
 		matchers.AnyContextContext(),
 		matchers.AnyModelsRepo(),
 		matchers.AnyModelsPullRequest(),
-		matchers.EqModelsCommitStatus(models.SuccessCommitStatus),
+		matchers.EqModelsVcsStatus(models.SuccessVCSStatus),
 		matchers.EqModelsCommandName(command.PolicyCheck),
 		EqInt(0),
 		EqInt(0),
@@ -406,8 +404,8 @@ func TestRunAutoplanCommand_PreWorkflowHookError(t *testing.T) {
 	ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
 
 	ch.RunAutoplanCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, time.Now())
-	_, _, _, status, cmdName, _, _ := commitUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsCommitStatus(), matchers.AnyCommandName(), AnyString(), AnyString()).GetCapturedArguments()
-	Equals(t, models.FailedCommitStatus, status)
+	_, _, _, status, cmdName, _, _ := vcsUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsVcsStatus(), matchers.AnyCommandName(), AnyString(), AnyString()).GetCapturedArguments()
+	Equals(t, models.FailedVCSStatus, status)
 	Equals(t, command.Plan, cmdName)
 }
 
@@ -434,11 +432,11 @@ func TestFailedApprovalCreatesFailedStatusUpdate(t *testing.T) {
 	When(workingDir.GetPullDir(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(tmp, nil)
 
 	ch.RunCommentCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: command.ApprovePolicies}, time.Now())
-	commitUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
+	vcsUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
 		matchers.AnyContextContext(),
 		matchers.AnyModelsRepo(),
 		matchers.AnyModelsPullRequest(),
-		matchers.EqModelsCommitStatus(models.SuccessCommitStatus),
+		matchers.EqModelsVcsStatus(models.SuccessVCSStatus),
 		matchers.EqModelsCommandName(command.PolicyCheck),
 		EqInt(0),
 		EqInt(0),
@@ -483,11 +481,11 @@ func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
 	ch.RunCommentCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, fixtures.Pull.Num, &command.Comment{
 		Name: command.ApprovePolicies,
 	}, time.Now())
-	commitUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
+	vcsUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
 		matchers.AnyContextContext(),
 		matchers.AnyModelsRepo(),
 		matchers.AnyModelsPullRequest(),
-		matchers.EqModelsCommitStatus(models.SuccessCommitStatus),
+		matchers.EqModelsVcsStatus(models.SuccessVCSStatus),
 		matchers.EqModelsCommandName(command.PolicyCheck),
 		EqInt(1),
 		EqInt(1),
@@ -598,12 +596,4 @@ func TestRunAutoplanCommand_DropStaleRequest(t *testing.T) {
 
 	ch.RunAutoplanCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, time.Now())
 	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
-}
-
-type mocksFeatureAllocator struct {
-	shouldAllocate bool
-}
-
-func (m mocksFeatureAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
-	return m.shouldAllocate, nil
 }

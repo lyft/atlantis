@@ -7,7 +7,6 @@ import (
 
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
 type testJobURLGenerator struct {
@@ -32,7 +31,7 @@ type testCommitStatusUpdater struct {
 	expectedError    error
 }
 
-func (t *testCommitStatusUpdater) UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.CommitStatus, url string, statusID string) (string, error) {
+func (t *testCommitStatusUpdater) UpdateProject(ctx context.Context, projectCtx command.ProjectContext, cmdName fmt.Stringer, status models.VCSStatus, url string, statusID string) (string, error) {
 	return t.expectedStatusID, t.expectedError
 }
 
@@ -51,13 +50,12 @@ func TestProjectStatusUpdater_CloseJobWhenOperationComplete(t *testing.T) {
 	}
 
 	prjStatusUpdater := command.ProjectStatusUpdater{
-		ProjectJobURLGenerator:     &jobURLGenerator,
-		FeatureAllocator:           testFeatureAllocator{isChecksEnabled: true},
-		JobCloser:                  &jobCloser,
-		ProjectCommitStatusUpdater: &commitStatusUpdater,
+		ProjectJobURLGenerator:  &jobURLGenerator,
+		JobCloser:               &jobCloser,
+		ProjectVCSStatusUpdater: &commitStatusUpdater,
 	}
 
-	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.SuccessCommitStatus)
+	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.SuccessVCSStatus)
 
 	if err != nil {
 		t.FailNow()
@@ -87,13 +85,12 @@ func TestProjectStatusUpdater_DoNotCloseJobWhenInProgress(t *testing.T) {
 	}
 
 	prjStatusUpdater := command.ProjectStatusUpdater{
-		ProjectJobURLGenerator:     &jobURLGenerator,
-		FeatureAllocator:           testFeatureAllocator{isChecksEnabled: true},
-		JobCloser:                  &jobCloser,
-		ProjectCommitStatusUpdater: &commitStatusUpdater,
+		ProjectJobURLGenerator:  &jobURLGenerator,
+		JobCloser:               &jobCloser,
+		ProjectVCSStatusUpdater: &commitStatusUpdater,
 	}
 
-	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.PendingCommitStatus)
+	statusID, err := prjStatusUpdater.UpdateProjectStatus(command.ProjectContext{}, models.PendingVCSStatus)
 
 	if err != nil {
 		t.FailNow()
@@ -106,12 +103,4 @@ func TestProjectStatusUpdater_DoNotCloseJobWhenInProgress(t *testing.T) {
 	if jobCloser.called != false {
 		t.FailNow()
 	}
-}
-
-type testFeatureAllocator struct {
-	isChecksEnabled bool
-}
-
-func (t testFeatureAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
-	return t.isChecksEnabled, nil
 }

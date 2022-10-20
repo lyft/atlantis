@@ -76,7 +76,6 @@ import (
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
-	lyft_checks "github.com/runatlantis/atlantis/server/lyft/checks"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
@@ -255,17 +254,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			return nil, errors.Wrap(err, "initializing feature allocator")
 		}
 
-		// [WENGINES-4643] TODO: Remove this wrapped client once github checks is stable
-		checksWrapperGhClient := &lyft_checks.ChecksClientWrapper{
-			FeatureAllocator: featureAllocator,
-			Logger:           ctxLogger,
-			GithubClient:     rawGithubClient,
-
-			// scope set to instrumented client's update_status which is futher subscoped to commit_status and checks in the client wrapper
-			Scope: statsScope.SubScope("github").SubScope("update_status"),
-		}
-
-		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, checksWrapperGhClient, statsScope, ctxLogger)
+		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
 	}
 	if userConfig.GitlabUser != "" {
 		supportedVCSHosts = append(supportedVCSHosts, models.Gitlab)
@@ -354,7 +343,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing webhooks")
 	}
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
-	commitStatusUpdater := &command.VCSStatusUpdater{
+	vcsStatusUpdater := &command.VCSStatusUpdater{
 		Client: vcsClient,
 		TitleBuilder: vcs.StatusTitleBuilder{
 			TitlePrefix: userConfig.VCSStatusName,
@@ -569,10 +558,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	planStepRunner := &runtime.PlanStepRunner{
-		TerraformExecutor:   terraformClient,
-		DefaultTFVersion:    defaultTfVersion,
-		CommitStatusUpdater: commitStatusUpdater,
-		AsyncTFExec:         terraformClient,
+		TerraformExecutor: terraformClient,
+		DefaultTFVersion:  defaultTfVersion,
+		VCSStatusUpdater:  vcsStatusUpdater,
+		AsyncTFExec:       terraformClient,
 	}
 
 	destroyPlanStepRunner := &lyftRuntime.DestroyPlanStepRunner{
@@ -594,9 +583,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	applyStepRunner := &runtime.ApplyStepRunner{
-		TerraformExecutor:   terraformClient,
-		CommitStatusUpdater: commitStatusUpdater,
-		AsyncTFExec:         terraformClient,
+		TerraformExecutor: terraformClient,
+		VCSStatusUpdater:  vcsStatusUpdater,
+		AsyncTFExec:       terraformClient,
 	}
 
 	versionStepRunner := &runtime.VersionStepRunner{
@@ -629,25 +618,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		DB: boltdb,
 	}
 
-	pullOutputUpdater := events.PullOutputUpdater{
-		VCSClient:            vcsClient,
-		MarkdownRenderer:     markdownRenderer,
-		HidePrevPlanComments: userConfig.HidePrevPlanComments,
-	}
-
-	checksOutputUpdater := events.ChecksOutputUpdater{
+	checksOutputUpdater := &events.ChecksOutputUpdater{
 		VCSClient:        vcsClient,
 		MarkdownRenderer: markdownRenderer,
 		TitleBuilder:     vcs.StatusTitleBuilder{TitlePrefix: userConfig.VCSStatusName},
 		JobURLGenerator:  router,
-	}
-
-	// [WENGINES-4643] TODO: Remove pullOutputUpdater once github checks is stable
-	outputUpdater := &events.FeatureAwareChecksOutputUpdater{
-		ChecksOutputUpdater: checksOutputUpdater,
-		PullOutputUpdater:   pullOutputUpdater,
-		FeatureAllocator:    featureAllocator,
-		Logger:              ctxLogger,
 	}
 
 	session, err := aws.NewSession()
@@ -680,10 +655,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	)
 
 	statusUpdater := command.ProjectStatusUpdater{
-		ProjectJobURLGenerator:     router,
-		JobCloser:                  projectCmdOutputHandler,
-		FeatureAllocator:           featureAllocator,
-		ProjectCommitStatusUpdater: commitStatusUpdater,
+		ProjectJobURLGenerator:  router,
+		JobCloser:               projectCmdOutputHandler,
+		ProjectVCSStatusUpdater: vcsStatusUpdater,
 	}
 
 	legacyPrjCmdRunner := wrappers.
@@ -728,8 +702,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
-		outputUpdater,
-		commitStatusUpdater,
+		checksOutputUpdater,
+		vcsStatusUpdater,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
 	)
@@ -738,11 +712,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 		pendingPlanFinder,
 		workingDir,
-		commitStatusUpdater,
+		vcsStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		dbUpdater,
-		outputUpdater,
+		checksOutputUpdater,
 		policyCheckCommandRunner,
 		userConfig.ParallelPoolSize,
 	)
@@ -751,10 +725,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 		userConfig.DisableApplyAll,
 		applyLockingClient,
-		commitStatusUpdater,
+		vcsStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		outputUpdater,
+		checksOutputUpdater,
 		dbUpdater,
 		userConfig.ParallelPoolSize,
 		pullReqStatusFetcher,
@@ -763,14 +737,13 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	policyCheckOutputGenerator := policies.CommandOutputGenerator{
 		PrjCommandRunner:  prjCmdRunner,
 		PrjCommandBuilder: projectCommandBuilder,
-		FeatureAllocator:  featureAllocator,
 	}
 
 	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
-		commitStatusUpdater,
+		vcsStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
-		outputUpdater,
+		checksOutputUpdater,
 		dbUpdater,
 		&policyCheckOutputGenerator,
 	)
@@ -780,9 +753,15 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 	)
 
+	pullOutputUpdater := &events.PullOutputUpdater{
+		VCSClient:            vcsClient,
+		MarkdownRenderer:     markdownRenderer,
+		HidePrevPlanComments: userConfig.HidePrevPlanComments,
+	}
+
 	// Using pull updater for version commands until we move off of PR comments entirely
 	versionCommandRunner := events.NewVersionCommandRunner(
-		&pullOutputUpdater,
+		pullOutputUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
@@ -809,7 +788,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
 		StaleCommandChecker:           staleCommandChecker,
-		CommitStatusUpdater:           commitStatusUpdater,
+		VCSStatusUpdater:              vcsStatusUpdater,
 		Logger:                        ctxLogger,
 	}
 
