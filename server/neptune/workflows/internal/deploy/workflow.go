@@ -7,7 +7,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"go.temporal.io/sdk/temporal"
@@ -45,7 +44,7 @@ type QueueWorker interface {
 	GetState() queue.WorkerState
 }
 
-func Workflow(ctx workflow.Context, request Request, tfWorkflow terraform.Workflow) error {
+func Workflow(ctx workflow.Context, request Request, tfWorkflow queue.ProxyWorkflow) error {
 	options := workflow.ActivityOptions{
 		TaskQueue:              TaskQueue,
 		ScheduleToCloseTimeout: 5 * time.Second,
@@ -64,24 +63,25 @@ type Runner struct {
 	NewRevisionSignalChannel workflow.ReceiveChannel
 }
 
-func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workflow) *Runner {
+func newRunner(ctx workflow.Context, request Request, proxyWorkflow queue.ProxyWorkflow) *Runner {
 	// inject dependencies
 
 	// temporal effectively "injects" this, it just cares about the method names,
 	// so we're modeling our own DI around this.
 	var a *workerActivities
 
-	revisionQueue := queue.NewQueue()
-	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, a, sideeffect.GenerateUUID)
-	tfWorkflowRunner := terraform.NewWorkflowRunner(a, tfWorkflow)
-	revisionProcessor := &queue.RevisionProcessor{
-		Activities:              a,
-		TerraformWorkflowRunner: tfWorkflowRunner,
+	signaler := queue.ProxySignaler{
+		ProxyWorkflow: proxyWorkflow,
+		Activity:      a,
 	}
-
+	lockState := queue.NewLockState()
+	revisionQueue := queue.NewQueue()
+	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, a, sideeffect.GenerateUUID, signaler, lockState)
 	worker := &queue.Worker{
-		Queue:             revisionQueue,
-		RevisionProcessor: revisionProcessor,
+		Queue:         revisionQueue,
+		Lock:          lockState,
+		Activities:    a,
+		ProxySignaler: signaler,
 	}
 
 	return &Runner{

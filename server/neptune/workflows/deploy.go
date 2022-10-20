@@ -35,5 +35,5 @@ var DeployTaskQueue = deploy.TaskQueue
 var DeployNewRevisionSignalID = deploy.NewRevisionSignalID
 
 func Deploy(ctx workflow.Context, request DeployRequest) error {
-	return deploy.Workflow(ctx, request, Terraform)
+	return deploy.Workflow(ctx, request, TerraformProxy)
 }

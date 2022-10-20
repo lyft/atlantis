@@ -19,6 +19,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/link"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/uber-go/tally/v4"
+	"go.temporal.io/sdk/client"
 )
 
 const (
@@ -39,9 +40,10 @@ const (
 // registering multiple workflows to the same worker
 type Deploy struct {
 	*dbActivities
+	*signalActivities
 }
 
-func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
+func NewDeploy(deploymentStoreCfg valid.StoreConfig, temporalClient client.Client) (*Deploy, error) {
 
 	storageClient, err := storage.NewClient(deploymentStoreCfg)
 	if err != nil {
@@ -56,6 +58,9 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
 	return &Deploy{
 		dbActivities: &dbActivities{
 			DeploymentInfoStore: deploymentStore,
+		},
+		signalActivities: &signalActivities{
+			TemporalClient: temporalClient,
 		},
 	}, nil
 }

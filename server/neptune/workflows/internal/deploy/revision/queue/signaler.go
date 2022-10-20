@@ -6,19 +6,19 @@ import (
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform/proxy"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/proxy"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/workflow"
 )
 
-type proxyWorkflow func(workflow.Context, proxy.Request, terraform.Workflow) error
+type ProxyWorkflow func(workflow.Context, proxy.Request) error
 
 type activity interface {
 	SignalWithStartWorkflow(ctx context.Context, request activities.SignalWithStartWorkflowRequest) error
 }
 
 type ProxySignaler struct {
-	ProxyWorkflow proxyWorkflow
+	ProxyWorkflow ProxyWorkflow
 	Activity      activity
 }
 

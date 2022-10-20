@@ -1,17 +1,21 @@
 package proxy
 
 import (
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
 const (
 	QueueTerraformSignalName = "queue"
 )
+
+type proxyActivities struct {
+	*activities.Github
+	*activities.Deploy
+}
 
 func Workflow(ctx workflow.Context, _ Request, child terraform.Workflow) error {
 	runner := newRunner(ctx, child)
@@ -35,10 +39,14 @@ func newRunner(ctx workflow.Context, tfWorkflow terraform.Workflow) *Runner {
 	var deployActivities *activities.Deploy
 
 	return &Runner{
-		//TODO
-		RevisionProcessor: &RevisionProcessor{},
+		RevisionProcessor: &RevisionProcessor{
+			Activities: &proxyActivities{
+				Github: githubActivities,
+				Deploy: deployActivities,
+			},
+			TerraformWorkflowRunner: terraform.NewWorkflowRunner(githubActivities, tfWorkflow),
+		},
 	}
-
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
@@ -56,7 +64,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 		deployment, err := r.RevisionProcessor.Process(ctx, signalRequest.Info, currentDeployment)
 		if err != nil {
-			logger.Error(ctx, "running tf workflow", "err", err)
+			return errors.Wrap(err, "processing revision")
 		}
 
 		currentDeployment = deployment

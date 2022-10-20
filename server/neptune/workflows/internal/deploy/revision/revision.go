@@ -5,11 +5,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	terraformActivity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	terraformActivity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request/converter"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -19,6 +20,10 @@ type idGenerator func(ctx workflow.Context) (uuid.UUID, error)
 
 type proxySignaler interface {
 	SignalProxyWorkflow(ctx workflow.Context, msg terraform.DeploymentInfo) error
+}
+
+type queueLock interface {
+	SetStatus(status queue.LockStatus)
 }
 
 type NewRevisionRequest struct {
@@ -35,9 +40,17 @@ type Activities interface {
 	CreateCheckRun(ctx context.Context, request activities.CreateCheckRunRequest) (activities.CreateCheckRunResponse, error)
 }
 
-func NewReceiver(ctx workflow.Context, queue Queue, activities Activities, generator idGenerator, proxySignaler proxySignaler) *Receiver {
+func NewReceiver(
+	ctx workflow.Context,
+	queue Queue,
+	activities Activities,
+	generator idGenerator,
+	proxySignaler proxySignaler,
+	queueLock queueLock,
+) *Receiver {
 	return &Receiver{
 		queue:         queue,
+		queueLock:     queueLock,
 		ctx:           ctx,
 		activities:    activities,
 		idGenerator:   generator,
@@ -47,6 +60,7 @@ func NewReceiver(ctx workflow.Context, queue Queue, activities Activities, gener
 
 type Receiver struct {
 	queue         Queue
+	queueLock     queueLock
 	ctx           workflow.Context
 	activities    Activities
 	idGenerator   idGenerator

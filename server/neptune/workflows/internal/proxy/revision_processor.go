@@ -7,7 +7,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -15,29 +14,22 @@ import (
 
 const (
 	UnlockSignalName = "unlock"
+	DeploymentInfoVersion = "1.0.0"
 )
 
 type terraformWorkflowRunner interface {
 	Run(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo) error
 }
 
-type dbActivities interface {
+type processorActivities interface {
 	FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error)
 	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
-}
-
-type githubActivities interface {
 	CompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
 	UpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
 }
 
-type workerActivities interface {
-	dbActivities
-	githubActivities
-}
-
 type RevisionProcessor struct {
-	Activities              workerActivities
+	Activities              processorActivities
 	TerraformWorkflowRunner terraformWorkflowRunner
 }
 

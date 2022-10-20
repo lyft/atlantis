@@ -15,8 +15,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const DeploymentInfoVersion = "1.0.0"
-
 type LockStatus string
 
 const (
@@ -27,6 +25,12 @@ const (
 
 	LockedRootChecksSummary = "The current root has been locked. This is likely the result of a manual deployment. To override that lock and allow the main branch to perform new deployments, select the Unlock button."
 )
+
+func NewLockState() *LockState {
+	return &LockState{
+		status: Unlocked,
+	}
+}
 
 type LockState struct {
 	status LockStatus
@@ -61,11 +65,10 @@ type UnlockSignalRequest struct {
 }
 
 type Worker struct {
-	Queue             *Queue
-	RevisionProcessor revisionProcessor
-	Lock              LockState
-	Activities        workerActivites
-	ProxySignaler     ProxySignaler
+	Queue         *Queue
+	Lock          *LockState
+	Activities    workerActivites
+	ProxySignaler ProxySignaler
 
 	// mutable
 	state WorkerState
