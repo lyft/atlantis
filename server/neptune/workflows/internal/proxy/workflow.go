@@ -44,7 +44,7 @@ func newRunner(ctx workflow.Context, tfWorkflow terraform.Workflow) *Runner {
 				Github: githubActivities,
 				Deploy: deployActivities,
 			},
-			TerraformWorkflowRunner: terraform.NewWorkflowRunner(githubActivities, tfWorkflow),
+			TerraformWorkflowRunner: terraform.NewWorkflowRunner(githubActivities, deployActivities, tfWorkflow),
 		},
 	}
 }

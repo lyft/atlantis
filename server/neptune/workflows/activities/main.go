@@ -1,6 +1,7 @@
 package activities
 
 import (
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -41,9 +42,10 @@ const (
 type Deploy struct {
 	*dbActivities
 	*signalActivities
+	*auditActivities
 }
 
-func NewDeploy(deploymentStoreCfg valid.StoreConfig, temporalClient client.Client) (*Deploy, error) {
+func NewDeploy(deploymentStoreCfg valid.StoreConfig, temporalClient client.Client, snsWriter io.Writer) (*Deploy, error) {
 
 	storageClient, err := storage.NewClient(deploymentStoreCfg)
 	if err != nil {
@@ -61,6 +63,9 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig, temporalClient client.Clien
 		},
 		signalActivities: &signalActivities{
 			TemporalClient: temporalClient,
+		},
+		auditActivities: &auditActivities{
+			SnsWriter: snsWriter,
 		},
 	}, nil
 }

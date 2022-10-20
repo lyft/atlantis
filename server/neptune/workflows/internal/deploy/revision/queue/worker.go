@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
@@ -42,10 +40,6 @@ func (s *LockState) GetStatus() LockStatus {
 
 func (s *LockState) SetStatus(status LockStatus) {
 	s.status = status
-}
-
-type revisionProcessor interface {
-	Process(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error)
 }
 
 type workerActivites interface {
@@ -124,10 +118,12 @@ func (w *Worker) GetState() WorkerState {
 	return w.state
 }
 
-// For merged deployments, notify user of a force apply lock status and lock future deployments until signal is received
-func (w *Worker) waitForUserUnlock(ctx workflow.Context, msg terraform.DeploymentInfo) error {
-	// We won't lock a manually triggered root
-
+// TODO: store info on user that unlocked revision, maybe within the check run or just log it?
+func (w *Worker) waitForUserUnlock(ctx workflow.Context, msg terraform.DeploymentInfo) {
+	// don't block indefinitely if we can't update the status
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		MaximumAttempts: 3,
+	})
 	err := workflow.ExecuteActivity(ctx, w.Activities.UpdateCheckRun, activities.UpdateCheckRunRequest{
 		Title:   terraform.BuildCheckRunTitle(msg.Root.Name),
 		State:   github.CheckRunPending,
@@ -138,7 +134,7 @@ func (w *Worker) waitForUserUnlock(ctx workflow.Context, msg terraform.Deploymen
 	}).Get(ctx, nil)
 
 	if err != nil {
-		return errors.Wrap(err, "updating check run")
+		logger.Error(ctx, "unable to update check run, with lock status", "err", err)
 	}
 	// Wait for unlock signal
 	signalChan := workflow.GetSignalChannel(ctx, UnlockSignalName)
@@ -146,6 +142,4 @@ func (w *Worker) waitForUserUnlock(ctx workflow.Context, msg terraform.Deploymen
 	_ = signalChan.Receive(ctx, &unlockRequest)
 
 	w.Lock.SetStatus(Unlocked)
-	// TODO: store info on user that unlocked revision, maybe within the check run or just log it?
-	return nil
 }

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	UnlockSignalName = "unlock"
+	UnlockSignalName      = "unlock"
 	DeploymentInfoVersion = "1.0.0"
 )
 
@@ -117,7 +117,7 @@ func (p *RevisionProcessor) fetchLatestDeployment(ctx workflow.Context, deployme
 
 func (p *RevisionProcessor) buildLatestDeployment(deployRequest terraformWorkflow.DeploymentInfo) *deployment.Info {
 	return &deployment.Info{
-		Version:    DeploymentInfoVersion,
+		Version:    deployment.InfoSchemaVersion,
 		ID:         deployRequest.ID.String(),
 		CheckRunID: deployRequest.CheckRunID,
 		Revision:   deployRequest.Revision,

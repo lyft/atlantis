@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	terraformActivity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
@@ -27,9 +26,11 @@ type queueLock interface {
 }
 
 type NewRevisionRequest struct {
-	Revision string
-	Root     request.Root
-	Repo     request.Repo
+	Revision       string
+	InitiatingUser request.User
+	Root           request.Root
+	Repo           request.Repo
+	Tags           map[string]string
 }
 
 type Queue interface {
@@ -77,18 +78,8 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	c.Receive(n.ctx, &request)
 
 	root := converter.Root(request.Root)
-	repo := github.Repo{
-		Name:  request.Repo.Name,
-		Owner: request.Repo.Owner,
-		URL:   request.Repo.URL,
-		Credentials: github.AppCredentials{
-			InstallationToken: request.Repo.Credentials.InstallationToken,
-		},
-		Ref: github.Ref{
-			Name: request.Repo.Ref.Name,
-			Type: request.Repo.Ref.Type,
-		},
-	}
+	repo := converter.Repo(request.Repo)
+	initiatingUser := converter.User(request.InitiatingUser)
 
 	ctx := workflow.WithRetryPolicy(n.ctx, temporal.RetryPolicy{
 		MaximumAttempts: 5,
@@ -115,11 +106,12 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	}
 
 	msg := terraform.DeploymentInfo{
-		ID:         id,
-		Root:       root,
-		Revision:   request.Revision,
-		CheckRunID: resp.ID,
-		Repo:       repo,
+		ID:             id,
+		Root:           root,
+		Revision:       request.Revision,
+		InitiatingUser: initiatingUser,
+		CheckRunID:     resp.ID,
+		Repo:           repo,
 	}
 
 	// hijack manual deployments and directly push them to the terraform worklfow

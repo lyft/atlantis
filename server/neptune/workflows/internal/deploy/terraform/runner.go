@@ -13,11 +13,12 @@ type stateReceiver interface {
 	Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
 }
 
-func NewWorkflowRunner(a receiverActivities, w Workflow) *WorkflowRunner {
+func NewWorkflowRunner(ga githubActivities, aa auditActivities, w Workflow) *WorkflowRunner {
 	return &WorkflowRunner{
 		Workflow: w,
 		StateReceiver: &StateReceiver{
-			Activity: a,
+			githubActivity: ga,
+			auditActivity:  aa,
 		},
 	}
 }
