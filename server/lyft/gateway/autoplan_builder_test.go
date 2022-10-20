@@ -14,6 +14,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models/fixtures"
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
@@ -27,6 +28,16 @@ var drainer *events.Drainer
 var vcsStatusUpdater *mocks.MockVCSStatusUpdater
 var workingDir *mocks.MockWorkingDir
 var workingDirLocker *mocks.MockWorkingDirLocker
+var featureAllocator *testFeatureAllocator
+
+type testFeatureAllocator struct {
+	Enabled bool
+	Err     error
+}
+
+func (t *testFeatureAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
+	return t.Enabled, t.Err
+}
 
 func setupAutoplan(t *testing.T) *vcsmocks.MockClient {
 	RegisterMockTestingT(t)
@@ -36,6 +47,7 @@ func setupAutoplan(t *testing.T) *vcsmocks.MockClient {
 	workingDirLocker = mocks.NewMockWorkingDirLocker()
 	vcsClient := vcsmocks.NewMockClient()
 	drainer = &events.Drainer{}
+	featureAllocator = &testFeatureAllocator{}
 	pullUpdater := &events.PullOutputUpdater{
 		HidePrevPlanComments: false,
 		VCSClient:            vcsClient,
@@ -57,6 +69,7 @@ func setupAutoplan(t *testing.T) *vcsmocks.MockClient {
 		VCSStatusUpdater:              vcsStatusUpdater,
 		WorkingDir:                    workingDir,
 		WorkingDirLocker:              workingDirLocker,
+		Allocator:                     featureAllocator,
 	}
 	return vcsClient
 }
@@ -151,6 +164,49 @@ func TestIsValid_TerraformChanges(t *testing.T) {
 		AnyInt(),
 		AnyInt(),
 		AnyString())
+	workingDir.VerifyWasCalledOnce().Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
+	workingDirLocker.VerifyWasCalledOnce().TryLock(AnyString(), AnyInt(), AnyString())
+}
+
+func TestIsValid_TerraformChanges_PlatformModeEnabled(t *testing.T) {
+	t.Log("verify updates atlantis apply status to success if platform mode is enabled")
+	_ = setupAutoplan(t)
+	featureAllocator.Enabled = true
+	log := logging.NewNoopCtxLogger(t)
+	When(workingDir.Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn(nil)
+	When(workingDirLocker.TryLock(AnyString(), AnyInt(), AnyString())).ThenReturn(func() {}, nil)
+	When(projectCommandBuilder.BuildAutoplanCommands(matchers.AnyPtrToEventsCommandContext())).
+		ThenReturn([]command.ProjectContext{
+			{
+				CommandName:      command.Plan,
+				WorkflowModeType: valid.PlatformWorkflowMode,
+			},
+			{
+				CommandName:      command.Plan,
+				WorkflowModeType: valid.PlatformWorkflowMode,
+			},
+		}, nil)
+
+	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(context.TODO(), log, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+	Assert(t, containsTerraformChanges == true, "should have terraform changes")
+	vcsStatusUpdater.VerifyWasCalled(Never()).UpdateCombinedCount(
+		matchers.AnyContextContext(),
+		matchers.AnyModelsRepo(),
+		matchers.AnyModelsPullRequest(),
+		matchers.AnyModelsVcsStatus(),
+		matchers.AnyModelsCommandName(),
+		AnyInt(),
+		AnyInt(),
+		AnyString())
+	vcsStatusUpdater.VerifyWasCalled(Once()).UpdateCombined(
+		matchers.AnyContextContext(),
+		matchers.AnyModelsRepo(),
+		matchers.AnyModelsPullRequest(),
+		matchers.AnyModelsVcsStatus(),
+		matchers.AnyModelsCommandName(),
+		AnyString(),
+		AnyString(),
+	)
 	workingDir.VerifyWasCalledOnce().Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
 	workingDirLocker.VerifyWasCalledOnce().TryLock(AnyString(), AnyInt(), AnyString())
 }
