@@ -12,17 +12,50 @@ import (
 	"sync"
 
 	"github.com/bradleyfalzon/ghinstallation"
+	"github.com/mitchellh/go-homedir"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
 )
 
+type ghInstallationTransportCreator struct{}
+
+func (t ghInstallationTransportCreator) New(tr http.RoundTripper, appID, installationID int64, privateKey []byte) (Transport, error) {
+	return ghinstallation.New(tr, appID, installationID, privateKey)
+}
+
+type Transport interface {
+	Token(ctx context.Context) (string, error)
+}
+
+type transportCreator interface {
+	New(tr http.RoundTripper, appID, installationID int64, privateKey []byte) (Transport, error)
+}
+
 type Credentials struct {
-	Cfg      githubapp.Config
-	FileLock *file.RWLock
+	Cfg              githubapp.Config
+	FileLock         *file.RWLock
+	TransportCreator transportCreator
+	HomeDir          string
+	Git              func(...string) error
 
 	once      sync.Once
-	transport *ghinstallation.Transport
+	transport Transport
+}
+
+func NewCredentials(cfg githubapp.Config, fileLock *file.RWLock) (*Credentials, error) {
+	home, err := homedir.Dir()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting home dir")
+	}
+	return &Credentials{
+		HomeDir:          home,
+		TransportCreator: ghInstallationTransportCreator{},
+		Cfg:              cfg,
+		FileLock:         fileLock,
+		Git:              git,
+	}, nil
 }
 
 func (c *Credentials) Refresh(ctx context.Context, installationID int64) error {
@@ -30,7 +63,7 @@ func (c *Credentials) Refresh(ctx context.Context, installationID int64) error {
 	// since we are using a global git config
 	var initErr error
 	c.once.Do(func() {
-		transport, err := ghinstallation.New(http.DefaultTransport, c.Cfg.App.IntegrationID, installationID, []byte(c.Cfg.App.PrivateKey))
+		transport, err := c.TransportCreator.New(http.DefaultTransport, c.Cfg.App.IntegrationID, installationID, []byte(c.Cfg.App.PrivateKey))
 		if err != nil {
 			initErr = err
 			return
@@ -47,13 +80,8 @@ func (c *Credentials) Refresh(ctx context.Context, installationID int64) error {
 		return errors.Wrap(err, "refreshing token in transport")
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return errors.Wrap(err, "getting home dir")
-	}
-
 	return errors.Wrap(
-		c.writeCredentials(filepath.Join(home, ".git-credentials"), token),
+		c.writeCredentials(ctx, filepath.Join(c.HomeDir, ".git-credentials"), token),
 		"writing credentials",
 	)
 }
@@ -77,15 +105,18 @@ func (c *Credentials) safeReadFile(file string) (string, error) {
 		return "", errors.Wrap(err, "reading file")
 	}
 
-	return string(contents), nil
+	// for some reason this gets read in with an additional new line. Maybe git config
+	// might be responsible :shrug
+	return strings.TrimSuffix(string(contents), "\n"), nil
 
 }
 
-func (c *Credentials) writeCredentials(file string, token string) error {
+func (c *Credentials) writeCredentials(ctx context.Context, file string, token string) error {
 	toWrite := fmt.Sprintf(`https://x-access-token:%s@github.com`, token)
 
 	// if it doesn't exist write to file
 	if _, err := os.Stat(file); err != nil {
+		logger.Info(ctx, "writing global .git-credentials file")
 		return c.safeWriteFile(file, []byte(toWrite), os.ModePerm)
 	}
 
@@ -96,16 +127,17 @@ func (c *Credentials) writeCredentials(file string, token string) error {
 
 	// our token was refreshed so let's write it
 	if contents != toWrite {
+		logger.Info(ctx, "token was refreshed, rewriting credentials")
 		if err := c.safeWriteFile(file, []byte(toWrite), os.ModePerm); err != nil {
 			return errors.Wrap(err, "refreshing credentials file")
 		}
 	}
 
-	if err := git("config", "--global", "credential.helper", "store"); err != nil {
+	if err := c.Git("config", "--global", "credential.helper", "store"); err != nil {
 		return err
 	}
 
-	return git("config", "--global", "url.https://x-access-token@github.com.insteadOf", "ssh://git@github.com")
+	return c.Git("config", "--global", "url.https://x-access-token@github.com.insteadOf", "ssh://git@github.com")
 }
 
 func git(args ...string) error {

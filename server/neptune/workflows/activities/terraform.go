@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/hashicorp/go-version"
@@ -56,11 +57,19 @@ type terraformActivities struct {
 	GitCredentialsFileLock *file.RWLock
 }
 
-func NewTerraformActivities(client TerraformClient, defaultTfVersion *version.Version, streamHandler streamer) *terraformActivities { //nolint:revive // avoiding refactor while adding linter action
+func NewTerraformActivities(
+	client TerraformClient,
+	defaultTfVersion *version.Version,
+	streamHandler streamer,
+	gitCredentialsRefresher gitCredentialsRefresher,
+	gitCredentialsFileLock *file.RWLock,
+) *terraformActivities { //nolint:revive // avoiding refactor while adding linter action
 	return &terraformActivities{
-		TerraformClient:  client,
-		DefaultTFVersion: defaultTfVersion,
-		StreamHandler:    streamHandler,
+		TerraformClient:        client,
+		DefaultTFVersion:       defaultTfVersion,
+		StreamHandler:          streamHandler,
+		GitCLICredentials:      gitCredentialsRefresher,
+		GitCredentialsFileLock: gitCredentialsFileLock,
 	}
 }
 
@@ -110,8 +119,9 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	t.GitCredentialsFileLock.RLock()
 	defer t.GitCredentialsFileLock.RUnlock()
 
-	err = t.runCommandWithOutputStream(ctx, request.JobID, r)
+	out, err := t.runCommandWithOutputStream(ctx, request.JobID, r)
 	if err != nil {
+		logger.Error(ctx, out)
 		return TerraformInitResponse{}, errors.Wrap(err, "running init command")
 	}
 	return TerraformInitResponse{}, nil
@@ -164,9 +174,10 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		AdditionalEnvVars: request.Envs,
 		Version:           tfVersion,
 	}
-	err = t.runCommandWithOutputStream(ctx, request.JobID, planRequest)
+	out, err := t.runCommandWithOutputStream(ctx, request.JobID, planRequest)
 
 	if err != nil {
+		logger.Error(ctx, out)
 		return TerraformPlanResponse{}, errors.Wrap(err, "running plan command")
 	}
 
@@ -238,16 +249,17 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 		AdditionalEnvVars: request.Envs,
 		Version:           tfVersion,
 	}
-	err = t.runCommandWithOutputStream(ctx, request.JobID, applyRequest)
+	out, err := t.runCommandWithOutputStream(ctx, request.JobID, applyRequest)
 
 	if err != nil {
+		logger.Error(ctx, out)
 		return TerraformApplyResponse{}, errors.Wrap(err, "running apply command")
 	}
 
 	return TerraformApplyResponse{}, nil
 }
 
-func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jobID string, request *terraform.RunCommandRequest) error {
+func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jobID string, request *terraform.RunCommandRequest) (string, error) {
 	reader, writer := io.Pipe()
 
 	var wg sync.WaitGroup
@@ -272,13 +284,18 @@ func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jo
 	buf := []byte{}
 	s.Buffer(buf, bufioScannerBufferSize)
 
+	var output strings.Builder
 	for s.Scan() {
+		_, err := output.WriteString(s.Text())
+		if err != nil {
+			logger.Warn(ctx, "unable to write tf output to buffer")
+		}
 		t.StreamHandler.Stream(jobID, s.Text())
 	}
 
 	wg.Wait()
 
-	return err
+	return output.String(), err
 }
 
 func (t *terraformActivities) resolveVersion(v string) (*version.Version, error) {
