@@ -58,7 +58,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 
 	root := converter.Root(request.Root)
 	repo := converter.Repo(request.Repo)
-	user := converter.User(request.InitiatingUser)
+	initiatingUser := converter.User(request.InitiatingUser)
 
 	ctx := workflow.WithRetryPolicy(n.ctx, temporal.RetryPolicy{
 		MaximumAttempts: 5,
@@ -85,12 +85,12 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	}
 
 	n.queue.Push(terraform.DeploymentInfo{
-		ID:         id,
-		Root:       root,
-		Revision:   request.Revision,
-		CheckRunID: resp.ID,
-		Repo:       repo,
-		User:       user,
-		Tags:       request.Tags,
+		ID:             id,
+		Root:           root,
+		Revision:       request.Revision,
+		CheckRunID:     resp.ID,
+		Repo:           repo,
+		InitiatingUser: initiatingUser,
+		Tags:           request.Tags,
 	})
 }

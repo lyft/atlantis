@@ -10,13 +10,13 @@ import (
 )
 
 type DeploymentInfo struct {
-	ID         uuid.UUID
-	CheckRunID int64
-	Revision   string
-	User       github.User
-	Root       terraform.Root
-	Repo       github.Repo
-	Tags       map[string]string
+	ID             uuid.UUID
+	CheckRunID     int64
+	Revision       string
+	InitiatingUser github.User
+	Root           terraform.Root
+	Repo           github.Repo
+	Tags           map[string]string
 }
 
 func BuildCheckRunTitle(rootName string) string {

@@ -114,7 +114,7 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobState *state.Jo
 			ID:             deploymentInfo.ID.String(),
 			CheckRunID:     deploymentInfo.CheckRunID,
 			Revision:       deploymentInfo.Revision,
-			InitiatingUser: deploymentInfo.User,
+			InitiatingUser: deploymentInfo.InitiatingUser,
 			Root:           deploymentInfo.Root,
 			Repo:           deploymentInfo.Repo,
 			Tags:           deploymentInfo.Tags,

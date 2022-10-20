@@ -1,7 +1,6 @@
 package workflows
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
@@ -35,10 +34,6 @@ type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 var DeployTaskQueue = deploy.TaskQueue
 
 var DeployNewRevisionSignalID = deploy.NewRevisionSignalID
-
-type DeployActivities struct {
-	activities.Deploy
-}
 
 func Deploy(ctx workflow.Context, request DeployRequest) error {
 	return deploy.Workflow(ctx, request, Terraform)
