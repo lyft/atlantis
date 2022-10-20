@@ -123,6 +123,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		}
 
 		n.queueLock.SetStatus(queue.Locked)
+		return
 	}
 
 	n.queue.Push(msg)
