@@ -1,11 +1,8 @@
 package raw
 
 import (
-	"path/filepath"
-
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/graymeta/stow"
-	stow_local "github.com/graymeta/stow/local"
 	stow_s3 "github.com/graymeta/stow/s3"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 )
@@ -45,31 +42,12 @@ func buildValidStore(dataStore DataStore, prefix string) valid.StoreConfig {
 				stow_s3.ConfigAuthType: "iam",
 			},
 		}
-	case dataStore.Local != nil:
-		validStore = valid.StoreConfig{
-			ContainerName: dataStore.Local.Dir,
-			BackendType:   valid.LocalBackend,
-			Config: stow.ConfigMap{
-				stow_local.ConfigKeyPath: dataStore.Local.Dir,
-			},
-		}
-	default:
-		validStore = valid.StoreConfig{
-			ContainerName: "/tmp",
-			Prefix:        prefix,
-			BackendType:   valid.LocalBackend,
-			Config: stow.ConfigMap{
-				stow_local.ConfigKeyPath: filepath.Join("/tmp", prefix),
-			},
-		}
-
 	}
 	return validStore
 }
 
 type DataStore struct {
-	S3    *S3    `yaml:"s3" json:"s3"`
-	Local *Local `yaml:"local" json:"local"`
+	S3 *S3 `yaml:"s3" json:"s3"`
 
 	// Add other supported data stores in the future
 }
@@ -85,15 +63,5 @@ type S3 struct {
 func (s S3) Validate() error {
 	return validation.ValidateStruct(&s,
 		validation.Field(&s.BucketName, validation.Required),
-	)
-}
-
-type Local struct {
-	Dir string `yaml:"dir" json:"dir"`
-}
-
-func (s Local) Validate() error {
-	return validation.ValidateStruct(&s,
-		validation.Field(&s.Dir, validation.Required),
 	)
 }
