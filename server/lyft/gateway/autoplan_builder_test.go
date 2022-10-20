@@ -168,47 +168,82 @@ func TestIsValid_TerraformChanges(t *testing.T) {
 	workingDirLocker.VerifyWasCalledOnce().TryLock(AnyString(), AnyInt(), AnyString())
 }
 
-func TestIsValid_TerraformChanges_PlatformModeEnabled(t *testing.T) {
-	t.Log("verify updates atlantis apply status to success if platform mode is enabled")
-	_ = setupAutoplan(t)
-	featureAllocator.Enabled = true
-	log := logging.NewNoopCtxLogger(t)
-	When(workingDir.Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn(nil)
-	When(workingDirLocker.TryLock(AnyString(), AnyInt(), AnyString())).ThenReturn(func() {}, nil)
-	When(projectCommandBuilder.BuildAutoplanCommands(matchers.AnyPtrToEventsCommandContext())).
-		ThenReturn([]command.ProjectContext{
-			{
-				CommandName:      command.Plan,
-				WorkflowModeType: valid.PlatformWorkflowMode,
-			},
-			{
-				CommandName:      command.Plan,
-				WorkflowModeType: valid.PlatformWorkflowMode,
-			},
-		}, nil)
+func TestIsValid_TerraformChanges_PlatformMode(t *testing.T) {
+	cases := []struct {
+		Description           string
+		WorkflowMode          valid.WorkflowModeType
+		IsPlatformModeEnabled bool
+	}{
+		{
+			Description:           "default workflow mode and platform mode is not enabled",
+			WorkflowMode:          valid.DefaultWorkflowMode,
+			IsPlatformModeEnabled: false,
+		},
+		{
+			Description:           "platform workflow mode and platform mode is not enabled",
+			WorkflowMode:          valid.PlatformWorkflowMode,
+			IsPlatformModeEnabled: false,
+		},
+		{
+			Description:           "default workflow mode and platform mode is enabled",
+			WorkflowMode:          valid.DefaultWorkflowMode,
+			IsPlatformModeEnabled: true,
+		},
+		{
+			Description:           "platform workflow mode and platform mode is enabled",
+			WorkflowMode:          valid.PlatformWorkflowMode,
+			IsPlatformModeEnabled: true,
+		},
+	}
 
-	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(context.TODO(), log, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
-	Assert(t, containsTerraformChanges == true, "should have terraform changes")
-	vcsStatusUpdater.VerifyWasCalled(Never()).UpdateCombinedCount(
-		matchers.AnyContextContext(),
-		matchers.AnyModelsRepo(),
-		matchers.AnyModelsPullRequest(),
-		matchers.AnyModelsVcsStatus(),
-		matchers.AnyModelsCommandName(),
-		AnyInt(),
-		AnyInt(),
-		AnyString())
-	vcsStatusUpdater.VerifyWasCalled(Once()).UpdateCombined(
-		matchers.AnyContextContext(),
-		matchers.AnyModelsRepo(),
-		matchers.AnyModelsPullRequest(),
-		matchers.AnyModelsVcsStatus(),
-		matchers.AnyModelsCommandName(),
-		AnyString(),
-		AnyString(),
-	)
-	workingDir.VerifyWasCalledOnce().Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
-	workingDirLocker.VerifyWasCalledOnce().TryLock(AnyString(), AnyInt(), AnyString())
+	for _, c := range cases {
+		t.Run(c.Description, func(t *testing.T) {
+			_ = setupAutoplan(t)
+			featureAllocator.Enabled = c.IsPlatformModeEnabled
+			log := logging.NewNoopCtxLogger(t)
+			When(workingDir.Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn(nil)
+			When(workingDirLocker.TryLock(AnyString(), AnyInt(), AnyString())).ThenReturn(func() {}, nil)
+			When(projectCommandBuilder.BuildAutoplanCommands(matchers.AnyPtrToEventsCommandContext())).
+				ThenReturn([]command.ProjectContext{
+					{
+						CommandName:      command.Plan,
+						WorkflowModeType: c.WorkflowMode,
+					},
+					{
+						CommandName:      command.Plan,
+						WorkflowModeType: c.WorkflowMode,
+					},
+				}, nil)
+
+			containsTerraformChanges := autoplanValidator.InstrumentedIsValid(context.TODO(), log, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
+			Assert(t, containsTerraformChanges == true, "should have terraform changes")
+			vcsStatusUpdater.VerifyWasCalled(Never()).UpdateCombinedCount(
+				matchers.AnyContextContext(),
+				matchers.AnyModelsRepo(),
+				matchers.AnyModelsPullRequest(),
+				matchers.AnyModelsVcsStatus(),
+				matchers.AnyModelsCommandName(),
+				AnyInt(),
+				AnyInt(),
+				AnyString())
+
+			// Should only happen if both the conditions are met
+			if c.WorkflowMode == valid.PlatformWorkflowMode && c.IsPlatformModeEnabled {
+				vcsStatusUpdater.VerifyWasCalled(Once()).UpdateCombined(
+					matchers.AnyContextContext(),
+					matchers.AnyModelsRepo(),
+					matchers.AnyModelsPullRequest(),
+					matchers.AnyModelsVcsStatus(),
+					matchers.AnyModelsCommandName(),
+					AnyString(),
+					AnyString(),
+				)
+			}
+
+			workingDir.VerifyWasCalledOnce().Delete(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())
+			workingDirLocker.VerifyWasCalledOnce().TryLock(AnyString(), AnyInt(), AnyString())
+		})
+	}
 }
 
 func TestIsValid_PreworkflowHookError(t *testing.T) {
