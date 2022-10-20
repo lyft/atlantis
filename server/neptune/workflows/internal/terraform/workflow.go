@@ -184,7 +184,7 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 	}
 
 	if err := r.Store.UpdateApplyJobWithStatus(state.InProgressJobStatus, state.UpdateOptions{
-		Timestamp: time.Now(),
+		StartTime: time.Now(),
 	}); err != nil {
 		return errors.Wrap(err, "updating job with in-progress status")
 	}
@@ -193,7 +193,7 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 	if err != nil {
 
 		if err := r.Store.UpdateApplyJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
-			Timestamp: time.Now(),
+			EndTime: time.Now(),
 		}); err != nil {
 			return errors.Wrap(err, "updating job with failed status")
 		}
@@ -201,7 +201,7 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 	}
 
 	if err := r.Store.UpdateApplyJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
-		Timestamp: time.Now(),
+		EndTime: time.Now(),
 	}); err != nil {
 		return errors.Wrap(err, "updating job with success status")
 	}
