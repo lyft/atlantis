@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	terraformActivity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
@@ -15,6 +16,10 @@ import (
 )
 
 type idGenerator func(ctx workflow.Context) (uuid.UUID, error)
+
+type proxySignaler interface {
+	SignalProxyWorkflow(ctx workflow.Context, msg terraform.DeploymentInfo) error
+}
 
 type NewRevisionRequest struct {
 	Revision string
@@ -30,20 +35,22 @@ type Activities interface {
 	CreateCheckRun(ctx context.Context, request activities.CreateCheckRunRequest) (activities.CreateCheckRunResponse, error)
 }
 
-func NewReceiver(ctx workflow.Context, queue Queue, activities Activities, generator idGenerator) *Receiver {
+func NewReceiver(ctx workflow.Context, queue Queue, activities Activities, generator idGenerator, proxySignaler proxySignaler) *Receiver {
 	return &Receiver{
-		queue:       queue,
-		ctx:         ctx,
-		activities:  activities,
-		idGenerator: generator,
+		queue:         queue,
+		ctx:           ctx,
+		activities:    activities,
+		idGenerator:   generator,
+		proxySignaler: proxySignaler,
 	}
 }
 
 type Receiver struct {
-	queue       Queue
-	ctx         workflow.Context
-	activities  Activities
-	idGenerator idGenerator
+	queue         Queue
+	ctx           workflow.Context
+	activities    Activities
+	idGenerator   idGenerator
+	proxySignaler proxySignaler
 }
 
 func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
@@ -93,11 +100,22 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		logger.Error(ctx, err.Error())
 	}
 
-	n.queue.Push(terraform.DeploymentInfo{
+	msg := terraform.DeploymentInfo{
 		ID:         id,
 		Root:       root,
 		Revision:   request.Revision,
 		CheckRunID: resp.ID,
 		Repo:       repo,
-	})
+	}
+
+	// hijack manual deployments and directly push them to the terraform worklfow
+	if root.Trigger == terraformActivity.ManualTrigger {
+		err := n.proxySignaler.SignalProxyWorkflow(ctx, msg)
+
+		if err != nil {
+			logger.Error(ctx, "signaling proxy workflow, retry the deployment to proceed.")
+		}
+	}
+
+	n.queue.Push(msg)
 }

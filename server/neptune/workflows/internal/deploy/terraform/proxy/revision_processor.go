@@ -1,4 +1,4 @@
-package queue
+package proxy
 
 import (
 	"context"
@@ -11,6 +11,10 @@ import (
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
+)
+
+const (
+	UnlockSignalName = "unlock"
 )
 
 type terraformWorkflowRunner interface {
@@ -40,8 +44,6 @@ type RevisionProcessor struct {
 const (
 	DirectionBehindSummary   = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
 	UpdateCheckRunRetryCount = 5
-
-	DivergedCommitsSummary = "The current deployment has diverged from the default branch, so we have locked the root. This is most likely the result of this PR performing a manual deployment. To override that lock and allow the main branch to perform new deployments, select the Unlock button."
 )
 
 func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error) {
@@ -62,10 +64,6 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 		// always returns error for caller to skip revision
 		if err = p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil); err != nil {
 			return nil, errors.Wrap(err, "updating check run")
-		}
-	case activities.DirectionDiverged:
-		if err = p.waitForUserUnlock(ctx, requestedDeployment); err != nil {
-			return nil, errors.Wrap(err, "waiting for user unlock")
 		}
 	}
 	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment)
@@ -107,24 +105,6 @@ func (p *RevisionProcessor) updateCheckRun(ctx workflow.Context, deployRequest t
 		Summary: summary,
 		Actions: actions,
 	}).Get(ctx, nil)
-}
-
-// For merged deployments, notify user of a force apply lock status and lock future deployments until signal is received
-func (p *RevisionProcessor) waitForUserUnlock(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo) error {
-	// We won't lock a manually triggered root
-	if deploymentInfo.Root.Trigger == terraform.ManualTrigger {
-		return nil
-	}
-	err := p.updateCheckRun(ctx, deploymentInfo, github.CheckRunPending, DivergedCommitsSummary, []github.CheckRunAction{github.CreateUnlockAction()})
-	if err != nil {
-		return errors.Wrap(err, "updating check run")
-	}
-	// Wait for unlock signal
-	signalChan := workflow.GetSignalChannel(ctx, UnlockSignalName)
-	var unlockRequest UnlockSignalRequest
-	_ = signalChan.Receive(ctx, &unlockRequest)
-	// TODO: store info on user that unlocked revision, maybe within the check run or just log it?
-	return nil
 }
 
 func (p *RevisionProcessor) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error) {
