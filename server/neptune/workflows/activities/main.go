@@ -130,6 +130,10 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 
 	if credentialsRefresher == nil {
 		credentialsRefresher, err = cli.NewCredentials(ghAppConfig, gitCredentialsFileLock)
+
+		if err != nil {
+			return nil, errors.Wrap(err, "initializing credentials")
+		}
 	}
 
 	tfClient, err := terraform.NewAsyncClient(
