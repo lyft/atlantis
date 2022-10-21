@@ -81,7 +81,7 @@ func (c *Credentials) Refresh(ctx context.Context, installationID int64) error {
 	}
 
 	return errors.Wrap(
-		c.writeCredentials(ctx, filepath.Join(c.HomeDir, ".git-credentials"), token),
+		c.writeConfig(ctx, filepath.Join(c.HomeDir, ".git-credentials"), token),
 		"writing credentials",
 	)
 }
@@ -111,6 +111,18 @@ func (c *Credentials) safeReadFile(file string) (string, error) {
 
 }
 
+func (c *Credentials) writeConfig(ctx context.Context, file string, token string) error {
+	if err := c.writeCredentials(ctx, file, token); err != nil {
+		return err
+	}
+
+	if err := c.Git("config", "--global", "credential.helper", "store"); err != nil {
+		return err
+	}
+
+	return c.Git("config", "--global", "url.https://x-access-token@github.com.insteadOf", "ssh://git@github.com")
+}
+
 func (c *Credentials) writeCredentials(ctx context.Context, file string, token string) error {
 	toWrite := fmt.Sprintf(`https://x-access-token:%s@github.com`, token)
 
@@ -133,11 +145,7 @@ func (c *Credentials) writeCredentials(ctx context.Context, file string, token s
 		}
 	}
 
-	if err := c.Git("config", "--global", "credential.helper", "store"); err != nil {
-		return err
-	}
-
-	return c.Git("config", "--global", "url.https://x-access-token@github.com.insteadOf", "ssh://git@github.com")
+	return nil
 }
 
 func git(args ...string) error {
