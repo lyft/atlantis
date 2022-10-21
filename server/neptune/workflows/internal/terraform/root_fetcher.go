@@ -28,7 +28,7 @@ func (r *RootFetcher) Fetch(ctx workflow.Context) (*terraform.LocalRoot, func() 
 			break
 		}
 		if err == workflow.ErrSessionFailed {
-			ctx, err = temporal.RecreateSession(ctx, err)
+			ctx, err = temporal.RecreateSession(ctx)
 		}
 		if err != nil {
 			return nil, func() error { return nil }, err
@@ -45,7 +45,7 @@ func (r *RootFetcher) Fetch(ctx workflow.Context) (*terraform.LocalRoot, func() 
 				break
 			}
 			if err == workflow.ErrSessionFailed {
-				ctx, err = temporal.RecreateSession(ctx, err)
+				ctx, err = temporal.RecreateSession(ctx)
 			}
 			if err != nil {
 				return errors.Wrap(err, "cleaning up")

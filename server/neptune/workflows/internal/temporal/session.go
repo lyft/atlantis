@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-func RecreateSession(ctx workflow.Context, err error) (workflow.Context, error) {
+func RecreateSession(ctx workflow.Context) (workflow.Context, error) {
 	sessionOptions := &workflow.SessionOptions{
 		CreationTimeout:  time.Minute,
 		ExecutionTimeout: 30 * time.Minute,
 	}
 	sessionInfo := workflow.GetSessionInfo(ctx)
-	ctx, err = workflow.RecreateSession(ctx, sessionInfo.GetRecreateToken(), sessionOptions)
+	ctx, err := workflow.RecreateSession(ctx, sessionInfo.GetRecreateToken(), sessionOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "recreating session")
 	}

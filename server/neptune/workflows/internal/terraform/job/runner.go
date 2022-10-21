@@ -132,7 +132,7 @@ func (r *JobRunner) apply(ctx *ExecutionContext, planFile string, step execute.S
 			break
 		}
 		if err == workflow.ErrSessionFailed {
-			ctx.Context, err = temporal.RecreateSession(ctx.Context, err)
+			ctx.Context, err = temporal.RecreateSession(ctx.Context)
 		}
 		if err != nil {
 			return errors.Wrap(err, "running terraform apply activity")
@@ -161,7 +161,7 @@ func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, extraA
 			break
 		}
 		if err == workflow.ErrSessionFailed {
-			ctx.Context, err = temporal.RecreateSession(ctx.Context, err)
+			ctx.Context, err = temporal.RecreateSession(ctx.Context)
 		}
 		if err != nil {
 			return resp, errors.Wrap(err, "running terraform plan activity")
@@ -191,7 +191,7 @@ func (r *JobRunner) init(ctx *ExecutionContext, localRoot *terraform.LocalRoot, 
 			break
 		}
 		if err == workflow.ErrSessionFailed {
-			ctx.Context, err = temporal.RecreateSession(ctx.Context, err)
+			ctx.Context, err = temporal.RecreateSession(ctx.Context)
 		}
 		if err != nil {
 			return errors.Wrap(err, "running terraform init activity")
@@ -224,7 +224,7 @@ func (r *JobRunner) closeTerraformJob(ctx *ExecutionContext) {
 			break
 		}
 		if err == workflow.ErrSessionFailed {
-			ctx.Context, err = temporal.RecreateSession(ctx.Context, err)
+			ctx.Context, err = temporal.RecreateSession(ctx.Context)
 		}
 		if err != nil {
 			logger.Error(ctx, "Error closing job", "err", err)
