@@ -2,12 +2,12 @@ package job
 
 import (
 	"context"
-
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	logger "github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -119,16 +119,24 @@ func (r *JobRunner) apply(ctx *ExecutionContext, planFile string, step execute.S
 		return errors.Wrapf(err, "creating argument list")
 	}
 	var resp activities.TerraformApplyResponse
-	err = workflow.ExecuteActivity(ctx, r.Activity.TerraformApply, activities.TerraformApplyRequest{
-		Args:      args,
-		Envs:      ctx.Envs,
-		TfVersion: ctx.TfVersion,
-		Path:      ctx.Path,
-		JobID:     ctx.JobID,
-		PlanFile:  planFile,
-	}).Get(ctx, &resp)
-	if err != nil {
-		return errors.Wrap(err, "running terraform apply activity")
+	for {
+		err = workflow.ExecuteActivity(ctx, r.Activity.TerraformApply, activities.TerraformApplyRequest{
+			Args:      args,
+			Envs:      ctx.Envs,
+			TfVersion: ctx.TfVersion,
+			Path:      ctx.Path,
+			JobID:     ctx.JobID,
+			PlanFile:  planFile,
+		}).Get(ctx, &resp)
+		if err == nil {
+			break
+		}
+		if err == workflow.ErrSessionFailed {
+			ctx.Context, err = temporal.RecreateSession(ctx.Context, err)
+		}
+		if err != nil {
+			return errors.Wrap(err, "running terraform apply activity")
+		}
 	}
 	return nil
 }
@@ -140,16 +148,24 @@ func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, extraA
 	if err != nil {
 		return resp, errors.Wrapf(err, "creating argument list")
 	}
-	err = workflow.ExecuteActivity(ctx, r.Activity.TerraformPlan, activities.TerraformPlanRequest{
-		Args:      args,
-		Envs:      ctx.Envs,
-		TfVersion: ctx.TfVersion,
-		JobID:     ctx.JobID,
-		Path:      ctx.Path,
-		Mode:      mode,
-	}).Get(ctx, &resp)
-	if err != nil {
-		return resp, errors.Wrap(err, "running terraform plan activity")
+	for {
+		err = workflow.ExecuteActivity(ctx, r.Activity.TerraformPlan, activities.TerraformPlanRequest{
+			Args:      args,
+			Envs:      ctx.Envs,
+			TfVersion: ctx.TfVersion,
+			JobID:     ctx.JobID,
+			Path:      ctx.Path,
+			Mode:      mode,
+		}).Get(ctx, &resp)
+		if err == nil {
+			break
+		}
+		if err == workflow.ErrSessionFailed {
+			ctx.Context, err = temporal.RecreateSession(ctx.Context, err)
+		}
+		if err != nil {
+			return resp, errors.Wrap(err, "running terraform plan activity")
+		}
 	}
 
 	return resp, nil
@@ -162,16 +178,24 @@ func (r *JobRunner) init(ctx *ExecutionContext, localRoot *terraform.LocalRoot, 
 		return errors.Wrap(err, "creating argument list")
 	}
 	var resp activities.TerraformInitResponse
-	err = workflow.ExecuteActivity(ctx.Context, r.Activity.TerraformInit, activities.TerraformInitRequest{
-		Args:                 args,
-		Envs:                 ctx.Envs,
-		TfVersion:            ctx.TfVersion,
-		Path:                 ctx.Path,
-		JobID:                ctx.JobID,
-		GithubInstallationID: localRoot.Repo.Credentials.InstallationToken,
-	}).Get(ctx, &resp)
-	if err != nil {
-		return errors.Wrap(err, "running terraform init activity")
+	for {
+		err = workflow.ExecuteActivity(ctx.Context, r.Activity.TerraformInit, activities.TerraformInitRequest{
+			Args:                 args,
+			Envs:                 ctx.Envs,
+			TfVersion:            ctx.TfVersion,
+			Path:                 ctx.Path,
+			JobID:                ctx.JobID,
+			GithubInstallationID: localRoot.Repo.Credentials.InstallationToken,
+		}).Get(ctx, &resp)
+		if err == nil {
+			break
+		}
+		if err == workflow.ErrSessionFailed {
+			ctx.Context, err = temporal.RecreateSession(ctx.Context, err)
+		}
+		if err != nil {
+			return errors.Wrap(err, "running terraform init activity")
+		}
 	}
 	return nil
 }
@@ -192,11 +216,18 @@ func (r *JobRunner) runOptionalSteps(ctx *ExecutionContext, localRoot *terraform
 }
 
 func (r *JobRunner) closeTerraformJob(ctx *ExecutionContext) {
-	err := workflow.ExecuteActivity(ctx, r.Activity.CloseJob, activities.CloseJobRequest{
-		JobID: ctx.JobID,
-	}).Get(ctx, nil)
-
-	if err != nil {
-		logger.Error(ctx, "Error closing job", "err", err)
+	for {
+		err := workflow.ExecuteActivity(ctx, r.Activity.CloseJob, activities.CloseJobRequest{
+			JobID: ctx.JobID,
+		}).Get(ctx, nil)
+		if err == nil {
+			break
+		}
+		if err == workflow.ErrSessionFailed {
+			ctx.Context, err = temporal.RecreateSession(ctx.Context, err)
+		}
+		if err != nil {
+			logger.Error(ctx, "Error closing job", "err", err)
+		}
 	}
 }
