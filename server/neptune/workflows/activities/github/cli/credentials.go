@@ -81,7 +81,7 @@ func (c *Credentials) Refresh(ctx context.Context, installationID int64) error {
 	}
 
 	return errors.Wrap(
-		c.writeConfig(ctx, filepath.Join(c.HomeDir, ".git-credentials"), token),
+		c.writeCredentials(ctx, filepath.Join(c.HomeDir, ".git-credentials"), token),
 		"writing credentials",
 	)
 }
@@ -111,11 +111,10 @@ func (c *Credentials) safeReadFile(file string) (string, error) {
 
 }
 
-func (c *Credentials) writeConfig(ctx context.Context, file string, token string) error {
-	if err := c.writeCredentials(ctx, file, token); err != nil {
+func (c *Credentials) writeConfig(file string, contents []byte) error {
+	if err := c.safeWriteFile(file, contents, os.ModePerm); err != nil {
 		return err
 	}
-
 	if err := c.Git("config", "--global", "credential.helper", "store"); err != nil {
 		return err
 	}
@@ -129,7 +128,7 @@ func (c *Credentials) writeCredentials(ctx context.Context, file string, token s
 	// if it doesn't exist write to file
 	if _, err := os.Stat(file); err != nil {
 		logger.Info(ctx, "writing global .git-credentials file")
-		return c.safeWriteFile(file, []byte(toWrite), os.ModePerm)
+		return c.writeConfig(file, []byte(toWrite))
 	}
 
 	contents, err := c.safeReadFile(file)
@@ -140,9 +139,7 @@ func (c *Credentials) writeCredentials(ctx context.Context, file string, token s
 	// our token was refreshed so let's write it
 	if contents != toWrite {
 		logger.Info(ctx, "token was refreshed, rewriting credentials")
-		if err := c.safeWriteFile(file, []byte(toWrite), os.ModePerm); err != nil {
-			return errors.Wrap(err, "refreshing credentials file")
-		}
+		return c.writeConfig(file, []byte(toWrite))
 	}
 
 	return nil
