@@ -40,7 +40,8 @@ func NewVCSEventsController(
 	featureAllocator feature.Allocator,
 	scheduler scheduler,
 	temporalClient client.Client,
-	rootConfigBuilder *gateway_handlers.RootConfigBuilder) *VCSEventsController {
+	rootConfigBuilder *gateway_handlers.RootConfigBuilder,
+	taskQueue string) *VCSEventsController {
 	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
 		snsWriter, logger,
 	)
@@ -58,6 +59,7 @@ func NewVCSEventsController(
 
 	deploySignaler := &gateway_handlers.DeployWorkflowSignaler{
 		TemporalClient: temporalClient,
+		TaskQueue:      taskQueue,
 	}
 	commentHandler := handlers.NewCommentEventWithCommandHandler(
 		commentParser,

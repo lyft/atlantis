@@ -15,6 +15,8 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
+const TestTaskQueue = "taskqueue"
+
 type testRun struct{}
 
 func (r testRun) GetID() string {
@@ -141,12 +143,13 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
-				TaskQueue: workflows.DeployTaskQueue,
+				TaskQueue: TestTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{},
 		}
 		deploySignaler := event.DeployWorkflowSignaler{
 			TemporalClient: testSignaler,
+			TaskQueue:      TestTaskQueue,
 		}
 		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref, user, workflows.MergeTrigger)
 		assert.NoError(t, err)
@@ -203,12 +206,13 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
-				TaskQueue: workflows.DeployTaskQueue,
+				TaskQueue: TestTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{},
 		}
 		deploySignaler := event.DeployWorkflowSignaler{
 			TemporalClient: testSignaler,
+			TaskQueue:      TestTaskQueue,
 		}
 		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref, user, workflows.MergeTrigger)
 		assert.NoError(t, err)
@@ -283,13 +287,14 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 		},
 		expectedWorkflow: workflows.Deploy,
 		expectedOptions: client.StartWorkflowOptions{
-			TaskQueue: workflows.DeployTaskQueue,
+			TaskQueue: TestTaskQueue,
 		},
 		expectedWorkflowArgs: workflows.DeployRequest{},
 		expectedErr:          expectedErr,
 	}
 	deploySignaler := event.DeployWorkflowSignaler{
 		TemporalClient: testSignaler,
+		TaskQueue:      TestTaskQueue,
 	}
 	run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, repo, sha, 0, ref, user, workflows.MergeTrigger)
 	assert.Error(t, err)

@@ -36,8 +36,6 @@ import (
 )
 
 const (
-	AtlantisNamespace        = "atlantis"
-	DeployTaskqueue          = "deploy"
 	ProjectJobsViewRouteName = "project-jobs-detail"
 
 	// Equal to default terraform timeout
@@ -60,6 +58,7 @@ type Server struct {
 	DeployActivities    *activities.Deploy
 	TerraformActivities *activities.Terraform
 	GithubActivities    *activities.Github
+	TaskQueue           string
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -162,6 +161,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
+		TaskQueue:           config.TemporalCfg.TaskQueue,
 	}
 	return &server, nil
 }
@@ -179,7 +179,7 @@ func (s Server) Start() error {
 		defer s.JobStreamCloserFn()
 
 		// pass the underlying client otherwise this will panic()
-		w := worker.New(s.TemporalClient.Client, workflows.DeployTaskQueue, worker.Options{
+		w := worker.New(s.TemporalClient.Client, s.TaskQueue, worker.Options{
 			EnableSessionWorker: true,
 			WorkerStopTimeout:   TemporalWorkerTimeout,
 		})

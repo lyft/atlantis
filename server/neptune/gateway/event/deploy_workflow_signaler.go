@@ -24,6 +24,7 @@ const (
 
 type DeployWorkflowSignaler struct {
 	TemporalClient signaler
+	TaskQueue      string
 }
 
 func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
@@ -36,7 +37,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 	sender models.User,
 	trigger workflows.Trigger) (client.WorkflowRun, error) {
 
-	options := client.StartWorkflowOptions{TaskQueue: workflows.DeployTaskQueue}
+	options := client.StartWorkflowOptions{TaskQueue: d.TaskQueue}
 
 	var tfVersion string
 	if rootCfg.TerraformVersion != nil {
