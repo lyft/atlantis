@@ -7,7 +7,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -63,10 +62,6 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 		if err = p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil); err != nil {
 			return nil, errors.Wrap(err, "updating check run")
 		}
-	case activities.DirectionDiverged:
-		if err = p.waitForUserUnlock(ctx, requestedDeployment); err != nil {
-			return nil, errors.Wrap(err, "waiting for user unlock")
-		}
 	}
 	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment)
 	if err != nil {
@@ -107,24 +102,6 @@ func (p *RevisionProcessor) updateCheckRun(ctx workflow.Context, deployRequest t
 		Summary: summary,
 		Actions: actions,
 	}).Get(ctx, nil)
-}
-
-// For merged deployments, notify user of a force apply lock status and lock future deployments until signal is received
-func (p *RevisionProcessor) waitForUserUnlock(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo) error {
-	// We won't lock a manually triggered root
-	if deploymentInfo.Root.Trigger == terraform.ManualTrigger {
-		return nil
-	}
-	err := p.updateCheckRun(ctx, deploymentInfo, github.CheckRunPending, DivergedCommitsSummary, []github.CheckRunAction{github.CreateUnlockAction()})
-	if err != nil {
-		return errors.Wrap(err, "updating check run")
-	}
-	// Wait for unlock signal
-	signalChan := workflow.GetSignalChannel(ctx, UnlockSignalName)
-	var unlockRequest UnlockSignalRequest
-	_ = signalChan.Receive(ctx, &unlockRequest)
-	// TODO: store info on user that unlocked revision, maybe within the check run or just log it?
-	return nil
 }
 
 func (p *RevisionProcessor) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error) {
