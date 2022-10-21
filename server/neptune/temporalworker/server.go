@@ -134,6 +134,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.App,
 		config.DataDir,
 		config.ServerCfg.URL,
+		config.TemporalCfg.TaskQueue,
 		jobStreamHandler,
 	)
 	if err != nil {

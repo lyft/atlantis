@@ -122,6 +122,7 @@ type Temporal struct {
 	Host            string
 	UseSystemCACert bool
 	Namespace       string
+	TaskQueue       string
 }
 
 type TerraformLogFilters struct {

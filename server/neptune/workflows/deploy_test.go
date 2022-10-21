@@ -138,6 +138,9 @@ func buildConfig(t *testing.T) config.Config {
 			ContainerName: "container",
 			Prefix:        "prefix",
 		},
+		TemporalCfg: valid.Temporal{
+			TaskQueue: "taskqueue",
+		},
 		TerraformCfg: config.TerraformConfig{
 			DefaultVersionStr: "1.0.2",
 		},
@@ -178,6 +181,7 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 		cfg.App,
 		cfg.DataDir,
 		cfg.ServerCfg.URL,
+		cfg.TemporalCfg.TaskQueue,
 		streamCloser,
 		activities.TerraformOptions{
 			VersionCache:            cache.NewLocalBinaryCache("terraform"),
