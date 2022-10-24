@@ -261,7 +261,6 @@ func (s Server) buildDeployWorker() worker.Worker {
 
 func (s Server) buildTerraformWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
-	// pass the underlying client otherwise this will panic()
 	terraformWorker := worker.New(s.TemporalClient.Client, s.TerraformTaskQueue, worker.Options{
 		WorkerStopTimeout: TemporalWorkerTimeout,
 	})
