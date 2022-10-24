@@ -22,7 +22,6 @@ import (
 	internalGithub "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
-	"go.temporal.io/sdk/worker"
 )
 
 type a struct {
@@ -41,10 +40,6 @@ func (r noopCredentialsRefresher) Refresh(ctx context.Context, token int64) erro
 func TestDeployWorkflow(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-
-	env.SetWorkerOptions(worker.Options{
-		EnableSessionWorker: true,
-	})
 
 	s := initAndRegisterActivities(t, env)
 

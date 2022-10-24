@@ -128,17 +128,12 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing deploy activities")
 	}
 
-	terraformTaskQueue := workflows.DeployTaskQueue
-	if config.TemporalCfg.TerraformTaskQueue != "" {
-		terraformTaskQueue = config.TemporalCfg.TerraformTaskQueue
-	}
-
 	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
 		config.App,
 		config.DataDir,
 		config.ServerCfg.URL,
-		terraformTaskQueue,
+		config.TemporalCfg.TerraformTaskQueue,
 		jobStreamHandler,
 	)
 	if err != nil {
@@ -166,7 +161,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
-		TerraformTaskQueue:  terraformTaskQueue,
+		TerraformTaskQueue:  config.TemporalCfg.TerraformTaskQueue,
 	}
 	return &server, nil
 }
@@ -254,8 +249,7 @@ func (s Server) Start() error {
 func (s Server) buildDeployWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	deployWorker := worker.New(s.TemporalClient.Client, workflows.DeployTaskQueue, worker.Options{
-		EnableSessionWorker: true,
-		WorkerStopTimeout:   TemporalWorkerTimeout,
+		WorkerStopTimeout: TemporalWorkerTimeout,
 	})
 	deployWorker.RegisterActivity(s.DeployActivities)
 	deployWorker.RegisterActivity(s.GithubActivities)
@@ -269,8 +263,7 @@ func (s Server) buildTerraformWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	// pass the underlying client otherwise this will panic()
 	terraformWorker := worker.New(s.TemporalClient.Client, s.TerraformTaskQueue, worker.Options{
-		EnableSessionWorker: true,
-		WorkerStopTimeout:   TemporalWorkerTimeout,
+		WorkerStopTimeout: TemporalWorkerTimeout,
 	})
 	terraformWorker.RegisterActivity(s.TerraformActivities)
 	terraformWorker.RegisterActivity(s.GithubActivities)
