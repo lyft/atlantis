@@ -16,7 +16,7 @@ const (
 )
 
 type Deploy struct {
-	queue priority
+	queue *priority
 
 	// mutable: default is unlocked
 	lock LockStatus
@@ -24,7 +24,7 @@ type Deploy struct {
 
 func NewQueue() *Deploy {
 	return &Deploy{
-		queue: *newPriorityQueue(),
+		queue: newPriorityQueue(),
 	}
 
 }
@@ -34,7 +34,7 @@ func (q *Deploy) SetLockStatusForMergedTrigger(status LockStatus) {
 }
 
 func (q *Deploy) CanPop() bool {
-	return q.lock == LockedStatus && q.queue.HasItemsOfPriority(High) || (q.lock == UnlockedStatus && q.queue.IsEmpty())
+	return q.lock == LockedStatus && q.queue.HasItemsOfPriority(High) || (q.lock == UnlockedStatus && !q.queue.IsEmpty())
 }
 
 func (q *Deploy) Pop() (terraform.DeploymentInfo, error) {
@@ -54,7 +54,8 @@ func (q *Deploy) Push(msg terraform.DeploymentInfo) {
 	q.queue.Push(msg, Low)
 }
 
-// Queue is a standard queue implementation
+// priority is a simple 2 priority queue implementation
+// priority is determined before an item enters a queue and does not change
 type priority struct {
 	queues map[priorityType]*list.List
 }

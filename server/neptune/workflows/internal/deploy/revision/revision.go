@@ -90,7 +90,6 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	// lock the queue on a manual deployment
 	if root.Trigger == activity.ManualTrigger {
 		n.queue.SetLockStatusForMergedTrigger(queue.LockedStatus)
-		return
 	}
 
 	n.queue.Push(terraform.DeploymentInfo{
