@@ -6,9 +6,15 @@ import (
 
 	activity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"go.temporal.io/sdk/workflow"
 )
 
 type LockStatus int
+
+type LockState struct {
+	Revision string
+	Status   LockStatus
+}
 
 const (
 	UnlockedStatus LockStatus = iota
@@ -19,26 +25,37 @@ type Deploy struct {
 	queue *priority
 
 	// mutable: default is unlocked
-	lock LockStatus
+	lock               LockState
+	lockStatusCallback func(workflow.Context, *Deploy)
 }
 
-func NewQueue() *Deploy {
+func NewQueue(callback func(workflow.Context, *Deploy)) *Deploy {
 	return &Deploy{
-		queue: newPriorityQueue(),
+		queue:              newPriorityQueue(),
+		lockStatusCallback: callback,
 	}
 
 }
 
-func (q *Deploy) SetLockStatusForMergedTrigger(status LockStatus) {
-	q.lock = status
+func (q *Deploy) GetLockState() LockState {
+	return q.lock
+}
+
+func (q *Deploy) SetLockForMergedQueue(ctx workflow.Context, state LockState) {
+	q.lock = state
+	q.lockStatusCallback(ctx, q)
 }
 
 func (q *Deploy) CanPop() bool {
-	return q.queue.HasItemsOfPriority(High) || (q.lock == UnlockedStatus && !q.queue.IsEmpty())
+	return q.queue.HasItemsOfPriority(High) || (q.lock.Status == UnlockedStatus && !q.queue.IsEmpty())
 }
 
 func (q *Deploy) Pop() (terraform.DeploymentInfo, error) {
 	return q.queue.Pop()
+}
+
+func (q *Deploy) GetMergedQueue() []terraform.DeploymentInfo {
+	return q.queue.Scan(Low)
 }
 
 func (q *Deploy) IsEmpty() bool {
@@ -83,6 +100,24 @@ func (q *priority) IsEmpty() bool {
 		}
 	}
 	return true
+}
+
+func (q *priority) Scan(priority priorityType) []terraform.DeploymentInfo {
+
+	var result []terraform.DeploymentInfo
+	first := q.queues[priority].Front()
+
+	result = append(result, first.Value.(terraform.DeploymentInfo))
+
+	for {
+		if e := first.Next(); e != nil {
+			result = append(result, e.Value.(terraform.DeploymentInfo))
+			continue
+		}
+		break
+	}
+
+	return result
 }
 
 func (q *priority) HasItemsOfPriority(priority priorityType) bool {
