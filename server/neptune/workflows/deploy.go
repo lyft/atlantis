@@ -31,6 +31,8 @@ const DeployUnlockSignalName = queue.UnlockSignalName
 type DeployUnlockSignalRequest = queue.UnlockSignalRequest
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 
+var DeployTaskQueue = deploy.TaskQueue
+
 var DeployNewRevisionSignalID = deploy.NewRevisionSignalID
 
 func Deploy(ctx workflow.Context, request DeployRequest) error {

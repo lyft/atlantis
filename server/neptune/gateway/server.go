@@ -305,7 +305,6 @@ func NewServer(config Config) (*Server, error) {
 		asyncScheduler,
 		temporalClient,
 		rootConfigBuilder,
-		globalCfg.Temporal.TaskQueue,
 	)
 
 	router := mux.NewRouter()

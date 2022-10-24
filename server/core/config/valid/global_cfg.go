@@ -118,11 +118,11 @@ type Statsd struct {
 }
 
 type Temporal struct {
-	Port            string
-	Host            string
-	UseSystemCACert bool
-	Namespace       string
-	TaskQueue       string
+	Port               string
+	Host               string
+	UseSystemCACert    bool
+	Namespace          string
+	TerraformTaskQueue string
 }
 
 type TerraformLogFilters struct {

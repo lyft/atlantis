@@ -7,16 +7,16 @@ import (
 )
 
 type Temporal struct {
-	Port            string `yaml:"port" json:"port"`
-	Host            string `yaml:"host" json:"host"`
-	UseSystemCACert bool   `yaml:"us_system_ca_cert" json:"us_system_ca_cert"`
-	Namespace       string `yaml:"namespace" json:"namespace"`
-	TaskQueue       string `yaml:"taskqueue" json:"taskqueue"`
+	Port               string `yaml:"port" json:"port"`
+	Host               string `yaml:"host" json:"host"`
+	UseSystemCACert    bool   `yaml:"us_system_ca_cert" json:"us_system_ca_cert"`
+	Namespace          string `yaml:"namespace" json:"namespace"`
+	TerraformTaskQueue string `yaml:"terraform_taskqueue" json:"terraform_taskqueue"`
 }
 
 func (t *Temporal) Validate() error {
 	return validation.ValidateStruct(t,
-		validation.Field(&t.TaskQueue, validation.Required),
+		validation.Field(&t.TerraformTaskQueue, validation.Required),
 		validation.Field(&t.Host, validation.Required),
 		validation.Field(&t.Port, validation.Required),
 		validation.Field(&t.Port, is.Int))
@@ -24,10 +24,10 @@ func (t *Temporal) Validate() error {
 
 func (t *Temporal) ToValid() valid.Temporal {
 	return valid.Temporal{
-		Host:            t.Host,
-		Port:            t.Port,
-		UseSystemCACert: t.UseSystemCACert,
-		Namespace:       t.Namespace,
-		TaskQueue:       t.TaskQueue,
+		Host:               t.Host,
+		Port:               t.Port,
+		UseSystemCACert:    t.UseSystemCACert,
+		Namespace:          t.Namespace,
+		TerraformTaskQueue: t.TerraformTaskQueue,
 	}
 }
