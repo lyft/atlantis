@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -11,6 +12,14 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
+
+type ValidationError struct {
+	error
+}
+
+func NewValidationError(msg string, format ...interface{}) *ValidationError {
+	return &ValidationError{fmt.Errorf(msg, format...)}
+}
 
 type terraformWorkflowRunner interface {
 	Run(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo) error
@@ -31,7 +40,7 @@ type workerActivities interface {
 	githubActivities
 }
 
-type RevisionProcessor struct {
+type Deployer struct {
 	Activities              workerActivities
 	TerraformWorkflowRunner terraformWorkflowRunner
 }
@@ -43,7 +52,7 @@ const (
 	DivergedCommitsSummary = "The current deployment has diverged from the default branch, so we have locked the root. This is most likely the result of this PR performing a manual deployment. To override that lock and allow the main branch to perform new deployments, select the Unlock button."
 )
 
-func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error) {
+func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error) {
 	latestDeployment, err := p.fetchLatestDeployment(ctx, requestedDeployment, latestDeployment)
 	if err != nil {
 		return nil, err
@@ -62,6 +71,8 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 		if err = p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil); err != nil {
 			return nil, errors.Wrap(err, "updating check run")
 		}
+
+		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
 	}
 	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment)
 	if err != nil {
@@ -76,7 +87,7 @@ func (p *RevisionProcessor) Process(ctx workflow.Context, requestedDeployment te
 	return latestDeployment, nil
 }
 
-func (p *RevisionProcessor) getDeployRequestCommitDirection(ctx workflow.Context, deployRequest terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info) (activities.DiffDirection, error) {
+func (p *Deployer) getDeployRequestCommitDirection(ctx workflow.Context, deployRequest terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info) (activities.DiffDirection, error) {
 	var compareCommitResp activities.CompareCommitResponse
 	err := workflow.ExecuteActivity(ctx, p.Activities.CompareCommit, activities.CompareCommitRequest{
 		DeployRequestRevision:  deployRequest.Revision,
@@ -90,7 +101,7 @@ func (p *RevisionProcessor) getDeployRequestCommitDirection(ctx workflow.Context
 }
 
 // worker should not block on updating check runs for invalid deploy requests so let's retry for UpdateCheckrunRetryCount only
-func (p *RevisionProcessor) updateCheckRun(ctx workflow.Context, deployRequest terraformWorkflow.DeploymentInfo, state github.CheckRunState, summary string, actions []github.CheckRunAction) error {
+func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformWorkflow.DeploymentInfo, state github.CheckRunState, summary string, actions []github.CheckRunAction) error {
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: UpdateCheckRunRetryCount,
 	})
@@ -104,7 +115,7 @@ func (p *RevisionProcessor) updateCheckRun(ctx workflow.Context, deployRequest t
 	}).Get(ctx, nil)
 }
 
-func (p *RevisionProcessor) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error) {
+func (p *Deployer) fetchLatestDeployment(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error) {
 	// Skip fetching latest deployment it it's already in memory
 	if latestDeployment != nil {
 		return latestDeployment, nil
@@ -120,7 +131,7 @@ func (p *RevisionProcessor) fetchLatestDeployment(ctx workflow.Context, deployme
 	return resp.DeploymentInfo, nil
 }
 
-func (p *RevisionProcessor) buildLatestDeployment(deployRequest terraformWorkflow.DeploymentInfo) *deployment.Info {
+func (p *Deployer) buildLatestDeployment(deployRequest terraformWorkflow.DeploymentInfo) *deployment.Info {
 	return &deployment.Info{
 		Version:    deployment.InfoSchemaVersion,
 		ID:         deployRequest.ID.String(),
@@ -131,7 +142,7 @@ func (p *RevisionProcessor) buildLatestDeployment(deployRequest terraformWorkflo
 	}
 }
 
-func (p *RevisionProcessor) persistLatestDeployment(ctx workflow.Context, deploymentInfo *deployment.Info) error {
+func (p *Deployer) persistLatestDeployment(ctx workflow.Context, deploymentInfo *deployment.Info) error {
 	err := workflow.ExecuteActivity(ctx, p.Activities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: deploymentInfo,
 	}).Get(ctx, nil)

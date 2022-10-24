@@ -1,11 +1,11 @@
 package queue_test
 
 import (
-	"testing"
+	activity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	activity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestQueue(t *testing.T) {
@@ -16,7 +16,6 @@ func TestQueue(t *testing.T) {
 		q.Push(msg1)
 		msg2 := wrap("2", activity.ManualTrigger)
 		q.Push(msg2)
-
 
 		info, err := q.Pop()
 		assert.NoError(t, err)

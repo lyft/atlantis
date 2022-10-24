@@ -42,7 +42,7 @@ func TestPriorityQueue(t *testing.T) {
 
 	priorities := []priorityType{
 		Low,
-		High,	
+		High,
 	}
 
 	for _, p := range priorities {
@@ -57,7 +57,7 @@ func TestPriorityQueue(t *testing.T) {
 
 		t.Run("empty", func(t *testing.T) {
 			q := newPriorityQueue()
-	
+
 			assert.True(t, q.IsEmpty())
 			q.Push(wrap("1"), p)
 			assert.False(t, q.IsEmpty())

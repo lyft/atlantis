@@ -12,8 +12,16 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type revisionProcessor interface {
-	Process(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error)
+type queue interface {
+	Push(terraform.DeploymentInfo)
+	IsEmpty() bool
+	CanPop() bool
+	Pop() (terraform.DeploymentInfo, error)
+	SetLockStatusForMergedTrigger(status LockStatus)
+}
+
+type deployer interface {
+	Deploy(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error)
 }
 
 type WorkerState string
@@ -31,8 +39,8 @@ type UnlockSignalRequest struct {
 }
 
 type Worker struct {
-	Queue             *Deploy
-	RevisionProcessor revisionProcessor
+	Queue    queue
+	Deployer deployer
 
 	// mutable
 	state WorkerState
@@ -54,58 +62,74 @@ func (w *Worker) Work(ctx workflow.Context) {
 		w.state = CompleteWorkerState
 	}()
 
-	var latestDeployment *deployment.Info
+	var previousDeployment *deployment.Info
+	var currentAction actionType
+	callback := func(f workflow.Future) {
+		err := f.Get(ctx, nil)
 
+		if temporal.IsCanceledError(err) {
+			currentAction = canceled
+			return
+		}
+
+		if err != nil {
+			logger.Error(ctx, fmt.Sprintf("Unknown error %s, worker is shutting down", err.Error()))
+			currentAction = canceled
+			return
+		}
+
+		currentAction = process
+	}
 	selector := workflow.NewSelector(ctx)
+	selector.AddFuture(w.awaitWork(ctx), callback)
+
+	var request UnlockSignalRequest
+	selector.AddReceive(workflow.GetSignalChannel(ctx, UnlockSignalName), func(c workflow.ReceiveChannel, more bool) {
+		_ = c.Receive(ctx, &request)
+		currentAction = receive
+	})
 
 	for {
 		if w.Queue.IsEmpty() {
 			w.state = WaitingWorkerState
 		}
 
-		var currentAction actionType
-		selector.AddFuture(w.awaitWork(ctx), func(f workflow.Future) {
-			err := f.Get(ctx, nil)
+		selector.Select(ctx)
 
-			if temporal.IsCanceledError(err) {
-				currentAction = canceled
-				return
-			}
-
-			if err != nil {
-				logger.Error(ctx, fmt.Sprintf("Unknown error %s, worker is shutting down", err.Error()))
-				currentAction = canceled
-				return
-			}
-
-			currentAction = process
-		})
-
-		var request UnlockSignalRequest
-		selector.AddReceive(workflow.GetSignalChannel(ctx, UnlockSignalName), func(c workflow.ReceiveChannel, more bool) {
-			_ = c.Receive(ctx, &request)
-			currentAction = receive
-		})
-
+		var currentDeployment *deployment.Info
+		var err error
 		switch currentAction {
 		case canceled:
 			logger.Info(ctx, "Received cancelled signal, worker is shutting down")
 			return
 		case process:
-			d, err := w.process(ctx, latestDeployment)
-
-			if err != nil {
-				logger.Error(ctx, "failed to process revision, moving to next one", "err", err)
-				continue
-			}
-
-			latestDeployment = d
+			logger.Info(ctx, "Processing... ")
+			currentDeployment, err = w.deploy(ctx, previousDeployment)
 		case receive:
+			logger.Info(ctx, "Received unlock signal... ")
 			w.Queue.SetLockStatusForMergedTrigger(UnlockedStatus)
+			continue
 		default:
 			logger.Warn(ctx, fmt.Sprintf("%s action not configured. This is probably a bug, skipping for now", currentAction))
+			return
 		}
 
+		// from here on we know that we've processed an item so let's ensure we're adding an await future
+		// back to our selector regardless of the outcome
+		// Note: for validation errors we don't want to track this as a deploy
+		if e, ok := err.(*ValidationError); ok {
+			logger.Error(ctx, "deploy validation failed, moving on to next one", "err", e)
+			selector.AddFuture(w.awaitWork(ctx), callback)
+			continue
+		}
+
+		if err != nil {
+			logger.Error(ctx, "failed to process revision, moving to next one", "err", err)
+		}
+
+		// we assume that regardless of error we should count this as a deploy
+		previousDeployment = currentDeployment
+		selector.AddFuture(w.awaitWork(ctx), callback)
 	}
 }
 
@@ -123,7 +147,7 @@ func (w *Worker) awaitWork(ctx workflow.Context) workflow.Future {
 	return future
 }
 
-func (w *Worker) process(ctx workflow.Context, latestDeployment *deployment.Info) (*deployment.Info, error) {
+func (w *Worker) deploy(ctx workflow.Context, latestDeployment *deployment.Info) (*deployment.Info, error) {
 	w.state = WorkingWorkerState
 
 	msg, err := w.Queue.Pop()
@@ -134,7 +158,7 @@ func (w *Worker) process(ctx workflow.Context, latestDeployment *deployment.Info
 
 	ctx = workflow.WithValue(ctx, internalContext.SHAKey, msg.Revision)
 	ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, msg.ID)
-	return w.RevisionProcessor.Process(ctx, msg, latestDeployment)
+	return w.Deployer.Deploy(ctx, msg, latestDeployment)
 
 }
 
