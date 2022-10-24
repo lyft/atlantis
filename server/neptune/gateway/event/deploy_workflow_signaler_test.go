@@ -15,8 +15,6 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-const TestTaskQueue = "taskqueue"
-
 type testRun struct{}
 
 func (r testRun) GetID() string {
@@ -143,7 +141,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
-				TaskQueue: TestTaskQueue,
+				TaskQueue: workflows.DeployTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{},
 		}
@@ -205,7 +203,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			},
 			expectedWorkflow: workflows.Deploy,
 			expectedOptions: client.StartWorkflowOptions{
-				TaskQueue: TestTaskQueue,
+				TaskQueue: workflows.DeployTaskQueue,
 			},
 			expectedWorkflowArgs: workflows.DeployRequest{},
 		}
@@ -285,7 +283,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 		},
 		expectedWorkflow: workflows.Deploy,
 		expectedOptions: client.StartWorkflowOptions{
-			TaskQueue: TestTaskQueue,
+			TaskQueue: workflows.DeployTaskQueue,
 		},
 		expectedWorkflowArgs: workflows.DeployRequest{},
 		expectedErr:          expectedErr,
