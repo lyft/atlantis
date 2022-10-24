@@ -90,11 +90,15 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 
 	latestDeployedRevision := &deployment.Info{
 		ID:         deploymentInfo.ID.String(),
-		Version:    "1.0.0",
+		Version:    1.0,
 		Revision:   "3455",
-		CheckRunID: 1234,
-		Root:       root,
-		Repo:       repo,
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name: deploymentInfo.Repo.Name,
+		},
 	}
 
 	fetchDeploymentRequest := activities.FetchLatestDeploymentRequest{
@@ -110,10 +114,14 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 		DeploymentInfo: &deployment.Info{
 			Version:    deployment.InfoSchemaVersion,
 			ID:         deploymentInfo.ID.String(),
-			CheckRunID: deploymentInfo.CheckRunID,
 			Revision:   deploymentInfo.Revision,
-			Root:       deploymentInfo.Root,
-			Repo:       repo,
+			Root: deployment.Root{
+				Name: deploymentInfo.Root.Name,
+			},
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name: deploymentInfo.Repo.Name,
+			},
 		},
 	}
 
@@ -159,11 +167,15 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 
 	latestDeployedRevision := &deployment.Info{
 		ID:         deploymentInfo.ID.String(),
-		Version:    "1.0.0",
+		Version:    1.0,
 		Revision:   "3455",
-		CheckRunID: 1234,
-		Root:       root,
-		Repo:       repo,
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name: deploymentInfo.Repo.Name,
+		},
 	}
 
 	fetchDeploymentRequest := activities.FetchLatestDeploymentRequest{
@@ -174,7 +186,10 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 	fetchDeploymentResponse := activities.FetchLatestDeploymentResponse{
 		DeploymentInfo: &deployment.Info{
 			Revision: latestDeployedRevision.Revision,
-			Repo:     repo,
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name: deploymentInfo.Repo.Name,
+			},
 		},
 	}
 
@@ -182,10 +197,14 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 		DeploymentInfo: &deployment.Info{
 			Version:    deployment.InfoSchemaVersion,
 			ID:         deploymentInfo.ID.String(),
-			CheckRunID: deploymentInfo.CheckRunID,
 			Revision:   deploymentInfo.Revision,
-			Root:       deploymentInfo.Root,
-			Repo:       repo,
+			Root: deployment.Root{
+				Name: deploymentInfo.Root.Name,
+			},
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name: deploymentInfo.Repo.Name,
+			},
 		},
 	}
 
@@ -242,11 +261,15 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 
 	latestDeployedRevision := &deployment.Info{
 		ID:         deploymentInfo.ID.String(),
-		Version:    "1.0.0",
+		Version:    1.0,
 		Revision:   "3455",
-		CheckRunID: 1234,
-		Root:       root,
-		Repo:       repo,
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name: deploymentInfo.Repo.Name,
+		},
 	}
 
 	fetchDeploymentRequest := activities.FetchLatestDeploymentRequest{
@@ -257,7 +280,10 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 	fetchDeploymentResponse := activities.FetchLatestDeploymentResponse{
 		DeploymentInfo: &deployment.Info{
 			Revision: latestDeployedRevision.Revision,
-			Repo:     repo,
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name: deploymentInfo.Repo.Name,
+			},
 		},
 	}
 
@@ -327,11 +353,15 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 
 	latestDeployedRevision := &deployment.Info{
 		ID:         deploymentInfo.ID.String(),
-		Version:    "1.0.0",
+		Version:    1.0,
 		Revision:   "3455",
-		CheckRunID: 1234,
-		Root:       root,
-		Repo:       repo,
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name: deploymentInfo.Repo.Name,
+		},
 	}
 
 	fetchDeploymentRequest := activities.FetchLatestDeploymentRequest{
@@ -342,7 +372,10 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 	fetchDeploymentResponse := activities.FetchLatestDeploymentResponse{
 		DeploymentInfo: &deployment.Info{
 			Revision: latestDeployedRevision.Revision,
-			Repo:     repo,
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name: deploymentInfo.Repo.Name,
+			},
 		},
 	}
 
@@ -350,10 +383,14 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 		DeploymentInfo: &deployment.Info{
 			Version:    deployment.InfoSchemaVersion,
 			ID:         deploymentInfo.ID.String(),
-			CheckRunID: deploymentInfo.CheckRunID,
 			Revision:   deploymentInfo.Revision,
-			Root:       deploymentInfo.Root,
-			Repo:       repo,
+			Root: deployment.Root{
+				Name: deploymentInfo.Root.Name,
+			},
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name: deploymentInfo.Repo.Name,
+			},
 		},
 	}
 
