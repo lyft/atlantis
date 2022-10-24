@@ -13,7 +13,6 @@ import (
 )
 
 type queue interface {
-	Push(terraform.DeploymentInfo)
 	IsEmpty() bool
 	CanPop() bool
 	Pop() (terraform.DeploymentInfo, error)

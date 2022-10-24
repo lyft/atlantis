@@ -34,7 +34,7 @@ func (q *Deploy) SetLockStatusForMergedTrigger(status LockStatus) {
 }
 
 func (q *Deploy) CanPop() bool {
-	return q.lock == LockedStatus && q.queue.HasItemsOfPriority(High) || (q.lock == UnlockedStatus && !q.queue.IsEmpty())
+	return q.queue.HasItemsOfPriority(High) || (q.lock == UnlockedStatus && !q.queue.IsEmpty())
 }
 
 func (q *Deploy) Pop() (terraform.DeploymentInfo, error) {
