@@ -258,7 +258,9 @@ func (s Server) buildDeployWorker() worker.Worker {
 	})
 	deployWorker.RegisterActivity(s.DeployActivities)
 	deployWorker.RegisterActivity(s.GithubActivities)
+	deployWorker.RegisterActivity(s.TerraformActivities)
 	deployWorker.RegisterWorkflow(workflows.Deploy)
+	deployWorker.RegisterWorkflow(workflows.Terraform)
 	return deployWorker
 }
 
