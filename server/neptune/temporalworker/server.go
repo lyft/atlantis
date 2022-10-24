@@ -174,10 +174,6 @@ func (s Server) Start() error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-
-		// Close job stream when temporalworker exits to allow gracefully shutting down the stream handler
-		defer s.JobStreamCloserFn()
-
 		deployWorker := s.buildDeployWorker()
 		if err := deployWorker.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start deploy worker", err)
