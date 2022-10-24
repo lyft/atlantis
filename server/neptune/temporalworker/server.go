@@ -128,12 +128,17 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing deploy activities")
 	}
 
+	terraformTaskQueue := workflows.DeployTaskQueue
+	if config.TemporalCfg.TerraformTaskQueue != "" {
+		terraformTaskQueue = config.TemporalCfg.TerraformTaskQueue
+	}
+
 	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
 		config.App,
 		config.DataDir,
 		config.ServerCfg.URL,
-		config.TemporalCfg.TerraformTaskQueue,
+		terraformTaskQueue,
 		jobStreamHandler,
 	)
 	if err != nil {
@@ -161,7 +166,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
-		TerraformTaskQueue:  config.TemporalCfg.TerraformTaskQueue,
+		TerraformTaskQueue:  terraformTaskQueue,
 	}
 	return &server, nil
 }

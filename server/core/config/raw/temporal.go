@@ -16,7 +16,6 @@ type Temporal struct {
 
 func (t *Temporal) Validate() error {
 	return validation.ValidateStruct(t,
-		validation.Field(&t.TerraformTaskQueue, validation.Required),
 		validation.Field(&t.Host, validation.Required),
 		validation.Field(&t.Port, validation.Required),
 		validation.Field(&t.Port, is.Int))
