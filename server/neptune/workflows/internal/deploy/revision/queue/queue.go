@@ -22,11 +22,11 @@ const (
 )
 
 type Deploy struct {
-	queue *priority
+	queue              *priority
+	lockStatusCallback func(workflow.Context, *Deploy)
 
 	// mutable: default is unlocked
-	lock               LockState
-	lockStatusCallback func(workflow.Context, *Deploy)
+	lock LockState
 }
 
 func NewQueue(callback func(workflow.Context, *Deploy)) *Deploy {
@@ -41,7 +41,7 @@ func (q *Deploy) GetLockState() LockState {
 	return q.lock
 }
 
-func (q *Deploy) SetLockForMergedQueue(ctx workflow.Context, state LockState) {
+func (q *Deploy) SetLockForMergedItems(ctx workflow.Context, state LockState) {
 	q.lock = state
 	q.lockStatusCallback(ctx, q)
 }
@@ -54,7 +54,7 @@ func (q *Deploy) Pop() (terraform.DeploymentInfo, error) {
 	return q.queue.Pop()
 }
 
-func (q *Deploy) GetMergedQueue() []terraform.DeploymentInfo {
+func (q *Deploy) GetOrderedMergedItems() []terraform.DeploymentInfo {
 	return q.queue.Scan(Low)
 }
 

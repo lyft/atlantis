@@ -41,7 +41,7 @@ func (q *testQueue) Push(msg terraformWorkflow.DeploymentInfo) {
 	q.Queue.PushBack(msg)
 }
 
-func (q *testQueue) SetLockForMergedQueue(ctx workflow.Context, state queue.LockState) {
+func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state queue.LockState) {
 	q.Lock = state
 }
 
@@ -96,7 +96,7 @@ func testWorkerWorkflow(ctx workflow.Context, r workerRequest) (workerResponse, 
 		Queue: list.New(),
 	}
 
-	q.SetLockForMergedQueue(ctx, queue.LockState{Status: r.InitialLockStatus})
+	q.SetLockForMergedItems(ctx, queue.LockState{Status: r.InitialLockStatus})
 
 	var infos []*deployment.Info
 	for _, s := range r.Queue {

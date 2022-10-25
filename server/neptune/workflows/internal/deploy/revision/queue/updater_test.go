@@ -131,7 +131,7 @@ func testUpdaterWorkflow(ctx workflow.Context, r updaterReq) error {
 		q.Push(i)
 	}
 
-	q.SetLockForMergedQueue(ctx, r.Lock)
+	q.SetLockForMergedItems(ctx, r.Lock)
 	subject.UpdateQueuedRevisions(ctx, q)
 
 	return nil

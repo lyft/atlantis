@@ -35,7 +35,7 @@ func TestQueue(t *testing.T) {
 		q := queue.NewQueue(func(ctx workflow.Context, d *queue.Deploy) {
 			called = true
 		})
-		q.SetLockForMergedQueue(test.Background(), queue.LockState{
+		q.SetLockForMergedItems(test.Background(), queue.LockState{
 			Status: queue.LockedStatus,
 		})
 
@@ -49,7 +49,7 @@ func TestQueue(t *testing.T) {
 
 	t.Run("can pop empty queue locked", func(t *testing.T) {
 		q := queue.NewQueue(noopCallback)
-		q.SetLockForMergedQueue(test.Background(), queue.LockState{
+		q.SetLockForMergedItems(test.Background(), queue.LockState{
 			Status: queue.LockedStatus,
 		})
 		assert.Equal(t, false, q.CanPop())
@@ -58,7 +58,7 @@ func TestQueue(t *testing.T) {
 		q := queue.NewQueue(noopCallback)
 		msg1 := wrap("1", activity.ManualTrigger)
 		q.Push(msg1)
-		q.SetLockForMergedQueue(test.Background(), queue.LockState{
+		q.SetLockForMergedItems(test.Background(), queue.LockState{
 			Status: queue.LockedStatus,
 		})
 		assert.Equal(t, true, q.CanPop())
@@ -73,7 +73,7 @@ func TestQueue(t *testing.T) {
 		q := queue.NewQueue(noopCallback)
 		msg1 := wrap("1", activity.MergeTrigger)
 		q.Push(msg1)
-		q.SetLockForMergedQueue(test.Background(), queue.LockState{
+		q.SetLockForMergedItems(test.Background(), queue.LockState{
 			Status: queue.LockedStatus,
 		})
 		assert.Equal(t, false, q.CanPop())

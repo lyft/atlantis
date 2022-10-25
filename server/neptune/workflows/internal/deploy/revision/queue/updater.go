@@ -16,7 +16,7 @@ type LockStateUpdater struct {
 
 func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *Deploy) {
 	lock := queue.GetLockState()
-	infos := queue.GetMergedQueue()
+	infos := queue.GetOrderedMergedItems()
 
 	var actions []github.CheckRunAction
 	var summary string

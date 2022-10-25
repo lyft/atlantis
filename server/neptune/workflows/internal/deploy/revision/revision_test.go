@@ -32,7 +32,7 @@ func (q *testQueue) GetLockState() queue.LockState {
 	return q.Lock
 }
 
-func (q *testQueue) SetLockForMergedQueue(ctx workflow.Context, state queue.LockState) {
+func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state queue.LockState) {
 	q.Lock = state
 }
 

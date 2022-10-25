@@ -30,7 +30,7 @@ type NewRevisionRequest struct {
 type Queue interface {
 	Push(terraform.DeploymentInfo)
 	GetLockState() queue.LockState
-	SetLockForMergedQueue(ctx workflow.Context, state queue.LockState)
+	SetLockForMergedItems(ctx workflow.Context, state queue.LockState)
 }
 
 type Activities interface {
@@ -81,7 +81,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 
 	// lock the queue on a manual deployment
 	if root.Trigger == activity.ManualTrigger {
-		n.queue.SetLockForMergedQueue(ctx, queue.LockState{
+		n.queue.SetLockForMergedItems(ctx, queue.LockState{
 			Status:   queue.LockedStatus,
 			Revision: request.Revision,
 		})
