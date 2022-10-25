@@ -18,8 +18,8 @@ import (
 )
 
 type testQueue struct {
-	Queue      *list.List
-	Lock queue.LockState
+	Queue *list.List
+	Lock  queue.LockState
 }
 
 func (q *testQueue) IsEmpty() bool {
@@ -60,7 +60,7 @@ type workerResponse struct {
 type queueAndState struct {
 	QueueIsEmpty bool
 	State        queue.WorkerState
-	Lock   queue.LockState
+	Lock         queue.LockState
 }
 
 type testDeployer struct {
@@ -121,7 +121,7 @@ func testWorkerWorkflow(ctx workflow.Context, r workerRequest) (workerResponse, 
 		return queueAndState{
 			QueueIsEmpty: q.IsEmpty(),
 			State:        worker.GetState(),
-			Lock:   q.Lock,
+			Lock:         q.Lock,
 		}, nil
 	})
 	if err != nil {

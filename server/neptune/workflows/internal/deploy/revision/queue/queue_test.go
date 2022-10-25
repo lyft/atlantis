@@ -11,6 +11,8 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+func noopCallback(ctx workflow.Context, q *queue.Deploy) {}
+
 func TestQueue(t *testing.T) {
 	t.Run("priority", func(t *testing.T) {
 		q := queue.NewQueue(nil)
@@ -46,14 +48,14 @@ func TestQueue(t *testing.T) {
 	})
 
 	t.Run("can pop empty queue locked", func(t *testing.T) {
-		q := queue.NewQueue(nil)
+		q := queue.NewQueue(noopCallback)
 		q.SetLockForMergedQueue(test.Background(), queue.LockState{
 			Status: queue.LockedStatus,
 		})
 		assert.Equal(t, false, q.CanPop())
 	})
 	t.Run("can pop manual trigger locked", func(t *testing.T) {
-		q := queue.NewQueue(nil)
+		q := queue.NewQueue(noopCallback)
 		msg1 := wrap("1", activity.ManualTrigger)
 		q.Push(msg1)
 		q.SetLockForMergedQueue(test.Background(), queue.LockState{
@@ -68,7 +70,7 @@ func TestQueue(t *testing.T) {
 		assert.Equal(t, true, q.CanPop())
 	})
 	t.Run("can pop merge trigger locked", func(t *testing.T) {
-		q := queue.NewQueue(nil)
+		q := queue.NewQueue(noopCallback)
 		msg1 := wrap("1", activity.MergeTrigger)
 		q.Push(msg1)
 		q.SetLockForMergedQueue(test.Background(), queue.LockState{

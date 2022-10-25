@@ -103,18 +103,10 @@ func (q *priority) IsEmpty() bool {
 }
 
 func (q *priority) Scan(priority priorityType) []terraform.DeploymentInfo {
-
 	var result []terraform.DeploymentInfo
-	first := q.queues[priority].Front()
 
-	result = append(result, first.Value.(terraform.DeploymentInfo))
-
-	for {
-		if e := first.Next(); e != nil {
-			result = append(result, e.Value.(terraform.DeploymentInfo))
-			continue
-		}
-		break
+	for e := q.queues[priority].Front(); e != nil; e = e.Next() {
+		result = append(result, e.Value.(terraform.DeploymentInfo))
 	}
 
 	return result
