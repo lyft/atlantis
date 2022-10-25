@@ -50,8 +50,8 @@ type Worker struct {
 	Deployer deployer
 
 	// mutable
-	state              WorkerState
-	previousDeployment *deployment.Info
+	state            WorkerState
+	latestDeployment *deployment.Info
 }
 
 type actionType string
@@ -90,9 +90,9 @@ func NewWorker(
 	}
 
 	return &Worker{
-		Queue:              q,
-		Deployer:           deployer,
-		previousDeployment: latestDeployment,
+		Queue:            q,
+		Deployer:         deployer,
+		latestDeployment: latestDeployment,
 	}, nil
 }
 
@@ -145,7 +145,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 			return
 		case process:
 			logger.Info(ctx, "Processing... ")
-			currentDeployment, err = w.deploy(ctx, w.previousDeployment)
+			currentDeployment, err = w.deploy(ctx, w.latestDeployment)
 		case receive:
 			logger.Info(ctx, "Received unlock signal... ")
 			w.Queue.SetLockForMergedItems(ctx, LockState{
@@ -171,7 +171,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		}
 
 		// we assume that regardless of error we should count this as a deploy
-		w.previousDeployment = currentDeployment
+		w.latestDeployment = currentDeployment
 		selector.AddFuture(w.awaitWork(ctx), callback)
 	}
 }
