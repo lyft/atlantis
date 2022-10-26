@@ -10,6 +10,7 @@ import (
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -28,6 +29,10 @@ func (r *testStateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChan
 
 type testSignalPayload struct {
 	S string
+}
+
+func testTerraformWorklfowWithPlanRejectionError(ctx workflow.Context, request terraformWorkflow.Request) error {
+	return temporal.NewApplicationError("some message", terraformWorkflow.PlanRejectedErrorType, terraformWorkflow.ApplicationError{ErrType: terraformWorkflow.PlanRejectedErrorType, Msg: "something"})
 }
 
 // signals parent twice with a sleep in between to mimic what our real terraform workflow would be like
@@ -51,6 +56,7 @@ func testTerraformWorkflow(ctx workflow.Context, request terraformWorkflow.Reque
 }
 
 type request struct {
+	PlanRejectionErr bool
 }
 
 type response struct {
@@ -61,7 +67,12 @@ func parentWorkflow(ctx workflow.Context, r request) (response, error) {
 	receiver := &testStateReceiver{}
 	runner := &internalTerraform.WorkflowRunner{
 		StateReceiver: receiver,
-		Workflow:      testTerraformWorkflow,
+	}
+
+	if r.PlanRejectionErr == true {
+		runner.Workflow = testTerraformWorklfowWithPlanRejectionError
+	} else {
+		runner.Workflow = testTerraformWorkflow
 	}
 
 	uuid, err := sideeffect.GenerateUUID(ctx)
@@ -103,5 +114,19 @@ func TestWorkflowRunner_Run(t *testing.T) {
 			S: "hello",
 		}, p)
 	}
+}
 
+func TestWorkflowRunner_PlanRejected(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	env.RegisterWorkflow(testTerraformWorklfowWithPlanRejectionError)
+
+	env.ExecuteWorkflow(parentWorkflow, request{
+		PlanRejectionErr: true,
+	})
+
+	var resp response
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
 }

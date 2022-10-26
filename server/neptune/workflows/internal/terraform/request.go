@@ -15,16 +15,23 @@ type Request struct {
 	Revision     string
 }
 
-type ClientError struct {
-	Err error
+const (
+	PlanRejectedErrorType    = "PlanRejectedError"
+	UpdateJobErrorType       = "UpdateJobError"
+	TerraformClientErrorType = "TerraformClientError"
+)
+
+type ExternalError struct {
+	ErrType string
 }
 
-func (e *ClientError) Error() string {
-	return e.Err.Error()
+func (e ExternalError) GetExternalType() string {
+	return e.ErrType
 }
 
 type PlanRejectedError struct {
 	Err error
+	ExternalError
 }
 
 func (e PlanRejectedError) Error() string {
@@ -33,13 +40,15 @@ func (e PlanRejectedError) Error() string {
 
 func newPlanRejectedError() PlanRejectedError {
 	return PlanRejectedError{
-		Err: fmt.Errorf("plan is rejected, apply cannot proceed"),
+		Err:           fmt.Errorf("plan is rejected, apply cannot proceed"),
+		ExternalError: ExternalError{ErrType: PlanRejectedErrorType},
 	}
 }
 
 type UpdateJobError struct {
 	err error
 	msg string
+	ExternalError
 }
 
 func (e UpdateJobError) Error() string {
@@ -48,6 +57,7 @@ func (e UpdateJobError) Error() string {
 
 func newUpdateJobError(err error, msg string) UpdateJobError {
 	return UpdateJobError{
-		err: errors.Wrap(err, msg),
+		err:           errors.Wrap(err, msg),
+		ExternalError: ExternalError{ErrType: UpdateJobErrorType},
 	}
 }

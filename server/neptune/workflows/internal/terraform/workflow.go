@@ -45,10 +45,9 @@ const (
 )
 
 const (
-	PlanReviewSignalName     = "planreview"
-	ScheduleToCloseTimeout   = 30 * time.Minute
-	HeartBeatTimeout         = 1 * time.Minute
-	TerraformClientErrorName = "TerraformClientError"
+	PlanReviewSignalName   = "planreview"
+	ScheduleToCloseTimeout = 30 * time.Minute
+	HeartBeatTimeout       = 1 * time.Minute
 )
 
 func Workflow(ctx workflow.Context, request Request) error {
@@ -213,7 +212,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		ScheduleToCloseTimeout: ScheduleToCloseTimeout,
 		HeartbeatTimeout:       HeartBeatTimeout,
 		RetryPolicy: &temporal.RetryPolicy{
-			NonRetryableErrorTypes: []string{TerraformClientErrorName},
+			NonRetryableErrorTypes: []string{TerraformClientErrorType},
 		},
 		TaskQueue: response.TaskQueue,
 	}
@@ -243,26 +242,47 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	return nil
 }
 
+type ApplicationError struct {
+	ErrType string
+	Msg     string
+}
+
+func (e ApplicationError) Error() string {
+	return fmt.Sprintf("Type: %s, Msg: %s", e.ErrType, e.Msg)
+}
+
+func (e ApplicationError) ToTemporalApplicationError() error {
+	return temporal.NewApplicationError(
+		e.Msg,
+		e.ErrType,
+		e,
+	)
+}
+
 // toExternalError allows callers of the workflow to handle specific error types
 // in whatever fashion.
 // we use errors.As here to ensure that we're accounting for wrapped errors
 func toExternalError(err error, msg string) error {
 	var planRejected PlanRejectedError
 	if errors.As(err, &planRejected) {
-		return newPlanRejectedError()
+		e := ApplicationError{
+			ErrType: planRejected.GetExternalType(),
+			Msg:     errors.Wrap(err, msg).Error(),
+		}
+
+		return e.ToTemporalApplicationError()
 	}
 
 	var updateJobErr UpdateJobError
 	if errors.As(err, &updateJobErr) {
-		// wrap original error to provide job type
-		return newUpdateJobError(err, msg)
-	}
+		e := ApplicationError{
+			ErrType: updateJobErr.GetExternalType(),
+			// wrap original error to provide job type
+			Msg: errors.Wrap(err, msg).Error(),
+		}
 
-	var clientErr *activities.TerraformClientError
-	if errors.As(err, clientErr) {
-		return &ClientError{Err: err}
+		return e.ToTemporalApplicationError()
 	}
 
 	return errors.Wrap(err, msg)
-
 }
