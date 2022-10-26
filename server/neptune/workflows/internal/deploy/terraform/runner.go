@@ -33,11 +33,16 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 	id := deploymentInfo.ID
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		WorkflowID: id.String(),
-
 		// we shouldn't ever percolate failures up unless they are user errors (aka. Terraform specific)
 		// retrying indefinitely allows us to fix whatever issue that comes about without involving the user to redeploy
 		RetryPolicy: &temporal.RetryPolicy{
 			NonRetryableErrorTypes: []string{"TerraformClientError", "PlanRejectedError"},
+    },
+		SearchAttributes: map[string]interface{}{
+			"Repository": deploymentInfo.Repo.GetFullName(),
+			"Root":       deploymentInfo.Root.Name,
+			"Trigger":    deploymentInfo.Root.Trigger,
+			"Revision":   deploymentInfo.Revision,
 		},
 	})
 	terraformWorkflowRequest := terraform.Request{
