@@ -60,7 +60,8 @@ type request struct {
 }
 
 type response struct {
-	Payloads []testSignalPayload
+	Payloads      []testSignalPayload
+	PlanRejection bool
 }
 
 func parentWorkflow(ctx workflow.Context, r request) (response, error) {
@@ -87,6 +88,11 @@ func parentWorkflow(ctx workflow.Context, r request) (response, error) {
 		CheckRunID: 1,
 		Root:       terraform.Root{},
 	}); err != nil {
+		if _, ok := err.(internalTerraform.PlanRejectionError); ok {
+			return response{
+				PlanRejection: true,
+			}, nil
+		}
 		return response{}, err
 	}
 
@@ -129,4 +135,6 @@ func TestWorkflowRunner_PlanRejected(t *testing.T) {
 	var resp response
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
+
+	assert.True(t, resp.PlanRejection)
 }

@@ -68,8 +68,10 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
 	}
 	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment)
+
+	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
 	if err != nil {
-		return nil, errors.Wrap(err, "running terraform workflow")
+		return nil, err
 	}
 	latestDeployment = requestedDeployment.BuildPersistableInfo()
 

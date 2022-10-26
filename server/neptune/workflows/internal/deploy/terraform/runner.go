@@ -8,6 +8,14 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+type PlanRejectionError struct {
+	msg string
+}
+
+func (e PlanRejectionError) Error() string {
+	return e.msg
+}
+
 type Workflow func(ctx workflow.Context, request terraform.Request) error
 
 type stateReceiver interface {
@@ -91,7 +99,7 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 		detailsErr := appErr.Details(&underlyingErr)
 
 		if detailsErr == nil && underlyingErr.ErrType == terraform.PlanRejectedErrorType {
-			return nil
+			return PlanRejectionError{msg: underlyingErr.Msg}
 		}
 	}
 

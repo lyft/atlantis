@@ -166,7 +166,9 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		switch e := err.(type) {
 		case *ValidationError:
-			logger.Error(ctx, "deploy validation failed, moving on to next one", "err", e)
+			logger.Error(ctx, "deploy validation failed, moving to next one", "err", e)
+		case terraform.PlanRejectionError:
+			logger.Warn(ctx, "Plan rejected")
 		default:
 			logger.Error(ctx, "failed to deploy revision, moving to next one", "err", err)
 		}
