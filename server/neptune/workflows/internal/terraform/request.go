@@ -15,12 +15,12 @@ type Request struct {
 	Revision     string
 }
 
-type TerraformClientError struct {
+type ClientError struct {
 	Err error
 }
 
-func (e *TerraformClientError) Error() string {
-	return e.Error()
+func (e *ClientError) Error() string {
+	return e.Err.Error()
 }
 
 type PlanRejectedError struct {

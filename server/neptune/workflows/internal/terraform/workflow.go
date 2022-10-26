@@ -260,7 +260,7 @@ func toExternalError(err error, msg string) error {
 
 	var clientErr *activities.TerraformClientError
 	if errors.As(err, clientErr) {
-		return &TerraformClientError{Err: err}
+		return &ClientError{Err: err}
 	}
 
 	return errors.Wrap(err, msg)
