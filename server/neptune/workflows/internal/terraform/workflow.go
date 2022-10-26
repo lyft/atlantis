@@ -202,21 +202,22 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
-	var response *activities.GetWorkerInfoResponse
-	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
-	if err != nil {
-		return errors.Wrap(err, "getting worker info")
-	}
-	//we have to reset all activity options since WithActivityOptions doesn't append
-	options := workflow.ActivityOptions{
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		ScheduleToCloseTimeout: ScheduleToCloseTimeout,
 		HeartbeatTimeout:       HeartBeatTimeout,
 		RetryPolicy: &temporal.RetryPolicy{
 			NonRetryableErrorTypes: []string{TerraformClientErrorType},
 		},
-		TaskQueue: response.TaskQueue,
+	})
+	var response *activities.GetWorkerInfoResponse
+	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
+	if err != nil {
+		return errors.Wrap(err, "getting worker info")
 	}
-	ctx = workflow.WithActivityOptions(ctx, options)
+
+	opts := workflow.GetActivityOptions(ctx)
+	opts.TaskQueue = response.TaskQueue
+	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	root, cleanup, err := r.RootFetcher.Fetch(ctx)
 	if err != nil {
