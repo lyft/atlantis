@@ -96,7 +96,8 @@ func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRo
 type request struct{}
 
 type response struct {
-	States []state.Workflow
+	States       []state.Workflow
+	PlanRejected bool
 }
 
 func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error) {
@@ -138,12 +139,20 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		),
 	}
 
+	var planRejected bool
 	if err := subject.Run(ctx); err != nil {
-		return nil, err
+		if _, ok := err.(terraform.PlanRejectedError); ok {
+			planRejected = true
+		} else {
+			return nil, err
+		}
 	}
 
 	return &response{
 		States: s,
+
+		// doing this so that we can still check states when we get this type of error
+		PlanRejected: planRejected,
 	}, nil
 }
 
@@ -316,6 +325,7 @@ func TestPlanRejection(t *testing.T) {
 
 	// assert results are expected
 	env.AssertExpectations(t)
+	assert.True(t, resp.PlanRejected)
 	assert.Equal(t, []state.Workflow{
 		{
 			Plan: &state.Job{

@@ -45,22 +45,13 @@ const (
 )
 
 const (
-	PlanReviewSignalName   = "planreview"
-	ScheduleToCloseTimeout = 30 * time.Minute
-	HeartBeatTimeout       = 1 * time.Minute
-	TerraformClientError   = "TerraformClientError"
+	PlanReviewSignalName     = "planreview"
+	ScheduleToCloseTimeout   = 30 * time.Minute
+	HeartBeatTimeout         = 1 * time.Minute
+	TerraformClientErrorName = "TerraformClientError"
 )
 
 func Workflow(ctx workflow.Context, request Request) error {
-	options := workflow.ActivityOptions{
-		ScheduleToCloseTimeout: ScheduleToCloseTimeout,
-		HeartbeatTimeout:       HeartBeatTimeout,
-		RetryPolicy: &temporal.RetryPolicy{
-			NonRetryableErrorTypes: []string{TerraformClientError},
-		},
-	}
-	ctx = workflow.WithActivityOptions(ctx, options)
-
 	runner := newRunner(ctx, request)
 
 	// blocking call
@@ -103,6 +94,9 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 			Ga:      ga,
 			Ta:      ta,
 		},
+
+		// We have critical things relying on this notification so this workflow provides guarantees around this. (ie. compliance auditing)  There should
+		// be no situation where we are deploying while this is failing.
 		Store: state.NewWorkflowStore(
 			func(s *state.Workflow) error {
 				return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.WorkflowStateChangeSignal, s).Get(ctx, nil)
@@ -118,28 +112,28 @@ func (r *Runner) Plan(ctx workflow.Context, root *terraform.LocalRoot, serverURL
 		return response, errors.Wrap(err, "generating job id")
 	}
 
+	// fail if we error here since all successive calls to update this will fail otherwise
 	if err := r.Store.InitPlanJob(jobID, serverURL); err != nil {
 		return response, errors.Wrap(err, "initializing job")
 	}
 
 	if err := r.Store.UpdatePlanJobWithStatus(state.InProgressJobStatus); err != nil {
-		return response, errors.Wrap(err, "updating job with in-progress status")
+		return response, newUpdateJobError(err, "unable to update job with in-progress status")
 	}
 
 	response, err = r.JobRunner.Plan(ctx, root, jobID.String())
 
 	if err != nil {
 		if e := r.Store.UpdatePlanJobWithStatus(state.FailedJobStatus); e != nil {
-			logger.Error(ctx, "unable to update job with failed status, job failed with error. ", err)
-			return response, errors.Wrap(e, "updating job with failed status")
+			// not returning UpdateJobError here since we want to surface the job failure itself
+			logger.Error(ctx, "unable to update job with failed status, job failed with error. ", "err", err)
 		}
 		return response, errors.Wrap(err, "running job")
 	}
 	if err := r.Store.UpdatePlanJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
 		PlanSummary: response.Summary,
 	}); err != nil {
-		logger.Error(ctx, "unable to update job with success status")
-		return response, errors.Wrap(err, "updating job with success status")
+		return response, newUpdateJobError(err, "unable to update job with success status")
 	}
 
 	return response, nil
@@ -167,6 +161,7 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 		return errors.Wrap(err, "generating job id")
 	}
 
+	// fail if we error here since all successive calls to update this will fail otherwise
 	if err := r.Store.InitApplyJob(jobID, serverURL); err != nil {
 		return errors.Wrap(err, "initializing job")
 	}
@@ -175,15 +170,15 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 
 	if planStatus == Rejected {
 		if err := r.Store.UpdateApplyJobWithStatus(state.RejectedJobStatus); err != nil {
-			return errors.Wrap(err, "updating job with rejected status")
+			logger.Error(ctx, "unable to update job with rejected status.", "err", err)
 		}
-		return nil
+		return newPlanRejectedError()
 	}
 
 	if err := r.Store.UpdateApplyJobWithStatus(state.InProgressJobStatus, state.UpdateOptions{
 		StartTime: time.Now(),
 	}); err != nil {
-		return errors.Wrap(err, "updating job with in-progress status")
+		return newUpdateJobError(err, "unable to update job with success status")
 	}
 
 	err = r.JobRunner.Apply(ctx, root, jobID.String(), planFile)
@@ -192,7 +187,8 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 		if err := r.Store.UpdateApplyJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
 			EndTime: time.Now(),
 		}); err != nil {
-			return errors.Wrap(err, "updating job with failed status")
+			// not returning UpdateJobError here since we want to surface the job failure itself
+			logger.Error(ctx, "unable to update job with failed status, job failed with error. ", "err", err)
 		}
 		return errors.Wrap(err, "running job")
 	}
@@ -200,7 +196,7 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 	if err := r.Store.UpdateApplyJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
 		EndTime: time.Now(),
 	}); err != nil {
-		return errors.Wrap(err, "updating job with success status")
+		return newUpdateJobError(err, "unable to update job with success status")
 	}
 
 	return nil
@@ -217,7 +213,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		ScheduleToCloseTimeout: ScheduleToCloseTimeout,
 		HeartbeatTimeout:       HeartBeatTimeout,
 		RetryPolicy: &temporal.RetryPolicy{
-			NonRetryableErrorTypes: []string{TerraformClientError},
+			NonRetryableErrorTypes: []string{TerraformClientErrorName},
 		},
 		TaskQueue: response.TaskQueue,
 	}
@@ -236,14 +232,37 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}()
 
 	planResponse, err := r.Plan(ctx, root, response.ServerURL)
-
 	if err != nil {
-		return errors.Wrap(err, "running plan job")
+		return toExternalError(err, "running plan job")
 	}
 
 	if err := r.Apply(ctx, root, response.ServerURL, planResponse.PlanFile); err != nil {
-		return errors.Wrap(err, "running apply job")
+		return toExternalError(err, "running apply job")
 	}
 
 	return nil
+}
+
+// toExternalError allows callers of the workflow to handle specific error types
+// in whatever fashion.
+// we use errors.As here to ensure that we're accounting for wrapped errors
+func toExternalError(err error, msg string) error {
+	var planRejected PlanRejectedError
+	if errors.As(err, &planRejected) {
+		return newPlanRejectedError()
+	}
+
+	var updateJobErr UpdateJobError
+	if errors.As(err, &updateJobErr) {
+		// wrap original error to provide job type
+		return newUpdateJobError(err, msg)
+	}
+
+	var clientErr *activities.TerraformClientError
+	if errors.As(err, clientErr) {
+		return &TerraformClientError{Err: err}
+	}
+
+	return errors.Wrap(err, msg)
+
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -61,7 +62,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	case activities.DirectionBehind:
 		// always returns error for caller to skip revision
 		if err := p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil); err != nil {
-			return nil, errors.Wrap(err, "updating check run")
+			logger.Error(ctx, "unable to update check run with validation error")
 		}
 
 		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
@@ -72,9 +73,8 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	}
 	latestDeployment = requestedDeployment.BuildPersistableInfo()
 
-	// TODO: Persist deployment on shutdown if it fails instead of blocking
 	if err = p.persistLatestDeployment(ctx, latestDeployment); err != nil {
-		return nil, errors.Wrap(err, "failed to persist latest deploy job")
+		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value")
 	}
 	return latestDeployment, nil
 }
@@ -124,6 +124,8 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 }
 
 func (p *Deployer) persistLatestDeployment(ctx workflow.Context, deploymentInfo *deployment.Info) error {
+	// retry indefinitely since until we can guarantee persistance on shutdown
+	// TODO: Persist deployment on shutdown
 	err := workflow.ExecuteActivity(ctx, p.Activities.StoreLatestDeployment, activities.StoreLatestDeploymentRequest{
 		DeploymentInfo: deploymentInfo,
 	}).Get(ctx, nil)
