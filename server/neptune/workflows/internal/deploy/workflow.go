@@ -76,12 +76,17 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	// so we're modeling our own DI around this.
 	var a *workerActivities
 
+	metricsHandler := workflow.GetMetricsHandler(ctx).WithTags(map[string]string{
+		"repo": request.Repo.FullName,
+		"root": request.Root.Name,
+	})
+
 	lockStateUpdater := queue.LockStateUpdater{
 		Activities: a,
 	}
 	revisionQueue := queue.NewQueue(func(ctx workflow.Context, d *queue.Deploy) {
 		lockStateUpdater.UpdateQueuedRevisions(ctx, d)
-	})
+	}, metricsHandler)
 	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, a, sideeffect.GenerateUUID)
 
 	worker, err := queue.NewWorker(ctx, revisionQueue, a, tfWorkflow, request.Repo.FullName, request.Root.Name)

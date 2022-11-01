@@ -3,6 +3,7 @@ package queue_test
 import (
 	"container/list"
 	"fmt"
+	"go.temporal.io/sdk/client"
 	"testing"
 	"time"
 
@@ -339,7 +340,7 @@ func TestNewWorker(t *testing.T) {
 		ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 			ScheduleToCloseTimeout: 5 * time.Second,
 		})
-		q := queue.NewQueue(noopCallback)
+		q := queue.NewQueue(noopCallback, client.MetricsNopHandler)
 		_, err := queue.NewWorker(ctx, q, &testDeployActivity{}, emptyWorkflow, "nish/repo", "root")
 		return res{
 			Lock: q.GetLockState(),
