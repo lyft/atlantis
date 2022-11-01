@@ -22,6 +22,9 @@ const (
 	NewRevisionSignalID = "new-revision"
 
 	RevisionReceiveTimeout = 60 * time.Minute
+
+	RootTag = "root"
+	RepoTag = "repo"
 )
 
 type workerActivities struct {
@@ -77,8 +80,8 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	var a *workerActivities
 
 	metricsHandler := workflow.GetMetricsHandler(ctx).WithTags(map[string]string{
-		"repo": request.Repo.FullName,
-		"root": request.Root.Name,
+		RepoTag: request.Repo.FullName,
+		RootTag: request.Root.Name,
 	})
 
 	lockStateUpdater := queue.LockStateUpdater{
@@ -89,7 +92,7 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	}, metricsHandler)
 	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, a, sideeffect.GenerateUUID)
 
-	worker, err := queue.NewWorker(ctx, revisionQueue, a, tfWorkflow, request.Repo.FullName, request.Root.Name)
+	worker, err := queue.NewWorker(ctx, revisionQueue, metricsHandler, a, tfWorkflow, request.Repo.FullName, request.Root.Name)
 	if err != nil {
 		return nil, err
 	}

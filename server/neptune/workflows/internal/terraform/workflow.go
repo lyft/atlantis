@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"go.temporal.io/sdk/client"
 	"time"
 
 	"github.com/pkg/errors"
@@ -48,6 +49,10 @@ const (
 	PlanReviewSignalName   = "planreview"
 	ScheduleToCloseTimeout = 30 * time.Minute
 	HeartBeatTimeout       = 1 * time.Minute
+
+	ActiveTerraformWorkflowStat = "terraform_workflow.active"
+	RepoTag                     = "repo"
+	RootTag                     = "root"
 )
 
 func Workflow(ctx workflow.Context, request Request) error {
@@ -64,6 +69,7 @@ type Runner struct {
 	Request             Request
 	Store               *state.WorkflowStore
 	RootFetcher         *RootFetcher
+	MetricsHandler      client.MetricsHandler
 }
 
 func newRunner(ctx workflow.Context, request Request) *Runner {
@@ -93,7 +99,11 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 			Ga:      ga,
 			Ta:      ta,
 		},
-
+		MetricsHandler: workflow.GetMetricsHandler(ctx).WithTags(
+			map[string]string{
+				RepoTag: request.Repo.GetFullName(),
+				RootTag: request.Root.Name,
+			}),
 		// We have critical things relying on this notification so this workflow provides guarantees around this. (ie. compliance auditing)  There should
 		// be no situation where we are deploying while this is failing.
 		Store: state.NewWorkflowStore(
@@ -202,6 +212,8 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
+	r.MetricsHandler.Gauge(ActiveTerraformWorkflowStat).Update(1)
+	defer r.MetricsHandler.Gauge(ActiveTerraformWorkflowStat).Update(0)
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		ScheduleToCloseTimeout: ScheduleToCloseTimeout,
 		HeartbeatTimeout:       HeartBeatTimeout,
