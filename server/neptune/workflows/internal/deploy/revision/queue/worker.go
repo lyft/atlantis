@@ -42,6 +42,8 @@ const (
 	UnlockSignalName = "unlock"
 
 	ActiveDeployWorkflowStat = "workflow.deploy.active"
+	ManualDeployWorkflowStat = "workflow.deploy.manual"
+	MergeDeployWorkflowStat  = "workflow.deploy.merge"
 )
 
 type UnlockSignalRequest struct {
@@ -199,17 +201,22 @@ func (w *Worker) awaitWork(ctx workflow.Context) workflow.Future {
 
 func (w *Worker) deploy(ctx workflow.Context, latestDeployment *deployment.Info) (*deployment.Info, error) {
 	w.state = WorkingWorkerState
-
 	msg, err := w.Queue.Pop()
-
 	if err != nil {
 		return nil, errors.Wrap(err, "popping off queue")
 	}
 
 	ctx = workflow.WithValue(ctx, internalContext.SHAKey, msg.Revision)
 	ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, msg.ID)
+
+	if msg.Root.Trigger == tfModel.ManualTrigger {
+		w.MetricsHandler.Counter(ManualDeployWorkflowStat).Inc(1)
+	} else {
+		w.MetricsHandler.Counter(MergeDeployWorkflowStat).Inc(1)
+	}
 	w.MetricsHandler.Gauge(ActiveDeployWorkflowStat).Update(1)
 	defer w.MetricsHandler.Gauge(ActiveDeployWorkflowStat).Update(0)
+
 	return w.Deployer.Deploy(ctx, msg, latestDeployment)
 }
 

@@ -51,7 +51,11 @@ const (
 	ScheduleToCloseTimeout = 30 * time.Minute
 	HeartBeatTimeout       = 1 * time.Minute
 
-	ActiveTerraformWorkflowStat = "workflow.terraform.active"
+	ActiveTerraformWorkflowStat  = "workflow.terraform.active"
+	SuccessTerraformWorkflowStat = "workflow.terraform.success"
+	FailureTerraformWorkflowStat = "workflow.terraform.failure"
+
+	PlanReviewTimerStat = "workflow.terraform.planreview"
 )
 
 func Workflow(ctx workflow.Context, request Request) error {
@@ -156,6 +160,10 @@ func (r *Runner) waitForPlanReview(ctx workflow.Context, root *terraform.LocalRo
 	}
 
 	// if this root is configured for manual approval we block until we receive a signal
+	waitStartTime := time.Now()
+	defer func() {
+		r.MetricsHandler.Timer(PlanReviewTimerStat).Record(time.Since(waitStartTime))
+	}()
 	signalChan := workflow.GetSignalChannel(ctx, PlanReviewSignalName)
 	_ = signalChan.Receive(ctx, &planReview)
 
@@ -223,7 +231,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	var response *activities.GetWorkerInfoResponse
 	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
 	if err != nil {
-		return errors.Wrap(err, "getting worker info")
+		return r.toExternalError(err, "getting worker info")
 	}
 
 	opts := workflow.GetActivityOptions(ctx)
@@ -232,7 +240,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 	root, cleanup, err := r.RootFetcher.Fetch(ctx)
 	if err != nil {
-		return errors.Wrap(err, "fetching root")
+		return r.toExternalError(err, "fetching root")
 	}
 	defer func() {
 		err := cleanup()
@@ -244,13 +252,13 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 	planResponse, err := r.Plan(ctx, root, response.ServerURL)
 	if err != nil {
-		return toExternalError(err, "running plan job")
+		return r.toExternalError(err, "running plan job")
 	}
 
 	if err := r.Apply(ctx, root, response.ServerURL, planResponse.PlanFile); err != nil {
-		return toExternalError(err, "running apply job")
+		return r.toExternalError(err, "running apply job")
 	}
-
+	r.MetricsHandler.Counter(SuccessTerraformWorkflowStat).Inc(1)
 	return nil
 }
 
@@ -274,17 +282,19 @@ func (e ApplicationError) ToTemporalApplicationError() error {
 // toExternalError allows callers of the workflow to handle specific error types
 // in whatever fashion.
 // we use errors.As here to ensure that we're accounting for wrapped errors
-func toExternalError(err error, msg string) error {
+func (r *Runner) toExternalError(err error, msg string) error {
 	var planRejected PlanRejectedError
 	if errors.As(err, &planRejected) {
 		e := ApplicationError{
 			ErrType: planRejected.GetExternalType(),
 			Msg:     errors.Wrap(err, msg).Error(),
 		}
-
+		// marked as an error for the parent deploy workflow's perspective but are technically successful workflows
+		r.MetricsHandler.Counter(SuccessTerraformWorkflowStat).Inc(1)
 		return e.ToTemporalApplicationError()
 	}
 
+	r.MetricsHandler.Counter(FailureTerraformWorkflowStat).Inc(1)
 	var updateJobErr UpdateJobError
 	if errors.As(err, &updateJobErr) {
 		e := ApplicationError{
