@@ -134,10 +134,7 @@ type clientMetricsOutboundInterceptor struct {
 
 func (i *clientMetricsOutboundInterceptor) ExecuteWorkflow(ctx context.Context, in *interceptor.ClientExecuteWorkflowInput) (client.WorkflowRun, error) {
 	s := i.scope.SubScope("execute_workflow")
-	s = s.Tagged(map[string]string{
-		metrics.RootTag: ctx.Value(contextInternal.ProjectKey).(string),
-		metrics.RepoTag: ctx.Value(contextInternal.RepositoryKey).(string),
-	})
+	s = addTags(ctx, s)
 
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
@@ -156,10 +153,7 @@ func (i *clientMetricsOutboundInterceptor) ExecuteWorkflow(ctx context.Context, 
 
 func (i *clientMetricsOutboundInterceptor) SignalWorkflow(ctx context.Context, in *interceptor.ClientSignalWorkflowInput) error {
 	s := i.scope.SubScope("signal_workflow")
-	s = s.Tagged(map[string]string{
-		metrics.RootTag: ctx.Value(contextInternal.ProjectKey).(string),
-		metrics.RepoTag: ctx.Value(contextInternal.RepositoryKey).(string),
-	})
+	s = addTags(ctx, s)
 
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
@@ -175,10 +169,7 @@ func (i *clientMetricsOutboundInterceptor) SignalWorkflow(ctx context.Context, i
 
 func (i *clientMetricsOutboundInterceptor) SignalWithStartWorkflow(ctx context.Context, in *interceptor.ClientSignalWithStartWorkflowInput) (client.WorkflowRun, error) {
 	s := i.scope.SubScope("signal_with_start_workflow")
-	s = s.Tagged(map[string]string{
-		metrics.RootTag: ctx.Value(contextInternal.ProjectKey).(string),
-		metrics.RepoTag: ctx.Value(contextInternal.RepositoryKey).(string),
-	})
+	s = addTags(ctx, s)
 
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
@@ -196,10 +187,7 @@ func (i *clientMetricsOutboundInterceptor) SignalWithStartWorkflow(ctx context.C
 
 func (i *clientMetricsOutboundInterceptor) CancelWorkflow(ctx context.Context, in *interceptor.ClientCancelWorkflowInput) error {
 	s := i.scope.SubScope("cancel_workflow")
-	s = s.Tagged(map[string]string{
-		metrics.RootTag: ctx.Value(contextInternal.ProjectKey).(string),
-		metrics.RepoTag: ctx.Value(contextInternal.RepositoryKey).(string),
-	})
+	s = addTags(ctx, s)
 
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
@@ -215,10 +203,7 @@ func (i *clientMetricsOutboundInterceptor) CancelWorkflow(ctx context.Context, i
 
 func (i *clientMetricsOutboundInterceptor) TerminateWorkflow(ctx context.Context, in *interceptor.ClientTerminateWorkflowInput) error {
 	s := i.scope.SubScope("terminate_workflow")
-	s = s.Tagged(map[string]string{
-		metrics.RootTag: ctx.Value(contextInternal.ProjectKey).(string),
-		metrics.RepoTag: ctx.Value(contextInternal.RepositoryKey).(string),
-	})
+	s = addTags(ctx, s)
 
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
@@ -234,10 +219,7 @@ func (i *clientMetricsOutboundInterceptor) TerminateWorkflow(ctx context.Context
 
 func (i *clientMetricsOutboundInterceptor) QueryWorkflow(ctx context.Context, in *interceptor.ClientQueryWorkflowInput) (converter.EncodedValue, error) {
 	s := i.scope.SubScope("query_workflow")
-	s = s.Tagged(map[string]string{
-		metrics.RootTag: ctx.Value(contextInternal.ProjectKey).(string),
-		metrics.RepoTag: ctx.Value(contextInternal.RepositoryKey).(string),
-	})
+	s = addTags(ctx, s)
 
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
@@ -251,4 +233,15 @@ func (i *clientMetricsOutboundInterceptor) QueryWorkflow(ctx context.Context, in
 
 	s.Counter("success").Inc(1)
 	return val, err
+}
+
+func addTags(ctx context.Context, scope tally.Scope) tally.Scope {
+	tags := make(map[string]string)
+	if ctx.Value(contextInternal.ProjectKey) != nil {
+		tags[metrics.RootTag] = ctx.Value(contextInternal.ProjectKey).(string)
+	}
+	if ctx.Value(contextInternal.RepositoryKey) != nil {
+		tags[metrics.RepoTag] = ctx.Value(contextInternal.RepositoryKey).(string)
+	}
+	return scope.Tagged(tags)
 }
