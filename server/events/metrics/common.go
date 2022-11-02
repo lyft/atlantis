@@ -5,4 +5,7 @@ const (
 	ExecutionSuccessMetric = "execution_success"
 	ExecutionErrorMetric   = "execution_error"
 	ExecutionFailureMetric = "execution_failure"
+
+	RootTag = "root"
+	RepoTag = "repo"
 )

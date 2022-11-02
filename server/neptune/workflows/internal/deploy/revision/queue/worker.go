@@ -41,7 +41,7 @@ const (
 
 	UnlockSignalName = "unlock"
 
-	ActiveDeployWorkflowStat = "deploy_workflow.active"
+	ActiveDeployWorkflowStat = "workflow.deploy.active"
 )
 
 type UnlockSignalRequest struct {

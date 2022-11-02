@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/events/metrics"
 	"go.temporal.io/sdk/client"
 	"time"
 
@@ -50,9 +51,7 @@ const (
 	ScheduleToCloseTimeout = 30 * time.Minute
 	HeartBeatTimeout       = 1 * time.Minute
 
-	ActiveTerraformWorkflowStat = "terraform_workflow.active"
-	RepoTag                     = "repo"
-	RootTag                     = "root"
+	ActiveTerraformWorkflowStat = "workflow.terraform.active"
 )
 
 func Workflow(ctx workflow.Context, request Request) error {
@@ -101,8 +100,8 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 		},
 		MetricsHandler: workflow.GetMetricsHandler(ctx).WithTags(
 			map[string]string{
-				RepoTag: request.Repo.GetFullName(),
-				RootTag: request.Root.Name,
+				metrics.RepoTag: request.Repo.GetFullName(),
+				metrics.RootTag: request.Root.Name,
 			}),
 		// We have critical things relying on this notification so this workflow provides guarantees around this. (ie. compliance auditing)  There should
 		// be no situation where we are deploying while this is failing.

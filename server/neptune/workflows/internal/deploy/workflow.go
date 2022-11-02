@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"github.com/runatlantis/atlantis/server/events/metrics"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,9 +23,6 @@ const (
 	NewRevisionSignalID = "new-revision"
 
 	RevisionReceiveTimeout = 60 * time.Minute
-
-	RootTag = "root"
-	RepoTag = "repo"
 )
 
 type workerActivities struct {
@@ -80,8 +78,8 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	var a *workerActivities
 
 	metricsHandler := workflow.GetMetricsHandler(ctx).WithTags(map[string]string{
-		RepoTag: request.Repo.FullName,
-		RootTag: request.Root.Name,
+		metrics.RepoTag: request.Repo.FullName,
+		metrics.RootTag: request.Root.Name,
 	})
 
 	lockStateUpdater := queue.LockStateUpdater{

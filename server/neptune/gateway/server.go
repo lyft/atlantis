@@ -286,7 +286,7 @@ func NewServer(config Config) (*Server, error) {
 		FileFetcher:     &github.RemoteFileFetcher{ClientCreator: clientCreator},
 		GlobalCfg:       globalCfg,
 		Logger:          ctxLogger,
-		Scope:           statsScope.SubScope("terraform_event"),
+		Scope:           statsScope.SubScope("event.terraform"),
 	}
 
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(
