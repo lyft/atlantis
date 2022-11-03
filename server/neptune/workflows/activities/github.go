@@ -220,7 +220,7 @@ func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootReque
 	deployBasePath := filepath.Join(a.DataDir, deploymentsDirName, request.DeploymentID)
 	repositoryPath := filepath.Join(deployBasePath, "repo")
 	opts := &github.RepositoryContentGetOptions{
-		Ref: ref,
+		Ref: request.Revision,
 	}
 	// note: this link exists for 5 minutes when fetching a private repository archive
 	archiveLink, resp, err := a.Client.GetArchiveLink(internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken), request.Repo.Owner, request.Repo.Name, github.Zipball, opts, true)
