@@ -229,7 +229,7 @@ func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootReque
 	if err != nil {
 		return FetchRootResponse{}, errors.Wrap(err, "fetching and extracting zip")
 	}
-	localRoot := terraform.BuildLocalRoot(request.Root, request.Repo, destinationPath)
+	localRoot := terraform.BuildLocalRoot(request.Root, request.Repo, filepath.Join(destinationPath, request.Root.Path))
 	return FetchRootResponse{
 		LocalRoot: localRoot,
 	}, nil
