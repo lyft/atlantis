@@ -283,7 +283,7 @@ func toExternalError(err error, msg string) error {
 		return e.ToTemporalApplicationError()
 	}
 
-	var terraformClientErr TerraformClientError
+	var terraformClientErr ClientError
 	if errors.As(err, &terraformClientErr) {
 		e := ApplicationError{
 			ErrType: terraformClientErr.GetExternalType(),
