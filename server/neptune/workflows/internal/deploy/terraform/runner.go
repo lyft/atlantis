@@ -43,7 +43,7 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 		// we shouldn't ever percolate failures up unless they are user errors (aka. Terraform specific)
 		// retrying indefinitely allows us to fix whatever issue that comes about without involving the user to redeploy
 		RetryPolicy: &temporal.RetryPolicy{
-			NonRetryableErrorTypes: []string{terraform.TerraformClientErrorType, terraform.PlanRejectedErrorType},
+			NonRetryableErrorTypes: []string{terraform.ClientErrorType, terraform.PlanRejectedErrorType},
 		},
 	})
 	terraformWorkflowRequest := terraform.Request{

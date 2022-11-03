@@ -205,7 +205,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		ScheduleToCloseTimeout: ScheduleToCloseTimeout,
 		HeartbeatTimeout:       HeartBeatTimeout,
 		RetryPolicy: &temporal.RetryPolicy{
-			NonRetryableErrorTypes: []string{TerraformClientErrorType},
+			NonRetryableErrorTypes: []string{ClientErrorType},
 		},
 	})
 	var response *activities.GetWorkerInfoResponse

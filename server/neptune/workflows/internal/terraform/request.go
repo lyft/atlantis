@@ -16,9 +16,9 @@ type Request struct {
 }
 
 const (
-	PlanRejectedErrorType    = "PlanRejectedError"
-	UpdateJobErrorType       = "UpdateJobError"
-	TerraformClientErrorType = "TerraformClientError"
+	PlanRejectedErrorType = "PlanRejectedError"
+	UpdateJobErrorType    = "UpdateJobError"
+	ClientErrorType       = "TerraformClientError"
 )
 
 type ExternalError struct {
@@ -75,6 +75,6 @@ func (e TerraformClientError) Error() string {
 func newTerraformClientError(err error, msg string) TerraformClientError {
 	return TerraformClientError{
 		err:           errors.Wrap(err, msg),
-		ExternalError: ExternalError{ErrType: TerraformClientErrorType},
+		ExternalError: ExternalError{ErrType: ClientErrorType},
 	}
 }
