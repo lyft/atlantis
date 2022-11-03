@@ -11,7 +11,3 @@ metrics:
 temporal:
   host: temporalite
   port: 7233
-
-persistence:
-  job_store_prefix: jobs
-  deployment_store_prefix: deployments
