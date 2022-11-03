@@ -53,14 +53,14 @@ type RootConfigBuilder struct {
 func (b *RootConfigBuilder) Build(ctx context.Context, repo models.Repo, branch string, sha string, installationToken int64) ([]*valid.MergedProjectCfg, error) {
 	mergedRootCfgs, err := b.build(ctx, repo, branch, sha, installationToken)
 	if err != nil {
-		b.Scope.Counter("error").Inc(1)
+		b.Scope.Counter(metrics.FilterErrorMetric).Inc(1)
 		return nil, err
 	}
 	if len(mergedRootCfgs) == 0 {
-		b.Scope.Counter(metrics.ExecutionFailureMetric).Inc(1)
+		b.Scope.Counter(metrics.FilterFailMetric).Inc(1)
 		return mergedRootCfgs, nil
 	}
-	b.Scope.Counter("success")
+	b.Scope.Counter(metrics.FilterPassMetric)
 	return mergedRootCfgs, nil
 }
 
