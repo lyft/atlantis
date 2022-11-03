@@ -20,10 +20,5 @@ func (b Builder) BuildDownloadLinkFromArchive(archiveURL *url.URL, root terrafor
 		queryParams += fmt.Sprintf("&token=%s", token)
 	}
 	archiveURL.RawQuery = queryParams
-
-	// Append root subdirectory to path to trigger go-getter pkg to only copy the relevant files
-	archiveName := fmt.Sprintf("%s-%s-%s", repo.Owner, repo.Name, revision)
-
-	archiveURL.Path = fmt.Sprintf("%s//%s", archiveURL.Path, archiveName)
 	return archiveURL.String()
 }
