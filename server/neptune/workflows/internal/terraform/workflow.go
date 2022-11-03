@@ -224,7 +224,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}
 	defer func() {
 		err := cleanup()
-
 		if err != nil {
 			logger.Warn(ctx, "error cleaning up local root", "err", err)
 		}
