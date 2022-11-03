@@ -63,17 +63,18 @@ func newUpdateJobError(err error, msg string) UpdateJobError {
 }
 
 type TerraformClientError struct {
-	Err error
+	err error
+	msg string
 	ExternalError
 }
 
 func (e TerraformClientError) Error() string {
-	return e.Err.Error()
+	return errors.Wrap(e.err, e.msg).Error()
 }
 
 func newTerraformClientError(err error, msg string) TerraformClientError {
 	return TerraformClientError{
-		Err:           errors.Wrap(err, msg),
+		err:           errors.Wrap(err, msg),
 		ExternalError: ExternalError{ErrType: TerraformClientErrorType},
 	}
 }
