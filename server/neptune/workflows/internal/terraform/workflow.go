@@ -127,7 +127,7 @@ func (r *Runner) Plan(ctx workflow.Context, root *terraform.LocalRoot, serverURL
 			// not returning UpdateJobError here since we want to surface the job failure itself
 			logger.Error(ctx, "unable to update job with failed status, job failed with error. ", "err", err)
 		}
-		return response, errors.Wrap(err, "running job")
+		return response, newTerraformClientError(err, "running job")
 	}
 	if err := r.Store.UpdatePlanJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
 		PlanSummary: response.Summary,
@@ -182,14 +182,13 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 
 	err = r.JobRunner.Apply(ctx, root, jobID.String(), planFile)
 	if err != nil {
-
-		if err := r.Store.UpdateApplyJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
+		if e := r.Store.UpdateApplyJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
 			EndTime: time.Now(),
-		}); err != nil {
+		}); e != nil {
 			// not returning UpdateJobError here since we want to surface the job failure itself
 			logger.Error(ctx, "unable to update job with failed status, job failed with error. ", "err", err)
 		}
-		return errors.Wrap(err, "running job")
+		return newTerraformClientError(err, "running job")
 	}
 
 	if err := r.Store.UpdateApplyJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
@@ -285,5 +284,15 @@ func toExternalError(err error, msg string) error {
 		return e.ToTemporalApplicationError()
 	}
 
+	var terraformClientErr TerraformClientError
+	if errors.As(err, &terraformClientErr) {
+		e := ApplicationError{
+			ErrType: terraformClientErr.GetExternalType(),
+			// wrap original error to provide job type
+			Msg: errors.Wrap(err, msg).Error(),
+		}
+
+		return e.ToTemporalApplicationError()
+	}
 	return errors.Wrap(err, msg)
 }
