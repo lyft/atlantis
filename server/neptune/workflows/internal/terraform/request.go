@@ -18,7 +18,7 @@ type Request struct {
 const (
 	PlanRejectedErrorType = "PlanRejectedError"
 	UpdateJobErrorType    = "UpdateJobError"
-	ClientErrorType       = "TerraformClientError"
+	ClientErrorType       = "ClientError"
 )
 
 type ExternalError struct {
