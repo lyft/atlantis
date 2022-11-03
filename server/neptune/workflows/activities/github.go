@@ -213,10 +213,7 @@ type FetchRootResponse struct {
 func (a *githubActivities) FetchRoot(ctx context.Context, request FetchRootRequest) (FetchRootResponse, error) {
 	ctx, cancel := temporal.StartHeartbeat(ctx, temporal.HeartbeatTimeout)
 	defer cancel()
-	ref, err := request.Repo.Ref.String()
-	if err != nil {
-		return FetchRootResponse{}, errors.Wrap(err, "processing request ref")
-	}
+
 	deployBasePath := filepath.Join(a.DataDir, deploymentsDirName, request.DeploymentID)
 	repositoryPath := filepath.Join(deployBasePath, "repo")
 	opts := &github.RepositoryContentGetOptions{
