@@ -79,32 +79,30 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		logger.Error(ctx, "generating deployment id", "err", err)
 	}
 
-	resp := n.createCheckRun(ctx, id.String(), request.Revision, root, repo)
-
 	deploymentInfo := terraform.DeploymentInfo{
 		ID:             id,
 		Root:           root,
 		Revision:       request.Revision,
-		CheckRunID:     resp.ID,
 		Repo:           repo,
 		InitiatingUser: initiatingUser,
 		Tags:           request.Tags,
 	}
-	if root.Trigger == activity.MergeTrigger {
-		n.queue.Push(deploymentInfo)
-		return
-	}
-
 	// Do not push a duplicate/in-progress manual deployment to the queue
-	if n.queue.Contains(deploymentInfo) || n.isInProgress(deploymentInfo) {
+	if root.Trigger == activity.ManualTrigger && (n.queue.Contains(deploymentInfo) || n.isInProgress(deploymentInfo)) {
 		//TODO: consider executing a comment activity to notify user
 		return
 	}
-	// Lock the queue on a manual deployment
-	n.queue.SetLockForMergedItems(ctx, queue.LockState{
-		Status:   queue.LockedStatus,
-		Revision: request.Revision,
-	})
+
+	resp := n.createCheckRun(ctx, id.String(), request.Revision, root, repo)
+	deploymentInfo.CheckRunID = resp.ID
+
+	if root.Trigger == activity.ManualTrigger {
+		// Lock the queue on a manual deployment
+		n.queue.SetLockForMergedItems(ctx, queue.LockState{
+			Status:   queue.LockedStatus,
+			Revision: request.Revision,
+		})
+	}
 	n.queue.Push(deploymentInfo)
 }
 

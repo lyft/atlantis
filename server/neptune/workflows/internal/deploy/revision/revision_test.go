@@ -360,12 +360,6 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInQueue(t *testing.T) {
 	a := &testActivities{}
 	env.RegisterActivity(a)
 	id := uuid.Must(uuid.NewUUID())
-	env.OnActivity(a.CreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
-		Title:      "atlantis/deploy: root",
-		Sha:        rev,
-		Repo:       github.Repo{Name: "nish"},
-		ExternalID: id.String(),
-	}).Return(activities.CreateCheckRunResponse{ID: 1}, nil)
 
 	deploymentInfo := terraformWorkflow.DeploymentInfo{
 		Revision:   rev,
@@ -408,12 +402,6 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInProgress(t *testing.T) {
 	a := &testActivities{}
 	env.RegisterActivity(a)
 	id := uuid.Must(uuid.NewUUID())
-	env.OnActivity(a.CreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
-		Title:      "atlantis/deploy: root",
-		Sha:        rev,
-		Repo:       github.Repo{Name: "nish"},
-		ExternalID: id.String(),
-	}).Return(activities.CreateCheckRunResponse{ID: 1}, nil)
 
 	deploymentInfo := terraformWorkflow.DeploymentInfo{
 		Revision:   rev,
