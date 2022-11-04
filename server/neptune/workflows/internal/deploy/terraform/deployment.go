@@ -36,10 +36,6 @@ func (i DeploymentInfo) BuildPersistableInfo() *deployment.Info {
 	}
 }
 
-func (i DeploymentInfo) Equal(info DeploymentInfo) bool {
-	return i.Revision == info.Revision
-}
-
 func BuildCheckRunTitle(rootName string) string {
 	return fmt.Sprintf("atlantis/deploy: %s", rootName)
 }

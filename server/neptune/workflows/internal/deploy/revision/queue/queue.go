@@ -67,11 +67,8 @@ func (q *Deploy) Pop() (terraform.DeploymentInfo, error) {
 	return q.queue.Pop()
 }
 
-func (q *Deploy) Contains(msg terraform.DeploymentInfo) bool {
-	if msg.Root.Trigger == activity.ManualTrigger {
-		return q.queue.Contains(msg, High)
-	}
-	return q.queue.Contains(msg, Low)
+func (q *Deploy) ContainsRevision(revision string) bool {
+	return q.queue.ContainsRevision(revision, High)
 }
 
 func (q *Deploy) GetLastPoppedState() LastPoppedState {
@@ -162,9 +159,9 @@ func (q *priority) Pop() (terraform.DeploymentInfo, error) {
 	return result.(terraform.DeploymentInfo), nil
 }
 
-func (q *priority) Contains(msg terraform.DeploymentInfo, priority priorityType) bool {
+func (q *priority) ContainsRevision(revision string, priority priorityType) bool {
 	for e := q.queues[priority].Front(); e != nil; e = e.Next() {
-		if msg.Equal(e.Value.(terraform.DeploymentInfo)) {
+		if revision == e.Value.(terraform.DeploymentInfo).Revision {
 			return true
 		}
 	}

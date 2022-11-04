@@ -31,7 +31,7 @@ type Queue interface {
 	Push(terraform.DeploymentInfo)
 	GetLockState() queue.LockState
 	SetLockForMergedItems(ctx workflow.Context, state queue.LockState)
-	Contains(info terraform.DeploymentInfo) bool
+	ContainsRevision(revision string) bool
 	GetLastPoppedState() queue.LastPoppedState
 }
 
@@ -79,22 +79,22 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		logger.Error(ctx, "generating deployment id", "err", err)
 	}
 
-	deploymentInfo := terraform.DeploymentInfo{
-		ID:             id,
-		Root:           root,
-		Revision:       request.Revision,
-		Repo:           repo,
-		InitiatingUser: initiatingUser,
-		Tags:           request.Tags,
-	}
 	// Do not push a duplicate/in-progress manual deployment to the queue
-	if root.Trigger == activity.ManualTrigger && (n.queue.Contains(deploymentInfo) || n.isInProgress(deploymentInfo)) {
+	if root.Trigger == activity.ManualTrigger && (n.queue.ContainsRevision(request.Revision) || n.isInProgress(request.Revision)) {
 		//TODO: consider executing a comment activity to notify user
 		return
 	}
 
 	resp := n.createCheckRun(ctx, id.String(), request.Revision, root, repo)
-	deploymentInfo.CheckRunID = resp.ID
+	deploymentInfo := terraform.DeploymentInfo{
+		ID:             id,
+		Root:           root,
+		Revision:       request.Revision,
+		CheckRunID:     resp.ID,
+		Repo:           repo,
+		InitiatingUser: initiatingUser,
+		Tags:           request.Tags,
+	}
 
 	if root.Trigger == activity.ManualTrigger {
 		// Lock the queue on a manual deployment
@@ -134,7 +134,7 @@ func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, roo
 	return resp
 }
 
-func (n *Receiver) isInProgress(info terraform.DeploymentInfo) bool {
+func (n *Receiver) isInProgress(revision string) bool {
 	lastPoppedDeployment := n.queue.GetLastPoppedState()
-	return info.Equal(lastPoppedDeployment.Msg) && lastPoppedDeployment.Status == queue.InProgressStatus
+	return revision == lastPoppedDeployment.Msg.Revision && lastPoppedDeployment.Status == queue.InProgressStatus
 }

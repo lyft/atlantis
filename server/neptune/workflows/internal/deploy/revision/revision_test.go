@@ -25,9 +25,9 @@ type testQueue struct {
 	Last  queue.LastPoppedState
 }
 
-func (q *testQueue) Contains(info terraformWorkflow.DeploymentInfo) bool {
+func (q *testQueue) ContainsRevision(revision string) bool {
 	for _, elem := range q.Queue {
-		if elem.Equal(info) {
+		if elem.Revision == revision {
 			return true
 		}
 	}
