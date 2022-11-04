@@ -85,23 +85,15 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	}
 
 	// Do not push a duplicate/in-progress manual deployment to the queue
-	if root.Trigger == activity.ManualTrigger && (n.containsRevision(request.Revision) || n.isInProgress(request.Revision)) {
+	if root.Trigger == activity.ManualTrigger && (n.queueContainsRevision(request.Revision) || n.isInProgress(request.Revision)) {
 		//TODO: consider executing a comment activity to notify user
 		logger.Warn(ctx, "attempted to perform duplicate manual deploy", "revision", request.Revision)
 		return
 	}
 
 	resp := n.createCheckRun(ctx, id.String(), request.Revision, root, repo)
-	deploymentInfo := terraform.DeploymentInfo{
-		ID:             id,
-		Root:           root,
-		Revision:       request.Revision,
-		CheckRunID:     resp.ID,
-		Repo:           repo,
-		InitiatingUser: initiatingUser,
-		Tags:           request.Tags,
-	}
 
+	// lock the queue on a manual deployment
 	if root.Trigger == activity.ManualTrigger {
 		// Lock the queue on a manual deployment
 		n.queue.SetLockForMergedItems(ctx, queue.LockState{
@@ -109,7 +101,15 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 			Revision: request.Revision,
 		})
 	}
-	n.queue.Push(deploymentInfo)
+	n.queue.Push(terraform.DeploymentInfo{
+		ID:             id,
+		Root:           root,
+		Revision:       request.Revision,
+		CheckRunID:     resp.ID,
+		Repo:           repo,
+		InitiatingUser: initiatingUser,
+		Tags:           request.Tags,
+	})
 }
 
 func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, root activity.Root, repo github.Repo) activities.CreateCheckRunResponse {
@@ -145,7 +145,7 @@ func (n *Receiver) isInProgress(revision string) bool {
 	return revision == current.Deployment.Revision && current.Status == queue.InProgressStatus
 }
 
-func (n *Receiver) containsRevision(revision string) bool {
+func (n *Receiver) queueContainsRevision(revision string) bool {
 	for _, deployment := range n.queue.Scan(queue.High) {
 		if revision == deployment.Revision {
 			return true
