@@ -82,12 +82,13 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	revisionQueue := queue.NewQueue(func(ctx workflow.Context, d *queue.Deploy) {
 		lockStateUpdater.UpdateQueuedRevisions(ctx, d)
 	})
-	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, a, sideeffect.GenerateUUID)
 
 	worker, err := queue.NewWorker(ctx, revisionQueue, a, tfWorkflow, request.Repo.FullName, request.Root.Name)
 	if err != nil {
 		return nil, err
 	}
+
+	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, a, sideeffect.GenerateUUID, worker)
 
 	return &Runner{
 		QueueWorker:              worker,

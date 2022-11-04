@@ -21,25 +21,12 @@ const (
 	LockedStatus
 )
 
-type LastPoppedStatus int
-
-type LastPoppedState struct {
-	Msg    terraform.DeploymentInfo
-	Status LastPoppedStatus
-}
-
-const (
-	InProgressStatus LastPoppedStatus = iota
-	CompleteStatus
-)
-
 type Deploy struct {
 	queue              *priority
 	lockStatusCallback func(workflow.Context, *Deploy)
 
 	// mutable: default is unlocked
-	lock       LockState
-	lastPopped LastPoppedState
+	lock LockState
 }
 
 func NewQueue(callback func(workflow.Context, *Deploy)) *Deploy {
@@ -67,16 +54,8 @@ func (q *Deploy) Pop() (terraform.DeploymentInfo, error) {
 	return q.queue.Pop()
 }
 
-func (q *Deploy) ContainsRevision(revision string) bool {
-	return q.queue.ContainsRevision(revision, High)
-}
-
-func (q *Deploy) GetLastPoppedState() LastPoppedState {
-	return q.lastPopped
-}
-
-func (q *Deploy) SetLastPoppedState(state LastPoppedState) {
-	q.lastPopped = state
+func (q *Deploy) Scan(priority PriorityType) []terraform.DeploymentInfo {
+	return q.queue.Scan(priority)
 }
 
 func (q *Deploy) GetOrderedMergedItems() []terraform.DeploymentInfo {
@@ -98,19 +77,19 @@ func (q *Deploy) Push(msg terraform.DeploymentInfo) {
 // priority is a simple 2 priority queue implementation
 // priority is determined before an item enters a queue and does not change
 type priority struct {
-	queues map[priorityType]*list.List
+	queues map[PriorityType]*list.List
 }
 
-type priorityType int
+type PriorityType int
 
 const (
-	Low priorityType = iota + 1
+	Low PriorityType = iota + 1
 	High
 )
 
 func newPriorityQueue() *priority {
 	return &priority{
-		queues: map[priorityType]*list.List{
+		queues: map[PriorityType]*list.List{
 			High: list.New(),
 			Low:  list.New(),
 		},
@@ -126,7 +105,7 @@ func (q *priority) IsEmpty() bool {
 	return true
 }
 
-func (q *priority) Scan(priority priorityType) []terraform.DeploymentInfo {
+func (q *priority) Scan(priority PriorityType) []terraform.DeploymentInfo {
 	var result []terraform.DeploymentInfo
 
 	for e := q.queues[priority].Front(); e != nil; e = e.Next() {
@@ -136,11 +115,11 @@ func (q *priority) Scan(priority priorityType) []terraform.DeploymentInfo {
 	return result
 }
 
-func (q *priority) HasItemsOfPriority(priority priorityType) bool {
+func (q *priority) HasItemsOfPriority(priority PriorityType) bool {
 	return q.queues[priority].Len() != 0
 }
 
-func (q *priority) Push(msg terraform.DeploymentInfo, priority priorityType) {
+func (q *priority) Push(msg terraform.DeploymentInfo, priority PriorityType) {
 	q.queues[priority].PushBack(msg)
 }
 
@@ -157,13 +136,4 @@ func (q *priority) Pop() (terraform.DeploymentInfo, error) {
 	result := q.queues[priority].Remove(q.queues[priority].Front())
 	// naughty casting
 	return result.(terraform.DeploymentInfo), nil
-}
-
-func (q *priority) ContainsRevision(revision string, priority priorityType) bool {
-	for e := q.queues[priority].Front(); e != nil; e = e.Next() {
-		if revision == e.Value.(terraform.DeploymentInfo).Revision {
-			return true
-		}
-	}
-	return false
 }

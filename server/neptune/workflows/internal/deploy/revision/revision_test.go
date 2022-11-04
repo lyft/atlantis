@@ -22,20 +22,10 @@ import (
 type testQueue struct {
 	Queue []terraformWorkflow.DeploymentInfo
 	Lock  queue.LockState
-	Last  queue.LastPoppedState
 }
 
-func (q *testQueue) ContainsRevision(revision string) bool {
-	for _, elem := range q.Queue {
-		if elem.Revision == revision {
-			return true
-		}
-	}
-	return false
-}
-
-func (q *testQueue) GetLastPoppedState() queue.LastPoppedState {
-	return q.Last
+func (q *testQueue) Scan(priority queue.PriorityType) []terraformWorkflow.DeploymentInfo {
+	return q.Queue
 }
 
 func (q *testQueue) Push(msg terraformWorkflow.DeploymentInfo) {
@@ -50,10 +40,18 @@ func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state queue.Lock
 	q.Lock = state
 }
 
+type testWorker struct {
+	Current queue.CurrentDeployment
+}
+
+func (t testWorker) GetCurrentDeploymentState() queue.CurrentDeployment {
+	return t.Current
+}
+
 type req struct {
 	ID              uuid.UUID
 	Lock            queue.LockState
-	Last            queue.LastPoppedState
+	Current         queue.CurrentDeployment
 	InitialElements []terraformWorkflow.DeploymentInfo
 }
 
@@ -77,15 +75,18 @@ func testWorkflow(ctx workflow.Context, r req) (response, error) {
 	var timeout bool
 	queue := &testQueue{
 		Lock:  r.Lock,
-		Last:  r.Last,
 		Queue: r.InitialElements,
+	}
+
+	worker := &testWorker{
+		Current: r.Current,
 	}
 
 	var a *testActivities
 
 	receiver := revision.NewReceiver(ctx, queue, a, func(ctx workflow.Context) (uuid.UUID, error) {
 		return r.ID, nil
-	})
+	}, worker)
 	selector := workflow.NewSelector(ctx)
 
 	selector.AddReceive(workflow.GetSignalChannel(ctx, "test-signal"), receiver.Receive)
@@ -412,9 +413,9 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInProgress(t *testing.T) {
 	}
 	env.ExecuteWorkflow(testWorkflow, req{
 		ID: id,
-		Last: queue.LastPoppedState{
-			Msg:    deploymentInfo,
-			Status: queue.InProgressStatus,
+		Current: queue.CurrentDeployment{
+			Deployment: deploymentInfo,
+			Status:     queue.InProgressStatus,
 		},
 	})
 	env.AssertExpectations(t)

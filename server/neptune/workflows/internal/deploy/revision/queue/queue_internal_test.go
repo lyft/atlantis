@@ -51,17 +51,6 @@ func TestPriorityQueue(t *testing.T) {
 		assert.Equal(t, "4", unwrap(info))
 	})
 
-	t.Run("contains", func(t *testing.T) {
-		q := newPriorityQueue()
-
-		q.Push(wrap("1"), Low)
-		q.Push(wrap("2"), High)
-		assert.True(t, q.ContainsRevision("2", High))
-		assert.False(t, q.ContainsRevision("2", Low))
-		assert.True(t, q.ContainsRevision("1", Low))
-		assert.False(t, q.ContainsRevision("5", Low))
-	})
-
 	t.Run("pop empty queue", func(t *testing.T) {
 		q := newPriorityQueue()
 
@@ -69,7 +58,7 @@ func TestPriorityQueue(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	priorities := []priorityType{
+	priorities := []PriorityType{
 		Low,
 		High,
 	}

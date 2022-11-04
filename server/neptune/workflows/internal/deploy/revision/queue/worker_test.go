@@ -23,11 +23,6 @@ import (
 type testQueue struct {
 	Queue *list.List
 	Lock  queue.LockState
-	Last  queue.LastPoppedState
-}
-
-func (q *testQueue) SetLastPoppedState(state queue.LastPoppedState) {
-	q.Last = state
 }
 
 func (q *testQueue) IsEmpty() bool {
@@ -66,10 +61,10 @@ type workerResponse struct {
 }
 
 type queueAndState struct {
-	QueueIsEmpty bool
-	State        queue.WorkerState
-	Lock         queue.LockState
-	Last         queue.LastPoppedState
+	QueueIsEmpty      bool
+	State             queue.WorkerState
+	Lock              queue.LockState
+	CurrentDeployment queue.CurrentDeployment
 }
 
 type testDeployer struct {
@@ -128,10 +123,10 @@ func testWorkerWorkflow(ctx workflow.Context, r workerRequest) (workerResponse, 
 	err := workflow.SetQueryHandler(ctx, "queue", func() (queueAndState, error) {
 
 		return queueAndState{
-			QueueIsEmpty: q.IsEmpty(),
-			State:        worker.GetState(),
-			Lock:         q.Lock,
-			Last:         q.Last,
+			QueueIsEmpty:      q.IsEmpty(),
+			State:             worker.GetState(),
+			Lock:              q.Lock,
+			CurrentDeployment: worker.GetCurrentDeploymentState(),
 		}, nil
 	})
 	if err != nil {
@@ -241,9 +236,9 @@ func TestWorker_DeploysItems(t *testing.T) {
 
 		assert.True(t, q.QueueIsEmpty)
 		assert.Equal(t, queue.WaitingWorkerState, q.State)
-		assert.Equal(t, q.Last, queue.LastPoppedState{
-			Msg:    deploymentInfoList[len(deploymentInfoList)-1],
-			Status: queue.CompleteStatus,
+		assert.Equal(t, q.CurrentDeployment, queue.CurrentDeployment{
+			Deployment: deploymentInfoList[len(deploymentInfoList)-1],
+			Status:     queue.CompleteStatus,
 		})
 
 		env.CancelWorkflow()
