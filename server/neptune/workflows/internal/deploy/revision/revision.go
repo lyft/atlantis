@@ -82,6 +82,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	// Do not push a duplicate/in-progress manual deployment to the queue
 	if root.Trigger == activity.ManualTrigger && (n.queue.ContainsRevision(request.Revision) || n.isInProgress(request.Revision)) {
 		//TODO: consider executing a comment activity to notify user
+		logger.Warn(ctx, "attempted to perform duplicate manual deploy", "revision", request.Revision)
 		return
 	}
 
