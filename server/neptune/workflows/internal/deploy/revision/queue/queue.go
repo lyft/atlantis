@@ -69,7 +69,7 @@ func (q *Deploy) IsEmpty() bool {
 }
 
 func (q *Deploy) Push(msg terraform.DeploymentInfo) {
-	defer q.metricsHandler.Gauge("queue_depth").Update(float64(q.queue.Size()))
+	defer q.metricsHandler.Gauge(QueueDepthStat).Update(float64(q.queue.Size()))
 	if msg.Root.Trigger == activity.ManualTrigger {
 		q.queue.Push(msg, High)
 		return
