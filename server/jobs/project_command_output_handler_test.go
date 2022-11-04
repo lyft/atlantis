@@ -172,8 +172,15 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		projectOutputHandler, jobStore := createProjectCommandOutputHandler(t)
 		When(jobStore.Get(matchers.AnyContextContext(), AnyString())).ThenReturn(&jobs.Job{}, nil)
 
-		// Make it a buffered channel to queue up message and test the behaviour synchronously
-		ch := make(chan string, 2)
+		ch := make(chan string)
+
+		// read from channel
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			<-ch
+			wg.Done()
+		}()
 
 		// register channel and backfill from buffer
 		// Note: We call this synchronously because otherwise
@@ -181,16 +188,8 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// before sending messages due to the way we lock our buffer memory cache
 		projectOutputHandler.Register(ctx.RequestCtx, ctx.JobID, ch)
 		projectOutputHandler.Send(ctx, Msg)
-		projectOutputHandler.Send(ctx, "Complete")
 
-		// read from channel
-		func() {
-			for msg := range ch {
-				if msg == "Complete" {
-					return
-				}
-			}
-		}()
+		wg.Wait()
 
 		pullContext := jobs.PullInfo{
 			PullNum:     ctx.Pull.Num,
@@ -198,6 +197,8 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 			ProjectName: ctx.ProjectName,
 			Workspace:   ctx.Workspace,
 		}
+
+		// Cleanup is called when a PR is closed
 		projectOutputHandler.CleanUp(pullContext)
 
 		// Check all the resources are cleaned up.
