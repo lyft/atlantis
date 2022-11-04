@@ -1,14 +1,15 @@
 package jobs_test
 
 import (
+	"fmt"
 	"regexp"
 	"sync"
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
+	"github.com/stretchr/testify/assert"
 
 	. "github.com/petergtz/pegomock"
-	"github.com/stretchr/testify/assert"
 
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -169,31 +170,30 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 	})
 
 	t.Run("clean up all jobs when PR is closed", func(t *testing.T) {
-		var wg sync.WaitGroup
 		projectOutputHandler, jobStore := createProjectCommandOutputHandler(t)
 		When(jobStore.Get(matchers.AnyContextContext(), AnyString())).ThenReturn(&jobs.Job{}, nil)
 
-		ch := make(chan string)
+		// Make it a buffered channel to queue up message and test the behaviour synchronously
+		ch := make(chan string, 2)
 
 		// register channel and backfill from buffer
 		// Note: We call this synchronously because otherwise
 		// there could be a race where we are unable to register the channel
 		// before sending messages due to the way we lock our buffer memory cache
 		projectOutputHandler.Register(ctx.RequestCtx, ctx.JobID, ch)
-
-		wg.Add(1)
+		projectOutputHandler.Send(ctx, Msg)
+		projectOutputHandler.Send(ctx, "Complete")
 
 		// read from channel
-		go func() {
+		func() {
 			for msg := range ch {
+				fmt.Println("Reading msg:", msg)
 				if msg == "Complete" {
-					wg.Done()
+					fmt.Println("Complete")
+					return
 				}
 			}
 		}()
-
-		projectOutputHandler.Send(ctx, Msg)
-		projectOutputHandler.Send(ctx, "Complete")
 
 		pullContext := jobs.PullInfo{
 			PullNum:     ctx.Pull.Num,
