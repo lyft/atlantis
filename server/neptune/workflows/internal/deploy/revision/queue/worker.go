@@ -41,9 +41,8 @@ const (
 
 	UnlockSignalName = "unlock"
 
-	ActiveDeployWorkflowStat = "workflow.deploy.active"
-	ManualDeployWorkflowStat = "workflow.deploy.manual"
-	MergeDeployWorkflowStat  = "workflow.deploy.merge"
+	ManualDeployWorkflowStat = "workflow.deploy.revision.manual"
+	MergeDeployWorkflowStat  = "workflow.deploy.revision.merge"
 )
 
 type UnlockSignalRequest struct {
@@ -214,8 +213,6 @@ func (w *Worker) deploy(ctx workflow.Context, latestDeployment *deployment.Info)
 	} else {
 		w.MetricsHandler.Counter(MergeDeployWorkflowStat).Inc(1)
 	}
-	w.MetricsHandler.Gauge(ActiveDeployWorkflowStat).Update(1)
-	defer w.MetricsHandler.Gauge(ActiveDeployWorkflowStat).Update(0)
 
 	return w.Deployer.Deploy(ctx, msg, latestDeployment)
 }

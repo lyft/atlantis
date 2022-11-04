@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"github.com/runatlantis/atlantis/server/events/metrics"
+	"go.temporal.io/sdk/client"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,7 +23,8 @@ const (
 	// signals
 	NewRevisionSignalID = "new-revision"
 
-	RevisionReceiveTimeout = 60 * time.Minute
+	RevisionReceiveTimeout   = 60 * time.Minute
+	ActiveDeployWorkflowStat = "workflow.deploy.active"
 )
 
 type workerActivities struct {
@@ -68,6 +70,7 @@ type Runner struct {
 	QueueWorker              QueueWorker
 	RevisionReceiver         SignalReceiver
 	NewRevisionSignalChannel workflow.ReceiveChannel
+	MetricsHandler           client.MetricsHandler
 }
 
 func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workflow) (*Runner, error) {
@@ -99,10 +102,13 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 		QueueWorker:              worker,
 		RevisionReceiver:         revisionReceiver,
 		NewRevisionSignalChannel: workflow.GetSignalChannel(ctx, NewRevisionSignalID),
+		MetricsHandler:           metricsHandler,
 	}, nil
 }
 
 func (r *Runner) Run(ctx workflow.Context) error {
+	r.MetricsHandler.Gauge(ActiveDeployWorkflowStat).Update(1)
+	defer r.MetricsHandler.Gauge(ActiveDeployWorkflowStat).Update(0)
 	var action RunnerAction
 	workerCtx, shutdownWorker := workflow.WithCancel(ctx)
 
