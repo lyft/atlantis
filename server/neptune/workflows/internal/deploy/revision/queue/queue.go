@@ -21,7 +21,7 @@ const (
 	UnlockedStatus LockStatus = iota
 	LockedStatus
 
-	QueueDepthStat = "queue_depth"
+	QueueDepthStat = "queue.depth"
 )
 
 type Deploy struct {
