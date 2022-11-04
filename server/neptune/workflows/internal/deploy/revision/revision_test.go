@@ -22,6 +22,20 @@ import (
 type testQueue struct {
 	Queue []terraformWorkflow.DeploymentInfo
 	Lock  queue.LockState
+	Last  queue.LastPoppedState
+}
+
+func (q *testQueue) Contains(info terraformWorkflow.DeploymentInfo) bool {
+	for _, elem := range q.Queue {
+		if elem.Equal(info) {
+			return true
+		}
+	}
+	return false
+}
+
+func (q *testQueue) GetLastPoppedState() queue.LastPoppedState {
+	return q.Last
 }
 
 func (q *testQueue) Push(msg terraformWorkflow.DeploymentInfo) {
@@ -37,8 +51,10 @@ func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state queue.Lock
 }
 
 type req struct {
-	ID   uuid.UUID
-	Lock queue.LockState
+	ID              uuid.UUID
+	Lock            queue.LockState
+	Last            queue.LastPoppedState
+	InitialElements []terraformWorkflow.DeploymentInfo
 }
 
 type response struct {
@@ -60,7 +76,9 @@ func testWorkflow(ctx workflow.Context, r req) (response, error) {
 	})
 	var timeout bool
 	queue := &testQueue{
-		Lock: r.Lock,
+		Lock:  r.Lock,
+		Last:  r.Last,
+		Queue: r.InitialElements,
 	}
 
 	var a *testActivities
@@ -97,7 +115,8 @@ func TestEnqueue(t *testing.T) {
 		env.SignalWorkflow("test-signal", revision.NewRevisionRequest{
 			Revision: rev,
 			Root: request.Root{
-				Name: "root",
+				Name:    "root",
+				Trigger: request.MergeTrigger,
 			},
 			Repo: request.Repo{Name: "nish"},
 		})
@@ -130,7 +149,7 @@ func TestEnqueue(t *testing.T) {
 		{
 			Revision:   rev,
 			CheckRunID: 1,
-			Root:       terraform.Root{Name: "root"},
+			Root:       terraform.Root{Name: "root", Trigger: terraform.MergeTrigger},
 			ID:         id,
 			Repo:       github.Repo{Name: "nish"},
 		},
@@ -197,7 +216,7 @@ func TestEnqueue_ManualTrigger(t *testing.T) {
 	assert.False(t, resp.Timeout)
 }
 
-func TestEnqueue_ManualTrigger_queueAlreadyLocked(t *testing.T) {
+func TestEnqueue_ManualTrigger_QueueAlreadyLocked(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
@@ -258,7 +277,7 @@ func TestEnqueue_ManualTrigger_queueAlreadyLocked(t *testing.T) {
 	assert.False(t, resp.Timeout)
 }
 
-func TestEnqueue_MergeTrigger_queueAlreadyLocked(t *testing.T) {
+func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
@@ -319,4 +338,103 @@ func TestEnqueue_MergeTrigger_queueAlreadyLocked(t *testing.T) {
 		Revision: "123334444555",
 	}, resp.Lock)
 	assert.False(t, resp.Timeout)
+}
+
+func TestEnqueue_ManualTrigger_RequestAlreadyInQueue(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	rev := "1234"
+
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow("test-signal", revision.NewRevisionRequest{
+			Revision: rev,
+			Root: request.Root{
+				Name:    "root",
+				Trigger: request.ManualTrigger,
+			},
+			Repo: request.Repo{Name: "nish"},
+		})
+	}, 0)
+
+	a := &testActivities{}
+	env.RegisterActivity(a)
+	id := uuid.Must(uuid.NewUUID())
+	env.OnActivity(a.CreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
+		Title:      "atlantis/deploy: root",
+		Sha:        rev,
+		Repo:       github.Repo{Name: "nish"},
+		ExternalID: id.String(),
+	}).Return(activities.CreateCheckRunResponse{ID: 1}, nil)
+
+	deploymentInfo := terraformWorkflow.DeploymentInfo{
+		Revision:   rev,
+		CheckRunID: 1,
+		Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
+		ID:         id,
+		Repo:       github.Repo{Name: "nish"},
+	}
+	env.ExecuteWorkflow(testWorkflow, req{
+		ID:              id,
+		InitialElements: []terraformWorkflow.DeploymentInfo{deploymentInfo},
+	})
+	env.AssertExpectations(t)
+	assert.True(t, env.IsWorkflowCompleted())
+
+	var resp response
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+	// should not another of the same to the queue
+	assert.Equal(t, []terraformWorkflow.DeploymentInfo{deploymentInfo}, resp.Queue)
+}
+
+func TestEnqueue_ManualTrigger_RequestAlreadyInProgress(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	rev := "1234"
+
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow("test-signal", revision.NewRevisionRequest{
+			Revision: rev,
+			Root: request.Root{
+				Name:    "root",
+				Trigger: request.ManualTrigger,
+			},
+			Repo: request.Repo{Name: "nish"},
+		})
+	}, 0)
+
+	a := &testActivities{}
+	env.RegisterActivity(a)
+	id := uuid.Must(uuid.NewUUID())
+	env.OnActivity(a.CreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
+		Title:      "atlantis/deploy: root",
+		Sha:        rev,
+		Repo:       github.Repo{Name: "nish"},
+		ExternalID: id.String(),
+	}).Return(activities.CreateCheckRunResponse{ID: 1}, nil)
+
+	deploymentInfo := terraformWorkflow.DeploymentInfo{
+		Revision:   rev,
+		CheckRunID: 1,
+		Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
+		ID:         id,
+		Repo:       github.Repo{Name: "nish"},
+	}
+	env.ExecuteWorkflow(testWorkflow, req{
+		ID: id,
+		Last: queue.LastPoppedState{
+			Msg:    deploymentInfo,
+			Status: queue.InProgressStatus,
+		},
+	})
+	env.AssertExpectations(t)
+	assert.True(t, env.IsWorkflowCompleted())
+
+	var resp response
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+	// should not add in progress to the queue
+	assert.Empty(t, resp.Queue)
 }

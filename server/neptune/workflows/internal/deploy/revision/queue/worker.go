@@ -20,6 +20,7 @@ type queue interface {
 	CanPop() bool
 	Pop() (terraform.DeploymentInfo, error)
 	SetLockForMergedItems(ctx workflow.Context, state LockState)
+	SetLastPoppedState(state LastPoppedState)
 }
 
 type deployer interface {
@@ -195,15 +196,21 @@ func (w *Worker) deploy(ctx workflow.Context, latestDeployment *deployment.Info)
 	w.state = WorkingWorkerState
 
 	msg, err := w.Queue.Pop()
-
 	if err != nil {
 		return nil, errors.Wrap(err, "popping off queue")
 	}
+	w.Queue.SetLastPoppedState(LastPoppedState{
+		Msg:    msg,
+		Status: InProgressStatus,
+	})
+	defer w.Queue.SetLastPoppedState(LastPoppedState{
+		Msg:    msg,
+		Status: CompleteStatus,
+	})
 
 	ctx = workflow.WithValue(ctx, internalContext.SHAKey, msg.Revision)
 	ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, msg.ID)
 	return w.Deployer.Deploy(ctx, msg, latestDeployment)
-
 }
 
 func (w *Worker) GetState() WorkerState {

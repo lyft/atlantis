@@ -31,6 +31,8 @@ type Queue interface {
 	Push(terraform.DeploymentInfo)
 	GetLockState() queue.LockState
 	SetLockForMergedItems(ctx workflow.Context, state queue.LockState)
+	Contains(info terraform.DeploymentInfo) bool
+	GetLastPoppedState() queue.LastPoppedState
 }
 
 type Activities interface {
@@ -79,15 +81,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 
 	resp := n.createCheckRun(ctx, id.String(), request.Revision, root, repo)
 
-	// lock the queue on a manual deployment
-	if root.Trigger == activity.ManualTrigger {
-		n.queue.SetLockForMergedItems(ctx, queue.LockState{
-			Status:   queue.LockedStatus,
-			Revision: request.Revision,
-		})
-	}
-
-	n.queue.Push(terraform.DeploymentInfo{
+	deploymentInfo := terraform.DeploymentInfo{
 		ID:             id,
 		Root:           root,
 		Revision:       request.Revision,
@@ -95,7 +89,23 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 		Repo:           repo,
 		InitiatingUser: initiatingUser,
 		Tags:           request.Tags,
+	}
+	if root.Trigger == activity.MergeTrigger {
+		n.queue.Push(deploymentInfo)
+		return
+	}
+
+	// Do not push a duplicate/in-progress manual deployment to the queue
+	if n.queue.Contains(deploymentInfo) || n.isInProgress(deploymentInfo) {
+		//TODO: consider executing a comment activity to notify user
+		return
+	}
+	// Lock the queue on a manual deployment
+	n.queue.SetLockForMergedItems(ctx, queue.LockState{
+		Status:   queue.LockedStatus,
+		Revision: request.Revision,
 	})
+	n.queue.Push(deploymentInfo)
 }
 
 func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, root activity.Root, repo github.Repo) activities.CreateCheckRunResponse {
@@ -124,4 +134,9 @@ func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, roo
 	}
 
 	return resp
+}
+
+func (n *Receiver) isInProgress(info terraform.DeploymentInfo) bool {
+	lastPoppedDeployment := n.queue.GetLastPoppedState()
+	return info.Equal(lastPoppedDeployment.Msg) && lastPoppedDeployment.Status == queue.InProgressStatus
 }

@@ -30,6 +30,24 @@ func TestQueue(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, msg1, info)
 	})
+	t.Run("contains", func(t *testing.T) {
+		q := queue.NewQueue(nil)
+
+		msg1 := wrap("1", activity.MergeTrigger)
+		q.Push(msg1)
+		msg2 := wrap("2", activity.ManualTrigger)
+		q.Push(msg2)
+
+		assert.True(t, q.Contains(wrap("1", activity.MergeTrigger)))
+		assert.True(t, q.Contains(wrap("2", activity.ManualTrigger)))
+
+		info, err := q.Pop()
+		assert.NoError(t, err)
+		assert.Equal(t, msg2, info)
+
+		assert.True(t, q.Contains(wrap("1", activity.MergeTrigger)))
+		assert.False(t, q.Contains(wrap("2", activity.ManualTrigger)))
+	})
 	t.Run("test lock state callback", func(t *testing.T) {
 		var called bool
 		q := queue.NewQueue(func(ctx workflow.Context, d *queue.Deploy) {

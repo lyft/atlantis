@@ -51,6 +51,17 @@ func TestPriorityQueue(t *testing.T) {
 		assert.Equal(t, "4", unwrap(info))
 	})
 
+	t.Run("contains", func(t *testing.T) {
+		q := newPriorityQueue()
+
+		q.Push(wrap("1"), Low)
+		q.Push(wrap("2"), High)
+		assert.True(t, q.Contains(wrap("2"), High))
+		assert.False(t, q.Contains(wrap("2"), Low))
+		assert.True(t, q.Contains(wrap("1"), Low))
+		assert.False(t, q.Contains(wrap("5"), Low))
+	})
+
 	t.Run("pop empty queue", func(t *testing.T) {
 		q := newPriorityQueue()
 

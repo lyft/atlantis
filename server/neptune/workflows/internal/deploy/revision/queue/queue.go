@@ -21,12 +21,25 @@ const (
 	LockedStatus
 )
 
+type LastPoppedStatus int
+
+type LastPoppedState struct {
+	Msg    terraform.DeploymentInfo
+	Status LastPoppedStatus
+}
+
+const (
+	InProgressStatus LastPoppedStatus = iota
+	CompleteStatus
+)
+
 type Deploy struct {
 	queue              *priority
 	lockStatusCallback func(workflow.Context, *Deploy)
 
 	// mutable: default is unlocked
-	lock LockState
+	lock       LockState
+	lastPopped LastPoppedState
 }
 
 func NewQueue(callback func(workflow.Context, *Deploy)) *Deploy {
@@ -54,6 +67,21 @@ func (q *Deploy) Pop() (terraform.DeploymentInfo, error) {
 	return q.queue.Pop()
 }
 
+func (q *Deploy) Contains(msg terraform.DeploymentInfo) bool {
+	if msg.Root.Trigger == activity.ManualTrigger {
+		return q.queue.Contains(msg, High)
+	}
+	return q.queue.Contains(msg, Low)
+}
+
+func (q *Deploy) GetLastPoppedState() LastPoppedState {
+	return q.lastPopped
+}
+
+func (q *Deploy) SetLastPoppedState(state LastPoppedState) {
+	q.lastPopped = state
+}
+
 func (q *Deploy) GetOrderedMergedItems() []terraform.DeploymentInfo {
 	return q.queue.Scan(Low)
 }
@@ -67,7 +95,6 @@ func (q *Deploy) Push(msg terraform.DeploymentInfo) {
 		q.queue.Push(msg, High)
 		return
 	}
-
 	q.queue.Push(msg, Low)
 }
 
@@ -133,4 +160,13 @@ func (q *priority) Pop() (terraform.DeploymentInfo, error) {
 	result := q.queues[priority].Remove(q.queues[priority].Front())
 	// naughty casting
 	return result.(terraform.DeploymentInfo), nil
+}
+
+func (q *priority) Contains(msg terraform.DeploymentInfo, priority priorityType) bool {
+	for e := q.queues[priority].Front(); e != nil; e = e.Next() {
+		if msg.Equal(e.Value.(terraform.DeploymentInfo)) {
+			return true
+		}
+	}
+	return false
 }
