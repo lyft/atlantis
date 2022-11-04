@@ -1,7 +1,6 @@
 package jobs_test
 
 import (
-	"fmt"
 	"regexp"
 	"sync"
 	"testing"
@@ -187,9 +186,7 @@ func TestProjectCommandOutputHandler(t *testing.T) {
 		// read from channel
 		func() {
 			for msg := range ch {
-				fmt.Println("Reading msg:", msg)
 				if msg == "Complete" {
-					fmt.Println("Complete")
 					return
 				}
 			}
