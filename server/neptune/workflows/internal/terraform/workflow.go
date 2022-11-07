@@ -221,6 +221,20 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 func (r *Runner) Run(ctx workflow.Context) error {
 	r.MetricsHandler.Gauge(ActiveTerraformWorkflowStat).Update(1)
 	defer r.MetricsHandler.Gauge(ActiveTerraformWorkflowStat).Update(0)
+	var err error
+	defer func() {
+		reason := state.SuccessfulCompletionReason
+		if r := recover(); r != nil || err != nil {
+			reason = state.InternalServiceError
+		}
+		err = r.Store.UpdateCompletion(state.WorkflowResult{
+			Status: state.CompleteWorkflowStatus,
+			Reason: reason,
+		})
+		if err != nil {
+			logger.Warn(ctx, "error updating completion status", "err", err)
+		}
+	}()
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		ScheduleToCloseTimeout: ScheduleToCloseTimeout,
 		HeartbeatTimeout:       HeartBeatTimeout,
@@ -229,7 +243,8 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		},
 	})
 	var response *activities.GetWorkerInfoResponse
-	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
+	err = workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
+	err = fmt.Errorf("someerror")
 	if err != nil {
 		return r.toExternalError(err, "getting worker info")
 	}
@@ -243,9 +258,9 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		return r.toExternalError(err, "fetching root")
 	}
 	defer func() {
-		err := cleanup()
+		cleanupErr := cleanup()
 
-		if err != nil {
+		if cleanupErr != nil {
 			logger.Warn(ctx, "error cleaning up local root", "err", err)
 		}
 	}()
