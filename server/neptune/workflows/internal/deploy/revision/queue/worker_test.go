@@ -3,6 +3,7 @@ package queue_test
 import (
 	"container/list"
 	"fmt"
+	"go.temporal.io/sdk/client"
 	"testing"
 	"time"
 
@@ -116,8 +117,9 @@ func testWorkerWorkflow(ctx workflow.Context, r workerRequest) (workerResponse, 
 	}
 
 	worker := queue.Worker{
-		Queue:    q,
-		Deployer: deployer,
+		Queue:          q,
+		Deployer:       deployer,
+		MetricsHandler: client.MetricsNopHandler,
 	}
 
 	err := workflow.SetQueryHandler(ctx, "queue", func() (queueAndState, error) {
@@ -345,8 +347,8 @@ func TestNewWorker(t *testing.T) {
 		ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 			ScheduleToCloseTimeout: 5 * time.Second,
 		})
-		q := queue.NewQueue(noopCallback)
-		_, err := queue.NewWorker(ctx, q, &testDeployActivity{}, emptyWorkflow, "nish/repo", "root")
+		q := queue.NewQueue(noopCallback, client.MetricsNopHandler)
+		_, err := queue.NewWorker(ctx, q, client.MetricsNopHandler, &testDeployActivity{}, emptyWorkflow, "nish/repo", "root")
 		return res{
 			Lock: q.GetLockState(),
 		}, err
