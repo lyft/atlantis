@@ -41,8 +41,8 @@ const (
 
 	UnlockSignalName = "unlock"
 
-	ManualDeployWorkflowStat = "workflow.deploy.revision.manual"
-	MergeDeployWorkflowStat  = "workflow.deploy.revision.merge"
+	ManualDeployWorkflowStat = "workflow.deploy.trigger.manual"
+	MergeDeployWorkflowStat  = "workflow.deploy.trigger.merge"
 )
 
 type UnlockSignalRequest struct {
