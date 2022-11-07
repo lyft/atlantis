@@ -148,7 +148,7 @@ func (n *Receiver) isInProgress(revision string) bool {
 
 func (n *Receiver) queueContainsRevision(revision string) bool {
 	for _, deployment := range n.queue.Scan() {
-		if revision == deployment.Revision {
+		if deployment.Root.Trigger == activity.ManualTrigger && revision == deployment.Revision {
 			return true
 		}
 	}
