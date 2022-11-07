@@ -54,8 +54,8 @@ func (q *Deploy) Pop() (terraform.DeploymentInfo, error) {
 	return q.queue.Pop()
 }
 
-func (q *Deploy) Scan(priority PriorityType) []terraform.DeploymentInfo {
-	return q.queue.Scan(priority)
+func (q *Deploy) Scan() []terraform.DeploymentInfo {
+	return append(q.queue.Scan(High), q.queue.Scan(Low)...)
 }
 
 func (q *Deploy) GetOrderedMergedItems() []terraform.DeploymentInfo {
@@ -77,19 +77,19 @@ func (q *Deploy) Push(msg terraform.DeploymentInfo) {
 // priority is a simple 2 priority queue implementation
 // priority is determined before an item enters a queue and does not change
 type priority struct {
-	queues map[PriorityType]*list.List
+	queues map[priorityType]*list.List
 }
 
-type PriorityType int
+type priorityType int
 
 const (
-	Low PriorityType = iota + 1
+	Low priorityType = iota + 1
 	High
 )
 
 func newPriorityQueue() *priority {
 	return &priority{
-		queues: map[PriorityType]*list.List{
+		queues: map[priorityType]*list.List{
 			High: list.New(),
 			Low:  list.New(),
 		},
@@ -105,7 +105,7 @@ func (q *priority) IsEmpty() bool {
 	return true
 }
 
-func (q *priority) Scan(priority PriorityType) []terraform.DeploymentInfo {
+func (q *priority) Scan(priority priorityType) []terraform.DeploymentInfo {
 	var result []terraform.DeploymentInfo
 
 	for e := q.queues[priority].Front(); e != nil; e = e.Next() {
@@ -115,11 +115,11 @@ func (q *priority) Scan(priority PriorityType) []terraform.DeploymentInfo {
 	return result
 }
 
-func (q *priority) HasItemsOfPriority(priority PriorityType) bool {
+func (q *priority) HasItemsOfPriority(priority priorityType) bool {
 	return q.queues[priority].Len() != 0
 }
 
-func (q *priority) Push(msg terraform.DeploymentInfo, priority PriorityType) {
+func (q *priority) Push(msg terraform.DeploymentInfo, priority priorityType) {
 	q.queues[priority].PushBack(msg)
 }
 

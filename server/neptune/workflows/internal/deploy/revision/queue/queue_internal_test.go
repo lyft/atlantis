@@ -58,7 +58,7 @@ func TestPriorityQueue(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	priorities := []PriorityType{
+	priorities := []priorityType{
 		Low,
 		High,
 	}

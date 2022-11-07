@@ -24,7 +24,7 @@ type testQueue struct {
 	Lock  queue.LockState
 }
 
-func (q *testQueue) Scan(priority queue.PriorityType) []terraformWorkflow.DeploymentInfo {
+func (q *testQueue) Scan() []terraformWorkflow.DeploymentInfo {
 	return q.Queue
 }
 

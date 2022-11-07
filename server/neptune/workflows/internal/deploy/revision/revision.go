@@ -31,7 +31,7 @@ type Queue interface {
 	Push(terraform.DeploymentInfo)
 	GetLockState() queue.LockState
 	SetLockForMergedItems(ctx workflow.Context, state queue.LockState)
-	Scan(priority queue.PriorityType) []terraform.DeploymentInfo
+	Scan() []terraform.DeploymentInfo
 }
 
 type Worker interface {
@@ -146,7 +146,7 @@ func (n *Receiver) isInProgress(revision string) bool {
 }
 
 func (n *Receiver) queueContainsRevision(revision string) bool {
-	for _, deployment := range n.queue.Scan(queue.High) {
+	for _, deployment := range n.queue.Scan() {
 		if revision == deployment.Revision {
 			return true
 		}
