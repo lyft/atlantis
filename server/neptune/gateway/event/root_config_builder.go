@@ -57,10 +57,10 @@ func (b *RootConfigBuilder) Build(ctx context.Context, repo models.Repo, branch 
 		return nil, err
 	}
 	if len(mergedRootCfgs) == 0 {
-		b.Scope.Counter(metrics.FilterFailMetric).Inc(1)
+		b.Scope.Counter(metrics.FilterAbsentMetric).Inc(1)
 		return mergedRootCfgs, nil
 	}
-	b.Scope.Counter(metrics.FilterPassMetric)
+	b.Scope.Counter(metrics.FilterPresentMetric)
 	return mergedRootCfgs, nil
 }
 

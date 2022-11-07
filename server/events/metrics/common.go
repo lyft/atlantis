@@ -6,9 +6,9 @@ const (
 	ExecutionErrorMetric   = "execution_error"
 	ExecutionFailureMetric = "execution_failure"
 
-	FilterPassMetric  = "pass"
-	FilterFailMetric  = "fail"
-	FilterErrorMetric = "error"
+	FilterPresentMetric = "present"
+	FilterAbsentMetric  = "absent"
+	FilterErrorMetric   = "error"
 
 	RootTag = "root"
 	RepoTag = "repo"
