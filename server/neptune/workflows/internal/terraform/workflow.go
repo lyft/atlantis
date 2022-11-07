@@ -222,19 +222,25 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	r.MetricsHandler.Gauge(ActiveTerraformWorkflowStat).Update(1)
 	defer r.MetricsHandler.Gauge(ActiveTerraformWorkflowStat).Update(0)
 	var err error
+	// make sure we are updating state on completion.
 	defer func() {
 		reason := state.SuccessfulCompletionReason
 		if r := recover(); r != nil || err != nil {
 			reason = state.InternalServiceError
 		}
-		err = r.Store.UpdateCompletion(state.WorkflowResult{
+		updateErr := r.Store.UpdateCompletion(state.WorkflowResult{
 			Status: state.CompleteWorkflowStatus,
 			Reason: reason,
 		})
-		if err != nil {
+		if updateErr != nil {
 			logger.Warn(ctx, "error updating completion status", "err", err)
 		}
 	}()
+	err = r.run(ctx)
+	return err
+}
+
+func (r *Runner) run(ctx workflow.Context) error {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		ScheduleToCloseTimeout: ScheduleToCloseTimeout,
 		HeartbeatTimeout:       HeartBeatTimeout,
@@ -243,8 +249,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		},
 	})
 	var response *activities.GetWorkerInfoResponse
-	err = workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
-	err = fmt.Errorf("someerror")
+	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
 	if err != nil {
 		return r.toExternalError(err, "getting worker info")
 	}

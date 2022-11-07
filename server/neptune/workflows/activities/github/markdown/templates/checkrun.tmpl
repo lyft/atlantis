@@ -4,6 +4,8 @@
 | Apply | {{ if .ApplyStatus }}`{{.ApplyStatus}}`{{else}}N/A{{end}} |{{ if .ApplyLogURL }}[Click Here]({{.ApplyLogURL}}){{else}}N/A{{end}} |
 
 {{if .InternalError }}
-## Internal Service Error :boom:
-:point_right: This is most likely a bug, please contact service owners to debug further
+## Deployment Error :boom:
+:point_right: If a specific terraform operation has failed, check the logs (linked above) to determine if this is a terraform error or not.  If it is, you'll likely need to make some configuration fixes and try again.
+
+If the terraform operations do not indicate any failure, there is a likely a platform issue. Contact service owners for additional debugging.
 {{end}}
