@@ -197,7 +197,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 	}
 }
 
-func (w *Worker) SetCurrentDeploymentState(state CurrentDeployment) {
+func (w *Worker) setCurrentDeploymentState(state CurrentDeployment) {
 	w.currentDeployment = state
 }
 
@@ -225,11 +225,11 @@ func (w *Worker) deploy(ctx workflow.Context, latestDeployment *deployment.Info)
 	if err != nil {
 		return nil, errors.Wrap(err, "popping off queue")
 	}
-	w.SetCurrentDeploymentState(CurrentDeployment{
+	w.setCurrentDeploymentState(CurrentDeployment{
 		Deployment: msg,
 		Status:     InProgressStatus,
 	})
-	defer w.SetCurrentDeploymentState(CurrentDeployment{
+	defer w.setCurrentDeploymentState(CurrentDeployment{
 		Deployment: msg,
 		Status:     CompleteStatus,
 	})
