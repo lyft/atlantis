@@ -34,7 +34,7 @@ type Queue interface {
 	Scan() []terraform.DeploymentInfo
 }
 
-type Worker interface {
+type DeploymentStore interface {
 	GetCurrentDeploymentState() queue.CurrentDeployment
 }
 
@@ -42,7 +42,7 @@ type Activities interface {
 	CreateCheckRun(ctx context.Context, request activities.CreateCheckRunRequest) (activities.CreateCheckRunResponse, error)
 }
 
-func NewReceiver(ctx workflow.Context, queue Queue, activities Activities, generator idGenerator, worker Worker) *Receiver {
+func NewReceiver(ctx workflow.Context, queue Queue, activities Activities, generator idGenerator, worker DeploymentStore) *Receiver {
 	return &Receiver{
 		queue:       queue,
 		ctx:         ctx,
@@ -57,7 +57,7 @@ type Receiver struct {
 	ctx         workflow.Context
 	activities  Activities
 	idGenerator idGenerator
-	worker      Worker
+	worker      DeploymentStore
 }
 
 func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
