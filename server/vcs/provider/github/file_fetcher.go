@@ -20,73 +20,27 @@ type FileFetcherOptions struct {
 	PRNum int
 }
 
-func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Repo, fileFetcherOptions FileFetcherOptions, installationToken int64) ([]string, error) {
-	if fileFetcherOptions.Sha != "" {
-		return r.getModifiedFilesFromCommit(ctx, repo, fileFetcherOptions.Sha, installationToken)
+func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Repo, installationToken int64, fileFetcherOptions FileFetcherOptions) ([]string, error) {
+	client, err := r.ClientCreator.NewInstallationClient(installationToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating installation client")
 	}
-	if fileFetcherOptions.PRNum != 0 {
-		return r.getModifiedFilesFromPR(ctx, repo, fileFetcherOptions.PRNum, installationToken)
-	}
-	return nil, errors.New("unable to process FileFetcherOptions")
-}
-
-func (r *RemoteFileFetcher) getModifiedFilesFromCommit(ctx context.Context, repo models.Repo, sha string, installationToken int64) ([]string, error) {
 	var files []string
 	nextPage := 0
 	for {
-		opts := gh.ListOptions{
+		listOptions := gh.ListOptions{
 			PerPage: 300,
 		}
 		if nextPage != 0 {
-			opts.Page = nextPage
+			listOptions.Page = nextPage
 		}
-		client, err := r.ClientCreator.NewInstallationClient(installationToken)
+
+		pageFiles, resp, err := r.getModifiedFiles(ctx, client, repo, fileFetcherOptions, listOptions)
 		if err != nil {
-			return files, errors.Wrap(err, "creating installation client")
-		}
-		repositoryCommit, resp, err := client.Repositories.GetCommit(ctx, repo.Owner, repo.Name, sha, &opts)
-		if err != nil {
-			return nil, errors.Wrap(err, "error fetching repository commit")
+			return nil, errors.Wrap(err, "error fetching files")
 		}
 		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("not ok status fetching repository commit: %s", resp.Status)
-		}
-		for _, f := range repositoryCommit.Files {
-			files = append(files, f.GetFilename())
-
-			// If the file was renamed, we'll want to run plan in the directory
-			// it was moved from as well.
-			if f.GetStatus() == "renamed" {
-				files = append(files, f.GetPreviousFilename())
-			}
-		}
-		if resp.NextPage == 0 {
-			break
-		}
-		nextPage = resp.NextPage
-	}
-	return files, nil
-}
-
-// GetModifiedFilesFromPR returns the names of files that were modified in the pull request
-// relative to the repo root, e.g. parent/child/file.txt.
-func (r *RemoteFileFetcher) getModifiedFilesFromPR(ctx context.Context, repo models.Repo, pullNum int, installationToken int64) ([]string, error) {
-	var files []string
-	nextPage := 0
-	for {
-		opts := gh.ListOptions{
-			PerPage: 300,
-		}
-		if nextPage != 0 {
-			opts.Page = nextPage
-		}
-		client, err := r.ClientCreator.NewInstallationClient(installationToken)
-		if err != nil {
-			return files, errors.Wrap(err, "creating installation client")
-		}
-		pageFiles, resp, err := client.PullRequests.ListFiles(ctx, repo.Owner, repo.Name, pullNum, &opts)
-		if err != nil {
-			return files, err
+			return nil, fmt.Errorf("not ok status fetching files: %s", resp.Status)
 		}
 		for _, f := range pageFiles {
 			files = append(files, f.GetFilename())
@@ -103,4 +57,18 @@ func (r *RemoteFileFetcher) getModifiedFilesFromPR(ctx context.Context, repo mod
 		nextPage = resp.NextPage
 	}
 	return files, nil
+}
+
+func (r *RemoteFileFetcher) getModifiedFiles(ctx context.Context, client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions, listOptions gh.ListOptions) ([]*gh.CommitFile, *gh.Response, error) {
+	if fileFetcherOptions.Sha != "" {
+		repositoryCommit, resp, err := client.Repositories.GetCommit(ctx, repo.Owner, repo.Name, fileFetcherOptions.Sha, &listOptions)
+		if repositoryCommit != nil {
+			return repositoryCommit.Files, resp, err
+		}
+		return nil, nil, errors.New("unable to retrieve commit files from GH commit")
+	}
+	if fileFetcherOptions.PRNum != 0 {
+		return client.PullRequests.ListFiles(ctx, repo.Owner, repo.Name, fileFetcherOptions.PRNum, &listOptions)
+	}
+	return nil, nil, errors.New("unable to process FileFetcherOptions")
 }

@@ -146,7 +146,7 @@ type mockFileFetcher struct {
 	error error
 }
 
-func (f *mockFileFetcher) GetModifiedFiles(_ context.Context, _ models.Repo, _ github.FileFetcherOptions, _ int64) ([]string, error) {
+func (f *mockFileFetcher) GetModifiedFiles(_ context.Context, _ models.Repo, _ int64, _ github.FileFetcherOptions) ([]string, error) {
 	return nil, f.error
 }
 

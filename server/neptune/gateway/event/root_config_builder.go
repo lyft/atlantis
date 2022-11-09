@@ -25,7 +25,7 @@ type hooksRunner interface {
 
 // fileFetcher handles being able to identify and fetch the changed files per individual commit
 type fileFetcher interface {
-	GetModifiedFiles(ctx context.Context, repo models.Repo, fileFetcherOptions github.FileFetcherOptions, installationToken int64) ([]string, error)
+	GetModifiedFiles(ctx context.Context, repo models.Repo, installationToken int64, fileFetcherOptions github.FileFetcherOptions) ([]string, error)
 }
 
 // rootFinder determines which roots were modified in a given event.
@@ -80,7 +80,7 @@ func (b *RootConfigBuilder) build(ctx context.Context, repo models.Repo, branch 
 	}
 
 	// Fetch files modified in commit
-	modifiedFiles, err := b.FileFetcher.GetModifiedFiles(ctx, repo, fileFetcherOptions, installationToken)
+	modifiedFiles, err := b.FileFetcher.GetModifiedFiles(ctx, repo, installationToken, fileFetcherOptions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding modified files: %s", modifiedFiles)
 	}
