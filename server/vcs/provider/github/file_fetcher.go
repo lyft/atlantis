@@ -25,6 +25,16 @@ func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Re
 	if err != nil {
 		return nil, errors.Wrap(err, "creating installation client")
 	}
+
+	var fileFetcher func(ctx context.Context, client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions, listOptions gh.ListOptions) ([]*gh.CommitFile, *gh.Response, error)
+	if fileFetcherOptions.Sha != "" {
+		fileFetcher = GetCommit
+	} else if fileFetcherOptions.PRNum != 0 {
+		fileFetcher = ListFiles
+	} else {
+		return nil, errors.New("invalid fileFetcherOptions")
+	}
+
 	var files []string
 	nextPage := 0
 	for {
@@ -35,7 +45,7 @@ func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Re
 			listOptions.Page = nextPage
 		}
 
-		pageFiles, resp, err := r.fetchFiles(ctx, client, repo, fileFetcherOptions, listOptions)
+		pageFiles, resp, err := fileFetcher(ctx, client, repo, fileFetcherOptions, listOptions)
 		if err != nil {
 			return nil, errors.Wrap(err, "error fetching files")
 		}
@@ -59,16 +69,18 @@ func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Re
 	return files, nil
 }
 
-func (r *RemoteFileFetcher) fetchFiles(ctx context.Context, client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions, listOptions gh.ListOptions) ([]*gh.CommitFile, *gh.Response, error) {
-	if fileFetcherOptions.Sha != "" {
-		repositoryCommit, resp, err := client.Repositories.GetCommit(ctx, repo.Owner, repo.Name, fileFetcherOptions.Sha, &listOptions)
-		if repositoryCommit != nil {
-			return repositoryCommit.Files, resp, err
-		}
-		return nil, nil, errors.New("unable to retrieve commit files from GH commit")
+func GetCommit(ctx context.Context, client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions, listOptions gh.ListOptions) ([]*gh.CommitFile, *gh.Response, error) {
+	repositoryCommit, resp, err := client.Repositories.GetCommit(ctx, repo.Owner, repo.Name, fileFetcherOptions.Sha, &listOptions)
+	if repositoryCommit != nil {
+		return repositoryCommit.Files, resp, err
 	}
-	if fileFetcherOptions.PRNum != 0 {
-		return client.PullRequests.ListFiles(ctx, repo.Owner, repo.Name, fileFetcherOptions.PRNum, &listOptions)
+	return nil, nil, errors.New("unable to retrieve commit files from GH commit")
+}
+
+func ListFiles(ctx context.Context, client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions, listOptions gh.ListOptions) ([]*gh.CommitFile, *gh.Response, error) {
+	repositoryCommit, resp, err := client.Repositories.GetCommit(ctx, repo.Owner, repo.Name, fileFetcherOptions.Sha, &listOptions)
+	if repositoryCommit != nil {
+		return repositoryCommit.Files, resp, err
 	}
-	return nil, nil, errors.New("unable to process FileFetcherOptions")
+	return nil, nil, errors.New("unable to retrieve commit files from GH commit")
 }
