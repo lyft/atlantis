@@ -35,7 +35,7 @@ func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Re
 			listOptions.Page = nextPage
 		}
 
-		pageFiles, resp, err := r.getModifiedFiles(ctx, client, repo, fileFetcherOptions, listOptions)
+		pageFiles, resp, err := r.fetchFiles(ctx, client, repo, fileFetcherOptions, listOptions)
 		if err != nil {
 			return nil, errors.Wrap(err, "error fetching files")
 		}
@@ -59,7 +59,7 @@ func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Re
 	return files, nil
 }
 
-func (r *RemoteFileFetcher) getModifiedFiles(ctx context.Context, client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions, listOptions gh.ListOptions) ([]*gh.CommitFile, *gh.Response, error) {
+func (r *RemoteFileFetcher) fetchFiles(ctx context.Context, client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions, listOptions gh.ListOptions) ([]*gh.CommitFile, *gh.Response, error) {
 	if fileFetcherOptions.Sha != "" {
 		repositoryCommit, resp, err := client.Repositories.GetCommit(ctx, repo.Owner, repo.Name, fileFetcherOptions.Sha, &listOptions)
 		if repositoryCommit != nil {
