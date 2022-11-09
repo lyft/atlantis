@@ -78,9 +78,5 @@ func GetCommit(ctx context.Context, client *gh.Client, repo models.Repo, fileFet
 }
 
 func ListFiles(ctx context.Context, client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions, listOptions gh.ListOptions) ([]*gh.CommitFile, *gh.Response, error) {
-	repositoryCommit, resp, err := client.Repositories.GetCommit(ctx, repo.Owner, repo.Name, fileFetcherOptions.Sha, &listOptions)
-	if repositoryCommit != nil {
-		return repositoryCommit.Files, resp, err
-	}
-	return nil, nil, errors.New("unable to retrieve commit files from GH commit")
+	return client.PullRequests.ListFiles(ctx, repo.Owner, repo.Name, fileFetcherOptions.PRNum, &listOptions)
 }
