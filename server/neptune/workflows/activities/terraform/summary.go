@@ -18,7 +18,7 @@ type PlanSummary struct {
 }
 
 func (s PlanSummary) IsEmpty() bool {
-	return len(s.Creations) == 0 && len(s.Deletions) == 0 &&  len(s.Updates) == 0
+	return len(s.Creations) == 0 && len(s.Deletions) == 0 && len(s.Updates) == 0
 }
 
 // Generates a super simple plan summary with changes grouped by action
