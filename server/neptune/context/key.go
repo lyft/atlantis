@@ -19,7 +19,7 @@ const (
 	DeploymentIDKey   = Key("deployment-id")
 )
 
-var Keys = []Key{RequestIDKey, RepositoryKey, PullNumKey, ProjectKey, SHAKey, InstallationIDKey, DeploymentIDKey}
+var Keys = []Key{RequestIDKey, RepositoryKey, PullNumKey, ProjectKey, SHAKey, InstallationIDKey, DeploymentIDKey, Err}
 
 type KVStore interface {
 	Value(key interface{}) interface{}
