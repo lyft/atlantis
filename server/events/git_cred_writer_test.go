@@ -3,6 +3,7 @@ package events_test
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -25,7 +26,7 @@ func TestWriteGitCreds_WriteFile(t *testing.T) {
 
 	expContents := `https://user:token@hostname`
 
-	actContents, err := ioutil.ReadFile(filepath.Join(tmp, ".git-credentials"))
+	actContents, err := os.ReadFile(filepath.Join(tmp, ".git-credentials"))
 	Ok(t, err)
 	Equals(t, expContents, string(actContents))
 }
@@ -45,7 +46,7 @@ func TestWriteGitCreds_Appends(t *testing.T) {
 	Ok(t, err)
 
 	expContents := "contents\nhttps://user:token@hostname"
-	actContents, err := ioutil.ReadFile(filepath.Join(tmp, ".git-credentials"))
+	actContents, err := os.ReadFile(filepath.Join(tmp, ".git-credentials"))
 	Ok(t, err)
 	Equals(t, expContents, string(actContents))
 }
@@ -64,7 +65,7 @@ func TestWriteGitCreds_NoModification(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	err = events.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
 	Ok(t, err)
-	actContents, err := ioutil.ReadFile(filepath.Join(tmp, ".git-credentials"))
+	actContents, err := os.ReadFile(filepath.Join(tmp, ".git-credentials"))
 	Ok(t, err)
 	Equals(t, contents, string(actContents))
 }
@@ -83,7 +84,7 @@ func TestWriteGitCreds_ReplaceApp(t *testing.T) {
 	err = events.WriteGitCreds("x-access-token", "token", "github.com", tmp, logger, true)
 	Ok(t, err)
 	expContets := "line1\nhttps://x-access-token:token@github.com\nline2"
-	actContents, err := ioutil.ReadFile(filepath.Join(tmp, ".git-credentials"))
+	actContents, err := os.ReadFile(filepath.Join(tmp, ".git-credentials"))
 	Ok(t, err)
 	Equals(t, expContets, string(actContents))
 }
@@ -102,7 +103,7 @@ func TestWriteGitCreds_AppendApp(t *testing.T) {
 	err = events.WriteGitCreds("x-access-token", "token", "github.com", tmp, logger, true)
 	Ok(t, err)
 	expContets := "https://x-access-token:token@github.com"
-	actContents, err := ioutil.ReadFile(filepath.Join(tmp, ".git-credentials"))
+	actContents, err := os.ReadFile(filepath.Join(tmp, ".git-credentials"))
 	Ok(t, err)
 	Equals(t, expContets, string(actContents))
 }

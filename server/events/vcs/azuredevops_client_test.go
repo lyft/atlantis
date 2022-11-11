@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -243,10 +244,10 @@ func TestAzureDevopsClient_PullIsMergeable(t *testing.T) {
 		},
 	}
 
-	jsonPullRequestBytes, err := ioutil.ReadFile("fixtures/azuredevops-pr.json")
+	jsonPullRequestBytes, err := os.ReadFile("fixtures/azuredevops-pr.json")
 	Ok(t, err)
 
-	jsonPolicyEvaluationBytes, err := ioutil.ReadFile("fixtures/azuredevops-policyevaluations.json")
+	jsonPolicyEvaluationBytes, err := os.ReadFile("fixtures/azuredevops-policyevaluations.json")
 	Ok(t, err)
 
 	pullRequestBody := string(jsonPullRequestBytes)
@@ -347,7 +348,7 @@ func TestAzureDevopsClient_PullIsApproved(t *testing.T) {
 		},
 	}
 
-	jsBytes, err := ioutil.ReadFile("fixtures/azuredevops-pr.json")
+	jsBytes, err := os.ReadFile("fixtures/azuredevops-pr.json")
 	Ok(t, err)
 
 	json := string(jsBytes)
@@ -398,7 +399,7 @@ func TestAzureDevopsClient_PullIsApproved(t *testing.T) {
 
 func TestAzureDevopsClient_GetPullRequest(t *testing.T) {
 	// Use a real Azure DevOps json response and edit the mergeable_state field.
-	jsBytes, err := ioutil.ReadFile("fixtures/azuredevops-pr.json")
+	jsBytes, err := os.ReadFile("fixtures/azuredevops-pr.json")
 	Ok(t, err)
 	response := string(jsBytes)
 

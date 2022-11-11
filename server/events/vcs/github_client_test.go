@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -495,7 +496,7 @@ func TestGithubClient_PullIsMergeable(t *testing.T) {
 	}
 
 	// Use a real GitHub json response and edit the mergeable_state field.
-	jsBytes, err := ioutil.ReadFile("fixtures/github-pull-request.json")
+	jsBytes, err := os.ReadFile("fixtures/github-pull-request.json")
 	Ok(t, err)
 	json := string(jsBytes)
 
@@ -557,7 +558,7 @@ func TestGithubClient_PullIsMergeable(t *testing.T) {
 // TODO: move this test to the mergeability checker itself
 func TestGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 	// Use a real GitHub json response and edit the mergeable_state field.
-	jsBytes, err := ioutil.ReadFile("fixtures/github-pull-request.json")
+	jsBytes, err := os.ReadFile("fixtures/github-pull-request.json")
 	Ok(t, err)
 	json := string(jsBytes)
 

@@ -94,7 +94,7 @@ func TestRefresh(t *testing.T) {
 		_, err := env.ExecuteActivity(activity)
 		assert.NoError(t, err)
 
-		raw, err := ioutil.ReadFile(filepath.Join(dir, ".git-credentials"))
+		raw, err := os.ReadFile(filepath.Join(dir, ".git-credentials"))
 		assert.NoError(t, err)
 
 		assert.Equal(t, "https://x-access-token:70897098@github.com", string(raw))
@@ -140,7 +140,7 @@ func TestRefresh(t *testing.T) {
 		_, err = env.ExecuteActivity(activity)
 		assert.NoError(t, err)
 
-		raw, err := ioutil.ReadFile(credentialsFile)
+		raw, err := os.ReadFile(credentialsFile)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "https://x-access-token:70897098@github.com", string(raw))
@@ -201,7 +201,7 @@ func TestRefresh(t *testing.T) {
 		_, err = env.ExecuteActivity(activity)
 		assert.NoError(t, err)
 
-		raw, err := ioutil.ReadFile(credentialsFile)
+		raw, err := os.ReadFile(credentialsFile)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "https://x-access-token:70897098@github.com", string(raw))

@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -214,7 +213,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 				Token: userConfig.GithubToken,
 			}
 		} else if userConfig.GithubAppID != 0 && userConfig.GithubAppKeyFile != "" {
-			privateKey, err := ioutil.ReadFile(userConfig.GithubAppKeyFile)
+			privateKey, err := os.ReadFile(userConfig.GithubAppKeyFile)
 			if err != nil {
 				return nil, err
 			}

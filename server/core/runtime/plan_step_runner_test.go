@@ -853,7 +853,7 @@ Plan: 0 to add, 0 to change, 1 to destroy.`, output)
 			Equals(t, expRemotePlanArgs, asyncTf.CalledArgs)
 
 			// Verify that the fake plan file we write has the correct contents.
-			bytes, err := ioutil.ReadFile(filepath.Join(absProjectPath, "default.tfplan"))
+			bytes, err := os.ReadFile(filepath.Join(absProjectPath, "default.tfplan"))
 			Ok(t, err)
 			Equals(t, `Atlantis: this plan was created by remote ops
 

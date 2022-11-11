@@ -100,7 +100,7 @@ func (c *Credentials) safeReadFile(file string) (string, error) {
 	c.FileLock.RLock()
 	defer c.FileLock.RUnlock()
 
-	contents, err := ioutil.ReadFile(file)
+	contents, err := os.ReadFile(file)
 	if err != nil {
 		return "", errors.Wrap(err, "reading file")
 	}

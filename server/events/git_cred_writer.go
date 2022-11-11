@@ -67,7 +67,7 @@ func WriteGitCreds(gitUser string, gitToken string, gitHostname string, home str
 }
 
 func fileHasLine(line string, filename string) (bool, error) {
-	currContents, err := ioutil.ReadFile(filename) // nolint: gosec
+	currContents, err := os.ReadFile(filename) // nolint: gosec
 	if err != nil {
 		return false, errors.Wrapf(err, "reading %s", filename)
 	}
@@ -80,7 +80,7 @@ func fileHasLine(line string, filename string) (bool, error) {
 }
 
 func fileAppend(line string, filename string) error {
-	currContents, err := ioutil.ReadFile(filename) // nolint: gosec
+	currContents, err := os.ReadFile(filename) // nolint: gosec
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func fileAppend(line string, filename string) error {
 }
 
 func fileLineReplace(line, user, host, filename string) error {
-	currContents, err := ioutil.ReadFile(filename) // nolint: gosec
+	currContents, err := os.ReadFile(filename) // nolint: gosec
 	if err != nil {
 		return err
 	}

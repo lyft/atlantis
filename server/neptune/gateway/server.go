@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -118,7 +117,7 @@ func NewServer(config Config) (*Server, error) {
 		return nil, err
 	}
 
-	privateKey, err := ioutil.ReadFile(config.GithubAppKeyFile)
+	privateKey, err := os.ReadFile(config.GithubAppKeyFile)
 	if err != nil {
 		return nil, err
 	}

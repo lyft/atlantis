@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -48,7 +49,7 @@ func TestShowStepRunnner(t *testing.T) {
 
 		Ok(t, err)
 
-		actual, _ := ioutil.ReadFile(resultPath)
+		actual, _ := os.ReadFile(resultPath)
 
 		actualStr := string(actual)
 		Assert(t, actualStr == "success", fmt.Sprintf("expected '%s' to be success", actualStr))
@@ -75,7 +76,7 @@ func TestShowStepRunnner(t *testing.T) {
 
 		Ok(t, err)
 
-		actual, _ := ioutil.ReadFile(resultPath)
+		actual, _ := os.ReadFile(resultPath)
 
 		actualStr := string(actual)
 		Assert(t, actualStr == "success", "got expected result")

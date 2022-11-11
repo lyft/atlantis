@@ -3,6 +3,7 @@ package cloud
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -20,7 +21,7 @@ func TestGenerateRCFile_WritesFile(t *testing.T) {
 	expContents := `credentials "hostname" {
   token = "token"
 }`
-	actContents, err := ioutil.ReadFile(filepath.Join(tmp, ".terraformrc"))
+	actContents, err := os.ReadFile(filepath.Join(tmp, ".terraformrc"))
 	Ok(t, err)
 	Equals(t, expContents, string(actContents))
 }
