@@ -2,7 +2,6 @@ package cli_test
 
 import (
 	"context"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -114,7 +113,7 @@ func TestRefresh(t *testing.T) {
 		credentialsFile := filepath.Join(dir, ".git-credentials")
 		oldContents := "https://x-access-token:123456@github.com"
 
-		err := ioutil.WriteFile(credentialsFile, []byte(oldContents), os.ModePerm)
+		err := os.WriteFile(credentialsFile, []byte(oldContents), os.ModePerm)
 		assert.NoError(t, err)
 
 		capturedGitArgs := [][]string{}
@@ -161,7 +160,7 @@ func TestRefresh(t *testing.T) {
 		credentialsFile := filepath.Join(dir, ".git-credentials")
 		oldContents := "https://x-access-token:123456@github.com"
 
-		err := ioutil.WriteFile(credentialsFile, []byte(oldContents), os.ModePerm)
+		err := os.WriteFile(credentialsFile, []byte(oldContents), os.ModePerm)
 		assert.NoError(t, err)
 
 		tc := &testInstallationTransport{

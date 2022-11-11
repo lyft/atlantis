@@ -3,7 +3,6 @@ package runtime_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -419,7 +418,7 @@ func TestRun_AddsEnvVarFile(t *testing.T) {
 	err := os.MkdirAll(filepath.Join(tmpDir, "env"), 0700)
 	Ok(t, err)
 	envVarsFile := filepath.Join(tmpDir, "env/workspace.tfvars")
-	err = ioutil.WriteFile(envVarsFile, nil, 0600)
+	err = os.WriteFile(envVarsFile, nil, 0600)
 	Ok(t, err)
 
 	// Using version >= 0.10 here so we don't expect any env commands.

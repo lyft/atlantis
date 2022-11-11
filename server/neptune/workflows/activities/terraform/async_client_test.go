@@ -3,7 +3,6 @@ package terraform
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"testing"
@@ -160,8 +159,7 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 //	dir, cleanup := TempDir()
 //	defer cleanup()
 func TempDir(t *testing.T) (string, func()) {
-	tmpDir, err := ioutil.TempDir("", "")
-	assert.Nil(t, err)
+	tmpDir := t.TempDir()
 	return tmpDir, func() {
 		os.RemoveAll(tmpDir) // nolint: errcheck
 	}

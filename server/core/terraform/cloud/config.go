@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -41,7 +40,7 @@ func GenerateConfigFile(tfeToken string, tfeHostname string, home string) error 
 		return nil
 	}
 
-	if err := ioutil.WriteFile(rcFile, []byte(config), 0600); err != nil {
+	if err := os.WriteFile(rcFile, []byte(config), 0600); err != nil {
 		return errors.Wrapf(err, "writing generated %s file with TFE token to %s", rcFilename, rcFile)
 	}
 	return nil

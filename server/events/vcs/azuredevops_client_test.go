@@ -3,7 +3,7 @@ package vcs_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -70,7 +70,7 @@ func TestAzureDevopsClient_UpdateStatus(t *testing.T) {
 					case "/owner/project/_apis/git/repositories/repo/pullrequests/22/statuses?api-version=5.1-preview.1":
 						gotRequest = true
 						defer r.Body.Close() // nolint: errcheck
-						body, err := ioutil.ReadAll(r.Body)
+						body, err := io.ReadAll(r.Body)
 						Ok(t, err)
 						exp := fmt.Sprintf(partResponse, c.expState)
 						if c.supportsIterations == true {

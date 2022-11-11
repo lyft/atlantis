@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -173,7 +173,7 @@ func TestGithubClient_PaginatesComments(t *testing.T) {
 			switch r.Method + " " + r.RequestURI {
 			case "POST /api/graphql":
 				defer r.Body.Close() // nolint: errcheck
-				body, err := ioutil.ReadAll(r.Body)
+				body, err := io.ReadAll(r.Body)
 				if err != nil {
 					t.Errorf("read body error: %v", err)
 					http.Error(w, "server error", http.StatusInternalServerError)
@@ -277,7 +277,7 @@ func TestGithubClient_HideOldComments(t *testing.T) {
 					return
 				}
 				defer r.Body.Close() // nolint: errcheck
-				body, err := ioutil.ReadAll(r.Body)
+				body, err := io.ReadAll(r.Body)
 				if err != nil {
 					t.Errorf("read body error: %v", err)
 					http.Error(w, "server error", http.StatusInternalServerError)
@@ -745,7 +745,7 @@ func TestGithubClient_SplitComments(t *testing.T) {
 			switch r.Method + " " + r.RequestURI {
 			case "POST /api/v3/repos/runatlantis/atlantis/issues/1/comments":
 				defer r.Body.Close() // nolint: errcheck
-				body, err := ioutil.ReadAll(r.Body)
+				body, err := io.ReadAll(r.Body)
 				if err != nil {
 					t.Errorf("read body error: %v", err)
 					http.Error(w, "server error", http.StatusInternalServerError)

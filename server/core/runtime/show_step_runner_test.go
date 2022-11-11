@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,7 +18,7 @@ import (
 
 func TestShowStepRunnner(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
-	path, _ := ioutil.TempDir("", "")
+	path := t.TempDir()
 	resultPath := filepath.Join(path, "test-default.json")
 	envs := map[string]string{"key": "val"}
 	tfVersion, _ := version.NewVersion("0.12")

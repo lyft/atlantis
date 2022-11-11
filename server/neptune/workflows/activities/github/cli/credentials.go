@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -91,7 +90,7 @@ func (c *Credentials) safeWriteFile(file string, contents []byte, perm os.FileMo
 	defer c.FileLock.Unlock()
 
 	return errors.Wrap(
-		ioutil.WriteFile(file, contents, perm),
+		os.WriteFile(file, contents, perm),
 		"writing file",
 	)
 }

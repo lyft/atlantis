@@ -16,7 +16,7 @@ package events
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -185,7 +185,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	case command.Plan.String():
 		name = command.Plan
 		flagSet = pflag.NewFlagSet(command.Plan.String(), pflag.ContinueOnError)
-		flagSet.SetOutput(ioutil.Discard)
+		flagSet.SetOutput(io.Discard)
 		flagSet.StringVarP(&workspace, workspaceFlagLong, workspaceFlagShort, "", "Switch to this Terraform workspace before planning.")
 		flagSet.StringVarP(&dir, dirFlagLong, dirFlagShort, "", "Which directory to run plan in relative to root of repo, ex. 'child/dir'.")
 		flagSet.StringVarP(&project, projectFlagLong, projectFlagShort, "", fmt.Sprintf("Which project to run plan for. Refers to the name of the project configured in %s. Cannot be used at same time as workspace or dir flags.", config.AtlantisYAMLFilename))
@@ -193,7 +193,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	case command.Apply.String():
 		name = command.Apply
 		flagSet = pflag.NewFlagSet(command.Apply.String(), pflag.ContinueOnError)
-		flagSet.SetOutput(ioutil.Discard)
+		flagSet.SetOutput(io.Discard)
 		flagSet.StringVarP(&workspace, workspaceFlagLong, workspaceFlagShort, "", "Apply the plan for this Terraform workspace.")
 		flagSet.StringVarP(&dir, dirFlagLong, dirFlagShort, "", "Apply the plan for this directory, relative to root of repo, ex. 'child/dir'.")
 		flagSet.StringVarP(&project, projectFlagLong, projectFlagShort, "", fmt.Sprintf("Apply the plan for this project. Refers to the name of the project configured in %s. Cannot be used at same time as workspace or dir flags.", config.AtlantisYAMLFilename))
@@ -202,11 +202,11 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	case command.ApprovePolicies.String():
 		name = command.ApprovePolicies
 		flagSet = pflag.NewFlagSet(command.ApprovePolicies.String(), pflag.ContinueOnError)
-		flagSet.SetOutput(ioutil.Discard)
+		flagSet.SetOutput(io.Discard)
 	case command.Unlock.String():
 		name = command.Unlock
 		flagSet = pflag.NewFlagSet(command.Unlock.String(), pflag.ContinueOnError)
-		flagSet.SetOutput(ioutil.Discard)
+		flagSet.SetOutput(io.Discard)
 	case command.Version.String():
 		name = command.Version
 		flagSet = pflag.NewFlagSet(command.Version.String(), pflag.ContinueOnError)
