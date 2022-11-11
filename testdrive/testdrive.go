@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -213,6 +214,7 @@ tunnels:
 	colorstring.Println("=> starting atlantis server")
 	s.Start()
 	tmpDir := os.TempDir()
+	tmpDir = filepath.Join(tmpDir, "testdrive")
 	defer os.RemoveAll(tmpDir)
 	serverReadyLog := regexp.MustCompile("Atlantis started - listening on port 4141")
 	serverReadyTimeout := 5 * time.Second
