@@ -156,8 +156,9 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 
 // TempDir creates a temporary directory and returns its path along
 // with a cleanup function to be called via defer, ex:
-//   dir, cleanup := TempDir()
-//   defer cleanup()
+//
+//	dir, cleanup := TempDir()
+//	defer cleanup()
 func TempDir(t *testing.T) (string, func()) {
 	tmpDir, err := ioutil.TempDir("", "")
 	assert.Nil(t, err)

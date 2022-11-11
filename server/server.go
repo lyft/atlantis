@@ -1011,7 +1011,7 @@ func (s *Server) Start() error {
 		s.ProjectCmdOutputHandler.Handle()
 	}()
 
-	server := &http.Server{Addr: fmt.Sprintf(":%d", s.Port), Handler: n}
+	server := &http.Server{Addr: fmt.Sprintf(":%d", s.Port), Handler: n, ReadHeaderTimeout: time.Second * 10}
 	go func() {
 		s.CtxLogger.Info(fmt.Sprintf("Atlantis started - listening on port %v", s.Port))
 

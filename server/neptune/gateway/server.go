@@ -324,8 +324,9 @@ func NewServer(config Config) (*Server, error) {
 
 	s := httpInternal.ServerProxy{
 		Server: &http.Server{
-			Addr:    fmt.Sprintf(":%d", config.Port),
-			Handler: n,
+			Addr:              fmt.Sprintf(":%d", config.Port),
+			Handler:           n,
+			ReadHeaderTimeout: time.Second * 10,
 		},
 		SSLCertFile: config.SSLCertFile,
 		SSLKeyFile:  config.SSLKeyFile,

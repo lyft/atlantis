@@ -97,11 +97,11 @@ type CommentParseResult struct {
 // Parse parses the comment as an Atlantis command.
 //
 // Valid commands contain:
-// - The initial "executable" name, 'run' or 'atlantis' or '@GithubUser'
-//   where GithubUser is the API user Atlantis is running as.
-// - Then a cmd, either 'plan', 'apply', 'approve_policies', or 'help'.
-// - Then optional flags, then an optional separator '--' followed by optional
-//   extra flags to be appended to the terraform plan/apply command.
+//   - The initial "executable" name, 'run' or 'atlantis' or '@GithubUser'
+//     where GithubUser is the API user Atlantis is running as.
+//   - Then a cmd, either 'plan', 'apply', 'approve_policies', or 'help'.
+//   - Then optional flags, then an optional separator '--' followed by optional
+//     extra flags to be appended to the terraform plan/apply command.
 //
 // Examples:
 // - atlantis help
@@ -110,7 +110,6 @@ type CommentParseResult struct {
 // - atlantis plan -w staging -d dir
 // - atlantis plan -- -key=value -key2 value2
 // - atlantis approve_policies
-//
 func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) CommentParseResult {
 	if multiLineRegex.MatchString(comment) {
 		return CommentParseResult{Ignore: true}
