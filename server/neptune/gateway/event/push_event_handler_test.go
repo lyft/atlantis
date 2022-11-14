@@ -367,6 +367,6 @@ type mockRootConfigBuilder struct {
 	error       error
 }
 
-func (r *mockRootConfigBuilder) Build(_ context.Context, _ models.Repo, _ string, _ string, _ github.FileFetcherOptions, _ int64) ([]*valid.MergedProjectCfg, error) {
+func (r *mockRootConfigBuilder) Build(_ context.Context, _ models.Repo, _ string, _ string, _ int64, _ github.RepoFetcherOptions, _ github.FileFetcherOptions) ([]*valid.MergedProjectCfg, error) {
 	return r.rootConfigs, r.error
 }

@@ -51,8 +51,8 @@ type RootConfigBuilder struct {
 	Scope           tally.Scope
 }
 
-func (b *RootConfigBuilder) Build(ctx context.Context, repo models.Repo, branch string, sha string, fileFetcherOptions github.FileFetcherOptions, installationToken int64) ([]*valid.MergedProjectCfg, error) {
-	mergedRootCfgs, err := b.build(ctx, repo, branch, sha, fileFetcherOptions, installationToken)
+func (b *RootConfigBuilder) Build(ctx context.Context, repo models.Repo, branch string, sha string, installationToken int64, repoFetcherOptions github.RepoFetcherOptions, fileFetcherOptions github.FileFetcherOptions) ([]*valid.MergedProjectCfg, error) {
+	mergedRootCfgs, err := b.build(ctx, repo, branch, sha, installationToken, repoFetcherOptions, fileFetcherOptions)
 	if err != nil {
 		b.Scope.Counter(metrics.FilterErrorMetric).Inc(1)
 		return nil, err
@@ -65,12 +65,8 @@ func (b *RootConfigBuilder) Build(ctx context.Context, repo models.Repo, branch 
 	return mergedRootCfgs, nil
 }
 
-func (b *RootConfigBuilder) build(ctx context.Context, repo models.Repo, branch string, sha string, fileFetcherOptions github.FileFetcherOptions, installationToken int64) ([]*valid.MergedProjectCfg, error) {
+func (b *RootConfigBuilder) build(ctx context.Context, repo models.Repo, branch string, sha string, installationToken int64, repoFetcherOptions github.RepoFetcherOptions, fileFetcherOptions github.FileFetcherOptions) ([]*valid.MergedProjectCfg, error) {
 	// Generate a new filepath location and clone repo into it
-	// TODO: consider supporting shallow cloning for comment based events too
-	repoFetcherOptions := github.RepoFetcherOptions{
-		ShallowClone: fileFetcherOptions.Sha != "",
-	}
 	repoDir, cleanup, err := b.RepoFetcher.Fetch(ctx, repo, branch, sha, repoFetcherOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("creating temporary clone at path: %s", repoDir))
