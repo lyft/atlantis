@@ -66,7 +66,7 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 	// Fetch default branch into clone directory
 	cloneCmd := []string{"git", "clone", "--branch", branch, "--single-branch", repo.CloneURL, destinationPath}
 	if shallowClone {
-		cloneCmd = []string{"git", "clone", "--branch", branch, "--depth=1", "--single-branch", repo.CloneURL, destinationPath}
+		cloneCmd = append(cloneCmd, "--depth=1")
 	}
 	_, err := g.run(cloneCmd, destinationPath)
 	if err != nil {
