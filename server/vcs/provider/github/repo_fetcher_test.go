@@ -51,7 +51,8 @@ func TestFetchSimple(t *testing.T) {
 		GithubCredentials: &testTokenGetter{},
 	}
 	repo := newBaseRepo(repoDir)
-	destinationPath, _, err := fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha2, false)
+	options := github.RepoFetcherOptions{ShallowClone: false}
+	destinationPath, _, err := fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha2, options)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -87,7 +88,8 @@ func TestFetchSimple_Shallow(t *testing.T) {
 		GithubCredentials: &testTokenGetter{},
 	}
 	repo := newBaseRepo(repoDir)
-	destinationPath, _, err := fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha2, true)
+	options := github.RepoFetcherOptions{ShallowClone: true}
+	destinationPath, _, err := fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha2, options)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -126,7 +128,8 @@ func TestFetchCheckout(t *testing.T) {
 		GithubCredentials: &testTokenGetter{},
 	}
 	repo := newBaseRepo(repoDir)
-	destinationPath, _, err := fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha1, false)
+	options := github.RepoFetcherOptions{ShallowClone: false}
+	destinationPath, _, err := fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha1, options)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -158,7 +161,8 @@ func TestFetchNonDefaultBranch(t *testing.T) {
 		GithubCredentials: &testTokenGetter{},
 	}
 	repo := newBaseRepo(repoDir)
-	destinationPath, _, err := fetcher.Fetch(context.Background(), repo, "test-branch", sha, false)
+	options := github.RepoFetcherOptions{ShallowClone: false}
+	destinationPath, _, err := fetcher.Fetch(context.Background(), repo, "test-branch", sha, options)
 	assert.NoError(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -187,7 +191,8 @@ func TestFetchSimpleFailure(t *testing.T) {
 	}
 	repo := newBaseRepo(repoDir)
 	repo.DefaultBranch = "invalid-branch"
-	_, _, err = fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha, false)
+	options := github.RepoFetcherOptions{ShallowClone: false}
+	_, _, err = fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha, options)
 	assert.Error(t, err)
 }
 
@@ -216,7 +221,8 @@ func TestFetchCheckoutFailure(t *testing.T) {
 		GithubCredentials: &testTokenGetter{},
 	}
 	repo := newBaseRepo(repoDir)
-	_, _, err = fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, "invalidsha", false)
+	options := github.RepoFetcherOptions{ShallowClone: false}
+	_, _, err = fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, "invalidsha", options)
 	assert.Error(t, err)
 }
 
@@ -243,7 +249,8 @@ func TestFetchNonDefaultBranchFailure(t *testing.T) {
 		GithubCredentials: &testTokenGetter{},
 	}
 	repo := newBaseRepo(repoDir)
-	_, _, err = fetcher.Fetch(context.Background(), repo, "invalid-branch", sha, false)
+	options := github.RepoFetcherOptions{ShallowClone: false}
+	_, _, err = fetcher.Fetch(context.Background(), repo, "invalid-branch", sha, options)
 	assert.Error(t, err)
 }
 
@@ -268,7 +275,8 @@ func TestFetch_ErrorGettingGHToken(t *testing.T) {
 		},
 	}
 	repo := newBaseRepo(repoDir)
-	_, _, err = fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha, false)
+	options := github.RepoFetcherOptions{ShallowClone: false}
+	_, _, err = fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha, options)
 	assert.ErrorContains(t, err, "error")
 }
 
