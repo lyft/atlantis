@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.temporal.io/sdk/client"
 	"net/url"
 	"testing"
 	"time"
+
+	"go.temporal.io/sdk/client"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
@@ -101,6 +102,7 @@ func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRo
 type request struct {
 	// bool since our errors are not serializable using json
 	ShouldErrorDuringJobUpdate bool
+	InitiatingUser             github.User
 }
 
 type response struct {
@@ -126,9 +128,10 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 	var s []state.Workflow
 
 	runnerReq := terraform.Request{
-		Root:         testLocalRoot.Root,
-		Repo:         testGithubRepo,
-		DeploymentID: testDeploymentID,
+		Root:           testLocalRoot.Root,
+		Repo:           testGithubRepo,
+		DeploymentID:   testDeploymentID,
+		InitiatingUser: req.InitiatingUser,
 	}
 
 	subject := &terraform.Runner{
@@ -216,132 +219,161 @@ func copy(s *state.Workflow) state.Workflow {
 }
 
 func TestSuccess(t *testing.T) {
-	var suite testsuite.WorkflowTestSuite
-	env := suite.NewTestWorkflowEnvironment()
-	ga := &githubActivities{}
-	ta := &terraformActivities{}
-	env.RegisterActivity(ga)
-	env.RegisterActivity(ta)
+	cases := []struct {
+		Description    string
+		InitiatingUser string
+		AutoDeploy     bool
+	}{
+		{
+			Description:    "Auto deploy refactorator bots",
+			InitiatingUser: "lyft-refactorator-1",
+			AutoDeploy:     true,
+		},
+		{
+			Description:    "Wait for user approval if initiating user is not a refactorator bot",
+			InitiatingUser: "test-user",
+			AutoDeploy:     false,
+		},
+	}
 
-	outputURL, err := url.Parse("www.test.com/jobs/1235")
-	assert.NoError(t, err)
+	for _, c := range cases {
+		t.Run(c.Description, func(t *testing.T) {
 
-	// set activity expectations
-	env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
-		Repo:         testGithubRepo,
-		Root:         testLocalRoot.Root,
-		DeploymentID: testDeploymentID,
-	}).Return(activities.FetchRootResponse{
-		LocalRoot:       testLocalRoot,
-		DeployDirectory: DeployDir,
-	}, nil)
-	env.OnActivity(ta.Cleanup, mock.Anything, activities.CleanupRequest{
-		DeployDirectory: DeployDir,
-	}).Return(activities.CleanupResponse{}, nil)
+			var suite testsuite.WorkflowTestSuite
+			env := suite.NewTestWorkflowEnvironment()
+			ga := &githubActivities{}
+			ta := &terraformActivities{}
+			env.RegisterActivity(ga)
+			env.RegisterActivity(ta)
 
-	// send approval of plan
-	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("planreview", terraform.PlanReviewSignalRequest{
-			Status: terraform.Approved,
+			outputURL, err := url.Parse("www.test.com/jobs/1235")
+			assert.NoError(t, err)
+
+			// set activity expectations
+			env.OnActivity(ga.FetchRoot, mock.Anything, activities.FetchRootRequest{
+				Repo:         testGithubRepo,
+				Root:         testLocalRoot.Root,
+				DeploymentID: testDeploymentID,
+			}).Return(activities.FetchRootResponse{
+				LocalRoot:       testLocalRoot,
+				DeployDirectory: DeployDir,
+			}, nil)
+			env.OnActivity(ta.Cleanup, mock.Anything, activities.CleanupRequest{
+				DeployDirectory: DeployDir,
+			}).Return(activities.CleanupResponse{}, nil)
+
+			// send approval of plan if not a refactorator bot
+			if !c.AutoDeploy {
+				env.RegisterDelayedCallback(func() {
+					env.SignalWorkflow("planreview", terraform.PlanReviewSignalRequest{
+						Status: terraform.Approved,
+					})
+				}, 5*time.Second)
+			}
+
+			// execute workflow
+			env.ExecuteWorkflow(testTerraformWorkflow, request{
+				InitiatingUser: github.User{
+					Username: c.InitiatingUser,
+				},
+			})
+			assert.True(t, env.IsWorkflowCompleted())
+
+			var resp response
+			err = env.GetWorkflowResult(&resp)
+			assert.NoError(t, err)
+
+			// assert results are expected
+			env.AssertExpectations(t)
+			assert.Equal(t, []state.Workflow{
+				{
+					Plan: &state.Job{
+						Status: state.WaitingJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+				},
+				{
+					Plan: &state.Job{
+						Status: state.InProgressJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+				},
+				{
+					Plan: &state.Job{
+						Status: state.SuccessJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+				},
+				{
+					Plan: &state.Job{
+						Status: state.SuccessJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+					Apply: &state.Job{
+						Status: state.WaitingJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+				},
+				{
+					Plan: &state.Job{
+						Status: state.SuccessJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+					Apply: &state.Job{
+						Status: state.InProgressJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+				},
+				{
+					Plan: &state.Job{
+						Status: state.SuccessJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+					Apply: &state.Job{
+						Status: state.SuccessJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+				},
+				{
+					Plan: &state.Job{
+						Status: state.SuccessJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+					Apply: &state.Job{
+						Status: state.SuccessJobStatus,
+						Output: &state.JobOutput{
+							URL: outputURL,
+						},
+					},
+					Result: state.WorkflowResult{
+						Reason: state.SuccessfulCompletionReason,
+						Status: state.CompleteWorkflowStatus,
+					},
+				},
+			}, resp.States)
 		})
-	}, 5*time.Second)
+	}
 
-	// execute workflow
-	env.ExecuteWorkflow(testTerraformWorkflow, request{})
-	assert.True(t, env.IsWorkflowCompleted())
-
-	var resp response
-	err = env.GetWorkflowResult(&resp)
-	assert.NoError(t, err)
-
-	// assert results are expected
-	env.AssertExpectations(t)
-	assert.Equal(t, []state.Workflow{
-		{
-			Plan: &state.Job{
-				Status: state.WaitingJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-		},
-		{
-			Plan: &state.Job{
-				Status: state.InProgressJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-		},
-		{
-			Plan: &state.Job{
-				Status: state.SuccessJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-		},
-		{
-			Plan: &state.Job{
-				Status: state.SuccessJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-			Apply: &state.Job{
-				Status: state.WaitingJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-		},
-		{
-			Plan: &state.Job{
-				Status: state.SuccessJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-			Apply: &state.Job{
-				Status: state.InProgressJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-		},
-		{
-			Plan: &state.Job{
-				Status: state.SuccessJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-			Apply: &state.Job{
-				Status: state.SuccessJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-		},
-		{
-			Plan: &state.Job{
-				Status: state.SuccessJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-			Apply: &state.Job{
-				Status: state.SuccessJobStatus,
-				Output: &state.JobOutput{
-					URL: outputURL,
-				},
-			},
-			Result: state.WorkflowResult{
-				Reason: state.SuccessfulCompletionReason,
-				Status: state.CompleteWorkflowStatus,
-			},
-		},
-	}, resp.States)
 }
 
 func TestUpdateJobError(t *testing.T) {

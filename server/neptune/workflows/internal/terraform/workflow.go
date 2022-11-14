@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
@@ -47,6 +48,13 @@ const (
 	Approved PlanStatus = iota
 	Rejected
 )
+
+// Copied from refactorator: https://github.com/lyft/refactorator/blob/6ee892217b5068d5212c6ed585620c5130960569/refactorator/github.py#L55-L58
+var refactoratorBots = []string{
+	"lyft-refactorator-1",
+	"lyft-refactorator-2",
+	"lyft-refactorator-3",
+}
 
 const (
 	PlanReviewSignalName   = "planreview"
@@ -184,7 +192,11 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 		return errors.Wrap(err, "initializing job")
 	}
 
-	planStatus := r.waitForPlanReview(ctx, root)
+	// auto deploy requests from refactorator bots
+	planStatus := Approved
+	if !isRefactoratorBot(r.Request.InitiatingUser) {
+		planStatus = r.waitForPlanReview(ctx, root)
+	}
 
 	if planStatus == Rejected {
 		if err := r.Store.UpdateApplyJobWithStatus(state.RejectedJobStatus); err != nil {
@@ -343,4 +355,13 @@ func (r *Runner) toExternalError(err error, msg string) error {
 	}
 
 	return errors.Wrap(err, msg)
+}
+
+func isRefactoratorBot(user github.User) bool {
+	for _, bot := range refactoratorBots {
+		if user.Username == bot {
+			return true
+		}
+	}
+	return false
 }

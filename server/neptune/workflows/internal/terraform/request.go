@@ -9,10 +9,11 @@ import (
 )
 
 type Request struct {
-	Root         terraform.Root
-	Repo         github.Repo
-	DeploymentID string
-	Revision     string
+	Root           terraform.Root
+	Repo           github.Repo
+	InitiatingUser github.User
+	DeploymentID   string
+	Revision       string
 }
 
 const (
