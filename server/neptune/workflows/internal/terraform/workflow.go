@@ -265,11 +265,7 @@ func (r *Runner) run(ctx workflow.Context) error {
 		return r.toExternalError(err, "fetching root")
 	}
 	defer func() {
-		cleanupErr := cleanup()
-
-		if cleanupErr != nil {
-			logger.Warn(ctx, "error cleaning up local root", key.ErrKey, cleanupErr)
-		}
+		r.executeCleanup(ctx, cleanup)
 	}()
 
 	planResponse, err := r.Plan(ctx, root, response.ServerURL)
@@ -282,6 +278,24 @@ func (r *Runner) run(ctx workflow.Context) error {
 	}
 	r.MetricsHandler.Counter(SuccessTerraformWorkflowStat).Inc(1)
 	return nil
+}
+
+func (r *Runner) executeCleanup(ctx workflow.Context, handlers ...func(workflow.Context) error) {
+	// create a new disconnected ctx since we want this run even in the event of
+	// cancellation
+	if temporal.IsCanceledError(ctx.Err()) {
+		var cancel workflow.CancelFunc
+		ctx, cancel = workflow.NewDisconnectedContext(ctx)
+		defer cancel()
+	}
+
+	for _, h := range handlers {
+		cleanupErr := h(ctx)
+
+		if cleanupErr != nil {
+			logger.Warn(ctx, "error cleaning up local root", key.ErrKey, cleanupErr)
+		}
+	}
 }
 
 type ApplicationError struct {
