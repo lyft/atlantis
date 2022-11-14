@@ -195,17 +195,18 @@ func (r *JobRunner) runOptionalSteps(ctx *ExecutionContext, localRoot *terraform
 	return nil
 }
 
-func (r *JobRunner) closeTerraformJob(ctx *ExecutionContext) {
+func (r *JobRunner) closeTerraformJob(executionCtx *ExecutionContext) {
 	// create a new disconnected ctx since we want this run even in the event of
 	// cancellation
-	if temporal.IsCanceledError(ctx.Err()) {
+	ctx := executionCtx.Context
+	if temporal.IsCanceledError(executionCtx.Context.Err()) {
 		var cancel workflow.CancelFunc
-		ctx, cancel = workflow.NewDisconnectedContext(ctx)
+		ctx, cancel = workflow.NewDisconnectedContext(executionCtx.Context)
 		defer cancel()
 	}
 
 	err := workflow.ExecuteActivity(ctx, r.Activity.CloseJob, activities.CloseJobRequest{
-		JobID: ctx.JobID,
+		JobID: executionCtx.JobID,
 	}).Get(ctx, nil)
 
 	if err != nil {

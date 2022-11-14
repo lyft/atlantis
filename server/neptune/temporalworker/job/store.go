@@ -111,12 +111,6 @@ func (m *InMemoryStore) Close(ctx context.Context, jobID string, status JobStatu
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	// Job is only added to the in memory store when it is streamed throught the  log streaming UI,
-	// so no need to cleanup if not in memory
-	if m.jobs[jobID] == nil {
-		return nil
-	}
-
 	// Error when job is already set to complete
 	if job := m.jobs[jobID]; job.Status == Complete {
 		return fmt.Errorf("job: %s is already complete", jobID)
@@ -172,6 +166,12 @@ func (s StorageBackendJobStore) Write(ctx context.Context, jobID string, output 
 
 // Activity context since it's called from within an activity
 func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status JobStatus) error {
+	// Since we close the job in a different activity than when it's created, it is possible that we try closing a non existent job
+	// after the worker has been restarted. So, instead of hard failing, let's return since we close all jobs in progress during shutdown
+	if job, err := s.InMemoryStore.Get(ctx, jobID); job == nil && err == nil {
+		return nil
+	}
+
 	if err := s.InMemoryStore.Close(ctx, jobID, status); err != nil {
 		return err
 	}
