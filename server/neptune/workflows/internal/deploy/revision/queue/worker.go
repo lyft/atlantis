@@ -37,7 +37,6 @@ type workerActivities interface {
 type WorkerState string
 
 const (
-	IdlWorkerState      WorkerState = "idle"
 	WaitingWorkerState  WorkerState = "waiting"
 	WorkingWorkerState  WorkerState = "working"
 	CompleteWorkerState WorkerState = "complete"
