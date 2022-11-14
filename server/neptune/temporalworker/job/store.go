@@ -111,9 +111,10 @@ func (m *InMemoryStore) Close(ctx context.Context, jobID string, status JobStatu
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	// Error out when job dne
+	// Job is only added to the in memory store when it is streamed throught the  log streaming UI,
+	// so no need to cleanup if not in memory
 	if m.jobs[jobID] == nil {
-		return fmt.Errorf("job: %s does not exist", jobID)
+		return nil
 	}
 
 	// Error when job is already set to complete

@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/pkg/errors"
@@ -9,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	logger "github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -56,6 +58,7 @@ func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, j
 		TfVersion: localRoot.Root.TfVersion,
 		JobID:     jobID,
 	}
+
 	defer r.closeTerraformJob(jobCtx)
 
 	var resp activities.TerraformPlanResponse
@@ -193,6 +196,14 @@ func (r *JobRunner) runOptionalSteps(ctx *ExecutionContext, localRoot *terraform
 }
 
 func (r *JobRunner) closeTerraformJob(ctx *ExecutionContext) {
+	// create a new disconnected ctx since we want this run even in the event of
+	// cancellation
+	if temporal.IsCanceledError(ctx.Err()) {
+		var cancel workflow.CancelFunc
+		ctx, cancel = workflow.NewDisconnectedContext(ctx)
+		defer cancel()
+	}
+
 	err := workflow.ExecuteActivity(ctx, r.Activity.CloseJob, activities.CloseJobRequest{
 		JobID: ctx.JobID,
 	}).Get(ctx, nil)
