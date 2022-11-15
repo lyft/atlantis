@@ -102,13 +102,12 @@ func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *htt
 
 func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment) error {
 	// TODO: consider supporting shallow cloning for comment based events too
-	repoFetcherOptions := github.RepoFetcherOptions{
-		ShallowClone: false,
+	builderOptions := BuilderOptions{
+		FileFetcherOptions: github.FileFetcherOptions{
+			PRNum: event.PullNum,
+		},
 	}
-	fileFetcherOptions := github.FileFetcherOptions{
-		PRNum: event.PullNum,
-	}
-	rootCfgs, err := p.rootConfigBuilder.Build(ctx, event.HeadRepo, event.Pull.HeadBranch, event.Pull.HeadCommit, event.InstallationToken, repoFetcherOptions, fileFetcherOptions)
+	rootCfgs, err := p.rootConfigBuilder.Build(ctx, event.HeadRepo, event.Pull.HeadBranch, event.Pull.HeadCommit, event.InstallationToken, builderOptions)
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
 	}

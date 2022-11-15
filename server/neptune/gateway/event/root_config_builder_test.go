@@ -58,7 +58,11 @@ func TestRootConfigBuilder_Success(t *testing.T) {
 	}
 	repoOptions := github.RepoFetcherOptions{ShallowClone: true}
 	fileOptions := github.FileFetcherOptions{Sha: pushEvent.Sha}
-	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, repoOptions, fileOptions)
+	builderOptions := event.BuilderOptions{
+		RepoFetcherOptions: repoOptions,
+		FileFetcherOptions: fileOptions,
+	}
+	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, builderOptions)
 	assert.NoError(t, err)
 	assert.Equal(t, expProjectConfigs, projectConfigs)
 }
@@ -71,7 +75,11 @@ func TestRootConfigBuilder_DetermineRootsError(t *testing.T) {
 	rcb.RootFinder = mockRootFinder
 	repoOptions := github.RepoFetcherOptions{ShallowClone: true}
 	fileOptions := github.FileFetcherOptions{Sha: pushEvent.Sha}
-	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, repoOptions, fileOptions)
+	builderOptions := event.BuilderOptions{
+		RepoFetcherOptions: repoOptions,
+		FileFetcherOptions: fileOptions,
+	}
+	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, builderOptions)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
 
@@ -85,7 +93,11 @@ func TestRootConfigBuilder_ParserValidatorParseError(t *testing.T) {
 	rcb.ParserValidator = mockParserValidator
 	repoOptions := github.RepoFetcherOptions{ShallowClone: true}
 	fileOptions := github.FileFetcherOptions{Sha: pushEvent.Sha}
-	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, repoOptions, fileOptions)
+	builderOptions := event.BuilderOptions{
+		RepoFetcherOptions: repoOptions,
+		FileFetcherOptions: fileOptions,
+	}
+	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, builderOptions)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
 
@@ -98,7 +110,11 @@ func TestRootConfigBuilder_GetModifiedFilesError(t *testing.T) {
 	}
 	repoOptions := github.RepoFetcherOptions{ShallowClone: true}
 	fileOptions := github.FileFetcherOptions{Sha: pushEvent.Sha}
-	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, repoOptions, fileOptions)
+	builderOptions := event.BuilderOptions{
+		RepoFetcherOptions: repoOptions,
+		FileFetcherOptions: fileOptions,
+	}
+	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, builderOptions)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
 }
@@ -110,7 +126,11 @@ func TestRootConfigBuilder_CloneError(t *testing.T) {
 	}
 	repoOptions := github.RepoFetcherOptions{ShallowClone: true}
 	fileOptions := github.FileFetcherOptions{Sha: pushEvent.Sha}
-	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, repoOptions, fileOptions)
+	builderOptions := event.BuilderOptions{
+		RepoFetcherOptions: repoOptions,
+		FileFetcherOptions: fileOptions,
+	}
+	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, builderOptions)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
 
@@ -124,7 +144,11 @@ func TestRootConfigBuilder_HooksRunnerError(t *testing.T) {
 	rcb.HooksRunner = mockHooksRunner
 	repoOptions := github.RepoFetcherOptions{ShallowClone: true}
 	fileOptions := github.FileFetcherOptions{Sha: pushEvent.Sha}
-	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, repoOptions, fileOptions)
+	builderOptions := event.BuilderOptions{
+		RepoFetcherOptions: repoOptions,
+		FileFetcherOptions: fileOptions,
+	}
+	projectConfigs, err := rcb.Build(context.Background(), pushEvent.Repo, pushEvent.Repo.DefaultBranch, pushEvent.Sha, pushEvent.InstallationToken, builderOptions)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
 
