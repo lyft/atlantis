@@ -90,7 +90,6 @@ func (a *terraformActivities) GetWorkerInfo(ctx context.Context) (*activities.Ge
 
 type jobRunner struct {
 	expectedError error
-	planSummary   terraformModel.PlanSummary
 }
 
 func (r *jobRunner) Apply(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, planFile string) error {
@@ -99,7 +98,13 @@ func (r *jobRunner) Apply(ctx workflow.Context, localRoot *terraformModel.LocalR
 
 func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string) (activities.TerraformPlanResponse, error) {
 	return activities.TerraformPlanResponse{
-		Summary: r.planSummary,
+		Summary: terraformModel.PlanSummary{
+			Updates: []terraformModel.ResourceSummary{
+				{
+					Address: "addr",
+				},
+			},
+		},
 	}, r.expectedError
 }
 
