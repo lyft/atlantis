@@ -106,6 +106,7 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, a, sideeffect.GenerateUUID, worker)
 
 	return &Runner{
+		Queue:                    revisionQueue,
 		Timeout:                  RevisionReceiveTimeout,
 		QueueWorker:              worker,
 		RevisionReceiver:         revisionReceiver,

@@ -18,9 +18,7 @@ import (
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 )
 
-type testBlockingDeployer struct {
-	expectedDeploymentInfo *deployment.Info
-}
+type testBlockingDeployer struct{}
 
 func (d *testBlockingDeployer) Deploy(ctx workflow.Context, requestedDeployment internalTerraform.DeploymentInfo, latestDeployment *deployment.Info) (*deployment.Info, error) {
 	ch := workflow.GetSignalChannel(ctx, "unblock-deploy")
@@ -122,13 +120,13 @@ func TestWorker_StartsWithEmptyQueue(t *testing.T) {
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("add-to-queue", internalTerraform.DeploymentInfo{
 			Revision: "1234",
-			ID: uuid.New(),
+			ID:       uuid.New(),
 			Root: terraform.Root{
-				Name: "some-name",
+				Name:    "some-name",
 				Trigger: terraform.MergeTrigger,
 			},
 			Repo: github.Repo{
-				Name: "some-name",
+				Name:  "some-name",
 				Owner: "some-owner",
 			},
 		})
@@ -205,13 +203,13 @@ func TestWorkerState_transitions(t *testing.T) {
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("add-to-queue", internalTerraform.DeploymentInfo{
 			Revision: "1234",
-			ID: uuid.New(),
+			ID:       uuid.New(),
 			Root: terraform.Root{
-				Name: "some-name",
+				Name:    "some-name",
 				Trigger: terraform.MergeTrigger,
 			},
 			Repo: github.Repo{
-				Name: "some-name",
+				Name:  "some-name",
 				Owner: "some-owner",
 			},
 		})
