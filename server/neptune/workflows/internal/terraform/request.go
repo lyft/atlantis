@@ -16,8 +16,8 @@ type Request struct {
 }
 
 const (
-	PlanRejectedErrorType    = "PlanRejectedError"
-	UpdateJobErrorType       = "UpdateJobError"
+	PlanRejectedErrorType = "PlanRejectedError"
+	UpdateJobErrorType    = "UpdateJobError"
 )
 
 type ExternalError struct {
