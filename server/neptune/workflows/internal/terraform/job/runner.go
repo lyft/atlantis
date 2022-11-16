@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/pkg/errors"
@@ -9,7 +10,13 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	logger "github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
+)
+
+const (
+	TimeoutErrorType         = "TimeoutError"
+	TerraformClientErrorType = "TerraformClientError"
 )
 
 // ExecutionContext wraps the workflow context with other info needed to execute a step
@@ -48,6 +55,9 @@ func NewRunner(runStepRunner stepRunner, envStepRunner stepRunner, tfActivities 
 }
 
 func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string) (activities.TerraformPlanResponse, error) {
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		NonRetryableErrorTypes: []string{TerraformClientErrorType},
+	})
 	// Execution ctx for a job that handles setting up the env vars from the previous steps
 	jobCtx := &ExecutionContext{
 		Context:   ctx,
@@ -83,6 +93,9 @@ func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, j
 }
 
 func (r *JobRunner) Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, planFile string) error {
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		NonRetryableErrorTypes: []string{TerraformClientErrorType, TimeoutErrorType},
+	})
 	// Execution ctx for a job that handles setting up the env vars from the previous steps
 	jobCtx := &ExecutionContext{
 		Context:   ctx,
