@@ -172,19 +172,19 @@ func (s StorageBackendJobStore) Write(ctx context.Context, jobID string, output 
 
 // Activity context since it's called from within an activity
 func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status JobStatus) error {
-	// Since we close the job in a different activity than when it's created, it is possible that we try closing a non existent job
-	// after the worker has been restarted. So, instead of hard failing, let's return since we close all jobs in progress during shutdown
-	if job, err := s.InMemoryStore.Get(ctx, jobID); job == nil && err == nil {
-		return nil
-	}
-
 	if err := s.InMemoryStore.Close(ctx, jobID, status); err != nil {
 		return err
 	}
 
 	job, err := s.InMemoryStore.Get(ctx, jobID)
-	if err != nil || job == nil {
+	if err != nil {
 		return errors.Wrapf(err, "retrieving job: %s from memory store", jobID)
+	}
+
+	// Since we close the job in a different activity than when it's created, it is possible that we try closing a non existent job
+	// after the worker has been restarted. So, instead of hard failing, let's return since we close all in progress jobs  during shutdown
+	if job == nil {
+		return nil
 	}
 
 	ok, err := s.storageBackend.Write(ctx, jobID, job.Output)
