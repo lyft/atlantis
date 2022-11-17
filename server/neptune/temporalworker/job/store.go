@@ -82,7 +82,7 @@ func (m *InMemoryStore) Get(ctx context.Context, jobID string) (*Job, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
-	if m.jobs[jobID] == nil {
+	if _, ok := m.jobs[jobID]; !ok {
 		return nil, nil
 	}
 	return m.jobs[jobID], nil
