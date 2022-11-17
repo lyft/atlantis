@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
@@ -66,16 +67,21 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	}
 	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment)
 
-	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
-	if err != nil {
+	// No need to persist deployment if it's a PlanRejectionError
+	if _, ok := err.(*terraformWorkflow.PlanRejectionError); ok {
 		return nil, err
 	}
-	latestDeployment = requestedDeployment.BuildPersistableInfo()
 
-	if err = p.persistLatestDeployment(ctx, latestDeployment); err != nil {
+	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
+	latestDeployment = requestedDeployment.BuildPersistableInfo()
+	if persistErr := p.persistLatestDeployment(ctx, latestDeployment); persistErr != nil {
 		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value")
 	}
-	return latestDeployment, nil
+
+	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
+	// We do this as a safety measure to avoid deploying out of order revision after a failed deploy since it could still
+	// mutate the state file
+	return latestDeployment, err
 }
 
 func (p *Deployer) FetchLatestDeployment(ctx workflow.Context, repoName, rootName string) (*deployment.Info, error) {
