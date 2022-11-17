@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/storage"
+	"github.com/uber-go/tally/v4"
 )
 
 type JobStatus int //nolint:revive // avoiding refactor while adding linter action
@@ -32,13 +33,13 @@ type Store interface {
 	Cleanup(ctx context.Context) error
 }
 
-func NewStorageBackedStore(jobStoreConfig valid.StoreConfig, logger logging.Logger) (*StorageBackendJobStore, error) {
+func NewStorageBackendStore(jobStoreConfig valid.StoreConfig, scope tally.Scope, logger logging.Logger) (*StorageBackendJobStore, error) {
 	stowClient, err := storage.NewClient(jobStoreConfig)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing stow client")
 	}
 
-	storageBackend, err := NewStorageBackend(stowClient, logger)
+	storageBackend, err := NewStorageBackend(stowClient, scope, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "initializing storage backend")
 	}
@@ -178,7 +179,6 @@ func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status
 	job, err := s.InMemoryStore.Get(ctx, jobID)
 	if err != nil || job == nil {
 		return errors.Wrapf(err, "retrieving job: %s from memory store", jobID)
-
 	}
 
 	ok, err := s.storageBackend.Write(ctx, jobID, job.Output)
