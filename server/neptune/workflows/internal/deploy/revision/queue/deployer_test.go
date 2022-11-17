@@ -2,6 +2,7 @@ package queue_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -225,6 +226,74 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 	}, resp)
 }
 
+func TestDeployer_CompareCommit_Identical(t *testing.T) {
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+	root := model.Root{
+		Name:  "root_1",
+		Rerun: true,
+	}
+	deploymentInfo := terraform.DeploymentInfo{
+		ID:         uuid.UUID{},
+		Revision:   "3455",
+		CheckRunID: 1234,
+		Root:       root,
+		Repo:       repo,
+	}
+
+	latestDeployedRevision := &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3255",
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	da := &testDeployActivity{}
+	env.RegisterActivity(da)
+	compareCommitRequest := activities.CompareCommitRequest{
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfo.Revision,
+		LatestDeployedRevision: latestDeployedRevision.Revision,
+	}
+
+	compareCommitResponse := activities.CompareCommitResponse{
+		CommitComparison: activities.DirectionIdentical,
+	}
+
+	env.OnActivity(da.CompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
+	env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+		Info:         deploymentInfo,
+		LatestDeploy: latestDeployedRevision,
+	})
+	env.AssertExpectations(t)
+	var resp *deployment.Info
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+	assert.Equal(t, &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3455",
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}, resp)
+
+}
+
 func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 	repo := github.Repo{
 		Owner: "owner",
@@ -297,48 +366,50 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 
-	t.Run("rerun deploy not identical", func(t *testing.T) {
-		ts := testsuite.WorkflowTestSuite{}
-		env := ts.NewTestWorkflowEnvironment()
+	cases := []activities.DiffDirection{activities.DirectionAhead, activities.DirectionDiverged}
+	for _, diffDirection := range cases {
+		t.Run(fmt.Sprintf("rerun deploy %s", diffDirection), func(t *testing.T) {
+			ts := testsuite.WorkflowTestSuite{}
+			env := ts.NewTestWorkflowEnvironment()
 
-		da := &testDeployActivity{}
-		env.RegisterActivity(da)
-		compareCommitRequest := activities.CompareCommitRequest{
-			Repo:                   repo,
-			DeployRequestRevision:  deploymentInfo.Revision,
-			LatestDeployedRevision: latestDeployedRevision.Revision,
-		}
+			da := &testDeployActivity{}
+			env.RegisterActivity(da)
+			compareCommitRequest := activities.CompareCommitRequest{
+				Repo:                   repo,
+				DeployRequestRevision:  deploymentInfo.Revision,
+				LatestDeployedRevision: latestDeployedRevision.Revision,
+			}
 
-		compareCommitResponse := activities.CompareCommitResponse{
-			CommitComparison: activities.DirectionAhead,
-		}
+			compareCommitResponse := activities.CompareCommitResponse{
+				CommitComparison: diffDirection,
+			}
 
-		updateCheckRunRequest := activities.UpdateCheckRunRequest{
-			Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
-			State:   github.CheckRunFailure,
-			Repo:    repo,
-			ID:      deploymentInfo.CheckRunID,
-			Summary: queue.RerunNotIdenticalSummary,
-		}
+			updateCheckRunRequest := activities.UpdateCheckRunRequest{
+				Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
+				State:   github.CheckRunFailure,
+				Repo:    repo,
+				ID:      deploymentInfo.CheckRunID,
+				Summary: queue.RerunNotIdenticalSummary,
+			}
 
-		updateCheckRunResponse := activities.UpdateCheckRunResponse{
-			ID: updateCheckRunRequest.ID,
-		}
+			updateCheckRunResponse := activities.UpdateCheckRunResponse{
+				ID: updateCheckRunRequest.ID,
+			}
 
-		env.OnActivity(da.UpdateCheckRun, mock.Anything, updateCheckRunRequest).Return(updateCheckRunResponse, nil)
-		env.OnActivity(da.CompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
+			env.OnActivity(da.UpdateCheckRun, mock.Anything, updateCheckRunRequest).Return(updateCheckRunResponse, nil)
+			env.OnActivity(da.CompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
 
-		env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
-			Info:         deploymentInfo,
-			LatestDeploy: latestDeployedRevision,
+			env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+				Info:         deploymentInfo,
+				LatestDeploy: latestDeployedRevision,
+			})
+			env.AssertExpectations(t)
+			var resp *deployment.Info
+			err := env.GetWorkflowResult(&resp)
+			assert.Error(t, err)
+			assert.Nil(t, resp)
 		})
-		env.AssertExpectations(t)
-		var resp *deployment.Info
-		err := env.GetWorkflowResult(&resp)
-		assert.Error(t, err)
-		assert.Nil(t, resp)
-	})
-
+	}
 }
 
 func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
