@@ -111,6 +111,12 @@ func (m *InMemoryStore) Close(ctx context.Context, jobID string, status JobStatu
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
+	// No need to close job if it DNE
+	// It is possible a job DNE in memory since we call CloseJob() in a separate activity which can be executed after a worker restart
+	if _, ok := m.jobs[jobID]; !ok {
+		return nil
+	}
+
 	// Error when job is already set to complete
 	if job := m.jobs[jobID]; job.Status == Complete {
 		return fmt.Errorf("job: %s is already complete", jobID)
@@ -179,7 +185,6 @@ func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status
 	job, err := s.InMemoryStore.Get(ctx, jobID)
 	if err != nil || job == nil {
 		return errors.Wrapf(err, "retrieving job: %s from memory store", jobID)
-
 	}
 
 	ok, err := s.storageBackend.Write(ctx, jobID, job.Output)
