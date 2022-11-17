@@ -184,6 +184,7 @@ func (s *StorageBackendJobStore) Close(ctx context.Context, jobID string, status
 	// Since we close the job in a different activity than when it's created, it is possible that we try closing a non existent job
 	// after the worker has been restarted. So, instead of hard failing, let's return since we close all in progress jobs  during shutdown
 	if job == nil {
+		s.logger.WarnContext(ctx, fmt.Sprintf("job: %s does not exist in memory", jobID))
 		return nil
 	}
 
