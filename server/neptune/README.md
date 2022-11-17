@@ -139,9 +139,15 @@ Plan review signals are received directly by this workflow from gateway which pu
 If the plan is approved, the workflow proceeds with the apply, all the while updating the parent execution with the status, before exiting the workflow.
 If the plan is rejected or times out (1 week timeout on plan reviews), the parent is notified and the workflow exits.
 
+### Retries
+
+The workflow itself has no retries configured.  All activities use the default retry policy except for Terraform Activities.  Terraform Activities throw up a `TerraformClientError` if there is an error from the binary itself.  This error is configured to be non-retryable since most of the time this is a user error.  
+
+For Terraform Applies, timeouts are not retried. Tiemouts can happen from exceeding the ScheduleToClose threshold or from lack of heartbeat for over a minute.  Instead of retrying the apply, which can have unpredictable results, we signal our parent that there has been a timeout and this is surfaced to the user.
+
 ### Heartbeats
 
-Since Terraform activities can run long, we send hearbeats at 5 second intervals. If 1 minute goes by without receiving a hearbeat, temporal will assume the worker node is down.  For applies, this means that the workflow will fail.  For other activities, temporal will retry on heartbeat timeouts.
+Since Terraform activities can run long, we send hearbeats at 5 second intervals. If 1 minute goes by without receiving a hearbeat, temporal will assume the worker node is down and the configured retry policy will be run.
 
 ### Job Logs
 
