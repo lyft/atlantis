@@ -226,21 +226,14 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 }
 
 func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	da := &testDeployActivity{}
-	env.RegisterActivity(da)
-
 	repo := github.Repo{
 		Owner: "owner",
 		Name:  "test",
 	}
-
 	root := model.Root{
-		Name: "root_1",
+		Name:  "root_1",
+		Rerun: true,
 	}
-
 	deploymentInfo := terraform.DeploymentInfo{
 		ID:         uuid.UUID{},
 		Revision:   "3455",
@@ -262,43 +255,89 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 		},
 	}
 
-	compareCommitRequest := activities.CompareCommitRequest{
-		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Revision,
-		LatestDeployedRevision: latestDeployedRevision.Revision,
-	}
+	t.Run("behind deploy", func(t *testing.T) {
+		ts := testsuite.WorkflowTestSuite{}
+		env := ts.NewTestWorkflowEnvironment()
 
-	compareCommitResponse := activities.CompareCommitResponse{
-		CommitComparison: activities.DirectionBehind,
-	}
+		da := &testDeployActivity{}
+		env.RegisterActivity(da)
+		compareCommitRequest := activities.CompareCommitRequest{
+			Repo:                   repo,
+			DeployRequestRevision:  deploymentInfo.Revision,
+			LatestDeployedRevision: latestDeployedRevision.Revision,
+		}
 
-	updateCheckRunRequest := activities.UpdateCheckRunRequest{
-		Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
-		State:   github.CheckRunFailure,
-		Repo:    repo,
-		ID:      deploymentInfo.CheckRunID,
-		Summary: queue.DirectionBehindSummary,
-	}
+		compareCommitResponse := activities.CompareCommitResponse{
+			CommitComparison: activities.DirectionBehind,
+		}
 
-	updateCheckRunResponse := activities.UpdateCheckRunResponse{
-		ID: updateCheckRunRequest.ID,
-	}
+		updateCheckRunRequest := activities.UpdateCheckRunRequest{
+			Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
+			State:   github.CheckRunFailure,
+			Repo:    repo,
+			ID:      deploymentInfo.CheckRunID,
+			Summary: queue.DirectionBehindSummary,
+		}
 
-	env.OnActivity(da.UpdateCheckRun, mock.Anything, updateCheckRunRequest).Return(updateCheckRunResponse, nil)
-	env.OnActivity(da.CompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
+		updateCheckRunResponse := activities.UpdateCheckRunResponse{
+			ID: updateCheckRunRequest.ID,
+		}
 
-	env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
-		Info:         deploymentInfo,
-		LatestDeploy: latestDeployedRevision,
+		env.OnActivity(da.UpdateCheckRun, mock.Anything, updateCheckRunRequest).Return(updateCheckRunResponse, nil)
+		env.OnActivity(da.CompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
+
+		env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+			Info:         deploymentInfo,
+			LatestDeploy: latestDeployedRevision,
+		})
+		env.AssertExpectations(t)
+		var resp *deployment.Info
+		err := env.GetWorkflowResult(&resp)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
 	})
 
-	env.AssertExpectations(t)
+	t.Run("rerun deploy not identical", func(t *testing.T) {
+		ts := testsuite.WorkflowTestSuite{}
+		env := ts.NewTestWorkflowEnvironment()
 
-	var resp *deployment.Info
-	err := env.GetWorkflowResult(&resp)
-	assert.Error(t, err)
+		da := &testDeployActivity{}
+		env.RegisterActivity(da)
+		compareCommitRequest := activities.CompareCommitRequest{
+			Repo:                   repo,
+			DeployRequestRevision:  deploymentInfo.Revision,
+			LatestDeployedRevision: latestDeployedRevision.Revision,
+		}
 
-	assert.Nil(t, resp)
+		compareCommitResponse := activities.CompareCommitResponse{
+			CommitComparison: activities.DirectionAhead,
+		}
+
+		updateCheckRunRequest := activities.UpdateCheckRunRequest{
+			Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
+			State:   github.CheckRunFailure,
+			Repo:    repo,
+			ID:      deploymentInfo.CheckRunID,
+			Summary: queue.RerunNotIdenticalSummary,
+		}
+
+		updateCheckRunResponse := activities.UpdateCheckRunResponse{
+			ID: updateCheckRunRequest.ID,
+		}
+
+		env.OnActivity(da.UpdateCheckRun, mock.Anything, updateCheckRunRequest).Return(updateCheckRunResponse, nil)
+		env.OnActivity(da.CompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
+
+		env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+			Info:         deploymentInfo,
+			LatestDeploy: latestDeployedRevision,
+		})
+		env.AssertExpectations(t)
+		var resp *deployment.Info
+		err := env.GetWorkflowResult(&resp)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
 
 }
 

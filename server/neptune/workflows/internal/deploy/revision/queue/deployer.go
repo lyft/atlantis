@@ -47,6 +47,7 @@ type Deployer struct {
 
 const (
 	DirectionBehindSummary   = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
+	RerunNotIdenticalSummary = "This revision is not identical to the last revision with an attempted deploy. Reruns are only supported when they are the most recent deploy attempt."
 	UpdateCheckRunRetryCount = 5
 )
 
@@ -55,19 +56,18 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	if err != nil {
 		return nil, err
 	}
-	if requestedDeployment.Root.Rerun && commitDirection != activities.DirectionIdentical {
-		return nil, NewValidationError("requested revision %s is a re-run attempt but not identical to the latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
-	}
-	switch commitDirection {
-	case activities.DirectionBehind:
+	if commitDirection == activities.DirectionBehind {
 		// always returns error for caller to skip revision
-		if err := p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil); err != nil {
-			logger.Error(ctx, "unable to update check run with validation error")
-		}
+		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil)
 		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
 	}
-	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment)
+	if requestedDeployment.Root.Rerun && commitDirection != activities.DirectionIdentical {
+		// always returns error for caller to skip revision
+		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, RerunNotIdenticalSummary, nil)
+		return nil, NewValidationError("requested revision %s is a re-run attempt but not identical to the latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
+	}
 
+	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment)
 	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
 	if err != nil {
 		return nil, err
@@ -110,11 +110,11 @@ func (p *Deployer) getDeployRequestCommitDirection(ctx workflow.Context, deployR
 }
 
 // worker should not block on updating check runs for invalid deploy requests so let's retry for UpdateCheckrunRetryCount only
-func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformWorkflow.DeploymentInfo, state github.CheckRunState, summary string, actions []github.CheckRunAction) error {
+func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformWorkflow.DeploymentInfo, state github.CheckRunState, summary string, actions []github.CheckRunAction) {
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: UpdateCheckRunRetryCount,
 	})
-	return workflow.ExecuteActivity(ctx, p.Activities.UpdateCheckRun, activities.UpdateCheckRunRequest{
+	err := workflow.ExecuteActivity(ctx, p.Activities.UpdateCheckRun, activities.UpdateCheckRunRequest{
 		Title:   terraformWorkflow.BuildCheckRunTitle(deployRequest.Root.Name),
 		State:   state,
 		Repo:    deployRequest.Repo,
@@ -122,6 +122,9 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 		Summary: summary,
 		Actions: actions,
 	}).Get(ctx, nil)
+	if err != nil {
+		logger.Error(ctx, "unable to update check run with validation error")
+	}
 }
 
 func (p *Deployer) persistLatestDeployment(ctx workflow.Context, deploymentInfo *deployment.Info) error {
