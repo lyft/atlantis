@@ -21,7 +21,7 @@ type checkrunTemplateData struct {
 	ApplyStatus   string
 	ApplyLogURL   string
 	InternalError bool
-	Timedout      bool
+	TimedOut      bool
 }
 
 func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
@@ -39,7 +39,7 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 		ApplyStatus:   applyStatus,
 		ApplyLogURL:   applyLogURL,
 		InternalError: internalError,
-		Timedout:      timedOut,
+		TimedOut:      timedOut,
 	})
 }
 
