@@ -29,7 +29,6 @@ type CheckSuiteHandler struct {
 }
 
 func (h *CheckSuiteHandler) Handle(ctx context.Context, event CheckSuite) error {
-	// TODO: VALIDATE IF WE NEED TO CHECK IF SUITE COMES FROM ATLANTIS APP
 	if event.Action.GetType() != ReRequestedActionType {
 		h.Logger.DebugContext(ctx, "ignoring checks event that isn't a rerequested action")
 		return nil
