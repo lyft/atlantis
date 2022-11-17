@@ -5,9 +5,7 @@ import (
 	"fmt"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
-	"github.com/runatlantis/atlantis/server/vcs"
 	"go.temporal.io/sdk/client"
 )
 
@@ -26,26 +24,24 @@ type DeployWorkflowSignaler struct {
 	TemporalClient signaler
 }
 
-func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
-	ctx context.Context,
-	rootCfg *valid.MergedProjectCfg,
-	repo models.Repo,
-	revision string,
-	installationToken int64,
-	ref vcs.Ref,
-	sender models.User,
-	trigger workflows.Trigger) (client.WorkflowRun, error) {
+type SignalWithStartDeployArgs struct {
+	RootCfg           *valid.MergedProjectCfg
+	RootDeployOptions RootDeployOptions
+}
 
+func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, deployArgs SignalWithStartDeployArgs) (client.WorkflowRun, error) {
 	options := client.StartWorkflowOptions{
 		TaskQueue: workflows.DeployTaskQueue,
 		SearchAttributes: map[string]interface{}{
-			"atlantis_repository": repo.FullName,
-			"atlantis_root":       rootCfg.Name,
+			"atlantis_repository": deployArgs.RootDeployOptions.Repo.FullName,
+			"atlantis_root":       deployArgs.RootCfg.Name,
 		},
 	}
 
+	rootCfg := deployArgs.RootCfg
+	repo := deployArgs.RootDeployOptions.Repo
 	var tfVersion string
-	if rootCfg.TerraformVersion != nil {
+	if deployArgs.RootCfg.TerraformVersion != nil {
 		tfVersion = rootCfg.TerraformVersion.String()
 	}
 
@@ -54,9 +50,9 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 		buildDeployWorkflowID(repo.FullName, rootCfg.Name),
 		workflows.DeployNewRevisionSignalID,
 		workflows.DeployNewRevisionSignalRequest{
-			Revision: revision,
+			Revision: deployArgs.RootDeployOptions.Revision,
 			InitiatingUser: workflows.User{
-				Name: sender.Username,
+				Name: deployArgs.RootDeployOptions.Sender.Username,
 			},
 			Root: workflows.Root{
 				Name: rootCfg.Name,
@@ -69,7 +65,8 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 				RepoRelPath: rootCfg.RepoRelDir,
 				TfVersion:   tfVersion,
 				PlanMode:    d.generatePlanMode(rootCfg),
-				Trigger:     trigger,
+				Trigger:     deployArgs.RootDeployOptions.Trigger,
+				Rerun:       deployArgs.RootDeployOptions.Rerun,
 			},
 			Repo: workflows.Repo{
 				URL:      repo.CloneURL,
@@ -77,12 +74,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 				Name:     repo.Name,
 				Owner:    repo.Owner,
 				Credentials: workflows.AppCredentials{
-					InstallationToken: installationToken,
-				},
-				//TODO: Remove ref from revision arguments
-				Ref: workflows.Ref{
-					Name: ref.Name,
-					Type: string(ref.Type),
+					InstallationToken: deployArgs.RootDeployOptions.InstallationToken,
 				},
 			},
 			Tags: rootCfg.Tags,

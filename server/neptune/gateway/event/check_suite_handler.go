@@ -2,13 +2,9 @@ package event
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
-	"github.com/runatlantis/atlantis/server/vcs"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 
@@ -22,10 +18,9 @@ type CheckSuite struct {
 }
 
 type CheckSuiteHandler struct {
-	Logger            logging.Logger
-	RootConfigBuilder rootConfigBuilder
-	Scheduler         scheduler
-	DeploySignaler    deploySignaler
+	Logger       logging.Logger
+	Scheduler    scheduler
+	RootDeployer rootDeployer
 }
 
 func (h *CheckSuiteHandler) Handle(ctx context.Context, event CheckSuite) error {
@@ -52,37 +47,15 @@ func (h *CheckSuiteHandler) handle(ctx context.Context, event CheckSuite) error 
 			Sha: event.HeadSha,
 		},
 	}
-	rootCfgs, err := h.RootConfigBuilder.Build(ctx, event.Repo, event.Branch, event.HeadSha, event.InstallationToken, builderOptions)
-	if err != nil {
-		return errors.Wrap(err, "generating roots")
+	rootDeployOptions := RootDeployOptions{
+		Repo:              event.Repo,
+		Branch:            event.Branch,
+		Revision:          event.HeadSha,
+		Sender:            event.Sender,
+		InstallationToken: event.InstallationToken,
+		BuilderOptions:    builderOptions,
+		Trigger:           workflows.MergeTrigger,
+		Rerun:             true,
 	}
-	for _, rootCfg := range rootCfgs {
-		c := context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
-
-		if rootCfg.WorkflowMode != valid.PlatformWorkflowMode {
-			h.Logger.DebugContext(c, "root is not configured for platform mode, skipping...")
-			continue
-		}
-
-		run, err := h.DeploySignaler.SignalWithStartWorkflow(
-			c,
-			rootCfg,
-			event.Repo,
-			event.HeadSha,
-			event.InstallationToken,
-			vcs.Ref{
-				Type: vcs.BranchRef,
-				Name: event.Branch,
-			},
-			event.Sender,
-			workflows.MergeTrigger)
-		if err != nil {
-			return errors.Wrap(err, "signalling workflow")
-		}
-
-		h.Logger.InfoContext(c, "Signaled workflow.", map[string]interface{}{
-			"workflow-id": run.GetID(), "run-id": run.GetRunID(),
-		})
-	}
-	return nil
+	return h.RootDeployer.Deploy(ctx, rootDeployOptions)
 }

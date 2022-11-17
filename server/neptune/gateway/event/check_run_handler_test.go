@@ -2,6 +2,8 @@ package event_test
 
 import (
 	"context"
+	"github.com/hashicorp/go-version"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/sync"
 	"testing"
@@ -30,13 +32,13 @@ func TestCheckRunHandler(t *testing.T) {
 	})
 
 	t.Run("unsupported action", func(t *testing.T) {
-		signaler := &testSignaler{}
+		signaler := &mockDeploySignaler{}
 		logger := logging.NewNoopCtxLogger(t)
 		subject := event.CheckRunHandler{
 			Logger:            logging.NewNoopCtxLogger(t),
 			RootConfigBuilder: &mockRootConfigBuilder{},
 			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
-			DeploySignaler:    &mockDeploySignaler{},
+			DeploySignaler:    signaler,
 		}
 		e := event.CheckRun{
 			Action: event.WrappedCheckRunAction("test"),
@@ -47,14 +49,71 @@ func TestCheckRunHandler(t *testing.T) {
 		assert.False(t, signaler.called)
 	})
 
-	t.Run("wrong requested actions object", func(t *testing.T) {
-		signaler := &testSignaler{}
+	t.Run("invalid rerequested branch", func(t *testing.T) {
+		version, err := version.NewVersion("1.0.3")
+		assert.NoError(t, err)
+		signaler := &mockDeploySignaler{}
+		logger := logging.NewNoopCtxLogger(t)
+		rootCfg := valid.MergedProjectCfg{
+			Name: testRoot,
+			DeploymentWorkflow: valid.Workflow{
+				Plan:  valid.DefaultPlanStage,
+				Apply: valid.DefaultApplyStage,
+			},
+			TerraformVersion: version,
+			WorkflowMode:     valid.DefaultWorkflowMode,
+		}
+		rootCfgs := []*valid.MergedProjectCfg{
+			&rootCfg,
+		}
+		rootConfigBuilder := &mockRootConfigBuilder{
+			rootConfigs: rootCfgs,
+		}
+		subject := event.CheckRunHandler{
+			Logger:            logging.NewNoopCtxLogger(t),
+			RootConfigBuilder: rootConfigBuilder,
+			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
+			DeploySignaler:    signaler,
+		}
+		e := event.CheckRun{
+			Action: event.WrappedCheckRunAction("test"),
+			Name:   "atlantis/deploy: testroot",
+			Repo:   models.Repo{DefaultBranch: "main"},
+			Branch: "something",
+		}
+		err = subject.Handle(context.Background(), e)
+		assert.NoError(t, err)
+		assert.False(t, signaler.called)
+	})
+
+	t.Run("invalid rerequested branch", func(t *testing.T) {
+		signaler := &mockDeploySignaler{}
 		logger := logging.NewNoopCtxLogger(t)
 		subject := event.CheckRunHandler{
 			Logger:            logging.NewNoopCtxLogger(t),
 			RootConfigBuilder: &mockRootConfigBuilder{},
 			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
-			DeploySignaler:    &mockDeploySignaler{},
+			DeploySignaler:    signaler,
+		}
+		e := event.CheckRun{
+			Action: event.WrappedCheckRunAction("test"),
+			Name:   "atlantis/deploy: testroot",
+			Repo:   models.Repo{DefaultBranch: "main"},
+			Branch: "something",
+		}
+		err := subject.Handle(context.Background(), e)
+		assert.NoError(t, err)
+		assert.False(t, signaler.called)
+	})
+
+	t.Run("wrong requested actions object", func(t *testing.T) {
+		signaler := &mockDeploySignaler{}
+		logger := logging.NewNoopCtxLogger(t)
+		subject := event.CheckRunHandler{
+			Logger:            logging.NewNoopCtxLogger(t),
+			RootConfigBuilder: &mockRootConfigBuilder{},
+			Scheduler:         &sync.SynchronousScheduler{Logger: logger},
+			DeploySignaler:    signaler,
 		}
 		e := event.CheckRun{
 			Action: event.WrappedCheckRunAction("requested_action"),

@@ -55,13 +55,15 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	if err != nil {
 		return nil, err
 	}
+	if requestedDeployment.Root.Rerun && commitDirection != activities.DirectionIdentical {
+		return nil, NewValidationError("requested revision %s is a re-run attempt but not identical to the latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
+	}
 	switch commitDirection {
 	case activities.DirectionBehind:
 		// always returns error for caller to skip revision
 		if err := p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil); err != nil {
 			logger.Error(ctx, "unable to update check run with validation error")
 		}
-
 		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
 	}
 	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment)
