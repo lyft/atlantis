@@ -6,6 +6,9 @@ Our goal is to eventually have all of Atlantis written as Temporal Workflows.
 
 Note: Both legacy and neptune workflows can be toggled based on a repo's config, however, this document goes into the Neptune workflow and will not talk about the legacy one since it's being phased out.
 
+# Pre-Reading
+[Temporal Docs](https://docs.temporal.io/)
+
 # System Architecture
 
 Currently, Atlantis can operate in 3 modes based on the configuration passed in:
