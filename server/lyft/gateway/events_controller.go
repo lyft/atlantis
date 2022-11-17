@@ -76,8 +76,17 @@ func NewVCSEventsController(
 	}
 
 	checkRunHandler := &gateway_handlers.CheckRunHandler{
-		Logger:         logger,
-		TemporalClient: temporalClient,
+		Logger:            logger,
+		RootConfigBuilder: rootConfigBuilder,
+		Scheduler:         scheduler,
+		DeploySignaler:    deploySignaler,
+	}
+
+	checkSuiteHandler := &gateway_handlers.CheckSuiteHandler{
+		Logger:            logger,
+		RootConfigBuilder: rootConfigBuilder,
+		Scheduler:         scheduler,
+		DeploySignaler:    deploySignaler,
 	}
 
 	// lazy map of resolver providers to their resolver
@@ -92,6 +101,7 @@ func NewVCSEventsController(
 				prHandler,
 				pushHandler,
 				checkRunHandler,
+				checkSuiteHandler,
 				allowDraftPRs,
 				repoConverter,
 				pullConverter,

@@ -79,6 +79,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(
 				Credentials: workflows.AppCredentials{
 					InstallationToken: installationToken,
 				},
+				//TODO: Remove ref from revision arguments
 				Ref: workflows.Ref{
 					Name: ref.Name,
 					Type: string(ref.Type),
@@ -126,4 +127,8 @@ func (d *DeployWorkflowSignaler) generatePlanMode(cfg *valid.MergedProjectCfg) w
 	}
 
 	return workflows.NormalPlanMode
+}
+
+func (d *DeployWorkflowSignaler) SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, args interface{}) error {
+	return d.TemporalClient.SignalWorkflow(ctx, workflowID, runID, signalName, args)
 }

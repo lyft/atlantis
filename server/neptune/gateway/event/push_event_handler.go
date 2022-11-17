@@ -39,6 +39,7 @@ type scheduler interface {
 
 type deploySignaler interface {
 	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, repo models.Repo, revision string, installationToken int64, ref vcs.Ref, sender models.User, trigger workflows.Trigger) (client.WorkflowRun, error)
+	SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error
 }
 
 type rootConfigBuilder interface {

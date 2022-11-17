@@ -353,11 +353,18 @@ func convertTestSteps(steps []valid.Step) []workflows.Step {
 }
 
 type mockDeploySignaler struct {
-	run   client.WorkflowRun
-	error error
+	run    client.WorkflowRun
+	error  error
+	called bool
+}
+
+func (d *mockDeploySignaler) SignalWorkflow(_ context.Context, _ string, _ string, _ string, _ interface{}) error {
+	d.called = true
+	return d.error
 }
 
 func (d *mockDeploySignaler) SignalWithStartWorkflow(_ context.Context, _ *valid.MergedProjectCfg, _ models.Repo, _ string, _ int64, _ vcs.Ref, _ models.User, _ workflows.Trigger) (client.WorkflowRun, error) {
+	d.called = true
 	return d.run, d.error
 }
 
