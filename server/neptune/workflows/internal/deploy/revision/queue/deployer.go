@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	key "github.com/runatlantis/atlantis/server/neptune/context"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
@@ -76,9 +78,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 
 	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
 	if persistErr := p.persistLatestDeployment(ctx, latestDeployment); persistErr != nil {
-		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", map[string]interface{}{
-			"err": persistErr,
-		})
+		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", key.ErrKey, persistErr)
 	}
 
 	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
