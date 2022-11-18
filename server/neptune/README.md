@@ -35,8 +35,13 @@ Receives webhook events from github and acts on them accordingly.  Gateway is st
 * Proxy event to legacy worker if any roots require processing.
 
 #### Check Run
-* Determine which action is being triggered.  We have custom buttons that are thrown up on the check run depending on the situation.  As of now there are 2 types of events we are looking for.  `unlocked` and `plan_review`.  When we receive both these events, we signal our deploy workflow and terraform workflow respectively.
+* Determine which action is being triggered.  We have custom buttons that are thrown up on the check run depending on the situation.  As of now there are 2 types of events we are looking for:  `unlocked` and `plan_review`.  When we receive both these events, we signal our deploy workflow and terraform workflow respectively.
+* Listens for the GH provided `Re-run failed checkruns` button selection and signals our deploy workflow that we are attempting to add the previously failing revision back into the deploy queue for a rerun attempt. This is similar to the check suite event described below, but the key difference here is this request only reruns attempts where a checkrun has failed. 
 
+#### Check Suite
+* Listens for GH provided `Re-run all checkruns` button selection events and signals our deploy workflows that we are attempting add all off the modified roots within a revision back into their respective deploy queues for a rerun attempt, regardless of success or failure status. Note that we only support rerun attempts if a revision meets the following criteria:
+  - check run request comes from a revision on the default branch of a repo (force applies are not allowed)
+  - revision is identical to the latest persisted deployment attempt for a specific root
 ## Legacy Worker
 Responsible for speculative planning and policy checking within the PR.  This code is relatively untouched from upstream atlantis and should eventually be nuked in favor of Temporal workflows. 
 
