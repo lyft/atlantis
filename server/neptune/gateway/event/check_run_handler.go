@@ -176,7 +176,7 @@ func (h *CheckRunHandler) buildRoot(ctx context.Context, event CheckRun, rootNam
 			Sender:            event.User,
 			InstallationToken: event.InstallationToken,
 			BuilderOptions:    builderOptions,
-			Trigger:           workflows.MergeTrigger,
+			Trigger:           workflows.ManualTrigger,
 			Rerun:             true,
 		}
 		run, err := h.DeploySignaler.SignalWithStartWorkflow(c, rootCfg, deployOptions)

@@ -54,7 +54,7 @@ func (h *CheckSuiteHandler) handle(ctx context.Context, event CheckSuite) error 
 		Sender:            event.Sender,
 		InstallationToken: event.InstallationToken,
 		BuilderOptions:    builderOptions,
-		Trigger:           workflows.MergeTrigger,
+		Trigger:           workflows.ManualTrigger,
 		Rerun:             true,
 	}
 	return h.RootDeployer.Deploy(ctx, rootDeployOptions)

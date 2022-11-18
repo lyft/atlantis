@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
+	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -123,7 +124,7 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 		Actions: actions,
 	}).Get(ctx, nil)
 	if err != nil {
-		logger.Error(ctx, "unable to update check run with validation error")
+		logger.Error(ctx, "unable to update check run with validation error", key.ErrKey, err)
 	}
 }
 
