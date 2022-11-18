@@ -72,10 +72,13 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		return nil, err
 	}
 
-	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
 	latestDeployment = requestedDeployment.BuildPersistableInfo()
+
+	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
 	if persistErr := p.persistLatestDeployment(ctx, latestDeployment); persistErr != nil {
-		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value")
+		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", map[string]interface{}{
+			"err": persistErr,
+		})
 	}
 
 	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
