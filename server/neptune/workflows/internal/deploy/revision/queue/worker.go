@@ -189,7 +189,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		switch e := err.(type) {
 		case *ValidationError:
 			logger.Error(ctx, "deploy validation failed, moving to next one", key.ErrKey, e)
-		case terraform.PlanRejectionError:
+		case *terraform.PlanRejectionError:
 			logger.Warn(ctx, "Plan rejected")
 		default:
 
@@ -211,6 +211,10 @@ func (w *Worker) setCurrentDeploymentState(state CurrentDeployment) {
 
 func (w *Worker) GetCurrentDeploymentState() CurrentDeployment {
 	return w.currentDeployment
+}
+
+func (w *Worker) GetLatestDeployment() *deployment.Info {
+	return w.latestDeployment
 }
 
 func (w *Worker) awaitWork(ctx workflow.Context) workflow.Future {
