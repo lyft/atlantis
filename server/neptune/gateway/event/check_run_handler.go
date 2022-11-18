@@ -179,10 +179,7 @@ func (h *CheckRunHandler) buildRoot(ctx context.Context, event CheckRun, rootNam
 			Trigger:           workflows.MergeTrigger,
 			Rerun:             true,
 		}
-		run, err := h.DeploySignaler.SignalWithStartWorkflow(c, SignalWithStartDeployArgs{
-			RootCfg:           rootCfg,
-			RootDeployOptions: deployOptions,
-		})
+		run, err := h.DeploySignaler.SignalWithStartWorkflow(c, rootCfg, deployOptions)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")
 		}

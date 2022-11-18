@@ -12,7 +12,7 @@ import (
 )
 
 type deploySignaler interface {
-	SignalWithStartWorkflow(ctx context.Context, args SignalWithStartDeployArgs) (client.WorkflowRun, error)
+	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, rootDeployOptions RootDeployOptions) (client.WorkflowRun, error)
 	SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error
 }
 
@@ -48,10 +48,7 @@ func (d *RootDeployer) Deploy(ctx context.Context, deployOptions RootDeployOptio
 			d.Logger.DebugContext(c, "root is not configured for platform mode, skipping...")
 			continue
 		}
-		run, err := d.DeploySignaler.SignalWithStartWorkflow(c, SignalWithStartDeployArgs{
-			RootCfg:           rootCfg,
-			RootDeployOptions: deployOptions,
-		})
+		run, err := d.DeploySignaler.SignalWithStartWorkflow(c, rootCfg, deployOptions)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")
 		}

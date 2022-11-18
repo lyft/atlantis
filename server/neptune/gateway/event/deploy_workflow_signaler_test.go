@@ -151,20 +151,12 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			TemporalClient: testSignaler,
 		}
 		rootDeployOptions := event.RootDeployOptions{
-			Repo:              repo,
-			Branch:            "",
-			Revision:          sha,
-			Sender:            user,
-			InstallationToken: 0,
-			BuilderOptions:    event.BuilderOptions{},
-			Trigger:           workflows.MergeTrigger,
-			Rerun:             false,
+			Repo:     repo,
+			Revision: sha,
+			Sender:   user,
+			Trigger:  workflows.MergeTrigger,
 		}
-		deployArgs := event.SignalWithStartDeployArgs{
-			RootCfg:           &rootCfg,
-			RootDeployOptions: rootDeployOptions,
-		}
-		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), deployArgs)
+		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, rootDeployOptions)
 		assert.NoError(t, err)
 		assert.Equal(t, testRun{}, run)
 	})
@@ -234,20 +226,12 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			TemporalClient: testSignaler,
 		}
 		rootDeployOptions := event.RootDeployOptions{
-			Repo:              repo,
-			Branch:            "",
-			Revision:          sha,
-			Sender:            user,
-			InstallationToken: 0,
-			BuilderOptions:    event.BuilderOptions{},
-			Trigger:           workflows.MergeTrigger,
-			Rerun:             false,
+			Repo:     repo,
+			Revision: sha,
+			Sender:   user,
+			Trigger:  workflows.MergeTrigger,
 		}
-		deployArgs := event.SignalWithStartDeployArgs{
-			RootCfg:           &rootCfg,
-			RootDeployOptions: rootDeployOptions,
-		}
-		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), deployArgs)
+		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, rootDeployOptions)
 		assert.NoError(t, err)
 		assert.Equal(t, testRun{}, run)
 	})
@@ -332,20 +316,12 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 		TemporalClient: testSignaler,
 	}
 	rootDeployOptions := event.RootDeployOptions{
-		Repo:              repo,
-		Branch:            "",
-		Revision:          sha,
-		Sender:            user,
-		InstallationToken: 0,
-		BuilderOptions:    event.BuilderOptions{},
-		Trigger:           workflows.MergeTrigger,
-		Rerun:             false,
+		Repo:     repo,
+		Revision: sha,
+		Sender:   user,
+		Trigger:  workflows.MergeTrigger,
 	}
-	deployArgs := event.SignalWithStartDeployArgs{
-		RootCfg:           &rootCfg,
-		RootDeployOptions: rootDeployOptions,
-	}
-	run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), deployArgs)
+	run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, rootDeployOptions)
 	assert.Error(t, err)
 	assert.Equal(t, testRun{}, run)
 }

@@ -47,7 +47,7 @@ type Deployer struct {
 
 const (
 	DirectionBehindSummary   = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
-	RerunNotIdenticalSummary = "This revision is not identical to the last revision with an attempted deploy. Reruns are only supported when they are the most recent deploy attempt."
+	RerunNotIdenticalSummary = "This revision is not identical to the last revision with an attempted deploy. Reruns are only supported on the most recent deploy."
 	UpdateCheckRunRetryCount = 5
 )
 

@@ -24,24 +24,18 @@ type DeployWorkflowSignaler struct {
 	TemporalClient signaler
 }
 
-type SignalWithStartDeployArgs struct {
-	RootCfg           *valid.MergedProjectCfg
-	RootDeployOptions RootDeployOptions
-}
-
-func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, deployArgs SignalWithStartDeployArgs) (client.WorkflowRun, error) {
+func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, rootDeployOptions RootDeployOptions) (client.WorkflowRun, error) {
 	options := client.StartWorkflowOptions{
 		TaskQueue: workflows.DeployTaskQueue,
 		SearchAttributes: map[string]interface{}{
-			"atlantis_repository": deployArgs.RootDeployOptions.Repo.FullName,
-			"atlantis_root":       deployArgs.RootCfg.Name,
+			"atlantis_repository": rootDeployOptions.Repo.FullName,
+			"atlantis_root":       rootCfg.Name,
 		},
 	}
 
-	rootCfg := deployArgs.RootCfg
-	repo := deployArgs.RootDeployOptions.Repo
+	repo := rootDeployOptions.Repo
 	var tfVersion string
-	if deployArgs.RootCfg.TerraformVersion != nil {
+	if rootCfg.TerraformVersion != nil {
 		tfVersion = rootCfg.TerraformVersion.String()
 	}
 
@@ -50,9 +44,9 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, de
 		buildDeployWorkflowID(repo.FullName, rootCfg.Name),
 		workflows.DeployNewRevisionSignalID,
 		workflows.DeployNewRevisionSignalRequest{
-			Revision: deployArgs.RootDeployOptions.Revision,
+			Revision: rootDeployOptions.Revision,
 			InitiatingUser: workflows.User{
-				Name: deployArgs.RootDeployOptions.Sender.Username,
+				Name: rootDeployOptions.Sender.Username,
 			},
 			Root: workflows.Root{
 				Name: rootCfg.Name,
@@ -65,8 +59,8 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, de
 				RepoRelPath: rootCfg.RepoRelDir,
 				TfVersion:   tfVersion,
 				PlanMode:    d.generatePlanMode(rootCfg),
-				Trigger:     deployArgs.RootDeployOptions.Trigger,
-				Rerun:       deployArgs.RootDeployOptions.Rerun,
+				Trigger:     rootDeployOptions.Trigger,
+				Rerun:       rootDeployOptions.Rerun,
 			},
 			Repo: workflows.Repo{
 				URL:      repo.CloneURL,
@@ -74,7 +68,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, de
 				Name:     repo.Name,
 				Owner:    repo.Owner,
 				Credentials: workflows.AppCredentials{
-					InstallationToken: deployArgs.RootDeployOptions.InstallationToken,
+					InstallationToken: rootDeployOptions.InstallationToken,
 				},
 			},
 			Tags: rootCfg.Tags,

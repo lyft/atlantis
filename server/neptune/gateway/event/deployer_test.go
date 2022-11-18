@@ -112,7 +112,7 @@ func (d *mockDeploySignaler) SignalWorkflow(_ context.Context, _ string, _ strin
 	return d.error
 }
 
-func (d *mockDeploySignaler) SignalWithStartWorkflow(_ context.Context, _ event.SignalWithStartDeployArgs) (client.WorkflowRun, error) {
+func (d *mockDeploySignaler) SignalWithStartWorkflow(_ context.Context, _ *valid.MergedProjectCfg, _ event.RootDeployOptions) (client.WorkflowRun, error) {
 	d.called = true
 	return d.run, d.error
 }
