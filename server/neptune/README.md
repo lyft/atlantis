@@ -1,6 +1,6 @@
 # Intro
 
-Neptune is the project code name for a new user workflow in Atlantis.  This workflow does not take place within a PR like upstream atlantis and instead introduces the concept of a deploy which occurs when the PR is merged.   This new deployment workflow is written entirely ontop of a Temporal backend.
+Neptune is the project code name for a new user workflow in Atlantis.  This workflow does not take place within a PR like upstream atlantis and instead introduces the concept of a deploy which occurs when the PR is merged.   This new deployment workflow is written entirely on top of a Temporal backend.
 
 Our goal is to eventually have all of Atlantis written as Temporal Workflows.
 
@@ -147,7 +147,7 @@ If the plan is rejected or times out (1 week timeout on plan reviews), the paren
 
 The workflow itself has no retries configured.  All activities use the default retry policy except for Terraform Activities.  Terraform Activities throw up a `TerraformClientError` if there is an error from the binary itself.  This error is configured to be non-retryable since most of the time this is a user error.  
 
-For Terraform Applies, timeouts are not retried. Tiemouts can happen from exceeding the ScheduleToClose threshold or from lack of heartbeat for over a minute.  Instead of retrying the apply, which can have unpredictable results, we signal our parent that there has been a timeout and this is surfaced to the user.
+For Terraform Applies, timeouts are not retried. Timeouts can happen from exceeding the ScheduleToClose threshold or from lack of heartbeat for over a minute.  Instead of retrying the apply, which can have unpredictable results, we signal our parent that there has been a timeout and this is surfaced to the user.
 
 ### Heartbeats
 
