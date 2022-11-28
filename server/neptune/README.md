@@ -134,7 +134,7 @@ State changes for apply jobs specifically are sent to SNS for internal auditing 
 
 The Terraform workflow runs on the granularity of a single deployment.  It's identifier is the deployment's identifier which is randomly generated in the Deploy Workflow.  Note: this means a single revision can be tied to multiple deployments.
 
-The terraform workflow is stateful due to the fact that it keeps data on disk and references it throughout the workflow.  Cleanup of that data only happens when that workflow is complete.  In order to ensure this statefulness, The terraform workflow is aware of the worker it's running on and fetches this information as part of the first activity.  Each successive activity task takes place on the same task queue.  
+The terraform workflow is stateful due to the fact that it keeps data on disk and references it throughout the workflow.  Cleanup of that data only happens when that workflow is complete.  In order to ensure this statefulness, the terraform workflow is aware of the worker it's running on and fetches this information as part of the first activity.  Each successive activity task takes place on the same task queue.  
 
 Following this:
 * The workflow clones a repository and stores it on disk
