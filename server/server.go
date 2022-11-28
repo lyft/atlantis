@@ -844,7 +844,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubStatusName:    userConfig.VCSStatusName,
 	}
 
-	scheduledExecutorService := scheduled.NewExecutorServiceWithGarbageCollector(
+	scheduledExecutorService := scheduled.NewExecutorService(
 		events.NewFileWorkDirIterator(
 			githubClient,
 			eventParser,
