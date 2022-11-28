@@ -35,18 +35,6 @@ func NewAsyncScheduler(logger logging.Logger) *AsyncScheduler {
 	}
 }
 
-func NewAsyncSchedulerWithContext(logger logging.Logger, ctx context.Context) *AsyncScheduler {
-	ctx, cancel := context.WithCancel(ctx)
-
-	return &AsyncScheduler{
-		delegate: &SynchronousScheduler{
-			Logger: logger,
-		},
-		poolCtx:   ctx,
-		cancelCtx: cancel,
-	}
-}
-
 func (s *AsyncScheduler) Schedule(ctx context.Context, f Executor) error {
 
 	// copy relevant context fields to a new ctx based off a single parent
