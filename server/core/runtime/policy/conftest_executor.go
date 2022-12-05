@@ -77,11 +77,13 @@ func (c *ConfTestExecutor) Run(ctx context.Context, prjCtx command.ProjectContex
 		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, "error filtering out approved policies", map[string]interface{}{
 			"err": err,
 		})
+		// use generic error message here as error output is what user sees
 		return output, errors.New("internal server error")
 	}
 	if len(failedPolicies) == 0 {
 		return output, nil
 	}
+	// use policyErr here as error output is what user sees
 	return output, policyErr
 }
 
