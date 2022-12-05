@@ -26,18 +26,16 @@ func (r *PRReviewerFetcher) ListApprovalReviewers(ctx context.Context, installat
 	nextPage := 0
 	for {
 		listOptions := gh.ListOptions{
-			PerPage: 300,
+			PerPage: 100,
 		}
-		if nextPage != 0 {
-			listOptions.Page = nextPage
-		}
+		listOptions.Page = nextPage
 
 		reviews, resp, err := client.PullRequests.ListReviews(ctx, repo.Owner, repo.Name, prNum, &listOptions)
 		if err != nil {
-			return nil, errors.Wrap(err, "error fetching files")
+			return nil, errors.Wrap(err, "error fetching pull request reviews")
 		}
 		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("not ok status fetching files: %s", resp.Status)
+			return nil, fmt.Errorf("not ok status fetching pull request reviews: %s", resp.Status)
 		}
 		for _, review := range reviews {
 			if review.GetState() == ApprovalState && review.GetUser() != nil {
