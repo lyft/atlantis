@@ -3,8 +3,12 @@ package policy
 import (
 	"context"
 	"fmt"
+	"github.com/palantir/go-githubapp/githubapp"
+	runtime_models "github.com/runatlantis/atlantis/server/core/runtime/models"
+	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"path/filepath"
 	"strings"
 
@@ -37,6 +41,21 @@ type ConfTestExecutor struct {
 	SourceResolver sourceResolver
 	Exec           exec
 	PolicyFilter   policyFilter
+}
+
+func NewConfTestExecutor(cfg valid.GlobalCfg, creator githubapp.ClientCreator) *ConfTestExecutor {
+	return &ConfTestExecutor{
+		SourceResolver: &SourceResolverProxy{
+			localSourceResolver: &LocalSourceResolver{},
+		},
+		Exec: runtime_models.LocalExec{},
+		PolicyFilter: &events.ApprovedPolicyFilter{
+			GlobalCfg: cfg,
+			PRReviewsFetcher: &github.PRReviewerFetcher{
+				ClientCreator: creator,
+			},
+		},
+	}
 }
 
 // Run performs conftest policy tests against changes and fails if any policy does not pass. It also runs an all-or-nothing

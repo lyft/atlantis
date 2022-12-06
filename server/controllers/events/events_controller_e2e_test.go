@@ -806,10 +806,11 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	// swapping out version cache to something that always returns local contest
 	// binary
 	conftextExec.VersionCache = conftestCache
-
 	policyCheckRunner, err := runtime.NewPolicyCheckStepRunner(
 		conftestVersion,
 		conftextExec,
+		&mockExecutor{},
+		featureAllocator,
 	)
 	Ok(t, err)
 	initStepRunner := &runtime.InitStepRunner{
@@ -1349,6 +1350,13 @@ type testStaleCommandChecker struct{}
 
 func (t *testStaleCommandChecker) CommandIsStale(ctx *command.Context) bool {
 	return false
+}
+
+type mockExecutor struct {
+}
+
+func (e *mockExecutor) Run(prjCtx command.ProjectContext, executablePath, workdir string, envs map[string]string, extraArgs []string) (string, error) {
+	return "", nil
 }
 
 type testGithubClient struct {

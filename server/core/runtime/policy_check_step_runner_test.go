@@ -3,6 +3,7 @@ package runtime_test
 import (
 	"context"
 	"errors"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"testing"
 
 	"github.com/hashicorp/go-version"
@@ -15,6 +16,17 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
+
+var featureAllocator *testFeatureAllocator
+
+type testFeatureAllocator struct {
+	Enabled bool
+	Err     error
+}
+
+func (t *testFeatureAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
+	return t.Enabled, t.Err
+}
 
 func TestRun(t *testing.T) {
 	RegisterMockTestingT(t)
@@ -48,7 +60,8 @@ func TestRun(t *testing.T) {
 	executorWorkflow := mocks.NewMockVersionedExecutorWorkflow()
 	s := &runtime.PolicyCheckStepRunner{
 		VersionEnsurer: executorWorkflow,
-		Executor:       executorWorkflow,
+		LegacyExecutor: executorWorkflow,
+		Allocator:      &testFeatureAllocator{},
 	}
 
 	t.Run("success", func(t *testing.T) {

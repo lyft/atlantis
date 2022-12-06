@@ -683,12 +683,18 @@ func (s *ServerCmd) run() error {
 	s.securityWarnings(&userConfig, logger)
 	s.trimAtSymbolFromUsers(&userConfig)
 
+	appConfig, err := createGHAppConfig(userConfig)
+	if err != nil {
+		return err
+	}
+
 	// Config looks good. Start the server.
 	server, err := s.ServerCreator.NewServer(userConfig, server.Config{
 		AtlantisURLFlag:      AtlantisURLFlag,
 		AtlantisVersion:      s.AtlantisVersion,
 		DefaultTFVersionFlag: DefaultTFVersionFlag,
 		RepoConfigJSONFlag:   RepoConfigJSONFlag,
+		AppCfg:               appConfig,
 	})
 	if err != nil {
 		return errors.Wrap(err, "initializing server")

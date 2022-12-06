@@ -13,11 +13,11 @@ import (
 // VersionedExecutorWorkflow defines a versioned execution for a given project context
 type VersionedExecutorWorkflow interface {
 	ExecutorVersionEnsurer
-	Executor
+	LegacyExecutor
 }
 
 // Executor runs an executable with provided environment variables and arguments and returns stdout
-type Executor interface {
+type LegacyExecutor interface {
 	Run(ctx context.Context, prjCtx command.ProjectContext, executablePath string, envs map[string]string, workdir string, extraArgs []string) (string, error)
 }
 
