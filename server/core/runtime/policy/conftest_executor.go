@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/runatlantis/atlantis/server/events/metrics"
+	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
 	"path/filepath"
 	"strings"
 
@@ -25,7 +26,10 @@ type exec interface {
 	CombinedOutput(args []string, envs map[string]string, workdir string) (string, error)
 }
 
-const conftestScope = "conftest.policies"
+const (
+	conftestScope = "conftest.policies"
+	internalError = "internal server error"
+)
 
 // ConfTestExecutor runs a versioned conftest binary with the args built from the project context.
 // Project context defines whether conftest runs a local policy set or runs a test on a remote policy set.
@@ -37,7 +41,7 @@ type ConfTestExecutor struct {
 
 // Run performs conftest policy tests against changes and fails if any policy does not pass. It also runs an all-or-nothing
 // filter that will filter out all policy failures based on the filter criteria.
-func (c *ConfTestExecutor) Run(ctx context.Context, prjCtx command.ProjectContext, executablePath, workdir string, envs map[string]string, extraArgs []string) (string, error) {
+func (c *ConfTestExecutor) Run(prjCtx command.ProjectContext, executablePath, workdir string, envs map[string]string, extraArgs []string) (string, error) {
 	var policyArgs []Arg
 	var policyNames []string
 	var failedPolicies []valid.PolicySet
@@ -76,13 +80,19 @@ func (c *ConfTestExecutor) Run(ctx context.Context, prjCtx command.ProjectContex
 
 	title := c.buildTitle(policyNames)
 	output := c.sanitizeOutput(inputFile, title+cmdOutput)
-	// TODO: populate installation token into project context
-	failedPolicies, err = c.PolicyFilter.Filter(ctx, 0, prjCtx.HeadRepo, prjCtx.Pull.Num, failedPolicies)
+	installationToken, ok := prjCtx.RequestCtx.Value(contextInternal.InstallationIDKey).(int64)
+	if !ok {
+		prjCtx.Log.WarnContext(prjCtx.RequestCtx, "missing installation token")
+		scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
+		return output, errors.New(internalError)
+	}
+
+	failedPolicies, err = c.PolicyFilter.Filter(prjCtx.RequestCtx, installationToken, prjCtx.HeadRepo, prjCtx.Pull.Num, failedPolicies)
 	if err != nil {
 		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, fmt.Sprintf("error filtering out approved policies: %s", err.Error()))
 		// use generic error message here as error output is what user sees
 		scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
-		return output, errors.New("internal server error")
+		return output, errors.New(internalError)
 	}
 	if len(failedPolicies) == 0 {
 		scope.Counter(metrics.ExecutionSuccessMetric).Inc(1)

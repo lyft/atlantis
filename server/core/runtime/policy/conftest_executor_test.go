@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
+	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/tally/v4"
 	"strings"
@@ -24,6 +25,7 @@ const (
 )
 
 func buildTestProjectCtx(t *testing.T, policySets []valid.PolicySet) command.ProjectContext {
+	ctx := context.WithValue(context.Background(), contextInternal.InstallationIDKey, int64(1))
 	return command.ProjectContext{
 		PolicySets: valid.PolicySets{
 			Version:    nil,
@@ -32,7 +34,7 @@ func buildTestProjectCtx(t *testing.T, policySets []valid.PolicySet) command.Pro
 		},
 		Log:        logging.NewNoopCtxLogger(t),
 		Scope:      tally.NewTestScope("test", map[string]string{}),
-		RequestCtx: context.Background(),
+		RequestCtx: ctx,
 	}
 }
 
@@ -62,7 +64,7 @@ func TestConfTestExecutor_PolicySuccess(t *testing.T) {
 	}
 	prjCtx := buildTestProjectCtx(t, policySets)
 	expectedTitle := buildTestTitle(policySets)
-	cmdOutput, err := executor.Run(context.Background(), prjCtx, executablePath, workDir, map[string]string{}, args)
+	cmdOutput, err := executor.Run(prjCtx, executablePath, workDir, map[string]string{}, args)
 	assert.NoError(t, err)
 	assert.True(t, sourceResolver.isCalled)
 	assert.True(t, exec.isCalled)
@@ -90,7 +92,7 @@ func TestConfTestExecutor_PolicySuccess_FilteredFailures(t *testing.T) {
 	}
 	prjCtx := buildTestProjectCtx(t, policySets)
 	expectedTitle := buildTestTitle(policySets)
-	cmdOutput, err := executor.Run(context.Background(), prjCtx, executablePath, workDir, map[string]string{}, args)
+	cmdOutput, err := executor.Run(prjCtx, executablePath, workDir, map[string]string{}, args)
 	assert.NoError(t, err)
 	assert.True(t, sourceResolver.isCalled)
 	assert.True(t, exec.isCalled)
@@ -119,7 +121,7 @@ func TestConfTestExecutor_PolicyFailure_NotFiltered(t *testing.T) {
 	}
 	var args []string
 	prjCtx := buildTestProjectCtx(t, policySets)
-	cmdOutput, err := executor.Run(context.Background(), prjCtx, executablePath, workDir, map[string]string{}, args)
+	cmdOutput, err := executor.Run(prjCtx, executablePath, workDir, map[string]string{}, args)
 	expectedTitle := buildTestTitle(policySets)
 	assert.Error(t, err)
 	assert.True(t, sourceResolver.isCalled)
@@ -143,7 +145,7 @@ func TestConfTestExecutor_BuildArgError(t *testing.T) {
 	var args []string
 	var policySets []valid.PolicySet
 	prjCtx := buildTestProjectCtx(t, policySets)
-	cmdOutput, err := executor.Run(context.Background(), prjCtx, executablePath, workDir, map[string]string{}, args)
+	cmdOutput, err := executor.Run(prjCtx, executablePath, workDir, map[string]string{}, args)
 	assert.Error(t, err)
 	assert.False(t, sourceResolver.isCalled)
 	assert.False(t, exec.isCalled)
@@ -167,7 +169,7 @@ func TestConfTestExecutor_SourceResolverError(t *testing.T) {
 		{Name: policyA},
 	}
 	prjCtx := buildTestProjectCtx(t, policySets)
-	cmdOutput, err := executor.Run(context.Background(), prjCtx, executablePath, workDir, map[string]string{}, args)
+	cmdOutput, err := executor.Run(prjCtx, executablePath, workDir, map[string]string{}, args)
 	assert.Error(t, err)
 	assert.True(t, sourceResolver.isCalled)
 	assert.False(t, exec.isCalled)
@@ -193,11 +195,47 @@ func TestConfTestExecutor_FilterFailure(t *testing.T) {
 	var args []string
 	prjCtx := buildTestProjectCtx(t, policySets)
 	expectedTitle := buildTestTitle(policySets)
-	cmdOutput, err := executor.Run(context.Background(), prjCtx, executablePath, workDir, map[string]string{}, args)
+	cmdOutput, err := executor.Run(prjCtx, executablePath, workDir, map[string]string{}, args)
 	assert.Error(t, err)
 	assert.True(t, sourceResolver.isCalled)
 	assert.True(t, exec.isCalled)
 	assert.True(t, policyFilter.isCalled)
+	assert.Contains(t, cmdOutput, expectedTitle)
+	assert.Contains(t, cmdOutput, output)
+}
+
+func TestConfTestExecutor_MissingInstallationToken(t *testing.T) {
+	sourceResolver := &mockSourceResolver{path: path}
+	exec := &mockExec{
+		output: output,
+	}
+	policyFilter := &mockPolicyFilter{}
+	executor := policy.ConfTestExecutor{
+		SourceResolver: sourceResolver,
+		Exec:           exec,
+		PolicyFilter:   policyFilter,
+	}
+	var args []string
+	policySets := []valid.PolicySet{
+		{Name: policyA},
+		{Name: policyB},
+	}
+	prjCtx := command.ProjectContext{
+		PolicySets: valid.PolicySets{
+			Version:    nil,
+			Owners:     valid.PolicyOwners{},
+			PolicySets: policySets,
+		},
+		Log:        logging.NewNoopCtxLogger(t),
+		Scope:      tally.NewTestScope("test", map[string]string{}),
+		RequestCtx: context.Background(),
+	}
+	expectedTitle := buildTestTitle(policySets)
+	cmdOutput, err := executor.Run(prjCtx, executablePath, workDir, map[string]string{}, args)
+	assert.Error(t, err)
+	assert.True(t, sourceResolver.isCalled)
+	assert.True(t, exec.isCalled)
+	assert.False(t, policyFilter.isCalled)
 	assert.Contains(t, cmdOutput, expectedTitle)
 	assert.Contains(t, cmdOutput, output)
 }
