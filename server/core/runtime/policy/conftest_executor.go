@@ -3,6 +3,7 @@ package policy
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/events/metrics"
 	"path/filepath"
 	"strings"
 
@@ -24,6 +25,8 @@ type exec interface {
 	CombinedOutput(args []string, envs map[string]string, workdir string) (string, error)
 }
 
+const conftestScope = "conftest.policies"
+
 // ConfTestExecutor runs a versioned conftest binary with the args built from the project context.
 // Project context defines whether conftest runs a local policy set or runs a test on a remote policy set.
 type ConfTestExecutor struct {
@@ -34,11 +37,12 @@ type ConfTestExecutor struct {
 
 // Run performs conftest policy tests against changes and fails if any policy does not pass. It also runs an all-or-nothing
 // filter that will filter out all policy failures based on the filter criteria.
-func (c *ConfTestExecutor) Run(ctx context.Context, prjCtx command.ProjectContext, executablePath string, envs map[string]string, workdir string, extraArgs []string) (string, error) {
+func (c *ConfTestExecutor) Run(ctx context.Context, prjCtx command.ProjectContext, executablePath, workdir string, envs map[string]string, extraArgs []string) (string, error) {
 	var policyArgs []Arg
 	var policyNames []string
 	var failedPolicies []valid.PolicySet
 	inputFile := filepath.Join(workdir, prjCtx.GetShowResultFileName())
+	scope := prjCtx.Scope.SubScope(conftestScope)
 
 	for _, policySet := range prjCtx.PolicySets.PolicySets {
 		path, err := c.SourceResolver.Resolve(policySet)
@@ -60,6 +64,7 @@ func (c *ConfTestExecutor) Run(ctx context.Context, prjCtx command.ProjectContex
 	serializedArgs, err := args.build()
 	if err != nil {
 		prjCtx.Log.WarnContext(prjCtx.RequestCtx, "No policies have been configured")
+		scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 		return "", errors.Wrap(err, "building args")
 	}
 
@@ -74,16 +79,17 @@ func (c *ConfTestExecutor) Run(ctx context.Context, prjCtx command.ProjectContex
 	// TODO: populate installation token into project context
 	failedPolicies, err = c.PolicyFilter.Filter(ctx, 0, prjCtx.HeadRepo, prjCtx.Pull.Num, failedPolicies)
 	if err != nil {
-		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, "error filtering out approved policies", map[string]interface{}{
-			"err": err,
-		})
+		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, fmt.Sprintf("error filtering out approved policies: %s", err.Error()))
 		// use generic error message here as error output is what user sees
+		scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 		return output, errors.New("internal server error")
 	}
 	if len(failedPolicies) == 0 {
+		scope.Counter(metrics.ExecutionSuccessMetric).Inc(1)
 		return output, nil
 	}
 	// use policyErr here as error output is what user sees
+	scope.Counter(metrics.ExecutionFailureMetric).Inc(1)
 	return output, policyErr
 }
 
