@@ -82,7 +82,7 @@ func (c *ConfTestExecutor) Run(prjCtx command.ProjectContext, executablePath, wo
 	output := c.sanitizeOutput(inputFile, title+cmdOutput)
 	installationToken, ok := prjCtx.RequestCtx.Value(contextInternal.InstallationIDKey).(int64)
 	if !ok {
-		prjCtx.Log.WarnContext(prjCtx.RequestCtx, "missing installation token")
+		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, "missing installation token")
 		scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 		return output, errors.New(internalError)
 	}
