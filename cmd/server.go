@@ -683,9 +683,14 @@ func (s *ServerCmd) run() error {
 	s.securityWarnings(&userConfig, logger)
 	s.trimAtSymbolFromUsers(&userConfig)
 
-	appConfig, err := createGHAppConfig(userConfig)
-	if err != nil {
-		return err
+	// Legacy code still partially supports other VCS configs
+	// so GithubAppKeyFile needs to exist to create the githubapp config
+	appConfig := githubapp.Config{}
+	if userConfig.GithubAppKeyFile != "" {
+		appConfig, err = createGHAppConfig(userConfig)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Config looks good. Start the server.
