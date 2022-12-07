@@ -806,6 +806,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	// swapping out version cache to something that always returns local contest
 	// binary
 	conftextExec.VersionCache = conftestCache
+	// e2e test will be using legacy mode for now
 	policyCheckRunner, err := runtime.NewPolicyCheckStepRunner(
 		conftestVersion,
 		conftextExec,
