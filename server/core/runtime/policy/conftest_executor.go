@@ -45,7 +45,7 @@ type ConfTestExecutor struct {
 func NewConfTestExecutor(cfg valid.GlobalCfg, creator githubapp.ClientCreator) *ConfTestExecutor {
 	return &ConfTestExecutor{
 		SourceResolver: &SourceResolverProxy{
-			localSourceResolver: &LocalSourceResolver{},
+			LocalSourceResolver: &LocalSourceResolver{},
 		},
 		Exec: runtime_models.LocalExec{},
 		PolicyFilter: &events.ApprovedPolicyFilter{
