@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
 	"path/filepath"
 	"strings"
 
@@ -47,6 +48,13 @@ func NewProjectContext(
 				break
 			}
 		}
+	}
+
+	_, ok := ctx.RequestCtx.Value(contextInternal.InstallationIDKey).(int64)
+	if !ok {
+		ctx.Log.ErrorContext(ctx.RequestCtx, "project ctx: missing installation token")
+	} else {
+		ctx.Log.InfoContext(ctx.RequestCtx, "project ct: found installation token")
 	}
 
 	return ProjectContext{

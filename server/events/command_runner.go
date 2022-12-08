@@ -16,6 +16,7 @@ package events
 import (
 	"context"
 	"fmt"
+	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -125,6 +126,12 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 		RequestCtx:        ctx,
 		InstallationToken: installationToken,
 	}
+	_, ok := cmdCtx.RequestCtx.Value(contextInternal.InstallationIDKey).(int64)
+	if !ok {
+		c.Logger.ErrorContext(ctx, "comment command: missing installation token")
+	} else {
+		c.Logger.InfoContext(ctx, "comment command: found installation token")
+	}
 	if !c.validateCtxAndComment(cmdCtx) {
 		return
 	}
@@ -191,6 +198,12 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 		TriggerTimestamp:  timestamp,
 		RequestCtx:        ctx,
 		InstallationToken: installationToken,
+	}
+	_, ok := cmdCtx.RequestCtx.Value(contextInternal.InstallationIDKey).(int64)
+	if !ok {
+		c.Logger.ErrorContext(ctx, "comment command: missing installation token")
+	} else {
+		c.Logger.InfoContext(ctx, "comment command: found installation token")
 	}
 
 	if !c.validateCtxAndComment(cmdCtx) {

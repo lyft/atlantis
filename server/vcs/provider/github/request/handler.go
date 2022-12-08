@@ -170,12 +170,6 @@ func (h *Handler) Handle(r *http.BufferedRequest) error {
 
 	// this will be used to create the relevant installation client
 	ctx = context.WithValue(ctx, contextInternal.InstallationIDKey, installationID)
-	_, ok = ctx.Value(contextInternal.InstallationIDKey).(int64)
-	if !ok {
-		h.logger.ErrorContext(ctx, "missing installation token")
-	} else {
-		h.logger.InfoContext(ctx, "found installation token")
-	}
 
 	switch event := event.(type) {
 	case *github.IssueCommentEvent:

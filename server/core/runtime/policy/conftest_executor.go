@@ -7,6 +7,7 @@ import (
 	runtime_models "github.com/runatlantis/atlantis/server/core/runtime/models"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/metrics"
+	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"path/filepath"
 	"strings"
@@ -98,6 +99,12 @@ func (c *ConfTestExecutor) Run(prjCtx command.ProjectContext, executablePath, wo
 
 	title := c.buildTitle(policyNames)
 	output := c.sanitizeOutput(inputFile, title+cmdOutput)
+	_, ok := prjCtx.RequestCtx.Value(contextInternal.InstallationIDKey).(int64)
+	if !ok {
+		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, "conftest executor: missing installation token")
+	} else {
+		prjCtx.Log.InfoContext(prjCtx.RequestCtx, "comment command: found installation token")
+	}
 	if prjCtx.InstallationToken == 0 {
 		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, "missing installation token")
 		scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
