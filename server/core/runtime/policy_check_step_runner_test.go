@@ -182,7 +182,7 @@ type mockExecutor struct {
 	isCalled bool
 }
 
-func (t *mockExecutor) Run(_ command.ProjectContext, _, _ string, _ map[string]string, _ []string) (string, error) {
+func (t *mockExecutor) Run(_ context.Context, _ command.ProjectContext, _ string, _ map[string]string, _ string, _ []string) (string, error) {
 	t.isCalled = true
 	return t.output, t.err
 }

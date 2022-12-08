@@ -9,16 +9,12 @@ import (
 	"github.com/runatlantis/atlantis/server/events/command"
 )
 
-type executor interface {
-	Run(prjCtx command.ProjectContext, executablePath, workdir string, envs map[string]string, extraArgs []string) (string, error)
-}
-
 // PolicyCheckStepRunner runs a policy check command given a ctx
 type PolicyCheckStepRunner struct {
 	VersionEnsurer ExecutorVersionEnsurer
-	Executor       executor
+	Executor       Executor
 	// TODO: remove these
-	LegacyExecutor LegacyExecutor
+	LegacyExecutor Executor
 	Allocator      feature.Allocator
 }
 
@@ -26,7 +22,7 @@ type PolicyCheckStepRunner struct {
 func NewPolicyCheckStepRunner(
 	defaultTfVersion *version.Version,
 	versionEnsurer VersionedExecutorWorkflow,
-	executor executor,
+	executor Executor,
 	allocator feature.Allocator) (Runner, error) {
 	runner := &PlanTypeStepRunnerDelegate{
 		defaultRunner: &PolicyCheckStepRunner{
@@ -57,7 +53,7 @@ func (p *PolicyCheckStepRunner) Run(ctx context.Context, cmdCtx command.ProjectC
 		return p.LegacyExecutor.Run(ctx, cmdCtx, executable, envs, path, extraArgs)
 	}
 	if shouldAllocate {
-		return p.Executor.Run(cmdCtx, executable, path, envs, extraArgs)
+		return p.Executor.Run(ctx, cmdCtx, executable, envs, path, extraArgs)
 	}
 	return p.LegacyExecutor.Run(ctx, cmdCtx, executable, envs, path, extraArgs)
 }

@@ -59,7 +59,7 @@ func NewConfTestExecutor(cfg valid.GlobalCfg, creator githubapp.ClientCreator) *
 
 // Run performs conftest policy tests against changes and fails if any policy does not pass. It also runs an all-or-nothing
 // filter that will filter out all policy failures based on the filter criteria.
-func (c *ConfTestExecutor) Run(prjCtx command.ProjectContext, executablePath, workdir string, envs map[string]string, extraArgs []string) (string, error) {
+func (c *ConfTestExecutor) Run(_ context.Context, prjCtx command.ProjectContext, executablePath string, envs map[string]string, workdir string, extraArgs []string) (string, error) {
 	var policyArgs []Arg
 	var policyNames []string
 	var failedPolicies []valid.PolicySet
