@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	httputil "github.com/runatlantis/atlantis/server/http"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -69,6 +70,13 @@ func (h noopCheckRunEventHandler) Handle(ctx context.Context, event event_types.
 type noopCheckSuiteEventHandler struct{}
 
 func (h noopCheckSuiteEventHandler) Handle(ctx context.Context, event event_types.CheckSuite) error {
+	return nil
+}
+
+type noopPullRequestReviewEventHandler struct {
+}
+
+func (n noopPullRequestReviewEventHandler) Handle(ctx context.Context, e event_types.PullRequestReview, r *httputil.BufferedRequest) error {
 	return nil
 }
 
@@ -1038,6 +1046,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 				commentHandler,
 				prHandler,
 				noopPushEventHandler{},
+				noopPullRequestReviewEventHandler{},
 				noopCheckRunEventHandler{},
 				noopCheckSuiteEventHandler{},
 				false,

@@ -289,6 +289,11 @@ func NewServer(config Config) (*Server, error) {
 		Scope:           statsScope.SubScope("event.filters.root"),
 	}
 
+	checkRunFetcher := &github.CheckRunsFetcher{
+		ClientCreator: clientCreator,
+		AppID:         config.GithubAppID,
+	}
+
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(
 		statsScope,
 		[]byte(config.GithubWebhookSecret),
@@ -307,6 +312,7 @@ func NewServer(config Config) (*Server, error) {
 		asyncScheduler,
 		temporalClient,
 		rootConfigBuilder,
+		checkRunFetcher,
 	)
 
 	router := mux.NewRouter()
