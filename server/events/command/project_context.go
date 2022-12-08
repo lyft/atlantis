@@ -54,7 +54,7 @@ func NewProjectContext(
 	if !ok {
 		ctx.Log.ErrorContext(ctx.RequestCtx, "project ctx: missing installation token")
 	} else {
-		ctx.Log.InfoContext(ctx.RequestCtx, "project ct: found installation token")
+		ctx.Log.InfoContext(ctx.RequestCtx, "project ctx: found installation token")
 	}
 
 	return ProjectContext{

@@ -126,11 +126,11 @@ func (c *DefaultCommandRunner) RunAutoplanCommand(ctx context.Context, baseRepo 
 		RequestCtx:        ctx,
 		InstallationToken: installationToken,
 	}
-	_, ok := cmdCtx.RequestCtx.Value(contextInternal.InstallationIDKey).(int64)
+	_, ok := ctx.Value(contextInternal.InstallationIDKey).(int64)
 	if !ok {
-		c.Logger.ErrorContext(ctx, "comment command: missing installation token")
+		c.Logger.ErrorContext(ctx, "autoplan command: missing installation token")
 	} else {
-		c.Logger.InfoContext(ctx, "comment command: found installation token")
+		c.Logger.InfoContext(ctx, "autoplan command: found installation token")
 	}
 	if !c.validateCtxAndComment(cmdCtx) {
 		return
@@ -199,7 +199,7 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 		RequestCtx:        ctx,
 		InstallationToken: installationToken,
 	}
-	_, ok := cmdCtx.RequestCtx.Value(contextInternal.InstallationIDKey).(int64)
+	_, ok := ctx.Value(contextInternal.InstallationIDKey).(int64)
 	if !ok {
 		c.Logger.ErrorContext(ctx, "comment command: missing installation token")
 	} else {

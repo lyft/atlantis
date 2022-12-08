@@ -224,6 +224,13 @@ func (h *Handler) handleCommentEvent(ctx context.Context, e *github.IssueComment
 	ctx = context.WithValue(ctx, contextInternal.PullNumKey, commentEvent.PullNum)
 	ctx = context.WithValue(ctx, contextInternal.SHAKey, commentEvent.Pull.HeadCommit)
 
+	_, ok := ctx.Value(contextInternal.InstallationIDKey).(int64)
+	if !ok {
+		h.logger.ErrorContext(ctx, "handle comment event: missing installation token")
+	} else {
+		h.logger.InfoContext(ctx, "handle comment event: found installation token")
+	}
+
 	return h.commentHandler.Handle(ctx, request, commentEvent)
 }
 
@@ -236,6 +243,13 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, e *github.PullRequ
 	ctx = context.WithValue(ctx, contextInternal.RepositoryKey, pullEvent.Pull.BaseRepo.FullName)
 	ctx = context.WithValue(ctx, contextInternal.PullNumKey, pullEvent.Pull.Num)
 	ctx = context.WithValue(ctx, contextInternal.SHAKey, pullEvent.Pull.HeadCommit)
+
+	_, ok := ctx.Value(contextInternal.InstallationIDKey).(int64)
+	if !ok {
+		h.logger.ErrorContext(ctx, "handle pull event: missing installation token")
+	} else {
+		h.logger.InfoContext(ctx, "handle pull event: found installation token")
+	}
 
 	return h.prHandler.Handle(ctx, request, pullEvent)
 }

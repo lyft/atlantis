@@ -103,7 +103,7 @@ func (c *ConfTestExecutor) Run(prjCtx command.ProjectContext, executablePath, wo
 	if !ok {
 		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, "conftest executor: missing installation token")
 	} else {
-		prjCtx.Log.InfoContext(prjCtx.RequestCtx, "comment command: found installation token")
+		prjCtx.Log.InfoContext(prjCtx.RequestCtx, "conftest executor: found installation token")
 	}
 	if prjCtx.InstallationToken == 0 {
 		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, "missing installation token")
