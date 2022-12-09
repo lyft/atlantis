@@ -9,7 +9,7 @@ import (
 const ApprovalState = "APPROVED"
 
 type PRReviewerFetcher struct {
-	GithubListIterator *GithubListIterator
+	GithubListIterator *ListIterator
 }
 
 func (r *PRReviewerFetcher) ListApprovalReviewers(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]string, error) {
@@ -21,7 +21,7 @@ func (r *PRReviewerFetcher) ListApprovalReviewers(ctx context.Context, installat
 
 		return client.PullRequests.ListReviews(ctx, repo.Owner, repo.Name, prNum, &listOptions)
 	}
-	process := func(i interface{}) ([]string, error) {
+	process := func(i interface{}) []string {
 		var approvalReviewers []string
 		reviews := i.([]gh.PullRequestReview)
 		for _, review := range reviews {
@@ -29,7 +29,7 @@ func (r *PRReviewerFetcher) ListApprovalReviewers(ctx context.Context, installat
 				approvalReviewers = append(approvalReviewers, review.GetUser().GetLogin())
 			}
 		}
-		return approvalReviewers, nil
+		return approvalReviewers
 	}
 	return r.GithubListIterator.Iterate(ctx, installationToken, run, process)
 }

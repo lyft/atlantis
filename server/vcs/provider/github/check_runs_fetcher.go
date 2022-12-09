@@ -15,7 +15,7 @@ const (
 var checkRunRegex = regexp.MustCompile("atlantis/policy_check: .*")
 
 type CheckRunsFetcher struct {
-	GithubListIterator *GithubListIterator
+	GithubListIterator *ListIterator
 	AppID              int64
 }
 
@@ -32,7 +32,7 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, instal
 		return client.Checks.ListCheckRunsForRef(ctx, repo.Owner, repo.Name, ref, &listOptions)
 	}
 
-	process := func(i interface{}) ([]string, error) {
+	process := func(i interface{}) []string {
 		var failedPolicyCheckRuns []string
 		checkRunResults := i.(gh.ListCheckRunsResults)
 		for _, checkRun := range checkRunResults.CheckRuns {
@@ -40,7 +40,7 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, instal
 				failedPolicyCheckRuns = append(failedPolicyCheckRuns, checkRun.GetName())
 			}
 		}
-		return failedPolicyCheckRuns, nil
+		return failedPolicyCheckRuns
 	}
 
 	return r.GithubListIterator.Iterate(ctx, installationToken, run, process)

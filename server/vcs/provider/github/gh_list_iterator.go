@@ -9,11 +9,11 @@ import (
 	"net/http"
 )
 
-type GithubListIterator struct {
+type ListIterator struct {
 	ClientCreator githubapp.ClientCreator
 }
 
-func (i *GithubListIterator) Iterate(ctx context.Context, installationToken int64, runFunc func(ctx context.Context, client *gh.Client, nextPage int) (interface{}, *gh.Response, error), parseFunc func(interface{}) ([]string, error)) ([]string, error) {
+func (i *ListIterator) Iterate(ctx context.Context, installationToken int64, runFunc func(ctx context.Context, client *gh.Client, nextPage int) (interface{}, *gh.Response, error), parseFunc func(interface{}) []string) ([]string, error) {
 	client, err := i.ClientCreator.NewInstallationClient(installationToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating installation client")
@@ -29,11 +29,7 @@ func (i *GithubListIterator) Iterate(ctx context.Context, installationToken int6
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("not ok status running gh api call: %s", resp.Status)
 		}
-		parsedResults, err := parseFunc(results)
-		if err != nil {
-			return nil, errors.Wrap(err, "parsing results")
-		}
-		output = append(output, parsedResults...)
+		output = append(output, parseFunc(results)...)
 		if resp.NextPage == 0 {
 			break
 		}

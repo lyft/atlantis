@@ -278,7 +278,7 @@ func NewServer(config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "creating github client creator")
 	}
 
-	iterator := &github.GithubListIterator{
+	iterator := &github.ListIterator{
 		ClientCreator: clientCreator,
 	}
 	rootConfigBuilder := &event.RootConfigBuilder{

@@ -8,7 +8,7 @@ import (
 )
 
 type RemoteFileFetcher struct {
-	GithubListIterator *GithubListIterator
+	GithubListIterator *ListIterator
 }
 
 type FileFetcherOptions struct {
@@ -25,7 +25,7 @@ func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Re
 	} else {
 		return nil, errors.New("invalid fileFetcherOptions")
 	}
-	process := func(i interface{}) ([]string, error) {
+	process := func(i interface{}) []string {
 		var files []string
 		pageFiles := i.([]gh.CommitFile)
 		for _, f := range pageFiles {
@@ -37,7 +37,7 @@ func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Re
 				files = append(files, f.GetPreviousFilename())
 			}
 		}
-		return files, nil
+		return files
 	}
 	return r.GithubListIterator.Iterate(ctx, installationToken, run, process)
 }
