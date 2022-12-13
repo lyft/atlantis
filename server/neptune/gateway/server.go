@@ -278,23 +278,20 @@ func NewServer(config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "creating github client creator")
 	}
 
-	iterator := &github.ListIterator{
-		ClientCreator: clientCreator,
-	}
 	rootConfigBuilder := &event.RootConfigBuilder{
 		RepoFetcher:     repoFetcher,
 		HooksRunner:     hooksRunner,
 		ParserValidator: &event.ParserValidator{GlobalCfg: globalCfg},
 		RootFinder:      &event.RepoRootFinder{Logger: ctxLogger},
-		FileFetcher:     &github.RemoteFileFetcher{GithubListIterator: iterator},
+		FileFetcher:     &github.RemoteFileFetcher{ClientCreator: clientCreator},
 		GlobalCfg:       globalCfg,
 		Logger:          ctxLogger,
 		Scope:           statsScope.SubScope("event.filters.root"),
 	}
 
 	checkRunFetcher := &github.CheckRunsFetcher{
-		AppID:              config.GithubAppID,
-		GithubListIterator: iterator,
+		AppID:         config.GithubAppID,
+		ClientCreator: clientCreator,
 	}
 
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(

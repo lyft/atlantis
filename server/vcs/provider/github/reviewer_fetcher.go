@@ -3,27 +3,32 @@ package github
 import (
 	"context"
 	gh "github.com/google/go-github/v45/github"
+	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
 const ApprovalState = "APPROVED"
 
 type PRReviewerFetcher struct {
-	GithubListIterator *ListIterator
+	ClientCreator githubapp.ClientCreator
 }
 
 func (r *PRReviewerFetcher) ListApprovalReviewers(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]string, error) {
-	run := func(ctx context.Context, client *gh.Client, nextPage int) (interface{}, *gh.Response, error) {
+	client, err := r.ClientCreator.NewInstallationClient(installationToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating installation client")
+	}
+
+	run := func(ctx context.Context, nextPage int) ([]*gh.PullRequestReview, *gh.Response, error) {
 		listOptions := gh.ListOptions{
 			PerPage: 100,
 		}
 		listOptions.Page = nextPage
-
 		return client.PullRequests.ListReviews(ctx, repo.Owner, repo.Name, prNum, &listOptions)
 	}
-	process := func(i interface{}) []string {
+	process := func(reviews []*gh.PullRequestReview) []string {
 		var approvalReviewers []string
-		reviews := i.([]gh.PullRequestReview)
 		for _, review := range reviews {
 			if review.GetState() == ApprovalState && review.GetUser() != nil {
 				approvalReviewers = append(approvalReviewers, review.GetUser().GetLogin())
@@ -31,5 +36,5 @@ func (r *PRReviewerFetcher) ListApprovalReviewers(ctx context.Context, installat
 		}
 		return approvalReviewers
 	}
-	return r.GithubListIterator.Iterate(ctx, installationToken, run, process)
+	return Iterate(ctx, run, process)
 }

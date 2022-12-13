@@ -3,6 +3,8 @@ package github
 import (
 	"context"
 	gh "github.com/google/go-github/v45/github"
+	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"regexp"
 )
@@ -15,12 +17,16 @@ const (
 var checkRunRegex = regexp.MustCompile("atlantis/policy_check: .*")
 
 type CheckRunsFetcher struct {
-	GithubListIterator *ListIterator
-	AppID              int64
+	ClientCreator githubapp.ClientCreator
+	AppID         int64
 }
 
 func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error) {
-	run := func(ctx context.Context, client *gh.Client, nextPage int) (interface{}, *gh.Response, error) {
+	client, err := r.ClientCreator.NewInstallationClient(installationToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating installation client")
+	}
+	run := func(ctx context.Context, nextPage int) (*gh.ListCheckRunsResults, *gh.Response, error) {
 		listOptions := gh.ListCheckRunsOptions{
 			Status: gh.String(CompletedStatus),
 			AppID:  gh.Int64(r.AppID),
@@ -32,9 +38,8 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, instal
 		return client.Checks.ListCheckRunsForRef(ctx, repo.Owner, repo.Name, ref, &listOptions)
 	}
 
-	process := func(i interface{}) []string {
+	process := func(checkRunResults *gh.ListCheckRunsResults) []string {
 		var failedPolicyCheckRuns []string
-		checkRunResults := i.(gh.ListCheckRunsResults)
 		for _, checkRun := range checkRunResults.CheckRuns {
 			if checkRunRegex.MatchString(checkRun.GetName()) && checkRun.GetConclusion() == FailedConclusion {
 				failedPolicyCheckRuns = append(failedPolicyCheckRuns, checkRun.GetName())
@@ -43,5 +48,5 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, instal
 		return failedPolicyCheckRuns
 	}
 
-	return r.GithubListIterator.Iterate(ctx, installationToken, run, process)
+	return Iterate(ctx, run, process)
 }

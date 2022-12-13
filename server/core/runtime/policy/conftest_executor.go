@@ -51,9 +51,7 @@ func NewConfTestExecutor(cfg valid.GlobalCfg, creator githubapp.ClientCreator) *
 		PolicyFilter: &events.ApprovedPolicyFilter{
 			GlobalCfg: cfg,
 			PRReviewsFetcher: &github.PRReviewerFetcher{
-				GithubListIterator: &github.ListIterator{
-					ClientCreator: creator,
-				},
+				ClientCreator: creator,
 			},
 		},
 	}

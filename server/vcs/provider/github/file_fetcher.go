@@ -3,12 +3,13 @@ package github
 import (
 	"context"
 	gh "github.com/google/go-github/v45/github"
+	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
 type RemoteFileFetcher struct {
-	GithubListIterator *ListIterator
+	ClientCreator githubapp.ClientCreator
 }
 
 type FileFetcherOptions struct {
@@ -17,17 +18,21 @@ type FileFetcherOptions struct {
 }
 
 func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Repo, installationToken int64, fileFetcherOptions FileFetcherOptions) ([]string, error) {
-	var run func(ctx context.Context, client *gh.Client, nextPage int) (interface{}, *gh.Response, error)
+	client, err := r.ClientCreator.NewInstallationClient(installationToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating installation client")
+	}
+
+	var run func(ctx context.Context, nextPage int) ([]*gh.CommitFile, *gh.Response, error)
 	if fileFetcherOptions.Sha != "" {
-		run = GetCommit(repo, fileFetcherOptions)
+		run = GetCommit(client, repo, fileFetcherOptions)
 	} else if fileFetcherOptions.PRNum != 0 {
-		run = ListFiles(repo, fileFetcherOptions)
+		run = ListFiles(client, repo, fileFetcherOptions)
 	} else {
 		return nil, errors.New("invalid fileFetcherOptions")
 	}
-	process := func(i interface{}) []string {
+	process := func(pageFiles []*gh.CommitFile) []string {
 		var files []string
-		pageFiles := i.([]gh.CommitFile)
 		for _, f := range pageFiles {
 			files = append(files, f.GetFilename())
 
@@ -39,11 +44,11 @@ func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Re
 		}
 		return files
 	}
-	return r.GithubListIterator.Iterate(ctx, installationToken, run, process)
+	return Iterate(ctx, run, process)
 }
 
-func GetCommit(repo models.Repo, fileFetcherOptions FileFetcherOptions) func(ctx context.Context, client *gh.Client, nextPage int) (interface{}, *gh.Response, error) {
-	return func(ctx context.Context, client *gh.Client, nextPage int) (interface{}, *gh.Response, error) {
+func GetCommit(client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions) func(ctx context.Context, nextPage int) ([]*gh.CommitFile, *gh.Response, error) {
+	return func(ctx context.Context, nextPage int) ([]*gh.CommitFile, *gh.Response, error) {
 		listOptions := gh.ListOptions{
 			PerPage: 100,
 		}
@@ -56,8 +61,8 @@ func GetCommit(repo models.Repo, fileFetcherOptions FileFetcherOptions) func(ctx
 	}
 }
 
-func ListFiles(repo models.Repo, fileFetcherOptions FileFetcherOptions) func(ctx context.Context, client *gh.Client, nextPage int) (interface{}, *gh.Response, error) {
-	return func(ctx context.Context, client *gh.Client, nextPage int) (interface{}, *gh.Response, error) {
+func ListFiles(client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions) func(ctx context.Context, nextPage int) ([]*gh.CommitFile, *gh.Response, error) {
+	return func(ctx context.Context, nextPage int) ([]*gh.CommitFile, *gh.Response, error) {
 		listOptions := gh.ListOptions{
 			PerPage: 100,
 		}
