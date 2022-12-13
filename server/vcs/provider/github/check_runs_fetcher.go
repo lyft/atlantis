@@ -26,7 +26,7 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, instal
 	if err != nil {
 		return nil, errors.Wrap(err, "creating installation client")
 	}
-	run := func(ctx context.Context, nextPage int) (*gh.ListCheckRunsResults, *gh.Response, error) {
+	run := func(ctx context.Context, nextPage int) ([]*gh.CheckRun, *gh.Response, error) {
 		listOptions := gh.ListCheckRunsOptions{
 			Status: gh.String(CompletedStatus),
 			AppID:  gh.Int64(r.AppID),
@@ -35,12 +35,16 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, instal
 			},
 		}
 		listOptions.Page = nextPage
-		return client.Checks.ListCheckRunsForRef(ctx, repo.Owner, repo.Name, ref, &listOptions)
+		checkRunResults, resp, err := client.Checks.ListCheckRunsForRef(ctx, repo.Owner, repo.Name, ref, &listOptions)
+		if checkRunResults != nil {
+			return checkRunResults.CheckRuns, resp, err
+		}
+		return nil, nil, errors.New("unable to retrieve check runs from GH check run results")
 	}
 
-	process := func(checkRunResults *gh.ListCheckRunsResults) []string {
+	process := func(checkRuns []*gh.CheckRun) []string {
 		var failedPolicyCheckRuns []string
-		for _, checkRun := range checkRunResults.CheckRuns {
+		for _, checkRun := range checkRuns {
 			if checkRunRegex.MatchString(checkRun.GetName()) && checkRun.GetConclusion() == FailedConclusion {
 				failedPolicyCheckRuns = append(failedPolicyCheckRuns, checkRun.GetName())
 			}

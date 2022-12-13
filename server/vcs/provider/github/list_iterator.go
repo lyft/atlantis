@@ -10,10 +10,10 @@ import (
 
 // Add supported types here with each GH api fxn introduced
 
-func Iterate[T []*gh.CommitFile | []*gh.PullRequestReview | *gh.ListCheckRunsResults, R []string](
+func Iterate[T []*gh.CommitFile | []*gh.PullRequestReview | []*gh.CheckRun, R []string](
 	ctx context.Context,
 	runFunc func(ctx context.Context, nextPage int) (T, *gh.Response, error),
-	parseFunc func(T) R) (R, error) {
+	processFunc func(T) R) (R, error) {
 
 	var output R
 	nextPage := 0
@@ -25,7 +25,7 @@ func Iterate[T []*gh.CommitFile | []*gh.PullRequestReview | *gh.ListCheckRunsRes
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("not ok status running gh api call: %s", resp.Status)
 		}
-		output = append(output, parseFunc(results)...)
+		output = append(output, processFunc(results)...)
 		if resp.NextPage == 0 {
 			break
 		}
