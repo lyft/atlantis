@@ -42,14 +42,13 @@ type ConfTestExecutor struct {
 	PolicyFilter   policyFilter
 }
 
-func NewConfTestExecutor(cfg valid.GlobalCfg, creator githubapp.ClientCreator) *ConfTestExecutor {
+func NewConfTestExecutor(creator githubapp.ClientCreator) *ConfTestExecutor {
 	return &ConfTestExecutor{
 		SourceResolver: &SourceResolverProxy{
 			LocalSourceResolver: &LocalSourceResolver{},
 		},
 		Exec: runtime_models.LocalExec{},
 		PolicyFilter: &events.ApprovedPolicyFilter{
-			GlobalCfg: cfg,
 			PRReviewsFetcher: &github.PRReviewerFetcher{
 				ClientCreator: creator,
 			},

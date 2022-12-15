@@ -835,7 +835,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		},
 		Exec: runtime_models.LocalExec{},
 		PolicyFilter: &events.ApprovedPolicyFilter{
-			GlobalCfg: globalCfg,
 			PRReviewsFetcher: &mockReviewFetcher{
 				approvers: []string{},
 			},
