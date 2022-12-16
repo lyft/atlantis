@@ -42,15 +42,15 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, instal
 		return nil, nil, errors.New("unable to retrieve check runs from GH check run results")
 	}
 
-	process := func(checkRuns []*gh.CheckRun) []string {
-		var failedPolicyCheckRuns []string
-		for _, checkRun := range checkRuns {
-			if checkRunRegex.MatchString(checkRun.GetName()) && checkRun.GetConclusion() == FailedConclusion {
-				failedPolicyCheckRuns = append(failedPolicyCheckRuns, checkRun.GetName())
-			}
-		}
-		return failedPolicyCheckRuns
+	checkRuns, err := Iterate(ctx, run)
+	if err != nil {
+		return nil, errors.Wrap(err, "iterating through entries")
 	}
-
-	return Iterate(ctx, run, process)
+	var failedPolicyCheckRuns []string
+	for _, checkRun := range checkRuns {
+		if checkRunRegex.MatchString(checkRun.GetName()) && checkRun.GetConclusion() == FailedConclusion {
+			failedPolicyCheckRuns = append(failedPolicyCheckRuns, checkRun.GetName())
+		}
+	}
+	return failedPolicyCheckRuns, nil
 }

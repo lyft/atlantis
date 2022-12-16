@@ -31,20 +31,21 @@ func (r *RemoteFileFetcher) GetModifiedFiles(ctx context.Context, repo models.Re
 	} else {
 		return nil, errors.New("invalid fileFetcherOptions")
 	}
-	process := func(pageFiles []*gh.CommitFile) []string {
-		var files []string
-		for _, f := range pageFiles {
-			files = append(files, f.GetFilename())
 
-			// If the file was renamed, we'll want to run plan in the directory
-			// it was moved from as well.
-			if f.GetStatus() == "renamed" {
-				files = append(files, f.GetPreviousFilename())
-			}
-		}
-		return files
+	pageFiles, err := Iterate(ctx, run)
+	if err != nil {
+		return nil, errors.Wrap(err, "iterating through entries")
 	}
-	return Iterate(ctx, run, process)
+	var renamed []string
+	for _, f := range pageFiles {
+		renamed = append(renamed, f.GetFilename())
+		// If the file was renamed, we'll want to run plan in the directory
+		// it was moved from as well.
+		if f.GetStatus() == "renamed" {
+			renamed = append(renamed, f.GetPreviousFilename())
+		}
+	}
+	return renamed, nil
 }
 
 func GetCommit(client *gh.Client, repo models.Repo, fileFetcherOptions FileFetcherOptions) func(ctx context.Context, nextPage int) ([]*gh.CommitFile, *gh.Response, error) {

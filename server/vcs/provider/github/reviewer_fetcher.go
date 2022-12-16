@@ -27,14 +27,17 @@ func (r *PRReviewerFetcher) ListApprovalReviewers(ctx context.Context, installat
 		listOptions.Page = nextPage
 		return client.PullRequests.ListReviews(ctx, repo.Owner, repo.Name, prNum, &listOptions)
 	}
-	process := func(reviews []*gh.PullRequestReview) []string {
-		var approvalReviewers []string
-		for _, review := range reviews {
-			if review.GetState() == ApprovalState && review.GetUser() != nil {
-				approvalReviewers = append(approvalReviewers, review.GetUser().GetLogin())
-			}
-		}
-		return approvalReviewers
+	reviews, err := Iterate(ctx, run)
+	if err != nil {
+		return nil, errors.Wrap(err, "iterating through entries")
 	}
-	return Iterate(ctx, run, process)
+
+	// TODO: look at latest reviews only if user reviewed multiple times
+	var approvalReviewers []string
+	for _, review := range reviews {
+		if review.GetState() == ApprovalState && review.GetUser() != nil {
+			approvalReviewers = append(approvalReviewers, review.GetUser().GetLogin())
+		}
+	}
+	return approvalReviewers, nil
 }

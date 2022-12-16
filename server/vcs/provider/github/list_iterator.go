@@ -8,14 +8,10 @@ import (
 	"net/http"
 )
 
-// Add supported types here with each GH api fxn introduced
-
-func Iterate[T []*gh.CommitFile | []*gh.PullRequestReview | []*gh.CheckRun, R []string](
+func Iterate[T interface{}](
 	ctx context.Context,
-	runFunc func(ctx context.Context, nextPage int) (T, *gh.Response, error),
-	processFunc func(T) R) (R, error) {
-
-	var output R
+	runFunc func(ctx context.Context, nextPage int) ([]T, *gh.Response, error)) ([]T, error) {
+	var output []T
 	nextPage := 0
 	for {
 		results, resp, err := runFunc(ctx, nextPage)
@@ -25,7 +21,7 @@ func Iterate[T []*gh.CommitFile | []*gh.PullRequestReview | []*gh.CheckRun, R []
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("not ok status running gh api call: %s", resp.Status)
 		}
-		output = append(output, processFunc(results)...)
+		output = append(output, results...)
 		if resp.NextPage == 0 {
 			break
 		}
