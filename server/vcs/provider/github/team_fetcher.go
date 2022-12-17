@@ -9,12 +9,12 @@ import (
 	"net/http"
 )
 
-type TeamFetcher struct {
+type TeamMemberFetcher struct {
 	ClientCreator githubapp.ClientCreator
 	Org           string
 }
 
-func (t *TeamFetcher) ListTeamMembers(ctx context.Context, installationToken int64, teamSlug string) ([]string, error) {
+func (t *TeamMemberFetcher) ListTeamMembers(ctx context.Context, installationToken int64, teamSlug string) ([]string, error) {
 	client, err := t.ClientCreator.NewInstallationClient(installationToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating installation client")

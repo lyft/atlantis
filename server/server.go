@@ -585,7 +585,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	legacyConftestExecutor := policy.NewConfTestExecutorWorkflow(ctxLogger, binDir, &terraform.DefaultDownloader{})
-	conftestExecutor := policy.NewConfTestExecutor(clientCreator)
+	conftestExecutor := policy.NewConfTestExecutor(clientCreator, "org")
 	policyCheckStepRunner, err := runtime.NewPolicyCheckStepRunner(
 		defaultTfVersion,
 		legacyConftestExecutor,
