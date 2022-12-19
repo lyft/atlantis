@@ -15,15 +15,15 @@ type teamMemberFetcher interface {
 	ListTeamMembers(ctx context.Context, installationToken int64, teamSlug string) ([]string, error)
 }
 
-type approvedPolicyFilter struct {
+type ApprovedPolicyFilter struct {
 	owners map[string][]string //cache
 
 	prReviewsFetcher  prReviewsFetcher
 	teamMemberFetcher teamMemberFetcher
 }
 
-func NewApprovedPolicyFilter(prReviewsFetcher prReviewsFetcher, teamMemberFetcher teamMemberFetcher) *approvedPolicyFilter {
-	return &approvedPolicyFilter{
+func NewApprovedPolicyFilter(prReviewsFetcher prReviewsFetcher, teamMemberFetcher teamMemberFetcher) *ApprovedPolicyFilter {
+	return &ApprovedPolicyFilter{
 		prReviewsFetcher:  prReviewsFetcher,
 		teamMemberFetcher: teamMemberFetcher,
 		owners:            make(map[string][]string),
@@ -32,7 +32,7 @@ func NewApprovedPolicyFilter(prReviewsFetcher prReviewsFetcher, teamMemberFetche
 
 // Filter performs an all-or-nothing filter against failed policies for now. If PR reviewer is a global policy owner,
 // all policies will pass.
-func (p *approvedPolicyFilter) Filter(ctx context.Context, installationToken int64, repo models.Repo, prNum int, failedPolicies []valid.PolicySet) ([]valid.PolicySet, error) {
+func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int64, repo models.Repo, prNum int, failedPolicies []valid.PolicySet) ([]valid.PolicySet, error) {
 	// Skip GH API calls if no policies failed
 	if len(failedPolicies) == 0 {
 		return failedPolicies, nil
@@ -58,7 +58,7 @@ func (p *approvedPolicyFilter) Filter(ctx context.Context, installationToken int
 	return filteredFailedPolicies, nil
 }
 
-func (p *approvedPolicyFilter) policyApproved(ctx context.Context, installationToken int64, approvedReviewers []string, failedPolicy valid.PolicySet) (bool, error) {
+func (p *ApprovedPolicyFilter) policyApproved(ctx context.Context, installationToken int64, approvedReviewers []string, failedPolicy valid.PolicySet) (bool, error) {
 	// Check if any reviewer is an owner of the failed policy set
 	if p.ownersContainsPolicy(approvedReviewers, failedPolicy) {
 		return true, nil
@@ -72,7 +72,7 @@ func (p *approvedPolicyFilter) policyApproved(ctx context.Context, installationT
 	return p.ownersContainsPolicy(approvedReviewers, failedPolicy), nil
 }
 
-func (p *approvedPolicyFilter) ownersContainsPolicy(approvedReviewers []string, failedPolicy valid.PolicySet) bool {
+func (p *ApprovedPolicyFilter) ownersContainsPolicy(approvedReviewers []string, failedPolicy valid.PolicySet) bool {
 	// Check if any reviewer is an owner of the failed policy set
 	for _, owner := range p.owners[failedPolicy.Owner] {
 		for _, reviewer := range approvedReviewers {
@@ -84,7 +84,7 @@ func (p *approvedPolicyFilter) ownersContainsPolicy(approvedReviewers []string, 
 	return false
 }
 
-func (p *approvedPolicyFilter) getOwners(ctx context.Context, installationToken int64, policy valid.PolicySet) error {
+func (p *ApprovedPolicyFilter) getOwners(ctx context.Context, installationToken int64, policy valid.PolicySet) error {
 	members, err := p.teamMemberFetcher.ListTeamMembers(ctx, installationToken, policy.Owner)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch GH team members")

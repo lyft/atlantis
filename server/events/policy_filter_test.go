@@ -1,6 +1,6 @@
 package events
 
-// not using a separate test package to be able to test some fields in private struct approvedPolicyFilter
+// not using a separate test package to be able to test some private fields in struct ApprovedPolicyFilter
 
 import (
 	"context"
