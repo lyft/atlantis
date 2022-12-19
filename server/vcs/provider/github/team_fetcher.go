@@ -2,11 +2,9 @@ package github
 
 import (
 	"context"
-	"fmt"
 	gh "github.com/google/go-github/v45/github"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 type TeamMemberFetcher struct {
@@ -19,14 +17,18 @@ func (t *TeamMemberFetcher) ListTeamMembers(ctx context.Context, installationTok
 	if err != nil {
 		return nil, errors.Wrap(err, "creating installation client")
 	}
-	users, resp, err := client.Teams.ListTeamMembersBySlug(ctx, t.Org, teamSlug, &gh.TeamListTeamMembersOptions{})
-	if err != nil {
-		return nil, errors.Wrap(err, "error fetching team members")
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("not ok status fetching team members: %s", resp.Status)
-	}
 	var usernames []string
+	run := func(ctx context.Context, nextPage int) ([]*gh.User, *gh.Response, error) {
+		listOptions := gh.ListOptions{
+			PerPage: 100,
+		}
+		listOptions.Page = nextPage
+		return client.Teams.ListTeamMembersBySlug(ctx, t.Org, teamSlug, &gh.TeamListTeamMembersOptions{})
+	}
+	users, err := Iterate(ctx, run)
+	if err != nil {
+		return nil, errors.Wrap(err, "iterating through entries")
+	}
 	for _, user := range users {
 		usernames = append(usernames, user.GetLogin())
 	}
