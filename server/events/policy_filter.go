@@ -30,8 +30,7 @@ func NewApprovedPolicyFilter(prReviewsFetcher prReviewsFetcher, teamMemberFetche
 	}
 }
 
-// Filter performs an all-or-nothing filter against failed policies for now. If PR reviewer is a global policy owner,
-// all policies will pass.
+// Filter will remove failed policies if the underlying PR has been approved by a policy owner
 func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int64, repo models.Repo, prNum int, failedPolicies []valid.PolicySet) ([]valid.PolicySet, error) {
 	// Skip GH API calls if no policies failed
 	if len(failedPolicies) == 0 {
