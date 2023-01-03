@@ -34,12 +34,14 @@ func (r *PRReviewerFetcher) ListApprovalReviewers(ctx context.Context, installat
 	return findLatestApprovals(reviews), nil
 }
 
-// only fetch approval reviews from a user if it is there latest since a user can approve a PR then request more changes later on
+// only return an approval from a user if it is their most recent review
+// this is because a user can approve a PR then request more changes later on
 func findLatestApprovals(reviews []*gh.PullRequestReview) []string {
 	var approvalReviewers []string
+	reviewers := make(map[string]bool)
 
-	reviewers := map[string]bool{}
-	for i := len(reviews) - 1; i >= 0; i-- { //reviews are returned chronologically
+	//reviews are returned chronologically
+	for i := len(reviews) - 1; i >= 0; i-- {
 		review := reviews[i]
 		reviewer := review.GetUser()
 		if reviewer == nil {
@@ -47,7 +49,7 @@ func findLatestApprovals(reviews []*gh.PullRequestReview) []string {
 		}
 		// add reviewer if an approval + we have not already processed their most recent review
 		if review.GetState() == ApprovalState && !reviewers[reviewer.GetLogin()] {
-			approvalReviewers = append(approvalReviewers, review.GetUser().GetLogin())
+			approvalReviewers = append(approvalReviewers, reviewer.GetLogin())
 		}
 		reviewers[reviewer.GetLogin()] = true
 	}
