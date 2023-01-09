@@ -32,12 +32,19 @@ func (p PullRequestReviewEvent) Convert(e *github.PullRequestReviewEvent) (event
 	if err != nil {
 		return event.PullRequestReview{}, errors.Wrap(err, "converting pull request")
 	}
+
+	if e.GetSender() == nil {
+		return event.PullRequestReview{}, errors.Wrap(err, "sender is nil")
+	}
 	user := models.User{
 		Username: e.GetSender().GetLogin(),
 	}
+
+	if e.GetReview() == nil {
+		return event.PullRequestReview{}, errors.Wrap(err, "review is nil")
+	}
 	state := e.GetReview().GetState()
 	ref := e.GetReview().GetCommitID()
-
 	eventTimestamp := e.GetReview().GetSubmittedAt()
 	if e.GetReview().GetSubmittedAt().Equal(time.Time{}) {
 		eventTimestamp = time.Now()
