@@ -31,7 +31,7 @@ func TestConvert_PRReviewEvent(t *testing.T) {
 	commitID := "123"
 	login := "nish"
 	user := models.User{Username: login}
-	action := "Approved"
+	state := "approved"
 	prNum := 10
 	installationID := int64(456)
 	time := time.Now()
@@ -96,7 +96,7 @@ func TestConvert_PRReviewEvent(t *testing.T) {
 		InstallationToken: installationID,
 		Repo:              expectedRepo,
 		User:              user,
-		Action:            action,
+		State:             state,
 		Ref:               commitID,
 		Timestamp:         time,
 		Pull:              expectedPull,
@@ -108,8 +108,8 @@ func TestConvert_PRReviewEvent(t *testing.T) {
 			Review: &github.PullRequestReview{
 				CommitID:    github.String(commitID),
 				SubmittedAt: &time,
+				State:       github.String(state),
 			},
-			Action: github.String(action),
 			Sender: &github.User{
 				Login: github.String(login),
 			},

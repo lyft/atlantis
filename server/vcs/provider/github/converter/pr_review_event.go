@@ -35,7 +35,7 @@ func (p PullRequestReviewEvent) Convert(e *github.PullRequestReviewEvent) (event
 	user := models.User{
 		Username: e.GetSender().GetLogin(),
 	}
-	action := e.GetAction()
+	state := e.GetReview().GetState()
 	ref := e.GetReview().GetCommitID()
 
 	eventTimestamp := e.GetReview().GetSubmittedAt()
@@ -47,7 +47,7 @@ func (p PullRequestReviewEvent) Convert(e *github.PullRequestReviewEvent) (event
 		InstallationToken: installationToken,
 		Repo:              repo,
 		User:              user,
-		Action:            action,
+		State:             state,
 		Ref:               ref,
 		Timestamp:         eventTimestamp,
 		Pull:              pull,

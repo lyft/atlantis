@@ -3,6 +3,7 @@ package event
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"time"
 
@@ -13,14 +14,14 @@ import (
 )
 
 const (
-	Approved = "APPROVED"
+	Approved = "approved"
 )
 
 type PullRequestReview struct {
 	InstallationToken int64
 	Repo              models.Repo
 	User              models.User
-	Action            string
+	State             string
 	Ref               string
 	Timestamp         time.Time
 	Pull              models.PullRequest
@@ -57,19 +58,21 @@ func (p *PullRequestReviewWorkerProxy) handle(ctx context.Context, event PullReq
 	}
 
 	// Ignore non-approval events
-	if event.Action != Approved {
-		p.Logger.InfoContext(ctx, "not an approval event")
+	if event.State != Approved {
+		p.Logger.InfoContext(ctx, fmt.Sprintf("not an approval event: %s", event.State))
 		return nil
 	}
 
 	// Ignore PRs without failing policy checks
 	failedPolicyCheckRuns, err := p.CheckRunFetcher.ListFailedPolicyCheckRuns(ctx, event.InstallationToken, event.Repo, event.Ref)
 	if err != nil {
-		p.Logger.ErrorContext(ctx, "unable to allocate policy v2")
+		p.Logger.ErrorContext(ctx, "unable to allocate policy v2", map[string]interface{}{
+			"err": err,
+		})
 		return err
 	}
 	if len(failedPolicyCheckRuns) == 0 {
-		p.Logger.ErrorContext(ctx, "no failed policies, skipping event")
+		p.Logger.InfoContext(ctx, "no failed policies, skipping event")
 		return nil
 	}
 	// Forward to SNS to further process in the worker

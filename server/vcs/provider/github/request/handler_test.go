@@ -621,7 +621,7 @@ func TestHandlePullRequestReviewEvent(t *testing.T) {
 		InstallationToken: 123,
 		Repo:              models.Repo{},
 		User:              models.User{Username: "username"},
-		Action:            event.Approved,
+		State:             event.Approved,
 		Ref:               "abcd",
 	}
 
