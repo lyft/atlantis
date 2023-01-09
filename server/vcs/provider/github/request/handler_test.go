@@ -620,7 +620,6 @@ func TestHandlePullRequestReviewEvent(t *testing.T) {
 	internalEvent := event.PullRequestReview{
 		InstallationToken: 123,
 		Repo:              models.Repo{},
-		PRNum:             1,
 		User:              models.User{Username: "username"},
 		Action:            event.Approved,
 		Ref:               "abcd",

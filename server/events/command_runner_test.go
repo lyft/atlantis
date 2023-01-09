@@ -185,6 +185,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		PullStatusFetcher:             defaultBoltDB,
 		StaleCommandChecker:           staleCommandChecker,
 		VCSStatusUpdater:              vcsUpdater,
+		PolicyCommandRunner:           &mockPolicyCheckCommandRunner{},
 	}
 	return vcsClient
 }
@@ -596,4 +597,21 @@ func TestRunAutoplanCommand_DropStaleRequest(t *testing.T) {
 
 	ch.RunAutoplanCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, time.Now(), 0)
 	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
+}
+
+func TestRunPRReviewCommand_DrainOngoing(t *testing.T) {
+	t.Log("if drain is ongoing then a message should be displayed")
+	vcsClient := setup(t)
+	ctx := context.Background()
+	drainer.ShutdownBlocking()
+	ch.RunPRReviewCommand(ctx, fixtures.GithubRepo, models.PullRequest{Num: 1}, fixtures.User, time.Now(), 0)
+	vcsClient.VerifyWasCalledOnce().CreateComment(fixtures.GithubRepo, fixtures.Pull.Num, "Atlantis server is shutting down, please try again later.", "")
+}
+
+type mockPolicyCheckCommandRunner struct {
+	called bool
+}
+
+func (p *mockPolicyCheckCommandRunner) Run(_ *command.Context) {
+	p.called = true
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -18,10 +19,11 @@ const (
 type PullRequestReview struct {
 	InstallationToken int64
 	Repo              models.Repo
-	PRNum             int
 	User              models.User
 	Action            string
 	Ref               string
+	Timestamp         time.Time
+	Pull              models.PullRequest
 }
 
 type fetcher interface {
@@ -56,6 +58,7 @@ func (p *PullRequestReviewWorkerProxy) handle(ctx context.Context, event PullReq
 
 	// Ignore non-approval events
 	if event.Action != Approved {
+		p.Logger.InfoContext(ctx, "not an approval event")
 		return nil
 	}
 
