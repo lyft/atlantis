@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/http"
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"time"
 )
@@ -30,20 +31,25 @@ func (p PullRequestReviewEventHandler) Handle(ctx context.Context, event event.P
 
 type AsyncPullRequestReviewEvent struct {
 	handler *PullRequestReviewEventHandler
+	logger  logging.Logger
 }
 
-func NewPullRequestReviewEvent(prReviewCommandRunner PRReviewCommandRunner) *AsyncPullRequestReviewEvent {
+func NewPullRequestReviewEvent(prReviewCommandRunner PRReviewCommandRunner, logger logging.Logger) *AsyncPullRequestReviewEvent {
 	return &AsyncPullRequestReviewEvent{
 		handler: &PullRequestReviewEventHandler{
 			PRReviewCommandRunner: prReviewCommandRunner,
 		},
+		logger: logger,
 	}
 }
 
 func (a AsyncPullRequestReviewEvent) Handle(_ context.Context, event event.PullRequestReview, req *http.BufferedRequest) error {
 	go func() {
 		// Passing background context to avoid context cancellation since the parent goroutine does not wait for this goroutine to finish execution.
-		a.handler.Handle(context.Background(), event, req)
+		err := a.handler.Handle(context.Background(), event, req)
+		if err != nil {
+			a.logger.ErrorContext(context.Background(), err.Error())
+		}
 	}()
 	return nil
 }
