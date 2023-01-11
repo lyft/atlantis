@@ -1056,9 +1056,8 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		},
 	)
 
-	prReviewCommandRunner := handlers.PRReviewCommandRunner(commandRunner)
 	prrHandler := handlers.PullRequestReviewEventHandler{
-		PRReviewCommandRunner: prReviewCommandRunner,
+		PRReviewCommandRunner: commandRunner,
 	}
 
 	commentHandler := handlers.NewCommentEventWithCommandHandler(
