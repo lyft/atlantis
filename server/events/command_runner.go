@@ -42,6 +42,7 @@ type CommandRunner interface {
 	// and then calling the appropriate services to finish executing the command.
 	RunCommentCommand(ctx context.Context, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, pullNum int, cmd *command.Comment, timestamp time.Time, installationToken int64)
 	RunAutoplanCommand(ctx context.Context, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time, installationToken int64)
+	RunPRReviewCommand(ctx context.Context, repo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time, installationToken int64)
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_stale_command_checker.go StaleCommandChecker
@@ -237,8 +238,6 @@ func (c *DefaultCommandRunner) RunPRReviewCommand(ctx context.Context, repo mode
 		return
 	}
 	defer c.Drainer.OpDone()
-	defer c.logPanics(ctx)
-
 	scope := c.StatsScope.SubScope("pr_approval")
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
@@ -255,7 +254,7 @@ func (c *DefaultCommandRunner) RunPRReviewCommand(ctx context.Context, repo mode
 		Pull:              pull,
 		PullStatus:        status,
 		HeadRepo:          repo,
-		Trigger:           command.PRReviewTrigger,
+		Trigger:           command.AutoTrigger,
 		Scope:             scope,
 		TriggerTimestamp:  timestamp,
 		RequestCtx:        ctx,

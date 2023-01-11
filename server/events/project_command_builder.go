@@ -149,7 +149,7 @@ func (p *DefaultProjectCommandBuilder) BuildPlanCommands(ctx *command.Context, c
 	return pcc, err
 }
 
-func (p *DefaultProjectCommandBuilder) BuildPRRCommands(ctx *command.Context) ([]command.ProjectContext, error) {
+func (p *DefaultProjectCommandBuilder) BuildPolicyCheckCommands(ctx *command.Context) ([]command.ProjectContext, error) {
 	unlockFn, err := p.WorkingDirLocker.TryLockPull(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num)
 	if err != nil {
 		return nil, err

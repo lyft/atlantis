@@ -2,19 +2,14 @@ package handlers
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/http"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
-	"time"
 )
 
-type PRReviewCommandRunner interface {
-	RunPRReviewCommand(ctx context.Context, repo models.Repo, pull models.PullRequest, user models.User, timestamp time.Time, installationToken int64)
-}
-
 type PullRequestReviewEventHandler struct {
-	PRReviewCommandRunner PRReviewCommandRunner
+	PRReviewCommandRunner events.CommandRunner
 }
 
 func (p PullRequestReviewEventHandler) Handle(ctx context.Context, event event.PullRequestReview, _ *http.BufferedRequest) error {
@@ -34,7 +29,7 @@ type AsyncPullRequestReviewEvent struct {
 	logger  logging.Logger
 }
 
-func NewPullRequestReviewEvent(prReviewCommandRunner PRReviewCommandRunner, logger logging.Logger) *AsyncPullRequestReviewEvent {
+func NewPullRequestReviewEvent(prReviewCommandRunner events.CommandRunner, logger logging.Logger) *AsyncPullRequestReviewEvent {
 	return &AsyncPullRequestReviewEvent{
 		handler: &PullRequestReviewEventHandler{
 			PRReviewCommandRunner: prReviewCommandRunner,

@@ -18,9 +18,6 @@ const (
 
 	// Commands that are triggered by comments (ie. atlantis plan)
 	CommentTrigger
-
-	// Commands that are triggered by PR reviews (ie. approving a PR)
-	PRReviewTrigger
 )
 
 // Context represents the context of a command that should be executed

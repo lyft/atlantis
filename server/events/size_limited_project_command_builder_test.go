@@ -162,7 +162,7 @@ func (m mockProjectCommandBuilder) BuildPlanCommands(ctx *command.Context, comme
 	return m.commands, m.error
 }
 
-func (m mockProjectCommandBuilder) BuildPRRCommands(ctx *command.Context) ([]command.ProjectContext, error) {
+func (m mockProjectCommandBuilder) BuildPolicyCheckCommands(ctx *command.Context) ([]command.ProjectContext, error) {
 	return m.commands, m.error
 }
 

@@ -116,7 +116,6 @@ func NewVCSEventsController(
 	scope tally.Scope,
 	githubWebhookSecret []byte,
 	allowDraftPRs bool,
-	prReviewCommandRunner handlers.PRReviewCommandRunner,
 	commandRunner events.CommandRunner,
 	commentParser events.CommentParsing,
 	eventParser events.EventParsing,
@@ -149,7 +148,7 @@ func NewVCSEventsController(
 		logger,
 	)
 
-	pullRequestReviewHandler := handlers.NewPullRequestReviewEvent(prReviewCommandRunner, logger)
+	pullRequestReviewHandler := handlers.NewPullRequestReviewEvent(commandRunner, logger)
 
 	// we don't support push events in the atlantis worker and these should never make it in the queue
 	// in the first place, so if it happens, let's return an error and fail fast.

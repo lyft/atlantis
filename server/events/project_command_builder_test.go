@@ -1133,7 +1133,7 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 	Equals(t, "workspace2", ctxs[3].Workspace)
 }
 
-func TestDefaultProjectCommandBuilder_BuildPRRCommands(t *testing.T) {
+func TestDefaultProjectCommandBuilder_BuildPolicyCheckCommands(t *testing.T) {
 	testWorkingDirLocker := mockWorkingDirLocker{}
 	tmpDir, cleanup := DirStructure(t, map[string]interface{}{
 		"workspace1": map[string]interface{}{
@@ -1172,12 +1172,12 @@ func TestDefaultProjectCommandBuilder_BuildPRRCommands(t *testing.T) {
 		Scope:      tally.NewTestScope("atlantis", map[string]string{}),
 		RequestCtx: context.Background(),
 	}
-	projects, err := builder.BuildPRRCommands(commandCtx)
+	projects, err := builder.BuildPolicyCheckCommands(commandCtx)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedProjects, projects)
 }
 
-func TestDefaultProjectCommandBuilder_BuildPRRCommands_TryLockPullError(t *testing.T) {
+func TestDefaultProjectCommandBuilder_BuildPolicyCheckCommands_TryLockPullError(t *testing.T) {
 	testWorkingDirLocker := mockWorkingDirLocker{
 		error: assert.AnError,
 	}
@@ -1189,12 +1189,12 @@ func TestDefaultProjectCommandBuilder_BuildPRRCommands_TryLockPullError(t *testi
 		Scope:      tally.NewTestScope("atlantis", map[string]string{}),
 		RequestCtx: context.Background(),
 	}
-	projects, err := builder.BuildPRRCommands(commandCtx)
+	projects, err := builder.BuildPolicyCheckCommands(commandCtx)
 	assert.ErrorIs(t, err, assert.AnError)
 	assert.Empty(t, projects)
 }
 
-func TestDefaultProjectCommandBuilder_BuildPRRCommands_GetPullDirError(t *testing.T) {
+func TestDefaultProjectCommandBuilder_BuildPolicyCheckCommands_GetPullDirError(t *testing.T) {
 	testWorkingDir := mockWorkingDir{
 		pullErr: assert.AnError,
 	}
@@ -1208,12 +1208,12 @@ func TestDefaultProjectCommandBuilder_BuildPRRCommands_GetPullDirError(t *testin
 		Scope:      tally.NewTestScope("atlantis", map[string]string{}),
 		RequestCtx: context.Background(),
 	}
-	projects, err := builder.BuildPRRCommands(commandCtx)
+	projects, err := builder.BuildPolicyCheckCommands(commandCtx)
 	assert.ErrorIs(t, err, assert.AnError)
 	assert.Empty(t, projects)
 }
 
-func TestDefaultProjectCommandBuilder_BuildPRRCommands_FindError(t *testing.T) {
+func TestDefaultProjectCommandBuilder_BuildPolicyCheckCommands_FindError(t *testing.T) {
 	testWorkingDir := mockWorkingDir{}
 	testWorkingDirLocker := mockWorkingDirLocker{}
 	builder := events.DefaultProjectCommandBuilder{
@@ -1226,12 +1226,12 @@ func TestDefaultProjectCommandBuilder_BuildPRRCommands_FindError(t *testing.T) {
 		Scope:      tally.NewTestScope("atlantis", map[string]string{}),
 		RequestCtx: context.Background(),
 	}
-	projects, err := builder.BuildPRRCommands(commandCtx)
+	projects, err := builder.BuildPolicyCheckCommands(commandCtx)
 	assert.ErrorIs(t, err, os.ErrNotExist)
 	assert.Empty(t, projects)
 }
 
-func TestDefaultProjectCommandBuilder_BuildPRRCommands_GetWorkingDirErr(t *testing.T) {
+func TestDefaultProjectCommandBuilder_BuildPolicyCheckCommands_GetWorkingDirErr(t *testing.T) {
 	testWorkingDirLocker := mockWorkingDirLocker{}
 	tmpDir, cleanup := DirStructure(t, map[string]interface{}{
 		"workspace1": map[string]interface{}{
@@ -1260,7 +1260,7 @@ func TestDefaultProjectCommandBuilder_BuildPRRCommands_GetWorkingDirErr(t *testi
 		Scope:      tally.NewTestScope("atlantis", map[string]string{}),
 		RequestCtx: context.Background(),
 	}
-	projects, err := builder.BuildPRRCommands(commandCtx)
+	projects, err := builder.BuildPolicyCheckCommands(commandCtx)
 	assert.ErrorIs(t, err, assert.AnError)
 	assert.Empty(t, projects)
 }

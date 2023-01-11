@@ -920,7 +920,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		statsScope,
 		[]byte(userConfig.GithubWebhookSecret),
 		userConfig.PlanDrafts,
-		commandRunner,
 		forceApplyCommandRunner,
 		commentParser,
 		eventParser,

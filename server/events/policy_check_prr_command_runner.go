@@ -7,7 +7,7 @@ import (
 )
 
 type ProjectPolicyCheckCommandBuilder interface {
-	BuildPRRCommands(ctx *command.Context) ([]command.ProjectContext, error)
+	BuildPolicyCheckCommands(ctx *command.Context) ([]command.ProjectContext, error)
 }
 
 type PRRPolicyCheckCommandRunner struct {
@@ -16,7 +16,7 @@ type PRRPolicyCheckCommandRunner struct {
 }
 
 func (p *PRRPolicyCheckCommandRunner) Run(ctx *command.Context) {
-	projectCmds, err := p.PrjCmdBuilder.BuildPRRCommands(ctx)
+	projectCmds, err := p.PrjCmdBuilder.BuildPolicyCheckCommands(ctx)
 	if err != nil {
 		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx.RequestCtx, ctx.Pull.BaseRepo, ctx.Pull, models.FailedVCSStatus, command.PolicyCheck, "", ""); statusErr != nil {
 			ctx.Log.WarnContext(ctx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", statusErr))
