@@ -243,6 +243,7 @@ func (c *DefaultCommandRunner) RunPRReviewCommand(ctx context.Context, repo mode
 	timer := scope.Timer(metrics.ExecutionTimeMetric).Start()
 	defer timer.Stop()
 
+	// only log error here, like with Atlantis autoplans/commands
 	status, err := c.PullStatusFetcher.GetPullStatus(pull)
 	if err != nil {
 		c.Logger.ErrorContext(ctx, err.Error())
