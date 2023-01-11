@@ -46,6 +46,7 @@ func (p PullRequestReviewEvent) Convert(e *github.PullRequestReviewEvent) (event
 	state := e.GetReview().GetState()
 	ref := e.GetReview().GetCommitID()
 	eventTimestamp := e.GetReview().GetSubmittedAt()
+	// if submitted_at is nil, API returns time.Time{}, so we use time.Now as a backup
 	if e.GetReview().GetSubmittedAt().Equal(time.Time{}) {
 		eventTimestamp = time.Now()
 	}
