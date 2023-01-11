@@ -19,11 +19,13 @@ func (t *TeamMemberFetcher) ListTeamMembers(ctx context.Context, installationTok
 	}
 	var usernames []string
 	run := func(ctx context.Context, nextPage int) ([]*gh.User, *gh.Response, error) {
-		listOptions := gh.ListOptions{
-			PerPage: 100,
+		listOptions := &gh.TeamListTeamMembersOptions{
+			ListOptions: gh.ListOptions{
+				PerPage: 100,
+			},
 		}
 		listOptions.Page = nextPage
-		return client.Teams.ListTeamMembersBySlug(ctx, t.Org, teamSlug, &gh.TeamListTeamMembersOptions{})
+		return client.Teams.ListTeamMembersBySlug(ctx, t.Org, teamSlug, listOptions)
 	}
 	users, err := Iterate(ctx, run)
 	if err != nil {
