@@ -199,6 +199,6 @@ type mockExec struct {
 }
 
 func (r *mockExec) CombinedOutput(_ []string, _ map[string]string, _ string) (string, error) {
-	r.numCalls += 1
+	r.numCalls++
 	return r.output, r.error
 }
