@@ -19,7 +19,7 @@ Checking plan against the following policies:
 **Policy Check Failed**
 ```
 exit status 1
-Checking plan against the following policies:
+Checking plan against the following policies: 
   test_policy
 
 FAIL - <redacted plan file> - main - WARNING: Forbidden Resource creation is prohibited.
