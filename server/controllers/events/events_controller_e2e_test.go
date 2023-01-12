@@ -422,7 +422,7 @@ policy-v2:
 	// Ensure we have >= TF 0.14 locally.
 	ensureRunning014(t)
 	// Ensure we have >= Conftest 0.21 locally.
-	ensureRunningConftest(t)
+	//ensureRunningConftest(t)
 
 	cases := []struct {
 		Description string
@@ -478,6 +478,7 @@ policy-v2:
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
+				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-apply-failed.txt"},
 				{"exp-output-merge.txt"},
 			},
@@ -516,8 +517,6 @@ policy-v2:
 
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			t.Parallel()
-
 			// reset userConfig
 			userConfig := &server.UserConfig{}
 			userConfig.EnablePolicyChecks = true
@@ -844,9 +843,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		members: []string{},
 	}
 	conftestExecutor := &policy.ConfTestExecutor{
-		SourceResolver: &policy.SourceResolverProxy{
-			LocalSourceResolver: &policy.LocalSourceResolver{},
-		},
 		Exec:         runtime_models.LocalExec{},
 		PolicyFilter: events.NewApprovedPolicyFilter(reviewFetcher, teamFetcher),
 	}
