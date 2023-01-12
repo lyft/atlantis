@@ -422,7 +422,7 @@ policy-v2:
 	// Ensure we have >= TF 0.14 locally.
 	ensureRunning014(t)
 	// Ensure we have >= Conftest 0.21 locally.
-	//ensureRunningConftest(t)
+	ensureRunningConftest(t)
 
 	cases := []struct {
 		Description string

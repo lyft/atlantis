@@ -5,7 +5,7 @@ Ran Policy Check for 2 projects:
 
 ### 1. dir: `dir1` workspace: `default`
 ```diff
-Checking plan against the following policies:
+Checking plan against the following policies: 
   test_policy
 
 
