@@ -1,0 +1,8 @@
+repos:
+  - id: /.*/
+policies:
+  policy_sets:
+    - name: test_policy
+      owner: someoneelse
+      paths:
+        - ../policies/policy.rego

@@ -1,4 +1,4 @@
-Ran Policy Check for dir: `.` workspace: `default`
+Ran Policy Check for dir: `staging` workspace: `staging`
 
 **Policy Check Failed**
 ```

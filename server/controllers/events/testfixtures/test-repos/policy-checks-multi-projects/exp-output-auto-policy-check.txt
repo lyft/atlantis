@@ -1,9 +1,9 @@
 Ran Policy Check for 2 projects:
 
-1. dir: `dir1` workspace: `default`
-1. dir: `dir2` workspace: `default`
+1. project: `dir1` dir: `dir1` workspace: `default`
+1. project: `dir2` dir: `dir2` workspace: `default`
 
-### 1. dir: `dir1` workspace: `default`
+### 1. project: `dir1` dir: `dir1` workspace: `default`
 ```diff
 Checking plan against the following policies: 
   test_policy
@@ -15,7 +15,7 @@ Checking plan against the following policies:
 
 
 ---
-### 2. dir: `dir2` workspace: `default`
+### 2. project: `dir2` dir: `dir2` workspace: `default`
 **Policy Check Failed**
 ```
 exit status 1

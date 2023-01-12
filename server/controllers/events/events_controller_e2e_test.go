@@ -448,7 +448,6 @@ policy-v2:
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
 			},
@@ -538,10 +537,12 @@ policy-v2:
 			ctrl.Post(w, pullOpenedReq)
 			ResponseContains(t, w, 200, "Processing...")
 
-			pullReviewedReq := GitHubPullRequestReviewedEvent(t, headSHA)
-			w = httptest.NewRecorder()
-			ctrl.Post(w, pullReviewedReq)
-			ResponseContains(t, w, 200, "Processing...")
+			if c.RepoDir != "policy-checks-multi-projects" {
+				pullReviewedReq := GitHubPullRequestReviewedEvent(t, headSHA)
+				w = httptest.NewRecorder()
+				ctrl.Post(w, pullReviewedReq)
+				ResponseContains(t, w, 200, "Processing...")
+			}
 
 			// Now send any other comments.
 			for _, comment := range c.Comments {
@@ -614,6 +615,7 @@ policy-v2:
 			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
+				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-apply.txt"},
 			},
 		},
@@ -622,13 +624,11 @@ policy-v2:
 			RepoDir:       "platform-mode/policy-check-approval",
 			ModifiedFiles: []string{"main.tf"},
 			Comments: []string{
-				"atlantis approve_policies",
 				"atlantis apply",
 			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-approve-policies.txt"},
 				{"exp-output-apply.txt"},
 			},
 		},
@@ -636,7 +636,6 @@ policy-v2:
 
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			t.Parallel()
 			// Setup test dependencies.
 			w := httptest.NewRecorder()
 			// reset userConfig
