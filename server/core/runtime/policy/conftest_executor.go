@@ -57,7 +57,7 @@ func NewConfTestExecutor(creator githubapp.ClientCreator, org string) *ConfTestE
 func (c *ConfTestExecutor) Run(_ context.Context, prjCtx command.ProjectContext, executablePath string, envs map[string]string, workdir string, extraArgs []string) (string, error) {
 	var policyNames []string
 	var failedPolicies []valid.PolicySet
-	var totalCmdOutput string
+	var totalCmdOutput []string
 	var policyErr error
 
 	inputFile := filepath.Join(workdir, prjCtx.GetShowResultFileName())
@@ -88,11 +88,11 @@ func (c *ConfTestExecutor) Run(_ context.Context, prjCtx command.ProjectContext,
 			policyErr = cmdErr
 			failedPolicies = append(failedPolicies, policySet)
 		}
-		totalCmdOutput = fmt.Sprintf("%s\n%s", totalCmdOutput, cmdOutput)
+		totalCmdOutput = append(totalCmdOutput, cmdOutput)
 	}
 
 	title := c.buildTitle(policyNames)
-	output := c.sanitizeOutput(inputFile, title+totalCmdOutput)
+	output := c.sanitizeOutput(inputFile, title+strings.Join(totalCmdOutput, "\n"))
 	if prjCtx.InstallationToken == 0 {
 		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, "missing installation token")
 		scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
