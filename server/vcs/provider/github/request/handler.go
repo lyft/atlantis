@@ -288,8 +288,6 @@ func (h *Handler) handleCheckSuiteEvent(ctx context.Context, e *github.CheckSuit
 	checkSuiteEvent, err := h.checkSuiteEventConverter.Convert(e)
 
 	if err != nil {
-		ctx = context.WithValue(ctx, contextInternal.ErrKey, err.Error())
-		h.logger.ErrorContext(ctx, "error parsing check suite event")
 		return &errors.EventParsingError{Err: err}
 	}
 	ctx = context.WithValue(ctx, contextInternal.RepositoryKey, checkSuiteEvent.Repo.FullName)
