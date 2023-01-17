@@ -239,8 +239,6 @@ func (h *Handler) handleCommentEvent(ctx context.Context, e *github.IssueComment
 
 	commentEvent, err := h.commentEventConverter.Convert(e)
 	if err != nil {
-		ctx = context.WithValue(ctx, contextInternal.ErrKey, err.Error())
-		h.logger.ErrorContext(ctx, "error parsing comment event")
 		return &errors.EventParsingError{Err: err}
 	}
 	ctx = context.WithValue(ctx, contextInternal.RepositoryKey, commentEvent.BaseRepo.FullName)
@@ -254,8 +252,6 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, e *github.PullRequ
 	pullEvent, err := h.pullEventConverter.Convert(e)
 
 	if err != nil {
-		ctx = context.WithValue(ctx, contextInternal.ErrKey, err.Error())
-		h.logger.ErrorContext(ctx, "error parsing pull event")
 		return &errors.EventParsingError{Err: err}
 	}
 	ctx = context.WithValue(ctx, contextInternal.RepositoryKey, pullEvent.Pull.BaseRepo.FullName)
@@ -269,8 +265,6 @@ func (h *Handler) handlePushEvent(ctx context.Context, e *github.PushEvent) erro
 	pushEvent, err := h.pushEventConverter.Convert(e)
 
 	if err != nil {
-		ctx = context.WithValue(ctx, contextInternal.ErrKey, err.Error())
-		h.logger.ErrorContext(ctx, "error parsing push event")
 		return &errors.EventParsingError{Err: err}
 	}
 	ctx = context.WithValue(ctx, contextInternal.RepositoryKey, pushEvent.Repo.FullName)
@@ -283,8 +277,6 @@ func (h *Handler) handleCheckRunEvent(ctx context.Context, e *github.CheckRunEve
 	checkRunEvent, err := h.checkRunEventConverter.Convert(e)
 
 	if err != nil {
-		ctx = context.WithValue(ctx, contextInternal.ErrKey, err.Error())
-		h.logger.ErrorContext(ctx, "error parsing check run event")
 		return &errors.EventParsingError{Err: err}
 	}
 	ctx = context.WithValue(ctx, contextInternal.RepositoryKey, checkRunEvent.Repo.FullName)
@@ -308,8 +300,6 @@ func (h *Handler) handleCheckSuiteEvent(ctx context.Context, e *github.CheckSuit
 func (h *Handler) handlePullRequestReviewEvent(ctx context.Context, e *github.PullRequestReviewEvent, r *http.BufferedRequest) error {
 	pullRequestReviewEvent, err := h.pullRequestReviewEventConverter.Convert(e)
 	if err != nil {
-		ctx = context.WithValue(ctx, contextInternal.ErrKey, err.Error())
-		h.logger.ErrorContext(ctx, "error parsing prr event")
 		return &errors.EventParsingError{Err: err}
 	}
 	ctx = context.WithValue(ctx, contextInternal.RepositoryKey, pullRequestReviewEvent.Repo.FullName)
