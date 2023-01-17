@@ -7,7 +7,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/stretchr/testify/assert"
-	"sync"
 	"testing"
 )
 
@@ -46,9 +45,7 @@ func TestFilter_ApprovedCacheMiss(t *testing.T) {
 		members: team,
 	}
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, teamFetcher)
-	owners := sync.Map{}
-	owners.Store(policyOwner, team)
-	policyFilter.owners = owners
+	policyFilter.owners.Store(policyOwner, team)
 	failedPolicies := []valid.PolicySet{
 		{Name: policyName, Owner: policyOwner},
 	}
