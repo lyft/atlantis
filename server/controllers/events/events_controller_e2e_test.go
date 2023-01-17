@@ -960,10 +960,18 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		parallelPoolSize,
 	)
 
-	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(e2eStatusUpdater, projectCommandBuilder, prjCmdRunner, pullUpdater, dbUpdater, &policies.CommandOutputGenerator{
+	outputGenerator := &policies.CommandOutputGenerator{
 		PrjCommandRunner:  prjCmdRunner,
 		PrjCommandBuilder: projectCommandBuilder,
-	}, featureAllocator)
+	}
+	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
+		e2eStatusUpdater,
+		projectCommandBuilder,
+		prjCmdRunner,
+		pullUpdater,
+		dbUpdater,
+		outputGenerator,
+		featureAllocator)
 
 	unlockCommandRunner := events.NewUnlockCommandRunner(
 		deleteLockCommand,

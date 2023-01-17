@@ -12,7 +12,7 @@ type commandOutputGenerator interface {
 	GeneratePolicyCheckOutputStore(ctx *command.Context, cmd *command.Comment) (command.PolicyCheckOutputStore, error)
 }
 
-// TODO: delete approve policies command runner when policy v2 rollout is complete
+// TODO: delete entire approve policies workflow when policy v2 rollout is complete
 func NewApprovePoliciesCommandRunner(
 	vcsStatusUpdater VCSStatusUpdater,
 	prjCommandBuilder ProjectApprovePoliciesCommandBuilder,
