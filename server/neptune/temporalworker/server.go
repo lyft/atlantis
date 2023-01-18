@@ -121,14 +121,21 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	session, err := aws.NewSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing new aws session")
-	}
-
-	snsWriter := &sns.Writer{
-		Client:   awsSns.New(session),
-		TopicArn: &config.LyftAuditJobsSnsTopicArn,
+	//TODO: move this within the activity construction
+	// we only initialize the AWS session if we have a topic, otherwise we just drop the message,
+	// for now this is how we get around local testing without aws resources.
+	var snsWriter io.Writer
+	if config.LyftAuditJobsSnsTopicArn != "" {
+		session, err := aws.NewSession()
+		if err != nil {
+			return nil, errors.Wrap(err, "initializing new aws session")
+		}
+		snsWriter = &sns.Writer{
+			Client:   awsSns.New(session),
+			TopicArn: &config.LyftAuditJobsSnsTopicArn,
+		}
+	} else {
+		snsWriter = io.Discard
 	}
 	deployActivities, err := activities.NewDeploy(config.DeploymentConfig, snsWriter)
 	if err != nil {
@@ -269,10 +276,23 @@ func (s Server) shutdown() {
 	s.TemporalClient.Close()
 }
 
+// // allows us to know which worker is polling which task queue without having to
+// // dig through the UI
+// // additionally, this also allows us to share our temporal client across workers
+// func generateWorkerID(taskQueue string) string {
+// 	hostname, err := os.Hostname()
+// 	if err != nil {
+// 		hostname = "Unknown"
+// 	}
+
+// 	return fmt.Sprintf("%d@%s@%s", os.Getpid(), hostname, taskQueue)
+// }
+
 func (s Server) buildDeployWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	deployWorker := worker.New(s.TemporalClient.Client, workflows.DeployTaskQueue, worker.Options{
 		WorkerStopTimeout: TemporalWorkerTimeout,
+		// Identity:          generateWorkerID(workflows.DeployTaskQueue),
 	})
 	deployWorker.RegisterActivity(s.DeployActivities)
 	deployWorker.RegisterActivity(s.GithubActivities)
@@ -286,6 +306,7 @@ func (s Server) buildTerraformWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	terraformWorker := worker.New(s.TemporalClient.Client, s.TerraformTaskQueue, worker.Options{
 		WorkerStopTimeout: TemporalWorkerTimeout,
+		// Identity:          generateWorkerID(s.TerraformTaskQueue),
 	})
 	terraformWorker.RegisterActivity(s.TerraformActivities)
 	terraformWorker.RegisterActivity(s.GithubActivities)
