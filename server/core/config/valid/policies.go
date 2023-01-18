@@ -16,7 +16,7 @@ type PolicySets struct {
 	Version      *version.Version
 	Owners       PolicyOwners
 	PolicySets   []PolicySet
-	Organization string
+	Organization string // Github organization each policy set owner belongs to
 }
 
 type PolicyOwners struct {
