@@ -36,6 +36,8 @@ var testGithubRepo = github.Repo{
 	Name: testRepoName,
 }
 
+var approvalReason = "Because I want"
+
 var testLocalRoot = &terraformModel.LocalRoot{
 	Root: terraformModel.Root{
 		Name: testRootName,
@@ -46,6 +48,10 @@ var testLocalRoot = &terraformModel.LocalRoot{
 						StepName: "step1",
 					},
 				},
+			},
+			Approval: terraformModel.PlanApproval{
+				Type:   terraformModel.ManualApproval,
+				Reason: approvalReason,
 			},
 		},
 		Apply: execute.Job{
@@ -135,6 +141,21 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 
 	var s []state.Workflow
 
+	store := state.NewWorkflowStoreWithGenerator(
+		// add a notifier which just appends to a list which allows us to
+		// test every state change
+		func(st *state.Workflow) error {
+
+			if st.Plan.Status == state.InProgressJobStatus && req.ShouldErrorDuringJobUpdate {
+				return fmt.Errorf("some error")
+			}
+			// need to copy since its a pointer and will get mutated
+			s = append(s, copy(st))
+			return nil
+		},
+		&testURLGenerator{},
+	)
+
 	runnerReq := terraform.Request{
 		Root:         testLocalRoot.Root,
 		Repo:         testGithubRepo,
@@ -145,6 +166,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		ReviewGate: &gate.Review{
 			Timeout:        30 * time.Second,
 			MetricsHandler: client.MetricsNopHandler,
+			Client:         store,
 		},
 		GithubActivities:    gAct,
 		TerraformActivities: tAct,
@@ -156,20 +178,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		},
 		JobRunner:      runner,
 		MetricsHandler: client.MetricsNopHandler,
-		Store: state.NewWorkflowStoreWithGenerator(
-			// add a notifier which just appends to a list which allows us to
-			// test every state change
-			func(st *state.Workflow) error {
-
-				if st.Plan.Status == state.InProgressJobStatus && req.ShouldErrorDuringJobUpdate {
-					return fmt.Errorf("some error")
-				}
-				// need to copy since its a pointer and will get mutated
-				s = append(s, copy(st))
-				return nil
-			},
-			&testURLGenerator{},
-		),
+		Store:          store,
 	}
 
 	var planRejected bool
@@ -223,6 +232,7 @@ func copy(s *state.Workflow) state.Workflow {
 			Output: &state.JobOutput{
 				URL: s.Apply.Output.URL,
 			},
+			OnWaitingActions: s.Apply.OnWaitingActions,
 		}
 	}
 	copy.Result = s.Result
@@ -317,10 +327,50 @@ func TestSuccess(t *testing.T) {
 				},
 			},
 			Apply: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+				OnWaitingActions: state.JobActions{
+					Actions: []state.JobAction{
+						{
+							ID:   state.ConfirmAction,
+							Info: "Confirm this plan to proceed to apply",
+						},
+						{
+							ID:   state.RejectAction,
+							Info: "Reject this plan to prevent the apply",
+						},
+					},
+					Summary: approvalReason,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Apply: &state.Job{
 				Status: state.InProgressJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
 				},
+				OnWaitingActions: state.JobActions{
+					Actions: []state.JobAction{
+						{
+							ID:   state.ConfirmAction,
+							Info: "Confirm this plan to proceed to apply",
+						},
+						{
+							ID:   state.RejectAction,
+							Info: "Reject this plan to prevent the apply",
+						},
+					},
+					Summary: approvalReason,
+				},
 			},
 		},
 		{
@@ -335,6 +385,19 @@ func TestSuccess(t *testing.T) {
 				Output: &state.JobOutput{
 					URL: outputURL,
 				},
+				OnWaitingActions: state.JobActions{
+					Actions: []state.JobAction{
+						{
+							ID:   state.ConfirmAction,
+							Info: "Confirm this plan to proceed to apply",
+						},
+						{
+							ID:   state.RejectAction,
+							Info: "Reject this plan to prevent the apply",
+						},
+					},
+					Summary: approvalReason,
+				},
 			},
 		},
 		{
@@ -348,6 +411,19 @@ func TestSuccess(t *testing.T) {
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
+				},
+				OnWaitingActions: state.JobActions{
+					Actions: []state.JobAction{
+						{
+							ID:   state.ConfirmAction,
+							Info: "Confirm this plan to proceed to apply",
+						},
+						{
+							ID:   state.RejectAction,
+							Info: "Reject this plan to prevent the apply",
+						},
+					},
+					Summary: approvalReason,
 				},
 			},
 			Result: state.WorkflowResult{
@@ -490,9 +566,22 @@ func TestPlanRejection(t *testing.T) {
 				},
 			},
 			Apply: &state.Job{
-				Status: state.RejectedJobStatus,
+				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
+				},
+				OnWaitingActions: state.JobActions{
+					Actions: []state.JobAction{
+						{
+							ID:   state.ConfirmAction,
+							Info: "Confirm this plan to proceed to apply",
+						},
+						{
+							ID:   state.RejectAction,
+							Info: "Reject this plan to prevent the apply",
+						},
+					},
+					Summary: approvalReason,
 				},
 			},
 		},
@@ -507,6 +596,46 @@ func TestPlanRejection(t *testing.T) {
 				Status: state.RejectedJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
+				},
+				OnWaitingActions: state.JobActions{
+					Actions: []state.JobAction{
+						{
+							ID:   state.ConfirmAction,
+							Info: "Confirm this plan to proceed to apply",
+						},
+						{
+							ID:   state.RejectAction,
+							Info: "Reject this plan to prevent the apply",
+						},
+					},
+					Summary: approvalReason,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Apply: &state.Job{
+				Status: state.RejectedJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+				OnWaitingActions: state.JobActions{
+					Actions: []state.JobAction{
+						{
+							ID:   state.ConfirmAction,
+							Info: "Confirm this plan to proceed to apply",
+						},
+						{
+							ID:   state.RejectAction,
+							Info: "Reject this plan to prevent the apply",
+						},
+					},
+					Summary: approvalReason,
 				},
 			},
 			Result: state.WorkflowResult{
