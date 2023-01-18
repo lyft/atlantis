@@ -113,9 +113,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 			Ta:      ta,
 		},
 		MetricsHandler: metricsHandler,
-		// We have critical things relying on this notification so this workflow provides guarantees around this. (ie. compliance auditing)  There should
-		// be no situation where we are deploying while this is failing.
-		Store: store,
+		Store:          store,
 	}
 }
 
