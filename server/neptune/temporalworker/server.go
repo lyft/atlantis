@@ -276,23 +276,12 @@ func (s Server) shutdown() {
 	s.TemporalClient.Close()
 }
 
-// // allows us to know which worker is polling which task queue without having to
-// // dig through the UI
-// // additionally, this also allows us to share our temporal client across workers
-// func generateWorkerID(taskQueue string) string {
-// 	hostname, err := os.Hostname()
-// 	if err != nil {
-// 		hostname = "Unknown"
-// 	}
-
-// 	return fmt.Sprintf("%d@%s@%s", os.Getpid(), hostname, taskQueue)
-// }
-
+// TODO: consider building these before initializing the server so that the server is just responsible
+// for running the workers and has no knowledge of their dependencies.
 func (s Server) buildDeployWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	deployWorker := worker.New(s.TemporalClient.Client, workflows.DeployTaskQueue, worker.Options{
 		WorkerStopTimeout: TemporalWorkerTimeout,
-		// Identity:          generateWorkerID(workflows.DeployTaskQueue),
 	})
 	deployWorker.RegisterActivity(s.DeployActivities)
 	deployWorker.RegisterActivity(s.GithubActivities)
@@ -306,7 +295,6 @@ func (s Server) buildTerraformWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	terraformWorker := worker.New(s.TemporalClient.Client, s.TerraformTaskQueue, worker.Options{
 		WorkerStopTimeout: TemporalWorkerTimeout,
-		// Identity:          generateWorkerID(s.TerraformTaskQueue),
 	})
 	terraformWorker.RegisterActivity(s.TerraformActivities)
 	terraformWorker.RegisterActivity(s.GithubActivities)
