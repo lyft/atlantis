@@ -85,6 +85,7 @@ func NewVCSEventsController(
 	checkRunHandler := &gateway_handlers.CheckRunHandler{
 		Logger:            logger,
 		RootConfigBuilder: rootConfigBuilder,
+		SyncScheduler:     syncScheduler,
 		AsyncScheduler:    asyncScheduler,
 		DeploySignaler:    deploySignaler,
 	}
