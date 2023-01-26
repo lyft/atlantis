@@ -55,3 +55,33 @@ func findLatestApprovals(reviews []*gh.PullRequestReview) []string {
 	}
 	return approvalReviewers
 }
+
+func (r *PRReviewerFetcher) ListApprovalReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]*gh.PullRequestReview, error) {
+	client, err := r.ClientCreator.NewInstallationClient(installationToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating installation client")
+	}
+
+	run := func(ctx context.Context, nextPage int) ([]*gh.PullRequestReview, *gh.Response, error) {
+		listOptions := gh.ListOptions{
+			PerPage: 100,
+		}
+		listOptions.Page = nextPage
+		return client.PullRequests.ListReviews(ctx, repo.Owner, repo.Name, prNum, &listOptions)
+	}
+	reviews, err := Iterate(ctx, run)
+	if err != nil {
+		return nil, errors.Wrap(err, "iterating through entries")
+	}
+	return findApprovals(reviews), nil
+}
+
+func findApprovals(reviews []*gh.PullRequestReview) []*gh.PullRequestReview {
+	var approvals []*gh.PullRequestReview
+	for _, review := range reviews {
+		if review.GetState() == ApprovalState {
+			approvals = append(approvals, review)
+		}
+	}
+	return approvals
+}

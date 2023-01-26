@@ -42,13 +42,19 @@ func NewConfTestExecutor(creator githubapp.ClientCreator, org string) *ConfTestE
 	reviewsFetcher := &github.PRReviewerFetcher{
 		ClientCreator: creator,
 	}
+	reviewDismisser := &github.PRReviewDismisser{
+		ClientCreator: creator,
+	}
+	commitFetcher := &github.PRCommitFetcher{
+		ClientCreator: creator,
+	}
 	teamMemberFetcher := &github.TeamMemberFetcher{
 		ClientCreator: creator,
 		Org:           org,
 	}
 	return &ConfTestExecutor{
 		Exec:         runtime_models.LocalExec{},
-		PolicyFilter: events.NewApprovedPolicyFilter(reviewsFetcher, teamMemberFetcher),
+		PolicyFilter: events.NewApprovedPolicyFilter(reviewsFetcher, reviewDismisser, commitFetcher, teamMemberFetcher),
 	}
 }
 

@@ -4,10 +4,12 @@ package events
 
 import (
 	"context"
+	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 const (
@@ -25,7 +27,9 @@ func TestFilter_Approved(t *testing.T) {
 	teamFetcher := &mockTeamMemberFetcher{
 		members: []string{ownerA, ownerB, ownerC},
 	}
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, teamFetcher)
+	commitFetcher := &mockCommitFetcher{}
+	reviewDismisser := &mockReviewDismisser{}
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher)
 	failedPolicies := []valid.PolicySet{
 		{Name: policyName, Owner: policyOwner},
 	}
@@ -44,7 +48,9 @@ func TestFilter_ApprovedCacheMiss(t *testing.T) {
 	teamFetcher := &mockTeamMemberFetcher{
 		members: team,
 	}
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, teamFetcher)
+	commitFetcher := &mockCommitFetcher{}
+	reviewDismisser := &mockReviewDismisser{}
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher)
 	policyFilter.owners.Store(policyOwner, team)
 	failedPolicies := []valid.PolicySet{
 		{Name: policyName, Owner: policyOwner},
@@ -64,7 +70,9 @@ func TestFilter_NotApproved(t *testing.T) {
 	teamFetcher := &mockTeamMemberFetcher{
 		members: []string{ownerA, ownerC},
 	}
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, teamFetcher)
+	commitFetcher := &mockCommitFetcher{}
+	reviewDismisser := &mockReviewDismisser{}
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher)
 	failedPolicies := []valid.PolicySet{
 		{Name: policyName, Owner: policyOwner},
 	}
@@ -83,7 +91,9 @@ func TestFilter_NoFailedPolicies(t *testing.T) {
 	teamFetcher := &mockTeamMemberFetcher{
 		members: []string{ownerA, ownerB, ownerC},
 	}
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, teamFetcher)
+	commitFetcher := &mockCommitFetcher{}
+	reviewDismisser := &mockReviewDismisser{}
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher)
 	var failedPolicies []valid.PolicySet
 
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
@@ -100,7 +110,9 @@ func TestFilter_FailedPRReviewFetch(t *testing.T) {
 	teamFetcher := &mockTeamMemberFetcher{
 		members: []string{ownerA, ownerB, ownerC},
 	}
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, teamFetcher)
+	commitFetcher := &mockCommitFetcher{}
+	reviewDismisser := &mockReviewDismisser{}
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher)
 	failedPolicies := []valid.PolicySet{
 		{Name: policyName, Owner: policyOwner},
 	}
@@ -119,7 +131,9 @@ func TestFilter_FailedTeamMemberFetch(t *testing.T) {
 	teamFetcher := &mockTeamMemberFetcher{
 		error: assert.AnError,
 	}
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, teamFetcher)
+	commitFetcher := &mockCommitFetcher{}
+	reviewDismisser := &mockReviewDismisser{}
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher)
 	failedPolicies := []valid.PolicySet{
 		{Name: policyName, Owner: policyOwner},
 	}
@@ -135,11 +149,38 @@ type mockReviewFetcher struct {
 	approvers []string
 	error     error
 	isCalled  bool
+	reviews   []*github.PullRequestReview
+	rErr      error
+}
+
+func (f *mockReviewFetcher) ListApprovalReviews(_ context.Context, _ int64, _ models.Repo, _ int) ([]*github.PullRequestReview, error) {
+	return f.reviews, f.rErr
 }
 
 func (f *mockReviewFetcher) ListApprovalReviewers(_ context.Context, _ int64, _ models.Repo, _ int) ([]string, error) {
 	f.isCalled = true
 	return f.approvers, f.error
+}
+
+type mockCommitFetcher struct {
+	time     time.Time
+	error    error
+	isCalled bool
+}
+
+func (c *mockCommitFetcher) FetchLatestCommitTime(_ context.Context, _ int64, _ models.Repo, _ int) (time.Time, error) {
+	c.isCalled = true
+	return c.time, c.error
+}
+
+type mockReviewDismisser struct {
+	error    error
+	isCalled bool
+}
+
+func (d *mockReviewDismisser) Dismiss(_ context.Context, _ int64, _ models.Repo, _ int, _ int64) error {
+	d.isCalled = true
+	return d.error
 }
 
 type mockTeamMemberFetcher struct {
