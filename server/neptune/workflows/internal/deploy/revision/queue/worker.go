@@ -114,6 +114,7 @@ func NewWorker(
 		Queue:            q,
 		Deployer:         deployer,
 		latestDeployment: latestDeployment,
+		Scope:            scope,
 	}, nil
 }
 
