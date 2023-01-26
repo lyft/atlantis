@@ -42,9 +42,7 @@ const (
 	CompleteWorkerState WorkerState = "complete"
 
 	UnlockSignalName = "unlock"
-
-	ManualDeployWorkflowStat = "workflow.deploy.trigger.manual"
-	MergeDeployWorkflowStat  = "workflow.deploy.trigger.merge"
+	SignalNameTag    = "signal_name"
 )
 
 type UnlockSignalRequest struct {
@@ -169,7 +167,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 			logger.Info(ctx, "Processing... ")
 		case receive:
 			logger.Info(ctx, "Received unlock signal... ")
-			w.Scope.SubScopeWithTags(map[string]string{"signal_name": UnlockSignalName}).
+			w.Scope.SubScopeWithTags(map[string]string{SignalNameTag: UnlockSignalName}).
 				Counter(ctx, "signal_receive").
 				Inc(1)
 			w.Queue.SetLockForMergedItems(ctx, LockState{
