@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-const DismissReason = "Atlantis automatically dismisses stale reviews prior to the latest commits from policy owners."
+const DismissReason = "Atlantis automatically dismisses reviews from policy owners made prior to the latest commit."
 
 type PRReviewDismisser struct {
 	ClientCreator githubapp.ClientCreator
