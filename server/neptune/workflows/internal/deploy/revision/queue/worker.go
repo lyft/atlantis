@@ -273,7 +273,12 @@ func addRevisionSubscope(s metrics.Scope, msg terraform.DeploymentInfo) metrics.
 	tags := make(map[string]string)
 
 	tags["workflow_trigger"] = string(msg.Root.Trigger)
-	tags["plan_mode"] = string(*msg.Root.Plan.Mode)
+
+	if msg.Root.Plan.Mode != nil {
+		tags["plan_mode"] = string(*msg.Root.Plan.Mode)
+	} else {
+		tags["plan_mode"] = "default"
+	}
 
 	if msg.Root.Rerun {
 		tags["deploy_type"] = "retry"
