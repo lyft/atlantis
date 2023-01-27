@@ -14,8 +14,7 @@ type prLatestCommitFetcher interface {
 	FetchLatestCommitTime(ctx context.Context, installationToken int64, repo models.Repo, prNum int) (time.Time, error)
 }
 type prReviewsFetcher interface {
-	// TODO: explore merging the two/performing on GH api call
-	ListApprovalReviewers(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]string, error)
+	ListLatestApprovalUsernames(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]string, error)
 	ListApprovalReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]*gh.PullRequestReview, error)
 }
 
@@ -34,18 +33,21 @@ type ApprovedPolicyFilter struct {
 	prReviewsFetcher      prReviewsFetcher
 	prLatestCommitFetcher prLatestCommitFetcher
 	teamMemberFetcher     teamMemberFetcher
+	policies              []valid.PolicySet
 }
 
 func NewApprovedPolicyFilter(
 	prReviewsFetcher prReviewsFetcher,
 	prReviewDismisser prReviewDismisser,
 	prLatestCommitFetcher prLatestCommitFetcher,
-	teamMemberFetcher teamMemberFetcher) *ApprovedPolicyFilter {
+	teamMemberFetcher teamMemberFetcher,
+	policySets []valid.PolicySet) *ApprovedPolicyFilter {
 	return &ApprovedPolicyFilter{
 		prReviewsFetcher:      prReviewsFetcher,
 		prReviewDismisser:     prReviewDismisser,
 		prLatestCommitFetcher: prLatestCommitFetcher,
 		teamMemberFetcher:     teamMemberFetcher,
+		policies:              policySets,
 		owners:                sync.Map{},
 	}
 }
@@ -64,7 +66,7 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 	}
 
 	// Fetch reviewers who approved the PR
-	approvedReviewers, err := p.prReviewsFetcher.ListApprovalReviewers(ctx, installationToken, repo, prNum)
+	approvedReviewers, err := p.prReviewsFetcher.ListLatestApprovalUsernames(ctx, installationToken, repo, prNum)
 	if err != nil {
 		return failedPolicies, errors.Wrap(err, "failed to fetch GH PR reviews")
 	}
@@ -72,7 +74,7 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 	// Filter out policies that already have been approved within GH
 	var filteredFailedPolicies []valid.PolicySet
 	for _, failedPolicy := range failedPolicies {
-		approved, err := p.policyApproved(ctx, installationToken, approvedReviewers, failedPolicy)
+		approved, err := p.reviewersContainsPolicyOwner(ctx, installationToken, approvedReviewers, failedPolicy)
 		if err != nil {
 			return failedPolicies, errors.Wrap(err, "validating policy approval")
 		}
@@ -83,18 +85,64 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 	return filteredFailedPolicies, nil
 }
 
-func (p *ApprovedPolicyFilter) policyApproved(ctx context.Context, installationToken int64, approvedReviewers []string, failedPolicy valid.PolicySet) (bool, error) {
-	// Check if any reviewer is an owner of the failed policy set
-	if p.ownersContainsPolicy(approvedReviewers, failedPolicy) {
-		return true, nil
+func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) error {
+	approvalReviews, err := p.prReviewsFetcher.ListApprovalReviews(ctx, installationToken, repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch GH PR reviews")
 	}
 
+	latestCommitTimestamp, err := p.prLatestCommitFetcher.FetchLatestCommitTime(ctx, installationToken, repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch GH PR latest commit timestamp")
+	}
+
+	for _, approval := range approvalReviews {
+		// don't dismiss approvals after latest commit (check this first to avoid extra GH calls when possible)
+		if approval.GetSubmittedAt().After(latestCommitTimestamp) {
+			continue
+		}
+		isOwner, err := p.approverIsOwner(ctx, installationToken, approval)
+		if err != nil {
+			return errors.Wrap(err, "failed to validate approver is owner")
+		}
+		if isOwner {
+			err = p.prReviewDismisser.Dismiss(ctx, installationToken, repo, prNum, approval.GetID())
+			if err != nil {
+				return errors.Wrap(err, "failed to dismiss GH PR reviews")
+			}
+		}
+	}
+	return nil
+}
+
+func (p *ApprovedPolicyFilter) approverIsOwner(ctx context.Context, installationToken int64, approval *gh.PullRequestReview) (bool, error) {
+	if approval.GetUser() == nil {
+		return false, errors.New("failed to identify approver")
+	}
+	reviewers := []string{approval.GetUser().GetLogin()}
+	for _, policy := range p.policies {
+		isOwner, err := p.reviewersContainsPolicyOwner(ctx, installationToken, reviewers, policy)
+		if err != nil {
+			return false, errors.Wrap(err, "validating policy approval")
+		}
+		if isOwner {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (p *ApprovedPolicyFilter) reviewersContainsPolicyOwner(ctx context.Context, installationToken int64, reviewers []string, policy valid.PolicySet) (bool, error) {
+	// Check if any reviewer is an owner of the failed policy set
+	if p.ownersContainsPolicy(reviewers, policy) {
+		return true, nil
+	}
 	// Cache miss, fetch and try again
-	err := p.getOwners(ctx, installationToken, failedPolicy)
+	err := p.fetchOwners(ctx, installationToken, policy)
 	if err != nil {
 		return false, errors.Wrap(err, "updating owners cache")
 	}
-	return p.ownersContainsPolicy(approvedReviewers, failedPolicy), nil
+	return p.ownersContainsPolicy(reviewers, policy), nil
 }
 
 func (p *ApprovedPolicyFilter) ownersContainsPolicy(approvedReviewers []string, failedPolicy valid.PolicySet) bool {
@@ -113,52 +161,11 @@ func (p *ApprovedPolicyFilter) ownersContainsPolicy(approvedReviewers []string, 
 	return false
 }
 
-func (p *ApprovedPolicyFilter) getOwners(ctx context.Context, installationToken int64, policy valid.PolicySet) error {
+func (p *ApprovedPolicyFilter) fetchOwners(ctx context.Context, installationToken int64, policy valid.PolicySet) error {
 	members, err := p.teamMemberFetcher.ListTeamMembers(ctx, installationToken, policy.Owner)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch GH team members")
 	}
 	p.owners.Store(policy.Owner, members)
 	return nil
-}
-
-func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) error {
-	approvalReviews, err := p.prReviewsFetcher.ListApprovalReviews(ctx, installationToken, repo, prNum)
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch GH PR reviews")
-	}
-
-	latestCommitTimestamp, err := p.prLatestCommitFetcher.FetchLatestCommitTime(ctx, installationToken, repo, prNum)
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch GH PR latest commit timestamp")
-	}
-
-	for _, approval := range approvalReviews {
-		if approval.GetUser() == nil {
-			return errors.New("failed to identify approver")
-		}
-		if p.approverIsOwner(approval.GetUser().GetLogin()) && approval.GetSubmittedAt().Before(latestCommitTimestamp) {
-			err := p.prReviewDismisser.Dismiss(ctx, installationToken, repo, prNum, approval.GetID())
-			if err != nil {
-				return errors.Wrap(err, "failed to dismiss GH PR reviews")
-			}
-		}
-	}
-	return nil
-}
-
-// TODO: don't rely on a potentially stale cache?
-func (p *ApprovedPolicyFilter) approverIsOwner(approver string) bool {
-	isOwner := false
-	p.owners.Range(func(key, value any) bool {
-		teamMembers := value.([]string)
-		for _, member := range teamMembers {
-			if member == approver {
-				isOwner = true
-				return false
-			}
-		}
-		return true
-	})
-	return isOwner
 }

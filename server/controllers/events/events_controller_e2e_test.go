@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
@@ -841,9 +842,12 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	teamFetcher := &mockTeamFetcher{
 		members: []string{},
 	}
+	reviewDismisser := &mockReviewDismisser{}
+	commitFetcher := &mockCommitFetcher{}
+	policyFilter := events.NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, globalCfg.PolicySets.PolicySets)
 	conftestExecutor := &policy.ConfTestExecutor{
 		Exec:         runtime_models.LocalExec{},
-		PolicyFilter: events.NewApprovedPolicyFilter(reviewFetcher, teamFetcher),
+		PolicyFilter: policyFilter,
 	}
 	policyCheckRunner, err := runtime.NewPolicyCheckStepRunner(
 		conftestVersion,
@@ -1422,15 +1426,44 @@ func (t *testStaleCommandChecker) CommandIsStale(ctx *command.Context) bool {
 	return false
 }
 
-type mockReviewFetcher struct {
-	approvers []string
-	error     error
-	isCalled  bool
+type mockCommitFetcher struct {
+	time     time.Time
+	error    error
+	isCalled bool
 }
 
-func (f *mockReviewFetcher) ListApprovalReviewers(_ context.Context, _ int64, _ models.Repo, _ int) ([]string, error) {
-	f.isCalled = true
-	return f.approvers, f.error
+func (c *mockCommitFetcher) FetchLatestCommitTime(_ context.Context, _ int64, _ models.Repo, _ int) (time.Time, error) {
+	c.isCalled = true
+	return c.time, c.error
+}
+
+type mockReviewDismisser struct {
+	error    error
+	isCalled bool
+}
+
+func (d *mockReviewDismisser) Dismiss(_ context.Context, _ int64, _ models.Repo, _ int, _ int64) error {
+	d.isCalled = true
+	return d.error
+}
+
+type mockReviewFetcher struct {
+	approvers             []string
+	listUsernamesIsCalled bool
+	listUsernamesError    error
+	reviews               []*github.PullRequestReview
+	listApprovalsIsCalled bool
+	listApprovalsError    error
+}
+
+func (f *mockReviewFetcher) ListLatestApprovalUsernames(_ context.Context, _ int64, _ models.Repo, _ int) ([]string, error) {
+	f.listUsernamesIsCalled = true
+	return f.approvers, f.listUsernamesError
+}
+
+func (f *mockReviewFetcher) ListApprovalReviews(_ context.Context, _ int64, _ models.Repo, _ int) ([]*github.PullRequestReview, error) {
+	f.listApprovalsIsCalled = true
+	return f.reviews, f.listApprovalsError
 }
 
 type mockTeamFetcher struct {
