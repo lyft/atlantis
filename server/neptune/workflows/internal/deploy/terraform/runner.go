@@ -78,7 +78,7 @@ func (r *WorkflowRunner) buildRequestRoot(root terraformActivities.Root, diffDir
 	var approvalType terraformActivities.PlanApprovalType
 	var reasons []string
 
-	if diffDirection == activities.DirectionDiverged || root.Trigger == terraformActivities.ManualTrigger {
+	if diffDirection == activities.DirectionDiverged || (root.Trigger == terraformActivities.ManualTrigger && !root.Rerun) {
 		approvalType = terraformActivities.ManualApproval
 	}
 
