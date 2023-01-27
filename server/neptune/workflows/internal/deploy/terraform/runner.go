@@ -86,7 +86,7 @@ func (r *WorkflowRunner) buildRequestRoot(root terraformActivities.Root, diffDir
 		reasons = append(reasons, ":warning: Requested Revision is not ahead of deployed revision, please confirm the changes described in the plan.")
 	}
 
-	if root.Trigger == terraformActivities.ManualTrigger {
+	if root.Trigger == terraformActivities.ManualTrigger && !root.Rerun {
 		reasons = append(reasons, ":warning: Manually Triggered Deploys must be confirmed before proceeding.")
 	}
 
