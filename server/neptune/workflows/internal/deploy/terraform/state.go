@@ -12,6 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -28,11 +29,18 @@ type receiverActivities interface {
 
 type StateReceiver struct {
 	Activity receiverActivities
+	Scope    metrics.Scope
 }
 
 func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
 	var workflowState *state.Workflow
 	c.Receive(ctx, &workflowState)
+
+	scope := n.Scope.SubScopeWithTags(map[string]string{
+		metrics.SignalNameTag: state.WorkflowStateChangeSignal,
+	})
+
+	scope.Counter(metrics.SignalReceiveMetric).Inc(1)
 
 	// TODO: if we never created a check run, there was likely some issue, we should attempt to create it again.
 	if deploymentInfo.CheckRunID == 0 {
@@ -112,7 +120,7 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobState *state.Jo
 		State:          atlantisJobState,
 		StartTime:      startTime,
 		EndTime:        endTime,
-		IsForceApply:   deploymentInfo.Root.Trigger == terraform.ManualTrigger,
+		IsForceApply:   deploymentInfo.Root.Trigger == terraform.ManualTrigger && !deploymentInfo.Root.Rerun,
 	}
 
 	return workflow.ExecuteActivity(ctx, n.Activity.AuditJob, auditJobReq).Get(ctx, nil)
