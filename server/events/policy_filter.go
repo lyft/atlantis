@@ -13,7 +13,7 @@ import (
 type prLatestCommitFetcher interface {
 	FetchLatestCommitTime(ctx context.Context, installationToken int64, repo models.Repo, prNum int) (time.Time, error)
 }
-type prReviewsFetcher interface {
+type prReviewFetcher interface {
 	ListLatestApprovalUsernames(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]string, error)
 	ListApprovalReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]*gh.PullRequestReview, error)
 }
@@ -30,20 +30,20 @@ type ApprovedPolicyFilter struct {
 	owners sync.Map //cache
 
 	prReviewDismisser     prReviewDismisser
-	prReviewsFetcher      prReviewsFetcher
+	prReviewFetcher       prReviewFetcher
 	prLatestCommitFetcher prLatestCommitFetcher
 	teamMemberFetcher     teamMemberFetcher
 	policies              []valid.PolicySet
 }
 
 func NewApprovedPolicyFilter(
-	prReviewsFetcher prReviewsFetcher,
+	prReviewFetcher prReviewFetcher,
 	prReviewDismisser prReviewDismisser,
 	prLatestCommitFetcher prLatestCommitFetcher,
 	teamMemberFetcher teamMemberFetcher,
 	policySets []valid.PolicySet) *ApprovedPolicyFilter {
 	return &ApprovedPolicyFilter{
-		prReviewsFetcher:      prReviewsFetcher,
+		prReviewFetcher:       prReviewFetcher,
 		prReviewDismisser:     prReviewDismisser,
 		prLatestCommitFetcher: prLatestCommitFetcher,
 		teamMemberFetcher:     teamMemberFetcher,
@@ -66,7 +66,7 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 	}
 
 	// Fetch reviewers who approved the PR
-	approvedReviewers, err := p.prReviewsFetcher.ListLatestApprovalUsernames(ctx, installationToken, repo, prNum)
+	approvedReviewers, err := p.prReviewFetcher.ListLatestApprovalUsernames(ctx, installationToken, repo, prNum)
 	if err != nil {
 		return failedPolicies, errors.Wrap(err, "failed to fetch GH PR reviews")
 	}
@@ -86,7 +86,7 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 }
 
 func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) error {
-	approvalReviews, err := p.prReviewsFetcher.ListApprovalReviews(ctx, installationToken, repo, prNum)
+	approvalReviews, err := p.prReviewFetcher.ListApprovalReviews(ctx, installationToken, repo, prNum)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch GH PR reviews")
 	}
