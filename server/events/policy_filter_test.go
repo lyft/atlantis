@@ -25,14 +25,15 @@ func TestFilter_Approved(t *testing.T) {
 	time2 := time.UnixMicro(2)
 
 	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{ownerA, ownerB},
 		reviews: []*github.PullRequestReview{
 			{
-				User: &github.User{Login: github.String(ownerA)},
+				User:  &github.User{Login: github.String(ownerA)},
+				State: github.String(ApprovalState),
 			},
 			{
 				User:        &github.User{Login: github.String(ownerB)},
 				SubmittedAt: &time2,
+				State:       github.String(ApprovalState),
 			},
 		},
 	}
@@ -50,8 +51,7 @@ func TestFilter_Approved(t *testing.T) {
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
 	assert.NoError(t, err)
-	assert.True(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.True(t, reviewFetcher.isCalled)
 	assert.True(t, commitFetcher.isCalled)
 	assert.True(t, teamFetcher.isCalled)
 	assert.True(t, reviewDismisser.isCalled)
@@ -62,11 +62,11 @@ func TestFilter_Approved_NoDismissal(t *testing.T) {
 	time1 := time.UnixMicro(1)
 	time2 := time.UnixMicro(2)
 	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{ownerB},
 		reviews: []*github.PullRequestReview{
 			{
 				User:        &github.User{Login: github.String(ownerB)},
 				SubmittedAt: &time2,
+				State:       github.String(ApprovalState),
 			},
 		},
 	}
@@ -84,18 +84,24 @@ func TestFilter_Approved_NoDismissal(t *testing.T) {
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
 	assert.NoError(t, err)
-	assert.True(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.True(t, reviewFetcher.isCalled)
 	assert.True(t, commitFetcher.isCalled)
 	assert.True(t, teamFetcher.isCalled)
 	assert.False(t, reviewDismisser.isCalled)
 	assert.Empty(t, filteredPolicies)
 }
 
-func TestFilter_ApprovedCacheMiss(t *testing.T) {
+func TestFilter_Approved_PreFilledCache(t *testing.T) {
+	time1 := time.UnixMicro(1)
 	team := []string{ownerA, ownerB, ownerC}
 	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{ownerB},
+		reviews: []*github.PullRequestReview{
+			{
+				User:        &github.User{Login: github.String(ownerB)},
+				State:       github.String(ApprovalState),
+				SubmittedAt: &time1,
+			},
+		},
 	}
 	teamFetcher := &mockTeamMemberFetcher{
 		members: team,
@@ -110,15 +116,14 @@ func TestFilter_ApprovedCacheMiss(t *testing.T) {
 	policyFilter.owners.Store(policyOwner, team)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
 	assert.NoError(t, err)
-	assert.True(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.True(t, reviewFetcher.isCalled)
 	assert.True(t, commitFetcher.isCalled)
 	assert.False(t, reviewDismisser.isCalled)
 	assert.False(t, teamFetcher.isCalled)
 	assert.Empty(t, filteredPolicies)
 }
 
-func TestFilter_NotApproved(t *testing.T) {
+func TestFilter_NotApproved_Dismissal(t *testing.T) {
 	time1 := time.UnixMicro(1)
 	time2 := time.UnixMicro(2)
 
@@ -126,6 +131,7 @@ func TestFilter_NotApproved(t *testing.T) {
 		reviews: []*github.PullRequestReview{
 			{
 				User:        &github.User{Login: github.String(ownerA)},
+				State:       github.String(ApprovalState),
 				SubmittedAt: &time1,
 			},
 		},
@@ -144,17 +150,21 @@ func TestFilter_NotApproved(t *testing.T) {
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
 	assert.NoError(t, err)
-	assert.True(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.True(t, reviewFetcher.isCalled)
 	assert.True(t, commitFetcher.isCalled)
 	assert.True(t, reviewDismisser.isCalled)
 	assert.True(t, teamFetcher.isCalled)
 	assert.Equal(t, failedPolicies, filteredPolicies)
 }
 
-func TestFilter_NotApproved_NoDismissal(t *testing.T) {
+func TestFilter_NotApproved_NotOwner(t *testing.T) {
 	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{ownerB},
+		reviews: []*github.PullRequestReview{
+			{
+				User:  &github.User{Login: github.String(ownerB)},
+				State: github.String(ApprovalState),
+			},
+		},
 	}
 	teamFetcher := &mockTeamMemberFetcher{
 		members: []string{ownerA, ownerC},
@@ -168,21 +178,53 @@ func TestFilter_NotApproved_NoDismissal(t *testing.T) {
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
 	assert.NoError(t, err)
-	assert.True(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.True(t, reviewFetcher.isCalled)
 	assert.True(t, commitFetcher.isCalled)
 	assert.False(t, reviewDismisser.isCalled)
 	assert.True(t, teamFetcher.isCalled)
 	assert.Equal(t, failedPolicies, filteredPolicies)
 }
 
-func TestFilter_NoFailedPolicies(t *testing.T) {
+func TestFilter_NotApproved_FutureChangesRequest(t *testing.T) {
+	time1 := time.UnixMicro(1)
+	time2 := time.UnixMicro(2)
+
 	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{ownerB},
+		reviews: []*github.PullRequestReview{
+			{
+				User:        &github.User{Login: github.String(ownerA)},
+				State:       github.String(ApprovalState),
+				SubmittedAt: &time1,
+			},
+			{
+				User:        &github.User{Login: github.String(ownerA)},
+				State:       github.String("Request Changes"),
+				SubmittedAt: &time2,
+			},
+		},
 	}
 	teamFetcher := &mockTeamMemberFetcher{
 		members: []string{ownerA, ownerB, ownerC},
 	}
+	commitFetcher := &mockCommitFetcher{}
+	reviewDismisser := &mockReviewDismisser{}
+	failedPolicies := []valid.PolicySet{
+		{Name: policyName, Owner: policyOwner},
+	}
+
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	assert.NoError(t, err)
+	assert.True(t, reviewFetcher.isCalled)
+	assert.True(t, commitFetcher.isCalled)
+	assert.False(t, reviewDismisser.isCalled)
+	assert.False(t, teamFetcher.isCalled)
+	assert.Equal(t, failedPolicies, filteredPolicies)
+}
+
+func TestFilter_NoFailedPolicies(t *testing.T) {
+	reviewFetcher := &mockReviewFetcher{}
+	teamFetcher := &mockTeamMemberFetcher{}
 	commitFetcher := &mockCommitFetcher{}
 	reviewDismisser := &mockReviewDismisser{}
 
@@ -190,17 +232,13 @@ func TestFilter_NoFailedPolicies(t *testing.T) {
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
 	assert.NoError(t, err)
-	assert.False(t, reviewFetcher.listUsernamesIsCalled)
-	assert.False(t, reviewFetcher.listApprovalsIsCalled)
-	assert.False(t, teamFetcher.isCalled)
-	assert.False(t, commitFetcher.isCalled)
-	assert.False(t, reviewDismisser.isCalled)
+	assert.False(t, reviewFetcher.isCalled)
 	assert.Empty(t, filteredPolicies)
 }
 
-func TestFilter_FailedListLatestApprovalUsernames(t *testing.T) {
+func TestFilter_FailedListReviews(t *testing.T) {
 	reviewFetcher := &mockReviewFetcher{
-		listUsernamesError: assert.AnError,
+		error: assert.AnError,
 	}
 	teamFetcher := &mockTeamMemberFetcher{
 		members: []string{ownerA, ownerB, ownerC},
@@ -213,42 +251,20 @@ func TestFilter_FailedListLatestApprovalUsernames(t *testing.T) {
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
-	assert.Error(t, err)
-	assert.True(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
-	assert.True(t, commitFetcher.isCalled)
-	assert.False(t, reviewDismisser.isCalled)
-	assert.False(t, teamFetcher.isCalled)
-	assert.Equal(t, failedPolicies, filteredPolicies)
-}
-
-func TestFilter_FailedListApprovalReviews(t *testing.T) {
-	reviewFetcher := &mockReviewFetcher{
-		listApprovalsError: assert.AnError,
-	}
-	teamFetcher := &mockTeamMemberFetcher{
-		members: []string{ownerA, ownerB, ownerC},
-	}
-	commitFetcher := &mockCommitFetcher{}
-	reviewDismisser := &mockReviewDismisser{}
-	failedPolicies := []valid.PolicySet{
-		{Name: policyName, Owner: policyOwner},
-	}
-
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
-	assert.Error(t, err)
-	assert.False(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.ErrorIs(t, err, assert.AnError)
+	assert.True(t, reviewFetcher.isCalled)
 	assert.False(t, commitFetcher.isCalled)
-	assert.False(t, reviewDismisser.isCalled)
-	assert.False(t, teamFetcher.isCalled)
 	assert.Equal(t, failedPolicies, filteredPolicies)
 }
 
 func TestFilter_FailedFetchLatestCommitTime(t *testing.T) {
 	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{ownerB},
+		reviews: []*github.PullRequestReview{
+			{
+				User:  &github.User{Login: github.String(ownerB)},
+				State: github.String(ApprovalState),
+			},
+		},
 	}
 	teamFetcher := &mockTeamMemberFetcher{}
 	commitFetcher := &mockCommitFetcher{
@@ -261,9 +277,8 @@ func TestFilter_FailedFetchLatestCommitTime(t *testing.T) {
 	}
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
-	assert.Error(t, err)
-	assert.False(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.ErrorIs(t, err, assert.AnError)
+	assert.True(t, reviewFetcher.isCalled)
 	assert.True(t, commitFetcher.isCalled)
 	assert.False(t, teamFetcher.isCalled)
 	assert.False(t, reviewDismisser.isCalled)
@@ -272,7 +287,12 @@ func TestFilter_FailedFetchLatestCommitTime(t *testing.T) {
 
 func TestFilter_FailedTeamMemberFetch(t *testing.T) {
 	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{ownerB},
+		reviews: []*github.PullRequestReview{
+			{
+				User:  &github.User{Login: github.String(ownerB)},
+				State: github.String(ApprovalState),
+			},
+		},
 	}
 	teamFetcher := &mockTeamMemberFetcher{
 		error: assert.AnError,
@@ -285,9 +305,8 @@ func TestFilter_FailedTeamMemberFetch(t *testing.T) {
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
-	assert.Error(t, err)
-	assert.True(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.ErrorIs(t, err, assert.AnError)
+	assert.True(t, reviewFetcher.isCalled)
 	assert.True(t, commitFetcher.isCalled)
 	assert.True(t, teamFetcher.isCalled)
 	assert.False(t, reviewDismisser.isCalled)
@@ -298,11 +317,11 @@ func TestFilter_FailedDismiss(t *testing.T) {
 	time1 := time.UnixMicro(1)
 	time2 := time.UnixMicro(2)
 	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{ownerB},
 		reviews: []*github.PullRequestReview{
 			{
 				User:        &github.User{Login: github.String(ownerB)},
 				SubmittedAt: &time1,
+				State:       github.String(ApprovalState),
 			},
 		},
 	}
@@ -321,9 +340,8 @@ func TestFilter_FailedDismiss(t *testing.T) {
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
-	assert.Error(t, err)
-	assert.False(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.ErrorIs(t, err, assert.AnError)
+	assert.True(t, reviewFetcher.isCalled)
 	assert.True(t, commitFetcher.isCalled)
 	assert.True(t, teamFetcher.isCalled)
 	assert.True(t, reviewDismisser.isCalled)
@@ -331,22 +349,14 @@ func TestFilter_FailedDismiss(t *testing.T) {
 }
 
 type mockReviewFetcher struct {
-	approvers             []string
-	listUsernamesIsCalled bool
-	listUsernamesError    error
-	reviews               []*github.PullRequestReview
-	listApprovalsIsCalled bool
-	listApprovalsError    error
+	reviews  []*github.PullRequestReview
+	isCalled bool
+	error    error
 }
 
-func (f *mockReviewFetcher) ListLatestApprovalUsernames(_ context.Context, _ int64, _ models.Repo, _ int) ([]string, error) {
-	f.listUsernamesIsCalled = true
-	return f.approvers, f.listUsernamesError
-}
-
-func (f *mockReviewFetcher) ListApprovalReviews(_ context.Context, _ int64, _ models.Repo, _ int) ([]*github.PullRequestReview, error) {
-	f.listApprovalsIsCalled = true
-	return f.reviews, f.listApprovalsError
+func (f *mockReviewFetcher) ListReviews(_ context.Context, _ int64, _ models.Repo, _ int) ([]*github.PullRequestReview, error) {
+	f.isCalled = true
+	return f.reviews, f.error
 }
 
 type mockCommitFetcher struct {

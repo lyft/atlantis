@@ -836,9 +836,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	// binary
 	conftextExec.VersionCache = conftestCache
 
-	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{},
-	}
+	reviewFetcher := &mockReviewFetcher{}
 	teamFetcher := &mockTeamFetcher{
 		members: []string{},
 	}
@@ -1448,22 +1446,14 @@ func (d *mockReviewDismisser) Dismiss(_ context.Context, _ int64, _ models.Repo,
 }
 
 type mockReviewFetcher struct {
-	approvers             []string
-	listUsernamesIsCalled bool
-	listUsernamesError    error
-	reviews               []*github.PullRequestReview
-	listApprovalsIsCalled bool
-	listApprovalsError    error
+	reviews  []*github.PullRequestReview
+	isCalled bool
+	error    error
 }
 
-func (f *mockReviewFetcher) ListLatestApprovalUsernames(_ context.Context, _ int64, _ models.Repo, _ int) ([]string, error) {
-	f.listUsernamesIsCalled = true
-	return f.approvers, f.listUsernamesError
-}
-
-func (f *mockReviewFetcher) ListApprovalReviews(_ context.Context, _ int64, _ models.Repo, _ int) ([]*github.PullRequestReview, error) {
-	f.listApprovalsIsCalled = true
-	return f.reviews, f.listApprovalsError
+func (f *mockReviewFetcher) ListReviews(_ context.Context, _ int64, _ models.Repo, _ int) ([]*github.PullRequestReview, error) {
+	f.isCalled = true
+	return f.reviews, f.error
 }
 
 type mockTeamFetcher struct {
