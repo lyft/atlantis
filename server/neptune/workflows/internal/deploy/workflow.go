@@ -19,8 +19,6 @@ import (
 const (
 	TaskQueue = "deploy"
 
-	
-
 	RevisionReceiveTimeout    = 60 * time.Minute
 	ActiveDeployWorkflowStat  = "active"
 	SuccessDeployWorkflowStat = "success"

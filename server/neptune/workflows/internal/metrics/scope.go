@@ -1,15 +1,12 @@
 package metrics
 
 import (
-
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/workflow"
 )
 
-const (
-	
-)
+const ()
 
 // Scope is an interface that attempts to wrap temporal's MetricsHandler with additional
 // functionality to build namespaces using NamespacedMetricsHandler
@@ -21,18 +18,18 @@ type Scope interface {
 }
 
 type WorkflowScope struct {
-	handler   client.MetricsHandler
+	handler client.MetricsHandler
 }
 
 func NewScopeWithHandler(handler client.MetricsHandler, namespaces ...string) *WorkflowScope {
 	return &WorkflowScope{
-		handler:   toNamespacedHandler(handler, namespaces...),
+		handler: toNamespacedHandler(handler, namespaces...),
 	}
 }
 
 func NewScope(ctx workflow.Context, namespaces ...string) *WorkflowScope {
 	return &WorkflowScope{
-		handler:   toNamespacedHandler(workflow.GetMetricsHandler(ctx), namespaces...),
+		handler: toNamespacedHandler(workflow.GetMetricsHandler(ctx), namespaces...),
 	}
 }
 
@@ -70,5 +67,3 @@ func (s *WorkflowScope) Counter(name string) client.MetricsCounter {
 func (s *WorkflowScope) Gauge(name string) client.MetricsGauge {
 	return s.handler.Gauge(name)
 }
-
-
