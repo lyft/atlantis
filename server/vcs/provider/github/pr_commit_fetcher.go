@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-type PRCommitFetcher struct {
+type CommitFetcher struct {
 	ClientCreator githubapp.ClientCreator
 }
 
-func (c *PRCommitFetcher) FetchLatestCommitTime(ctx context.Context, installationToken int64, repo models.Repo, prNum int) (time.Time, error) {
+func (c *CommitFetcher) FetchLatestPRCommit(ctx context.Context, installationToken int64, repo models.Repo, prNum int) (*gh.Commit, error) {
 	client, err := c.ClientCreator.NewInstallationClient(installationToken)
 	if err != nil {
-		return time.Time{}, errors.Wrap(err, "creating installation client")
+		return nil, errors.Wrap(err, "creating installation client")
 	}
 	run := func(ctx context.Context, nextPage int) ([]*gh.RepositoryCommit, *gh.Response, error) {
 		listOptions := gh.ListOptions{
@@ -27,20 +27,22 @@ func (c *PRCommitFetcher) FetchLatestCommitTime(ctx context.Context, installatio
 	}
 	commits, err := Iterate(ctx, run)
 	if err != nil {
-		return time.Time{}, errors.Wrap(err, "iterating through entries")
+		return nil, errors.Wrap(err, "iterating through entries")
 	}
+	latestCommit := &gh.Commit{}
 	latestCommitTimestamp := time.Time{}
 	for _, commit := range commits {
 		if commit.GetCommit() == nil {
-			return time.Time{}, errors.New("getting latest commit")
+			return nil, errors.New("getting latest commit")
 		}
 		if commit.GetCommit().GetCommitter() == nil {
-			return time.Time{}, errors.New("getting latest committer")
+			return nil, errors.New("getting latest committer")
 		}
 		commitTimestamp := commit.GetCommit().GetCommitter().GetDate()
 		if commitTimestamp.After(latestCommitTimestamp) {
 			latestCommitTimestamp = commitTimestamp
+			latestCommit = commit.GetCommit()
 		}
 	}
-	return latestCommitTimestamp, nil
+	return latestCommit, nil
 }

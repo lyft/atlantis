@@ -4,18 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	runtime_models "github.com/runatlantis/atlantis/server/core/runtime/models"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"sync"
-	"testing"
-	"time"
-
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-version"
@@ -27,12 +15,22 @@ import (
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/core/locking"
 	"github.com/runatlantis/atlantis/server/core/runtime"
+	runtime_models "github.com/runatlantis/atlantis/server/core/runtime/models"
 	"github.com/runatlantis/atlantis/server/jobs"
 	lyftCommand "github.com/runatlantis/atlantis/server/lyft/command"
 	event_types "github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/request"
 	ffclient "github.com/thomaspoignant/go-feature-flag"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"sync"
+	"testing"
 
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
 	"github.com/runatlantis/atlantis/server/core/terraform"
@@ -1427,14 +1425,14 @@ func (t *testStaleCommandChecker) CommandIsStale(ctx *command.Context) bool {
 }
 
 type mockCommitFetcher struct {
-	time     time.Time
+	commit   *github.Commit
 	error    error
 	isCalled bool
 }
 
-func (c *mockCommitFetcher) FetchLatestCommitTime(_ context.Context, _ int64, _ models.Repo, _ int) (time.Time, error) {
+func (c *mockCommitFetcher) FetchLatestPRCommit(_ context.Context, _ int64, _ models.Repo, _ int) (*github.Commit, error) {
 	c.isCalled = true
-	return c.time, c.error
+	return c.commit, c.error
 }
 
 type mockReviewDismisser struct {

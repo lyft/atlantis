@@ -20,6 +20,14 @@ const (
 	policyOwner = "team"
 )
 
+func createCommit(time time.Time) *github.Commit {
+	return &github.Commit{
+		Committer: &github.CommitAuthor{
+			Date: &time,
+		},
+	}
+}
+
 func TestFilter_Approved(t *testing.T) {
 	time1 := time.UnixMicro(1)
 	time2 := time.UnixMicro(2)
@@ -40,7 +48,7 @@ func TestFilter_Approved(t *testing.T) {
 		members: []string{ownerA, ownerB, ownerC},
 	}
 	commitFetcher := &mockCommitFetcher{
-		time: time1,
+		commit: createCommit(time1),
 	}
 	reviewDismisser := &mockReviewDismisser{}
 	failedPolicies := []valid.PolicySet{
@@ -71,7 +79,7 @@ func TestFilter_Approved_NoDismissal(t *testing.T) {
 		},
 	}
 	commitFetcher := &mockCommitFetcher{
-		time: time1,
+		commit: createCommit(time1),
 	}
 	reviewDismisser := &mockReviewDismisser{}
 	teamFetcher := &mockTeamMemberFetcher{
@@ -134,7 +142,7 @@ func TestFilter_NotApproved(t *testing.T) {
 		members: []string{ownerA, ownerB, ownerC},
 	}
 	commitFetcher := &mockCommitFetcher{
-		time: time2,
+		commit: createCommit(time2),
 	}
 	reviewDismisser := &mockReviewDismisser{}
 	failedPolicies := []valid.PolicySet{
@@ -307,7 +315,7 @@ func TestFilter_FailedDismiss(t *testing.T) {
 		},
 	}
 	commitFetcher := &mockCommitFetcher{
-		time: time2,
+		commit: createCommit(time2),
 	}
 	reviewDismisser := &mockReviewDismisser{
 		error: assert.AnError,
@@ -350,14 +358,14 @@ func (f *mockReviewFetcher) ListApprovalReviews(_ context.Context, _ int64, _ mo
 }
 
 type mockCommitFetcher struct {
-	time     time.Time
+	commit   *github.Commit
 	error    error
 	isCalled bool
 }
 
-func (c *mockCommitFetcher) FetchLatestCommitTime(_ context.Context, _ int64, _ models.Repo, _ int) (time.Time, error) {
+func (c *mockCommitFetcher) FetchLatestPRCommit(_ context.Context, _ int64, _ models.Repo, _ int) (*github.Commit, error) {
 	c.isCalled = true
-	return c.time, c.error
+	return c.commit, c.error
 }
 
 type mockReviewDismisser struct {

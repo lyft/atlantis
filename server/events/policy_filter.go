@@ -7,11 +7,10 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"sync"
-	"time"
 )
 
 type prLatestCommitFetcher interface {
-	FetchLatestCommitTime(ctx context.Context, installationToken int64, repo models.Repo, prNum int) (time.Time, error)
+	FetchLatestPRCommit(ctx context.Context, installationToken int64, repo models.Repo, prNum int) (*gh.Commit, error)
 }
 type prReviewFetcher interface {
 	ListLatestApprovalUsernames(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]string, error)
@@ -91,14 +90,14 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, instal
 		return errors.Wrap(err, "failed to fetch GH PR reviews")
 	}
 
-	latestCommitTimestamp, err := p.prLatestCommitFetcher.FetchLatestCommitTime(ctx, installationToken, repo, prNum)
+	latestCommit, err := p.prLatestCommitFetcher.FetchLatestPRCommit(ctx, installationToken, repo, prNum)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch GH PR latest commit timestamp")
 	}
 
 	for _, approval := range approvalReviews {
 		// don't dismiss approvals after latest commit (check this first to avoid extra GH calls when possible)
-		if approval.GetSubmittedAt().After(latestCommitTimestamp) {
+		if approval.GetSubmittedAt().After(latestCommit.GetCommitter().GetDate()) {
 			continue
 		}
 		isOwner, err := p.approverIsOwner(ctx, installationToken, approval)
@@ -134,7 +133,7 @@ func (p *ApprovedPolicyFilter) approverIsOwner(ctx context.Context, installation
 
 func (p *ApprovedPolicyFilter) reviewersContainsPolicyOwner(ctx context.Context, installationToken int64, reviewers []string, policy valid.PolicySet) (bool, error) {
 	// Check if any reviewer is an owner of the failed policy set
-	if p.ownersContainsPolicy(reviewers, policy) {
+	if p.anyOwnerReviews(reviewers, policy) {
 		return true, nil
 	}
 	// Cache miss, fetch and try again
@@ -142,10 +141,10 @@ func (p *ApprovedPolicyFilter) reviewersContainsPolicyOwner(ctx context.Context,
 	if err != nil {
 		return false, errors.Wrap(err, "updating owners cache")
 	}
-	return p.ownersContainsPolicy(reviewers, policy), nil
+	return p.anyOwnerReviews(reviewers, policy), nil
 }
 
-func (p *ApprovedPolicyFilter) ownersContainsPolicy(approvedReviewers []string, failedPolicy valid.PolicySet) bool {
+func (p *ApprovedPolicyFilter) anyOwnerReviews(approvedReviewers []string, failedPolicy valid.PolicySet) bool {
 	// Check if any reviewer is an owner of the failed policy set
 	owners, ok := p.owners.Load(failedPolicy.Owner)
 	if !ok {

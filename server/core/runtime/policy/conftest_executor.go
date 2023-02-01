@@ -45,7 +45,7 @@ func NewConfTestExecutor(creator githubapp.ClientCreator, policySets valid.Polic
 	reviewDismisser := &github.PRReviewDismisser{
 		ClientCreator: creator,
 	}
-	commitFetcher := &github.PRCommitFetcher{
+	commitFetcher := &github.CommitFetcher{
 		ClientCreator: creator,
 	}
 	teamMemberFetcher := &github.TeamMemberFetcher{
