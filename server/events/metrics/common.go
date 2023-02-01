@@ -10,12 +10,8 @@ const (
 	FilterAbsentMetric  = "absent"
 	FilterErrorMetric   = "error"
 
-	RootTag         = "root"
-	RepoTag         = "repo"
-	WorkflowTypeTag = "workflow_type"
-	ActivityTypeTag = "activity_type"
-	TaskQueueTag    = "task_queue"
-	NamespaceTag    = "namespace"
+	RootTag = "root"
+	RepoTag = "repo"
 
 	ActivityExecutionSuccess = "activity_execution_success"
 	ActivityExecutionFailure = "activity_execution_failure"
