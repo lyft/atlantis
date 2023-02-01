@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"sync"
 )
 
 type prLatestCommitFetcher interface {
@@ -26,8 +25,6 @@ type teamMemberFetcher interface {
 }
 
 type ApprovedPolicyFilter struct {
-	owners sync.Map //cache
-
 	prReviewDismisser     prReviewDismisser
 	prReviewFetcher       prReviewFetcher
 	prLatestCommitFetcher prLatestCommitFetcher
@@ -47,7 +44,6 @@ func NewApprovedPolicyFilter(
 		prLatestCommitFetcher: prLatestCommitFetcher,
 		teamMemberFetcher:     teamMemberFetcher,
 		policies:              policySets,
-		owners:                sync.Map{},
 	}
 }
 
@@ -132,39 +128,19 @@ func (p *ApprovedPolicyFilter) approverIsOwner(ctx context.Context, installation
 }
 
 func (p *ApprovedPolicyFilter) reviewersContainsPolicyOwner(ctx context.Context, installationToken int64, reviewers []string, policy valid.PolicySet) (bool, error) {
-	// Check if any reviewer is an owner of the failed policy set
-	if p.anyOwnerReviews(reviewers, policy) {
-		return true, nil
-	}
-	// Cache miss, fetch and try again
-	err := p.fetchOwners(ctx, installationToken, policy)
+	// fetch owners from GH team
+	owners, err := p.teamMemberFetcher.ListTeamMembers(ctx, installationToken, policy.Owner)
 	if err != nil {
-		return false, errors.Wrap(err, "updating owners cache")
+		return false, errors.Wrap(err, "failed to fetch GH team members")
 	}
-	return p.anyOwnerReviews(reviewers, policy), nil
-}
 
-func (p *ApprovedPolicyFilter) anyOwnerReviews(approvedReviewers []string, failedPolicy valid.PolicySet) bool {
 	// Check if any reviewer is an owner of the failed policy set
-	owners, ok := p.owners.Load(failedPolicy.Owner)
-	if !ok {
-		return false
-	}
-	for _, owner := range owners.([]string) {
-		for _, reviewer := range approvedReviewers {
+	for _, owner := range owners {
+		for _, reviewer := range reviewers {
 			if reviewer == owner {
-				return true
+				return true, nil
 			}
 		}
 	}
-	return false
-}
-
-func (p *ApprovedPolicyFilter) fetchOwners(ctx context.Context, installationToken int64, policy valid.PolicySet) error {
-	members, err := p.teamMemberFetcher.ListTeamMembers(ctx, installationToken, policy.Owner)
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch GH team members")
-	}
-	p.owners.Store(policy.Owner, members)
-	return nil
+	return false, nil
 }

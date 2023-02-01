@@ -100,32 +100,6 @@ func TestFilter_Approved_NoDismissal(t *testing.T) {
 	assert.Empty(t, filteredPolicies)
 }
 
-func TestFilter_ApprovedCacheMiss(t *testing.T) {
-	team := []string{ownerA, ownerB, ownerC}
-	reviewFetcher := &mockReviewFetcher{
-		approvers: []string{ownerB},
-	}
-	teamFetcher := &mockTeamMemberFetcher{
-		members: team,
-	}
-	commitFetcher := &mockCommitFetcher{}
-	reviewDismisser := &mockReviewDismisser{}
-	failedPolicies := []valid.PolicySet{
-		{Name: policyName, Owner: policyOwner},
-	}
-
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	policyFilter.owners.Store(policyOwner, team)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
-	assert.NoError(t, err)
-	assert.True(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
-	assert.True(t, commitFetcher.isCalled)
-	assert.False(t, reviewDismisser.isCalled)
-	assert.False(t, teamFetcher.isCalled)
-	assert.Empty(t, filteredPolicies)
-}
-
 func TestFilter_NotApproved(t *testing.T) {
 	time1 := time.UnixMicro(1)
 	time2 := time.UnixMicro(2)
