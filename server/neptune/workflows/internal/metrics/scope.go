@@ -6,8 +6,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const ()
-
 // Scope is an interface that attempts to wrap temporal's MetricsHandler with additional
 // functionality to build namespaces using NamespacedMetricsHandler
 type Scope interface {
