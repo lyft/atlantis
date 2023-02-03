@@ -75,7 +75,6 @@ func (l *StringCommand) Load() (string, error) {
 	// a newline. We don't recommend users run echo -n env_value to remove the
 	// newline because -n doesn't work in the sh shell which is what we use
 	// to run commands.
-	// n
 	return strings.TrimSuffix(string(out), "\n"), err
 }
 
