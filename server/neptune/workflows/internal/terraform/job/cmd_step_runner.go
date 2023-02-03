@@ -21,23 +21,33 @@ type CmdStepRunner struct {
 func (r *CmdStepRunner) Run(executionContext *ExecutionContext, localRoot *terraform.LocalRoot, step execute.Step) (string, error) {
 	relPath := localRoot.RelativePathFromRepo()
 
-	envVars := map[string]string{
-		"BASE_REPO_NAME":  localRoot.Repo.Name,
-		"BASE_REPO_OWNER": localRoot.Repo.Owner,
-		"DIR":             executionContext.Path,
-		"PROJECT_NAME":    localRoot.Root.Name,
-		"REPO_REL_DIR":    relPath,
+	envs := []EnvVar{
+		NewEnvVarFromString("BASE_REPO_NAME", localRoot.Repo.Name),
+		NewEnvVarFromString("BASE_REPO_OWNER", localRoot.Repo.Owner),
+		NewEnvVarFromString("DIR", executionContext.Path),
+		NewEnvVarFromString("PROJECT_NAME", localRoot.Root.Name),
+		NewEnvVarFromString("REPO_REL_DIR", relPath),
 	}
+	envs = append(envs, executionContext.Envs...)
 
 	var resp activities.ExecuteCommandResponse
 	err := workflow.ExecuteActivity(executionContext.Context, r.Activity.ExecuteCommand, activities.ExecuteCommandRequest{
-		Step:    step,
-		Path:    executionContext.Path,
-		EnvVars: envVars,
+		Step:           step,
+		Path:           executionContext.Path,
+		DynamicEnvVars: toRequestEnvs(envs),
+		EnvVars:        map[string]string{},
 	}).Get(executionContext, &resp)
 	if err != nil {
 		return "", errors.Wrap(err, "executing activity")
 	}
 
 	return resp.Output, nil
+}
+
+func toRequestEnvs(envs []EnvVar) []activities.EnvVar {
+	var result []activities.EnvVar
+	for _, e := range envs {
+		result = append(result, e.ToActivityEnvVar())
+	}
+	return result
 }
