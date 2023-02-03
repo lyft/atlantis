@@ -153,7 +153,8 @@ func TestEnvRunner_ExecutesCommandForLegacyVersion(t *testing.T) {
 			StepName:   "env",
 			RunCommand: "echo 'Hello World'",
 		},
-		Path: ProjectPath,
+		Path:    ProjectPath,
+		EnvVars: map[string]string{},
 		DynamicEnvVars: []activities.EnvVar{
 			{
 				Name:  "BASE_REPO_NAME",
