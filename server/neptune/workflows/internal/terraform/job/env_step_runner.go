@@ -27,16 +27,7 @@ func (e *EnvStepRunner) getEnv(ctx *ExecutionContext, localRoot *terraform.Local
 		return e.getLegacyEnvVar(ctx, localRoot, step)
 	}
 
-	relPath := localRoot.RelativePathFromRepo()
-	envVars := map[string]string{
-		"BASE_REPO_NAME":  localRoot.Repo.Name,
-		"BASE_REPO_OWNER": localRoot.Repo.Owner,
-		"DIR":             ctx.Path,
-		"PROJECT_NAME":    localRoot.Root.Name,
-		"REPO_REL_DIR":    relPath,
-	}
-
-	return NewEnvVarFromCmd(step.EnvVarName, step.RunCommand, ctx.Path, envVars), nil
+	return NewEnvVarFromCmd(step.EnvVarName, step.RunCommand, ctx.Path, GetDefaultEnvVars(ctx, localRoot)), nil
 }
 
 func (e *EnvStepRunner) getLegacyEnvVar(ctx *ExecutionContext, localRoot *terraform.LocalRoot, step execute.Step) (EnvVar, error) {
@@ -44,6 +35,7 @@ func (e *EnvStepRunner) getLegacyEnvVar(ctx *ExecutionContext, localRoot *terraf
 	return NewEnvVarFromString(step.EnvVarName, res), err
 }
 
+// StringEnvVar is an environment variable who's value is explicltly defined
 type StringEnvVar struct {
 	name  string
 	value string
@@ -56,10 +48,14 @@ func (v StringEnvVar) ToActivityEnvVar() activities.EnvVar {
 	}
 }
 
+// EnvVar's can be serialized to an activities.EnvVar object
+// which is used as an activity input.
 type EnvVar interface {
 	ToActivityEnvVar() activities.EnvVar
 }
 
+// CommandEnvVar is an environment variable that is defined by running a shell command
+// This command is serialized and lazyily run within associated activities.
 type CommandEnvVar struct {
 	name           string
 	command        string

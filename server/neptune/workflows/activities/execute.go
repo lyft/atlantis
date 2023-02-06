@@ -32,7 +32,7 @@ func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request E
 
 	requestEnvVars, err := getEnvs(request.EnvVars, request.DynamicEnvVars)
 	if err != nil {
-		return ExecuteCommandResponse{}, errors.Wrap(err, "getting env vars")
+		return ExecuteCommandResponse{}, err
 	}
 	for key, val := range requestEnvVars {
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
@@ -49,6 +49,7 @@ func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request E
 	}, nil
 }
 
+// StringCommand is a command that outputs a string
 type StringCommand struct {
 	Command        string
 	Dir            string
