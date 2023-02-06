@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -21,7 +22,15 @@ type testCmdExecuteActivity struct {
 }
 
 func (a *testCmdExecuteActivity) ExecuteCommand(ctx context.Context, request activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error) {
-	assert.Equal(a.t, a.expectedReq, request.DynamicEnvVars)
+
+	var sorted []activities.EnvVar
+	for _, v := range request.DynamicEnvVars {
+		sorted = append(sorted, v)
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Name < sorted[j].Name
+	})
+	assert.Equal(a.t, a.expectedReq, sorted)
 	return activities.ExecuteCommandResponse{}, nil
 }
 
@@ -45,7 +54,6 @@ func testCmdWorkflow(ctx workflow.Context, r request) (string, error) {
 }
 
 func TestRunRunner_ShouldSetupEnvVars(t *testing.T) {
-
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
