@@ -2,7 +2,6 @@ package job_test
 
 import (
 	"context"
-	"sort"
 	"testing"
 	"time"
 
@@ -22,14 +21,7 @@ type testCmdExecuteActivity struct {
 }
 
 func (a *testCmdExecuteActivity) ExecuteCommand(ctx context.Context, request activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error) {
-
-	var sorted []activities.EnvVar
-	sorted = append(sorted, request.DynamicEnvVars...)
-
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i].Name < sorted[j].Name
-	})
-	assert.Equal(a.t, a.expectedReq, sorted)
+	assert.Equal(a.t, a.expectedReq, request.DynamicEnvVars)
 	return activities.ExecuteCommandResponse{}, nil
 }
 

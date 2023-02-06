@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"sort"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -29,10 +30,24 @@ type CmdStepRunner struct {
 	Activity executeCommandActivities
 }
 
+func getDefaultStringEnvs(ctx *ExecutionContext, localRoot *terraform.LocalRoot) []StringEnvVar {
+	var envs []StringEnvVar
+	for k, v := range GetDefaultEnvVars(ctx, localRoot) {
+		envs = append(envs, NewEnvVarFromString(k, v))
+	}
+
+	// sort so our activity inputs are deterministic
+	sort.Slice(envs, func(i, j int) bool {
+		return envs[i].name < envs[j].name
+	})
+
+	return envs
+}
+
 func (r *CmdStepRunner) Run(executionContext *ExecutionContext, localRoot *terraform.LocalRoot, step execute.Step) (string, error) {
 	var envs []EnvVar
-	for k, v := range GetDefaultEnvVars(executionContext, localRoot) {
-		envs = append(envs, NewEnvVarFromString(k, v))
+	for _, e := range getDefaultStringEnvs(executionContext, localRoot) {
+		envs = append(envs, e)
 	}
 
 	envs = append(envs, executionContext.Envs...)
