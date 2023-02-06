@@ -24,9 +24,8 @@ type testCmdExecuteActivity struct {
 func (a *testCmdExecuteActivity) ExecuteCommand(ctx context.Context, request activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error) {
 
 	var sorted []activities.EnvVar
-	for _, v := range request.DynamicEnvVars {
-		sorted = append(sorted, v)
-	}
+	sorted = append(sorted, request.DynamicEnvVars...)
+
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].Name < sorted[j].Name
 	})
