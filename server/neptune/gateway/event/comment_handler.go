@@ -3,8 +3,9 @@ package event
 import (
 	"bytes"
 	"context"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
@@ -18,6 +19,8 @@ import (
 )
 
 const warningMessage = "⚠️ WARNING ⚠️\n\n You are force applying changes from your PR instead of merging into your default branch 🚀. This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘.\n\n To confirm behavior, review and confirm the plan within the generated atlantis/deploy GH check below.\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
+
+const legacyApplyCommandMessage = "⚠️ INFO ⚠️\n\n The apply command is no longer required! Simply merge your PR to apply your terraform changes in [Platform Mode](https://infradocs.lyft.net/deploy/infrastructure-as-code/platform_mode.html) "
 
 // Comment is our internal representation of a vcs based comment event.
 type Comment struct {
@@ -58,7 +61,7 @@ type CommentEventWorkerProxy struct {
 	rootDeployer rootDeployer
 }
 
-func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, command *command.Comment) error {
+func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
 	shouldAllocate, err := p.allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{
 		RepoName: event.BaseRepo.FullName,
 	})
@@ -68,14 +71,29 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 		return p.forwardToSns(ctx, request)
 	}
 
-	if shouldAllocate && command.ForceApply {
-		p.logger.InfoContext(ctx, "running force apply command")
-		if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); commentErr != nil {
-			p.logger.ErrorContext(ctx, commentErr.Error())
+	if shouldAllocate {
+		if cmd.ForceApply {
+			p.logger.InfoContext(ctx, "running force apply command")
+			if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); commentErr != nil {
+				p.logger.ErrorContext(ctx, commentErr.Error())
+			}
+			return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
+				return p.forceApply(ctx, event)
+			})
 		}
-		return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
-			return p.forceApply(ctx, event)
-		})
+
+		// comment legacy apply command message and return
+		if cmd.Name == command.Apply {
+			p.logger.InfoContext(ctx, "invalid legacy apply command on platform mode", map[string]interface{}{
+				"repository": event.BaseRepo.FullName,
+				"pull-num":   event.Pull.Num,
+			})
+			if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, legacyApplyCommandMessage, ""); commentErr != nil {
+				p.logger.ErrorContext(ctx, commentErr.Error())
+			}
+			return nil
+		}
+
 	}
 	return p.forwardToSns(ctx, request)
 }
