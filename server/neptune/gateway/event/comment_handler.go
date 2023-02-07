@@ -3,8 +3,12 @@ package event
 import (
 	"bytes"
 	"context"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github"
+	"fmt"
+	"text/template"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/vcs/markdown"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
@@ -18,6 +22,10 @@ import (
 )
 
 const warningMessage = "⚠️ WARNING ⚠️\n\n You are force applying changes from your PR instead of merging into your default branch 🚀. This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘.\n\n To confirm behavior, review and confirm the plan within the generated atlantis/deploy GH check below.\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
+
+type templateResolver interface {
+	Resolve(common markdown.CommonData, baseRepo models.Repo, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int, numVersionSuccesses int) *template.Template
+}
 
 // Comment is our internal representation of a vcs based comment event.
 type Comment struct {
@@ -38,27 +46,30 @@ func NewCommentEventWorkerProxy(
 	allocator feature.Allocator,
 	scheduler scheduler,
 	rootDeployer rootDeployer,
+	templateResolver *markdown.TemplateResolver,
 	vcsClient vcs.Client) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
-		logger:       logger,
-		snsWriter:    snsWriter,
-		allocator:    allocator,
-		scheduler:    scheduler,
-		vcsClient:    vcsClient,
-		rootDeployer: rootDeployer,
+		logger:           logger,
+		snsWriter:        snsWriter,
+		allocator:        allocator,
+		scheduler:        scheduler,
+		vcsClient:        vcsClient,
+		rootDeployer:     rootDeployer,
+		templateResolver: templateResolver,
 	}
 }
 
 type CommentEventWorkerProxy struct {
-	logger       logging.Logger
-	snsWriter    Writer
-	allocator    feature.Allocator
-	scheduler    scheduler
-	vcsClient    vcs.Client
-	rootDeployer rootDeployer
+	logger           logging.Logger
+	snsWriter        Writer
+	allocator        feature.Allocator
+	scheduler        scheduler
+	vcsClient        vcs.Client
+	rootDeployer     rootDeployer
+	templateResolver templateResolver
 }
 
-func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, command *command.Comment) error {
+func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
 	shouldAllocate, err := p.allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{
 		RepoName: event.BaseRepo.FullName,
 	})
@@ -68,16 +79,48 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 		return p.forwardToSns(ctx, request)
 	}
 
-	if shouldAllocate && command.ForceApply {
-		p.logger.InfoContext(ctx, "running force apply command")
-		if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); commentErr != nil {
-			p.logger.ErrorContext(ctx, commentErr.Error())
+	if shouldAllocate {
+		if cmd.ForceApply {
+			p.logger.InfoContext(ctx, "running force apply command")
+			if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); commentErr != nil {
+				p.logger.ErrorContext(ctx, commentErr.Error())
+			}
+			return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
+				return p.forceApply(ctx, event)
+			})
 		}
-		return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
-			return p.forceApply(ctx, event)
-		})
+
+		// notify user that apply command is deprecated on platform mode
+		if cmd.Name == command.Apply {
+			return p.handleLegacyApplyCommand(ctx, event, cmd)
+		}
+
 	}
 	return p.forwardToSns(ctx, request)
+}
+
+func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, event Comment, cmd *command.Comment) error {
+	p.logger.InfoContext(ctx, "running legacy apply command on platform mode", map[string]interface{}{
+		"repository":   event.BaseRepo.FullName,
+		"pull-request": event.PullNum,
+	})
+
+	// appending legacy to command name to distinguish between legacy and current apply templates
+	commonData := markdown.CommonData{
+		Command: fmt.Sprintf("%s-legacy", cmd.Name.TitleString()),
+	}
+	tmpl := p.templateResolver.Resolve(commonData, event.BaseRepo, 0, 0, 0, 0)
+	if tmpl == nil {
+		return errors.New("no template matched–this is a bug")
+	}
+
+	comment := p.renderTemplate(tmpl, markdown.ResultData{
+		CommonData: commonData,
+	})
+	if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, comment, ""); commentErr != nil {
+		p.logger.ErrorContext(ctx, commentErr.Error())
+	}
+	return nil
 }
 
 func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *http.BufferedRequest) error {
@@ -113,4 +156,12 @@ func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment)
 		Trigger:           workflows.ManualTrigger,
 	}
 	return p.rootDeployer.Deploy(ctx, rootDeployOptions)
+}
+
+func (p *CommentEventWorkerProxy) renderTemplate(tmpl *template.Template, data interface{}) string {
+	buf := &bytes.Buffer{}
+	if err := tmpl.Execute(buf, data); err != nil {
+		return fmt.Sprintf("Failed to render template, this is a bug: %v", err)
+	}
+	return buf.String()
 }

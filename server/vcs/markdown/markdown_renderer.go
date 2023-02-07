@@ -36,8 +36,8 @@ type Renderer struct {
 	EnableDiffMarkdownFormat bool
 }
 
-// commonData is data that all responses have.
-type commonData struct {
+// CommonData is data that all responses have.
+type CommonData struct {
 	Command                  string
 	DisableApplyAll          bool
 	DisableApply             bool
@@ -47,19 +47,19 @@ type commonData struct {
 // errData is data about an error response.
 type errData struct {
 	Error string
-	commonData
+	CommonData
 }
 
 // failureData is data about a failure response.
 type failureData struct {
 	Failure string
-	commonData
+	CommonData
 }
 
-// resultData is data about a successful response.
-type resultData struct {
+// ResultData is data about a successful response.
+type ResultData struct {
 	Results []projectResultTmplData
-	commonData
+	CommonData
 }
 
 type projectResultTmplData struct {
@@ -73,7 +73,7 @@ type projectResultTmplData struct {
 // nolint: interfacer
 func (m *Renderer) Render(res command.Result, cmdName command.Name, baseRepo models.Repo) string {
 	commandStr := cases.Title(language.English).String(strings.ReplaceAll(cmdName.String(), "_", " "))
-	common := commonData{
+	common := CommonData{
 		Command:                  commandStr,
 		DisableApplyAll:          m.DisableApplyAll || m.DisableApply,
 		DisableApply:             m.DisableApply,
@@ -92,7 +92,7 @@ func (m *Renderer) Render(res command.Result, cmdName command.Name, baseRepo mod
 // RenderProject formats the data into a markdown string for a project
 func (m *Renderer) RenderProject(prjRes command.ProjectResult, cmdName fmt.Stringer, baseRepo models.Repo) string {
 	commandStr := cases.Title(language.English).String(strings.ReplaceAll(cmdName.String(), "_", " "))
-	common := commonData{
+	common := CommonData{
 		Command:                  commandStr,
 		DisableApply:             m.DisableApply,
 		EnableDiffMarkdownFormat: m.EnableDiffMarkdownFormat,
@@ -101,7 +101,7 @@ func (m *Renderer) RenderProject(prjRes command.ProjectResult, cmdName fmt.Strin
 	return m.renderTemplate(template, templateData)
 }
 
-func (m *Renderer) renderProjectResults(results []command.ProjectResult, common commonData, cmdName command.Name, baseRepo models.Repo) string {
+func (m *Renderer) renderProjectResults(results []command.ProjectResult, common CommonData, cmdName command.Name, baseRepo models.Repo) string {
 	// render project results
 	var prjResultTmplData []projectResultTmplData
 	for _, result := range results {
@@ -119,7 +119,7 @@ func (m *Renderer) renderProjectResults(results []command.ProjectResult, common 
 	if tmpl == nil {
 		return "no template matched–this is a bug"
 	}
-	return m.renderTemplate(tmpl, resultData{prjResultTmplData, common})
+	return m.renderTemplate(tmpl, ResultData{prjResultTmplData, common})
 }
 
 func (m *Renderer) countSuccesses(results []command.ProjectResult) (numPlanSuccesses, numPolicyCheckSuccesses, numVersionSuccesses int) {

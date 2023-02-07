@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"text/template"
@@ -16,8 +17,11 @@ import (
 )
 
 var (
-	planCommandTitle            = command.Plan.TitleString()
-	applyCommandTitle           = command.Apply.TitleString()
+	planCommandTitle  = command.Plan.TitleString()
+	applyCommandTitle = command.Apply.TitleString()
+
+	// adding legacy apply command title to support template overrides for apply command on platform mode
+	legacyApplyCommandTitle     = fmt.Sprintf("%s-legacy", command.Apply.TitleString())
 	policyCheckCommandTitle     = command.PolicyCheck.TitleString()
 	approvePoliciesCommandTitle = command.ApprovePolicies.TitleString()
 	versionCommandTitle         = command.Version.TitleString()
@@ -79,7 +83,7 @@ type TemplateResolver struct {
 }
 
 // Resolves templates for commands
-func (t *TemplateResolver) Resolve(common commonData, baseRepo models.Repo, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int, numVersionSuccesses int) *template.Template {
+func (t *TemplateResolver) Resolve(common CommonData, baseRepo models.Repo, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int, numVersionSuccesses int) *template.Template {
 	// Build template override for this repo
 	var templateOverrides map[string]string
 	repoCfg := t.GlobalCfg.MatchingRepo(baseRepo.ID())
@@ -97,13 +101,15 @@ func (t *TemplateResolver) Resolve(common commonData, baseRepo models.Repo, numP
 		tmpl = t.getApplyTmpl(templateOverrides, numPrjResults)
 	case common.Command == versionCommandTitle:
 		tmpl = t.getVersionTmpl(templateOverrides, common, numPrjResults, numVersionSuccesses)
+	case common.Command == legacyApplyCommandTitle:
+		tmpl = t.getLegacyApplyTmpl(templateOverrides)
 	}
 
 	return tmpl
 }
 
 // Resolves templates for project commands
-func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo models.Repo, common commonData) (*template.Template, interface{}) {
+func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo models.Repo, common CommonData) (*template.Template, interface{}) {
 
 	// Build template override for this repo
 	var templateOverrides map[string]string
@@ -220,7 +226,7 @@ func (t *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, outp
 	return strings.Count(output, "\n") > maxUnwrappedLines
 }
 
-func (t *TemplateResolver) getPlanTmpl(common commonData, baseRepo models.Repo, templateOverrides map[string]string, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
+func (t *TemplateResolver) getPlanTmpl(common CommonData, baseRepo models.Repo, templateOverrides map[string]string, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
 	if fileName, ok := templateOverrides["plan"]; ok {
 		if content, err := os.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
@@ -252,7 +258,16 @@ func (t *TemplateResolver) getApplyTmpl(templateOverrides map[string]string, num
 	return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(multiProjectApplyTmpl))
 }
 
-func (t *TemplateResolver) getVersionTmpl(templateOverrides map[string]string, common commonData, numPrjResults int, numVersionSuccesses int) *template.Template {
+func (t *TemplateResolver) getLegacyApplyTmpl(templateOverrides map[string]string) *template.Template {
+	if fileName, ok := templateOverrides["apply-legacy"]; ok {
+		if content, err := os.ReadFile(fileName); err == nil {
+			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
+		}
+	}
+	return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(legacyApplyTmpl))
+}
+
+func (t *TemplateResolver) getVersionTmpl(templateOverrides map[string]string, common CommonData, numPrjResults int, numVersionSuccesses int) *template.Template {
 	if fileName, ok := templateOverrides["version"]; ok {
 		if content, err := os.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
@@ -312,6 +327,9 @@ var applyUnwrappedSuccessTmpl string
 
 //go:embed templates/applyWrappedSuccess.tmpl
 var applyWrappedSuccessTmpl string
+
+//go:embed templates/legacyApply.tmpl
+var legacyApplyTmpl string
 
 //go:embed templates/versionUnwrappedSuccess.tmpl
 var versionUnwrappedSuccessTmpl string

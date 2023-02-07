@@ -323,6 +323,7 @@ func NewServer(config Config) (*Server, error) {
 		asyncScheduler,
 		temporalClient,
 		rootConfigBuilder,
+		&templateResolver,
 		checkRunFetcher,
 	)
 
