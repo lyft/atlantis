@@ -46,7 +46,7 @@ func NewCommentEventWorkerProxy(
 	allocator feature.Allocator,
 	scheduler scheduler,
 	rootDeployer rootDeployer,
-	templateResolver *markdown.TemplateResolver,
+	templateResolver markdown.TemplateResolver,
 	vcsClient vcs.Client) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
 		logger:           logger,
@@ -55,7 +55,7 @@ func NewCommentEventWorkerProxy(
 		scheduler:        scheduler,
 		vcsClient:        vcsClient,
 		rootDeployer:     rootDeployer,
-		templateResolver: templateResolver,
+		templateResolver: &templateResolver,
 	}
 }
 
@@ -92,18 +92,15 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 
 		// notify user that apply command is deprecated on platform mode
 		if cmd.Name == command.Apply {
-			return p.handleLegacyApplyCommand(ctx, event, cmd)
+			p.handleLegacyApplyCommand(ctx, event, cmd)
 		}
 
 	}
 	return p.forwardToSns(ctx, request)
 }
 
-func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, event Comment, cmd *command.Comment) error {
-	p.logger.InfoContext(ctx, "running legacy apply command on platform mode", map[string]interface{}{
-		"repository":   event.BaseRepo.FullName,
-		"pull-request": event.PullNum,
-	})
+func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, event Comment, cmd *command.Comment) {
+	p.logger.InfoContext(ctx, "running legacy apply command on platform mode")
 
 	// appending legacy to command name to distinguish between legacy and current apply templates
 	commonData := markdown.CommonData{
@@ -111,7 +108,8 @@ func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, 
 	}
 	tmpl := p.templateResolver.Resolve(commonData, event.BaseRepo, 0, 0, 0, 0)
 	if tmpl == nil {
-		return errors.New("no template matched–this is a bug")
+		p.logger.ErrorContext(ctx, "no template matched–this is a bug")
+		return
 	}
 
 	comment := p.renderTemplate(tmpl, markdown.ResultData{
@@ -120,7 +118,6 @@ func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, 
 	if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, comment, ""); commentErr != nil {
 		p.logger.ErrorContext(ctx, commentErr.Error())
 	}
-	return nil
 }
 
 func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *http.BufferedRequest) error {
