@@ -91,7 +91,7 @@ func (c *ConfTestExecutor) Run(_ context.Context, prjCtx command.ProjectContext,
 			scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 			return "", errors.Wrap(err, "building args")
 		}
-		policyScope := scope.SubScope(sanitizeName(policySet.Name))
+		policyScope := scope.SubScope(policySet.Name)
 		cmdOutput, cmdErr := c.Exec.CombinedOutput(serializedArgs, envs, workdir)
 		// Continue running other policies if one fails since it might not be the only failing one
 		if cmdErr != nil {
@@ -125,10 +125,6 @@ func (c *ConfTestExecutor) Run(_ context.Context, prjCtx command.ProjectContext,
 	// use policyErr here as policy error output is what the user should see
 	scope.Counter(metrics.ExecutionFailureMetric).Inc(1)
 	return output, policyErr
-}
-
-func sanitizeName(name string) string {
-	return strings.ReplaceAll(name, "_", "-")
 }
 
 func (c *ConfTestExecutor) buildTitle(policySetNames []string) string {
