@@ -6,6 +6,7 @@ import (
 	"context"
 	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -56,7 +57,7 @@ func TestFilter_Approved(t *testing.T) {
 	}
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.NoError(t, err)
 	assert.True(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)
@@ -64,6 +65,70 @@ func TestFilter_Approved(t *testing.T) {
 	assert.True(t, teamFetcher.isCalled)
 	assert.True(t, reviewDismisser.isCalled)
 	assert.Empty(t, filteredPolicies)
+}
+
+func TestFilter_NotApproved_PullUpdateEvent(t *testing.T) {
+	reviewFetcher := &mockReviewFetcher{
+		approvers: []string{},
+		reviews: []*github.PullRequestReview{
+			{
+				User: &github.User{Login: github.String(ownerA)},
+			},
+			{
+				User: &github.User{Login: github.String(ownerB)},
+			},
+		},
+	}
+	teamFetcher := &mockTeamMemberFetcher{
+		members: []string{ownerA, ownerB, ownerC},
+	}
+	commitFetcher := &mockCommitFetcher{}
+	reviewDismisser := &mockReviewDismisser{}
+	failedPolicies := []valid.PolicySet{
+		{Name: policyName, Owner: policyOwner},
+	}
+
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.AutoTrigger, failedPolicies)
+	assert.NoError(t, err)
+	assert.True(t, reviewFetcher.listUsernamesIsCalled)
+	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.False(t, commitFetcher.isCalled)
+	assert.True(t, teamFetcher.isCalled)
+	assert.True(t, reviewDismisser.isCalled)
+	assert.Equal(t, failedPolicies, filteredPolicies)
+}
+
+func TestFilter_NotApproved_PullUpdateEvent_NoDismissal(t *testing.T) {
+	reviewFetcher := &mockReviewFetcher{
+		approvers: []string{},
+		reviews: []*github.PullRequestReview{
+			{
+				User: &github.User{Login: github.String(ownerA)},
+			},
+			{
+				User: &github.User{Login: github.String(ownerB)},
+			},
+		},
+	}
+	teamFetcher := &mockTeamMemberFetcher{
+		members: []string{ownerC},
+	}
+	commitFetcher := &mockCommitFetcher{}
+	reviewDismisser := &mockReviewDismisser{}
+	failedPolicies := []valid.PolicySet{
+		{Name: policyName, Owner: policyOwner},
+	}
+
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.AutoTrigger, failedPolicies)
+	assert.NoError(t, err)
+	assert.True(t, reviewFetcher.listUsernamesIsCalled)
+	assert.True(t, reviewFetcher.listApprovalsIsCalled)
+	assert.False(t, commitFetcher.isCalled)
+	assert.True(t, teamFetcher.isCalled)
+	assert.False(t, reviewDismisser.isCalled)
+	assert.Equal(t, failedPolicies, filteredPolicies)
 }
 
 func TestFilter_Approved_NoDismissal(t *testing.T) {
@@ -90,7 +155,7 @@ func TestFilter_Approved_NoDismissal(t *testing.T) {
 	}
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.NoError(t, err)
 	assert.True(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)
@@ -124,7 +189,7 @@ func TestFilter_NotApproved(t *testing.T) {
 	}
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.NoError(t, err)
 	assert.True(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)
@@ -148,7 +213,7 @@ func TestFilter_NotApproved_NoDismissal(t *testing.T) {
 	}
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.NoError(t, err)
 	assert.True(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)
@@ -170,7 +235,7 @@ func TestFilter_NoFailedPolicies(t *testing.T) {
 
 	var failedPolicies []valid.PolicySet
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.NoError(t, err)
 	assert.False(t, reviewFetcher.listUsernamesIsCalled)
 	assert.False(t, reviewFetcher.listApprovalsIsCalled)
@@ -194,7 +259,7 @@ func TestFilter_FailedListLatestApprovalUsernames(t *testing.T) {
 	}
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.Error(t, err)
 	assert.True(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)
@@ -218,7 +283,7 @@ func TestFilter_FailedListApprovalReviews(t *testing.T) {
 	}
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.Error(t, err)
 	assert.False(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)
@@ -242,7 +307,7 @@ func TestFilter_FailedFetchLatestCommitTime(t *testing.T) {
 		{Name: policyName, Owner: policyOwner},
 	}
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.Error(t, err)
 	assert.False(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)
@@ -266,7 +331,7 @@ func TestFilter_FailedTeamMemberFetch(t *testing.T) {
 	}
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.Error(t, err)
 	assert.True(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)
@@ -302,7 +367,7 @@ func TestFilter_FailedDismiss(t *testing.T) {
 	}
 
 	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamFetcher, failedPolicies)
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, failedPolicies)
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.Error(t, err)
 	assert.False(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)

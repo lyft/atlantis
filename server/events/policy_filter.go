@@ -5,6 +5,7 @@ import (
 	gh "github.com/google/go-github/v45/github"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
@@ -48,14 +49,14 @@ func NewApprovedPolicyFilter(
 }
 
 // Filter will remove failed policies if the underlying PR has been approved by a policy owner
-func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int64, repo models.Repo, prNum int, failedPolicies []valid.PolicySet) ([]valid.PolicySet, error) {
+func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int64, repo models.Repo, prNum int, trigger command.CommandTrigger, failedPolicies []valid.PolicySet) ([]valid.PolicySet, error) {
 	// Skip GH API calls if no policies failed
 	if len(failedPolicies) == 0 {
 		return failedPolicies, nil
 	}
 
 	// Need to dismiss stale reviews before determining which failed policies can be bypassed
-	err := p.dismissStalePRReviews(ctx, installationToken, repo, prNum)
+	err := p.dismissStalePRReviews(ctx, installationToken, repo, prNum, trigger)
 	if err != nil {
 		return failedPolicies, errors.Wrap(err, "failed to dismiss stale PR reviews")
 	}
@@ -80,12 +81,30 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 	return filteredFailedPolicies, nil
 }
 
-func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) error {
+func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int, trigger command.CommandTrigger) error {
 	approvalReviews, err := p.prReviewFetcher.ListApprovalReviews(ctx, installationToken, repo, prNum)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch GH PR reviews")
 	}
 
+	// Dismiss all approvals on push event
+	if trigger == command.AutoTrigger {
+		for _, approval := range approvalReviews {
+			isOwner, err := p.approverIsOwner(ctx, installationToken, approval)
+			if err != nil {
+				return errors.Wrap(err, "failed to validate approver is owner")
+			}
+			if isOwner {
+				err = p.prReviewDismisser.Dismiss(ctx, installationToken, repo, prNum, approval.GetID())
+				if err != nil {
+					return errors.Wrap(err, "failed to dismiss GH PR reviews")
+				}
+			}
+		}
+		return nil
+	}
+
+	// Backup, attempt to dismissal approvals after latest timestamp here
 	latestCommit, err := p.prLatestCommitFetcher.FetchLatestPRCommit(ctx, installationToken, repo, prNum)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch GH PR latest commit timestamp")
