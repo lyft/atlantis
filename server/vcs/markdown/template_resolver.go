@@ -1,7 +1,6 @@
 package markdown
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"text/template"
@@ -21,7 +20,7 @@ var (
 	applyCommandTitle = command.Apply.TitleString()
 
 	// adding legacy apply command title to support template overrides for apply command on platform mode
-	legacyApplyCommandTitle     = fmt.Sprintf("%s-legacy", command.Apply.TitleString())
+	legacyApplyCommandTitle     = command.GetLegacyCommandTitle(command.Apply)
 	policyCheckCommandTitle     = command.PolicyCheck.TitleString()
 	approvePoliciesCommandTitle = command.ApprovePolicies.TitleString()
 	versionCommandTitle         = command.Version.TitleString()
@@ -227,7 +226,7 @@ func (t *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, outp
 }
 
 func (t *TemplateResolver) getPlanTmpl(common CommonData, baseRepo models.Repo, templateOverrides map[string]string, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
-	if fileName, ok := templateOverrides["plan"]; ok {
+	if fileName, ok := templateOverrides[command.Version.String()]; ok {
 		if content, err := os.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
 		}
@@ -247,7 +246,7 @@ func (t *TemplateResolver) getPlanTmpl(common CommonData, baseRepo models.Repo, 
 }
 
 func (t *TemplateResolver) getApplyTmpl(templateOverrides map[string]string, numPrjResults int) *template.Template {
-	if fileName, ok := templateOverrides["apply"]; ok {
+	if fileName, ok := templateOverrides[command.Apply.String()]; ok {
 		if content, err := os.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
 		}
@@ -259,7 +258,8 @@ func (t *TemplateResolver) getApplyTmpl(templateOverrides map[string]string, num
 }
 
 func (t *TemplateResolver) getLegacyApplyTmpl(templateOverrides map[string]string) *template.Template {
-	if fileName, ok := templateOverrides["apply-legacy"]; ok {
+	templateName := command.GetLegacyCommand(command.Apply)
+	if fileName, ok := templateOverrides[templateName]; ok {
 		if content, err := os.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
 		}
@@ -268,7 +268,7 @@ func (t *TemplateResolver) getLegacyApplyTmpl(templateOverrides map[string]strin
 }
 
 func (t *TemplateResolver) getVersionTmpl(templateOverrides map[string]string, common CommonData, numPrjResults int, numVersionSuccesses int) *template.Template {
-	if fileName, ok := templateOverrides["version"]; ok {
+	if fileName, ok := templateOverrides[command.Version.String()]; ok {
 		if content, err := os.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
 		}

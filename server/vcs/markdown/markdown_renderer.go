@@ -36,7 +36,7 @@ type Renderer struct {
 	EnableDiffMarkdownFormat bool
 }
 
-// CommonData is data that all responses have.
+// CommonData is data that all responses to atlantis commands have.
 type CommonData struct {
 	Command                  string
 	DisableApplyAll          bool

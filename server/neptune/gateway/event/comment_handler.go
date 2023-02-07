@@ -23,6 +23,7 @@ import (
 
 const warningMessage = "⚠️ WARNING ⚠️\n\n You are force applying changes from your PR instead of merging into your default branch 🚀. This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘.\n\n To confirm behavior, review and confirm the plan within the generated atlantis/deploy GH check below.\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
 
+// templateResolver resolves the template for a command
 type templateResolver interface {
 	Resolve(common markdown.CommonData, baseRepo models.Repo, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int, numVersionSuccesses int) *template.Template
 }
@@ -82,8 +83,8 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 	if shouldAllocate {
 		if cmd.ForceApply {
 			p.logger.InfoContext(ctx, "running force apply command")
-			if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); commentErr != nil {
-				p.logger.ErrorContext(ctx, commentErr.Error())
+			if err := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); err != nil {
+				p.logger.ErrorContext(ctx, err.Error())
 			}
 			return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
 				return p.forceApply(ctx, event)
@@ -104,19 +105,21 @@ func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, 
 
 	// appending legacy to command name to distinguish between legacy and current apply templates
 	commonData := markdown.CommonData{
-		Command: fmt.Sprintf("%s-legacy", cmd.Name.TitleString()),
+		Command: command.GetLegacyCommandTitle(cmd.Name),
 	}
 	tmpl := p.templateResolver.Resolve(commonData, event.BaseRepo, 0, 0, 0, 0)
 	if tmpl == nil {
-		p.logger.ErrorContext(ctx, "no template matched–this is a bug")
+		p.logger.ErrorContext(ctx, "no template matched", map[string]interface{}{
+			"template": commonData.Command,
+		})
 		return
 	}
 
 	comment := p.renderTemplate(tmpl, markdown.ResultData{
 		CommonData: commonData,
 	})
-	if commentErr := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, comment, ""); commentErr != nil {
-		p.logger.ErrorContext(ctx, commentErr.Error())
+	if err := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, comment, ""); err != nil {
+		p.logger.ErrorContext(ctx, err.Error())
 	}
 }
 
