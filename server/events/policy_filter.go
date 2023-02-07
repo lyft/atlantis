@@ -87,7 +87,7 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, instal
 		return errors.Wrap(err, "failed to fetch GH PR reviews")
 	}
 
-	// Dismiss all approvals on push event
+	// Dismiss all approvals on pull event
 	if trigger == command.AutoTrigger {
 		for _, approval := range approvalReviews {
 			isOwner, err := p.approverIsOwner(ctx, installationToken, approval)
