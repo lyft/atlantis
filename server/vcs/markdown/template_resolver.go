@@ -226,7 +226,7 @@ func (t *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, outp
 }
 
 func (t *TemplateResolver) getPlanTmpl(common CommonData, baseRepo models.Repo, templateOverrides map[string]string, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
-	if fileName, ok := templateOverrides[command.Version.String()]; ok {
+	if fileName, ok := templateOverrides[command.Plan.String()]; ok {
 		if content, err := os.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))
 		}
