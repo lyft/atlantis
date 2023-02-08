@@ -45,16 +45,13 @@ func NewConfTestExecutor(creator githubapp.ClientCreator, policySets valid.Polic
 	reviewDismisser := &github.PRReviewDismisser{
 		ClientCreator: creator,
 	}
-	commitFetcher := &github.CommitFetcher{
-		ClientCreator: creator,
-	}
 	teamMemberFetcher := &github.TeamMemberFetcher{
 		ClientCreator: creator,
 		Org:           policySets.Organization,
 	}
 	return &ConfTestExecutor{
 		Exec:         runtime_models.LocalExec{},
-		PolicyFilter: events.NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamMemberFetcher, policySets.PolicySets),
+		PolicyFilter: events.NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamMemberFetcher, policySets.PolicySets),
 	}
 }
 
