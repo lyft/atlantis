@@ -47,7 +47,7 @@ func (c *CommitFetcher) FetchLatestPRCommit(ctx context.Context, installationTok
 	return latestCommit, nil
 }
 
-func (c *CommitFetcher) FetchPRCommits(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]*gh.Commit, error) {
+func (c *CommitFetcher) FetchPRCommits(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]*gh.RepositoryCommit, error) {
 	client, err := c.ClientCreator.NewInstallationClient(installationToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating installation client")
@@ -63,12 +63,5 @@ func (c *CommitFetcher) FetchPRCommits(ctx context.Context, installationToken in
 	if err != nil {
 		return nil, errors.Wrap(err, "iterating through entries")
 	}
-	var commits []*gh.Commit
-	for _, repositoryCommit := range repositoryCommits {
-		if repositoryCommit.GetCommit() == nil {
-			return nil, errors.New("getting commit")
-		}
-		commits = append(commits, repositoryCommit.GetCommit())
-	}
-	return commits, nil
+	return repositoryCommits, nil
 }

@@ -13,7 +13,7 @@ import (
 )
 
 type prLatestCommitFetcher interface {
-	FetchPRCommits(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]*gh.Commit, error)
+	FetchPRCommits(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]*gh.RepositoryCommit, error)
 }
 type prReviewFetcher interface {
 	ListLatestApprovalUsernames(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]string, error)
@@ -134,7 +134,7 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, log lo
 	return nil
 }
 
-func approvalCommitExists(approval *gh.PullRequestReview, commits []*gh.Commit) bool {
+func approvalCommitExists(approval *gh.PullRequestReview, commits []*gh.RepositoryCommit) bool {
 	for _, commit := range commits {
 		if approval.GetCommitID() == commit.GetSHA() {
 			return true
@@ -143,13 +143,16 @@ func approvalCommitExists(approval *gh.PullRequestReview, commits []*gh.Commit) 
 	return false
 }
 
-func fetchLatestCommitTimestamp(commits []*gh.Commit) (time.Time, error) {
+func fetchLatestCommitTimestamp(repositoryCommits []*gh.RepositoryCommit) (time.Time, error) {
 	latestCommitTimestamp := time.Time{}
-	for _, commit := range commits {
-		if commit.GetCommitter() == nil {
-			return time.Time{}, errors.New("getting latest committer")
+	for _, repositoryCommit := range repositoryCommits {
+		if repositoryCommit.GetCommit() == nil {
+			return time.Time{}, errors.New("getting commit")
 		}
-		commitTimestamp := commit.GetCommitter().GetDate()
+		if repositoryCommit.GetCommit().GetCommitter() == nil {
+			return time.Time{}, errors.New("getting committer")
+		}
+		commitTimestamp := repositoryCommit.GetCommit().GetCommitter().GetDate()
 		if commitTimestamp.After(latestCommitTimestamp) {
 			latestCommitTimestamp = commitTimestamp
 		}
