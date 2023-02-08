@@ -3,7 +3,6 @@ package event
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/events/vcs"
@@ -91,28 +90,27 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 
 		// notify user that apply command is deprecated on platform mode
 		if cmd.Name == command.Apply {
-			if err := p.handleLegacyApplyCommand(ctx, event, cmd); err != nil {
-				return err
-			}
+			p.handleLegacyApplyCommand(ctx, event, cmd)
 		}
 
 	}
 	return p.forwardToSns(ctx, request)
 }
 
-func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, event Comment, cmd *command.Comment) error {
+func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, event Comment, cmd *command.Comment) {
 	p.logger.InfoContext(ctx, "running legacy apply command on platform mode")
 
 	// return error if loading template fails since we should have default templates configured
 	comment, err := p.templateLoader.Load(template.LegacyApplyComment, event.BaseRepo, nil)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("loading template for %s", template.LegacyApplyComment))
+		p.logger.ErrorContext(ctx, "loading template", map[string]interface{}{
+			"template": template.LegacyApplyComment,
+		})
 	}
 
 	if err := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, comment, ""); err != nil {
 		p.logger.ErrorContext(ctx, err.Error())
 	}
-	return nil
 }
 
 func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *http.BufferedRequest) error {
