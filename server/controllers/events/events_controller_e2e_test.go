@@ -1425,12 +1425,12 @@ func (t *testStaleCommandChecker) CommandIsStale(ctx *command.Context) bool {
 }
 
 type mockCommitFetcher struct {
-	commit   *github.Commit
+	commit   []*github.Commit
 	error    error
 	isCalled bool
 }
 
-func (c *mockCommitFetcher) FetchLatestPRCommit(_ context.Context, _ int64, _ models.Repo, _ int) (*github.Commit, error) {
+func (c *mockCommitFetcher) FetchPRCommits(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]*github.Commit, error) {
 	c.isCalled = true
 	return c.commit, c.error
 }

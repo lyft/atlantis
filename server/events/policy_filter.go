@@ -6,10 +6,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"time"
 )
 
 type prLatestCommitFetcher interface {
-	FetchLatestPRCommit(ctx context.Context, installationToken int64, repo models.Repo, prNum int) (*gh.Commit, error)
+	FetchPRCommits(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]*gh.Commit, error)
 }
 type prReviewFetcher interface {
 	ListLatestApprovalUsernames(ctx context.Context, installationToken int64, repo models.Repo, prNum int) ([]string, error)
@@ -86,16 +87,32 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, instal
 		return errors.Wrap(err, "failed to fetch GH PR reviews")
 	}
 
-	latestCommit, err := p.prLatestCommitFetcher.FetchLatestPRCommit(ctx, installationToken, repo, prNum)
+	commits, err := p.prLatestCommitFetcher.FetchPRCommits(ctx, installationToken, repo, prNum)
 	if err != nil {
-		return errors.Wrap(err, "failed to fetch GH PR latest commit timestamp")
+		return errors.Wrap(err, "failed to fetch GH PR commits")
+	}
+
+	latestCommitTimestamp, err := fetchLatestCommitTimestamp(commits)
+	if err != nil {
+		return err
 	}
 
 	for _, approval := range approvalReviews {
-		// don't dismiss approvals after latest commit (check this first to avoid extra GH calls when possible)
-		if approval.GetSubmittedAt().After(latestCommit.GetCommitter().GetDate()) {
+		// if approval's commit no longer exists (most likely from a force push event), dismiss
+		if !approvalCommitExists(approval, commits) {
+			err = p.prReviewDismisser.Dismiss(ctx, installationToken, repo, prNum, approval.GetID())
+			if err != nil {
+				return errors.Wrap(err, "failed to dismiss GH PR reviews")
+			}
 			continue
 		}
+
+		// don't dismiss approvals after latest commit (check this first to avoid extra GH calls when possible)
+		if approval.GetSubmittedAt().After(latestCommitTimestamp) {
+			continue
+		}
+
+		// owner check last to reduce GH API calls when possible
 		isOwner, err := p.approverIsOwner(ctx, installationToken, approval)
 		if err != nil {
 			return errors.Wrap(err, "failed to validate approver is owner")
@@ -108,6 +125,29 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, instal
 		}
 	}
 	return nil
+}
+
+func approvalCommitExists(approval *gh.PullRequestReview, commits []*gh.Commit) bool {
+	for _, commit := range commits {
+		if approval.GetCommitID() == commit.GetSHA() {
+			return true
+		}
+	}
+	return false
+}
+
+func fetchLatestCommitTimestamp(commits []*gh.Commit) (time.Time, error) {
+	latestCommitTimestamp := time.Time{}
+	for _, commit := range commits {
+		if commit.GetCommitter() == nil {
+			return time.Time{}, errors.New("getting latest committer")
+		}
+		commitTimestamp := commit.GetCommitter().GetDate()
+		if commitTimestamp.After(latestCommitTimestamp) {
+			latestCommitTimestamp = commitTimestamp
+		}
+	}
+	return latestCommitTimestamp, nil
 }
 
 func (p *ApprovedPolicyFilter) approverIsOwner(ctx context.Context, installationToken int64, approval *gh.PullRequestReview) (bool, error) {
