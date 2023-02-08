@@ -22,10 +22,12 @@ const (
 	testSHA2    = "d4e5f6"
 )
 
-func createCommit(time time.Time, sha string) *github.Commit {
-	return &github.Commit{
-		Committer: &github.CommitAuthor{
-			Date: &time,
+func createCommit(time time.Time, sha string) *github.RepositoryCommit {
+	return &github.RepositoryCommit{
+		Commit: &github.Commit{
+			Committer: &github.CommitAuthor{
+				Date: &time,
+			},
 		},
 		SHA: github.String(sha),
 	}
@@ -53,7 +55,7 @@ func TestFilter_Approved(t *testing.T) {
 		members: []string{ownerA, ownerB, ownerC},
 	}
 	commitFetcher := &mockCommitFetcher{
-		commits: []*github.Commit{createCommit(time.Time{}, testSHA), createCommit(time1, testSHA2)},
+		commits: []*github.RepositoryCommit{createCommit(time.Time{}, testSHA), createCommit(time1, testSHA2)},
 	}
 	reviewDismisser := &mockReviewDismisser{}
 	failedPolicies := []valid.PolicySet{
@@ -85,7 +87,7 @@ func TestFilter_Approved_NoDismissal(t *testing.T) {
 		},
 	}
 	commitFetcher := &mockCommitFetcher{
-		commits: []*github.Commit{createCommit(time1, testSHA)},
+		commits: []*github.RepositoryCommit{createCommit(time1, testSHA)},
 	}
 	reviewDismisser := &mockReviewDismisser{}
 	teamFetcher := &mockTeamMemberFetcher{
@@ -123,7 +125,7 @@ func TestFilter_NotApproved(t *testing.T) {
 		members: []string{ownerA, ownerB, ownerC},
 	}
 	commitFetcher := &mockCommitFetcher{
-		commits: []*github.Commit{createCommit(time.Time{}, testSHA), createCommit(time2, testSHA2)},
+		commits: []*github.RepositoryCommit{createCommit(time.Time{}, testSHA), createCommit(time2, testSHA2)},
 	}
 	reviewDismisser := &mockReviewDismisser{}
 	failedPolicies := []valid.PolicySet{
@@ -158,7 +160,7 @@ func TestFilter_NotApproved_NoCommitFound(t *testing.T) {
 		members: []string{ownerA, ownerB, ownerC},
 	}
 	commitFetcher := &mockCommitFetcher{
-		commits: []*github.Commit{createCommit(time1, testSHA)},
+		commits: []*github.RepositoryCommit{createCommit(time1, testSHA)},
 	}
 	reviewDismisser := &mockReviewDismisser{}
 	failedPolicies := []valid.PolicySet{
@@ -184,7 +186,7 @@ func TestFilter_NotApproved_NoDismissal(t *testing.T) {
 		members: []string{ownerA, ownerC},
 	}
 	commitFetcher := &mockCommitFetcher{
-		commits: []*github.Commit{createCommit(time.Time{}, testSHA)},
+		commits: []*github.RepositoryCommit{createCommit(time.Time{}, testSHA)},
 	}
 	reviewDismisser := &mockReviewDismisser{}
 	failedPolicies := []valid.PolicySet{
@@ -334,7 +336,7 @@ func TestFilter_FailedDismiss(t *testing.T) {
 		},
 	}
 	commitFetcher := &mockCommitFetcher{
-		commits: []*github.Commit{createCommit(time.Time{}, testSHA), createCommit(time2, testSHA2)},
+		commits: []*github.RepositoryCommit{createCommit(time.Time{}, testSHA), createCommit(time2, testSHA2)},
 	}
 	reviewDismisser := &mockReviewDismisser{
 		error: assert.AnError,
@@ -377,12 +379,12 @@ func (f *mockReviewFetcher) ListApprovalReviews(_ context.Context, _ int64, _ mo
 }
 
 type mockCommitFetcher struct {
-	commits  []*github.Commit
+	commits  []*github.RepositoryCommit
 	error    error
 	isCalled bool
 }
 
-func (c *mockCommitFetcher) FetchPRCommits(_ context.Context, _ int64, _ models.Repo, _ int) ([]*github.Commit, error) {
+func (c *mockCommitFetcher) FetchPRCommits(_ context.Context, _ int64, _ models.Repo, _ int) ([]*github.RepositoryCommit, error) {
 	c.isCalled = true
 	return c.commits, c.error
 }

@@ -2,13 +2,10 @@ package events
 
 import (
 	"context"
-	"fmt"
 	gh "github.com/google/go-github/v45/github"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/logging"
-	"strings"
 	"time"
 )
 
@@ -52,14 +49,14 @@ func NewApprovedPolicyFilter(
 }
 
 // Filter will remove failed policies if the underlying PR has been approved by a policy owner
-func (p *ApprovedPolicyFilter) Filter(ctx context.Context, log logging.Logger, installationToken int64, repo models.Repo, prNum int, failedPolicies []valid.PolicySet) ([]valid.PolicySet, error) {
+func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int64, repo models.Repo, prNum int, failedPolicies []valid.PolicySet) ([]valid.PolicySet, error) {
 	// Skip GH API calls if no policies failed
 	if len(failedPolicies) == 0 {
 		return failedPolicies, nil
 	}
 
 	// Need to dismiss stale reviews before determining which failed policies can be bypassed
-	err := p.dismissStalePRReviews(ctx, log, installationToken, repo, prNum)
+	err := p.dismissStalePRReviews(ctx, installationToken, repo, prNum)
 	if err != nil {
 		return failedPolicies, errors.Wrap(err, "failed to dismiss stale PR reviews")
 	}
@@ -84,7 +81,7 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, log logging.Logger, i
 	return filteredFailedPolicies, nil
 }
 
-func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, log logging.Logger, installationToken int64, repo models.Repo, prNum int) error {
+func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) error {
 	approvalReviews, err := p.prReviewFetcher.ListApprovalReviews(ctx, installationToken, repo, prNum)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch GH PR reviews")
@@ -94,17 +91,11 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, log lo
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch GH PR commits")
 	}
-	var commitShas []string
-	for idx, commit := range commits {
-		commitShas = append(commitShas, fmt.Sprintf("Commit %d: %s", idx, commit.GetSHA()))
-	}
-	log.Info(fmt.Sprintf("commits: \n%s", strings.Join(commitShas, " \n")))
 
 	latestCommitTimestamp, err := fetchLatestCommitTimestamp(commits)
 	if err != nil {
 		return err
 	}
-	log.Info(fmt.Sprintf("latest commit timestamp %s", latestCommitTimestamp.String()))
 
 	for _, approval := range approvalReviews {
 		// don't dismiss approvals if reviewer is not a policy owner
@@ -118,13 +109,6 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, log lo
 
 		// dismiss if review's sha doesn't exist (due to git history edits) OR if approval came before latest commit
 		if !approvalCommitExists(approval, commits) || approval.GetSubmittedAt().Before(latestCommitTimestamp) {
-			if !approvalCommitExists(approval, commits) {
-				log.Info(fmt.Sprintf("approval commit DNE: approval commit=%s", approval.GetCommitID()))
-			}
-			if approval.GetSubmittedAt().Before(latestCommitTimestamp) {
-				log.Info(fmt.Sprintf("approval before latest commit: approval commit=%s commit time= %s",
-					approval.GetSubmittedAt().String(), latestCommitTimestamp.String()))
-			}
 			err = p.prReviewDismisser.Dismiss(ctx, installationToken, repo, prNum, approval.GetID())
 			if err != nil {
 				return errors.Wrap(err, "failed to dismiss GH PR reviews")
