@@ -88,7 +88,7 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, instal
 	}
 
 	// Dismiss all approvals on pull event
-	if trigger == command.AutoTrigger {
+	if trigger == command.AutoTrigger || trigger == command.CommentTrigger {
 		for _, approval := range approvalReviews {
 			isOwner, err := p.approverIsOwner(ctx, installationToken, approval)
 			if err != nil {
