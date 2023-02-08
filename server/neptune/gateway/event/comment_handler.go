@@ -23,7 +23,7 @@ const warningMessage = "⚠️ WARNING ⚠️\n\n You are force applying changes
 
 // templateLoader loads the template for a command
 type templateLoader interface {
-	Load(id template.TemplateKey, repo models.Repo, data any) (string, error)
+	Load(id template.Key, repo models.Repo, data any) (string, error)
 }
 
 // Comment is our internal representation of a vcs based comment event.

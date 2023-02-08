@@ -13,14 +13,14 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 )
 
-type TemplateKey string
+type Key string
 
 // list of all valid template ids
 const (
-	LegacyApplyComment = TemplateKey("legacyApply")
+	LegacyApplyComment = Key("legacyApply")
 )
 
-var defaultTemplates = map[TemplateKey]string{
+var defaultTemplates = map[Key]string{
 	LegacyApplyComment: legacyApplyTemplate,
 }
 
@@ -39,7 +39,7 @@ func NewLoader[T any](globalCfg valid.GlobalCfg) Loader[T] {
 
 type Template struct{}
 
-func (l Loader[T]) Load(id TemplateKey, repo models.Repo, data T) (string, error) {
+func (l Loader[T]) Load(id Key, repo models.Repo, data T) (string, error) {
 	tmpl := template.Must(l.getTemplate(id, repo))
 
 	buf := &bytes.Buffer{}
@@ -49,15 +49,15 @@ func (l Loader[T]) Load(id TemplateKey, repo models.Repo, data T) (string, error
 	return buf.String(), nil
 }
 
-func (l Loader[T]) getTemplate(id TemplateKey, repo models.Repo) (*template.Template, error) {
+func (l Loader[T]) getTemplate(id Key, repo models.Repo) (*template.Template, error) {
 	var templateOverrides map[string]string
+
 	repoCfg := l.GlobalCfg.MatchingRepo(repo.ID())
 	if repoCfg != nil {
 		templateOverrides = repoCfg.TemplateOverrides
 	}
 
 	template := template.New("").Funcs(sprig.TxtFuncMap())
-
 	if fileName, ok := templateOverrides[string(id)]; ok {
 		if content, err := os.ReadFile(fileName); err == nil {
 			return template.Parse(string(content))

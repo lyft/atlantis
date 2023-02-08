@@ -1,7 +1,6 @@
 package command
 
 import (
-	"fmt"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -53,12 +52,4 @@ func (c Name) String() string {
 		return "version"
 	}
 	return ""
-}
-
-func GetLegacyCommand(command Name) string {
-	return fmt.Sprintf("%s-legacy", command.String())
-}
-
-func GetLegacyCommandTitle(command Name) string {
-	return fmt.Sprintf("%s-legacy", command.TitleString())
 }
