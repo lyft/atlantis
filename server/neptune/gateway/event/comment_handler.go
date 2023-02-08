@@ -4,15 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"text/template"
 	"time"
-
-	"github.com/runatlantis/atlantis/server/vcs/markdown"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/template"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/command"
@@ -23,9 +21,9 @@ import (
 
 const warningMessage = "⚠️ WARNING ⚠️\n\n You are force applying changes from your PR instead of merging into your default branch 🚀. This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘.\n\n To confirm behavior, review and confirm the plan within the generated atlantis/deploy GH check below.\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
 
-// templateResolver resolves the template for a command
-type templateResolver interface {
-	Resolve(common markdown.CommonData, baseRepo models.Repo, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int, numVersionSuccesses int) *template.Template
+// templateLoader loads the template for a command
+type templateLoader interface {
+	Load(id template.TemplateKey, repo models.Repo, data any) (string, error)
 }
 
 // Comment is our internal representation of a vcs based comment event.
@@ -47,27 +45,27 @@ func NewCommentEventWorkerProxy(
 	allocator feature.Allocator,
 	scheduler scheduler,
 	rootDeployer rootDeployer,
-	templateResolver markdown.TemplateResolver,
+	templateLoader template.Loader[any],
 	vcsClient vcs.Client) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
-		logger:           logger,
-		snsWriter:        snsWriter,
-		allocator:        allocator,
-		scheduler:        scheduler,
-		vcsClient:        vcsClient,
-		rootDeployer:     rootDeployer,
-		templateResolver: &templateResolver,
+		logger:         logger,
+		snsWriter:      snsWriter,
+		allocator:      allocator,
+		scheduler:      scheduler,
+		vcsClient:      vcsClient,
+		rootDeployer:   rootDeployer,
+		templateLoader: &templateLoader,
 	}
 }
 
 type CommentEventWorkerProxy struct {
-	logger           logging.Logger
-	snsWriter        Writer
-	allocator        feature.Allocator
-	scheduler        scheduler
-	vcsClient        vcs.Client
-	rootDeployer     rootDeployer
-	templateResolver templateResolver
+	logger         logging.Logger
+	snsWriter      Writer
+	allocator      feature.Allocator
+	scheduler      scheduler
+	vcsClient      vcs.Client
+	rootDeployer   rootDeployer
+	templateLoader templateLoader
 }
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
@@ -93,34 +91,28 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 
 		// notify user that apply command is deprecated on platform mode
 		if cmd.Name == command.Apply {
-			p.handleLegacyApplyCommand(ctx, event, cmd)
+			if err := p.handleLegacyApplyCommand(ctx, event, cmd); err != nil {
+				return err
+			}
 		}
 
 	}
 	return p.forwardToSns(ctx, request)
 }
 
-func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, event Comment, cmd *command.Comment) {
+func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, event Comment, cmd *command.Comment) error {
 	p.logger.InfoContext(ctx, "running legacy apply command on platform mode")
 
-	// appending legacy to command name to distinguish between legacy and current apply templates
-	commonData := markdown.CommonData{
-		Command: command.GetLegacyCommandTitle(cmd.Name),
-	}
-	tmpl := p.templateResolver.Resolve(commonData, event.BaseRepo, 0, 0, 0, 0)
-	if tmpl == nil {
-		p.logger.ErrorContext(ctx, "no template matched", map[string]interface{}{
-			"template": commonData.Command,
-		})
-		return
+	// return error if loading template fails since we should have default templates configured
+	comment, err := p.templateLoader.Load(template.LegacyApplyComment, event.BaseRepo, nil)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("loading template for %s", template.LegacyApplyComment))
 	}
 
-	comment := p.renderTemplate(tmpl, markdown.ResultData{
-		CommonData: commonData,
-	})
 	if err := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, comment, ""); err != nil {
 		p.logger.ErrorContext(ctx, err.Error())
 	}
+	return nil
 }
 
 func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *http.BufferedRequest) error {
@@ -156,12 +148,4 @@ func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment)
 		Trigger:           workflows.ManualTrigger,
 	}
 	return p.rootDeployer.Deploy(ctx, rootDeployOptions)
-}
-
-func (p *CommentEventWorkerProxy) renderTemplate(tmpl *template.Template, data interface{}) string {
-	buf := &bytes.Buffer{}
-	if err := tmpl.Execute(buf, data); err != nil {
-		return fmt.Sprintf("Failed to render template, this is a bug: %v", err)
-	}
-	return buf.String()
 }
