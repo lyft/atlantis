@@ -3,6 +3,7 @@ package event
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/events/vcs"
@@ -103,9 +104,7 @@ func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, 
 	// return error if loading template fails since we should have default templates configured
 	comment, err := p.templateLoader.Load(template.LegacyApplyComment, event.BaseRepo, nil)
 	if err != nil {
-		p.logger.ErrorContext(ctx, "loading template", map[string]interface{}{
-			"template": template.LegacyApplyComment,
-		})
+		p.logger.ErrorContext(ctx, fmt.Sprintf("loading template: %s", template.LegacyApplyComment))
 	}
 
 	if err := p.vcsClient.CreateComment(event.BaseRepo, event.PullNum, comment, ""); err != nil {
