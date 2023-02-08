@@ -98,26 +98,17 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, instal
 	}
 
 	for _, approval := range approvalReviews {
-		// if approval's commit no longer exists (most likely from a force push event), dismiss
-		if !approvalCommitExists(approval, commits) {
-			err = p.prReviewDismisser.Dismiss(ctx, installationToken, repo, prNum, approval.GetID())
-			if err != nil {
-				return errors.Wrap(err, "failed to dismiss GH PR reviews")
-			}
-			continue
-		}
-
-		// don't dismiss approvals after latest commit (check this first to avoid extra GH calls when possible)
-		if approval.GetSubmittedAt().After(latestCommitTimestamp) {
-			continue
-		}
-
-		// owner check last to reduce GH API calls when possible
+		// don't dismiss approvals if reviewer is not a policy owner
 		isOwner, err := p.approverIsOwner(ctx, installationToken, approval)
 		if err != nil {
 			return errors.Wrap(err, "failed to validate approver is owner")
 		}
-		if isOwner {
+		if !isOwner {
+			continue
+		}
+
+		// dismiss if review's sha doesn't exist (due to git history edits) OR if approval came before latest commit
+		if !approvalCommitExists(approval, commits) || approval.GetSubmittedAt().Before(latestCommitTimestamp) {
 			err = p.prReviewDismisser.Dismiss(ctx, installationToken, repo, prNum, approval.GetID())
 			if err != nil {
 				return errors.Wrap(err, "failed to dismiss GH PR reviews")
