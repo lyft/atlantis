@@ -91,6 +91,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 		// notify user that apply command is deprecated on platform mode
 		if cmd.Name == command.Apply {
 			p.handleLegacyApplyCommand(ctx, event, cmd)
+			return nil
 		}
 
 	}
