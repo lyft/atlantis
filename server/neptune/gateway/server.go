@@ -239,6 +239,8 @@ func NewServer(config Config) (*Server, error) {
 	}
 	asyncScheduler := sync.NewAsyncScheduler(ctxLogger, syncScheduler)
 
+	vscStatusUpdater := &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: config.GithubStatusName}}
+
 	gatewaySnsWriter := sns.NewWriterWithStats(session, config.SNSTopicArn, statsScope.SubScope("aws.sns.gateway"))
 	autoplanValidator := &lyft_gateway.AutoplanValidator{
 		Scope:                         statsScope.SubScope("validator"),
@@ -246,7 +248,7 @@ func NewServer(config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		Drainer:                       drainer,
 		GlobalCfg:                     globalCfg,
-		VCSStatusUpdater:              &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: config.GithubStatusName}},
+		VCSStatusUpdater:              vscStatusUpdater,
 		PrjCmdBuilder:                 projectCommandBuilder,
 		OutputUpdater:                 outputUpdater,
 		WorkingDir:                    workingDir,
@@ -328,6 +330,7 @@ func NewServer(config Config) (*Server, error) {
 		rootConfigBuilder,
 		templateLoader,
 		checkRunFetcher,
+		vscStatusUpdater,
 	)
 
 	router := mux.NewRouter()

@@ -46,7 +46,9 @@ func NewVCSEventsController(
 	temporalClient client.Client,
 	rootConfigBuilder *gateway_handlers.RootConfigBuilder,
 	templateLoader template.Loader[any],
-	checkRunFetcher *github.CheckRunsFetcher) *VCSEventsController {
+	checkRunFetcher *github.CheckRunsFetcher,
+	vcsStatusUpdater events.VCSStatusUpdater,
+) *VCSEventsController {
 	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
 		snsWriter, logger,
 	)
@@ -74,7 +76,7 @@ func NewVCSEventsController(
 		commentParser,
 		repoAllowlistChecker,
 		vcsClient,
-		gateway_handlers.NewCommentEventWorkerProxy(logger, snsWriter, featureAllocator, asyncScheduler, rootDeployer, templateLoader, vcsClient),
+		gateway_handlers.NewCommentEventWorkerProxy(logger, snsWriter, featureAllocator, asyncScheduler, rootDeployer, rootConfigBuilder, templateLoader, vcsStatusUpdater, vcsClient),
 		logger,
 	)
 
