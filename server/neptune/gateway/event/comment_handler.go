@@ -21,6 +21,8 @@ import (
 
 const warningMessage = "⚠️ WARNING ⚠️\n\n You are force applying changes from your PR instead of merging into your default branch 🚀. This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘.\n\n To confirm behavior, review and confirm the plan within the generated atlantis/deploy GH check below.\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
 
+type LegacyApplyCommentInput struct{}
+
 // Comment is our internal representation of a vcs based comment event.
 type Comment struct {
 	Pull              models.PullRequest
@@ -40,16 +42,18 @@ func NewCommentEventWorkerProxy(
 	allocator feature.Allocator,
 	scheduler scheduler,
 	rootDeployer rootDeployer,
-	templateLoader template.Loader[template.Input],
+	templateLoader template.Loader[any],
 	vcsClient vcs.Client) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
-		logger:         logger,
-		snsWriter:      snsWriter,
-		allocator:      allocator,
-		scheduler:      scheduler,
-		vcsClient:      vcsClient,
-		rootDeployer:   rootDeployer,
-		templateLoader: templateLoader,
+		logger:       logger,
+		snsWriter:    snsWriter,
+		allocator:    allocator,
+		scheduler:    scheduler,
+		vcsClient:    vcsClient,
+		rootDeployer: rootDeployer,
+
+		// cast the generic loader to be used with the type we need here
+		templateLoader: template.Loader[LegacyApplyCommentInput](templateLoader),
 	}
 }
 
@@ -60,7 +64,7 @@ type CommentEventWorkerProxy struct {
 	scheduler      scheduler
 	vcsClient      vcs.Client
 	rootDeployer   rootDeployer
-	templateLoader template.Loader[template.Input]
+	templateLoader template.Loader[LegacyApplyCommentInput]
 }
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
@@ -97,7 +101,7 @@ func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, 
 	p.logger.InfoContext(ctx, "running legacy apply command on platform mode")
 
 	// return error if loading template fails since we should have default templates configured
-	comment, err := p.templateLoader.Load(template.LegacyApplyComment, event.BaseRepo, template.Input{})
+	comment, err := p.templateLoader.Load(template.LegacyApplyComment, event.BaseRepo, LegacyApplyCommentInput{})
 	if err != nil {
 		p.logger.ErrorContext(ctx, fmt.Sprintf("loading template: %s", template.LegacyApplyComment))
 	}
