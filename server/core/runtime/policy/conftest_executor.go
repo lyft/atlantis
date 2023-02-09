@@ -18,7 +18,7 @@ import (
 )
 
 type policyFilter interface {
-	Filter(ctx context.Context, installationToken int64, repo models.Repo, prNum int, failedPolicies []valid.PolicySet) ([]valid.PolicySet, error)
+	Filter(ctx context.Context, installationToken int64, repo models.Repo, prNum int, trigger command.CommandTrigger, failedPolicies []valid.PolicySet) ([]valid.PolicySet, error)
 }
 
 type exec interface {
@@ -45,16 +45,13 @@ func NewConfTestExecutor(creator githubapp.ClientCreator, policySets valid.Polic
 	reviewDismisser := &github.PRReviewDismisser{
 		ClientCreator: creator,
 	}
-	commitFetcher := &github.CommitFetcher{
-		ClientCreator: creator,
-	}
 	teamMemberFetcher := &github.TeamMemberFetcher{
 		ClientCreator: creator,
 		Org:           policySets.Organization,
 	}
 	return &ConfTestExecutor{
 		Exec:         runtime_models.LocalExec{},
-		PolicyFilter: events.NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, commitFetcher, teamMemberFetcher, policySets.PolicySets),
+		PolicyFilter: events.NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamMemberFetcher, policySets.PolicySets),
 	}
 }
 
@@ -91,12 +88,15 @@ func (c *ConfTestExecutor) Run(_ context.Context, prjCtx command.ProjectContext,
 			scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 			return "", errors.Wrap(err, "building args")
 		}
-
+		policyScope := scope.SubScope(policySet.Name)
 		cmdOutput, cmdErr := c.Exec.CombinedOutput(serializedArgs, envs, workdir)
 		// Continue running other policies if one fails since it might not be the only failing one
 		if cmdErr != nil {
 			policyErr = cmdErr
 			failedPolicies = append(failedPolicies, policySet)
+			policyScope.Counter(metrics.ExecutionFailureMetric).Inc(1)
+		} else {
+			policyScope.Counter(metrics.ExecutionSuccessMetric).Inc(1)
 		}
 		totalCmdOutput = append(totalCmdOutput, c.processOutput(cmdOutput, policySet, cmdErr))
 	}
@@ -109,7 +109,7 @@ func (c *ConfTestExecutor) Run(_ context.Context, prjCtx command.ProjectContext,
 		return output, errors.New(internalError)
 	}
 
-	failedPolicies, err := c.PolicyFilter.Filter(prjCtx.RequestCtx, prjCtx.InstallationToken, prjCtx.HeadRepo, prjCtx.Pull.Num, failedPolicies)
+	failedPolicies, err := c.PolicyFilter.Filter(prjCtx.RequestCtx, prjCtx.InstallationToken, prjCtx.HeadRepo, prjCtx.Pull.Num, prjCtx.Trigger, failedPolicies)
 	if err != nil {
 		prjCtx.Log.ErrorContext(prjCtx.RequestCtx, fmt.Sprintf("error filtering out approved policies: %s", err.Error()))
 		scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
