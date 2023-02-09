@@ -15,6 +15,11 @@ import (
 
 type Key string
 
+// input for the template to be loaded
+// add fields here as necessary
+type Input struct {
+}
+
 // list of all valid template ids
 const (
 	LegacyApplyComment = Key("legacyApply")

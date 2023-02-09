@@ -305,7 +305,7 @@ func NewServer(config Config) (*Server, error) {
 		ClientCreator: clientCreator,
 	}
 
-	templateLoader := template.NewLoader[any](globalCfg)
+	templateLoader := template.NewLoader[template.Input](globalCfg)
 
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(
 		statsScope,

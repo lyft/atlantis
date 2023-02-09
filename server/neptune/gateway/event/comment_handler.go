@@ -21,11 +21,6 @@ import (
 
 const warningMessage = "⚠️ WARNING ⚠️\n\n You are force applying changes from your PR instead of merging into your default branch 🚀. This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘.\n\n To confirm behavior, review and confirm the plan within the generated atlantis/deploy GH check below.\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
 
-// templateLoader loads the template for a command
-type templateLoader interface {
-	Load(id template.Key, repo models.Repo, data any) (string, error)
-}
-
 // Comment is our internal representation of a vcs based comment event.
 type Comment struct {
 	Pull              models.PullRequest
@@ -45,7 +40,7 @@ func NewCommentEventWorkerProxy(
 	allocator feature.Allocator,
 	scheduler scheduler,
 	rootDeployer rootDeployer,
-	templateLoader template.Loader[any],
+	templateLoader template.Loader[template.Input],
 	vcsClient vcs.Client) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
 		logger:         logger,
@@ -54,7 +49,7 @@ func NewCommentEventWorkerProxy(
 		scheduler:      scheduler,
 		vcsClient:      vcsClient,
 		rootDeployer:   rootDeployer,
-		templateLoader: &templateLoader,
+		templateLoader: templateLoader,
 	}
 }
 
@@ -65,7 +60,7 @@ type CommentEventWorkerProxy struct {
 	scheduler      scheduler
 	vcsClient      vcs.Client
 	rootDeployer   rootDeployer
-	templateLoader templateLoader
+	templateLoader template.Loader[template.Input]
 }
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
@@ -102,7 +97,7 @@ func (p *CommentEventWorkerProxy) handleLegacyApplyCommand(ctx context.Context, 
 	p.logger.InfoContext(ctx, "running legacy apply command on platform mode")
 
 	// return error if loading template fails since we should have default templates configured
-	comment, err := p.templateLoader.Load(template.LegacyApplyComment, event.BaseRepo, nil)
+	comment, err := p.templateLoader.Load(template.LegacyApplyComment, event.BaseRepo, template.Input{})
 	if err != nil {
 		p.logger.ErrorContext(ctx, fmt.Sprintf("loading template: %s", template.LegacyApplyComment))
 	}

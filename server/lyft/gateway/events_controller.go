@@ -45,7 +45,7 @@ func NewVCSEventsController(
 	asyncScheduler scheduler,
 	temporalClient client.Client,
 	rootConfigBuilder *gateway_handlers.RootConfigBuilder,
-	templateLoader template.Loader[any],
+	templateLoader template.Loader[template.Input],
 	checkRunFetcher *github.CheckRunsFetcher) *VCSEventsController {
 	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
 		snsWriter, logger,
