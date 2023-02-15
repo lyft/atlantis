@@ -39,7 +39,7 @@ func TestLockStateUpdater_unlocked(t *testing.T) {
 
 	updateCheckRunRequest := activities.UpdateCheckRunRequest{
 		Title: terraform.BuildCheckRunTitle(info.Root.Name),
-		State: github.CheckRunActionRequired,
+		State: github.CheckRunQueued,
 		Repo:  info.Repo,
 		ID:    info.CheckRunID,
 	}
