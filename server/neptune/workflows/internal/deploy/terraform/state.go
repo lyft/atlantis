@@ -124,11 +124,7 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobState *state.Jo
 }
 
 func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState {
-	if workflowState.Plan != nil && len(workflowState.Plan.OnWaitingActions.Actions) > 0 {
-		return github.CheckRunActionRequired
-	}
-
-	if workflowState.Apply != nil && len(workflowState.Apply.OnWaitingActions.Actions) > 0 {
+	if waitingForActionOn(workflowState.Plan) || waitingForActionOn(workflowState.Apply) {
 		return github.CheckRunActionRequired
 	}
 
@@ -145,4 +141,8 @@ func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState 
 	}
 
 	return github.CheckRunFailure
+}
+
+func waitingForActionOn(job *state.Job) bool {
+	return job != nil && job.Status == state.WaitingJobStatus && len(job.OnWaitingActions.Actions) > 0
 }
