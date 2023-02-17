@@ -41,7 +41,7 @@ func (h *CheckSuiteHandler) Handle(ctx context.Context, event CheckSuite) error 
 func (h *CheckSuiteHandler) handle(ctx context.Context, event CheckSuite) error {
 	builderOptions := BuilderOptions{
 		RepoFetcherOptions: github.RepoFetcherOptions{
-			ShallowClone: true,
+			ShallowClone: false,
 		},
 		FileFetcherOptions: github.FileFetcherOptions{
 			Sha: event.HeadSha,
