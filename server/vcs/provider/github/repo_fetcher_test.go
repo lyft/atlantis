@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/uber-go/tally/v4"
 	"net/http"
 	"os"
 	"os/exec"
@@ -49,6 +50,7 @@ func TestFetchSimple(t *testing.T) {
 		GithubHostname:    testServer,
 		Logger:            logger,
 		GithubCredentials: &testTokenGetter{},
+		Scope:             tally.NewTestScope("test", map[string]string{}),
 	}
 	repo := newBaseRepo(repoDir)
 	options := github.RepoFetcherOptions{}
@@ -86,6 +88,7 @@ func TestFetchSimple_Shallow(t *testing.T) {
 		GithubHostname:    testServer,
 		Logger:            logger,
 		GithubCredentials: &testTokenGetter{},
+		Scope:             tally.NewTestScope("test", map[string]string{}),
 	}
 	repo := newBaseRepo(repoDir)
 	options := github.RepoFetcherOptions{CloneDepth: 1}
@@ -126,6 +129,7 @@ func TestFetchCheckout(t *testing.T) {
 		GithubHostname:    testServer,
 		Logger:            logger,
 		GithubCredentials: &testTokenGetter{},
+		Scope:             tally.NewTestScope("test", map[string]string{}),
 	}
 	repo := newBaseRepo(repoDir)
 	options := github.RepoFetcherOptions{}
@@ -159,6 +163,7 @@ func TestFetchNonDefaultBranch(t *testing.T) {
 		GithubHostname:    testServer,
 		Logger:            logger,
 		GithubCredentials: &testTokenGetter{},
+		Scope:             tally.NewTestScope("test", map[string]string{}),
 	}
 	repo := newBaseRepo(repoDir)
 	options := github.RepoFetcherOptions{}
@@ -188,6 +193,7 @@ func TestFetchSimpleFailure(t *testing.T) {
 		GithubHostname:    testServer,
 		Logger:            logger,
 		GithubCredentials: &testTokenGetter{},
+		Scope:             tally.NewTestScope("test", map[string]string{}),
 	}
 	repo := newBaseRepo(repoDir)
 	repo.DefaultBranch = "invalid-branch"
@@ -219,6 +225,7 @@ func TestFetchCheckoutFailure(t *testing.T) {
 		GithubHostname:    testServer,
 		Logger:            logger,
 		GithubCredentials: &testTokenGetter{},
+		Scope:             tally.NewTestScope("test", map[string]string{}),
 	}
 	repo := newBaseRepo(repoDir)
 	options := github.RepoFetcherOptions{}
@@ -247,6 +254,7 @@ func TestFetchNonDefaultBranchFailure(t *testing.T) {
 		GithubHostname:    testServer,
 		Logger:            logger,
 		GithubCredentials: &testTokenGetter{},
+		Scope:             tally.NewTestScope("test", map[string]string{}),
 	}
 	repo := newBaseRepo(repoDir)
 	options := github.RepoFetcherOptions{}
@@ -273,6 +281,7 @@ func TestFetch_ErrorGettingGHToken(t *testing.T) {
 		GithubCredentials: &testTokenGetter{
 			err: errors.New("error"),
 		},
+		Scope: tally.NewTestScope("test", map[string]string{}),
 	}
 	repo := newBaseRepo(repoDir)
 	options := github.RepoFetcherOptions{}
