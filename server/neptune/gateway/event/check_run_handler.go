@@ -153,9 +153,7 @@ func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event
 
 func (h *CheckRunHandler) buildRoot(ctx context.Context, event CheckRun, rootName string) error {
 	builderOptions := BuilderOptions{
-		RepoFetcherOptions: github.RepoFetcherOptions{
-			ShallowClone: false,
-		},
+		RepoFetcherOptions: github.RepoFetcherOptions{},
 		FileFetcherOptions: github.FileFetcherOptions{
 			Sha: event.HeadSha,
 		},

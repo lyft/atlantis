@@ -33,7 +33,7 @@ type RepoFetcher struct {
 }
 
 type RepoFetcherOptions struct {
-	ShallowClone bool
+	CloneDepth int
 }
 
 func (g *RepoFetcher) Fetch(ctx context.Context, repo models.Repo, branch string, sha string, options RepoFetcherOptions) (string, func(ctx context.Context, filePath string), error) {
@@ -69,8 +69,9 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 
 	// Fetch default branch into clone directory
 	cloneCmd := []string{"git", "clone", "--branch", branch, "--single-branch", repo.CloneURL, destinationPath}
-	if options.ShallowClone {
-		cloneCmd = append(cloneCmd, "--depth=1")
+
+	if options.CloneDepth > 0 {
+		cloneCmd = append(cloneCmd, fmt.Sprintf("--depth=%d", options.CloneDepth))
 	}
 	_, err := g.run(cloneCmd, destinationPath)
 	if err != nil {
