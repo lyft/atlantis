@@ -148,6 +148,7 @@ type MergedProjectCfg struct {
 	Name                string
 	AutoplanEnabled     bool
 	RebaseEnabled       bool
+	WhenModified        []string
 	TerraformVersion    *version.Version
 	RepoCfgVersion      int
 	PolicySets          PolicySets
@@ -349,6 +350,7 @@ func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) Me
 		Workspace:           proj.Workspace,
 		Name:                proj.GetName(),
 		AutoplanEnabled:     proj.Autoplan.Enabled,
+		WhenModified:        proj.Autoplan.WhenModified,
 		TerraformVersion:    proj.TerraformVersion,
 		RepoCfgVersion:      rCfg.Version,
 		PolicySets:          g.PolicySets,
