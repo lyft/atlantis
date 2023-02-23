@@ -147,6 +147,7 @@ type MergedProjectCfg struct {
 	Workspace           string
 	Name                string
 	AutoplanEnabled     bool
+	RebaseEnabled       bool
 	TerraformVersion    *version.Version
 	RepoCfgVersion      int
 	PolicySets          PolicySets
@@ -229,6 +230,7 @@ func NewGlobalCfg(dataDir string) GlobalCfg {
 		Plan:  DefaultPlanStage,
 	}
 
+	rebaseEnabled := true
 	var allowCustomWorkflows bool
 	repo := Repo{
 		IDRegex:              regexp.MustCompile(".*"),
@@ -241,6 +243,7 @@ func NewGlobalCfg(dataDir string) GlobalCfg {
 		AllowCustomWorkflows: &allowCustomWorkflows,
 		AllowedOverrides:     []string{},
 		CheckoutStrategy:     "branch",
+		RebaseEnabled:        &rebaseEnabled,
 	}
 
 	globalCfg := GlobalCfg{
@@ -351,6 +354,7 @@ func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) Me
 		PolicySets:          g.PolicySets,
 		Tags:                proj.Tags,
 		WorkflowMode:        rCfg.WorkflowModeType,
+		RebaseEnabled:       *repo.RebaseEnabled,
 	}
 }
 
@@ -377,10 +381,14 @@ func (g GlobalCfg) DefaultProjCfg(log logging.Logger, repoID string, repoRelDir 
 // the matching repositories and assign relevant fields if they're defined.
 // This means returned object will contain the last matching repo's value as a it's fields
 func (g GlobalCfg) foldMatchingRepos(repoID string) Repo {
+
+	// rebase is enabled by default for all repos
+	rebaseEnabled := true
 	foldedRepo := Repo{
 		AllowedWorkflows:  make([]string, 0),
 		AllowedOverrides:  make([]string, 0),
 		ApplyRequirements: make([]string, 0),
+		RebaseEnabled:     &rebaseEnabled,
 	}
 
 	for _, repo := range g.Repos {
@@ -405,6 +413,9 @@ func (g GlobalCfg) foldMatchingRepos(repoID string) Repo {
 			}
 			if repo.AllowCustomWorkflows != nil {
 				foldedRepo.AllowCustomWorkflows = repo.AllowCustomWorkflows
+			}
+			if repo.RebaseEnabled != nil {
+				foldedRepo.RebaseEnabled = repo.RebaseEnabled
 			}
 		}
 	}
