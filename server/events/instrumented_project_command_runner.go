@@ -59,7 +59,7 @@ func RunAndEmitStats(commandName string, ctx command.ProjectContext, execute fun
 
 	// Log successful policy check results
 	if commandName == PolicyCheck && result.PolicyCheckSuccess != nil {
-		logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("Success running %s operation: %s", commandName, result.PolicyCheckSuccess.PolicyCheckOutput), map[string]interface{}{"project": ctx.ProjectName})
+		logger.InfoContext(ctx.RequestCtx, fmt.Sprintf("Success running %s operation: %s", commandName, result.PolicyCheckSuccess.PolicyCheckOutput), map[string]interface{}{"project": ctx.ProjectName})
 	}
 	logger.InfoContext(ctx.RequestCtx, fmt.Sprintf("%s success. output available at: %s", commandName, ctx.Pull.URL), map[string]interface{}{"project": ctx.ProjectName})
 
