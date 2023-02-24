@@ -3,11 +3,12 @@ package activities
 import (
 	"context"
 	"fmt"
-	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	key "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
@@ -35,6 +36,7 @@ type githubClient interface {
 	UpdateCheckRun(ctx internal.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error)
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
+	ListPullRequests(ctx internal.Context, owner, repo, base, state string) ([]*github.PullRequest, error)
 }
 
 type DiffDirection string
@@ -276,5 +278,34 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 
 	return CompareCommitResponse{
 		CommitComparison: DiffDirection(comparison.GetStatus()),
+	}, nil
+}
+
+type ListOpenPRsRequest struct {
+	Repo internal.Repo
+}
+
+type ListOpenPRsResponse struct {
+	PullRequests []internal.PullRequest
+}
+
+func (a *githubActivities) GithubListOpenPRs(ctx context.Context, request ListOpenPRsRequest) (ListOpenPRsResponse, error) {
+	state := "open"
+	prs, err := a.Client.ListPullRequests(internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken), request.Repo.Owner, request.Repo.Name, request.Repo.DefaultBranch, state)
+	if err != nil {
+		return ListOpenPRsResponse{}, errors.Wrap(err, "listing open pull requests")
+	}
+
+	pullRequests := []internal.PullRequest{}
+	for _, pullRequest := range prs {
+		pullRequests = append(pullRequests, internal.PullRequest{
+			ID:     pullRequest.GetID(),
+			Number: pullRequest.GetNumber(),
+			State:  pullRequest.GetState(),
+		})
+	}
+
+	return ListOpenPRsResponse{
+		PullRequests: pullRequests,
 	}, nil
 }

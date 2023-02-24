@@ -65,6 +65,10 @@ func (t *testDeployActivity) AuditJob(ctx context.Context, request activities.Au
 	return nil
 }
 
+func (t *testDeployActivity) GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error) {
+	return activities.ListOpenPRsResponse{}, nil
+}
+
 type deployerRequest struct {
 	Info         terraform.DeploymentInfo
 	LatestDeploy *deployment.Info

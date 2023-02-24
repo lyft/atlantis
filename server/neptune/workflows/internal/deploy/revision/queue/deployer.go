@@ -37,6 +37,7 @@ type dbActivities interface {
 type githubActivities interface {
 	GithubCompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
 	GithubUpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
+	GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error)
 }
 
 type deployerActivities interface {
@@ -86,10 +87,37 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", key.ErrKey, persistErr)
 	}
 
+	// rebase open PRs
+	// worker uses the returned error types to perform some follow up tasks, so instead of propagating the rebase error back, we configure
+	// infinite retries and log the error to ensure we rebase open PRs before deploying another change in this root
+	if rebaseErr := p.rebaseOpenPRsForRoot(ctx, requestedDeployment.Repo); rebaseErr != nil {
+		logger.Error(ctx, "unable to rebase open PRs", key.ErrKey, rebaseErr)
+	}
+
 	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
 	// We do this as a safety measure to avoid deploying out of order revision after a failed deploy since it could still
 	// mutate the state file
 	return latestDeployment, err
+}
+
+func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo) error {
+	// configure unlimited retries to ensure we rebase open PRs before deploying another change for this root
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 0,
+		},
+	})
+
+	// list open PRs
+	var fetchOpenPRsResp activities.ListOpenPRsResponse
+	err := workflow.ExecuteActivity(ctx, p.Activities.GithubListOpenPRs, activities.ListOpenPRsRequest{
+		Repo: repo,
+	}).Get(ctx, &fetchOpenPRsResp)
+	if err != nil {
+		return errors.Wrap(err, "listing open PRs")
+	}
+
+	return nil
 }
 
 func (p *Deployer) FetchLatestDeployment(ctx workflow.Context, repoName, rootName string) (*deployment.Info, error) {

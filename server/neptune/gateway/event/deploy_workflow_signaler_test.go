@@ -77,12 +77,14 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 	repoName := "repo"
 	repoURL := "www.nish.com"
 	sha := "12345"
+	defaultBranch := "main"
 
 	repo := models.Repo{
-		FullName: repoFullName,
-		Owner:    repoOwner,
-		Name:     repoName,
-		CloneURL: repoURL,
+		FullName:      repoFullName,
+		Owner:         repoOwner,
+		Name:          repoName,
+		CloneURL:      repoURL,
+		DefaultBranch: defaultBranch,
 	}
 
 	user := models.User{
@@ -124,10 +126,11 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					Name: user.Username,
 				},
 				Repo: workflows.Repo{
-					FullName: repoFullName,
-					Name:     repoName,
-					Owner:    repoOwner,
-					URL:      repoURL,
+					FullName:      repoFullName,
+					Name:          repoName,
+					Owner:         repoOwner,
+					URL:           repoURL,
+					DefaultBranch: defaultBranch,
 				},
 			},
 			expectedWorkflow: workflows.Deploy,
@@ -196,10 +199,11 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					Name: user.Username,
 				},
 				Repo: workflows.Repo{
-					FullName: repoFullName,
-					Name:     repoName,
-					Owner:    repoOwner,
-					URL:      repoURL,
+					FullName:      repoFullName,
+					Name:          repoName,
+					Owner:         repoOwner,
+					URL:           repoURL,
+					DefaultBranch: defaultBranch,
 				},
 				Tags: map[string]string{
 					event.Deprecated: event.Destroy,
@@ -243,16 +247,18 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 	repoName := "repo"
 	repoURL := "www.nish.com"
 	sha := "12345"
+	defaultBranch := "main"
 
 	user := models.User{
 		Username: "test-user",
 	}
 
 	repo := models.Repo{
-		FullName: repoFullName,
-		Owner:    repoOwner,
-		Name:     repoName,
-		CloneURL: repoURL,
+		FullName:      repoFullName,
+		Owner:         repoOwner,
+		Name:          repoName,
+		CloneURL:      repoURL,
+		DefaultBranch: defaultBranch,
 	}
 
 	version, err := version.NewVersion("1.0.3")
@@ -288,10 +294,11 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				Name: user.Username,
 			},
 			Repo: workflows.Repo{
-				FullName: repoFullName,
-				Name:     repoName,
-				Owner:    repoOwner,
-				URL:      repoURL,
+				FullName:      repoFullName,
+				Name:          repoName,
+				Owner:         repoOwner,
+				URL:           repoURL,
+				DefaultBranch: defaultBranch,
 			},
 		},
 		expectedWorkflow: workflows.Deploy,
