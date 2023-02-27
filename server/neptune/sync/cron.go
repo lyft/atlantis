@@ -18,6 +18,7 @@ type Cron struct {
 // necessary.
 type CronScheduler struct {
 	delegate  *SynchronousScheduler
+	logger    logging.Logger
 	ctx       context.Context
 	cancelCtx context.CancelFunc
 	wg        sync.WaitGroup
@@ -29,6 +30,7 @@ func NewCronScheduler(logger logging.Logger) *CronScheduler {
 		delegate:  &SynchronousScheduler{Logger: logger},
 		ctx:       ctx,
 		cancelCtx: cancel,
+		logger:    logger,
 	}
 }
 
@@ -42,7 +44,7 @@ func (s *CronScheduler) Schedule(cron *Cron) {
 		for {
 			select {
 			case <-s.ctx.Done():
-				s.delegate.Logger.Warn("Received interrupt, cancelling job")
+				s.logger.Warn("Received interrupt, cancelling job")
 				return
 			case <-ticker.C:
 				_ = s.delegate.Schedule(s.ctx, cron.Executor)
