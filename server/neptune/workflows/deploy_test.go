@@ -14,6 +14,7 @@ import (
 	"github.com/graymeta/stow/local"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config/raw"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
@@ -72,6 +73,8 @@ func TestDeployWorkflow(t *testing.T) {
 	// we should emit 3 events: IN_PROGRESS, SUCCESS, SUCCESS
 	// two success events are emitted since one happens on completion of the workflow.
 	assert.Len(t, s.snsWriter.writes, 3)
+
+	// TODO: Assert correct number of rebase activity calls
 }
 
 func signalWorkflow(env *testsuite.TestWorkflowEnvironment) {
@@ -96,9 +99,10 @@ func signalWorkflow(env *testsuite.TestWorkflowEnvironment) {
 					},
 				},
 			},
-			RepoRelPath: "terraform/mytestroot",
-			PlanMode:    workflows.NormalPlanMode,
-			Trigger:     workflows.MergeTrigger,
+			RepoRelPath:  "terraform/mytestroot",
+			WhenModified: raw.DefaultAutoPlanWhenModified,
+			PlanMode:     workflows.NormalPlanMode,
+			Trigger:      workflows.MergeTrigger,
 		},
 		Repo: workflows.Repo{
 			FullName: "nish/repo",
@@ -187,7 +191,24 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 
 	assert.NoError(t, err)
 
-	githubClient := &testGithubClient{}
+	githubClient := &testGithubClient{
+		OpenPRsResponse: []PullRequest{
+			{
+				Number: 1,
+			},
+			{
+				Number: 2,
+			},
+		},
+		PRModifiedFilesResponse: map[PullRequest]ModifiedFiles{
+			{Number: 1}: {
+				Files: []string{"terraform/mytestroot/main.tf"},
+			},
+			{Number: 2}: {
+				Files: []string{"terraform/mytestroot/main.tf"},
+			},
+		},
+	}
 
 	githubActivities, err := activities.NewGithubWithClient(
 		githubClient,
@@ -259,9 +280,19 @@ type CheckRunUpdate struct {
 	Conclusion string
 }
 
+type PullRequest struct {
+	Number int
+}
+
+type ModifiedFiles struct {
+	Files []string
+}
+
 type testGithubClient struct {
-	Updates      []CheckRunUpdate
-	DeploymentID string
+	Updates                 []CheckRunUpdate
+	DeploymentID            string
+	OpenPRsResponse         []PullRequest
+	PRModifiedFilesResponse map[PullRequest]ModifiedFiles
 }
 
 func (c *testGithubClient) CreateCheckRun(ctx internalGithub.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
@@ -294,5 +325,25 @@ func (c *testGithubClient) CompareCommits(ctx internalGithub.Context, owner, rep
 }
 
 func (c *testGithubClient) ListPullRequests(ctx internalGithub.Context, owner, repo, base, state string) ([]*github.PullRequest, error) {
-	return []*github.PullRequest{}, nil
+	prs := []*github.PullRequest{}
+	for _, pr := range c.OpenPRsResponse {
+		prs = append(prs, &github.PullRequest{
+			Number: &pr.Number,
+		})
+	}
+	return prs, nil
+}
+
+func (c *testGithubClient) ListModifiedFiles(ctx internalGithub.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error) {
+	files := []*github.CommitFile{}
+	modifiedFiles := c.PRModifiedFilesResponse[PullRequest{
+		Number: pullNumber,
+	}]
+
+	for _, file := range modifiedFiles.Files {
+		files = append(files, &github.CommitFile{
+			Filename: &file,
+		})
+	}
+	return files, nil
 }

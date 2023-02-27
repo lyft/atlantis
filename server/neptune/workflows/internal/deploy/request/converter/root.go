@@ -20,10 +20,11 @@ func Root(external request.Root) terraform.Root {
 				Type: terraform.PlanApprovalType(external.PlanApproval.Type),
 			},
 		},
-		Path:      external.RepoRelPath,
-		TfVersion: external.TfVersion,
-		Trigger:   terraform.Trigger(external.Trigger),
-		Rerun:     external.Rerun,
+		Path:         external.RepoRelPath,
+		WhenModified: external.WhenModified,
+		TfVersion:    external.TfVersion,
+		Trigger:      terraform.Trigger(external.Trigger),
+		Rerun:        external.Rerun,
 	}
 
 }

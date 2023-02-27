@@ -10,12 +10,15 @@ type Root struct {
 	Name string
 
 	// Path is the relative path from the repo
-	Path      string
-	TfVersion string
-	Apply     execute.Job
-	Plan      PlanJob
-	Trigger   Trigger
-	Rerun     bool
+	Path string
+
+	// When modified is a list of docker style filepaths that correspond to this root
+	WhenModified []string
+	TfVersion    string
+	Apply        execute.Job
+	Plan         PlanJob
+	Trigger      Trigger
+	Rerun        bool
 }
 
 func (r Root) WithPlanApprovalOverride(a PlanApproval) Root {

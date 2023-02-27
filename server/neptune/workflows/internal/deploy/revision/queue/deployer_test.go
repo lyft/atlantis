@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/runatlantis/atlantis/server/core/config/raw"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -67,6 +68,10 @@ func (t *testDeployActivity) AuditJob(ctx context.Context, request activities.Au
 
 func (t *testDeployActivity) GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error) {
 	return activities.ListOpenPRsResponse{}, nil
+}
+
+func (t *testDeployActivity) GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error) {
+	return activities.ListModifiedFilesResponse{}, nil
 }
 
 type deployerRequest struct {
@@ -681,4 +686,83 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 	assert.True(t, ok)
 
 	assert.Equal(t, "TerraformClientError", appErr.Type())
+}
+
+func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
+	cases := []struct {
+		description   string
+		root          model.Root
+		modifiedFiles []string
+		shouldReabse  bool
+	}{
+		{
+			description: "default when modified config, root dir modified",
+			root: model.Root{
+				Path:         "test/dir1",
+				WhenModified: raw.DefaultAutoPlanWhenModified,
+			},
+			modifiedFiles: []string{"test/dir1/main.tf"},
+			shouldReabse:  true,
+		},
+		{
+			description: "default when modified config, root dir not modified",
+			root: model.Root{
+				Path:         "test/dir1",
+				WhenModified: raw.DefaultAutoPlanWhenModified,
+			},
+			modifiedFiles: []string{"test/dir2/main.tf"},
+			shouldReabse:  false,
+		},
+		{
+			description: "default when modified config, .tfvars file modified",
+			root: model.Root{
+				Path:         "test/dir1",
+				WhenModified: raw.DefaultAutoPlanWhenModified,
+			},
+			modifiedFiles: []string{"test/dir1/terraform.tfvars"},
+			shouldReabse:  true,
+		},
+		{
+			description: "non default when modified config, non root dir modified",
+			root: model.Root{
+				Path:         "test/dir1",
+				WhenModified: []string{"**/*.tf*", "../variables.tf"},
+			},
+			modifiedFiles: []string{"test/variables.tf"},
+			shouldReabse:  true,
+		},
+		{
+			description: "non default when modified config, file excluded",
+			root: model.Root{
+				Path:         "test/dir1",
+				WhenModified: []string{"**/*.tf*", "!exclude.tf"},
+			},
+			modifiedFiles: []string{"test/dir1/exclude.tf"},
+			shouldReabse:  false,
+		},
+		{
+			description: "non default when modified config, file excluded",
+			root: model.Root{
+				Path:         "test/dir1",
+				WhenModified: []string{"**/*.tf*", "!exclude.tf"},
+			},
+			modifiedFiles: []string{"test/dir1/exclude.tf"},
+			shouldReabse:  false,
+		},
+		{
+			description: "non default when modified config, file excluded and included",
+			root: model.Root{
+				Path:         "test/dir1",
+				WhenModified: []string{"**/*.tf*", "!exclude.tf"},
+			},
+			modifiedFiles: []string{"test/dir1/exclude.tf", "test/dir1/main.tf"},
+			shouldReabse:  true,
+		},
+	}
+
+	for _, c := range cases {
+		res, err := queue.ShouldRebasePullRequest(c.root, c.modifiedFiles)
+		assert.NoError(t, err)
+		assert.Equal(t, c.shouldReabse, res)
+	}
 }

@@ -3,13 +3,18 @@ package queue
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/docker/docker/pkg/fileutils"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -88,10 +93,10 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", key.ErrKey, persistErr)
 	}
 
-	// rebase open PRs
-	// worker uses the returned error types to perform some follow up tasks, so instead of propagating the rebase error back, we configure
-	// infinite retries and log the error to ensure we rebase open PRs before deploying another change in this root
-	if rebaseErr := p.rebaseOpenPRsForRoot(ctx, requestedDeployment.Repo); rebaseErr != nil {
+	// worker uses the returned error types to perform some follow up tasks, so instead of propagating the rebase error back, we just log the errors here
+	// since rebasing open PRs for a root is a must, we configure infinite retries here and log the error to ensure we rebase before deploying another change in this root
+	// maximum interval configured to allow it to self heal if we hit the GH API Ratelimit
+	if rebaseErr := p.rebaseOpenPRsForRoot(ctx, requestedDeployment); rebaseErr != nil {
 		logger.Error(ctx, "unable to rebase open PRs", key.ErrKey, rebaseErr)
 	}
 
@@ -101,43 +106,56 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	return latestDeployment, err
 }
 
-func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo) error {
-	// configure unlimited retries to ensure we rebase open PRs before deploying another change for this root
-	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-		RetryPolicy: &temporal.RetryPolicy{
-			MaximumAttempts: 0,
-		},
+func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, requestedDeployment terraformWorkflow.DeploymentInfo) error {
+	// configure infinite retries and maximum interval to 2 hours to allow for the GH API Ratelimit to revive if we hit the ratelimit since it resets every hour
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		MaximumAttempts: 0,
+		MaximumInterval: 2 * time.Hour,
 	})
 
 	// list open PRs
 	var fetchOpenPRsResp activities.ListOpenPRsResponse
 	err := workflow.ExecuteActivity(ctx, p.Activities.GithubListOpenPRs, activities.ListOpenPRsRequest{
-		Repo: repo,
+		Repo: requestedDeployment.Repo,
 	}).Get(ctx, &fetchOpenPRsResp)
 	if err != nil {
 		return errors.Wrap(err, "listing open PRs")
 	}
 
-	// list modified fles in each open PR
-	futures := []workflow.Future{}
+	// spawn activities to list modified fles in each open PR in parallel
+	futureByPullNum := map[github.PullRequest]workflow.Future{}
 	for _, pullRequest := range fetchOpenPRsResp.PullRequests {
-		// fetch modified files for each open PR
-		futures = append(futures, workflow.ExecuteActivity(ctx, p.Activities.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
-			Repo:        repo,
+		future := workflow.ExecuteActivity(ctx, p.Activities.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
+			Repo:        requestedDeployment.Repo,
 			PullRequest: pullRequest,
-		}))
+		})
+		futureByPullNum[pullRequest] = future
 	}
 
-	for _, future := range futures {
+	// resolve the futures and check if an open PR needs to be rebased
+	prsToRebase := []github.PullRequest{}
+	for pullRequest, future := range futureByPullNum {
 		var result activities.ListModifiedFilesResponse
 
-		// back off it errors out
-		err = future.Get(ctx, &result)
-		if err != nil {
+		// list modified files should not fail unless we hit the ratelimit which should autoresolve once our ratelimit revives in an hour max
+		// If it errors out due to any other reason, let's rebase this PR as well
+		listFilesErr := future.Get(ctx, &result)
+		if listFilesErr != nil {
+			logger.Error(ctx, "error listing modified files in PR", key.ErrKey, listFilesErr, "pull_num", pullRequest.Number)
+			prsToRebase = append(prsToRebase, pullRequest)
 			continue
 		}
+
+		shouldRebase, err := ShouldRebasePullRequest(requestedDeployment.Root, result.FilePaths)
+		if err == nil && !shouldRebase {
+			continue
+		}
+
+		// rebase PR if err is not nil as a safety measure
+		prsToRebase = append(prsToRebase, pullRequest)
 	}
 
+	// TODO: Use prsToRebase list to request rebase
 	return nil
 }
 
@@ -199,4 +217,45 @@ func (p *Deployer) persistLatestDeployment(ctx workflow.Context, deploymentInfo 
 		return errors.Wrap(err, "persisting deployment info")
 	}
 	return nil
+}
+
+func ShouldRebasePullRequest(root terraform.Root, modifiedFiles []string) (bool, error) {
+	var whenModifiedRelToRepoRoot []string
+	for _, wm := range root.WhenModified {
+		wm = strings.TrimSpace(wm)
+		// An exclusion uses a '!' at the beginning. If it's there, we need
+		// to remove it, then add in the project path, then add it back.
+		exclusion := false
+		if wm != "" && wm[0] == '!' {
+			wm = wm[1:]
+			exclusion = true
+		}
+
+		// Prepend project dir to when modified patterns because the patterns
+		// are relative to the project dirs but our list of modified files is
+		// relative to the repo root.
+		wmRelPath := filepath.Join(root.Path, wm)
+		if exclusion {
+			wmRelPath = "!" + wmRelPath
+		}
+		whenModifiedRelToRepoRoot = append(whenModifiedRelToRepoRoot, wmRelPath)
+	}
+
+	// look at the filpaths for the root
+	pm, err := fileutils.NewPatternMatcher(whenModifiedRelToRepoRoot)
+	if err != nil {
+		return false, errors.Wrap(err, "building file pattern matcher using when modified config")
+	}
+
+	for _, file := range modifiedFiles {
+		match, err := pm.Matches(file)
+		if err != nil || !match {
+			continue
+		}
+
+		// only 1 match needed
+		return true, nil
+	}
+
+	return false, nil
 }
