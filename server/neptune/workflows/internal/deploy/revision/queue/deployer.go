@@ -38,6 +38,7 @@ type githubActivities interface {
 	GithubCompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
 	GithubUpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
 	GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error)
+	GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error)
 }
 
 type deployerActivities interface {
@@ -115,6 +116,26 @@ func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo) 
 	}).Get(ctx, &fetchOpenPRsResp)
 	if err != nil {
 		return errors.Wrap(err, "listing open PRs")
+	}
+
+	// list modified fles in each open PR
+	futures := []workflow.Future{}
+	for _, pullRequest := range fetchOpenPRsResp.PullRequests {
+		// fetch modified files for each open PR
+		futures = append(futures, workflow.ExecuteActivity(ctx, p.Activities.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
+			Repo:        repo,
+			PullRequest: pullRequest,
+		}))
+	}
+
+	for _, future := range futures {
+		var result activities.ListModifiedFilesResponse
+
+		// back off it errors out
+		err = future.Get(ctx, &result)
+		if err != nil {
+			continue
+		}
 	}
 
 	return nil

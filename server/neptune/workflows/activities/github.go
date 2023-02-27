@@ -37,6 +37,7 @@ type githubClient interface {
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
 	ListPullRequests(ctx internal.Context, owner, repo, base, state string) ([]*github.PullRequest, error)
+	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
 }
 
 type DiffDirection string
@@ -307,5 +308,30 @@ func (a *githubActivities) GithubListOpenPRs(ctx context.Context, request ListOp
 
 	return ListOpenPRsResponse{
 		PullRequests: pullRequests,
+	}, nil
+}
+
+type ListModifiedFilesRequest struct {
+	Repo        internal.Repo
+	PullRequest internal.PullRequest
+}
+
+type ListModifiedFilesResponse struct {
+	FilePaths []string
+}
+
+func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request ListModifiedFilesRequest) (ListModifiedFilesResponse, error) {
+	files, err := a.Client.ListModifiedFiles(internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken), request.Repo.Owner, request.Repo.Name, request.PullRequest.Number)
+	if err != nil {
+		return ListModifiedFilesResponse{}, errors.Wrap(err, "listing modified files in pr")
+	}
+
+	filepaths := []string{}
+	for _, file := range files {
+		filepaths = append(filepaths, file.GetFilename())
+	}
+
+	return ListModifiedFilesResponse{
+		FilePaths: filepaths,
 	}, nil
 }

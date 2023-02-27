@@ -27,10 +27,10 @@ type DeployWorkflowSignaler struct {
 func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, rootDeployOptions RootDeployOptions) (client.WorkflowRun, error) {
 	options := client.StartWorkflowOptions{
 		TaskQueue: workflows.DeployTaskQueue,
-		SearchAttributes: map[string]interface{}{
-			"atlantis_repository": rootDeployOptions.Repo.FullName,
-			"atlantis_root":       rootCfg.Name,
-		},
+		// SearchAttributes: map[string]interface{}{
+		// 	"atlantis_repository": rootDeployOptions.Repo.FullName,
+		// 	"atlantis_root":       rootCfg.Name,
+		// },
 	}
 
 	repo := rootDeployOptions.Repo
