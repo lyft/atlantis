@@ -3,6 +3,7 @@ package gateway_test
 import (
 	"context"
 	"errors"
+	"github.com/runatlantis/atlantis/server/events/models"
 	"testing"
 
 	. "github.com/petergtz/pegomock"
@@ -39,6 +40,7 @@ func (t *testFeatureAllocator) ShouldAllocate(featureID feature.Name, featureCtx
 	return t.Enabled, t.Err
 }
 
+// TODO: replace mock library with our own mocks
 func setupAutoplan(t *testing.T) *vcsmocks.MockClient {
 	RegisterMockTestingT(t)
 	projectCommandBuilder = mocks.NewMockProjectCommandBuilder()
@@ -155,11 +157,11 @@ func TestIsValid_TerraformChanges(t *testing.T) {
 
 	containsTerraformChanges := autoplanValidator.InstrumentedIsValid(context.TODO(), log, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 	Assert(t, containsTerraformChanges == true, "should have terraform changes")
-	vcsStatusUpdater.VerifyWasCalled(Never()).UpdateCombinedCount(
+	vcsStatusUpdater.VerifyWasCalled(Once()).UpdateCombinedCount(
 		matchers.AnyContextContext(),
 		matchers.AnyModelsRepo(),
 		matchers.AnyModelsPullRequest(),
-		matchers.AnyModelsVcsStatus(),
+		matchers.EqModelsVcsStatus(models.QueuedVCSStatus),
 		matchers.AnyModelsCommandName(),
 		AnyInt(),
 		AnyInt(),
@@ -217,11 +219,11 @@ func TestIsValid_TerraformChanges_PlatformMode(t *testing.T) {
 
 			containsTerraformChanges := autoplanValidator.InstrumentedIsValid(context.TODO(), log, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User)
 			Assert(t, containsTerraformChanges == true, "should have terraform changes")
-			vcsStatusUpdater.VerifyWasCalled(Never()).UpdateCombinedCount(
+			vcsStatusUpdater.VerifyWasCalled(Once()).UpdateCombinedCount(
 				matchers.AnyContextContext(),
 				matchers.AnyModelsRepo(),
 				matchers.AnyModelsPullRequest(),
-				matchers.AnyModelsVcsStatus(),
+				matchers.EqModelsVcsStatus(models.QueuedVCSStatus),
 				matchers.AnyModelsCommandName(),
 				AnyInt(),
 				AnyInt(),

@@ -111,6 +111,9 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 			cmdCtx.Log.ErrorContext(cmdCtx.RequestCtx, errors.Wrap(err, "updating atlantis apply status").Error())
 		}
 	}
+	if _, err := r.VCSStatusUpdater.UpdateCombinedCount(ctx, baseRepo, pull, models.QueuedVCSStatus, command.Plan, 0, 0, ""); err != nil {
+		cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
+	}
 	return true, nil
 }
 
