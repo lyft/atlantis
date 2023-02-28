@@ -3,8 +3,11 @@ package queue
 import (
 	"context"
 	"fmt"
+<<<<<<< HEAD
 	"path/filepath"
 	"strings"
+=======
+>>>>>>> cs-4495/fetch-open-prs
 	"time"
 
 	"github.com/docker/docker/pkg/fileutils"
@@ -106,11 +109,11 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	return latestDeployment, err
 }
 
-func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, requestedDeployment terraformWorkflow.DeploymentInfo) error {
-	// configure infinite retries and maximum interval to 2 hours to allow for the GH API Ratelimit to revive if we hit the ratelimit since it resets every hour
+func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo) error {
+	// configure infinite retries and maximum interval to 8 hours to allow for the GH API Ratelimit to revive if we hit the ratelimit since it resets every hour
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: 0,
-		MaximumInterval: 2 * time.Hour,
+		MaximumInterval: 8 * time.Hour,
 	})
 
 	// list open PRs

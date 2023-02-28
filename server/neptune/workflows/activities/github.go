@@ -19,6 +19,8 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
+const PullRequestOpenState = "open"
+
 type ClientContext struct {
 	InstallationToken int64
 	context.Context
@@ -291,8 +293,7 @@ type ListOpenPRsResponse struct {
 }
 
 func (a *githubActivities) GithubListOpenPRs(ctx context.Context, request ListOpenPRsRequest) (ListOpenPRsResponse, error) {
-	state := "open"
-	prs, err := a.Client.ListPullRequests(internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken), request.Repo.Owner, request.Repo.Name, request.Repo.DefaultBranch, state)
+	prs, err := a.Client.ListPullRequests(internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken), request.Repo.Owner, request.Repo.Name, request.Repo.DefaultBranch, PullRequestOpenState)
 	if err != nil {
 		return ListOpenPRsResponse{}, errors.Wrap(err, "listing open pull requests")
 	}
