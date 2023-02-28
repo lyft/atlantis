@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"time"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
@@ -101,11 +102,10 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 }
 
 func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo) error {
-	// configure unlimited retries to ensure we rebase open PRs before deploying another change for this root
-	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-		RetryPolicy: &temporal.RetryPolicy{
-			MaximumAttempts: 0,
-		},
+	// configure infinite retries and maximum interval to 8 hours to allow for the GH API Ratelimit to revive if we hit the ratelimit since it resets every hour
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		MaximumAttempts: 0,
+		MaximumInterval: 8 * time.Hour,
 	})
 
 	// list open PRs
