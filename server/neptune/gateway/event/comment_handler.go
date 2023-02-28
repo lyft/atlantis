@@ -93,7 +93,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 
 func (p *CommentEventWorkerProxy) handleLegacyComment(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
 	if cmd.Name == command.Plan || cmd.Name == command.Apply {
-		if _, err := p.vcsStatusUpdater.UpdateCombined(ctx, event.BaseRepo, event.Pull, models.QueuedVCSStatus, cmd.Name, "", ""); err != nil {
+		if _, err := p.vcsStatusUpdater.UpdateCombined(ctx, event.BaseRepo, event.Pull, models.QueuedVCSStatus, cmd.Name, "", "Adding request to the queue"); err != nil {
 			p.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", err))
 		}
 	}
