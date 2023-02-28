@@ -14,6 +14,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/version"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -106,6 +107,12 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 }
 
 func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo) error {
+	// skip rebasing open PRs if the execution is still on the old workflow version
+	version := workflow.GetVersion(ctx, version.RebaseOpenPRs, workflow.DefaultVersion, 1)
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+
 	// configure infinite retries and ScheduleToCloseTimeout to 8 hours to allow for the GH API Ratelimit to revive if we hit the ratelimit since it resets every hour
 	opts := workflow.GetActivityOptions(ctx)
 	opts.ScheduleToCloseTimeout = RebaseScheduleToCloseTimeout
