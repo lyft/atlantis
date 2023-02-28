@@ -18,6 +18,8 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+const RebaseScheduleToCloseTimeout = 4 * time.Hour
+
 type ValidationError struct {
 	error
 }
@@ -91,7 +93,9 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	// rebase open PRs
 	// worker uses the returned error types to perform some follow up tasks, so instead of propagating the rebase error back, we configure
 	// infinite retries and log the error to ensure we rebase open PRs before deploying another change in this root
+	// ScheduleToCloseTimeout is configured to 8 hours to ensure we're not blocking deploys for this root if the issue persists
 	if rebaseErr := p.rebaseOpenPRsForRoot(ctx, requestedDeployment.Repo); rebaseErr != nil {
+		scope.Counter("rebase_open_prs_err").Inc(1)
 		logger.Error(ctx, "unable to rebase open PRs", key.ErrKey, rebaseErr)
 	}
 
@@ -102,11 +106,11 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 }
 
 func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo) error {
-	// configure infinite retries and maximum interval to 8 hours to allow for the GH API Ratelimit to revive if we hit the ratelimit since it resets every hour
-	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
-		MaximumAttempts: 0,
-		MaximumInterval: 8 * time.Hour,
-	})
+	// configure infinite retries and ScheduleToCloseTimeout to 8 hours to allow for the GH API Ratelimit to revive if we hit the ratelimit since it resets every hour
+	opts := workflow.GetActivityOptions(ctx)
+	opts.ScheduleToCloseTimeout = RebaseScheduleToCloseTimeout
+	opts.RetryPolicy.MaximumAttempts = 0
+	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	// list open PRs
 	var fetchOpenPRsResp activities.ListOpenPRsResponse
