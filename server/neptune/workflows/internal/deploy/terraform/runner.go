@@ -7,6 +7,7 @@ import (
 	constants "github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
@@ -30,17 +31,22 @@ func (e PlanRejectionError) Error() string {
 	return e.msg
 }
 
+type CheckRunClient interface {
+	CreateOrUpdate(ctx workflow.Context, deploymentID string, request notifier.GithubCheckRunRequest) (int64, error)
+}
+
 type Workflow func(ctx workflow.Context, request terraform.Request) error
 
 type stateReceiver interface {
 	Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
 }
 
-func NewWorkflowRunner(a receiverActivities, w Workflow) *WorkflowRunner {
+func NewWorkflowRunner(a receiverActivities, w Workflow, githubCheckRunCache CheckRunClient) *WorkflowRunner {
 	return &WorkflowRunner{
 		Workflow: w,
 		StateReceiver: &StateReceiver{
-			Activity: a,
+			Activity:             a,
+			CheckRunSessionCache: githubCheckRunCache,
 		},
 	}
 }

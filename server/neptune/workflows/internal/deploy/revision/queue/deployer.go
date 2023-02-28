@@ -11,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"go.temporal.io/sdk/temporal"
@@ -47,6 +48,7 @@ type deployerActivities interface {
 type Deployer struct {
 	Activities              deployerActivities
 	TerraformWorkflowRunner terraformWorkflowRunner
+	GithubCheckRunCache     CheckRunClient
 }
 
 const (
@@ -127,14 +129,15 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: UpdateCheckRunRetryCount,
 	})
-	err := workflow.ExecuteActivity(ctx, p.Activities.GithubUpdateCheckRun, activities.UpdateCheckRunRequest{
+
+	_, err := p.GithubCheckRunCache.CreateOrUpdate(ctx, deployRequest.ID.String(), notifier.GithubCheckRunRequest{
 		Title:   terraformWorkflow.BuildCheckRunTitle(deployRequest.Root.Name),
 		State:   state,
 		Repo:    deployRequest.Repo,
-		ID:      deployRequest.CheckRunID,
 		Summary: summary,
 		Actions: actions,
-	}).Get(ctx, nil)
+	})
+
 	if err != nil {
 		logger.Error(ctx, "unable to update check run with validation error", key.ErrKey, err)
 	}

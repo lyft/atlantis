@@ -12,13 +12,28 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
+
+type testCheckRunClient struct {
+	expectedRequest      notifier.GithubCheckRunRequest
+	expectedDeploymentID string
+	expectedT            *testing.T
+}
+
+func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID string, request notifier.GithubCheckRunRequest) (int64, error) {
+	assert.Equal(t.expectedT, t.expectedRequest, request)
+	assert.Equal(t.expectedT, t.expectedDeploymentID, deploymentID)
+
+	return 1, nil
+}
 
 type testActivities struct {
 }
@@ -34,6 +49,8 @@ func (a *testActivities) AuditJob(ctx context.Context, request activities.AuditJ
 type stateReceiveRequest struct {
 	StatesToSend   []*state.Workflow
 	DeploymentInfo internalTerraform.DeploymentInfo
+	ExpectedRequest notifier.GithubCheckRunRequest
+	T *testing.T
 }
 
 func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error {
@@ -44,6 +61,10 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error
 
 	receiver := &internalTerraform.StateReceiver{
 		Activity: &testActivities{},
+		CheckRunSessionCache: &testCheckRunClient{
+			expectedRequest: r.ExpectedRequest,
+			expectedT: r.T,
+		},
 	}
 
 	workflow.Go(ctx, func(ctx workflow.Context) {
@@ -284,12 +305,14 @@ func TestStateReceive(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run("", func(t *testing.T) {
+		t.Run("old version", func(t *testing.T) {
 			ts := testsuite.WorkflowTestSuite{}
 			env := ts.NewTestWorkflowEnvironment()
 
 			var a = &testActivities{}
 			env.RegisterActivity(a)
+
+			env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 			env.OnActivity(a.GithubUpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
 				Title: "atlantis/deploy: root",
@@ -316,6 +339,59 @@ func TestStateReceive(t *testing.T) {
 			env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{
 				StatesToSend:   []*state.Workflow{c.State},
 				DeploymentInfo: internalDeploymentInfo,
+			})
+
+			env.AssertExpectations(t)
+
+			err = env.GetWorkflowResult(nil)
+			assert.NoError(t, err)
+
+		})
+
+		t.Run("new version", func(t *testing.T) {
+			ts := testsuite.WorkflowTestSuite{}
+			env := ts.NewTestWorkflowEnvironment()
+
+			var a = &testActivities{}
+			env.RegisterActivity(a)
+
+			env.AssertNotCalled(t, "GithubUpdateCheckRun", activities.UpdateCheckRunRequest{
+				Title: "atlantis/deploy: root",
+				State: c.ExpectedCheckRunState,
+				Repo: github.Repo{
+					Name: "hello",
+				},
+				Summary: markdown.RenderWorkflowStateTmpl(c.State),
+				ID:      1,
+				Actions: c.ExpectedActions,
+			})
+
+			env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.Version(1))
+
+			if c.ExpectedAuditJobRequest != nil {
+				env.OnActivity(a.AuditJob, mock.Anything, activities.AuditJobRequest{
+					Root:         c.ExpectedAuditJobRequest.Root,
+					Repo:         c.ExpectedAuditJobRequest.Repo,
+					State:        c.ExpectedAuditJobRequest.State,
+					StartTime:    c.ExpectedAuditJobRequest.StartTime,
+					EndTime:      c.ExpectedAuditJobRequest.EndTime,
+					IsForceApply: c.ExpectedAuditJobRequest.IsForceApply,
+				}).Return(nil)
+			}
+
+			env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{
+				StatesToSend:   []*state.Workflow{c.State},
+				DeploymentInfo: internalDeploymentInfo,
+				ExpectedRequest: notifier.GithubCheckRunRequest{
+					Title: "atlantis/deploy: root",
+					State: c.ExpectedCheckRunState,
+					Repo: github.Repo{
+						Name: "hello",
+					},
+					Summary: markdown.RenderWorkflowStateTmpl(c.State),
+					Actions: c.ExpectedActions,
+				},
+				T: t,
 			})
 
 			env.AssertExpectations(t)
