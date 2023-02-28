@@ -47,10 +47,10 @@ func (a *testActivities) AuditJob(ctx context.Context, request activities.AuditJ
 }
 
 type stateReceiveRequest struct {
-	StatesToSend   []*state.Workflow
-	DeploymentInfo internalTerraform.DeploymentInfo
+	StatesToSend    []*state.Workflow
+	DeploymentInfo  internalTerraform.DeploymentInfo
 	ExpectedRequest notifier.GithubCheckRunRequest
-	T *testing.T
+	T               *testing.T
 }
 
 func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error {
@@ -63,7 +63,7 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) error
 		Activity: &testActivities{},
 		CheckRunSessionCache: &testCheckRunClient{
 			expectedRequest: r.ExpectedRequest,
-			expectedT: r.T,
+			expectedT:       r.T,
 		},
 	}
 
