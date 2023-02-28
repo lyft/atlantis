@@ -142,7 +142,7 @@ func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, requestedDeploymen
 		listFilesErr := future.Get(ctx, &result)
 		if listFilesErr != nil {
 			logger.Error(ctx, "error listing modified files in PR", key.ErrKey, listFilesErr, "pull_num", pullRequest.Number)
-			prsToRebase = append(prsToRebase, pullRequest)
+			prsToRebase = append(prsToRebase, pullRequest) // nolint: staticcheck
 			continue
 		}
 
@@ -152,7 +152,7 @@ func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, requestedDeploymen
 		}
 
 		// rebase PR if err is not nil as a safety measure
-		prsToRebase = append(prsToRebase, pullRequest)
+		prsToRebase = append(prsToRebase, pullRequest) // nolint: staticcheck
 	}
 
 	// TODO: Use prsToRebase list to request rebase

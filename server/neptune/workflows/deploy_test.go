@@ -341,8 +341,9 @@ func (c *testGithubClient) ListModifiedFiles(ctx internalGithub.Context, owner, 
 	}]
 
 	for _, file := range modifiedFiles.Files {
+		fileCopy := file // creating a copy to avoid memory aliasing in for loop
 		files = append(files, &github.CommitFile{
-			Filename: &file,
+			Filename: &fileCopy,
 		})
 	}
 	return files, nil
