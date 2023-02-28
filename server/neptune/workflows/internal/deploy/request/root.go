@@ -26,17 +26,16 @@ const (
 )
 
 type Root struct {
-	Name          string
-	Apply         Job
-	Plan          Job
-	RepoRelPath   string
-	WhenModified  []string
-	TfVersion     string
-	PlanMode      PlanMode
-	PlanApproval  PlanApproval
-	Trigger       Trigger
-	Rerun         bool
-	RebaseEnabled bool
+	Name         string
+	Apply        Job
+	Plan         Job
+	RepoRelPath  string
+	WhenModified []string
+	TfVersion    string
+	PlanMode     PlanMode
+	PlanApproval PlanApproval
+	Trigger      Trigger
+	Rerun        bool
 }
 
 type Job struct {

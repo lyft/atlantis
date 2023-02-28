@@ -56,13 +56,12 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, ro
 				Apply: workflows.Job{
 					Steps: d.generateSteps(rootCfg.DeploymentWorkflow.Apply.Steps),
 				},
-				RepoRelPath:   rootCfg.RepoRelDir,
-				WhenModified:  rootCfg.WhenModified,
-				TfVersion:     tfVersion,
-				PlanMode:      d.generatePlanMode(rootCfg),
-				Trigger:       rootDeployOptions.Trigger,
-				Rerun:         rootDeployOptions.Rerun,
-				RebaseEnabled: rootCfg.RebaseEnabled,
+				RepoRelPath:  rootCfg.RepoRelDir,
+				WhenModified: rootCfg.WhenModified,
+				TfVersion:    tfVersion,
+				PlanMode:     d.generatePlanMode(rootCfg),
+				Trigger:      rootDeployOptions.Trigger,
+				Rerun:        rootDeployOptions.Rerun,
 			},
 			Repo: workflows.Repo{
 				URL:      repo.CloneURL,
@@ -72,6 +71,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, ro
 				Credentials: workflows.AppCredentials{
 					InstallationToken: rootDeployOptions.InstallationToken,
 				},
+				RebaseEnabled: rootCfg.RebaseEnabled,
 			},
 			Tags: rootCfg.Tags,
 		},
