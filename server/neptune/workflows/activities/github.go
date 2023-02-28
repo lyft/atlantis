@@ -300,9 +300,7 @@ func (a *githubActivities) GithubListOpenPRs(ctx context.Context, request ListOp
 	pullRequests := []internal.PullRequest{}
 	for _, pullRequest := range prs {
 		pullRequests = append(pullRequests, internal.PullRequest{
-			ID:     pullRequest.GetID(),
 			Number: pullRequest.GetNumber(),
-			State:  pullRequest.GetState(),
 		})
 	}
 

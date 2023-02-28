@@ -109,7 +109,9 @@ func (p *Deployer) rebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo) 
 	// configure infinite retries and ScheduleToCloseTimeout to 8 hours to allow for the GH API Ratelimit to revive if we hit the ratelimit since it resets every hour
 	opts := workflow.GetActivityOptions(ctx)
 	opts.ScheduleToCloseTimeout = RebaseScheduleToCloseTimeout
-	opts.RetryPolicy.MaximumAttempts = 0
+	opts.RetryPolicy = &temporal.RetryPolicy{
+		MaximumAttempts: 0,
+	}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	// list open PRs
