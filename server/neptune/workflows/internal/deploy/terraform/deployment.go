@@ -11,8 +11,7 @@ import (
 )
 
 type DeploymentInfo struct {
-	ID uuid.UUID
-	//Deprecated: Use GithubCheckRunCache instead
+	ID             uuid.UUID
 	CheckRunID     int64
 	Revision       string
 	InitiatingUser github.User
