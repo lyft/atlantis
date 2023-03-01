@@ -66,6 +66,7 @@ func (n *StateReceiver) updateCheckRun(ctx workflow.Context, workflowState *stat
 
 	request := notifier.GithubCheckRunRequest{
 		Title:   BuildCheckRunTitle(deploymentInfo.Root.Name),
+		Sha:     deploymentInfo.Revision,
 		State:   checkRunState,
 		Repo:    deploymentInfo.Repo,
 		Summary: summary,

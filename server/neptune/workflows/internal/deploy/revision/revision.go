@@ -142,13 +142,12 @@ func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, roo
 	}
 
 	cid, err := n.checkRunClient.CreateOrUpdate(ctx, id, notifier.GithubCheckRunRequest{
-		Title:      terraform.BuildCheckRunTitle(root.Name),
-		Sha:        revision,
-		Repo:       repo,
-		ExternalID: id,
-		Summary:    summary,
-		Actions:    actions,
-		State:      state,
+		Title:   terraform.BuildCheckRunTitle(root.Name),
+		Sha:     revision,
+		Repo:    repo,
+		Summary: summary,
+		Actions: actions,
+		State:   state,
 	})
 
 	// don't block on error here, we'll just try again later when we have our result.

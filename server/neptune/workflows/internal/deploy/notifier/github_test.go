@@ -73,8 +73,7 @@ func TestGithubCheckRunCache_CreatesThenUpdates(t *testing.T) {
 		Actions: []github.CheckRunAction{
 			github.CreatePlanReviewAction(github.Approve),
 		},
-		Summary:    "some summary",
-		ExternalID: "someid",
+		Summary: "some summary",
 	}
 
 	testRequest2 := notifier.GithubCheckRunRequest{
@@ -83,9 +82,8 @@ func TestGithubCheckRunCache_CreatesThenUpdates(t *testing.T) {
 		Repo: github.Repo{
 			Name: "repo",
 		},
-		State:      github.CheckRunSuccess,
-		Summary:    "some summary 2",
-		ExternalID: "someid",
+		State:   github.CheckRunSuccess,
+		Summary: "some summary 2",
 	}
 
 	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
@@ -95,7 +93,7 @@ func TestGithubCheckRunCache_CreatesThenUpdates(t *testing.T) {
 		State:      testRequest1.State,
 		Actions:    testRequest1.Actions,
 		Summary:    testRequest1.Summary,
-		ExternalID: testRequest1.ExternalID,
+		ExternalID: "1234",
 	}).Return(activities.CreateCheckRunResponse{
 		ID: 1,
 	}, nil)
@@ -107,10 +105,10 @@ func TestGithubCheckRunCache_CreatesThenUpdates(t *testing.T) {
 		State:      testRequest2.State,
 		Actions:    testRequest2.Actions,
 		Summary:    testRequest2.Summary,
-		ExternalID: testRequest2.ExternalID,
+		ExternalID: "1234",
 	}).Return(activities.UpdateCheckRunResponse{
 		ID:     1,
-		Status: "complete",
+		Status: "completed",
 	}, nil)
 
 	env.ExecuteWorkflow(testWorkflow, request{
@@ -152,9 +150,8 @@ func TestGithubCheckRunCache_CreatesAcrossDeploymentIDs(t *testing.T) {
 		Repo: github.Repo{
 			Name: "repo",
 		},
-		State:      github.CheckRunQueued,
-		Summary:    "some summary",
-		ExternalID: "someid",
+		State:   github.CheckRunQueued,
+		Summary: "some summary",
 	}
 
 	testRequest2 := notifier.GithubCheckRunRequest{
@@ -163,12 +160,10 @@ func TestGithubCheckRunCache_CreatesAcrossDeploymentIDs(t *testing.T) {
 		Repo: github.Repo{
 			Name: "repo",
 		},
-		State:      github.CheckRunQueued,
-		Summary:    "some summary",
-		ExternalID: "someid",
+		State:   github.CheckRunQueued,
+		Summary: "some summary",
 	}
 
-	var id int64
 	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
 		Title:      testRequest1.Title,
 		Sha:        testRequest1.Sha,
@@ -176,13 +171,22 @@ func TestGithubCheckRunCache_CreatesAcrossDeploymentIDs(t *testing.T) {
 		State:      testRequest1.State,
 		Actions:    testRequest1.Actions,
 		Summary:    testRequest1.Summary,
-		ExternalID: testRequest1.ExternalID,
-	}).Return(func(ctx context.Context, r activities.CreateCheckRunRequest) (activities.CreateCheckRunResponse, error) {
-		id++
-		return activities.CreateCheckRunResponse{
-			ID: id,
-		}, nil
-	}).Twice()
+		ExternalID: "1234",
+	}).Return(activities.CreateCheckRunResponse{
+		ID: 1,
+	}, nil).Once()
+
+	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
+		Title:      testRequest1.Title,
+		Sha:        testRequest1.Sha,
+		Repo:       testRequest1.Repo,
+		State:      testRequest1.State,
+		Actions:    testRequest1.Actions,
+		Summary:    testRequest1.Summary,
+		ExternalID: "12345",
+	}).Return(activities.CreateCheckRunResponse{
+		ID: 2,
+	}, nil).Once()
 
 	env.ExecuteWorkflow(testWorkflow, request{
 		Requests: []struct {
@@ -223,9 +227,8 @@ func TestGithubCheckRunCache_CreatesCompleted(t *testing.T) {
 		Repo: github.Repo{
 			Name: "repo",
 		},
-		State:      github.CheckRunQueued,
-		Summary:    "some summary",
-		ExternalID: "someid",
+		State:   github.CheckRunQueued,
+		Summary: "some summary",
 	}
 
 	testRequest2 := notifier.GithubCheckRunRequest{
@@ -234,9 +237,8 @@ func TestGithubCheckRunCache_CreatesCompleted(t *testing.T) {
 		Repo: github.Repo{
 			Name: "repo",
 		},
-		State:      github.CheckRunQueued,
-		Summary:    "some summary",
-		ExternalID: "someid",
+		State:   github.CheckRunQueued,
+		Summary: "some summary",
 	}
 
 	var id int64
@@ -247,12 +249,12 @@ func TestGithubCheckRunCache_CreatesCompleted(t *testing.T) {
 		State:      testRequest1.State,
 		Actions:    testRequest1.Actions,
 		Summary:    testRequest1.Summary,
-		ExternalID: testRequest1.ExternalID,
+		ExternalID: "1234",
 	}).Return(func(ctx context.Context, r activities.CreateCheckRunRequest) (activities.CreateCheckRunResponse, error) {
 		id++
 		return activities.CreateCheckRunResponse{
 			ID:     id,
-			Status: "complete",
+			Status: "completed",
 		}, nil
 	}).Twice()
 
@@ -295,9 +297,8 @@ func TestGithubCheckRunCache_CreatesAfterCompleting(t *testing.T) {
 		Repo: github.Repo{
 			Name: "repo",
 		},
-		State:      github.CheckRunQueued,
-		Summary:    "some summary",
-		ExternalID: "someid",
+		State:   github.CheckRunQueued,
+		Summary: "some summary",
 	}
 
 	testRequest2 := notifier.GithubCheckRunRequest{
@@ -309,9 +310,8 @@ func TestGithubCheckRunCache_CreatesAfterCompleting(t *testing.T) {
 		Actions: []github.CheckRunAction{
 			github.CreatePlanReviewAction(github.Approve),
 		},
-		State:      github.CheckRunActionRequired,
-		Summary:    "some summary 2",
-		ExternalID: "someid",
+		State:   github.CheckRunActionRequired,
+		Summary: "some summary 2",
 	}
 
 	testRequest3 := notifier.GithubCheckRunRequest{
@@ -320,9 +320,8 @@ func TestGithubCheckRunCache_CreatesAfterCompleting(t *testing.T) {
 		Repo: github.Repo{
 			Name: "repo",
 		},
-		State:      github.CheckRunPending,
-		Summary:    "some summary",
-		ExternalID: "someid",
+		State:   github.CheckRunPending,
+		Summary: "some summary",
 	}
 
 	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
@@ -332,7 +331,7 @@ func TestGithubCheckRunCache_CreatesAfterCompleting(t *testing.T) {
 		State:      testRequest1.State,
 		Actions:    testRequest1.Actions,
 		Summary:    testRequest1.Summary,
-		ExternalID: testRequest1.ExternalID,
+		ExternalID: "1234",
 	}).Return(activities.CreateCheckRunResponse{
 		ID: 1,
 	}, nil)
@@ -344,10 +343,10 @@ func TestGithubCheckRunCache_CreatesAfterCompleting(t *testing.T) {
 		State:      testRequest2.State,
 		Actions:    testRequest2.Actions,
 		Summary:    testRequest2.Summary,
-		ExternalID: testRequest2.ExternalID,
+		ExternalID: "1234",
 	}).Return(activities.UpdateCheckRunResponse{
 		ID:     1,
-		Status: "complete",
+		Status: "completed",
 	}, nil)
 
 	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
@@ -357,7 +356,7 @@ func TestGithubCheckRunCache_CreatesAfterCompleting(t *testing.T) {
 		State:      testRequest3.State,
 		Actions:    testRequest3.Actions,
 		Summary:    testRequest3.Summary,
-		ExternalID: testRequest3.ExternalID,
+		ExternalID: "1234",
 	}).Return(activities.CreateCheckRunResponse{
 		ID: 2,
 	}, nil)

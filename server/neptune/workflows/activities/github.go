@@ -80,17 +80,9 @@ type CreateCheckRunResponse struct {
 	Status string
 }
 
-func (r CreateCheckRunResponse) GetStatus() string {
-	return r.Status
-}
-
 type UpdateCheckRunResponse struct {
 	ID     int64
 	Status string
-}
-
-func (r UpdateCheckRunResponse) GetStatus() string {
-	return r.Status
 }
 
 func (a *githubActivities) GithubUpdateCheckRun(ctx context.Context, request UpdateCheckRunRequest) (UpdateCheckRunResponse, error) {
@@ -132,8 +124,6 @@ func (a *githubActivities) GithubUpdateCheckRun(ctx context.Context, request Upd
 	if err != nil {
 		return UpdateCheckRunResponse{}, errors.Wrap(err, "creating check run")
 	}
-
-	run.GetStatus()
 
 	return UpdateCheckRunResponse{
 		ID:     run.GetID(),

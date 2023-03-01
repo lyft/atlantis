@@ -39,11 +39,13 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 	for _, i := range infos {
 		request := notifier.GithubCheckRunRequest{
 			Title:   terraform.BuildCheckRunTitle(i.Root.Name),
+			Sha:     i.Revision,
 			State:   state,
 			Repo:    i.Repo,
 			Summary: summary,
 			Actions: actions,
 		}
+		logger.Debug(ctx, fmt.Sprintf("Updating lock status for deployment id: %s", i.ID.String()))
 		var err error
 
 		version := workflow.GetVersion(ctx, version.CacheCheckRunSessions, workflow.DefaultVersion, 1)

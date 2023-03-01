@@ -86,7 +86,7 @@ func (r *WorkflowRunner) buildRequestRoot(root terraformActivities.Root, diffDir
 	var approvalType terraformActivities.PlanApprovalType
 	var reasons []string
 
-	if diffDirection == activities.DirectionDiverged || (root.Trigger == terraformActivities.ManualTrigger && !root.Rerun) {
+	if diffDirection == activities.DirectionDiverged || root.Trigger == terraformActivities.ManualTrigger {
 		approvalType = terraformActivities.ManualApproval
 	}
 
@@ -98,7 +98,7 @@ func (r *WorkflowRunner) buildRequestRoot(root terraformActivities.Root, diffDir
 		reasons = append(reasons, ":warning: Requested Revision is not ahead of deployed revision, please confirm the changes described in the plan.")
 	}
 
-	if root.Trigger == terraformActivities.ManualTrigger && !root.Rerun {
+	if root.Trigger == terraformActivities.ManualTrigger {
 		reasons = append(reasons, ":warning: Manually Triggered Deploys must be confirmed before proceeding.")
 	}
 

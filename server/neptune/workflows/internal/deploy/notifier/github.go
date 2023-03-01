@@ -6,12 +6,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"go.temporal.io/sdk/workflow"
 )
 
 const (
 	KeyDelim       = "_"
-	CompleteStatus = "complete"
+	CompleteStatus = "completed"
 )
 
 type checksActivities interface {
@@ -36,13 +37,12 @@ func NewGithubCheckRunCache(activities checksActivities) *GithubCheckRunCache {
 }
 
 type GithubCheckRunRequest struct {
-	Title      string
-	Sha        string
-	Repo       github.Repo
-	State      github.CheckRunState
-	Actions    []github.CheckRunAction
-	Summary    string
-	ExternalID string
+	Title   string
+	Sha     string
+	Repo    github.Repo
+	State   github.CheckRunState
+	Actions []github.CheckRunAction
+	Summary string
 }
 
 func (c *GithubCheckRunCache) CreateOrUpdate(ctx workflow.Context, deploymentID string, request GithubCheckRunRequest) (int64, error) {
@@ -51,7 +51,7 @@ func (c *GithubCheckRunCache) CreateOrUpdate(ctx workflow.Context, deploymentID 
 
 	// if we haven't created one, let's do so now
 	if !ok {
-		resp, err := c.load(ctx, request)
+		resp, err := c.load(ctx, deploymentID, request)
 		if err != nil {
 			return 0, err
 		}
@@ -62,7 +62,7 @@ func (c *GithubCheckRunCache) CreateOrUpdate(ctx workflow.Context, deploymentID 
 	}
 
 	// update existing checks
-	resp, err := c.update(ctx, request, checkRunID)
+	resp, err := c.update(ctx, deploymentID, request, checkRunID)
 	if err != nil {
 		return 0, err
 	}
@@ -79,7 +79,7 @@ func (c *GithubCheckRunCache) deleteIfCompleted(status, key string) {
 	}
 }
 
-func (c *GithubCheckRunCache) update(ctx workflow.Context, request GithubCheckRunRequest, checkRunID int64) (activities.UpdateCheckRunResponse, error) {
+func (c *GithubCheckRunCache) update(ctx workflow.Context, externalID string, request GithubCheckRunRequest, checkRunID int64) (activities.UpdateCheckRunResponse, error) {
 	updateCheckRunRequest := activities.UpdateCheckRunRequest{
 		Title:      request.Title,
 		Repo:       request.Repo,
@@ -87,7 +87,7 @@ func (c *GithubCheckRunCache) update(ctx workflow.Context, request GithubCheckRu
 		Actions:    request.Actions,
 		Summary:    request.Summary,
 		ID:         checkRunID,
-		ExternalID: request.ExternalID,
+		ExternalID: externalID,
 	}
 
 	var resp activities.UpdateCheckRunResponse
@@ -98,7 +98,7 @@ func (c *GithubCheckRunCache) update(ctx workflow.Context, request GithubCheckRu
 	return resp, nil
 }
 
-func (c *GithubCheckRunCache) load(ctx workflow.Context, request GithubCheckRunRequest) (activities.CreateCheckRunResponse, error) {
+func (c *GithubCheckRunCache) load(ctx workflow.Context, externalID string, request GithubCheckRunRequest) (activities.CreateCheckRunResponse, error) {
 	createCheckRunRequest := activities.CreateCheckRunRequest{
 		Title:      request.Title,
 		Sha:        request.Sha,
@@ -106,7 +106,7 @@ func (c *GithubCheckRunCache) load(ctx workflow.Context, request GithubCheckRunR
 		State:      request.State,
 		Actions:    request.Actions,
 		Summary:    request.Summary,
-		ExternalID: request.ExternalID,
+		ExternalID: externalID,
 	}
 
 	var resp activities.CreateCheckRunResponse
@@ -114,5 +114,6 @@ func (c *GithubCheckRunCache) load(ctx workflow.Context, request GithubCheckRunR
 	if err != nil {
 		return resp, errors.Wrap(err, "creating check run")
 	}
+	logger.Debug(ctx, "created checkrun with id", "checkRunID", resp.ID)
 	return resp, nil
 }

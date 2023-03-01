@@ -93,6 +93,7 @@ func TestStateReceive(t *testing.T) {
 		ID:         uuid.New(),
 		Root:       terraform.Root{Name: "root"},
 		Repo:       github.Repo{Name: "hello"},
+		Revision:   "12345",
 	}
 
 	cases := []struct {
@@ -384,6 +385,7 @@ func TestStateReceive(t *testing.T) {
 				DeploymentInfo: internalDeploymentInfo,
 				ExpectedRequest: notifier.GithubCheckRunRequest{
 					Title: "atlantis/deploy: root",
+					Sha:   internalDeploymentInfo.Revision,
 					State: c.ExpectedCheckRunState,
 					Repo: github.Repo{
 						Name: "hello",

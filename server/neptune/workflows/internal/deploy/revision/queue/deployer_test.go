@@ -502,6 +502,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 				State:   github.CheckRunFailure,
 				Repo:    repo,
 				Summary: queue.DirectionBehindSummary,
+				Sha:     deploymentInfo.Revision,
 			},
 			ExpectedT: t,
 		})
@@ -541,6 +542,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 					State:   github.CheckRunFailure,
 					Repo:    repo,
 					Summary: queue.RerunNotIdenticalSummary,
+					Sha:     deploymentInfo.Revision,
 				},
 				ExpectedT: t,
 			})

@@ -164,6 +164,7 @@ func TestLockStateUpdater_unlocked_new_version(t *testing.T) {
 			Title: terraform.BuildCheckRunTitle(info.Root.Name),
 			State: github.CheckRunQueued,
 			Repo:  info.Repo,
+			Sha:   info.Revision,
 		},
 		ExpectedDeploymentID: info.ID.String(),
 		ExpectedT:            t,
@@ -223,6 +224,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 			Actions: []github.CheckRunAction{
 				github.CreateUnlockAction(),
 			},
+			Sha: info.Revision,
 		},
 		ExpectedDeploymentID: info.ID.String(),
 		ExpectedT:            t,

@@ -134,11 +134,10 @@ func TestEnqueue(t *testing.T) {
 	env.ExecuteWorkflow(testWorkflow, req{
 		ID: id,
 		ExpectedRequest: notifier.GithubCheckRunRequest{
-			Title:      "atlantis/deploy: root",
-			Sha:        rev,
-			Repo:       github.Repo{Name: "nish"},
-			ExternalID: id.String(),
-			State:      github.CheckRunQueued,
+			Title: "atlantis/deploy: root",
+			Sha:   rev,
+			Repo:  github.Repo{Name: "nish"},
+			State: github.CheckRunQueued,
 		},
 		ExpectedT: t,
 	})
@@ -186,11 +185,10 @@ func TestEnqueue_ManualTrigger(t *testing.T) {
 	env.ExecuteWorkflow(testWorkflow, req{
 		ID: id,
 		ExpectedRequest: notifier.GithubCheckRunRequest{
-			Title:      "atlantis/deploy: root",
-			Sha:        rev,
-			Repo:       github.Repo{Name: "nish"},
-			ExternalID: id.String(),
-			State:      github.CheckRunQueued,
+			Title: "atlantis/deploy: root",
+			Sha:   rev,
+			Repo:  github.Repo{Name: "nish"},
+			State: github.CheckRunQueued,
 		},
 		ExpectedT: t,
 	})
@@ -244,11 +242,10 @@ func TestEnqueue_ManualTrigger_QueueAlreadyLocked(t *testing.T) {
 			Revision: "123334444555",
 		},
 		ExpectedRequest: notifier.GithubCheckRunRequest{
-			Title:      "atlantis/deploy: root",
-			Sha:        rev,
-			Repo:       github.Repo{Name: "nish"},
-			ExternalID: id.String(),
-			State:      github.CheckRunQueued,
+			Title: "atlantis/deploy: root",
+			Sha:   rev,
+			Repo:  github.Repo{Name: "nish"},
+			State: github.CheckRunQueued,
 		},
 		ExpectedT: t,
 	})
@@ -302,13 +299,12 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 			Revision: "123334444555",
 		},
 		ExpectedRequest: notifier.GithubCheckRunRequest{
-			Title:      "atlantis/deploy: root",
-			Sha:        rev,
-			Repo:       github.Repo{Name: "nish"},
-			ExternalID: id.String(),
-			Summary:    "This deploy is locked from a manual deployment for revision 123334444555.  Unlock to proceed.",
-			Actions:    []github.CheckRunAction{github.CreateUnlockAction()},
-			State:      github.CheckRunActionRequired,
+			Title:   "atlantis/deploy: root",
+			Sha:     rev,
+			Repo:    github.Repo{Name: "nish"},
+			Summary: "This deploy is locked from a manual deployment for revision 123334444555.  Unlock to proceed.",
+			Actions: []github.CheckRunAction{github.CreateUnlockAction()},
+			State:   github.CheckRunActionRequired,
 		},
 		ExpectedT: t,
 	})
