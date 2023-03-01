@@ -218,18 +218,6 @@ type testStreamCloser struct {
 	CapturedJobOutput map[string][]string
 }
 
-// func (sc *testStreamCloser) Stream(jobID string, msg string) {
-// 	v, ok := sc.CapturedJobOutput[jobID]
-
-// 	if !ok {
-// 		v = []string{}
-// 	}
-
-// 	v = append(v, msg)
-
-// 	sc.CapturedJobOutput[jobID] = v
-// }
-
 func (sc *testStreamCloser) RegisterJob(id string) chan string {
 	v := []string{}
 	ch := make(chan string)
