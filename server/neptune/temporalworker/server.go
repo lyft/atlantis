@@ -41,24 +41,22 @@ const (
 	ProjectJobsViewRouteName = "project-jobs-detail"
 
 	// Equal to default terraform timeout
-	TemporalWorkerTimeout = time.Hour
+	TemporalWorkerTimeout = 60 * time.Second
 
 	// 5 minutes to allow cleaning up the job store
 	StreamHandlerTimeout = 5 * time.Minute
 )
 
 type Server struct {
-	Logger            logging.Logger
-	HTTPServerProxy   *neptune_http.ServerProxy
-	CronScheduler     *internalSync.CronScheduler
-	Crons             []*internalSync.Cron
-	Port              int
-	StatsScope        tally.Scope
-	StatsCloser       io.Closer
-	TemporalClient    *temporal.ClientWrapper
-	JobStreamHandler  *job.StreamHandler
-	JobStreamCloserFn job.StreamCloserFn
-
+	Logger              logging.Logger
+	HTTPServerProxy     *neptune_http.ServerProxy
+	CronScheduler       *internalSync.CronScheduler
+	Crons               []*internalSync.Cron
+	Port                int
+	StatsScope          tally.Scope
+	StatsCloser         io.Closer
+	TemporalClient      *temporal.ClientWrapper
+	JobStreamHandler    *job.StreamHandler
 	DeployActivities    *activities.Deploy
 	TerraformActivities *activities.Terraform
 	GithubActivities    *activities.Github
@@ -89,7 +87,7 @@ func NewServer(config *config.Config) (*Server, error) {
 	receiverRegistry := job.NewReceiverRegistry()
 
 	// terraform job output handler
-	jobStreamHandler, streamCloserFn := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
+	jobStreamHandler := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
 	jobsController := controllers.NewJobsController(jobStore, receiverRegistry, config.ServerCfg, scope, config.CtxLogger)
 
 	// temporal client + worker initialization
@@ -181,7 +179,6 @@ func NewServer(config *config.Config) (*Server, error) {
 		StatsCloser:         statsCloser,
 		TemporalClient:      temporalClient,
 		JobStreamHandler:    jobStreamHandler,
-		JobStreamCloserFn:   streamCloserFn,
 		DeployActivities:    deployActivities,
 		TerraformActivities: terraformActivities,
 		GithubActivities:    githubActivities,
@@ -193,6 +190,8 @@ func NewServer(config *config.Config) (*Server, error) {
 func (s Server) Start() error {
 	defer s.shutdown()
 
+	ctx := context.Background()
+
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -202,19 +201,20 @@ func (s Server) Start() error {
 		if err := deployWorker.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start deploy worker", err)
 		}
+
+		s.Logger.InfoContext(ctx, "Shutting down deploy worker, resource clean up may still be occurring in the background")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		// Close job stream when temporalworker exits to allow gracefully shutting down the stream handler
-		defer s.JobStreamCloserFn()
-
 		terraformWorker := s.buildTerraformWorker()
 		if err := terraformWorker.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start terraform worker", err)
 		}
+
+		s.Logger.InfoContext(ctx, "Shutting down deploy worker, resource clean up may still be occurring in the background")
 	}()
 
 	// Ensure server gracefully drains connections when stopped.
@@ -230,16 +230,6 @@ func (s Server) Start() error {
 		if err != nil && err != http.ErrServerClosed {
 			s.Logger.Error(err.Error())
 		}
-	}()
-
-	// Start job output handler listener
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		// Exits when the job output chan is closed which happens only after the temporal worker
-		// has gracefully shut down
-		s.JobStreamHandler.Handle()
 	}()
 
 	for _, c := range s.Crons {

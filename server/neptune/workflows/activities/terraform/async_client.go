@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"syscall"
+	"time"
 
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
 )
 
 type ClientConfig struct {
@@ -93,8 +96,41 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, val))
 	}
 
-	if err := cmd.Run(); err != nil {
-		return errors.Wrap(err, "running terraform command")
+	if err := cmd.Start(); err != nil {
+		return errors.Wrap(err, "starting terraform command")
+	}
+
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			logger.Warn(ctx, "Terminating terraform process gracefully")
+			cmd.Process.Signal(syscall.SIGTERM)
+
+			// if we still haven't shutdown after 60 seconds, we should just kill the process
+			// this ensures that we at least can gracefully shutdown other parts of the system
+			// before we are killed entirely.
+			kill := time.After(60 * time.Second)
+
+			select {
+			case <-kill:
+				logger.Warn(ctx, "Killing terraform process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
+				cmd.Process.Signal(syscall.SIGKILL)
+			case <-done:
+			}
+		case <-done:
+		}
+	}()
+
+	err = cmd.Wait()
+
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "waiting for terraform process")
+	}
+
+	if err != nil {
+		return errors.Wrap(err, "waiting for terraform process")
 	}
 
 	return nil

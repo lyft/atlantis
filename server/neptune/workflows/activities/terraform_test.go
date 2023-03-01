@@ -32,12 +32,15 @@ type testStreamHandler struct {
 	called        bool
 }
 
-func (t *testStreamHandler) Stream(jobID string, msg string) {
-	assert.Equal(t.t, t.expectedJobID, jobID)
-	t.received = append(t.received, msg)
-
-	t.called = true
-
+func (t *testStreamHandler) RegisterJob(id string) chan string {
+	ch := make(chan string)
+	go func() {
+		for s := range ch {
+			t.received = append(t.received, s)
+		}
+		t.called = true
+	}()
+	return ch
 }
 
 type multiCallTfClient struct {
