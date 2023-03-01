@@ -40,8 +40,14 @@ import (
 const (
 	ProjectJobsViewRouteName = "project-jobs-detail"
 
-	// Equal to default terraform timeout
-	TemporalWorkerTimeout = 60 * time.Second
+	// to make this clear,
+	// time t     event
+	// 0 min      sigterm received from kube
+	// 50 min     activity ctx canceled
+	// 50 + x min sigkill received from kube
+	//
+	// Note: x must be configured outside atlantis and is the grace period effectively.
+	TemporalWorkerTimeout = 50 * time.Minute
 
 	// 5 minutes to allow cleaning up the job store
 	StreamHandlerTimeout = 5 * time.Minute
