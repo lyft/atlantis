@@ -194,6 +194,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
+				Revision:     internalDeploymentInfo.Revision,
 				State:        activities.AtlantisJobStateRunning,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				IsForceApply: false,
@@ -216,6 +217,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
+				Revision:     internalDeploymentInfo.Revision,
 				State:        activities.AtlantisJobStateFailure,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				EndTime:      strconv.FormatInt(endTime.Unix(), 10),
@@ -243,6 +245,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
+				Revision:     internalDeploymentInfo.Revision,
 				State:        activities.AtlantisJobStateFailure,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				EndTime:      strconv.FormatInt(endTime.Unix(), 10),
@@ -270,6 +273,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
+				Revision:     internalDeploymentInfo.Revision,
 				State:        activities.AtlantisJobStateFailure,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				EndTime:      strconv.FormatInt(endTime.Unix(), 10),
@@ -297,6 +301,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
+				Revision:     internalDeploymentInfo.Revision,
 				State:        activities.AtlantisJobStateSuccess,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				EndTime:      strconv.FormatInt(endTime.Unix(), 10),
@@ -327,14 +332,7 @@ func TestStateReceive(t *testing.T) {
 			}).Return(activities.UpdateCheckRunResponse{}, nil)
 
 			if c.ExpectedAuditJobRequest != nil {
-				env.OnActivity(a.AuditJob, mock.Anything, activities.AuditJobRequest{
-					Root:         c.ExpectedAuditJobRequest.Root,
-					Repo:         c.ExpectedAuditJobRequest.Repo,
-					State:        c.ExpectedAuditJobRequest.State,
-					StartTime:    c.ExpectedAuditJobRequest.StartTime,
-					EndTime:      c.ExpectedAuditJobRequest.EndTime,
-					IsForceApply: c.ExpectedAuditJobRequest.IsForceApply,
-				}).Return(nil)
+				env.OnActivity(a.AuditJob, mock.Anything, *c.ExpectedAuditJobRequest).Return(nil)
 			}
 
 			env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{
@@ -370,14 +368,7 @@ func TestStateReceive(t *testing.T) {
 			env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.Version(1))
 
 			if c.ExpectedAuditJobRequest != nil {
-				env.OnActivity(a.AuditJob, mock.Anything, activities.AuditJobRequest{
-					Root:         c.ExpectedAuditJobRequest.Root,
-					Repo:         c.ExpectedAuditJobRequest.Repo,
-					State:        c.ExpectedAuditJobRequest.State,
-					StartTime:    c.ExpectedAuditJobRequest.StartTime,
-					EndTime:      c.ExpectedAuditJobRequest.EndTime,
-					IsForceApply: c.ExpectedAuditJobRequest.IsForceApply,
-				}).Return(nil)
+				env.OnActivity(a.AuditJob, mock.Anything, *c.ExpectedAuditJobRequest).Return(nil)
 			}
 
 			env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{
