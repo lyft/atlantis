@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"syscall"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
+	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/logger"
 )
 
@@ -102,26 +104,7 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 
 	done := make(chan struct{})
 	defer close(done)
-	go func() {
-		select {
-		case <-ctx.Done():
-			logger.Warn(ctx, "Terminating terraform process gracefully")
-			cmd.Process.Signal(syscall.SIGTERM)
-
-			// if we still haven't shutdown after 60 seconds, we should just kill the process
-			// this ensures that we at least can gracefully shutdown other parts of the system
-			// before we are killed entirely.
-			kill := time.After(60 * time.Second)
-
-			select {
-			case <-kill:
-				logger.Warn(ctx, "Killing terraform process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
-				cmd.Process.Signal(syscall.SIGKILL)
-			case <-done:
-			}
-		case <-done:
-		}
-	}()
+	go terminateOnCtxCancellation(ctx, cmd.Process, done)
 
 	err = cmd.Wait()
 
@@ -134,6 +117,34 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 	}
 
 	return nil
+}
+
+func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan struct{}) {
+	select {
+	case <-ctx.Done():
+		logger.Warn(ctx, "Terminating terraform process gracefully")
+		err := p.Signal(syscall.SIGTERM)
+		if err != nil {
+			logger.Error(ctx, "Unable to terminate process", key.ErrKey, err)
+		}
+
+		// if we still haven't shutdown after 60 seconds, we should just kill the process
+		// this ensures that we at least can gracefully shutdown other parts of the system
+		// before we are killed entirely.
+		kill := time.After(60 * time.Second)
+
+		select {
+		case <-kill:
+			logger.Warn(ctx, "Killing terraform process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
+			err := p.Signal(syscall.SIGKILL)
+			if err != nil {
+				logger.Error(ctx, "Unable to kill process", key.ErrKey, err)
+			}
+		case <-done:
+		}
+	case <-done:
+	}
+
 }
 
 func getDefaultVersion(overrideVersion string) (*version.Version, error) {
