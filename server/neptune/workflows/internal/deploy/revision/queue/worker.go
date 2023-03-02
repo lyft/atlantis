@@ -33,8 +33,6 @@ type deployer interface {
 
 type workerActivities interface {
 	deployerActivities
-	githubRebaseActivities
-	buildNotifyActivities
 	AuditJob(ctx context.Context, request activities.AuditJobRequest) error
 }
 
