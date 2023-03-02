@@ -67,7 +67,7 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo deployment
 
 		// unlikey for error since we validate the WhenModified config at startup
 		// if it errors out, let's be preventive and rebase this PR as well
-		if err == nil {
+		if err != nil {
 			logger.Error(ctx, "error matching filepaths in PR", key.ErrKey, err, "pull_num", pullRequest.Number)
 			prsToRebase = append(prsToRebase, pullRequest) // nolint: staticcheck
 			continue

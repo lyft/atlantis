@@ -93,10 +93,6 @@ func NewWorker(
 	deployer := &Deployer{
 		Activities:              a,
 		TerraformWorkflowRunner: tfWorkflowRunner,
-		PullRebaser: &PullRebaser{
-			GithubActivities:      a,
-			BuildNotifyActivities: a,
-		},
 	}
 
 	latestDeployment, err := deployer.FetchLatestDeployment(ctx, repoName, rootName)

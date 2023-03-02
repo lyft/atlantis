@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -190,8 +191,7 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 	}
 
 	root := deployment.Root{
-		Name:         "test",
-		Path:         "ops/root_1",
+		Path:         "test/dir2",
 		WhenModified: raw.DefaultAutoPlanWhenModified,
 	}
 
@@ -209,8 +209,8 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 		},
 	}
 
-	filesModifiedPr1 := []string{"ops/root_1/rebase.tf"}
-	filesModifiedPr2 := []string{"ops/root_2/no-rebase.tf"}
+	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
+	filesModifiedPr2 := []string{"test/dir1/no-rebase.tf"}
 
 	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
 		Repo: req.Repo,
@@ -223,13 +223,14 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 		PullRequest: pullRequests[0],
 	}).Return(activities.ListModifiedFilesResponse{
 		FilePaths: filesModifiedPr1,
-	})
+	}, nil)
+
 	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
 		Repo:        repo,
 		PullRequest: pullRequests[1],
 	}).Return(activities.ListModifiedFilesResponse{
 		FilePaths: filesModifiedPr2,
-	})
+	}, nil)
 
 	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
 		Repository: repo,
@@ -260,7 +261,8 @@ func TestPullRebasePRs_ListFileError_NeedRebase(t *testing.T) {
 	}
 
 	root := deployment.Root{
-		Name: "test",
+		Path:         "test/dir2",
+		WhenModified: raw.DefaultAutoPlanWhenModified,
 	}
 
 	req := shouldRebaseRequest{
@@ -268,11 +270,35 @@ func TestPullRebasePRs_ListFileError_NeedRebase(t *testing.T) {
 		Root: root,
 	}
 
+	pullRequests := []github.PullRequest{
+		{
+			Number: 1,
+		},
+		{
+			Number: 2,
+		},
+	}
+
 	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
 		Repo: req.Repo,
 	}).Return(activities.ListOpenPRsResponse{
-		PullRequests: []github.PullRequest{},
+		PullRequests: pullRequests,
 	}, nil)
+
+	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+		Repo:        repo,
+		PullRequest: pullRequests[0],
+	}).Return(activities.ListModifiedFilesResponse{}, errors.New("err"))
+
+	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+		Repo:        repo,
+		PullRequest: pullRequests[1],
+	}).Return(activities.ListModifiedFilesResponse{}, errors.New("err"))
+
+	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
+		Repository:   repo,
+		PullRequests: pullRequests,
+	}).Return(activities.BuildNotifyRebasePRResponse{}, nil)
 
 	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
 	env.AssertExpectations(t)
@@ -295,8 +321,9 @@ func TestPullRebasePRs_FilePathMatchError_NeedRebase(t *testing.T) {
 		Name:  "test",
 	}
 
+	// invalid when modified config to simulate filepath match error
 	root := deployment.Root{
-		Name: "test",
+		WhenModified: []string{"!"},
 	}
 
 	req := shouldRebaseRequest{
@@ -304,11 +331,42 @@ func TestPullRebasePRs_FilePathMatchError_NeedRebase(t *testing.T) {
 		Root: root,
 	}
 
+	pullRequests := []github.PullRequest{
+		{
+			Number: 1,
+		},
+		{
+			Number: 2,
+		},
+	}
+
+	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
+	filesModifiedPr2 := []string{"test/dir1/no-rebase.tf"}
+
 	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
 		Repo: req.Repo,
 	}).Return(activities.ListOpenPRsResponse{
-		PullRequests: []github.PullRequest{},
+		PullRequests: pullRequests,
 	}, nil)
+
+	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+		Repo:        repo,
+		PullRequest: pullRequests[0],
+	}).Return(activities.ListModifiedFilesResponse{
+		FilePaths: filesModifiedPr1,
+	}, nil)
+
+	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+		Repo:        repo,
+		PullRequest: pullRequests[1],
+	}).Return(activities.ListModifiedFilesResponse{
+		FilePaths: filesModifiedPr2,
+	}, nil)
+
+	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
+		Repository:   repo,
+		PullRequests: pullRequests,
+	}).Return(activities.BuildNotifyRebasePRResponse{}, nil)
 
 	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
 	env.AssertExpectations(t)
