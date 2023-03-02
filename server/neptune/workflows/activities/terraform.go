@@ -366,7 +366,6 @@ func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jo
 			logger.Warn(ctx, "unable to write tf output to buffer")
 		}
 		ch <- s.Text()
-		// t.StreamHandler.Stream(jobID, s.Text())
 	}
 
 	close(ch)
