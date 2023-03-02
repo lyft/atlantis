@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/go-getter"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/logger"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
@@ -289,7 +288,7 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 }
 
 type ListOpenPRsRequest struct {
-	Repo deployment.Repo
+	Repo internal.Repo
 }
 
 type ListOpenPRsResponse struct {
@@ -303,7 +302,7 @@ func (a *githubActivities) GithubListOpenPRs(ctx context.Context, request ListOp
 }
 
 type ListModifiedFilesRequest struct {
-	Repo        deployment.Repo
+	Repo        internal.Repo
 	PullRequest internal.PullRequest
 }
 

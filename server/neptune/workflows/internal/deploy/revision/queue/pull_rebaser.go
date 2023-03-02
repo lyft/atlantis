@@ -4,16 +4,20 @@ import (
 	"context"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/pkg/errors"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"go.temporal.io/sdk/workflow"
 )
+
+// GH API Ratelimit resets every hour, 2 hours should be enough for the GH API call failures to autoresolve
+const RebaseGithubScheduleToCloseTimeout = 2 * time.Hour
 
 type githubRebaseActivities interface {
 	GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error)
@@ -29,19 +33,27 @@ type PullRebaser struct {
 	BuildNotifyActivities buildNotifyActivities
 }
 
-func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo deployment.Repo, root deployment.Root) error {
+func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo, root terraform.Root) error {
+	originalOpts := workflow.GetActivityOptions(ctx)
+
+	// Configure github specific ScheduleToClose timeout for GH API call failures to autoresolve
+	// TODO: Add alarms on GithubListOpenPRs and GithubListModifiedFiles API call failures
+	ghOpts := originalOpts
+	ghOpts.ScheduleToCloseTimeout = RebaseGithubScheduleToCloseTimeout
+	ctx = workflow.WithActivityOptions(ctx, ghOpts)
+
 	// list open PRs
-	var fetchOpenPRsResp activities.ListOpenPRsResponse
+	var listOpenPRsResp activities.ListOpenPRsResponse
 	err := workflow.ExecuteActivity(ctx, p.GithubActivities.GithubListOpenPRs, activities.ListOpenPRsRequest{
 		Repo: repo,
-	}).Get(ctx, &fetchOpenPRsResp)
+	}).Get(ctx, &listOpenPRsResp)
 	if err != nil {
 		return errors.Wrap(err, "listing open PRs")
 	}
 
 	// spawn activities to list modified fles in each open PR in parallel
 	futureByPullNum := map[github.PullRequest]workflow.Future{}
-	for _, pullRequest := range fetchOpenPRsResp.PullRequests {
+	for _, pullRequest := range listOpenPRsResp.PullRequests {
 		future := workflow.ExecuteActivity(ctx, p.GithubActivities.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
 			Repo:        repo,
 			PullRequest: pullRequest,
@@ -55,11 +67,9 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo deployment
 		var result activities.ListModifiedFilesResponse
 
 		// list modified files should not fail unless we hit the ratelimit which should autoresolve once our ratelimit revives in an hour max
-		// If it errors out due to any other reason, let's rebase this PR as well
 		listFilesErr := future.Get(ctx, &result)
 		if listFilesErr != nil {
 			logger.Error(ctx, "error listing modified files in PR", key.ErrKey, listFilesErr, "pull_num", pullRequest.Number)
-			prsToRebase = append(prsToRebase, pullRequest) // nolint: staticcheck
 			continue
 		}
 
@@ -83,19 +93,28 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo deployment
 		return nil
 	}
 
-	// make API call to buildnotify to rebase open PRs
-	var resp activities.BuildNotifyRebasePRResponse
-	err = workflow.ExecuteActivity(ctx, p.BuildNotifyActivities.BuildNotifyRebasePR, activities.BuildNotifyRebasePRRequest{
-		Repository:   repo,
-		PullRequests: prsToRebase,
-	}).Get(ctx, &resp)
-	if err != nil {
-		return errors.Wrap(err, "setting revision for open PRs")
+	// reset workflow options
+	ctx = workflow.WithActivityOptions(ctx, originalOpts)
+	futureByPullNum = map[github.PullRequest]workflow.Future{}
+	for _, pr := range prsToRebase {
+		futureByPullNum[pr] = workflow.ExecuteActivity(ctx, p.BuildNotifyActivities.BuildNotifyRebasePR, activities.BuildNotifyRebasePRRequest{
+			Repository:  repo,
+			PullRequest: pr,
+		})
 	}
+
+	for pr, future := range futureByPullNum {
+		var resp activities.BuildNotifyRebasePRResponse
+		err := future.Get(ctx, &resp)
+		if err != nil {
+			logger.Error(ctx, "error making API call to buildnotify", key.ErrKey, err, "pull_num", pr.Number)
+		}
+	}
+
 	return nil
 }
 
-func shouldRebasePullRequest(root deployment.Root, modifiedFiles []string) (bool, error) {
+func shouldRebasePullRequest(root terraform.Root, modifiedFiles []string) (bool, error) {
 	var whenModifiedRelToRepoRoot []string
 	for _, wm := range root.WhenModified {
 		wm = strings.TrimSpace(wm)

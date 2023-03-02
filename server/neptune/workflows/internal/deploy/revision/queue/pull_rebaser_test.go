@@ -2,14 +2,13 @@ package queue
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/core/config/raw"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
@@ -19,13 +18,13 @@ import (
 func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 	cases := []struct {
 		description   string
-		root          deployment.Root
+		root          terraform.Root
 		modifiedFiles []string
 		shouldReabse  bool
 	}{
 		{
 			description: "default when modified config, root dir modified",
-			root: deployment.Root{
+			root: terraform.Root{
 				Path:         "test/dir1",
 				WhenModified: raw.DefaultAutoPlanWhenModified,
 			},
@@ -34,7 +33,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 		},
 		{
 			description: "default when modified config, root dir not modified",
-			root: deployment.Root{
+			root: terraform.Root{
 				Path:         "test/dir1",
 				WhenModified: raw.DefaultAutoPlanWhenModified,
 			},
@@ -43,7 +42,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 		},
 		{
 			description: "default when modified config, .tfvars file modified",
-			root: deployment.Root{
+			root: terraform.Root{
 				Path:         "test/dir1",
 				WhenModified: raw.DefaultAutoPlanWhenModified,
 			},
@@ -52,7 +51,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 		},
 		{
 			description: "non default when modified config, non root dir modified",
-			root: deployment.Root{
+			root: terraform.Root{
 				Path:         "test/dir1",
 				WhenModified: []string{"**/*.tf*", "../variables.tf"},
 			},
@@ -61,7 +60,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 		},
 		{
 			description: "non default when modified config, file excluded",
-			root: deployment.Root{
+			root: terraform.Root{
 				Path:         "test/dir1",
 				WhenModified: []string{"**/*.tf*", "!exclude.tf"},
 			},
@@ -70,7 +69,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 		},
 		{
 			description: "non default when modified config, file excluded",
-			root: deployment.Root{
+			root: terraform.Root{
 				Path:         "test/dir1",
 				WhenModified: []string{"**/*.tf*", "!exclude.tf"},
 			},
@@ -79,7 +78,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 		},
 		{
 			description: "non default when modified config, file excluded and included",
-			root: deployment.Root{
+			root: terraform.Root{
 				Path:         "test/dir1",
 				WhenModified: []string{"**/*.tf*", "!exclude.tf"},
 			},
@@ -119,8 +118,8 @@ func (t *testBuildNotifyActivities) BuildNotifyRebasePR(ctx context.Context, req
 }
 
 type shouldRebaseRequest struct {
-	Repo deployment.Repo
-	Root deployment.Root
+	Repo github.Repo
+	Root terraform.Root
 }
 
 func testShouldRebaseWorkflow(ctx workflow.Context, r shouldRebaseRequest) error {
@@ -149,12 +148,12 @@ func TestPullRebasePRs_NoOpenPR(t *testing.T) {
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ba)
 
-	repo := deployment.Repo{
+	repo := github.Repo{
 		Owner: "owner",
 		Name:  "test",
 	}
 
-	root := deployment.Root{
+	root := terraform.Root{
 		Name: "test",
 	}
 
@@ -185,12 +184,12 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ba)
 
-	repo := deployment.Repo{
+	repo := github.Repo{
 		Owner: "owner",
 		Name:  "test",
 	}
 
-	root := deployment.Root{
+	root := terraform.Root{
 		Path:         "test/dir2",
 		WhenModified: raw.DefaultAutoPlanWhenModified,
 	}
@@ -233,63 +232,8 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 	}, nil)
 
 	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
-		Repository: repo,
-		PullRequests: []github.PullRequest{
-			pullRequests[0],
-		},
-	}).Return(activities.BuildNotifyRebasePRResponse{}, nil)
-
-	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
-	env.AssertExpectations(t)
-
-	err := env.GetWorkflowResult(nil)
-	assert.Nil(t, err)
-}
-
-func TestPullRebasePRs_ListFileError_NeedRebase(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	ga := &testGithubRebaseActivities{}
-	ba := &testBuildNotifyActivities{}
-	env.RegisterActivity(ga)
-	env.RegisterActivity(ba)
-
-	repo := deployment.Repo{
-		Owner: "owner",
-		Name:  "test",
-	}
-
-	root := deployment.Root{
-		Path:         "test/dir2",
-		WhenModified: raw.DefaultAutoPlanWhenModified,
-	}
-
-	req := shouldRebaseRequest{
-		Repo: repo,
-		Root: root,
-	}
-
-	pullRequests := []github.PullRequest{
-		{
-			Number: 1,
-		},
-	}
-
-	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
-		Repo: req.Repo,
-	}).Return(activities.ListOpenPRsResponse{
-		PullRequests: pullRequests,
-	}, nil)
-
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        repo,
+		Repository:  repo,
 		PullRequest: pullRequests[0],
-	}).Return(activities.ListModifiedFilesResponse{}, errors.New("err"))
-
-	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
-		Repository:   repo,
-		PullRequests: pullRequests,
 	}).Return(activities.BuildNotifyRebasePRResponse{}, nil)
 
 	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
@@ -308,13 +252,13 @@ func TestPullRebasePRs_FilePathMatchError_NeedRebase(t *testing.T) {
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ba)
 
-	repo := deployment.Repo{
+	repo := github.Repo{
 		Owner: "owner",
 		Name:  "test",
 	}
 
 	// invalid when modified config to simulate filepath match error
-	root := deployment.Root{
+	root := terraform.Root{
 		WhenModified: []string{"!"},
 	}
 
@@ -345,8 +289,8 @@ func TestPullRebasePRs_FilePathMatchError_NeedRebase(t *testing.T) {
 	}, nil)
 
 	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
-		Repository:   repo,
-		PullRequests: pullRequests,
+		Repository:  repo,
+		PullRequest: pullRequests[0],
 	}).Return(activities.BuildNotifyRebasePRResponse{}, nil)
 
 	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
