@@ -29,6 +29,10 @@ type terraformWorkflowRunner interface {
 	Run(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo, diffDirection activities.DiffDirection, scope metrics.Scope) error
 }
 
+type pullRebaser interface {
+	RebaseOpenPRsForRoot(ctx workflow.Context, repo deployment.Repo, root deployment.Root) error
+}
+
 type dbActivities interface {
 	FetchLatestDeployment(ctx context.Context, request activities.FetchLatestDeploymentRequest) (activities.FetchLatestDeploymentResponse, error)
 	StoreLatestDeployment(ctx context.Context, request activities.StoreLatestDeploymentRequest) error
@@ -47,6 +51,7 @@ type deployerActivities interface {
 type Deployer struct {
 	Activities              deployerActivities
 	TerraformWorkflowRunner terraformWorkflowRunner
+	PullRebaser             pullRebaser
 }
 
 const (
@@ -85,6 +90,14 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	if persistErr := p.persistLatestDeployment(ctx, latestDeployment); persistErr != nil {
 		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", key.ErrKey, persistErr)
 	}
+
+	// fire and forget go routine to rebase open PRs for the root async since this should not block further deployments for the root
+	// TODO: add alarms to notify us of rebase activity failures
+	workflow.Go(ctx, func(ctx workflow.Context) {
+		if rebaseErr := p.PullRebaser.RebaseOpenPRsForRoot(ctx, latestDeployment.Repo, latestDeployment.Root); rebaseErr != nil {
+			logger.Error(ctx, "unable to rebase open PRs for the root", key.ErrKey, rebaseErr)
+		}
+	})
 
 	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
 	// We do this as a safety measure to avoid deploying out of order revision after a failed deploy since it could still

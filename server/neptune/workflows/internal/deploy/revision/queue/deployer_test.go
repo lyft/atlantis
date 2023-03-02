@@ -65,6 +65,18 @@ func (t *testDeployActivity) AuditJob(ctx context.Context, request activities.Au
 	return nil
 }
 
+func (t *testDeployActivity) GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error) {
+	return activities.ListOpenPRsResponse{}, nil
+}
+
+func (t *testDeployActivity) GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error) {
+	return activities.ListModifiedFilesResponse{}, nil
+}
+
+func (t *testDeployActivity) BuildNotifyRebasePR(ctx context.Context, request activities.BuildNotifyRebasePRRequest) (activities.BuildNotifyRebasePRResponse, error) {
+	return activities.BuildNotifyRebasePRResponse{}, nil
+}
+
 type deployerRequest struct {
 	Info         terraform.DeploymentInfo
 	LatestDeploy *deployment.Info

@@ -43,6 +43,7 @@ const (
 type Deploy struct {
 	*dbActivities
 	*auditActivities
+	*buildNotifyActivities
 }
 
 func NewDeploy(deploymentStoreCfg valid.StoreConfig, snsWriter io.Writer) (*Deploy, error) {

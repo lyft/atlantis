@@ -10,12 +10,13 @@ type Root struct {
 	Name string
 
 	// Path is the relative path from the repo
-	Path      string
-	TfVersion string
-	Apply     execute.Job
-	Plan      PlanJob
-	Trigger   Trigger
-	Rerun     bool
+	Path         string
+	TfVersion    string
+	Apply        execute.Job
+	Plan         PlanJob
+	Trigger      Trigger
+	Rerun        bool
+	WhenModified []string
 }
 
 func (r Root) WithPlanApprovalOverride(a PlanApproval) Root {

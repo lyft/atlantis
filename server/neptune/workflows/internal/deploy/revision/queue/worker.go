@@ -33,6 +33,8 @@ type deployer interface {
 
 type workerActivities interface {
 	deployerActivities
+	githubRebaseActivities
+	buildNotifyActivities
 	AuditJob(ctx context.Context, request activities.AuditJobRequest) error
 }
 
@@ -91,6 +93,10 @@ func NewWorker(
 	deployer := &Deployer{
 		Activities:              a,
 		TerraformWorkflowRunner: tfWorkflowRunner,
+		PullRebaser: &PullRebaser{
+			GithubActivities:      a,
+			BuildNotifyActivities: a,
+		},
 	}
 
 	latestDeployment, err := deployer.FetchLatestDeployment(ctx, repoName, rootName)
