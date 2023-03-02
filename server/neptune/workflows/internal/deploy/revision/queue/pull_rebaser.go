@@ -24,13 +24,13 @@ type githubRebaseActivities interface {
 	GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error)
 }
 
-type buildNotifyActivities interface {
-	BuildNotifyRebasePR(ctx context.Context, request activities.BuildNotifyRebasePRRequest) (activities.BuildNotifyRebasePRResponse, error)
+type prRevisionSetterActivities interface {
+	SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) (activities.SetPRRevisionResponse, error)
 }
 
 type PullRebaser struct {
-	GithubActivities      githubRebaseActivities
-	BuildNotifyActivities buildNotifyActivities
+	GithubActivities           githubRebaseActivities
+	PrRevisionSetterActivities prRevisionSetterActivities
 }
 
 func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo, root terraform.Root) error {
@@ -90,7 +90,7 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 		}
 	}
 
-	// skip buildnotify call if no prs to rebase
+	// skip set pr revision call if no prs to rebase
 	if len(prsToRebase) == 0 {
 		return nil
 	}
@@ -99,18 +99,18 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 	ctx = workflow.WithActivityOptions(ctx, originalOpts)
 	futureByPullNum = map[github.PullRequest]workflow.Future{}
 	for _, pr := range prsToRebase {
-		futureByPullNum[pr] = workflow.ExecuteActivity(ctx, p.BuildNotifyActivities.BuildNotifyRebasePR, activities.BuildNotifyRebasePRRequest{
+		futureByPullNum[pr] = workflow.ExecuteActivity(ctx, p.PrRevisionSetterActivities.SetPRRevision, activities.SetPRRevisionRequest{
 			Repository:  repo,
 			PullRequest: pr,
 		})
 	}
 
-	// TODO: Add alarms on BuildNotifyRebasePR activity failures
+	// TODO: Add alarms on SetPRRevision activity failures
 	for pr, future := range futureByPullNum {
-		var resp activities.BuildNotifyRebasePRResponse
+		var resp activities.SetPRRevisionResponse
 		err := future.Get(ctx, &resp)
 		if err != nil {
-			logger.Error(ctx, "error making API call to buildnotify", key.ErrKey, err, "pull_num", pr.Number)
+			logger.Error(ctx, "error making api call to set pr revision", key.ErrKey, err, "pull_num", pr.Number)
 		}
 	}
 

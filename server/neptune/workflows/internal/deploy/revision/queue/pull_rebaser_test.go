@@ -95,13 +95,6 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 	}
 }
 
-/*
-- no open PRs
-- rebase and no rebase PR
-- rebase PR if list files error out
-- rebase PR if file match errors out
-*/
-
 type testGithubRebaseActivities struct{}
 
 func (t *testGithubRebaseActivities) GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error) {
@@ -112,10 +105,10 @@ func (t *testGithubRebaseActivities) GithubListModifiedFiles(ctx context.Context
 	return activities.ListModifiedFilesResponse{}, nil
 }
 
-type testBuildNotifyActivities struct{}
+type testPrRevisionSetterActivities struct{}
 
-func (t *testBuildNotifyActivities) BuildNotifyRebasePR(ctx context.Context, request activities.BuildNotifyRebasePRRequest) (activities.BuildNotifyRebasePRResponse, error) {
-	return activities.BuildNotifyRebasePRResponse{}, nil
+func (t *testPrRevisionSetterActivities) SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) (activities.SetPRRevisionResponse, error) {
+	return activities.SetPRRevisionResponse{}, nil
 }
 
 type shouldRebaseRequest struct {
@@ -130,11 +123,11 @@ func testShouldRebaseWorkflow(ctx workflow.Context, r shouldRebaseRequest) error
 	ctx = workflow.WithActivityOptions(ctx, options)
 
 	var g *testGithubRebaseActivities
-	var b *testBuildNotifyActivities
+	var b *testPrRevisionSetterActivities
 
 	pullRebaser := PullRebaser{
-		GithubActivities:      g,
-		BuildNotifyActivities: b,
+		GithubActivities:           g,
+		PrRevisionSetterActivities: b,
 	}
 
 	return pullRebaser.RebaseOpenPRsForRoot(ctx, r.Repo, r.Root)
@@ -145,7 +138,7 @@ func TestPullRebasePRs_NoOpenPR(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	ga := &testGithubRebaseActivities{}
-	ba := &testBuildNotifyActivities{}
+	ba := &testPrRevisionSetterActivities{}
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ba)
 
@@ -181,7 +174,7 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	ga := &testGithubRebaseActivities{}
-	ba := &testBuildNotifyActivities{}
+	ba := &testPrRevisionSetterActivities{}
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ba)
 
@@ -232,10 +225,10 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 		FilePaths: filesModifiedPr2,
 	}, nil)
 
-	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
+	env.OnActivity(ba.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
 		Repository:  repo,
 		PullRequest: pullRequests[0],
-	}).Return(activities.BuildNotifyRebasePRResponse{}, nil)
+	}).Return(activities.SetPRRevisionResponse{}, nil)
 
 	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
 	env.AssertExpectations(t)
@@ -249,7 +242,7 @@ func TestPullRebasePRs_ListFileError_NeedRebase(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	ga := &testGithubRebaseActivities{}
-	ba := &testBuildNotifyActivities{}
+	ba := &testPrRevisionSetterActivities{}
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ba)
 
@@ -285,10 +278,10 @@ func TestPullRebasePRs_ListFileError_NeedRebase(t *testing.T) {
 		PullRequest: pullRequests[0],
 	}).Return(activities.ListModifiedFilesResponse{}, errors.New("err"))
 
-	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
+	env.OnActivity(ba.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
 		Repository:  repo,
 		PullRequest: pullRequests[0],
-	}).Return(activities.BuildNotifyRebasePRResponse{}, nil)
+	}).Return(activities.SetPRRevisionResponse{}, nil)
 
 	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
 	env.AssertExpectations(t)
@@ -302,7 +295,7 @@ func TestPullRebasePRs_FilePathMatchError_NeedRebase(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	ga := &testGithubRebaseActivities{}
-	ba := &testBuildNotifyActivities{}
+	ba := &testPrRevisionSetterActivities{}
 	env.RegisterActivity(ga)
 	env.RegisterActivity(ba)
 
@@ -342,10 +335,10 @@ func TestPullRebasePRs_FilePathMatchError_NeedRebase(t *testing.T) {
 		FilePaths: filesModifiedPr1,
 	}, nil)
 
-	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
+	env.OnActivity(ba.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
 		Repository:  repo,
 		PullRequest: pullRequests[0],
-	}).Return(activities.BuildNotifyRebasePRResponse{}, nil)
+	}).Return(activities.SetPRRevisionResponse{}, nil)
 
 	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
 	env.AssertExpectations(t)
