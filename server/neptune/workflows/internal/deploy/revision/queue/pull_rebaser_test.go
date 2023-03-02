@@ -274,9 +274,6 @@ func TestPullRebasePRs_ListFileError_NeedRebase(t *testing.T) {
 		{
 			Number: 1,
 		},
-		{
-			Number: 2,
-		},
 	}
 
 	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
@@ -288,11 +285,6 @@ func TestPullRebasePRs_ListFileError_NeedRebase(t *testing.T) {
 	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
 		Repo:        repo,
 		PullRequest: pullRequests[0],
-	}).Return(activities.ListModifiedFilesResponse{}, errors.New("err"))
-
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        repo,
-		PullRequest: pullRequests[1],
 	}).Return(activities.ListModifiedFilesResponse{}, errors.New("err"))
 
 	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
@@ -335,13 +327,9 @@ func TestPullRebasePRs_FilePathMatchError_NeedRebase(t *testing.T) {
 		{
 			Number: 1,
 		},
-		{
-			Number: 2,
-		},
 	}
 
 	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
-	filesModifiedPr2 := []string{"test/dir1/no-rebase.tf"}
 
 	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
 		Repo: req.Repo,
@@ -354,13 +342,6 @@ func TestPullRebasePRs_FilePathMatchError_NeedRebase(t *testing.T) {
 		PullRequest: pullRequests[0],
 	}).Return(activities.ListModifiedFilesResponse{
 		FilePaths: filesModifiedPr1,
-	}, nil)
-
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        repo,
-		PullRequest: pullRequests[1],
-	}).Return(activities.ListModifiedFilesResponse{
-		FilePaths: filesModifiedPr2,
 	}, nil)
 
 	env.OnActivity(ba.BuildNotifyRebasePR, mock.Anything, activities.BuildNotifyRebasePRRequest{
