@@ -79,12 +79,12 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 		// if it errors out, let's be preventive and rebase this PR as well
 		if err != nil {
 			logger.Error(ctx, "error matching filepaths in PR", key.ErrKey, err, "pull_num", pullRequest.Number)
-			prsToRebase = append(prsToRebase, pullRequest) // nolint: staticcheck
+			prsToRebase = append(prsToRebase, pullRequest)
 			continue
 		}
 
 		if shouldRebase {
-			prsToRebase = append(prsToRebase, pullRequest) // nolint: staticcheck
+			prsToRebase = append(prsToRebase, pullRequest)
 		}
 	}
 
@@ -103,6 +103,7 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 		})
 	}
 
+	// TODO: Add alarms on BuildNotifyRebasePR activity failures
 	for pr, future := range futureByPullNum {
 		var resp activities.BuildNotifyRebasePRResponse
 		err := future.Get(ctx, &resp)
