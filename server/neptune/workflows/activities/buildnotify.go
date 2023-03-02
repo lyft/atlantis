@@ -3,13 +3,14 @@ package activities
 import (
 	"context"
 
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 )
 
 type buildNotifyActivities struct{} // nolint: unused
 
 type BuildNotifyRebasePRRequest struct {
-	Repository  github.Repo
+	Repository  deployment.Repo
 	PullRequest github.PullRequest
 }
 

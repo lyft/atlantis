@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"go.temporal.io/sdk/workflow"
 )
@@ -33,7 +33,7 @@ type PullRebaser struct {
 	BuildNotifyActivities buildNotifyActivities
 }
 
-func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo, root terraform.Root) error {
+func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo deployment.Repo, root deployment.Root) error {
 	originalOpts := workflow.GetActivityOptions(ctx)
 
 	// Configure github specific ScheduleToClose timeout for GH API call failures to autoresolve
@@ -67,9 +67,11 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 		var result activities.ListModifiedFilesResponse
 
 		// list modified files should not fail unless we hit the ratelimit which should autoresolve once our ratelimit revives in an hour max
+		// If it errors out due to any other reason, let's be preventive and rebase this PR as well
 		listFilesErr := future.Get(ctx, &result)
 		if listFilesErr != nil {
 			logger.Error(ctx, "error listing modified files in PR", key.ErrKey, listFilesErr, "pull_num", pullRequest.Number)
+			prsToRebase = append(prsToRebase, pullRequest)
 			continue
 		}
 
@@ -115,7 +117,7 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 	return nil
 }
 
-func shouldRebasePullRequest(root terraform.Root, modifiedFiles []string) (bool, error) {
+func shouldRebasePullRequest(root deployment.Root, modifiedFiles []string) (bool, error) {
 	var whenModifiedRelToRepoRoot []string
 	for _, wm := range root.WhenModified {
 		wm = strings.TrimSpace(wm)
