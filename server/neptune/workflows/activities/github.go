@@ -36,6 +36,7 @@ type githubClient interface {
 	UpdateCheckRun(ctx internal.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error)
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
+	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
 }
 
 type DiffDirection string
@@ -311,7 +312,17 @@ type ListModifiedFilesResponse struct {
 }
 
 func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request ListModifiedFilesRequest) (ListModifiedFilesResponse, error) {
-	// TODO: Use client.ListModifiedFiles(ctx, owner, repo, pullNumber) to list files modified in a PR
-	// internal.Repo object and internal.PullRequest has all the necessary fields to make this call
-	return ListModifiedFilesResponse{}, nil
+	files, err := a.Client.ListModifiedFiles(internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken), request.Repo.Owner, request.Repo.Name, request.PullRequest.Number)
+	if err != nil {
+		return ListModifiedFilesResponse{}, errors.Wrap(err, "listing modified files in pr")
+	}
+
+	filepaths := []string{}
+	for _, file := range files {
+		filepaths = append(filepaths, file.GetFilename())
+	}
+
+	return ListModifiedFilesResponse{
+		FilePaths: filepaths,
+	}, nil
 }
