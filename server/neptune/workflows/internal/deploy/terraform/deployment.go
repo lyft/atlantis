@@ -26,10 +26,8 @@ func (i DeploymentInfo) BuildPersistableInfo() *deployment.Info {
 		ID:       i.ID.String(),
 		Revision: i.Revision,
 		Root: deployment.Root{
-			Name:         i.Root.Name,
-			Trigger:      string(i.Root.Trigger),
-			Path:         i.Root.Path,
-			WhenModified: i.Root.WhenModified,
+			Name:    i.Root.Name,
+			Trigger: string(i.Root.Trigger),
 		},
 		Repo: deployment.Repo{
 			Name:  i.Repo.Name,

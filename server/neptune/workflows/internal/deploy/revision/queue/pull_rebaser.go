@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"go.temporal.io/sdk/workflow"
 )
@@ -33,7 +33,7 @@ type PullRebaser struct {
 	BuildNotifyActivities buildNotifyActivities
 }
 
-func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo deployment.Repo, root deployment.Root) error {
+func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo, root terraform.Root) error {
 	originalOpts := workflow.GetActivityOptions(ctx)
 
 	// Configure github specific ScheduleToClose timeout for GH API call failures to autoresolve
@@ -117,7 +117,7 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo deployment
 	return nil
 }
 
-func shouldRebasePullRequest(root deployment.Root, modifiedFiles []string) (bool, error) {
+func shouldRebasePullRequest(root terraform.Root, modifiedFiles []string) (bool, error) {
 	var whenModifiedRelToRepoRoot []string
 	for _, wm := range root.WhenModified {
 		wm = strings.TrimSpace(wm)

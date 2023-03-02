@@ -23,8 +23,6 @@ func (r Repo) GetFullName() string {
 }
 
 type Root struct {
-	Name         string
-	Trigger      string
-	Path         string
-	WhenModified []string
+	Name    string
+	Trigger string
 }
