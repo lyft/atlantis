@@ -25,7 +25,7 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName strin
 	}
 	done := make(chan struct{})
 	defer close(done)
-	go TerminateProcessOnCtxCancellation(ctx, cmd.Process, done)
+	go terminateProcessOnCtxCancellation(ctx, cmd.Process, done)
 
 	err := cmd.Wait()
 	if ctx.Err() != nil {
@@ -37,7 +37,7 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName strin
 	return nil
 }
 
-func TerminateProcessOnCtxCancellation(ctx context.Context, p *os.Process, processDone chan struct{}) {
+func terminateProcessOnCtxCancellation(ctx context.Context, p *os.Process, processDone chan struct{}) {
 	select {
 	case <-ctx.Done():
 		// received context cancellation, terminate active process
