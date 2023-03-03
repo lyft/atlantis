@@ -2,6 +2,7 @@ package terraform
 
 import (
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	constants "github.com/runatlantis/atlantis/server/events/metrics"
@@ -60,6 +61,10 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 	id := deploymentInfo.ID
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		WorkflowID: id.String(),
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 3,
+			InitialInterval: 1 * time.Minute,
+		},
 
 		// allows all signals to be received even in a cancellation state
 		WaitForCancellation: true,
