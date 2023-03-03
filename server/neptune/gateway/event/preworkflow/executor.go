@@ -1,10 +1,12 @@
 package preworkflow
 
 import (
+	"context"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"os"
 	"os/exec"
 )
@@ -12,7 +14,7 @@ import (
 type HookExecutor struct {
 }
 
-func (e *HookExecutor) Execute(hook *valid.PreWorkflowHook, repo models.Repo, path string) error {
+func (e *HookExecutor) Execute(ctx context.Context, hook *valid.PreWorkflowHook, repo models.Repo, path string) error {
 	cmd := exec.Command("sh", "-c", hook.RunCommand) // #nosec
 	cmd.Dir = path
 
@@ -32,8 +34,9 @@ func (e *HookExecutor) Execute(hook *valid.PreWorkflowHook, repo models.Repo, pa
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	if err := cmd.Run(); err != nil {
-		return errors.Wrap(err, "running hook")
+	err := sync.RunNewProcessGroupCommand(ctx, cmd, "hook")
+	if err != nil {
+		return errors.Wrap(err, "running command in separate process group")
 	}
 	return nil
 }
