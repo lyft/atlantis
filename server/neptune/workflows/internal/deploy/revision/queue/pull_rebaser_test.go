@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
@@ -27,7 +27,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			description: "default when modified config, root dir modified",
 			root: terraform.Root{
 				Path:         "test/dir1",
-				WhenModified: raw.DefaultAutoPlanWhenModified,
+				TrackedFiles: raw.DefaultAutoPlanWhenModified,
 			},
 			modifiedFiles: []string{"test/dir1/main.tf"},
 			shouldReabse:  true,
@@ -36,7 +36,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			description: "default when modified config, root dir not modified",
 			root: terraform.Root{
 				Path:         "test/dir1",
-				WhenModified: raw.DefaultAutoPlanWhenModified,
+				TrackedFiles: raw.DefaultAutoPlanWhenModified,
 			},
 			modifiedFiles: []string{"test/dir2/main.tf"},
 			shouldReabse:  false,
@@ -45,7 +45,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			description: "default when modified config, .tfvars file modified",
 			root: terraform.Root{
 				Path:         "test/dir1",
-				WhenModified: raw.DefaultAutoPlanWhenModified,
+				TrackedFiles: raw.DefaultAutoPlanWhenModified,
 			},
 			modifiedFiles: []string{"test/dir1/terraform.tfvars"},
 			shouldReabse:  true,
@@ -54,7 +54,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			description: "non default when modified config, non root dir modified",
 			root: terraform.Root{
 				Path:         "test/dir1",
-				WhenModified: []string{"**/*.tf*", "../variables.tf"},
+				TrackedFiles: []string{"**/*.tf*", "../variables.tf"},
 			},
 			modifiedFiles: []string{"test/variables.tf"},
 			shouldReabse:  true,
@@ -63,7 +63,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			description: "non default when modified config, file excluded",
 			root: terraform.Root{
 				Path:         "test/dir1",
-				WhenModified: []string{"**/*.tf*", "!exclude.tf"},
+				TrackedFiles: []string{"**/*.tf*", "!exclude.tf"},
 			},
 			modifiedFiles: []string{"test/dir1/exclude.tf"},
 			shouldReabse:  false,
@@ -72,7 +72,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			description: "non default when modified config, file excluded",
 			root: terraform.Root{
 				Path:         "test/dir1",
-				WhenModified: []string{"**/*.tf*", "!exclude.tf"},
+				TrackedFiles: []string{"**/*.tf*", "!exclude.tf"},
 			},
 			modifiedFiles: []string{"test/dir1/exclude.tf"},
 			shouldReabse:  false,
@@ -81,7 +81,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			description: "non default when modified config, file excluded and included",
 			root: terraform.Root{
 				Path:         "test/dir1",
-				WhenModified: []string{"**/*.tf*", "!exclude.tf"},
+				TrackedFiles: []string{"**/*.tf*", "!exclude.tf"},
 			},
 			modifiedFiles: []string{"test/dir1/exclude.tf", "test/dir1/main.tf"},
 			shouldReabse:  true,
@@ -95,19 +95,17 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 	}
 }
 
-type testGithubRebaseActivities struct{}
+type testRebaserActvities struct{}
 
-func (t *testGithubRebaseActivities) GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error) {
+func (t *testRebaserActvities) GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error) {
 	return activities.ListOpenPRsResponse{}, nil
 }
 
-func (t *testGithubRebaseActivities) GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error) {
+func (t *testRebaserActvities) GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error) {
 	return activities.ListModifiedFilesResponse{}, nil
 }
 
-type testPrRevisionSetterActivities struct{}
-
-func (t *testPrRevisionSetterActivities) SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) (activities.SetPRRevisionResponse, error) {
+func (t *testRebaserActvities) SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) (activities.SetPRRevisionResponse, error) {
 	return activities.SetPRRevisionResponse{}, nil
 }
 
@@ -122,26 +120,21 @@ func testShouldRebaseWorkflow(ctx workflow.Context, r shouldRebaseRequest) error
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
-	var g *testGithubRebaseActivities
-	var b *testPrRevisionSetterActivities
+	var g *testRebaserActvities
 
 	pullRebaser := PullRebaser{
-		GithubActivities:           g,
-		PrRevisionSetterActivities: b,
+		RebaseActivites: g,
 	}
 
-	return pullRebaser.RebaseOpenPRsForRoot(ctx, r.Repo, r.Root)
+	return pullRebaser.RebaseOpenPRsForRoot(ctx, r.Repo, r.Root, metrics.NewNullableScope())
 }
 
 func TestPullRebasePRs_NoOpenPR(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
-	ga := &testGithubRebaseActivities{}
-	ba := &testPrRevisionSetterActivities{}
+	ga := &testRebaserActvities{}
 	env.RegisterActivity(ga)
-	env.RegisterActivity(ba)
-
 	repo := github.Repo{
 		Owner: "owner",
 		Name:  "test",
@@ -173,10 +166,8 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
-	ga := &testGithubRebaseActivities{}
-	ba := &testPrRevisionSetterActivities{}
+	ga := &testRebaserActvities{}
 	env.RegisterActivity(ga)
-	env.RegisterActivity(ba)
 
 	repo := github.Repo{
 		Owner: "owner",
@@ -185,7 +176,7 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 
 	root := terraform.Root{
 		Path:         "test/dir2",
-		WhenModified: raw.DefaultAutoPlanWhenModified,
+		TrackedFiles: raw.DefaultAutoPlanWhenModified,
 	}
 
 	req := shouldRebaseRequest{
@@ -225,117 +216,7 @@ func TestPullRebasePRs_OpenPR_NeedsRebase(t *testing.T) {
 		FilePaths: filesModifiedPr2,
 	}, nil)
 
-	env.OnActivity(ba.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
-		Repository:  repo,
-		PullRequest: pullRequests[0],
-	}).Return(activities.SetPRRevisionResponse{}, nil)
-
-	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
-	env.AssertExpectations(t)
-
-	err := env.GetWorkflowResult(nil)
-	assert.Nil(t, err)
-}
-
-func TestPullRebasePRs_ListFileError_NeedRebase(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	ga := &testGithubRebaseActivities{}
-	ba := &testPrRevisionSetterActivities{}
-	env.RegisterActivity(ga)
-	env.RegisterActivity(ba)
-
-	repo := github.Repo{
-		Owner: "owner",
-		Name:  "test",
-	}
-
-	root := terraform.Root{
-		Path:         "test/dir2",
-		WhenModified: raw.DefaultAutoPlanWhenModified,
-	}
-
-	req := shouldRebaseRequest{
-		Repo: repo,
-		Root: root,
-	}
-
-	pullRequests := []github.PullRequest{
-		{
-			Number: 1,
-		},
-	}
-
-	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
-		Repo: req.Repo,
-	}).Return(activities.ListOpenPRsResponse{
-		PullRequests: pullRequests,
-	}, nil)
-
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        repo,
-		PullRequest: pullRequests[0],
-	}).Return(activities.ListModifiedFilesResponse{}, errors.New("err"))
-
-	env.OnActivity(ba.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
-		Repository:  repo,
-		PullRequest: pullRequests[0],
-	}).Return(activities.SetPRRevisionResponse{}, nil)
-
-	env.ExecuteWorkflow(testShouldRebaseWorkflow, req)
-	env.AssertExpectations(t)
-
-	err := env.GetWorkflowResult(nil)
-	assert.Nil(t, err)
-}
-
-func TestPullRebasePRs_FilePathMatchError_NeedRebase(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	ga := &testGithubRebaseActivities{}
-	ba := &testPrRevisionSetterActivities{}
-	env.RegisterActivity(ga)
-	env.RegisterActivity(ba)
-
-	repo := github.Repo{
-		Owner: "owner",
-		Name:  "test",
-	}
-
-	// invalid when modified config to simulate filepath match error
-	root := terraform.Root{
-		WhenModified: []string{"!"},
-	}
-
-	req := shouldRebaseRequest{
-		Repo: repo,
-		Root: root,
-	}
-
-	pullRequests := []github.PullRequest{
-		{
-			Number: 1,
-		},
-	}
-
-	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
-
-	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
-		Repo: req.Repo,
-	}).Return(activities.ListOpenPRsResponse{
-		PullRequests: pullRequests,
-	}, nil)
-
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        repo,
-		PullRequest: pullRequests[0],
-	}).Return(activities.ListModifiedFilesResponse{
-		FilePaths: filesModifiedPr1,
-	}, nil)
-
-	env.OnActivity(ba.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
+	env.OnActivity(ga.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
 		Repository:  repo,
 		PullRequest: pullRequests[0],
 	}).Return(activities.SetPRRevisionResponse{}, nil)

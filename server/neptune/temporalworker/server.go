@@ -217,6 +217,16 @@ func (s Server) Start() error {
 		}
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		rebaseWorker := s.buildRebaseWorker()
+		if err := rebaseWorker.Run(worker.InterruptCh()); err != nil {
+			log.Fatalln("unable to start rebase worker", err)
+		}
+	}()
+
 	// Ensure server gracefully drains connections when stopped.
 	stop := make(chan os.Signal, 1)
 	// Stop on SIGINTs and SIGTERMs.
@@ -309,6 +319,22 @@ func (s Server) buildTerraformWorker() worker.Worker {
 	terraformWorker.RegisterActivity(s.GithubActivities)
 	terraformWorker.RegisterWorkflow(workflows.Terraform)
 	return terraformWorker
+}
+
+// rebase worker only handles activites for the rebase flow
+func (s Server) buildRebaseWorker() worker.Worker {
+	// pass the underlying client otherwise this will panic()
+	rebaseWorker := worker.New(s.TemporalClient.Client, workflows.RebaseTaskQueue, worker.Options{
+		WorkerStopTimeout: TemporalWorkerTimeout,
+		Interceptors: []interceptor.WorkerInterceptor{
+			temporal.NewWorkerInterceptor(),
+		},
+
+		// 2 activities ~ 2 GH API Calls per second ~ 7200 GH API calls per hour which is well within our current API usage
+		TaskQueueActivitiesPerSecond: 2,
+	})
+	rebaseWorker.RegisterActivity(s.GithubActivities)
+	return rebaseWorker
 }
 
 // Healthz returns the health check response. It always returns a 200 currently.

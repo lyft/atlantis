@@ -33,6 +33,7 @@ type DeployUnlockSignalRequest = queue.UnlockSignalRequest
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 
 var DeployTaskQueue = deploy.TaskQueue
+var RebaseTaskQueue = queue.RebaseTaskQueue
 
 var DeployNewRevisionSignalID = revision.NewRevisionSignalID
 
