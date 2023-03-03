@@ -156,7 +156,7 @@ func TestStreamHandler_Cleanup(t *testing.T) {
 			testStore,
 			testReceiverRegistry,
 			valid.TerraformLogFilters{},
-			nil,
+			logging.NewNoopCtxLogger(t),
 		)
 		err := streamHandler.CleanUp(context.Background())
 		assert.NoError(t, err)
