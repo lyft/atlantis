@@ -72,7 +72,7 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 
 		shouldRebase, err := shouldRebasePullRequest(root, result.FilePaths)
 
-		// unlikey for error since we validate the WhenModified config at startup
+		// unlikey for error since we validate the TrackedFiles config at startup
 		if err != nil {
 			scope.Counter("filepath_match_err").Inc(1)
 			logger.Error(ctx, "error matching filepaths in PR", key.ErrKey, err, key.PullNumKey, pullRequest.Number)
