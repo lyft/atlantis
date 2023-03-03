@@ -13,19 +13,27 @@ import (
 )
 
 // RunNewProcessGroupCommand is useful for running separate commands that shouldn't receive termination
-// signals at the same time as the parent process
+// signals at the same time as the parent process. The passed context should listen for a timeout/cancellation
+// that allows for the parent process to perform a shutdown on its own terms.
 func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName string) error {
-	// should this be defined by struct creating the cmd or this helper fxn?
-	// could also replace this with a check confirming this is set and erroring if not
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
 	if err := cmd.Start(); err != nil {
 		return errors.Wrap(err, fmt.Sprintf("starting %s command", cmdName))
 	}
+
 	done := make(chan struct{})
 	defer close(done)
-	go terminateProcessOnCtxCancellation(ctx, cmd.Process, done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			// received context cancellation, terminate active process
+			terminateProcess(ctx, cmd.Process, done)
+		case <-done:
+			// process completed on its own, simply exit
+		}
+	}()
 
 	err := cmd.Wait()
 	if ctx.Err() != nil {
@@ -35,16 +43,6 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName strin
 		return errors.Wrap(err, fmt.Sprintf("waiting for %s process", cmdName))
 	}
 	return nil
-}
-
-func terminateProcessOnCtxCancellation(ctx context.Context, p *os.Process, processDone chan struct{}) {
-	select {
-	case <-ctx.Done():
-		// received context cancellation, terminate active process
-		terminateProcess(ctx, p, processDone)
-	case <-processDone:
-		// process completed on its own, simply exit
-	}
 }
 
 func terminateProcess(ctx context.Context, p *os.Process, processDone chan struct{}) {
