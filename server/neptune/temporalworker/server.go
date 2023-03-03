@@ -220,7 +220,7 @@ func (s Server) Start() error {
 			log.Fatalln("unable to start terraform worker", err)
 		}
 
-		s.Logger.InfoContext(ctx, "Shutting down deploy worker, resource clean up may still be occurring in the background")
+		s.Logger.InfoContext(ctx, "Shutting down terraform worker, resource clean up may still be occurring in the background")
 	}()
 
 	// Ensure server gracefully drains connections when stopped.

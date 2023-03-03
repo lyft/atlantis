@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/logger"
 )
 
 type StreamCloserFn func()
@@ -80,9 +81,12 @@ func (s *StreamHandler) CloseJob(ctx context.Context, jobID string) error {
 }
 
 func (s *StreamHandler) CleanUp(ctx context.Context) error {
+	logger.Info(ctx, "waiting for jobs to finish")
 	// Should we timeout here? We do risk a deadlock without this however adding a timeout also risks
 	// contention with the worker stop timeout and therefore dropped logs
 	s.wg.Wait()
+
+	logger.Info(ctx, "cleaning up receiver registry and persisting to store")
 	s.ReceiverRegistry.CleanUp()
 	return s.Store.Cleanup(ctx)
 }
