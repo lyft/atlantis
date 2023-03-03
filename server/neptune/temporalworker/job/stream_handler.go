@@ -8,7 +8,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 )
 
 type StreamCloserFn func()
