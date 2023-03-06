@@ -29,7 +29,7 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName strin
 		select {
 		case <-ctx.Done():
 			// received context cancellation, terminate active process
-			terminateProcess(ctx, cmd.Process, done)
+			terminateOnCtxCancellation(ctx, cmd.Process, done)
 		case <-done:
 			// process completed on its own, simply exit
 		}
@@ -45,7 +45,7 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName strin
 	return nil
 }
 
-func terminateProcess(ctx context.Context, p *os.Process, processDone chan struct{}) {
+func terminateOnCtxCancellation(ctx context.Context, p *os.Process, processDone chan struct{}) {
 	logger.Warn(ctx, "Terminating active process gracefully")
 	err := p.Signal(syscall.SIGTERM)
 	if err != nil {
@@ -58,7 +58,7 @@ func terminateProcess(ctx context.Context, p *os.Process, processDone chan struc
 	kill := time.After(60 * time.Second)
 	select {
 	case <-kill:
-		logger.Warn(ctx, "Killing terraform process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
+		logger.Warn(ctx, "Killing process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
 		err := p.Signal(syscall.SIGKILL)
 		if err != nil {
 			logger.Error(ctx, "Unable to kill process", key.ErrKey, err)
