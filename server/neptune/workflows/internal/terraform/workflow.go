@@ -293,6 +293,11 @@ func (r *Runner) executeCleanup(ctx workflow.Context, handlers ...func(workflow.
 		defer cancel()
 	}
 
+	// cap these retries since this we don't want to block in the event we fail to do so.
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		MaximumAttempts: 3,
+	})
+
 	for _, h := range handlers {
 		cleanupErr := h(ctx)
 
