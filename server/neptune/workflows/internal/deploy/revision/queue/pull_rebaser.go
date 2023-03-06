@@ -15,8 +15,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-// GH API Ratelimit resets every hour, 2 hours should be enough for the GH API call failures to autoresolve
-const RebaseGithubScheduleToCloseTimeout = 2 * time.Hour
 const RebaseTaskQueue = "rebase"
 
 type rebaseActivities interface {
@@ -31,7 +29,6 @@ type PullRebaser struct {
 
 // Called async in the deploy workflow after a deployment is complete
 func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo, root terraform.Root, scope metrics.Scope) error {
-
 	// custom tq for rebase activities to allow flow control and limit GH API calls per hour
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		TaskQueue:           RebaseTaskQueue,
@@ -57,11 +54,13 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 		futureByPullNum[pullRequest] = future
 	}
 
+	// track open PRs metric
+	numOpenPRs := int64(len(futureByPullNum))
+	scope.Counter("open_prs").Inc(numOpenPRs)
+
 	// resolve the futures and rebase PR if needed
 	rebaseFutures := []workflow.Future{}
 	for pullRequest, future := range futureByPullNum {
-		scope.Counter("open_prs").Inc(1)
-
 		// list modified files should not fail due to ratelimit issues since our worker is ratelimited to only support API calls within our GH API budget per hour
 		var result activities.ListModifiedFilesResponse
 		listFilesErr := future.Get(ctx, &result)
@@ -70,9 +69,8 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 			continue
 		}
 
-		shouldRebase, err := shouldRebasePullRequest(root, result.FilePaths)
-
 		// unlikey for error since we validate the TrackedFiles config at startup
+		shouldRebase, err := shouldRebasePullRequest(root, result.FilePaths)
 		if err != nil {
 			scope.Counter("filepath_match_err").Inc(1)
 			logger.Error(ctx, "error matching filepaths in PR", key.ErrKey, err, key.PullNumKey, pullRequest.Number)
@@ -103,12 +101,11 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 }
 
 func shouldRebasePullRequest(root terraform.Root, modifiedFiles []string) (bool, error) {
-
-	// look at the filpaths for the root
+	// look at the filepaths for the root
 	trackedFilesRelToRepoRoot := root.GetTrackedFilesRelativeToRepo()
 	pm, err := fileutils.NewPatternMatcher(trackedFilesRelToRepoRoot)
 	if err != nil {
-		return false, errors.Wrap(err, "building file pattern matcher using when modified config")
+		return false, errors.Wrap(err, "building file pattern matcher using tracked files config")
 	}
 
 	for _, file := range modifiedFiles {

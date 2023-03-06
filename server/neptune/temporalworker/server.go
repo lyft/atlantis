@@ -59,10 +59,11 @@ type Server struct {
 	JobStreamHandler  *job.StreamHandler
 	JobStreamCloserFn job.StreamCloserFn
 
-	DeployActivities    *activities.Deploy
-	TerraformActivities *activities.Terraform
-	GithubActivities    *activities.Github
-	TerraformTaskQueue  string
+	DeployActivities        *activities.Deploy
+	TerraformActivities     *activities.Terraform
+	GithubActivities        *activities.Github
+	RevisionSetterActvities *activities.RevsionSetter
+	TerraformTaskQueue      string
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -164,6 +165,11 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing github activities")
 	}
 
+	revisionSetterActvities, err := activities.NewRevisionSetter()
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing revision setter activities")
+	}
+
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
 
 	server := Server{
@@ -175,17 +181,18 @@ func NewServer(config *config.Config) (*Server, error) {
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:     httpServerProxy,
-		Port:                config.ServerCfg.Port,
-		StatsScope:          scope,
-		StatsCloser:         statsCloser,
-		TemporalClient:      temporalClient,
-		JobStreamHandler:    jobStreamHandler,
-		JobStreamCloserFn:   streamCloserFn,
-		DeployActivities:    deployActivities,
-		TerraformActivities: terraformActivities,
-		GithubActivities:    githubActivities,
-		TerraformTaskQueue:  config.TemporalCfg.TerraformTaskQueue,
+		HTTPServerProxy:         httpServerProxy,
+		Port:                    config.ServerCfg.Port,
+		StatsScope:              scope,
+		StatsCloser:             statsCloser,
+		TemporalClient:          temporalClient,
+		JobStreamHandler:        jobStreamHandler,
+		JobStreamCloserFn:       streamCloserFn,
+		DeployActivities:        deployActivities,
+		TerraformActivities:     terraformActivities,
+		GithubActivities:        githubActivities,
+		RevisionSetterActvities: revisionSetterActvities,
+		TerraformTaskQueue:      config.TemporalCfg.TerraformTaskQueue,
 	}
 	return &server, nil
 }

@@ -24,7 +24,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 		shouldReabse  bool
 	}{
 		{
-			description: "default when modified config, root dir modified",
+			description: "default tracked files config, root dir modified",
 			root: terraform.Root{
 				Path:         "test/dir1",
 				TrackedFiles: raw.DefaultAutoPlanWhenModified,
@@ -33,7 +33,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			shouldReabse:  true,
 		},
 		{
-			description: "default when modified config, root dir not modified",
+			description: "default tracked files config, root dir not modified",
 			root: terraform.Root{
 				Path:         "test/dir1",
 				TrackedFiles: raw.DefaultAutoPlanWhenModified,
@@ -42,7 +42,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			shouldReabse:  false,
 		},
 		{
-			description: "default when modified config, .tfvars file modified",
+			description: "default tracked files config, .tfvars file modified",
 			root: terraform.Root{
 				Path:         "test/dir1",
 				TrackedFiles: raw.DefaultAutoPlanWhenModified,
@@ -51,7 +51,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			shouldReabse:  true,
 		},
 		{
-			description: "non default when modified config, non root dir modified",
+			description: "non default tracked files config, non root dir modified",
 			root: terraform.Root{
 				Path:         "test/dir1",
 				TrackedFiles: []string{"**/*.tf*", "../variables.tf"},
@@ -60,7 +60,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			shouldReabse:  true,
 		},
 		{
-			description: "non default when modified config, file excluded",
+			description: "non default tracked files config, file excluded",
 			root: terraform.Root{
 				Path:         "test/dir1",
 				TrackedFiles: []string{"**/*.tf*", "!exclude.tf"},
@@ -69,7 +69,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			shouldReabse:  false,
 		},
 		{
-			description: "non default when modified config, file excluded",
+			description: "non default tracked files config, file excluded",
 			root: terraform.Root{
 				Path:         "test/dir1",
 				TrackedFiles: []string{"**/*.tf*", "!exclude.tf"},
@@ -78,7 +78,7 @@ func TestDeployer_ShouldRebasePullRequest(t *testing.T) {
 			shouldReabse:  false,
 		},
 		{
-			description: "non default when modified config, file excluded and included",
+			description: "non default tracked files config, file excluded and included",
 			root: terraform.Root{
 				Path:         "test/dir1",
 				TrackedFiles: []string{"**/*.tf*", "!exclude.tf"},
