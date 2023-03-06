@@ -29,7 +29,7 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName strin
 		select {
 		case <-ctx.Done():
 			// received context cancellation, terminate active process
-			terminateOnCtxCancellation(ctx, cmd.Process, done)
+			terminateProcessOnCtxCancellation(ctx, cmd.Process, done)
 		case <-done:
 			// process completed on its own, simply exit
 		}
@@ -45,7 +45,7 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName strin
 	return nil
 }
 
-func terminateOnCtxCancellation(ctx context.Context, p *os.Process, processDone chan struct{}) {
+func terminateProcessOnCtxCancellation(ctx context.Context, p *os.Process, processDone chan struct{}) {
 	logger.Warn(ctx, "Terminating active process gracefully")
 	err := p.Signal(syscall.SIGTERM)
 	if err != nil {
