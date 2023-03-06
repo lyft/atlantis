@@ -123,10 +123,7 @@ func (p *CommentEventWorkerProxy) shouldMarkEventQueued(event Comment, cmd *comm
 	}
 	// pull event should not use an invalid base branch
 	repo := p.globalCfg.MatchingRepo(event.Pull.BaseRepo.ID())
-	if !repo.BranchMatches(event.Pull.BaseBranch) {
-		return false
-	}
-	return true
+	return repo.BranchMatches(event.Pull.BaseBranch)
 }
 
 func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *http.BufferedRequest) error {
