@@ -252,7 +252,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 func (r *Runner) run(ctx workflow.Context) error {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: StartToCloseTimeout,
-		HeartbeatTimeout:    HeartBeatTimeout,
 	})
 	var response *activities.GetWorkerInfoResponse
 	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.GetWorkerInfo).Get(ctx, &response)
@@ -260,10 +259,11 @@ func (r *Runner) run(ctx workflow.Context) error {
 		return r.toExternalError(err, "getting worker info")
 	}
 
-	opts := workflow.GetActivityOptions(ctx)
-	opts.TaskQueue = response.TaskQueue
-	opts.ScheduleToStartTimeout = ScheduleToStartTimeout
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		TaskQueue:              response.TaskQueue,
+		ScheduleToStartTimeout: ScheduleToStartTimeout,
+		HeartbeatTimeout:       HeartBeatTimeout,
+	})
 
 	root, cleanup, err := r.RootFetcher.Fetch(ctx)
 	if err != nil {
