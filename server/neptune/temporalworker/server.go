@@ -337,6 +337,7 @@ func (s Server) buildRebaseWorker() worker.Worker {
 		TaskQueueActivitiesPerSecond: 2,
 	})
 	rebaseWorker.RegisterActivity(s.GithubActivities)
+	rebaseWorker.RegisterActivity(s.RevisionSetterActvities)
 	return rebaseWorker
 }
 
