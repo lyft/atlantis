@@ -2,7 +2,6 @@ package terraform
 
 import (
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	constants "github.com/runatlantis/atlantis/server/events/metrics"
@@ -63,7 +62,6 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 		WorkflowID: id.String(),
 		RetryPolicy: &temporal.RetryPolicy{
 			MaximumAttempts: 3,
-			InitialInterval: 1 * time.Minute,
 		},
 
 		// allows all signals to be received even in a cancellation state
@@ -147,12 +145,18 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 	// application error and act accordingly
 	var appErr *temporal.ApplicationError
 	if errors.As(err, &appErr) {
-		var underlyingErr terraform.ApplicationError
-		detailsErr := appErr.Details(&underlyingErr)
+		unwrapped := errors.Unwrap(appErr)
 
-		if detailsErr == nil && underlyingErr.ErrType == terraform.PlanRejectedErrorType {
-			return PlanRejectionError{msg: underlyingErr.Msg}
+		var msg string
+		if unwrapped != nil {
+			msg = unwrapped.Error()
+		} else {
+			msg = "plan has been rejected"
 		}
+		if appErr.Type() == terraform.PlanRejectedErrorType {
+			return PlanRejectionError{msg: msg}
+		}
+
 	}
 
 	return errors.Wrap(err, "executing terraform workflow")

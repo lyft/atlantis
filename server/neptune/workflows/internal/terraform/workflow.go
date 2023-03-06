@@ -37,7 +37,7 @@ type jobRunner interface {
 }
 
 const (
-	// the length of our longest allowed activity. for now we've set this to 60 minutes 
+	// the length of our longest allowed activity. for now we've set this to 60 minutes
 	// as that is the default terraform timeout, we can change as necessary.
 	StartToCloseTimeout = 60 * time.Minute
 
@@ -46,7 +46,7 @@ const (
 	// combination with ScheduleToStart allows us to react to worker failures and schedule
 	// the entire workflow on another worker process.
 	// Note this value is tied to the heartbeat frequency specified in our activities.
-	HeartBeatTimeout    = 1 * time.Minute
+	HeartBeatTimeout = 1 * time.Minute
 
 	// the length of time we will wait to schedule activities
 	// on a given task queue, if this times out our tq might be starved.
