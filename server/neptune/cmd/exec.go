@@ -1,8 +1,7 @@
-package sync
+package cmd
 
 import (
 	"context"
-	"fmt"
 	"github.com/pkg/errors"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/logger"
@@ -15,12 +14,12 @@ import (
 // RunNewProcessGroupCommand is useful for running separate commands that shouldn't receive termination
 // signals at the same time as the parent process. The passed context should listen for a timeout/cancellation
 // that allows for the parent process to perform a shutdown on its own terms.
-func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName string) error {
+func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
 	if err := cmd.Start(); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("starting %s command", cmdName))
+		return errors.Wrap(err, "starting process command")
 	}
 
 	done := make(chan struct{})
@@ -37,10 +36,10 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd, cmdName strin
 
 	err := cmd.Wait()
 	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), fmt.Sprintf("waiting for %s process", cmdName))
+		return errors.Wrap(ctx.Err(), "waiting for process")
 	}
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("waiting for %s process", cmdName))
+		return errors.Wrap(err, "waiting for process")
 	}
 	return nil
 }

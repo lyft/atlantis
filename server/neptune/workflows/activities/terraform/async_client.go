@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/sync"
+	internal_exec "github.com/runatlantis/atlantis/server/neptune/cmd"
 	"io"
 	"os/exec"
 )
@@ -92,7 +92,7 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 	for key, val := range request.AdditionalEnvVars {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, val))
 	}
-	err = sync.RunNewProcessGroupCommand(ctx, cmd, "terraform")
+	err = internal_exec.RunNewProcessGroupCommand(ctx, cmd)
 	if err != nil {
 		return errors.Wrap(err, "running command in separate process group")
 	}

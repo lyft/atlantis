@@ -12,7 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/sync"
+	internal_exec "github.com/runatlantis/atlantis/server/neptune/cmd"
 	"github.com/uber-go/tally/v4"
 	"os"
 	"os/exec"
@@ -83,14 +83,14 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 	if options.CloneDepth > 0 {
 		cloneCmd = append(cloneCmd, fmt.Sprintf("--depth=%d", options.CloneDepth))
 	}
-	_, err := g.run(ctx, cloneCmd, destinationPath, "git clone")
+	_, err := g.run(ctx, cloneCmd, destinationPath)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to clone directory")
 	}
 
 	// Return immediately if commit at HEAD of clone matches request commit
 	revParseCmd := []string{"git", "rev-parse", "HEAD"}
-	revParseOutput, err := g.run(ctx, revParseCmd, destinationPath, "git rev-parse")
+	revParseOutput, err := g.run(ctx, revParseCmd, destinationPath)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "running rev-parse")
 	}
@@ -101,7 +101,7 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 
 	// Otherwise, checkout the correct sha
 	checkoutCmd := []string{"git", "checkout", sha}
-	_, err = g.run(ctx, checkoutCmd, destinationPath, "git checkout")
+	_, err = g.run(ctx, checkoutCmd, destinationPath)
 	if err != nil {
 		g.Cleanup(ctx, destinationPath)
 		return "", nil, errors.Wrap(err, fmt.Sprintf("failed to checkout to sha: %s", sha))
@@ -113,7 +113,7 @@ func (g *RepoFetcher) generateDirPath(repoName string) string {
 	return filepath.Join(g.DataDir, workingDirPrefix, repoName, uuid.New().String())
 }
 
-func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath string, cmdName string) ([]byte, error) {
+func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath string) ([]byte, error) {
 	cmd := exec.Command(args[0], args[1:]...) // nolint: gosec
 	cmd.Dir = destinationPath
 	// The repo merge command requires these env vars are set.
@@ -125,7 +125,7 @@ func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath st
 	var b bytes.Buffer
 	cmd.Stdout = &b
 	cmd.Stderr = &b
-	err := sync.RunNewProcessGroupCommand(ctx, cmd, cmdName)
+	err := internal_exec.RunNewProcessGroupCommand(ctx, cmd)
 	if err != nil {
 		return nil, errors.Wrap(err, "running command in separate process group")
 	}

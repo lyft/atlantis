@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/neptune/sync"
+	internal_exec "github.com/runatlantis/atlantis/server/neptune/cmd"
 	"os"
 	"os/exec"
 )
@@ -34,7 +34,7 @@ func (e *HookExecutor) Execute(ctx context.Context, hook *valid.PreWorkflowHook,
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := sync.RunNewProcessGroupCommand(ctx, cmd, "hook")
+	err := internal_exec.RunNewProcessGroupCommand(ctx, cmd)
 	if err != nil {
 		return errors.Wrap(err, "running command in separate process group")
 	}
