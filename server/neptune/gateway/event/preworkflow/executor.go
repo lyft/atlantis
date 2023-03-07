@@ -6,12 +6,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
-	internal_exec "github.com/runatlantis/atlantis/server/neptune/cmd"
+	"github.com/runatlantis/atlantis/server/logging"
+	subprocess_exec "github.com/runatlantis/atlantis/server/neptune/exec"
 	"os"
 	"os/exec"
 )
 
 type HookExecutor struct {
+	Logger logging.Logger
 }
 
 func (e *HookExecutor) Execute(ctx context.Context, hook *valid.PreWorkflowHook, repo models.Repo, path string) error {
@@ -34,7 +36,11 @@ func (e *HookExecutor) Execute(ctx context.Context, hook *valid.PreWorkflowHook,
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := internal_exec.RunNewProcessGroupCommand(ctx, cmd)
+	subprocessCmd := &subprocess_exec.Cmd{
+		Cmd:    cmd,
+		Logger: e.Logger,
+	}
+	err := subprocessCmd.RunWithNewProcessGroup(ctx)
 	if err != nil {
 		return errors.Wrap(err, "running command in separate process group")
 	}

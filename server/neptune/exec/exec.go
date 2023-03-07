@@ -1,24 +1,29 @@
-package cmd
+package exec
 
 import (
 	"context"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/logging"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"os"
 	"os/exec"
 	"syscall"
 	"time"
 )
 
-// RunNewProcessGroupCommand is useful for running separate commands that shouldn't receive termination
+type Cmd struct {
+	*exec.Cmd
+	Logger logging.Logger
+}
+
+// RunWithNewProcessGroup is useful for running separate commands that shouldn't receive termination
 // signals at the same time as the parent process. The passed context should listen for a timeout/cancellation
 // that allows for the parent process to perform a shutdown on its own terms.
-func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd) error {
-	cmd.SysProcAttr = &syscall.SysProcAttr{
+func (c *Cmd) RunWithNewProcessGroup(ctx context.Context) error {
+	c.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
-	if err := cmd.Start(); err != nil {
+	if err := c.Start(); err != nil {
 		return errors.Wrap(err, "starting process command")
 	}
 
@@ -28,13 +33,13 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd) error {
 		select {
 		case <-ctx.Done():
 			// received context cancellation, terminate active process
-			terminateProcessOnCtxCancellation(ctx, cmd.Process, done)
+			c.terminateProcessOnCtxCancellation(ctx, c.Process, done)
 		case <-done:
 			// process completed on its own, simply exit
 		}
 	}()
 
-	err := cmd.Wait()
+	err := c.Wait()
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "waiting for process")
 	}
@@ -44,11 +49,11 @@ func RunNewProcessGroupCommand(ctx context.Context, cmd *exec.Cmd) error {
 	return nil
 }
 
-func terminateProcessOnCtxCancellation(ctx context.Context, p *os.Process, processDone chan struct{}) {
-	logger.Warn(ctx, "Terminating active process gracefully")
+func (c *Cmd) terminateProcessOnCtxCancellation(ctx context.Context, p *os.Process, processDone chan struct{}) {
+	c.Logger.WarnContext(ctx, "Terminating active process gracefully")
 	err := p.Signal(syscall.SIGTERM)
 	if err != nil {
-		logger.Error(ctx, "Unable to terminate process", key.ErrKey, err)
+		c.Logger.ErrorContext(context.WithValue(ctx, key.ErrKey, err), "Unable to terminate process")
 	}
 
 	// if we still haven't shutdown after 60 seconds, we should just kill the process
@@ -57,10 +62,10 @@ func terminateProcessOnCtxCancellation(ctx context.Context, p *os.Process, proce
 	kill := time.After(60 * time.Second)
 	select {
 	case <-kill:
-		logger.Warn(ctx, "Killing process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
+		c.Logger.WarnContext(ctx, "Killing process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
 		err := p.Signal(syscall.SIGKILL)
 		if err != nil {
-			logger.Error(ctx, "Unable to kill process", key.ErrKey, err)
+			c.Logger.ErrorContext(context.WithValue(ctx, key.ErrKey, err), "Unable to kill process")
 		}
 	case <-processDone:
 	}

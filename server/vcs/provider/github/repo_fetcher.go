@@ -12,7 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	internal_exec "github.com/runatlantis/atlantis/server/neptune/cmd"
+	subprocess_exec "github.com/runatlantis/atlantis/server/neptune/exec"
 	"github.com/uber-go/tally/v4"
 	"os"
 	"os/exec"
@@ -125,7 +125,11 @@ func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath st
 	var b bytes.Buffer
 	cmd.Stdout = &b
 	cmd.Stderr = &b
-	err := internal_exec.RunNewProcessGroupCommand(ctx, cmd)
+	subprocessCmd := &subprocess_exec.Cmd{
+		Cmd:    cmd,
+		Logger: g.Logger,
+	}
+	err := subprocessCmd.RunWithNewProcessGroup(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "running command in separate process group")
 	}
