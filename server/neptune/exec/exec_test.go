@@ -15,8 +15,7 @@ func TestCmd_RunWithNewProcessGroup(t *testing.T) {
 		Cmd:    cmd,
 		Logger: logging.NewNoopCtxLogger(t),
 	}
-	ctx, _ := context.WithCancel(context.Background())
-	err := subprocessCmd.RunWithNewProcessGroup(ctx)
+	err := subprocessCmd.RunWithNewProcessGroup(context.Background())
 	assert.NoError(t, err)
 }
 
