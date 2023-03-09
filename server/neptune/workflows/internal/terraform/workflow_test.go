@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -187,14 +188,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 
 		var appErr *temporal.ApplicationError
 		if errors.As(err, &appErr) {
-			var internalAppErr terraform.ApplicationError
-			e := appErr.Details(&internalAppErr)
-
-			if e != nil {
-				return nil, err
-			}
-
-			switch internalAppErr.ErrType {
+			switch appErr.Type() {
 			case terraform.PlanRejectedErrorType:
 				planRejected = true
 			case terraform.UpdateJobErrorType:
@@ -251,7 +245,15 @@ func TestSuccess(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set activity expectations
-	env.OnActivity(ga.GithubFetchRoot, mock.Anything, activities.FetchRootRequest{
+	env.OnActivity(ga.GithubFetchRoot, mock.MatchedBy(func(ctx context.Context) bool {
+		info := activity.GetInfo(ctx)
+
+		assert.Equal(t, "taskqueue", info.TaskQueue)
+		assert.Equal(t, 1*time.Minute, info.HeartbeatTimeout)
+
+		return true
+
+	}), activities.FetchRootRequest{
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
