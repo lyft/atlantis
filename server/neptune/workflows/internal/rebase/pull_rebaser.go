@@ -2,7 +2,6 @@ package rebase
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/pkg/errors"
@@ -35,7 +34,7 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 		return errors.Wrap(err, "listing open PRs")
 	}
 
-	// spawn activities to list modified fles in each open PR async
+	// spawn activities to list modified files in each open PR async
 	futureByPullNum := map[github.PullRequest]workflow.Future{}
 	for _, pullRequest := range listOpenPRsResp.PullRequests {
 		futureByPullNum[pullRequest] = workflow.ExecuteActivity(ctx, p.RebaseActivites.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
@@ -52,7 +51,7 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 	for _, pullRequest := range listOpenPRsResp.PullRequests {
 		future := futureByPullNum[pullRequest]
 
-		// let's be preventive and rebase this PR if this call fails fter 3 attempts
+		// let's be preventive and rebase this PR if this call fails after 3 attempts
 		var result activities.ListModifiedFilesResponse
 		listFilesErr := future.Get(ctx, &result)
 		if listFilesErr != nil {
@@ -99,7 +98,6 @@ func shouldRebasePullRequest(root terraform.Root, modifiedFiles []string) (bool,
 	trackedFilesRelToRepoRoot := root.GetTrackedFilesRelativeToRepo()
 	pm, err := fileutils.NewPatternMatcher(trackedFilesRelToRepoRoot)
 	if err != nil {
-		fmt.Println("HOLO", err)
 		return false, errors.Wrap(err, "building file pattern matcher using tracked files config")
 	}
 

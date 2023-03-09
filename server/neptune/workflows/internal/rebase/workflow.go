@@ -28,7 +28,7 @@ type rebaseActivities struct {
 
 func Workflow(ctx workflow.Context, request Request) error {
 	var r *rebaseActivities
-	scope := workflowMetrics.NewScope(ctx, "revision", "rebase")
+	scope := workflowMetrics.NewScope(ctx, "rebase")
 
 	// GH API calls should not hit ratelimit issues since we cap the TaskQueueActivitiesPerSecond for the rebase TQ
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
