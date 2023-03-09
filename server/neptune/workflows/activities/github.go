@@ -317,7 +317,12 @@ type ListModifiedFilesResponse struct {
 }
 
 func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request ListModifiedFilesRequest) (ListModifiedFilesResponse, error) {
-	files, err := a.Client.ListModifiedFiles(internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken), request.Repo.Owner, request.Repo.Name, request.PullRequest.Number)
+	files, err := a.Client.ListModifiedFiles(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PullRequest.Number,
+	)
 	if err != nil {
 		return ListModifiedFilesResponse{}, errors.Wrap(err, "listing modified files in pr")
 	}
