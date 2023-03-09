@@ -44,6 +44,9 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 		})
 	}
 
+	// track number of open PRs being processed
+	scope.Counter("open_prs").Inc(int64(len(futureByPullNum)))
+
 	// resolve the futures and rebase PR if needed
 	rebaseFutures := []workflow.Future{}
 	for _, pullRequest := range listOpenPRsResp.PullRequests {

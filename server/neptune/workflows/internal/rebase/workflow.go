@@ -11,7 +11,10 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const RebaseTaskQueue = "rebase"
+const (
+	RebaseGithubRetryCount    = 3
+	RebaseStartToCloseTimeout = 10 * time.Second
+)
 
 type Request struct {
 	Repo github.Repo
@@ -24,16 +27,14 @@ type rebaseActivities struct {
 }
 
 func Workflow(ctx workflow.Context, request Request) error {
-	// temporal effectively "injects" this, it just cares about the method names,
-	// so we're modeling our own DI around this.
 	var r *rebaseActivities
-	scope := workflowMetrics.NewScope(ctx)
+	scope := workflowMetrics.NewScope(ctx, "revision", "rebase")
 
-	// GH API calls should not hit ratelimit issues since we cap the max number of GH API calls to 7k which is well within our budget
+	// GH API calls should not hit ratelimit issues since we cap the TaskQueueActivitiesPerSecond for the rebase TQ
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-		StartToCloseTimeout: 10 * time.Second,
+		StartToCloseTimeout: RebaseStartToCloseTimeout,
 		RetryPolicy: &temporal.RetryPolicy{
-			MaximumAttempts: 3,
+			MaximumAttempts: RebaseGithubRetryCount,
 		},
 	})
 
