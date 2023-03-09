@@ -89,8 +89,6 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", key.ErrKey, persistErr)
 	}
 
-	// TODO: Add pullRebaser.RebaseOpenPRs() with versioning
-
 	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
 	// We do this as a safety measure to avoid deploying out of order revision after a failed deploy since it could still
 	// mutate the state file
