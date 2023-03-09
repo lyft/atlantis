@@ -1,8 +1,8 @@
-package queue
+package rebase
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/pkg/errors"
@@ -15,26 +15,17 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const RebaseTaskQueue = "rebase"
-
-type rebaseActivities interface {
-	GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error)
-	GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error)
+type pullRebaserActivites interface {
 	SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) (activities.SetPRRevisionResponse, error)
+	GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error)
+	GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error)
 }
 
 type PullRebaser struct {
-	RebaseActivites rebaseActivities
+	RebaseActivites pullRebaserActivites
 }
 
-// Called async in the deploy workflow after a deployment is complete
 func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Repo, root terraform.Root, scope metrics.Scope) error {
-	// custom tq for rebase activities to allow flow control and limit GH API calls per hour
-	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-		TaskQueue:           RebaseTaskQueue,
-		StartToCloseTimeout: 10 * time.Second,
-	})
-
 	// list open PRs
 	var listOpenPRsResp activities.ListOpenPRsResponse
 	err := workflow.ExecuteActivity(ctx, p.RebaseActivites.GithubListOpenPRs, activities.ListOpenPRsRequest{
@@ -44,37 +35,37 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 		return errors.Wrap(err, "listing open PRs")
 	}
 
-	// spawn activities to list modified fles in each open PR in parallel
+	// spawn activities to list modified fles in each open PR async
 	futureByPullNum := map[github.PullRequest]workflow.Future{}
 	for _, pullRequest := range listOpenPRsResp.PullRequests {
-		future := workflow.ExecuteActivity(ctx, p.RebaseActivites.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
+		futureByPullNum[pullRequest] = workflow.ExecuteActivity(ctx, p.RebaseActivites.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
 			Repo:        repo,
 			PullRequest: pullRequest,
 		})
-		futureByPullNum[pullRequest] = future
 	}
-
-	// track open PRs metric
-	numOpenPRs := int64(len(futureByPullNum))
-	scope.Counter("open_prs").Inc(numOpenPRs)
 
 	// resolve the futures and rebase PR if needed
 	rebaseFutures := []workflow.Future{}
-	for pullRequest, future := range futureByPullNum {
-		// list modified files should not fail due to ratelimit issues since our worker is ratelimited to only support API calls within our GH API budget per hour
+	for _, pullRequest := range listOpenPRsResp.PullRequests {
+		future := futureByPullNum[pullRequest]
+
+		// let's be preventive and rebase this PR if this call fails fter 3 attempts
 		var result activities.ListModifiedFilesResponse
 		listFilesErr := future.Get(ctx, &result)
 		if listFilesErr != nil {
 			logger.Error(ctx, "error listing modified files in PR", key.ErrKey, listFilesErr, key.PullNumKey, pullRequest.Number)
+			rebaseFutures = append(rebaseFutures, workflow.ExecuteActivity(ctx, p.RebaseActivites.SetPRRevision, activities.SetPRRevisionRequest{
+				Repository:  repo,
+				PullRequest: pullRequest,
+			}))
 			continue
 		}
 
-		// unlikey for error since we validate the TrackedFiles config at startup
+		// fail the workflow if this errors out since we validate the TrackedFiles config at startup
 		shouldRebase, err := shouldRebasePullRequest(root, result.FilePaths)
 		if err != nil {
 			scope.Counter("filepath_match_err").Inc(1)
-			logger.Error(ctx, "error matching filepaths in PR", key.ErrKey, err, key.PullNumKey, pullRequest.Number)
-			continue
+			return errors.Wrap(err, "error matching filepaths in PR")
 		}
 
 		if !shouldRebase {
@@ -93,7 +84,7 @@ func (p *PullRebaser) RebaseOpenPRsForRoot(ctx workflow.Context, repo github.Rep
 		var resp activities.SetPRRevisionResponse
 		err := future.Get(ctx, &resp)
 		if err != nil {
-			return errors.Wrap(err, "error making api call to set pr revision")
+			return errors.Wrap(err, "error setting pr revision")
 		}
 	}
 
@@ -105,6 +96,7 @@ func shouldRebasePullRequest(root terraform.Root, modifiedFiles []string) (bool,
 	trackedFilesRelToRepoRoot := root.GetTrackedFilesRelativeToRepo()
 	pm, err := fileutils.NewPatternMatcher(trackedFilesRelToRepoRoot)
 	if err != nil {
+		fmt.Println("HOLO", err)
 		return false, errors.Wrap(err, "building file pattern matcher using tracked files config")
 	}
 
