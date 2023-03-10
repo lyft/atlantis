@@ -15,7 +15,6 @@ import (
 	subprocess_exec "github.com/runatlantis/atlantis/server/neptune/exec"
 	"github.com/uber-go/tally/v4"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -114,7 +113,7 @@ func (g *RepoFetcher) generateDirPath(repoName string) string {
 }
 
 func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath string) ([]byte, error) {
-	cmd := exec.Command(args[0], args[1:]...) // nolint: gosec
+	cmd := subprocess_exec.Command(g.Logger, args[0], args[1:]...) // nolint: gosec
 	cmd.Dir = destinationPath
 	// The repo merge command requires these env vars are set.
 	cmd.Env = append(os.Environ(), []string{
@@ -125,11 +124,7 @@ func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath st
 	var b bytes.Buffer
 	cmd.Stdout = &b
 	cmd.Stderr = &b
-	subprocessCmd := &subprocess_exec.Cmd{
-		Cmd:    cmd,
-		Logger: g.Logger,
-	}
-	err := subprocessCmd.RunWithNewProcessGroup(ctx)
+	err := cmd.RunWithNewProcessGroup(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "running command in separate process group")
 	}

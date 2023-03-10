@@ -9,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	subprocess_exec "github.com/runatlantis/atlantis/server/neptune/exec"
 	"os"
-	"os/exec"
 )
 
 type HookExecutor struct {
@@ -17,9 +16,8 @@ type HookExecutor struct {
 }
 
 func (e *HookExecutor) Execute(ctx context.Context, hook *valid.PreWorkflowHook, repo models.Repo, path string) error {
-	cmd := exec.Command("sh", "-c", hook.RunCommand) // #nosec
+	cmd := subprocess_exec.Command(e.Logger, "sh", "-c", hook.RunCommand)
 	cmd.Dir = path
-
 	baseEnvVars := os.Environ()
 	customEnvVars := map[string]string{
 		"BASE_BRANCH_NAME": repo.DefaultBranch,
@@ -35,12 +33,7 @@ func (e *HookExecutor) Execute(ctx context.Context, hook *valid.PreWorkflowHook,
 	cmd.Env = finalEnvVars
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	subprocessCmd := &subprocess_exec.Cmd{
-		Cmd:    cmd,
-		Logger: e.Logger,
-	}
-	err := subprocessCmd.RunWithNewProcessGroup(ctx)
+	err := cmd.RunWithNewProcessGroup(ctx)
 	if err != nil {
 		return errors.Wrap(err, "running command in separate process group")
 	}

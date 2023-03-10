@@ -13,7 +13,14 @@ import (
 
 type Cmd struct {
 	*exec.Cmd
-	Logger logging.Logger
+	logger logging.Logger
+}
+
+func Command(logger logging.Logger, name string, arg ...string) *Cmd {
+	return &Cmd{
+		Cmd:    exec.Command(name, arg...), // #nosec
+		logger: logger,
+	}
 }
 
 // RunWithNewProcessGroup is useful for running separate commands that shouldn't receive termination
@@ -50,10 +57,10 @@ func (c *Cmd) RunWithNewProcessGroup(ctx context.Context) error {
 }
 
 func (c *Cmd) terminateProcessOnCtxCancellation(ctx context.Context, p *os.Process, processDone chan struct{}) {
-	c.Logger.WarnContext(ctx, "Terminating active process gracefully")
+	c.logger.WarnContext(ctx, "Terminating active process gracefully")
 	err := p.Signal(syscall.SIGTERM)
 	if err != nil {
-		c.Logger.ErrorContext(context.WithValue(ctx, key.ErrKey, err), "Unable to terminate process")
+		c.logger.ErrorContext(context.WithValue(ctx, key.ErrKey, err), "Unable to terminate process")
 	}
 
 	// if we still haven't shutdown after 60 seconds, we should just kill the process
@@ -62,10 +69,10 @@ func (c *Cmd) terminateProcessOnCtxCancellation(ctx context.Context, p *os.Proce
 	kill := time.After(60 * time.Second)
 	select {
 	case <-kill:
-		c.Logger.WarnContext(ctx, "Killing process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
+		c.logger.WarnContext(ctx, "Killing process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
 		err := p.Signal(syscall.SIGKILL)
 		if err != nil {
-			c.Logger.ErrorContext(context.WithValue(ctx, key.ErrKey, err), "Unable to kill process")
+			c.logger.ErrorContext(context.WithValue(ctx, key.ErrKey, err), "Unable to kill process")
 		}
 	case <-processDone:
 	}
