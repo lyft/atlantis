@@ -90,7 +90,7 @@ func Test_ShouldSetMinimumRevisionForPR(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		res, err := shouldSetMinimumRevisionForPR(c.root, c.modifiedFiles)
+		res, err := doesPRModifyRoot(c.root, c.modifiedFiles)
 		assert.NoError(t, err)
 		assert.Equal(t, c.shouldReabse, res)
 	}
@@ -123,7 +123,7 @@ func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request)
 		RevisionSetterActivities: &testRevisionSetterActivities{},
 		Scope:                    metrics.NewNullableScope(),
 	}
-	return runner.SetMiminumValidRevisionForRoot(ctx, r)
+	return runner.SetMiminumRevisionForRoot(ctx, r)
 }
 
 func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
@@ -314,5 +314,5 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	env.AssertExpectations(t)
 
 	err := env.GetWorkflowResult(nil)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
