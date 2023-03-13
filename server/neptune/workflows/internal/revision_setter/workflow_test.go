@@ -97,16 +97,18 @@ func Test_ShouldSetMinimumRevisionForPR(t *testing.T) {
 
 type testRevisionSetterActivities struct{}
 
-func (t *testRevisionSetterActivities) GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error) {
-	return activities.ListOpenPRsResponse{}, nil
-}
-
-func (t *testRevisionSetterActivities) GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error) {
-	return activities.ListModifiedFilesResponse{}, nil
-}
-
 func (t *testRevisionSetterActivities) SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) (activities.SetPRRevisionResponse, error) {
 	return activities.SetPRRevisionResponse{}, nil
+}
+
+type testGithubActivities struct{}
+
+func (t *testGithubActivities) ListPRs(ctx context.Context, request activities.ListPRsRequest) (activities.ListPRsResponse, error) {
+	return activities.ListPRsResponse{}, nil
+}
+
+func (t *testGithubActivities) ListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error) {
+	return activities.ListModifiedFilesResponse{}, nil
 }
 
 func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request) error {
@@ -115,15 +117,18 @@ func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request)
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
-	g := &testRevisionSetterActivities{}
-	return SetMiminumValidRevisionForRoot(ctx, r, g)
+	runner := Runner{
+		GithubActivities:         &testGithubActivities{},
+		RevisionSetterActivities: &testRevisionSetterActivities{},
+	}
+	return runner.SetMiminumValidRevisionForRoot(ctx, r)
 }
 
 func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
-	ga := &testRevisionSetterActivities{}
+	ga := &testGithubActivities{}
 	env.RegisterActivity(ga)
 
 	req := Request{
@@ -136,9 +141,10 @@ func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 		},
 	}
 
-	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
-		Repo: req.Repo,
-	}).Return(activities.ListOpenPRsResponse{
+	env.OnActivity(ga.ListPRs, mock.Anything, activities.ListPRsRequest{
+		Repo:  req.Repo,
+		State: github.Open,
+	}).Return(activities.ListPRsResponse{
 		PullRequests: []github.PullRequest{},
 	}, nil)
 
@@ -153,7 +159,9 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
-	ga := &testRevisionSetterActivities{}
+	ga := &testGithubActivities{}
+	ra := &testRevisionSetterActivities{}
+	env.RegisterActivity(ra)
 	env.RegisterActivity(ga)
 
 	req := Request{
@@ -179,27 +187,27 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
 	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
 	filesModifiedPr2 := []string{"test/dir1/no-rebase.tf"}
 
-	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
+	env.OnActivity(ga.ListPRs, mock.Anything, activities.ListPRsRequest{
 		Repo: req.Repo,
-	}).Return(activities.ListOpenPRsResponse{
+	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)
 
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+	env.OnActivity(ga.ListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
 		Repo:        req.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(activities.ListModifiedFilesResponse{
 		FilePaths: filesModifiedPr1,
 	}, nil)
 
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+	env.OnActivity(ga.ListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
 		Repo:        req.Repo,
 		PullRequest: pullRequests[1],
 	}).Return(activities.ListModifiedFilesResponse{
 		FilePaths: filesModifiedPr2,
 	}, nil)
 
-	env.OnActivity(ga.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
+	env.OnActivity(ra.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
 		Repository:  req.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(activities.SetPRRevisionResponse{}, nil)
@@ -215,7 +223,9 @@ func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
-	ga := &testRevisionSetterActivities{}
+	ga := &testGithubActivities{}
+	ra := &testRevisionSetterActivities{}
+	env.RegisterActivity(ra)
 	env.RegisterActivity(ga)
 
 	req := Request{
@@ -235,18 +245,19 @@ func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 		},
 	}
 
-	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
-		Repo: req.Repo,
-	}).Return(activities.ListOpenPRsResponse{
+	env.OnActivity(ga.ListPRs, mock.Anything, activities.ListPRsRequest{
+		Repo:  req.Repo,
+		State: github.Open,
+	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)
 
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+	env.OnActivity(ga.ListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
 		Repo:        req.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(activities.ListModifiedFilesResponse{}, errors.New("error"))
 
-	env.OnActivity(ga.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
+	env.OnActivity(ra.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
 		Repository:  req.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(activities.SetPRRevisionResponse{}, nil)
@@ -262,7 +273,9 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
-	ga := &testRevisionSetterActivities{}
+	ga := &testGithubActivities{}
+	ra := &testRevisionSetterActivities{}
+	env.RegisterActivity(ra)
 	env.RegisterActivity(ga)
 
 	req := Request{
@@ -281,14 +294,14 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 		},
 	}
 
-	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
+	env.OnActivity(ga.ListPRs, mock.Anything, activities.ListPRsRequest{
 		Repo: req.Repo,
-	}).Return(activities.ListOpenPRsResponse{
+	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)
 
 	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+	env.OnActivity(ga.ListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
 		Repo:        req.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(activities.ListModifiedFilesResponse{

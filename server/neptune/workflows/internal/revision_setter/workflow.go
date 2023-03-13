@@ -28,13 +28,15 @@ type Request struct {
 
 type revisionSetterActivities interface {
 	SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) (activities.SetPRRevisionResponse, error)
-	GithubListOpenPRs(ctx context.Context, request activities.ListOpenPRsRequest) (activities.ListOpenPRsResponse, error)
-	GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error)
+}
+
+type githubActivities interface {
+	ListPRs(ctx context.Context, request activities.ListPRsRequest) (activities.ListPRsResponse, error)
+	ListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error)
 }
 
 func Workflow(ctx workflow.Context, request Request) error {
-	// GH API calls should not hit ratelimit issues since we cap the TaskQueueActivitiesPerSecond for the min revison setter TQ
-	// such that it's within our GH API budget
+	// GH API calls should not hit ratelimit issues since we cap the TaskQueueActivitiesPerSecond for the min revison setter TQ such that it's within our GH API budget
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: StartToCloseTimeout,
 		RetryPolicy: &temporal.RetryPolicy{
@@ -42,12 +44,23 @@ func Workflow(ctx workflow.Context, request Request) error {
 		},
 	})
 
-	var r revisionSetterActivities
-	return SetMiminumValidRevisionForRoot(ctx, request, r)
+	var ga *activities.Github
+	var ra *activities.RevsionSetter
+	runner := &Runner{
+		GithubActivities:         ga,
+		RevisionSetterActivities: ra,
+	}
+
+	return runner.SetMiminumValidRevisionForRoot(ctx, request)
 }
 
-func SetMiminumValidRevisionForRoot(ctx workflow.Context, request Request, r revisionSetterActivities) error {
-	prs, err := listOpenPRs(ctx, request.Repo, r)
+type Runner struct {
+	GithubActivities         githubActivities
+	RevisionSetterActivities revisionSetterActivities
+}
+
+func (r *Runner) SetMiminumValidRevisionForRoot(ctx workflow.Context, request Request) error {
+	prs, err := r.listOpenPRs(ctx, request.Repo)
 	if err != nil {
 		return err
 	}
@@ -55,7 +68,7 @@ func SetMiminumValidRevisionForRoot(ctx workflow.Context, request Request, r rev
 	scope := metrics.NewScope(ctx)
 	scope.Counter("open_prs").Inc(int64(len(prs)))
 
-	setMinRevFutures, err := setMinRevisionForPrsModifiyingRoot(ctx, request, prs, r, scope)
+	setMinRevFutures, err := r.setMinRevisionForPrsModifiyingRoot(ctx, request, prs)
 	if err != nil {
 		return errors.Wrap(err, "setting minimum revision for pr modifiying root")
 	}
@@ -72,10 +85,11 @@ func SetMiminumValidRevisionForRoot(ctx workflow.Context, request Request, r rev
 	return nil
 }
 
-func listOpenPRs(ctx workflow.Context, repo github.Repo, a revisionSetterActivities) ([]github.PullRequest, error) {
-	var resp activities.ListOpenPRsResponse
-	err := workflow.ExecuteActivity(ctx, a.GithubListOpenPRs, activities.ListOpenPRsRequest{
-		Repo: repo,
+func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.PullRequest, error) {
+	var resp activities.ListPRsResponse
+	err := workflow.ExecuteActivity(ctx, r.GithubActivities.ListPRs, activities.ListPRsRequest{
+		Repo:  repo,
+		State: github.Open,
 	}).Get(ctx, &resp)
 	if err != nil {
 		return []github.PullRequest{}, errors.Wrap(err, "listing open PRs")
@@ -84,11 +98,11 @@ func listOpenPRs(ctx workflow.Context, repo github.Repo, a revisionSetterActivit
 	return resp.PullRequests, nil
 }
 
-func setMinRevisionForPrsModifiyingRoot(ctx workflow.Context, req Request, prs []github.PullRequest, a revisionSetterActivities, scope metrics.Scope) ([]workflow.Future, error) {
+func (r *Runner) setMinRevisionForPrsModifiyingRoot(ctx workflow.Context, req Request, prs []github.PullRequest) ([]workflow.Future, error) {
 	// spawn activities to list modified files in each open PR async
 	futuresByPullNum := map[github.PullRequest]workflow.Future{}
 	for _, pr := range prs {
-		futuresByPullNum[pr] = workflow.ExecuteActivity(ctx, a.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
+		futuresByPullNum[pr] = workflow.ExecuteActivity(ctx, r.GithubActivities.ListModifiedFiles, activities.ListModifiedFilesRequest{
 			Repo:        req.Repo,
 			PullRequest: pr,
 		})
@@ -104,7 +118,7 @@ func setMinRevisionForPrsModifiyingRoot(ctx workflow.Context, req Request, prs [
 		listFilesErr := future.Get(ctx, &result)
 		if listFilesErr != nil {
 			logger.Error(ctx, "error listing modified files in PR", key.ErrKey, listFilesErr, key.PullNumKey, pr.Number)
-			futures = append(futures, workflow.ExecuteActivity(ctx, a.SetPRRevision, activities.SetPRRevisionRequest{
+			futures = append(futures, workflow.ExecuteActivity(ctx, r.RevisionSetterActivities.SetPRRevision, activities.SetPRRevisionRequest{
 				Repository:  req.Repo,
 				PullRequest: pr,
 			}))
@@ -121,7 +135,7 @@ func setMinRevisionForPrsModifiyingRoot(ctx workflow.Context, req Request, prs [
 		}
 
 		// spawn activity to set min revision on this PR and continue
-		futures = append(futures, workflow.ExecuteActivity(ctx, a.SetPRRevision, activities.SetPRRevisionRequest{
+		futures = append(futures, workflow.ExecuteActivity(ctx, r.RevisionSetterActivities.SetPRRevision, activities.SetPRRevisionRequest{
 			Repository:  req.Repo,
 			PullRequest: pr,
 		}))
