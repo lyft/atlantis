@@ -149,7 +149,7 @@ func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestMinRevisionSetter_OpenPR_NeedsRebase(t *testing.T) {
+func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 

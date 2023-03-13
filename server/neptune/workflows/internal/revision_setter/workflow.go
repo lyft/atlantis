@@ -33,7 +33,7 @@ type revisionSetterActivities interface {
 }
 
 func Workflow(ctx workflow.Context, request Request) error {
-	// GH API calls should not hit ratelimit issues since we cap the TaskQueueActivitiesPerSecond for the rebase TQ
+	// GH API calls should not hit ratelimit issues since we cap the TaskQueueActivitiesPerSecond for the min revison setter TQ
 	// such that it's within our GH API budget
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: StartToCloseTimeout,
@@ -99,7 +99,7 @@ func setMinRevisionForPrsModifiyingRoot(ctx workflow.Context, req Request, prs [
 	for _, pr := range prs {
 		future := futuresByPullNum[pr]
 
-		// let's be preventive and rebase this PR if this call fails after 3 attempts
+		// let's be preventive and set minimum revision for this PR if this call fails after 3 attempts
 		var result activities.ListModifiedFilesResponse
 		listFilesErr := future.Get(ctx, &result)
 		if listFilesErr != nil {
@@ -120,7 +120,7 @@ func setMinRevisionForPrsModifiyingRoot(ctx workflow.Context, req Request, prs [
 			continue
 		}
 
-		// spawn activity to rebase this PR and continue
+		// spawn activity to set min revision on this PR and continue
 		futures = append(futures, workflow.ExecuteActivity(ctx, a.SetPRRevision, activities.SetPRRevisionRequest{
 			Repository:  req.Repo,
 			PullRequest: pr,
