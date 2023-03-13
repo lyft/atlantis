@@ -49,6 +49,7 @@ func Workflow(ctx workflow.Context, request Request) error {
 	runner := &Runner{
 		GithubActivities:         ga,
 		RevisionSetterActivities: ra,
+		Scope:                    metrics.NewScope(ctx),
 	}
 
 	return runner.SetMiminumValidRevisionForRoot(ctx, request)
@@ -57,6 +58,7 @@ func Workflow(ctx workflow.Context, request Request) error {
 type Runner struct {
 	GithubActivities         githubActivities
 	RevisionSetterActivities revisionSetterActivities
+	Scope                    metrics.Scope
 }
 
 func (r *Runner) SetMiminumValidRevisionForRoot(ctx workflow.Context, request Request) error {
@@ -65,9 +67,7 @@ func (r *Runner) SetMiminumValidRevisionForRoot(ctx workflow.Context, request Re
 		return err
 	}
 
-	scope := metrics.NewScope(ctx)
-	scope.Counter("open_prs").Inc(int64(len(prs)))
-
+	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
 	setMinRevFutures, err := r.setMinRevisionForPrsModifiyingRoot(ctx, request, prs)
 	if err != nil {
 		return errors.Wrap(err, "setting minimum revision for pr modifiying root")

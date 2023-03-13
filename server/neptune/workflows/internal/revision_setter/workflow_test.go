@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
@@ -120,6 +121,7 @@ func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request)
 	runner := Runner{
 		GithubActivities:         &testGithubActivities{},
 		RevisionSetterActivities: &testRevisionSetterActivities{},
+		Scope:                    metrics.NewNullableScope(),
 	}
 	return runner.SetMiminumValidRevisionForRoot(ctx, r)
 }
