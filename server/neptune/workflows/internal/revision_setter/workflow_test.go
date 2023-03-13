@@ -257,3 +257,47 @@ func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 	err := env.GetWorkflowResult(nil)
 	assert.Nil(t, err)
 }
+
+func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	ga := &testRevisionSetterActivities{}
+	env.RegisterActivity(ga)
+
+	req := Request{
+		Repo: github.Repo{
+			Owner: "owner",
+			Name:  "test",
+		},
+		Root: terraform.Root{
+			TrackedFiles: []string{"!"},
+		},
+	}
+
+	pullRequests := []github.PullRequest{
+		{
+			Number: 1,
+		},
+	}
+
+	env.OnActivity(ga.GithubListOpenPRs, mock.Anything, activities.ListOpenPRsRequest{
+		Repo: req.Repo,
+	}).Return(activities.ListOpenPRsResponse{
+		PullRequests: pullRequests,
+	}, nil)
+
+	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
+	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+		Repo:        req.Repo,
+		PullRequest: pullRequests[0],
+	}).Return(activities.ListModifiedFilesResponse{
+		FilePaths: filesModifiedPr1,
+	}, nil)
+
+	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req)
+	env.AssertExpectations(t)
+
+	err := env.GetWorkflowResult(nil)
+	assert.Error(t, err)
+}

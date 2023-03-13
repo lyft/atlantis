@@ -43,7 +43,6 @@ func Workflow(ctx workflow.Context, request Request) error {
 	})
 
 	var r revisionSetterActivities
-
 	return SetMiminumValidRevisionForRoot(ctx, request, r)
 }
 

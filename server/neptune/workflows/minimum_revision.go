@@ -7,6 +7,6 @@ import (
 
 type SetPRMinimumRevisionRequest = revisionsetter.Request
 
-func SetPRMinimumRevision(ctx workflow.Context, request SetPRMinimumRevisionRequest) error {
+func SetMinimumRevisionForRoot(ctx workflow.Context, request SetPRMinimumRevisionRequest) error {
 	return revisionsetter.Workflow(ctx, request)
 }
