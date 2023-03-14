@@ -314,7 +314,7 @@ type ListModifiedFilesResponse struct {
 	FilePaths []string
 }
 
-func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request ListModifiedFilesRequest) (ListModifiedFilesResponse, error) {
+func (a *githubActivities) ListModifiedFiles(ctx context.Context, request ListModifiedFilesRequest) (ListModifiedFilesResponse, error) {
 	files, err := a.Client.ListModifiedFiles(
 		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
 		request.Repo.Owner,
