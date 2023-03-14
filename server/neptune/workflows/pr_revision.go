@@ -1,7 +1,7 @@
 package workflows
 
 import (
-	prrevision "github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr_revision"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
 	"go.temporal.io/sdk/workflow"
 )
 
