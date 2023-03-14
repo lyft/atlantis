@@ -1,4 +1,4 @@
-package revisionsetter
+package prrevision
 
 import (
 	"context"
@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	GithubRetryCount    = 3
-	StartToCloseTimeout = 10 * time.Second
+	RetryCount          = 3
+	StartToCloseTimeout = 30 * time.Second
 )
 
 type Request struct {
@@ -26,7 +26,7 @@ type Request struct {
 	Root terraform.Root
 }
 
-type revisionSetterActivities interface {
+type setterActivities interface {
 	SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) (activities.SetPRRevisionResponse, error)
 }
 
@@ -37,10 +37,11 @@ type githubActivities interface {
 
 func Workflow(ctx workflow.Context, request Request) error {
 	// GH API calls should not hit ratelimit issues since we cap the TaskQueueActivitiesPerSecond for the min revison setter TQ such that it's within our GH API budget
+	// Configuring both GH API calls and PRSetRevision calls to 3 retries before failing
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: StartToCloseTimeout,
 		RetryPolicy: &temporal.RetryPolicy{
-			MaximumAttempts: GithubRetryCount,
+			MaximumAttempts: RetryCount,
 		},
 	})
 
@@ -52,23 +53,23 @@ func Workflow(ctx workflow.Context, request Request) error {
 		Scope:                    metrics.NewScope(ctx),
 	}
 
-	return runner.SetMiminumRevisionForRoot(ctx, request)
+	return runner.Run(ctx, request)
 }
 
 type Runner struct {
 	GithubActivities         githubActivities
-	RevisionSetterActivities revisionSetterActivities
+	RevisionSetterActivities setterActivities
 	Scope                    metrics.Scope
 }
 
-func (r *Runner) SetMiminumRevisionForRoot(ctx workflow.Context, request Request) error {
+func (r *Runner) Run(ctx workflow.Context, request Request) error {
 	prs, err := r.listOpenPRs(ctx, request.Repo)
 	if err != nil {
 		return err
 	}
 
 	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
-	if err := r.setMinRevisionForPRsModifiyingRoot(ctx, request, prs); err != nil {
+	if err := r.setRevision(ctx, request, prs); err != nil {
 		return errors.Wrap(err, "setting minimum revision for pr modifiying root")
 	}
 	return nil
@@ -87,7 +88,7 @@ func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.P
 	return resp.PullRequests, nil
 }
 
-func (r *Runner) setMinRevisionForPRsModifiyingRoot(ctx workflow.Context, req Request, prs []github.PullRequest) error {
+func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.PullRequest) error {
 	// spawn activities to list modified files in each open PR async
 	futuresByPullNum := map[github.PullRequest]workflow.Future{}
 	for _, pr := range prs {
@@ -100,7 +101,7 @@ func (r *Runner) setMinRevisionForPRsModifiyingRoot(ctx workflow.Context, req Re
 	// resolve the futures and spawn activities to set minimum revision for PR if needed
 	futures := []workflow.Future{}
 	for _, pr := range prs {
-		if setMinimumRevisionFuture := r.setMinimumRevisionForPR(ctx, req, pr, futuresByPullNum[pr]); setMinimumRevisionFuture != nil {
+		if setMinimumRevisionFuture := r.setRevisionForPR(ctx, req, pr, futuresByPullNum[pr]); setMinimumRevisionFuture != nil {
 			futures = append(futures, workflow.ExecuteActivity(ctx, r.RevisionSetterActivities.SetPRRevision, activities.SetPRRevisionRequest{
 				Repository:  req.Repo,
 				PullRequest: pr,
@@ -120,38 +121,37 @@ func (r *Runner) setMinRevisionForPRsModifiyingRoot(ctx workflow.Context, req Re
 	return nil
 }
 
-func (r *Runner) setMinimumRevisionForPR(ctx workflow.Context, req Request, pull github.PullRequest, future workflow.Future) workflow.Future {
-	setMinRevisionFn := func() workflow.Future {
-		return workflow.ExecuteActivity(ctx, r.RevisionSetterActivities.SetPRRevision, activities.SetPRRevisionRequest{
-			Repository:  req.Repo,
-			PullRequest: pull,
-		})
-	}
-
+func (r *Runner) setRevisionForPR(ctx workflow.Context, req Request, pull github.PullRequest, future workflow.Future) workflow.Future {
 	// let's be preventive and set minimum revision for this PR if this listModifiedFiles fails after 3 attempts
 	var result activities.ListModifiedFilesResponse
 	if err := future.Get(ctx, &result); err != nil {
 		logger.Error(ctx, "error listing modified files in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
-		return setMinRevisionFn()
+		return r.setMinRevision(ctx, req.Repo, pull)
 	}
 
 	// should not fail unless the TrackedFiles config is invalid which is validated on startup
-	// let's be preventive and set minimum revision for this PR if file path match errors out and alarm on this
-	rootModified, err := doesPRModifyRoot(req.Root, result.FilePaths)
+	// let's be preventive and set minimum revision for this PR if file path match errors out
+	rootModified, err := isRootModified(req.Root, result.FilePaths)
 	if err != nil {
-		r.Scope.Counter("filepath_match_err").Inc(1)
 		logger.Error(ctx, "error matching file paths in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
-		return setMinRevisionFn()
+		return r.setMinRevision(ctx, req.Repo, pull)
 	}
 
 	if rootModified {
-		return setMinRevisionFn()
+		return r.setMinRevision(ctx, req.Repo, pull)
 	}
 
 	return nil
 }
 
-func doesPRModifyRoot(root terraform.Root, modifiedFiles []string) (bool, error) {
+func (r *Runner) setMinRevision(ctx workflow.Context, repo github.Repo, pull github.PullRequest) workflow.Future {
+	return workflow.ExecuteActivity(ctx, r.RevisionSetterActivities.SetPRRevision, activities.SetPRRevisionRequest{
+		Repository:  repo,
+		PullRequest: pull,
+	})
+}
+
+func isRootModified(root terraform.Root, modifiedFiles []string) (bool, error) {
 	// look at the filepaths for the root
 	trackedFilesRelToRepoRoot := root.GetTrackedFilesRelativeToRepo()
 	pm, err := fileutils.NewPatternMatcher(trackedFilesRelToRepoRoot)

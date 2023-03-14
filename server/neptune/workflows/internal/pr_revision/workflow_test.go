@@ -1,4 +1,4 @@
-package revisionsetter
+package prrevision
 
 import (
 	"context"
@@ -90,7 +90,7 @@ func Test_ShouldSetMinimumRevisionForPR(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		res, err := doesPRModifyRoot(c.root, c.modifiedFiles)
+		res, err := isRootModified(c.root, c.modifiedFiles)
 		assert.NoError(t, err)
 		assert.Equal(t, c.shouldReabse, res)
 	}
@@ -123,7 +123,7 @@ func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request)
 		RevisionSetterActivities: &testRevisionSetterActivities{},
 		Scope:                    metrics.NewNullableScope(),
 	}
-	return runner.SetMiminumRevisionForRoot(ctx, r)
+	return runner.Run(ctx, r)
 }
 
 func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
