@@ -291,18 +291,19 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 	}, nil
 }
 
-type ListOpenPRsRequest struct {
-	Repo internal.Repo
+type ListPRsRequest struct {
+	Repo  internal.Repo
+	State internal.State
 }
 
-type ListOpenPRsResponse struct {
+type ListPRsResponse struct {
 	PullRequests []internal.PullRequest
 }
 
-func (a *githubActivities) GithubListOpenPRs(ctx context.Context, request ListOpenPRsRequest) (ListOpenPRsResponse, error) {
+func (a *githubActivities) ListPRs(ctx context.Context, request ListPRsRequest) (ListPRsResponse, error) {
 	// TODO: Use client.ListPullRequests(ctx, owner, repo, base, state) method to list open PR for a repo
 	// internal.Repo object has all the necessary fields to make this call
-	return ListOpenPRsResponse{}, nil
+	return ListPRsResponse{}, nil
 }
 
 type ListModifiedFilesRequest struct {
