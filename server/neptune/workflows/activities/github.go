@@ -310,8 +310,6 @@ type ListModifiedFilesRequest struct {
 	PullRequest internal.PullRequest
 }
 
-// strings are utf-8 encoded of size 1 to 4 bytes, assuming each file path is of length 100, max size of a filepath = 4 * 100 = 400 bytes
-// upper limit of 2Mb can accomodate (2*1024*1024)/400 = 524k filepaths which is >> max number of results per page supported by the GH API 100.
 type ListModifiedFilesResponse struct {
 	FilePaths []string
 }
@@ -330,8 +328,15 @@ func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request 
 	filepaths := []string{}
 	for _, file := range files {
 		filepaths = append(filepaths, file.GetFilename())
+
+		// account for previous file name as well if the file has moved across roots
+		if file.GetStatus() == "renamed" {
+			filepaths = append(filepaths, file.GetPreviousFilename())
+		}
 	}
 
+	// strings are utf-8 encoded of size 1 to 4 bytes, assuming each file path is of length 100, max size of a filepath = 4 * 100 = 400 bytes
+	// upper limit of 2Mb can accomodate (2*1024*1024)/400 = 524k filepaths which is >> max number of results supported by the GH API 3000.
 	return ListModifiedFilesResponse{
 		FilePaths: filepaths,
 	}, nil
