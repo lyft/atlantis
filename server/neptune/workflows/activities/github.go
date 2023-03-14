@@ -293,15 +293,16 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 	}, nil
 }
 
-type ListOpenPRsRequest struct {
-	Repo internal.Repo
+type ListPRsRequest struct {
+	Repo  internal.Repo
+	State internal.State
 }
 
-type ListOpenPRsResponse struct {
+type ListPRsResponse struct {
 	PullRequests []internal.PullRequest
 }
 
-func (a *githubActivities) GithubListOpenPRs(ctx context.Context, request ListOpenPRsRequest) (ListOpenPRsResponse, error) {
+func (a *githubActivities) ListOpenPRs(ctx context.Context, request ListPRsRequest) (ListPRsResponse, error) {
 	prs, err := a.Client.ListPullRequests(
 		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
 		request.Repo.Owner,
@@ -310,7 +311,7 @@ func (a *githubActivities) GithubListOpenPRs(ctx context.Context, request ListOp
 		PullRequestOpenState,
 	)
 	if err != nil {
-		return ListOpenPRsResponse{}, errors.Wrap(err, "listing open pull requests")
+		return ListPRsResponse{}, errors.Wrap(err, "listing open pull requests")
 	}
 
 	pullRequests := []internal.PullRequest{}
@@ -320,7 +321,7 @@ func (a *githubActivities) GithubListOpenPRs(ctx context.Context, request ListOp
 		})
 	}
 
-	return ListOpenPRsResponse{
+	return ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil
 }
@@ -336,7 +337,7 @@ type ListModifiedFilesResponse struct {
 	FilePaths []string
 }
 
-func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request ListModifiedFilesRequest) (ListModifiedFilesResponse, error) {
+func (a *githubActivities) ListModifiedFiles(ctx context.Context, request ListModifiedFilesRequest) (ListModifiedFilesResponse, error) {
 	// TODO: Use client.ListModifiedFiles(ctx, owner, repo, pullNumber) to list files modified in a PR
 	// internal.Repo object and internal.PullRequest has all the necessary fields to make this call
 	return ListModifiedFilesResponse{}, nil
