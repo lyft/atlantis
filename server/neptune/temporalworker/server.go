@@ -54,19 +54,20 @@ const (
 )
 
 type Server struct {
-	Logger              logging.Logger
-	HTTPServerProxy     *neptune_http.ServerProxy
-	CronScheduler       *internalSync.CronScheduler
-	Crons               []*internalSync.Cron
-	Port                int
-	StatsScope          tally.Scope
-	StatsCloser         io.Closer
-	TemporalClient      *temporal.ClientWrapper
-	JobStreamHandler    *job.StreamHandler
-	DeployActivities    *activities.Deploy
-	TerraformActivities *activities.Terraform
-	GithubActivities    *activities.Github
-	TerraformTaskQueue  string
+	Logger                   logging.Logger
+	HTTPServerProxy          *neptune_http.ServerProxy
+	CronScheduler            *internalSync.CronScheduler
+	Crons                    []*internalSync.Cron
+	Port                     int
+	StatsScope               tally.Scope
+	StatsCloser              io.Closer
+	TemporalClient           *temporal.ClientWrapper
+	JobStreamHandler         *job.StreamHandler
+	DeployActivities         *activities.Deploy
+	TerraformActivities      *activities.Terraform
+	GithubActivities         *activities.Github
+	RevisionSetterActivities *activities.RevsionSetter
+	TerraformTaskQueue       string
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -168,6 +169,11 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing github activities")
 	}
 
+	revisionSetterActivities, err := activities.NewRevisionSetter()
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing pr revision activities")
+	}
+
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
 
 	server := Server{
@@ -179,16 +185,17 @@ func NewServer(config *config.Config) (*Server, error) {
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:     httpServerProxy,
-		Port:                config.ServerCfg.Port,
-		StatsScope:          scope,
-		StatsCloser:         statsCloser,
-		TemporalClient:      temporalClient,
-		JobStreamHandler:    jobStreamHandler,
-		DeployActivities:    deployActivities,
-		TerraformActivities: terraformActivities,
-		GithubActivities:    githubActivities,
-		TerraformTaskQueue:  config.TemporalCfg.TerraformTaskQueue,
+		HTTPServerProxy:          httpServerProxy,
+		Port:                     config.ServerCfg.Port,
+		StatsScope:               scope,
+		StatsCloser:              statsCloser,
+		TemporalClient:           temporalClient,
+		JobStreamHandler:         jobStreamHandler,
+		DeployActivities:         deployActivities,
+		TerraformActivities:      terraformActivities,
+		GithubActivities:         githubActivities,
+		RevisionSetterActivities: revisionSetterActivities,
+		TerraformTaskQueue:       config.TemporalCfg.TerraformTaskQueue,
 	}
 	return &server, nil
 }
@@ -221,6 +228,16 @@ func (s Server) Start() error {
 		}
 
 		s.Logger.InfoContext(ctx, "Shutting down terraform worker, resource clean up may still be occurring in the background")
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		prRevisionWorker := s.buildPrRevisionWorker()
+		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
+			log.Fatalln("unable to start rebase worker", err)
+		}
 	}()
 
 	// Ensure server gracefully drains connections when stopped.
@@ -305,6 +322,27 @@ func (s Server) buildTerraformWorker() worker.Worker {
 	terraformWorker.RegisterActivity(s.GithubActivities)
 	terraformWorker.RegisterWorkflow(workflows.Terraform)
 	return terraformWorker
+}
+
+// rebase worker only handles activites for the rebase flow
+func (s Server) buildPrRevisionWorker() worker.Worker {
+	// pass the underlying client otherwise this will panic()
+	rebaseWorker := worker.New(s.TemporalClient.Client, workflows.PrRevisionTaskQueue, worker.Options{
+		WorkerStopTimeout: TemporalWorkerTimeout,
+		Interceptors: []interceptor.WorkerInterceptor{
+			temporal.NewWorkerInterceptor(),
+		},
+
+		// Num Activity Executions in PR Revision Setter ~ Num Open PRs + Num PRs modifing root
+		// Assuming half of open PRs need to be rebased, Num Activity Executions = 1.5*(Num Open PRs) = 1.5*(Num GH API Calls)
+		// Allocating a budget of 7200 GH API calls per hour which is well within our current API usage gives us 7200*1.5 = 10800 activity executions per hour
+		// 10800 activity executions per hour -> 10800/60/60 -> 3 activities per second
+		TaskQueueActivitiesPerSecond: 3,
+	})
+	rebaseWorker.RegisterWorkflow(workflows.PRRevision)
+	rebaseWorker.RegisterActivity(s.GithubActivities)
+	rebaseWorker.RegisterActivity(s.RevisionSetterActivities)
+	return rebaseWorker
 }
 
 // Healthz returns the health check response. It always returns a 200 currently.

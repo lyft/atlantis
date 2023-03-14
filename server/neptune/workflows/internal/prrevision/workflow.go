@@ -17,6 +17,8 @@ import (
 )
 
 const (
+	TaskQueue = "pr_revision"
+
 	RetryCount          = 3
 	StartToCloseTimeout = 30 * time.Second
 )
