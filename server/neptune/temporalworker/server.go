@@ -51,7 +51,7 @@ const (
 
 	// 5 minutes to allow cleaning up the job store
 	StreamHandlerTimeout                   = 5 * time.Minute
-	PrRevisionTaskQueueActivitiesPerSecond = 3
+	PRRevisionTaskQueueActivitiesPerSecond = 3
 )
 
 type Server struct {
@@ -235,7 +235,7 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		prRevisionWorker := s.buildPrRevisionWorker()
+		prRevisionWorker := s.buildPRRevisionWorker()
 		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start pr revision worker", err)
 		}
@@ -326,9 +326,9 @@ func (s Server) buildTerraformWorker() worker.Worker {
 }
 
 // rebase worker only handles activites for the rebase flow
-func (s Server) buildPrRevisionWorker() worker.Worker {
+func (s Server) buildPRRevisionWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
-	worker := worker.New(s.TemporalClient.Client, workflows.PrRevisionTaskQueue, worker.Options{
+	worker := worker.New(s.TemporalClient.Client, workflows.PRRevisionTaskQueue, worker.Options{
 		WorkerStopTimeout: TemporalWorkerTimeout,
 		Interceptors: []interceptor.WorkerInterceptor{
 			temporal.NewWorkerInterceptor(),
@@ -338,7 +338,7 @@ func (s Server) buildPrRevisionWorker() worker.Worker {
 		// Assuming half of open PRs need to be rebased, Num Activity Executions = 1.5*(Num Open PRs) = 1.5*(Num GH API Calls)
 		// Allocating a budget of 7200 GH API calls per hour which is well within our current API usage gives us 7200*1.5 = 10800 activity executions per hour
 		// 10800 activity executions per hour -> 10800/60/60 -> 3 activities per second
-		TaskQueueActivitiesPerSecond: PrRevisionTaskQueueActivitiesPerSecond,
+		TaskQueueActivitiesPerSecond: PRRevisionTaskQueueActivitiesPerSecond,
 	})
 	worker.RegisterWorkflow(workflows.PRRevision)
 	worker.RegisterActivity(s.GithubActivities)
