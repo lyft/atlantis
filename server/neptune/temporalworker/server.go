@@ -50,7 +50,8 @@ const (
 	TemporalWorkerTimeout = 50 * time.Minute
 
 	// 5 minutes to allow cleaning up the job store
-	StreamHandlerTimeout = 5 * time.Minute
+	StreamHandlerTimeout                   = 5 * time.Minute
+	PrRevisionTaskQueueActivitiesPerSecond = 3
 )
 
 type Server struct {
@@ -171,7 +172,7 @@ func NewServer(config *config.Config) (*Server, error) {
 
 	revisionSetterActivities, err := activities.NewRevisionSetter()
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing pr revision activities")
+		return nil, errors.Wrap(err, "initializing revision setter activities")
 	}
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
@@ -337,7 +338,7 @@ func (s Server) buildPrRevisionWorker() worker.Worker {
 		// Assuming half of open PRs need to be rebased, Num Activity Executions = 1.5*(Num Open PRs) = 1.5*(Num GH API Calls)
 		// Allocating a budget of 7200 GH API calls per hour which is well within our current API usage gives us 7200*1.5 = 10800 activity executions per hour
 		// 10800 activity executions per hour -> 10800/60/60 -> 3 activities per second
-		TaskQueueActivitiesPerSecond: 3,
+		TaskQueueActivitiesPerSecond: PrRevisionTaskQueueActivitiesPerSecond,
 	})
 	worker.RegisterWorkflow(workflows.PRRevision)
 	worker.RegisterActivity(s.GithubActivities)
