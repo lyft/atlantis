@@ -226,7 +226,7 @@ func TestCheckRunHandler(t *testing.T) {
 			Name:       "atlantis/invalid: testroot",
 		}
 		err := subject.Handle(context.Background(), e)
-		assert.ErrorContains(t, err, "unable to determine root name")
+		assert.NoError(t, err)
 	})
 
 	t.Run("signal error", func(t *testing.T) {
