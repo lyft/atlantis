@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	TaskQueue = "pr_revision"
+	TaskQueue       = "pr_revision"
+	OpenPullRequest = "open"
 
 	RetryCount          = 3
 	StartToCloseTimeout = 30 * time.Second
@@ -81,7 +82,7 @@ func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.P
 	var resp activities.ListPRsResponse
 	err := workflow.ExecuteActivity(ctx, r.GithubActivities.ListPRs, activities.ListPRsRequest{
 		Repo:  repo,
-		State: github.Open,
+		State: OpenPullRequest,
 	}).Get(ctx, &resp)
 	if err != nil {
 		return []github.PullRequest{}, errors.Wrap(err, "listing open PRs")
