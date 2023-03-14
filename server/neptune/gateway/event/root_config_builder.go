@@ -158,7 +158,7 @@ func (b *RootConfigBuilder) build(ctx context.Context, commit *RepoCommit, insta
 	return mergedRootCfgs, nil
 }
 
-func (b *RootConfigBuilder) getMatchingRoots(ctx context.Context, config valid.RepoCfg, repo *LocalRepo, installationToken int64, rootNames[]string) ([]valid.Project, error) {
+func (b *RootConfigBuilder) getMatchingRoots(ctx context.Context, config valid.RepoCfg, repo *LocalRepo, installationToken int64, rootNames []string) ([]valid.Project, error) {
 	if len(rootNames) > 0 {
 		return b.validateAndGetRoots(ctx, config, rootNames)
 	}
