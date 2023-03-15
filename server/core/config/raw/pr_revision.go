@@ -4,6 +4,7 @@ import (
 	"os"
 
 	validation "github.com/go-ozzo/ozzo-validation"
+	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 )
 
@@ -13,15 +14,15 @@ type PRRevision struct {
 	URL         string `yaml:"url" json:"url"`
 }
 
-func (p PRRevision) Validate() error {
-	return validation.ValidateStruct(&p,
-		validation.Field(p.Username, validation.Required),
-		validation.Field(p.PasswordEnv, validation.Required),
-		validation.Field(p.URL, validation.Required),
+func (p *PRRevision) Validate() error {
+	return validation.ValidateStruct(p,
+		validation.Field(&p.Username, validation.Required),
+		validation.Field(&p.PasswordEnv, validation.Required),
+		validation.Field(&p.URL, validation.Required, is.URL),
 	)
 }
 
-func (p PRRevision) ToValid() valid.PRRevision {
+func (p *PRRevision) ToValid() valid.PRRevision {
 	return valid.PRRevision{
 		Username: p.Username,
 		Password: os.Getenv(p.PasswordEnv),

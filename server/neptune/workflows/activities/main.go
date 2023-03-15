@@ -34,7 +34,9 @@ const (
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
 
-	RevisionSetterClientTimeout = 10 * time.Second
+	// StartToCloseTimeout for PRRevision activities is configured to 30 seconds
+	// Setting the revision setter client timeout to 20 seconds < StartToCloseTimeout
+	RevisionSetterClientTimeout = 20 * time.Second
 )
 
 // Exported Activites should be here.
@@ -224,7 +226,8 @@ type RevsionSetter struct {
 }
 
 func NewRevisionSetter(cfg valid.PRRevision) (*RevsionSetter, error) {
-	var client Client
+	// Use a NoopClient if revision setter is not configured
+	var client revisionSetterClient
 	if cfg.URL == "" || cfg.Username == "" || cfg.Password == "" {
 		client = &NoopClient{}
 	} else {

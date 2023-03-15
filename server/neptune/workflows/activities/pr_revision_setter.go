@@ -16,13 +16,13 @@ const (
 )
 
 // abstracting the HTTP client for configurability and testing purposes
-type Client interface {
+type revisionSetterClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
 type NoopClient struct{}
 
-// TODO: Figure out Context Cancelled issue when using this NoopClient
+// TODO: Figure out Context Cancelled issue when using NoopClient
 func (n *NoopClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{
 		Body: http.NoBody,
@@ -30,7 +30,7 @@ func (n *NoopClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 type prRevisionSetterActivities struct {
-	client Client
+	client revisionSetterClient
 
 	url      string
 	username string
