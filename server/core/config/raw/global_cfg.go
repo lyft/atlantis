@@ -23,6 +23,7 @@ type GlobalCfg struct {
 	TerraformLogFilters  TerraformLogFilters  `yaml:"terraform_log_filters" json:"terraform_log_filters"`
 	Temporal             Temporal             `yaml:"temporal" json:"temporal"`
 	Persistence          Persistence          `yaml:"persistence" json:"persistence"`
+	PRRevision           PRRevision           `yaml:"pr_revision" json:"pr_revision"`
 }
 
 // Repo is the raw schema for repos in the server-side repo config.
@@ -162,6 +163,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		PersistenceConfig:    g.Persistence.ToValid(defaultCfg),
 		TerraformLogFilter:   g.TerraformLogFilters.ToValid(),
 		Temporal:             g.Temporal.ToValid(),
+		PRRevision:           g.PRRevision.ToValid(),
 	}
 }
 

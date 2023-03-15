@@ -17,6 +17,9 @@ import (
 )
 
 const (
+	TaskQueue       = "pr_revision"
+	OpenPullRequest = "open"
+
 	RetryCount          = 3
 	StartToCloseTimeout = 30 * time.Second
 )
@@ -27,7 +30,7 @@ type Request struct {
 }
 
 type setterActivities interface {
-	SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) (activities.SetPRRevisionResponse, error)
+	SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) error
 }
 
 type githubActivities interface {
@@ -79,7 +82,7 @@ func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.P
 	var resp activities.ListPRsResponse
 	err := workflow.ExecuteActivity(ctx, r.GithubActivities.ListPRs, activities.ListPRsRequest{
 		Repo:  repo,
-		State: github.Open,
+		State: OpenPullRequest,
 	}).Get(ctx, &resp)
 	if err != nil {
 		return []github.PullRequest{}, errors.Wrap(err, "listing open PRs")
@@ -111,9 +114,7 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 
 	// wait to resolve futures for setting minimum revision
 	for _, future := range futures {
-		var resp activities.SetPRRevisionResponse
-		err := future.Get(ctx, &resp)
-		if err != nil {
+		if err := future.Get(ctx, nil); err != nil {
 			return errors.Wrap(err, "error setting pr revision")
 		}
 	}
