@@ -3,23 +3,11 @@ package api
 import (
 	"context"
 	"net/http"
-	"github.com/runatlantis/atlantis/server/neptune/sync"
 )
 
-type scheduler interface {
-	Schedule(ctx context.Context, f sync.Executor) error
-}
-
 type Controller[Request any] struct {
-	Scheduler scheduler
 	RequestConverter RequestConverter[Request]
-	Handler Handler[Request]
-}
-
-var deployVarKeys = []string{
-	"owner",
-	"repo",
-	"root",
+	Handler          Handler[Request]
 }
 
 type Handler[Request any] interface {
@@ -30,14 +18,17 @@ type RequestConverter[T any] interface {
 	Convert(from *http.Request) (T, error)
 }
 
-func (c *Controller[Request]) RunAsync(w http.ResponseWriter, request *http.Request) {
+func (c *Controller[Request]) Handle(w http.ResponseWriter, request *http.Request) {
 	internalRequest, err := c.RequestConverter.Convert(request)
 
 	if err != nil {
-		// do something
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 	}
 
-	c.Scheduler.Schedule(request.Context(), func(ctx context.Context) error {
-		return c.Handler.Handle(ctx, internalRequest)
-	})
+	err = c.Handler.Handle(request.Context(), internalRequest)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
 }

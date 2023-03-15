@@ -31,6 +31,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	lyft_gateway "github.com/runatlantis/atlantis/server/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/api"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	httpInternal "github.com/runatlantis/atlantis/server/neptune/http"
@@ -305,6 +306,15 @@ func NewServer(config Config) (*Server, error) {
 		Scope:     statsScope.SubScope("event.filters.root"),
 	}
 
+	deploySignaler := &event.DeployWorkflowSignaler{
+		TemporalClient: temporalClient,
+	}
+	rootDeployer := &event.RootDeployer{
+		Logger:            ctxLogger,
+		RootConfigBuilder: rootConfigBuilder,
+		DeploySignaler:    deploySignaler,
+	}
+
 	checkRunFetcher := &github.CheckRunsFetcher{
 		AppID:         config.GithubAppID,
 		ClientCreator: clientCreator,
@@ -328,15 +338,28 @@ func NewServer(config Config) (*Server, error) {
 		syncScheduler,
 		asyncScheduler,
 		temporalClient,
-		rootConfigBuilder,
+		rootDeployer,
+		deploySignaler,
 		checkRunFetcher,
 		vcsStatusUpdater,
 		globalCfg,
 	)
 
+	deployController := api.Controller[api.DeployRequest]{
+		RequestConverter: &api.DeployRequestConverter{
+			ClientCreator: clientCreator,
+			RepoConverter: repoConverter,
+		},
+		Handler: &api.DeployHandler{
+			Deployer:  rootDeployer,
+			Scheduler: asyncScheduler,
+		},
+	}
+
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods("GET")
 	router.HandleFunc("/status", statusController.Get).Methods("GET")
+	router.HandleFunc("/api/deploy", deployController.Handle).Methods("POST")
 	router.HandleFunc("/events", gatewayEventsController.Post).Methods("POST")
 	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
 
@@ -368,7 +391,6 @@ func NewServer(config Config) (*Server, error) {
 			},
 		},
 		StatsCloser:    closer,
-		Handler:        n,
 		Scheduler:      asyncScheduler,
 		Logger:         ctxLogger,
 		Port:           config.Port,

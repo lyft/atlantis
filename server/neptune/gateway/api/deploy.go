@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	internalGH "github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
@@ -20,9 +21,11 @@ const (
 	repoVarKey     = "repo"
 	ownerVarKey    = "owner"
 	usernameVarKey = "username"
+	rootVarKey     = "root"
 )
 
 type DeployRequest struct {
+	RootNames         []string
 	Repo              models.Repo
 	Branch            string
 	Revision          string
@@ -90,6 +93,11 @@ func (c *DeployRequestConverter) Convert(from *http.Request) (DeployRequest, err
 		return DeployRequest{}, fmt.Errorf("username not provided")
 	}
 
+	root, ok := vars[rootVarKey]
+	if !ok {
+		return DeployRequest{}, fmt.Errorf("root not provided")
+	}
+
 	installationToken, err := c.getInstallationToken(ctx, owner)
 	if err != nil {
 		return DeployRequest{}, err
@@ -118,6 +126,7 @@ func (c *DeployRequestConverter) Convert(from *http.Request) (DeployRequest, err
 
 	return DeployRequest{
 		Repo:              internalRepo,
+		RootNames:         []string{root},
 		Branch:            branchName,
 		Revision:          revision,
 		InstallationToken: installationToken,
@@ -128,35 +137,39 @@ func (c *DeployRequestConverter) Convert(from *http.Request) (DeployRequest, err
 
 }
 
+type rootDeployer interface {
+	Deploy(ctx context.Context, deployOptions event.RootDeployOptions) error
+}
+
+type scheduler interface {
+	Schedule(ctx context.Context, f sync.Executor) error
+}
+
 type DeployHandler struct {
-	Deployer event.RootDeployer
+	Deployer  rootDeployer
+	Scheduler scheduler
 }
 
 func (c *DeployHandler) Handle(ctx context.Context, request DeployRequest) error {
-	// make this async
-	return c.Deployer.Deploy(ctx, event.RootDeployOptions{
+	return c.Scheduler.Schedule(ctx,
+		func(ctx context.Context) error {
+			return c.Deployer.Deploy(ctx, event.RootDeployOptions{
+				Repo:      request.Repo,
+				Branch:    request.Branch,
+				Revision:  request.Revision,
+				RootNames: request.RootNames,
 
-		// fetch this from github
-		Repo:     request.Repo,
-		Branch:   request.Branch,
-		Revision: request.Revision,
+				// this we won't have, maybe we can add some gh auth to add this
+				Sender: request.User,
 
-		// this we won't have, maybe we can add some gh auth to add this
-		Sender: request.User,
+				InstallationToken: request.InstallationToken,
 
-		// get from github
-		InstallationToken: request.InstallationToken,
+				RepoFetcherOptions: &internalGH.RepoFetcherOptions{
+					CloneDepth: 1,
+				},
 
-		BuilderOptions: event.BuilderOptions{
-			RepoFetcherOptions: internalGH.RepoFetcherOptions{
-				CloneDepth: 1,
-			},
-
-			FileFetcherOptions: internalGH.FileFetcherOptions{
-				Sha: request.Revision,
-			},
+				Trigger: workflows.ManualTrigger,
+			})
 		},
-
-		Trigger: workflows.ManualTrigger,
-	})
+	)
 }
