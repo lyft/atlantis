@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -71,7 +72,12 @@ func (b *prRevisionSetterActivities) SetPRRevision(ctx context.Context, request 
 	defer response.Body.Close()
 
 	if response.StatusCode != 200 {
-		return fmt.Errorf("setting PR revision: %s", response.Body)
+		bytes, err := io.ReadAll(response.Body)
+		if err != nil {
+			return errors.New("reading response body")
+		}
+
+		return fmt.Errorf("setting PR revision: %s", string(bytes))
 	}
 	return nil
 }

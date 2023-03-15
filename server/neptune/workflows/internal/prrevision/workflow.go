@@ -25,8 +25,9 @@ const (
 )
 
 type Request struct {
-	Repo github.Repo
-	Root terraform.Root
+	Repo     github.Repo
+	Root     terraform.Root
+	Revision string
 }
 
 type setterActivities interface {
@@ -105,10 +106,7 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 	futures := []workflow.Future{}
 	for _, pr := range prs {
 		if setMinimumRevisionFuture := r.setRevisionForPR(ctx, req, pr, futuresByPullNum[pr]); setMinimumRevisionFuture != nil {
-			futures = append(futures, workflow.ExecuteActivity(ctx, r.RevisionSetterActivities.SetPRRevision, activities.SetPRRevisionRequest{
-				Repository:  req.Repo,
-				PullRequest: pr,
-			}))
+			futures = append(futures, setMinimumRevisionFuture)
 		}
 	}
 
@@ -127,7 +125,7 @@ func (r *Runner) setRevisionForPR(ctx workflow.Context, req Request, pull github
 	var result activities.ListModifiedFilesResponse
 	if err := future.Get(ctx, &result); err != nil {
 		logger.Error(ctx, "error listing modified files in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
-		return r.setMinRevision(ctx, req.Repo, pull)
+		return r.setMinRevision(ctx, req, pull)
 	}
 
 	// should not fail unless the TrackedFiles config is invalid which is validated on startup
@@ -135,20 +133,21 @@ func (r *Runner) setRevisionForPR(ctx workflow.Context, req Request, pull github
 	rootModified, err := isRootModified(req.Root, result.FilePaths)
 	if err != nil {
 		logger.Error(ctx, "error matching file paths in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
-		return r.setMinRevision(ctx, req.Repo, pull)
+		return r.setMinRevision(ctx, req, pull)
 	}
 
 	if rootModified {
-		return r.setMinRevision(ctx, req.Repo, pull)
+		return r.setMinRevision(ctx, req, pull)
 	}
 
 	return nil
 }
 
-func (r *Runner) setMinRevision(ctx workflow.Context, repo github.Repo, pull github.PullRequest) workflow.Future {
+func (r *Runner) setMinRevision(ctx workflow.Context, req Request, pull github.PullRequest) workflow.Future {
 	return workflow.ExecuteActivity(ctx, r.RevisionSetterActivities.SetPRRevision, activities.SetPRRevisionRequest{
-		Repository:  repo,
+		Repository:  req.Repo,
 		PullRequest: pull,
+		Revision:    req.Revision,
 	})
 }
 
