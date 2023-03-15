@@ -302,7 +302,7 @@ type ListPRsResponse struct {
 	PullRequests []internal.PullRequest
 }
 
-func (a *githubActivities) ListOpenPRs(ctx context.Context, request ListPRsRequest) (ListPRsResponse, error) {
+func (a *githubActivities) ListPRs(ctx context.Context, request ListPRsRequest) (ListPRsResponse, error) {
 	prs, err := a.Client.ListPullRequests(
 		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
 		request.Repo.Owner,
