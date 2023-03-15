@@ -2,9 +2,11 @@ package activities
 
 import (
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
@@ -31,6 +33,8 @@ const (
 	// terraformPluginCacheDir is the name of the dir inside our data dir
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
+
+	RevisionSetterClientTimeout = 10 * time.Second
 )
 
 // Exported Activites should be here.
@@ -219,7 +223,22 @@ type RevsionSetter struct {
 	*prRevisionSetterActivities
 }
 
-func NewRevisionSetter() (*RevsionSetter, error) {
-	// TODO: Pass necessary config to instantiate pr revision setter client
-	return &RevsionSetter{}, nil
+func NewRevisionSetter(cfg valid.RevisionSetter) (*RevsionSetter, error) {
+	var client Client
+	if !cfg.Enabled {
+		client = &NoopClient{}
+	} else {
+		client = &http.Client{
+			Timeout: RevisionSetterClientTimeout,
+		}
+	}
+
+	return &RevsionSetter{
+		prRevisionSetterActivities: &prRevisionSetterActivities{
+			client:   client,
+			username: cfg.Config.Username,
+			password: cfg.Config.Password,
+			url:      cfg.Config.URL,
+		},
+	}, nil
 }
