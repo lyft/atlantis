@@ -535,7 +535,7 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 		StatsNamespace:           userConfig.StatsNamespace,
 		Metrics:                  globalCfg.Metrics,
 		LyftAuditJobsSnsTopicArn: userConfig.LyftAuditJobsSnsTopicArn,
-		RevisionSetterConfig:     globalCfg.RevisionSetter,
+		PRRevisionConfig:         globalCfg.PRRevision,
 	}
 	return temporalworker.NewServer(cfg)
 }

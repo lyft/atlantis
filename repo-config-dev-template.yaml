@@ -6,6 +6,3 @@ repos:
 temporal:
   host: temporalite
   port: 7233
-
-revision_setter: 
-  enabled: false

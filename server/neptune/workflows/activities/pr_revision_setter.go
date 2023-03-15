@@ -12,6 +12,7 @@ import (
 const (
 	SetRevisionReason     = "new changes deployed to root modified in this PR"
 	SetRevisionMethodType = "POST"
+	SetRevisionEndpoint   = "set_minimum_service_pr_revision"
 )
 
 // abstracting the HTTP client for configurability and testing purposes
@@ -44,8 +45,9 @@ type SetPRRevisionRequest struct {
 
 func generateURL(url string, request SetPRRevisionRequest) string {
 	return fmt.Sprintf(
-		"https://%s/set_minimum_service_pr_revision/%s/%d/%s/%s",
+		"https://%s/%s/%s/%d/%s/%s",
 		url,
+		SetRevisionEndpoint,
 		request.Repository.Name,
 		request.PullRequest.Number,
 		request.Revision,

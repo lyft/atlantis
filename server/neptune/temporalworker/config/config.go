@@ -26,22 +26,16 @@ type TerraformConfig struct {
 	LogFilters             valid.TerraformLogFilters
 }
 
-type RevisionSetterConfig struct {
-	Username    string
-	PasswordEnv string
-	URL         string
-}
-
 // Config is TemporalWorker specific user config
 type Config struct {
-	AuthCfg              AuthConfig
-	ServerCfg            ServerConfig
-	TemporalCfg          valid.Temporal
-	TerraformCfg         TerraformConfig
-	DeploymentConfig     valid.StoreConfig
-	JobConfig            valid.StoreConfig
-	Metrics              valid.Metrics
-	RevisionSetterConfig valid.RevisionSetter
+	AuthCfg          AuthConfig
+	ServerCfg        ServerConfig
+	TemporalCfg      valid.Temporal
+	TerraformCfg     TerraformConfig
+	DeploymentConfig valid.StoreConfig
+	JobConfig        valid.StoreConfig
+	Metrics          valid.Metrics
+	PRRevisionConfig valid.PRRevision
 	//TODO: combine this with above
 	StatsNamespace string
 

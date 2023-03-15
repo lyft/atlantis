@@ -223,9 +223,9 @@ type RevsionSetter struct {
 	*prRevisionSetterActivities
 }
 
-func NewRevisionSetter(cfg valid.RevisionSetter) (*RevsionSetter, error) {
+func NewRevisionSetter(cfg valid.PRRevision) (*RevsionSetter, error) {
 	var client Client
-	if !cfg.Enabled {
+	if cfg.URL == "" || cfg.Username == "" || cfg.Password == "" {
 		client = &NoopClient{}
 	} else {
 		client = &http.Client{
@@ -236,9 +236,9 @@ func NewRevisionSetter(cfg valid.RevisionSetter) (*RevsionSetter, error) {
 	return &RevsionSetter{
 		prRevisionSetterActivities: &prRevisionSetterActivities{
 			client:   client,
-			username: cfg.Config.Username,
-			password: cfg.Config.Password,
-			url:      cfg.Config.URL,
+			username: cfg.Username,
+			password: cfg.Password,
+			url:      cfg.URL,
 		},
 	}, nil
 }
