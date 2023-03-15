@@ -292,7 +292,7 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 
 type ListPRsRequest struct {
 	Repo  internal.Repo
-	State internal.State
+	State internal.PullRequestState
 }
 
 type ListPRsResponse struct {
