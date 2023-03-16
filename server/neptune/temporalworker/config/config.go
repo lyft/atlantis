@@ -35,7 +35,7 @@ type Config struct {
 	DeploymentConfig valid.StoreConfig
 	JobConfig        valid.StoreConfig
 	Metrics          valid.Metrics
-	PRRevisionConfig valid.PRRevision
+	PRRevision       valid.PRRevision
 	//TODO: combine this with above
 	StatsNamespace string
 

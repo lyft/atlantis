@@ -26,7 +26,8 @@ type NoopClient struct{}
 // TODO: Figure out Context Cancelled issue when using NoopClient
 func (n *NoopClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{
-		Body: http.NoBody,
+		Body:       http.NoBody,
+		StatusCode: 200,
 	}, nil
 }
 
@@ -74,7 +75,7 @@ func (b *prRevisionSetterActivities) SetPRRevision(ctx context.Context, request 
 	if response.StatusCode != 200 {
 		bytes, err := io.ReadAll(response.Body)
 		if err != nil {
-			return errors.New("reading response body")
+			return errors.Wrap(err, "reading response body")
 		}
 
 		return fmt.Errorf("setting PR revision: %s", string(bytes))
