@@ -16,7 +16,6 @@ const (
 	SetRevisionEndpoint   = "set_minimum_service_pr_revision"
 )
 
-// abstracting the HTTP client for configurability and testing purposes
 type revisionSetterClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
