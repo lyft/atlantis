@@ -12,6 +12,7 @@
 - [Badges!](#badges)
 - [Stargazers over time](#stargazers-over-time)
 
+
 ## Resources
 * How to get started: [www.runatlantis.io/guide](https://www.runatlantis.io/guide)
 * Full documentation: [www.runatlantis.io/docs](https://www.runatlantis.io/docs)
