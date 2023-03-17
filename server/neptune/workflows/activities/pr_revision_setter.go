@@ -23,7 +23,6 @@ type revisionSetterClient interface {
 
 type NoopClient struct{}
 
-// TODO: Figure out Context Cancelled issue when using NoopClient
 func (n *NoopClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{
 		Body:       http.NoBody,

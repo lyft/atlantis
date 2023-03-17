@@ -102,16 +102,16 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 		})
 	}
 
-	// resolve the futures and spawn activities to set minimum revision for PR if needed
-	futures := []workflow.Future{}
+	// resolve the setRevisionFutures and spawn activities to set minimum revision for PR if needed
+	setRevisionFutures := []workflow.Future{}
 	for _, pr := range prs {
-		if setMinimumRevisionFuture := r.setRevisionForPR(ctx, req, pr, futuresByPullNum[pr]); setMinimumRevisionFuture != nil {
-			futures = append(futures, setMinimumRevisionFuture)
+		if future := r.setRevisionForPR(ctx, req, pr, futuresByPullNum[pr]); future != nil {
+			setRevisionFutures = append(setRevisionFutures, future)
 		}
 	}
 
 	// wait to resolve futures for setting minimum revision
-	for _, future := range futures {
+	for _, future := range setRevisionFutures {
 		if err := future.Get(ctx, nil); err != nil {
 			return errors.Wrap(err, "error setting pr revision")
 		}
