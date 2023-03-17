@@ -3,11 +3,6 @@ repos:
     apply_requirements: []
     checkout_strategy: merge
 
-admin:
-  github_team:
-    name: atlantis-orchestration
-    org: lyft
-
 temporal:
   host: temporalite
   port: 7233
