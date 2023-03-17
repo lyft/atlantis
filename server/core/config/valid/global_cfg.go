@@ -63,6 +63,16 @@ type GlobalCfg struct {
 	PersistenceConfig    PersistenceConfig
 	TerraformLogFilter   TerraformLogFilters
 	Temporal             Temporal
+	Admin                Admin
+}
+
+type GithubTeam struct {
+	Name string
+	Org  string
+}
+
+type Admin struct {
+	GithubTeam GithubTeam
 }
 
 type PersistenceConfig struct {

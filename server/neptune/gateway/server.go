@@ -32,6 +32,8 @@ import (
 	lyft_gateway "github.com/runatlantis/atlantis/server/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/api/middleware"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/api/request"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	httpInternal "github.com/runatlantis/atlantis/server/neptune/http"
@@ -39,7 +41,7 @@ import (
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
-	middleware "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
@@ -287,7 +289,7 @@ func NewServer(config Config) (*Server, error) {
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		config.AppCfg,
 		githubapp.WithClientMiddleware(
-			middleware.ClientMetrics(statsScope.SubScope("github")),
+			ghClient.ClientMetrics(statsScope.SubScope("github")),
 		))
 	if err != nil {
 		return nil, errors.Wrap(err, "creating github client creator")
@@ -345,23 +347,31 @@ func NewServer(config Config) (*Server, error) {
 		globalCfg,
 	)
 
-	deployController := api.Controller[api.DeployRequest]{
-		RequestConverter: &api.DeployRequestConverter{
-			ClientCreator: clientCreator,
-			RepoConverter: repoConverter,
-		},
+	deployController := api.Controller[request.Deploy]{
+		RequestConverter: request.NewDeployConverter(
+			clientCreator,
+			repoConverter,
+		),
 		Handler: &api.DeployHandler{
 			Deployer:  rootDeployer,
 			Scheduler: asyncScheduler,
+			Logger:    ctxLogger,
 		},
 	}
 
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods("GET")
 	router.HandleFunc("/status", statusController.Get).Methods("GET")
-	router.HandleFunc("/api/deploy", deployController.Handle).Methods("POST")
 	router.HandleFunc("/events", gatewayEventsController.Post).Methods("POST")
 	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+
+	apiSubrouter := router.PathPrefix("/api/admin").Subrouter()
+	authMiddleware := &middleware.AdminAuthMiddleware{
+		Admin: globalCfg.Admin,
+	}
+
+	apiSubrouter.Use(authMiddleware.Middleware)
+	apiSubrouter.HandleFunc("/deploy", deployController.Handle).Methods("POST")
 
 	n := negroni.New(&negroni.Recovery{
 		Logger:     log.New(os.Stdout, "", log.LstdFlags),

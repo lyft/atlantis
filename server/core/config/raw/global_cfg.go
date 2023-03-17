@@ -23,6 +23,40 @@ type GlobalCfg struct {
 	TerraformLogFilters  TerraformLogFilters  `yaml:"terraform_log_filters" json:"terraform_log_filters"`
 	Temporal             Temporal             `yaml:"temporal" json:"temporal"`
 	Persistence          Persistence          `yaml:"persistence" json:"persistence"`
+	Admin                Admin                `yaml:"admin" json:"admin"`
+}
+
+type GithubTeam struct {
+	Name string `yaml:"name" json:"name"`
+	Org  string `yaml:"org" json:"org"`
+}
+
+func (g GithubTeam) Validate() error {
+	return validation.ValidateStruct(
+		&g,
+		validation.Field(&g.Name, validation.Required),
+		validation.Field(&g.Org, validation.Required),
+	)
+}
+
+type Admin struct {
+	GithubTeam GithubTeam `yaml:"github_team" json:"github_team"`
+}
+
+func (g Admin) Validate() error {
+	return validation.ValidateStruct(
+		&g,
+		validation.Field(&g.GithubTeam),
+	)
+}
+
+func (g Admin) ToValid() valid.Admin {
+	return valid.Admin{
+		GithubTeam: valid.GithubTeam{
+			Name: g.GithubTeam.Name,
+			Org:  g.GithubTeam.Org,
+		},
+	}
 }
 
 // Repo is the raw schema for repos in the server-side repo config.
@@ -162,6 +196,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		PersistenceConfig:    g.Persistence.ToValid(defaultCfg),
 		TerraformLogFilter:   g.TerraformLogFilters.ToValid(),
 		Temporal:             g.Temporal.ToValid(),
+		Admin:                g.Admin.ToValid(),
 	}
 }
 
