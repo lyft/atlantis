@@ -38,8 +38,8 @@ type githubClient interface {
 	UpdateCheckRun(ctx internal.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error)
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
-	ListPullRequests(ctx internal.Context, owner, repo, base, state string) ([]*github.PullRequest, error)
 	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
+	ListPullRequests(ctx internal.Context, owner, repo, base, state string) ([]*github.PullRequest, error)
 }
 
 type DiffDirection string
@@ -296,7 +296,7 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 
 type ListPRsRequest struct {
 	Repo  internal.Repo
-	State internal.State
+	State internal.PullRequestState
 }
 
 type ListPRsResponse struct {

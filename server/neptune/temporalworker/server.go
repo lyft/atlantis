@@ -49,6 +49,9 @@ const (
 	// Note: x must be configured outside atlantis and is the grace period effectively.
 	TemporalWorkerTimeout = 50 * time.Minute
 
+	// allow any in-progress PRRevision workflow executions to gracefully exit which shouldn't take longer than 10 minutes
+	PRRevisionWorkerTimeout = 10 * time.Minute
+
 	// 5 minutes to allow cleaning up the job store
 	StreamHandlerTimeout                   = 5 * time.Minute
 	PRRevisionTaskQueueActivitiesPerSecond = 3
@@ -170,7 +173,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing github activities")
 	}
 
-	revisionSetterActivities, err := activities.NewRevisionSetter(config.PRRevisionConfig)
+	revisionSetterActivities, err := activities.NewRevisionSetter(config.RevisionSetter)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing revision setter activities")
 	}
@@ -231,6 +234,8 @@ func (s Server) Start() error {
 		s.Logger.InfoContext(ctx, "Shutting down terraform worker, resource clean up may still be occurring in the background")
 	}()
 
+	// Spinning up a new worker process here adds complexity to the shutdown logic for this worker
+	// TODO: Investigate the feasibility of deploying this worker process in it's own worker
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -239,6 +244,8 @@ func (s Server) Start() error {
 		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start pr revision worker", err)
 		}
+
+		s.Logger.InfoContext(ctx, "Shutting down pr revision worker, resource clean up may still be occurring in the background")
 	}()
 
 	// Ensure server gracefully drains connections when stopped.
@@ -325,11 +332,11 @@ func (s Server) buildTerraformWorker() worker.Worker {
 	return terraformWorker
 }
 
-// rebase worker only handles activites for the rebase flow
+// PRRevision worker only handles activites for the PRRevision workflow
 func (s Server) buildPRRevisionWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	worker := worker.New(s.TemporalClient.Client, workflows.PRRevisionTaskQueue, worker.Options{
-		WorkerStopTimeout: TemporalWorkerTimeout,
+		WorkerStopTimeout: PRRevisionWorkerTimeout,
 		Interceptors: []interceptor.WorkerInterceptor{
 			temporal.NewWorkerInterceptor(),
 		},

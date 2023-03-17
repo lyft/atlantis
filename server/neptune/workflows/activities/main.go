@@ -225,23 +225,20 @@ type RevsionSetter struct {
 	*prRevisionSetterActivities
 }
 
-func NewRevisionSetter(cfg valid.PRRevision) (*RevsionSetter, error) {
+func NewRevisionSetter(cfg valid.RevisionSetter) (*RevsionSetter, error) {
 	// Use a NoopClient if revision setter is not configured
 	var client revisionSetterClient
-	if cfg.URL == "" || cfg.Username == "" || cfg.Password == "" {
+	if cfg.URL == "" {
 		client = &NoopClient{}
 	} else {
-		client = &http.Client{
-			Timeout: RevisionSetterClientTimeout,
-		}
+		client = &http.Client{}
 	}
 
 	return &RevsionSetter{
 		prRevisionSetterActivities: &prRevisionSetterActivities{
-			client:   client,
-			username: cfg.Username,
-			password: cfg.Password,
-			url:      cfg.URL,
+			client:    client,
+			url:       cfg.URL,
+			basicAuth: cfg.BasicAuth,
 		},
 	}, nil
 }

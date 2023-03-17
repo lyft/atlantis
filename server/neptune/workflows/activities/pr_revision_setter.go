@@ -3,9 +3,11 @@ package activities
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 )
 
@@ -15,26 +17,24 @@ const (
 	SetRevisionEndpoint   = "set_minimum_service_pr_revision"
 )
 
-// abstracting the HTTP client for configurability and testing purposes
 type revisionSetterClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
 type NoopClient struct{}
 
-// TODO: Figure out Context Cancelled issue when using NoopClient
 func (n *NoopClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{
-		Body: http.NoBody,
+		Body:       http.NoBody,
+		StatusCode: 200,
 	}, nil
 }
 
 type prRevisionSetterActivities struct {
 	client revisionSetterClient
 
-	url      string
-	username string
-	password string
+	url       string
+	basicAuth valid.BasicAuth
 }
 
 type SetPRRevisionRequest struct {
@@ -63,7 +63,7 @@ func (b *prRevisionSetterActivities) SetPRRevision(ctx context.Context, request 
 	}
 
 	// add basic auth credentials
-	req.SetBasicAuth(b.username, b.password)
+	req.SetBasicAuth(b.basicAuth.Username, b.basicAuth.Password)
 	response, err := b.client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "setting PR revision")
@@ -71,7 +71,12 @@ func (b *prRevisionSetterActivities) SetPRRevision(ctx context.Context, request 
 	defer response.Body.Close()
 
 	if response.StatusCode != 200 {
-		return fmt.Errorf("setting PR revision: %s", response.Body)
+		bytes, err := io.ReadAll(response.Body)
+		if err != nil {
+			return errors.Wrap(err, "reading response body")
+		}
+
+		return fmt.Errorf("setting PR revision: %s", string(bytes))
 	}
 	return nil
 }

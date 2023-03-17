@@ -5,4 +5,6 @@ type PullRequest struct {
 	Number int
 }
 
-type State string
+type PullRequestState string
+
+const OpenPullRequest PullRequestState = "open"
