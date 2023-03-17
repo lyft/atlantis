@@ -106,7 +106,7 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 	// WorkflowModeType is per repo so if the first ProjectCommand has PlatformWorkflowMode enabled, it's enabled for all projects in the repo
 	// So, we set atlantis/apply status to success to allow PRs to merge to master
 	// TODO: Remove this after we remove the required atlantis/apply status check
-	if projectCmds[0].WorkflowModeType == valid.PlatformWorkflowMode {
+	if allProjectsInPlatformMode(projectCmds) {
 		if err := r.updateAtlantisApplyChecks(cmdCtx, baseRepo, projectCmds); err != nil {
 			cmdCtx.Log.ErrorContext(cmdCtx.RequestCtx, errors.Wrap(err, "updating atlantis apply status").Error())
 		}
@@ -115,6 +115,15 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 		cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
 	return true, nil
+}
+
+func allProjectsInPlatformMode(cmds []command.ProjectContext) bool {
+	for _, cmd := range cmds {
+		if cmd.WorkflowModeType != valid.PlatformWorkflowMode {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *AutoplanValidator) InstrumentedIsValid(ctx context.Context, logger logging.Logger, baseRepo models.Repo, headRepo models.Repo, pull models.PullRequest, user models.User) bool {

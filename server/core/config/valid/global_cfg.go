@@ -344,6 +344,18 @@ func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) Me
 		}
 	}
 
+	// TODO: remove when platform mode rollout is complete
+	// if project has a specific workflow mode setting configured, override the repo level setting
+	workflowModeType := rCfg.WorkflowModeType
+	if proj.WorkflowModeType != nil {
+		switch *proj.WorkflowModeType {
+		case "platform":
+			workflowModeType = PlatformWorkflowMode
+		case "default":
+			workflowModeType = DefaultWorkflowMode
+		}
+	}
+
 	return MergedProjectCfg{
 		ApplyRequirements:   applyReqs,
 		Workflow:            workflow,
@@ -358,7 +370,7 @@ func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) Me
 		RepoCfgVersion:      rCfg.Version,
 		PolicySets:          g.PolicySets,
 		Tags:                proj.Tags,
-		WorkflowMode:        rCfg.WorkflowModeType,
+		WorkflowMode:        workflowModeType,
 		RebaseEnabled:       *repo.RebaseEnabled,
 	}
 }
