@@ -101,7 +101,7 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 		})
 	}
 
-	// resolve the setRevisionFutures and spawn activities to set minimum revision for PR if needed
+	// resolve the listModifiedFiles fututes and spawn activities to set minimum revision for PR if needed
 	setRevisionFutures := []workflow.Future{}
 	for _, pr := range prs {
 		if future := r.setRevisionForPR(ctx, req, pr, futuresByPullNum[pr]); future != nil {
