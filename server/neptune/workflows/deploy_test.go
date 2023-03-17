@@ -2,13 +2,10 @@ package workflows_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -228,9 +225,10 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 			Deploy:        deployActivities,
 			RevsionSetter: revisionSetterActivities,
 		},
-		githubClient: githubClient,
-		streamCloser: streamCloser,
-		snsWriter:    snsWriter,
+		githubClient:         githubClient,
+		streamCloser:         streamCloser,
+		snsWriter:            snsWriter,
+		revisionSetterClient: revSetterClient,
 	}
 
 }
@@ -331,9 +329,7 @@ func (c *testGithubClient) ListPullRequests(ctx internalGithub.Context, owner, r
 }
 
 type SetRevisionCall struct {
-	Repo     string
-	PullNum  int
-	Revision string
+	QueryPath string
 }
 
 type testRevSetterClient struct {
@@ -341,16 +337,8 @@ type testRevSetterClient struct {
 }
 
 func (t *testRevSetterClient) Do(req *http.Request) (*http.Response, error) {
-	path := strings.Split(req.URL.Path, "/")
-	pullNum, err := strconv.Atoi(path[3])
-	if err != nil {
-		return nil, err
-	}
-
 	t.Updates = append(t.Updates, SetRevisionCall{
-		Repo:     fmt.Sprintf("%s/%s", path[1], path[2]),
-		PullNum:  pullNum,
-		Revision: path[4],
+		QueryPath: req.URL.Path,
 	})
 
 	return &http.Response{
