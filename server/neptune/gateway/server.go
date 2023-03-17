@@ -308,15 +308,6 @@ func NewServer(config Config) (*Server, error) {
 		Scope:     statsScope.SubScope("event.filters.root"),
 	}
 
-	deploySignaler := &event.DeployWorkflowSignaler{
-		TemporalClient: temporalClient,
-	}
-	rootDeployer := &event.RootDeployer{
-		Logger:            ctxLogger,
-		RootConfigBuilder: rootConfigBuilder,
-		DeploySignaler:    deploySignaler,
-	}
-
 	checkRunFetcher := &github.CheckRunsFetcher{
 		AppID:         config.GithubAppID,
 		ClientCreator: clientCreator,

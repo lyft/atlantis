@@ -39,7 +39,7 @@ type RootDeployOptions struct {
 	Revision  string
 
 	// By Specifying this, consumers can trigger deploys for all the roots modified in a PR if no roots are specified.
-	// By default, computed roots are only based on the different between the provided revision and revision - 1.
+	// By default, computed roots are only based on the difference between the provided revision and revision - 1.
 	OptionalPullNum int
 
 	// User to attribute this deploy to

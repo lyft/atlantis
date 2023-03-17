@@ -141,7 +141,8 @@ func (b *RootConfigBuilder) build(ctx context.Context, commit *RepoCommit, insta
 	// Parse repo configs into specific root configs (i.e. roots)
 	// TODO: rename project to roots
 	var mergedRootCfgs []*valid.MergedProjectCfg
-	repoCfg, err := b.ParserValidator.ParseRepoCfg(repoDir, localRepo.Repo.ID())
+
+	repoCfg, err := b.ParserValidator.ParseRepoCfg(localRepo.Dir, localRepo.Repo.ID())
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing %s", config.AtlantisYAMLFilename)
 	}
@@ -160,13 +161,13 @@ func (b *RootConfigBuilder) build(ctx context.Context, commit *RepoCommit, insta
 
 func (b *RootConfigBuilder) getMatchingRoots(ctx context.Context, config valid.RepoCfg, repo *LocalRepo, installationToken int64, rootNames []string) ([]valid.Project, error) {
 	if len(rootNames) > 0 {
-		return b.validateAndGetRoots(ctx, config, rootNames)
+		return b.validateAndGetRoots(config, rootNames)
 	}
 
 	return b.Strategy.FindMatches(ctx, config, repo, installationToken)
 }
 
-func (b *RootConfigBuilder) validateAndGetRoots(ctx context.Context, config valid.RepoCfg, rootNames []string) ([]valid.Project, error) {
+func (b *RootConfigBuilder) validateAndGetRoots(config valid.RepoCfg, rootNames []string) ([]valid.Project, error) {
 	rootSet := make(map[string]valid.Project)
 
 	for _, p := range config.Projects {
