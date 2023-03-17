@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
@@ -33,10 +32,6 @@ const (
 	// terraformPluginCacheDir is the name of the dir inside our data dir
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
-
-	// StartToCloseTimeout for PRRevision activities is configured to 30 seconds
-	// Setting the revision setter client timeout to 20 seconds < StartToCloseTimeout
-	RevisionSetterClientTimeout = 20 * time.Second
 )
 
 // Exported Activites should be here.
@@ -225,23 +220,20 @@ type RevsionSetter struct {
 	*prRevisionSetterActivities
 }
 
-func NewRevisionSetter(cfg valid.PRRevision) (*RevsionSetter, error) {
+func NewRevisionSetter(cfg valid.RevisionSetter) (*RevsionSetter, error) {
 	// Use a NoopClient if revision setter is not configured
 	var client revisionSetterClient
-	if cfg.URL == "" || cfg.Username == "" || cfg.Password == "" {
+	if cfg.URL == "" {
 		client = &NoopClient{}
 	} else {
-		client = &http.Client{
-			Timeout: RevisionSetterClientTimeout,
-		}
+		client = &http.Client{}
 	}
 
 	return &RevsionSetter{
 		prRevisionSetterActivities: &prRevisionSetterActivities{
-			client:   client,
-			username: cfg.Username,
-			password: cfg.Password,
-			url:      cfg.URL,
+			client:    client,
+			url:       cfg.URL,
+			basicAuth: cfg.BasicAuth,
 		},
 	}, nil
 }

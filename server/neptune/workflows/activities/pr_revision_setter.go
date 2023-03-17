@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 )
 
@@ -33,9 +34,8 @@ func (n *NoopClient) Do(req *http.Request) (*http.Response, error) {
 type prRevisionSetterActivities struct {
 	client revisionSetterClient
 
-	url      string
-	username string
-	password string
+	url       string
+	basicAuth valid.BasicAuth
 }
 
 type SetPRRevisionRequest struct {
@@ -64,7 +64,7 @@ func (b *prRevisionSetterActivities) SetPRRevision(ctx context.Context, request 
 	}
 
 	// add basic auth credentials
-	req.SetBasicAuth(b.username, b.password)
+	req.SetBasicAuth(b.basicAuth.Username, b.basicAuth.Password)
 	response, err := b.client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "setting PR revision")
