@@ -197,12 +197,12 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 	assert.NoError(t, err)
 
 	githubClient := &testGithubClient{}
-
 	githubActivities, err := activities.NewGithubWithClient(
 		githubClient,
 		cfg.DataDir,
 		GetLocalTestRoot,
 	)
+	assert.NoError(t, err)
 
 	revSetterClient := &testRevSetterClient{}
 	revisionSetterActivities, err := activities.NewRevisionSetterWithClient(
