@@ -14,7 +14,9 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -209,6 +211,7 @@ func TestWorker_ReceivesUnlockSignal(t *testing.T) {
 func TestWorker_DeploysItems(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	repo := github.Repo{
 		Owner: "owner",
@@ -291,6 +294,7 @@ func TestWorker_DeploysItems(t *testing.T) {
 func TestWorker_DeploysItems_ValidationError_SkipLatestDeploymentUpdate(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	// we set this callback so we can query the state of the queue
 	// after all processing has complete to determine whether we should
@@ -405,6 +409,7 @@ func TestNewWorker(t *testing.T) {
 	t.Run("last deploy was manual", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
+		env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 		a := &testDeployActivity{}
 		env.RegisterActivity(a)
@@ -488,6 +493,7 @@ func TestNewWorker(t *testing.T) {
 func TestWorker_DeploysItems_PlanRejectionError_SkipLatestDeploymentUpdate(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	// we set this callback so we can query the state of the queue
 	// after all processing has complete to determine whether we should
@@ -577,6 +583,7 @@ func TestWorker_DeploysItems_PlanRejectionError_SkipLatestDeploymentUpdate(t *te
 func TestWorker_DeploysItems_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	// we set this callback so we can query the state of the queue
 	// after all processing has complete to determine whether we should
@@ -628,6 +635,208 @@ func TestWorker_DeploysItems_TerraformClientError_UpdateLatestDeployment(t *test
 			Repo: repo,
 		},
 	}
+
+	firstDeployment := deployment.Info{
+		Revision: "1",
+	}
+
+	env.ExecuteWorkflow(testWorkerWorkflow, workerRequest{
+		Queue: deploymentInfoList,
+		ExpectedPlanRejectionErrros: []*internalTerraform.PlanRejectionError{
+			nil, nil,
+		},
+		ExpectedValidationErrors: []*queue.ValidationError{
+			nil, nil,
+		},
+		ExpectedTerraformClientErrors: []*activities.TerraformClientError{
+			nil, activities.NewTerraformClientError(errors.New("tf client error")),
+		},
+	})
+
+	env.AssertExpectations(t)
+
+	var resp workerResponse
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	assert.Equal(t, queue.CompleteWorkerState, resp.EndState)
+
+	assert.Equal(t, []*deployment.Info{
+		nil, &firstDeployment,
+	}, resp.CapturedArgs)
+	assert.True(t, resp.QueueIsEmpty)
+}
+
+func TestWorker_DeploysItems_SetPRRevision(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+	env.RegisterWorkflow(prrevision.Workflow)
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	root1 := terraform.Root{
+		Name: "root_1",
+	}
+
+	root2 := terraform.Root{
+		Name: "root_2",
+	}
+
+	deploymentInfoList := []internalTerraform.DeploymentInfo{
+		{
+			ID:         uuid.UUID{},
+			Revision:   "1",
+			CheckRunID: 1234,
+			Root:       root1,
+			Repo:       repo,
+		},
+		{
+			ID:         uuid.UUID{},
+			Revision:   "2",
+			CheckRunID: 5678,
+			Root:       root2,
+			Repo:       repo,
+		},
+	}
+
+	env.OnWorkflow(prrevision.Workflow, mock.Anything, prrevision.Request{
+		Repo:     repo,
+		Root:     root1,
+		Revision: "1",
+	}).Return(nil)
+
+	env.OnWorkflow(prrevision.Workflow, mock.Anything, prrevision.Request{
+		Repo:     repo,
+		Root:     root2,
+		Revision: "2",
+	}).Return(nil)
+
+	// we set this callback so we can query the state of the queue
+	// after all processing has complete to determine whether we should
+	// shutdown the worker
+	env.RegisterDelayedCallback(func() {
+		encoded, err := env.QueryWorkflow("queue")
+
+		assert.NoError(t, err)
+
+		var q queueAndState
+		err = encoded.Get(&q)
+
+		assert.NoError(t, err)
+
+		assert.True(t, q.QueueIsEmpty)
+		assert.Equal(t, queue.WaitingWorkerState, q.State)
+		assert.Equal(t, q.CurrentDeployment, queue.CurrentDeployment{
+			Deployment: deploymentInfoList[len(deploymentInfoList)-1],
+			Status:     queue.CompleteStatus,
+		})
+
+		env.CancelWorkflow()
+
+	}, 10*time.Second)
+
+	env.ExecuteWorkflow(testWorkerWorkflow, workerRequest{
+		Queue: deploymentInfoList,
+		ExpectedValidationErrors: []*queue.ValidationError{
+			nil, nil,
+		},
+		ExpectedPlanRejectionErrros: []*internalTerraform.PlanRejectionError{
+			nil, nil,
+		},
+		ExpectedTerraformClientErrors: []*activities.TerraformClientError{
+			nil, nil,
+		},
+	})
+
+	env.AssertExpectations(t)
+
+	var resp workerResponse
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	assert.Equal(t, []*deployment.Info{
+		nil, {
+			Revision: "1",
+		},
+	}, resp.CapturedArgs)
+	assert.Equal(t, queue.CompleteWorkerState, resp.EndState)
+	assert.True(t, resp.QueueIsEmpty)
+}
+
+func TestWorker_DeploysItems_TerraformClientError_UpdateLatestDeployment_SetPRRevision(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+	env.RegisterWorkflow(prrevision.Workflow)
+
+	// we set this callback so we can query the state of the queue
+	// after all processing has complete to determine whether we should
+	// shutdown the worker
+	env.RegisterDelayedCallback(func() {
+		encoded, err := env.QueryWorkflow("queue")
+
+		assert.NoError(t, err)
+
+		var q queueAndState
+		err = encoded.Get(&q)
+
+		assert.NoError(t, err)
+
+		assert.True(t, q.QueueIsEmpty)
+		assert.Equal(t, queue.WaitingWorkerState, q.State)
+
+		//  2nd deploy since it resulted in a TFClient error
+		assert.Equal(t, deployment.Info{
+			Revision: "2",
+		}, *q.LatestDeployment)
+
+		env.CancelWorkflow()
+
+	}, 10*time.Second)
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	root1 := terraform.Root{
+		Name: "root_1",
+	}
+
+	root2 := terraform.Root{
+		Name: "root_2",
+	}
+
+	deploymentInfoList := []internalTerraform.DeploymentInfo{
+		{
+			ID:         uuid.UUID{},
+			Revision:   "1",
+			CheckRunID: 1234,
+			Root:       root1,
+			Repo:       repo,
+		},
+		{
+			ID:         uuid.UUID{},
+			Revision:   "2",
+			CheckRunID: 5678,
+			Root:       root2,
+			Repo:       repo,
+		},
+	}
+
+	env.OnWorkflow(prrevision.Workflow, mock.Anything, prrevision.Request{
+		Repo:     repo,
+		Root:     root1,
+		Revision: "1",
+	}).Return(nil)
+
+	env.OnWorkflow(prrevision.Workflow, mock.Anything, prrevision.Request{
+		Repo:     repo,
+		Root:     root2,
+		Revision: "2",
+	}).Return(nil)
 
 	firstDeployment := deployment.Info{
 		Revision: "1",

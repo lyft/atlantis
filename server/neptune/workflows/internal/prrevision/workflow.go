@@ -25,8 +25,9 @@ const (
 )
 
 type Request struct {
-	Repo github.Repo
-	Root terraform.Root
+	Repo     github.Repo
+	Root     terraform.Root
+	Revision string
 }
 
 type setterActivities interface {

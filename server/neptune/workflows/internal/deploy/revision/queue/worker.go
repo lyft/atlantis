@@ -15,7 +15,10 @@ import (
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
+	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -200,6 +203,11 @@ func (w *Worker) Work(ctx workflow.Context) {
 		if err == nil {
 			scope.Counter("success").Inc(1)
 			w.latestDeployment = currentDeployment
+
+			if err := startPRRevisionWorkflow(ctx, msg); err != nil {
+				logger.Error(ctx, "failed to start PR Revision workflow", key.ErrKey, err)
+			}
+
 			selector.AddFuture(w.awaitWork(ctx), callback)
 			continue
 		}
@@ -220,6 +228,11 @@ func (w *Worker) Work(ctx workflow.Context) {
 			// deployment as latest deployment and allow redeploy as long as the failed deploy is the latest deployment.
 			w.latestDeployment = currentDeployment
 
+			// since state file is mutated, we need to set revision for any open PRs to ensure plan file is refreshed
+			if err := startPRRevisionWorkflow(ctx, msg); err != nil {
+				logger.Error(ctx, "failed to start PR Revision workflow", key.ErrKey, err)
+			}
+
 			readableErr = "unknown"
 			logger.Error(ctx, "failed to deploy revision, moving to next one", key.ErrKey, err)
 		}
@@ -228,6 +241,32 @@ func (w *Worker) Work(ctx workflow.Context) {
 
 		selector.AddFuture(w.awaitWork(ctx), callback)
 	}
+}
+
+func startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
+	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 1)
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+
+	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
+		TaskQueue: prrevision.TaskQueue,
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 3,
+		},
+
+		// configuring this ensures the child workflow will continue execution when the parent workflow terminates
+		ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
+	})
+
+	future := workflow.ExecuteChildWorkflow(ctx, prrevision.Workflow, prrevision.Request{
+		Repo:     deployment.Repo,
+		Root:     deployment.Root,
+		Revision: deployment.Revision,
+	})
+
+	// ensure child workflow execution has started
+	return future.GetChildWorkflowExecution().Get(ctx, nil)
 }
 
 func (w *Worker) emitRevisionRequestStats(scope metrics.Scope, request terraform.DeploymentInfo) {
