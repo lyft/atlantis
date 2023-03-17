@@ -2,10 +2,13 @@ package workflows_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,12 +17,14 @@ import (
 	"github.com/graymeta/stow/local"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config/raw"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	internalGithub "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 )
@@ -28,6 +33,7 @@ type a struct {
 	*activities.Github
 	*activities.Terraform
 	*activities.Deploy
+	*activities.RevsionSetter
 }
 
 // we don't want to mess up all our gitconfig for testing purposes
@@ -45,6 +51,7 @@ func TestDeployWorkflow(t *testing.T) {
 
 	env.RegisterWorkflow(workflows.Deploy)
 	env.RegisterWorkflow(workflows.Terraform)
+	env.RegisterWorkflow(prrevision.Workflow)
 
 	env.RegisterDelayedCallback(func() {
 		signalWorkflow(env)
@@ -65,6 +72,9 @@ func TestDeployWorkflow(t *testing.T) {
 
 	// there should be 6 state changes that are reflected in our checks (3 state changes for plan and apply)
 	assert.Len(t, s.githubClient.Updates, 7)
+
+	// 1 open PR that modifies the deployed root
+	assert.Len(t, s.revisionSetterClient.Updates, 1)
 
 	// we should have output for 2 different jobs
 	assert.Len(t, s.streamCloser.CapturedJobOutput, 2)
@@ -96,9 +106,10 @@ func signalWorkflow(env *testsuite.TestWorkflowEnvironment) {
 					},
 				},
 			},
-			RepoRelPath: "terraform/mytestroot",
-			PlanMode:    workflows.NormalPlanMode,
-			Trigger:     workflows.MergeTrigger,
+			RepoRelPath:  "terraform/mytestroot",
+			PlanMode:     workflows.NormalPlanMode,
+			Trigger:      workflows.MergeTrigger,
+			TrackedFiles: raw.DefaultAutoPlanWhenModified,
 		},
 		Repo: workflows.Repo{
 			FullName: "nish/repo",
@@ -109,10 +120,11 @@ func signalWorkflow(env *testsuite.TestWorkflowEnvironment) {
 }
 
 type testSingletons struct {
-	a            *a
-	githubClient *testGithubClient
-	streamCloser *testStreamCloser
-	snsWriter    *testSnsWriter
+	a                    *a
+	githubClient         *testGithubClient
+	revisionSetterClient *testRevSetterClient
+	streamCloser         *testStreamCloser
+	snsWriter            *testSnsWriter
 }
 
 func buildConfig(t *testing.T) config.Config {
@@ -195,17 +207,26 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 		GetLocalTestRoot,
 	)
 
+	revSetterClient := &testRevSetterClient{}
+	revisionSetterActivities, err := activities.NewRevisionSetterWithClient(
+		revSetterClient,
+		valid.RevisionSetter{},
+	)
+	assert.NoError(t, err)
+
 	assert.NoError(t, err)
 
 	env.RegisterActivity(terraformActivities)
 	env.RegisterActivity(deployActivities)
 	env.RegisterActivity(githubActivities)
+	env.RegisterActivity(revisionSetterActivities)
 
 	return &testSingletons{
 		a: &a{
-			Github:    githubActivities,
-			Terraform: terraformActivities,
-			Deploy:    deployActivities,
+			Github:        githubActivities,
+			Terraform:     terraformActivities,
+			Deploy:        deployActivities,
+			RevsionSetter: revisionSetterActivities,
 		},
 		githubClient: githubClient,
 		streamCloser: streamCloser,
@@ -294,9 +315,46 @@ func (c *testGithubClient) CompareCommits(ctx internalGithub.Context, owner, rep
 }
 
 func (c *testGithubClient) ListModifiedFiles(ctx internalGithub.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error) {
-	return []*github.CommitFile{}, nil
+	return []*github.CommitFile{
+		{
+			Filename: github.String("terraform/mytestroot/a.tf"),
+		},
+	}, nil
 }
 
 func (c *testGithubClient) ListPullRequests(ctx internalGithub.Context, owner, repo, base, state string) ([]*github.PullRequest, error) {
-	return []*github.PullRequest{}, nil
+	return []*github.PullRequest{
+		{
+			Number: github.Int(1),
+		},
+	}, nil
+}
+
+type SetRevisionCall struct {
+	Repo     string
+	PullNum  int
+	Revision string
+}
+
+type testRevSetterClient struct {
+	Updates []SetRevisionCall
+}
+
+func (t *testRevSetterClient) Do(req *http.Request) (*http.Response, error) {
+	path := strings.Split(req.URL.Path, "/")
+	pullNum, err := strconv.Atoi(path[3])
+	if err != nil {
+		return nil, err
+	}
+
+	t.Updates = append(t.Updates, SetRevisionCall{
+		Repo:     fmt.Sprintf("%s/%s", path[1], path[2]),
+		PullNum:  pullNum,
+		Revision: path[4],
+	})
+
+	return &http.Response{
+		Body:       http.NoBody,
+		StatusCode: 200,
+	}, nil
 }

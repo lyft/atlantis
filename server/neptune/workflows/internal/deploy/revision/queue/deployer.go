@@ -22,6 +22,8 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+const PRRevisionWorkflowRetryCount = 3
+
 type ValidationError struct {
 	error
 }
@@ -92,7 +94,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", key.ErrKey, persistErr)
 	}
 
-	// log error and continue deploy if starting PR revision workflow fails since it's not critical to the deploy
+	// log error and continue deploy if setting revision for open PRs modifying this root fails since it's not critical to the deploy
 	if prRevErr := startPRRevisionWorkflow(ctx, requestedDeployment); prRevErr != nil {
 		logger.Error(ctx, "unable to start PR Revision workflow", key.ErrKey, prRevErr)
 	}
@@ -112,7 +114,9 @@ func startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.Deployme
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		TaskQueue: prrevision.TaskQueue,
 		RetryPolicy: &temporal.RetryPolicy{
-			MaximumAttempts: 3,
+
+			// starting pr revision wf shouldn't take more than 3 tries unless the worker is down, which we'll get alarmed on to fix
+			MaximumAttempts: PRRevisionWorkflowRetryCount,
 		},
 
 		// configuring this ensures the child workflow will continue execution when the parent workflow terminates
