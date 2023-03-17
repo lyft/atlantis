@@ -19,6 +19,8 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
+const PullRequestOpenState = "open"
+
 type ClientContext struct {
 	InstallationToken int64
 	context.Context
@@ -37,6 +39,7 @@ type githubClient interface {
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
 	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
+	ListPullRequests(ctx internal.Context, owner, repo, base, state string) ([]*github.PullRequest, error)
 }
 
 type DiffDirection string
@@ -301,9 +304,27 @@ type ListPRsResponse struct {
 }
 
 func (a *githubActivities) ListPRs(ctx context.Context, request ListPRsRequest) (ListPRsResponse, error) {
-	// TODO: Use client.ListPullRequests(ctx, owner, repo, base, state) method to list open PR for a repo
-	// internal.Repo object has all the necessary fields to make this call
-	return ListPRsResponse{}, nil
+	prs, err := a.Client.ListPullRequests(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.Repo.DefaultBranch,
+		PullRequestOpenState,
+	)
+	if err != nil {
+		return ListPRsResponse{}, errors.Wrap(err, "listing open pull requests")
+	}
+
+	pullRequests := []internal.PullRequest{}
+	for _, pullRequest := range prs {
+		pullRequests = append(pullRequests, internal.PullRequest{
+			Number: pullRequest.GetNumber(),
+		})
+	}
+
+	return ListPRsResponse{
+		PullRequests: pullRequests,
+	}, nil
 }
 
 type ListModifiedFilesRequest struct {
