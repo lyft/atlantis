@@ -12,9 +12,12 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
+	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -89,10 +92,41 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", key.ErrKey, persistErr)
 	}
 
+	// log error and continue deploy if starting PR revision workflow fails since it's not critical to the deploy
+	if prRevErr := startPRRevisionWorkflow(ctx, requestedDeployment); prRevErr != nil {
+		logger.Error(ctx, "unable to start PR Revision workflow", key.ErrKey, prRevErr)
+	}
+
 	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
 	// We do this as a safety measure to avoid deploying out of order revision after a failed deploy since it could still
 	// mutate the state file
 	return latestDeployment, err
+}
+
+func startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
+	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 1)
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+
+	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
+		TaskQueue: prrevision.TaskQueue,
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 3,
+		},
+
+		// configuring this ensures the child workflow will continue execution when the parent workflow terminates
+		ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
+	})
+
+	future := workflow.ExecuteChildWorkflow(ctx, prrevision.Workflow, prrevision.Request{
+		Repo:     deployment.Repo,
+		Root:     deployment.Root,
+		Revision: deployment.Revision,
+	})
+
+	// ensure child workflow execution has started
+	return future.GetChildWorkflowExecution().Get(ctx, nil)
 }
 
 func (p *Deployer) FetchLatestDeployment(ctx workflow.Context, repoName, rootName string) (*deployment.Info, error) {
