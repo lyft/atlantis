@@ -51,14 +51,14 @@ type QueueWorker interface {
 	GetState() queue.WorkerState
 }
 
-func Workflow(ctx workflow.Context, request Request, tfWorkflow terraform.Workflow) error {
+func Workflow(ctx workflow.Context, request Request, tfWorkflow terraform.Workflow, prWorkflow queue.Workflow) error {
 	options := workflow.ActivityOptions{
 		TaskQueue:           TaskQueue,
 		StartToCloseTimeout: 5 * time.Second,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
-	runner, err := newRunner(ctx, request, tfWorkflow)
+	runner, err := newRunner(ctx, request, tfWorkflow, prWorkflow)
 
 	if err != nil {
 		return errors.Wrap(err, "initializing workflow runner")
@@ -77,7 +77,7 @@ type Runner struct {
 	Scope                    workflowMetrics.Scope
 }
 
-func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workflow) (*Runner, error) {
+func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workflow, prRevWorkflow queue.Workflow) (*Runner, error) {
 	// inject dependencies
 
 	// temporal effectively "injects" this, it just cares about the method names,
@@ -95,7 +95,7 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 		lockStateUpdater.UpdateQueuedRevisions(ctx, d)
 	}, scope)
 
-	worker, err := queue.NewWorker(ctx, revisionQueue, a, tfWorkflow, request.Repo.FullName, request.Root.Name, checkRunCache)
+	worker, err := queue.NewWorker(ctx, revisionQueue, a, tfWorkflow, prRevWorkflow, request.Repo.FullName, request.Root.Name, checkRunCache)
 	if err != nil {
 		return nil, err
 	}

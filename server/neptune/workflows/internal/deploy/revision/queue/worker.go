@@ -85,6 +85,7 @@ func NewWorker(
 	q queue,
 	a workerActivities,
 	tfWorkflow terraform.Workflow,
+	prRevWorkflow Workflow,
 	repoName, rootName string,
 	githubCheckRunCache CheckRunClient,
 ) (*Worker, error) {
@@ -93,6 +94,7 @@ func NewWorker(
 		Activities:              a,
 		TerraformWorkflowRunner: tfWorkflowRunner,
 		GithubCheckRunCache:     githubCheckRunCache,
+		PRRevisionWorkflow:      prRevWorkflow,
 	}
 
 	latestDeployment, err := deployer.FetchLatestDeployment(ctx, repoName, rootName)

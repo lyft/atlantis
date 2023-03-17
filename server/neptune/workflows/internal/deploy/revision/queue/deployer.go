@@ -55,7 +55,10 @@ type Deployer struct {
 	Activities              deployerActivities
 	TerraformWorkflowRunner terraformWorkflowRunner
 	GithubCheckRunCache     CheckRunClient
+	PRRevisionWorkflow      Workflow
 }
+
+type Workflow func(ctx workflow.Context, request prrevision.Request) error
 
 const (
 	DirectionBehindSummary   = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
