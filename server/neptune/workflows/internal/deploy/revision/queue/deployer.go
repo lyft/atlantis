@@ -98,7 +98,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	}
 
 	// log error and continue deploy if setting revision for open PRs modifying this root fails since it's not critical to the deploy
-	if prRevErr := startPRRevisionWorkflow(ctx, requestedDeployment); prRevErr != nil {
+	if prRevErr := p.startPRRevisionWorkflow(ctx, requestedDeployment); prRevErr != nil {
 		logger.Error(ctx, "unable to start PR Revision workflow", key.ErrKey, prRevErr)
 	}
 
@@ -108,7 +108,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	return latestDeployment, err
 }
 
-func startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
+func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
 	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 1)
 	if version == workflow.DefaultVersion {
 		return nil
@@ -126,7 +126,7 @@ func startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.Deployme
 		ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
 	})
 
-	future := workflow.ExecuteChildWorkflow(ctx, prrevision.Workflow, prrevision.Request{
+	future := workflow.ExecuteChildWorkflow(ctx, p.PRRevisionWorkflow, prrevision.Request{
 		Repo:     deployment.Repo,
 		Root:     deployment.Root,
 		Revision: deployment.Revision,
