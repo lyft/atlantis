@@ -21,7 +21,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	internalGithub "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 )
@@ -48,7 +47,7 @@ func TestDeployWorkflow(t *testing.T) {
 
 	env.RegisterWorkflow(workflows.Deploy)
 	env.RegisterWorkflow(workflows.Terraform)
-	env.RegisterWorkflow(prrevision.Workflow)
+	env.RegisterWorkflow(workflows.PRRevision)
 
 	env.RegisterDelayedCallback(func() {
 		signalWorkflow(env)
