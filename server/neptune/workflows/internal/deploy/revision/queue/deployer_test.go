@@ -76,6 +76,10 @@ type deployerRequest struct {
 	ExpectedT         *testing.T
 }
 
+func testPRRevWorkflow(ctx workflow.Context, request prrevision.Request) error {
+	return nil
+}
+
 func testDeployerWorkflow(ctx workflow.Context, r deployerRequest) (*deployment.Info, error) {
 	options := workflow.ActivityOptions{
 		ScheduleToCloseTimeout: 5 * time.Second,
@@ -95,6 +99,7 @@ func testDeployerWorkflow(ctx workflow.Context, r deployerRequest) (*deployment.
 			expectedT:            r.ExpectedT,
 			expectedDeploymentID: r.Info.ID.String(),
 		},
+		PRRevisionWorkflow: testPRRevWorkflow,
 	}
 
 	return deployer.Deploy(ctx, r.Info, r.LatestDeploy, metrics.NewNullableScope())
@@ -140,8 +145,8 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 			}
 
 			if c.setPRRevision {
-				env.RegisterWorkflow(prrevision.Workflow)
-				env.OnWorkflow(prrevision.Workflow, mock.Anything, prrevision.Request{
+				env.RegisterWorkflow(testPRRevWorkflow)
+				env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
 					Repo:     repo,
 					Root:     root,
 					Revision: deploymentInfo.Revision,
@@ -236,8 +241,8 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 			}
 
 			if c.setPRRevision {
-				env.RegisterWorkflow(prrevision.Workflow)
-				env.OnWorkflow(prrevision.Workflow, mock.Anything, prrevision.Request{
+				env.RegisterWorkflow(testPRRevWorkflow)
+				env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
 					Repo:     repo,
 					Root:     root,
 					Revision: deploymentInfo.Revision,
@@ -364,8 +369,8 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 			env := ts.NewTestWorkflowEnvironment()
 
 			if c.setPRRevision {
-				env.RegisterWorkflow(prrevision.Workflow)
-				env.OnWorkflow(prrevision.Workflow, mock.Anything, prrevision.Request{
+				env.RegisterWorkflow(testPRRevWorkflow)
+				env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
 					Repo:     repo,
 					Root:     root,
 					Revision: deploymentInfo.Revision,
@@ -683,8 +688,8 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 			}
 
 			if c.setPRRevision {
-				env.RegisterWorkflow(prrevision.Workflow)
-				env.OnWorkflow(prrevision.Workflow, mock.Anything, prrevision.Request{
+				env.RegisterWorkflow(testPRRevWorkflow)
+				env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
 					Repo:     repo,
 					Root:     root,
 					Revision: deploymentInfo.Revision,
@@ -873,8 +878,8 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 			}
 
 			if c.setPRRevision {
-				env.RegisterWorkflow(prrevision.Workflow)
-				env.OnWorkflow(prrevision.Workflow, mock.Anything, prrevision.Request{
+				env.RegisterWorkflow(testPRRevWorkflow)
+				env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
 					Repo:     repo,
 					Root:     root,
 					Revision: deploymentInfo.Revision,

@@ -15,6 +15,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -382,6 +383,10 @@ func TestNewWorker(t *testing.T) {
 		return nil
 	}
 
+	emptyPRRevWorkflow := func(ctx workflow.Context, request prrevision.Request) error {
+		return nil
+	}
+
 	type res struct {
 		Lock queue.LockState
 	}
@@ -391,7 +396,7 @@ func TestNewWorker(t *testing.T) {
 			ScheduleToCloseTimeout: 5 * time.Second,
 		})
 		q := queue.NewQueue(noopCallback, metrics.NewNullableScope())
-		_, err := queue.NewWorker(ctx, q, &testDeployActivity{}, emptyWorkflow, "nish/repo", "root", &testCheckRunClient{})
+		_, err := queue.NewWorker(ctx, q, &testDeployActivity{}, emptyWorkflow, emptyPRRevWorkflow, "nish/repo", "root", &testCheckRunClient{})
 		return res{
 			Lock: q.GetLockState(),
 		}, err
