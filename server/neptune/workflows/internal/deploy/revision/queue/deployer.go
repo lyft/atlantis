@@ -92,20 +92,27 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		return nil, err
 	}
 
-	latestDeployment = requestedDeployment.BuildPersistableInfo()
-	if persistErr := p.persistLatestDeployment(ctx, latestDeployment); persistErr != nil {
-		logger.Error(ctx, "unable to persist deployment, proceeding with in-memory value", key.ErrKey, persistErr)
-	}
-
-	// log error and continue deploy if setting revision for open PRs modifying this root fails since it's not critical to the deploy
-	if prRevErr := p.startPRRevisionWorkflow(ctx, requestedDeployment); prRevErr != nil {
-		logger.Error(ctx, "unable to start PR Revision workflow", key.ErrKey, prRevErr)
+	// log error and continue deploys if any of the post deploy task fails
+	if err := p.runPostDeployTasks(ctx, requestedDeployment); err != nil {
+		logger.Error(ctx, "error running post deploy task", key.ErrKey, err)
 	}
 
 	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
 	// We do this as a safety measure to avoid deploying out of order revision after a failed deploy since it could still
 	// mutate the state file
-	return latestDeployment, err
+	return requestedDeployment.BuildPersistableInfo(), err
+}
+
+func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
+	if err := p.persistLatestDeployment(ctx, deployment.BuildPersistableInfo()); err != nil {
+		return errors.Wrap(err, "unable to persist deployment")
+	}
+
+	if err := p.startPRRevisionWorkflow(ctx, deployment); err != nil {
+		return errors.Wrap(err, "unable to start PR Revision workflow")
+	}
+
+	return nil
 }
 
 func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
