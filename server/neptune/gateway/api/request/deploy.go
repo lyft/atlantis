@@ -4,22 +4,37 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-github/v45/github"
-	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/middleware"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/request/external"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
+	internal "github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 
-func NewDeployConverter(clientCreator githubapp.ClientCreator, repoConverter converter.RepoConverter) *JSONRequestValidationProxy[external.DeployRequest, Deploy] {
+func NewDeployConverter(
+	repoRetriever *internal.RepoRetriever,
+	branchRetriever *internal.BranchRetriever,
+	InstallationRetriever *internal.InstallationRetriever,
+) *JSONRequestValidationProxy[external.DeployRequest, Deploy] {
 	return &JSONRequestValidationProxy[external.DeployRequest, Deploy]{
 		Delegate: &DeployConverter{
-			ClientCreator: clientCreator,
-			RepoConverter: repoConverter,
+			InstallationRetriever: InstallationRetriever,
+			BranchRetriever:       branchRetriever,
+			RepoRetriever:         repoRetriever,
 		},
 	}
+}
+
+type repoRetriever interface {
+	Get(ctx context.Context, installationToken int64, owner, repo string) (models.Repo, error)
+}
+
+type branchRetriever interface {
+	GetBranch(ctx context.Context, installationToken int64, owner, repo, branch string, followRedirects bool) (internal.Branch, error)
+}
+
+type installationRetriever interface {
+	FindOrganizationInstallation(ctx context.Context, org string) (internal.Installation, error)
 }
 
 // Deploy contains everything our deploy workflow
@@ -34,8 +49,9 @@ type Deploy struct {
 }
 
 type DeployConverter struct {
-	githubapp.ClientCreator
-	converter.RepoConverter
+	RepoRetriever         repoRetriever
+	BranchRetriever       branchRetriever
+	InstallationRetriever installationRetriever
 }
 
 func (c *DeployConverter) Convert(ctx context.Context, r external.DeployRequest) (Deploy, error) {
@@ -45,77 +61,43 @@ func (c *DeployConverter) Convert(ctx context.Context, r external.DeployRequest)
 		return Deploy{}, fmt.Errorf("user not provided")
 	}
 
-	installationToken, err := c.getInstallationToken(ctx, r.Repo.Owner)
+	// In order to authenticate as our GH App we need to get the organization's installation token.
+	installation, err := c.InstallationRetriever.FindOrganizationInstallation(ctx, r.Repo.Owner)
+	if err != nil {
+		return Deploy{}, errors.Wrap(err, "finding installation")
+	}
+
+	repository, branch, err := c.getRepositoryAndBranch(ctx, r, installation.Token)
 	if err != nil {
 		return Deploy{}, err
-	}
-
-	repository, branch, err := c.getRepositoryAndBranch(ctx, r, installationToken)
-	if err != nil {
-		return Deploy{}, err
-	}
-
-	branchName := branch.GetName()
-	revision := branch.GetCommit().GetSHA()
-
-	if len(branchName) == 0 {
-		return Deploy{}, errors.Wrap(err, "branch name returned is empty, this is bug with github")
-	}
-
-	if len(revision) == 0 {
-		return Deploy{}, errors.Wrap(err, "revision returned is empty, this is bug with github")
-	}
-
-	internalRepo, err := c.RepoConverter.Convert(repository)
-	if err != nil {
-		return Deploy{}, errors.Wrap(err, "converting repository")
 	}
 
 	return Deploy{
-		Repo:              internalRepo,
+		Repo:              repository,
 		RootNames:         r.Roots,
-		Branch:            branchName,
-		Revision:          revision,
-		InstallationToken: installationToken,
+		Branch:            branch.Name,
+		Revision:          branch.Revision,
+		InstallationToken: installation.Token,
 		User: models.User{
 			Username: username.(string),
 		},
 	}, nil
 }
 
-// In order to authenticate as our GH App we need to get the organization's installation token.
-func (c *DeployConverter) getInstallationToken(ctx context.Context, owner string) (int64, error) {
-	appClient, err := c.ClientCreator.NewAppClient()
+func (c *DeployConverter) getRepositoryAndBranch(ctx context.Context, r external.DeployRequest, installationToken int64) (models.Repo, internal.Branch, error) {
+	repo, err := c.RepoRetriever.Get(ctx, installationToken, r.Repo.Owner, r.Repo.Name)
 	if err != nil {
-		return 0, errors.Wrap(err, "creating app client")
+		return repo, internal.Branch{}, errors.Wrap(err, "getting repo")
 	}
 
-	installation, _, err := appClient.Apps.FindOrganizationInstallation(ctx, owner)
+	if len(repo.DefaultBranch) == 0 {
+		return repo, internal.Branch{}, fmt.Errorf("default branch was nil, this is a bug on github's side")
+	}
+
+	branch, err := c.BranchRetriever.GetBranch(ctx, installationToken, r.Repo.Owner, r.Repo.Name, repo.DefaultBranch, true)
 	if err != nil {
-		return 0, errors.Wrapf(err, "finding organization installation")
-	}
-	return installation.GetID(), nil
-}
-
-func (c *DeployConverter) getRepositoryAndBranch(ctx context.Context, r external.DeployRequest, installationToken int64) (*github.Repository, *github.Branch, error) {
-	installationClient, err := c.ClientCreator.NewInstallationClient(installationToken)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "creating installation client")
+		return repo, branch, errors.Wrap(err, "getting branch")
 	}
 
-	repository, _, err := installationClient.Repositories.Get(ctx, r.Repo.Owner, r.Repo.Name)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "getting repository")
-	}
-
-	if len(repository.GetDefaultBranch()) == 0 {
-		return nil, nil, fmt.Errorf("default branch was nil, this is a bug on github's side")
-	}
-
-	branch, _, err := installationClient.Repositories.GetBranch(ctx, r.Repo.Owner, r.Repo.Name, repository.GetDefaultBranch(), true)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "getting branch")
-	}
-
-	return repository, branch, nil
+	return repo, branch, nil
 }

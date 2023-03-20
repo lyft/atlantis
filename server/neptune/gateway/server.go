@@ -347,10 +347,21 @@ func NewServer(config Config) (*Server, error) {
 		globalCfg,
 	)
 
+	repoRetriever := &github.RepoRetriever{
+		ClientCreator: clientCreator,
+	}
+
+	branchRetriever := &github.BranchRetriever{
+		ClientCreator: clientCreator,
+	}
+
+	installationRetriever := &github.InstallationRetriever{
+		ClientCreator: clientCreator,
+	}
+
 	deployController := api.Controller[request.Deploy]{
 		RequestConverter: request.NewDeployConverter(
-			clientCreator,
-			repoConverter,
+			repoRetriever, branchRetriever, installationRetriever,
 		),
 		Handler: &api.DeployHandler{
 			Deployer:  rootDeployer,
