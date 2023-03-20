@@ -63,7 +63,7 @@ type GlobalCfg struct {
 	PersistenceConfig    PersistenceConfig
 	TerraformLogFilter   TerraformLogFilters
 	Temporal             Temporal
-  RevisionSetter       RevisionSetter
+	RevisionSetter       RevisionSetter
 	Admin                Admin
 }
 
