@@ -23,6 +23,7 @@ type GlobalCfg struct {
 	TerraformLogFilters  TerraformLogFilters  `yaml:"terraform_log_filters" json:"terraform_log_filters"`
 	Temporal             Temporal             `yaml:"temporal" json:"temporal"`
 	Persistence          Persistence          `yaml:"persistence" json:"persistence"`
+  RevisionSetter       RevisionSetter       `yaml:"revision_setter" json:"revision_setter"`
 	Admin                Admin                `yaml:"admin" json:"admin"`
 }
 
@@ -197,6 +198,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		TerraformLogFilter:   g.TerraformLogFilters.ToValid(),
 		Temporal:             g.Temporal.ToValid(),
 		Admin:                g.Admin.ToValid(),
+		RevisionSetter:       g.RevisionSetter.ToValid(),
 	}
 }
 
