@@ -614,17 +614,17 @@ func (g *GithubClient) createCheckRunOutput(request types.UpdateStatusRequest) *
 	}
 
 	if request.Output != "" {
-		checkRunOutput.Text = g.capCheckRunOutput(request.Output)
+		checkRunOutput.Text = g.processCheckRunOutput(request.Output)
 	}
 
 	return &checkRunOutput
 }
 
-// Cap the output string if it exceeds the max checks output length
-func (g *GithubClient) capCheckRunOutput(output string) *string {
+// Send alternate message  string if actual output exceeds the max checks output length
+func (g *GithubClient) processCheckRunOutput(output string) *string {
 	cappedOutput := output
 	if len(output) > maxChecksOutputLength {
-		cappedOutput = output[:maxChecksOutputLength]
+		cappedOutput = "Terraform output is too long for Github UI, please review the above link to view detailed logs."
 	}
 	return &cappedOutput
 }
