@@ -21,7 +21,6 @@ import (
 
 const (
 	githubHeader    = "X-Github-Event"
-	requestIDHeader = "X-Github-Delivery"
 )
 
 // interfaces used in Handler
@@ -162,11 +161,11 @@ func (h *Handler) Handle(r *http.BufferedRequest) error {
 		return &errors.RequestValidationError{Err: err}
 	}
 
-	ctx := context.WithValue(
-		r.GetRequest().Context(),
-		contextInternal.RequestIDKey,
-		r.GetHeader(requestIDHeader),
-	)
+	ctx := r.GetRequest().Context()
+
+	h.logger.InfoContext(ctx, "validated event payload", map[string]interface{}{
+		"event": payload,
+	})
 
 	scope := h.scope.SubScope("github.event")
 
@@ -179,7 +178,7 @@ func (h *Handler) Handle(r *http.BufferedRequest) error {
 	installationSource, ok := event.(githubapp.InstallationSource)
 
 	if !ok {
-		return fmt.Errorf("unable to get installation id from request %s", r.GetHeader(requestIDHeader))
+		return fmt.Errorf("unable to get installation id from request")
 	}
 
 	installationID := githubapp.GetInstallationIDFromEvent(installationSource)
