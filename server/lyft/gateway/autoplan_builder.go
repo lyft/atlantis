@@ -103,8 +103,8 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 		return false, nil
 	}
 
-	// WorkflowModeType is per repo so if the first ProjectCommand has PlatformWorkflowMode enabled, it's enabled for all projects in the repo
-	// So, we set atlantis/apply status to success to allow PRs to merge to master
+	// WorkflowModeType can be configured per project root, so we need to ensure all roots are in platform mode
+	// before we set atlantis/apply status to success and allow PR to merge into the default branch
 	// TODO: Remove this after we remove the required atlantis/apply status check
 	if allProjectsInPlatformMode(projectCmds) {
 		if err := r.updateAtlantisApplyChecks(cmdCtx, baseRepo, projectCmds); err != nil {
