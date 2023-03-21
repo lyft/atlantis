@@ -140,8 +140,8 @@ func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terr
 	})
 
 	var childWE workflow.Execution
-	if err := future.GetChildWorkflowExecution().Get(ctx, &childWE); err == nil {
-		scope.Counter("start_pr_rev_wf_err").Inc(1)
+	if err := future.GetChildWorkflowExecution().Get(ctx, &childWE); err != nil {
+		scope.SubScope("prrevision").Counter("start_wf_err").Inc(1)
 		return err
 	}
 	return nil
