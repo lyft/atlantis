@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	githubHeader    = "X-Github-Event"
+	githubHeader = "X-Github-Event"
 )
 
 // interfaces used in Handler

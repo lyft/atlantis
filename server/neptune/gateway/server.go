@@ -367,10 +367,10 @@ func NewServer(config Config) (*Server, error) {
 	}
 
 	router := newRouter(
-		ctxLogger, 
-		gatewayEventsController, 
-		statusController, 
-		deployController, 
+		ctxLogger,
+		gatewayEventsController,
+		statusController,
+		deployController,
 		globalCfg,
 	)
 
