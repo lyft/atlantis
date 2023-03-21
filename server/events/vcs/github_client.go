@@ -613,20 +613,16 @@ func (g *GithubClient) createCheckRunOutput(request types.UpdateStatusRequest) *
 		Summary: &summary,
 	}
 
-	if request.Output != "" {
-		checkRunOutput.Text = g.filterCheckRunOutput(request.Output)
+	if request.Output == "" {
+		return &checkRunOutput
 	}
-
+	if len(request.Output) > maxChecksOutputLength {
+		terraformOutputTooLong := "Terraform output is too long for Github UI, please review the above link to view detailed logs."
+		checkRunOutput.Text = &terraformOutputTooLong
+	} else {
+		checkRunOutput.Text = &request.Output
+	}
 	return &checkRunOutput
-}
-
-// Send alternate message if output exceeds the max checks output length
-func (g *GithubClient) filterCheckRunOutput(output string) *string {
-	cappedOutput := output
-	if len(output) > maxChecksOutputLength {
-		cappedOutput = "Terraform output is too long for Github UI, please review the above link to view detailed logs."
-	}
-	return &cappedOutput
 }
 
 // Github Checks uses Status and Conclusion to report status of the check run. Need to map models.VcsStatus to Status and Conclusion
