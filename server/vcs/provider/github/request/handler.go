@@ -164,7 +164,7 @@ func (h *Handler) Handle(r *http.BufferedRequest) error {
 	ctx := r.GetRequest().Context()
 
 	h.logger.InfoContext(ctx, "validated event payload", map[string]interface{}{
-		"event": payload,
+		"payload": payload,
 	})
 
 	scope := h.scope.SubScope("github.event")
