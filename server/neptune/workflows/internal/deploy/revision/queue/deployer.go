@@ -93,7 +93,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	}
 
 	// log error and continue deploys if any of the post deploy task fails
-	if err := p.runPostDeployTasks(ctx, requestedDeployment); err != nil {
+	if err := p.runPostDeployTasks(ctx, requestedDeployment, scope); err != nil {
 		logger.Error(ctx, "error running post deploy task", key.ErrKey, err)
 	}
 
@@ -103,19 +103,19 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	return requestedDeployment.BuildPersistableInfo(), err
 }
 
-func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
+func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform.DeploymentInfo, scope metrics.Scope) error {
 	if err := p.persistLatestDeployment(ctx, deployment.BuildPersistableInfo()); err != nil {
-		return errors.Wrap(err, "unable to persist deployment")
+		return errors.Wrap(err, "persisting deployment")
 	}
 
-	if err := p.startPRRevisionWorkflow(ctx, deployment); err != nil {
-		return errors.Wrap(err, "unable to start PR Revision workflow")
+	if err := p.startPRRevisionWorkflow(ctx, deployment, scope); err != nil {
+		return errors.Wrap(err, "starting PR Revision workflow")
 	}
 
 	return nil
 }
 
-func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
+func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo, scope metrics.Scope) error {
 	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 1)
 	if version == workflow.DefaultVersion {
 		return nil
@@ -139,8 +139,12 @@ func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terr
 		Revision: deployment.Revision,
 	})
 
-	// ensure child workflow execution has started
-	return future.GetChildWorkflowExecution().Get(ctx, nil)
+	var childWE workflow.Execution
+	if err := future.GetChildWorkflowExecution().Get(ctx, &childWE); err == nil {
+		scope.Counter("start_pr_rev_wf_err").Inc(1)
+		return err
+	}
+	return nil
 }
 
 func (p *Deployer) FetchLatestDeployment(ctx workflow.Context, repoName, rootName string) (*deployment.Info, error) {
