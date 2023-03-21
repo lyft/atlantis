@@ -620,7 +620,7 @@ func (g *GithubClient) createCheckRunOutput(request types.UpdateStatusRequest) *
 	return &checkRunOutput
 }
 
-// Send alternate message  string if actual output exceeds the max checks output length
+// Send alternate message if actual output exceeds the max checks output length
 func (g *GithubClient) processCheckRunOutput(output string) *string {
 	cappedOutput := output
 	if len(output) > maxChecksOutputLength {
