@@ -7,6 +7,7 @@ import (
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/pkg/errors"
+	metricsKey "github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -121,9 +122,6 @@ func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terr
 
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		TaskQueue: prrevision.TaskQueue,
-		RetryPolicy: &temporal.RetryPolicy{
-			MaximumAttempts: 1,
-		},
 
 		// configuring this ensures the child workflow will continue execution when the parent workflow terminates
 		ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
@@ -137,7 +135,7 @@ func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terr
 
 	var childWE workflow.Execution
 	if err := future.GetChildWorkflowExecution().Get(ctx, &childWE); err != nil {
-		scope.SubScope("prrevision").Counter("start_wf_err").Inc(1)
+		scope.SubScope("prrevision.start").Counter(metricsKey.ExecutionErrorMetric).Inc(1)
 		return err
 	}
 	return nil
