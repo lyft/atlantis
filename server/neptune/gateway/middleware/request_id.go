@@ -14,7 +14,7 @@ const ghRequestIDHeader = "X-Github-Delivery"
 type RequestID struct{}
 
 func (m *RequestID) Middleware(next http.Handler) http.Handler {
-	return &recoveryHandler{
+	return &requestIDExtractor{
 		next: next,
 	}
 }

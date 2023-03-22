@@ -55,7 +55,7 @@ func (p *PushHandler) Handle(ctx context.Context, event Push) error {
 	}
 
 	if !shouldAllocate {
-		p.Logger.ErrorContext(ctx, "handler not configured for allocation")
+		p.Logger.InfoContext(ctx, "handler not configured for allocation")
 		return nil
 	}
 
