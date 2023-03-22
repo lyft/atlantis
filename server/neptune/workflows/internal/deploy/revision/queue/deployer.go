@@ -124,9 +124,7 @@ func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terr
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		TaskQueue: prrevision.TaskQueue,
 		RetryPolicy: &temporal.RetryPolicy{
-
-			// starting pr revision wf shouldn't take more than 3 tries unless the worker is down, which we'll get alarmed on to fix
-			MaximumAttempts: PRRevisionWorkflowRetryCount,
+			MaximumAttempts: 1,
 		},
 
 		// configuring this ensures the child workflow will continue execution when the parent workflow terminates
