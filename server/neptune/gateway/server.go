@@ -315,6 +315,7 @@ func NewServer(config Config) (*Server, error) {
 		Logger:            ctxLogger,
 		RootConfigBuilder: rootConfigBuilder,
 		DeploySignaler:    deploySignaler,
+		SNSWriter:         gatewaySnsWriter,
 	}
 
 	checkRunFetcher := &github.CheckRunsFetcher{
