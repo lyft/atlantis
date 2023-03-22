@@ -31,6 +31,7 @@ func TestDeploy(t *testing.T) {
 			CloneDepth: 2000,
 		},
 		InstallationToken: 2,
+		InitialRequest:    buildRequest(t),
 	}
 
 	commit := &event.RepoCommit{
@@ -68,6 +69,7 @@ func TestDeploy(t *testing.T) {
 	t.Run("not platform mode", func(t *testing.T) {
 		ctx := context.Background()
 		signaler := &mockDeploySignaler{}
+		snsWriter := &mockSnsWriter{}
 		rootCfg := valid.MergedProjectCfg{
 			Name: testRoot,
 			DeploymentWorkflow: valid.Workflow{
@@ -95,11 +97,13 @@ func TestDeploy(t *testing.T) {
 				},
 				rootConfigs: rootCfgs,
 			},
+			SNSWriter: snsWriter,
 		}
 
 		err := deployer.Deploy(ctx, deployOptions)
 		assert.NoError(t, err)
 		assert.False(t, signaler.called)
+		assert.True(t, snsWriter.isCalled)
 	})
 
 	t.Run("success", func(t *testing.T) {

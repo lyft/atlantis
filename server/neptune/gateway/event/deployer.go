@@ -1,7 +1,9 @@
 package event
 
 import (
+	"bytes"
 	"context"
+	"github.com/runatlantis/atlantis/server/http"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -26,6 +28,7 @@ type RootDeployer struct {
 	Logger            logging.Logger
 	RootConfigBuilder rootConfigBuilder
 	DeploySignaler    deploySignaler
+	SNSWriter         Writer
 }
 
 // RootDeployOptions is basically a modeled request for RootDeployer, options isn't really the right word here
@@ -51,10 +54,12 @@ type RootDeployOptions struct {
 	RepoFetcherOptions *github.RepoFetcherOptions
 	Trigger            workflows.Trigger
 	Rerun              bool
+
+	// only used in force apply comments (if a force apply comment contains legacy mode roots)
+	InitialRequest *http.BufferedRequest
 }
 
 func (d *RootDeployer) Deploy(ctx context.Context, deployOptions RootDeployOptions) error {
-
 	commit := &RepoCommit{
 		Repo:          deployOptions.Repo,
 		Branch:        deployOptions.Branch,
@@ -71,10 +76,12 @@ func (d *RootDeployer) Deploy(ctx context.Context, deployOptions RootDeployOptio
 	if err != nil {
 		return errors.Wrap(err, "generating roots")
 	}
+	legacyRootFound := false
 	for _, rootCfg := range rootCfgs {
 		c := context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
 		if rootCfg.WorkflowMode != valid.PlatformWorkflowMode {
 			d.Logger.DebugContext(c, "root is not configured for platform mode, skipping...")
+			legacyRootFound = true
 			continue
 		}
 		run, err := d.DeploySignaler.SignalWithStartWorkflow(c, rootCfg, deployOptions)
@@ -86,5 +93,22 @@ func (d *RootDeployer) Deploy(ctx context.Context, deployOptions RootDeployOptio
 			"workflow-id": run.GetID(), "run-id": run.GetRunID(),
 		})
 	}
+	// Forward initial request to legacy worker if legacy roots are found
+	if legacyRootFound {
+		return d.forwardToSns(ctx, deployOptions.InitialRequest)
+	}
+	return nil
+}
+
+func (d *RootDeployer) forwardToSns(ctx context.Context, request *http.BufferedRequest) error {
+	buffer := bytes.NewBuffer([]byte{})
+	if err := request.GetRequestWithContext(ctx).Write(buffer); err != nil {
+		return errors.Wrap(err, "writing request to buffer")
+	}
+
+	if err := d.SNSWriter.WriteWithContext(ctx, buffer.Bytes()); err != nil {
+		return errors.Wrap(err, "writing buffer to sns")
+	}
+	d.Logger.InfoContext(ctx, "proxied request to sns")
 	return nil
 }

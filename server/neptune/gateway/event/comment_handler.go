@@ -90,7 +90,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 			p.logger.ErrorContext(ctx, err.Error())
 		}
 		return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
-			return p.forceApply(ctx, event)
+			return p.forceApply(ctx, event, request)
 		})
 
 	}
@@ -142,7 +142,7 @@ func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *htt
 	return nil
 }
 
-func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment) error {
+func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment, req *http.BufferedRequest) error {
 	rootDeployOptions := RootDeployOptions{
 		Repo:              event.HeadRepo,
 		Branch:            event.Pull.HeadBranch,
@@ -150,6 +150,7 @@ func (p *CommentEventWorkerProxy) forceApply(ctx context.Context, event Comment)
 		OptionalPullNum:   event.Pull.Num,
 		Sender:            event.User,
 		InstallationToken: event.InstallationToken,
+		InitialRequest:    req,
 		Trigger:           workflows.ManualTrigger,
 	}
 	return p.rootDeployer.Deploy(ctx, rootDeployOptions)
