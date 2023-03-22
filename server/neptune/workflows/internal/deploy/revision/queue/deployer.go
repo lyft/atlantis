@@ -22,8 +22,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const PRRevisionWorkflowRetryCount = 3
-
 type ValidationError struct {
 	error
 }
@@ -94,7 +92,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 
 	// log error and continue deploys if any of the post deploy task fails
 	if err := p.runPostDeployTasks(ctx, requestedDeployment, scope); err != nil {
-		logger.Error(ctx, "error running post deploy task", key.ErrKey, err)
+		logger.Error(ctx, "error running post deploy tasks", key.ErrKey, err)
 	}
 
 	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
