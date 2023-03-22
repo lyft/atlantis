@@ -7,7 +7,6 @@ import (
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/pkg/errors"
-	metricsKey "github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -108,6 +107,7 @@ func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform
 	}
 
 	if err := p.startPRRevisionWorkflow(ctx, deployment, scope); err != nil {
+		scope.Counter("prrevision_start_error").Inc(1)
 		return errors.Wrap(err, "starting PR Revision workflow")
 	}
 
@@ -133,12 +133,7 @@ func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terr
 		Revision: deployment.Revision,
 	})
 
-	var childWE workflow.Execution
-	if err := future.GetChildWorkflowExecution().Get(ctx, &childWE); err != nil {
-		scope.SubScope("prrevision.start").Counter(metricsKey.ExecutionErrorMetric).Inc(1)
-		return err
-	}
-	return nil
+	return future.GetChildWorkflowExecution().Get(ctx, nil)
 }
 
 func (p *Deployer) FetchLatestDeployment(ctx workflow.Context, repoName, rootName string) (*deployment.Info, error) {
