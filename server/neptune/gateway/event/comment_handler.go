@@ -100,7 +100,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 	}
 
 	if !shouldAllocate {
-		p.handleLegacyComment(ctx, request, event, cmd)
+		return p.handleLegacyComment(ctx, request, event, cmd)
 	}
 
 	cmdCtx := &command.Context{
