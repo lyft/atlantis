@@ -116,7 +116,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 	cmds, err := p.projectCommandGetter.GetProjectCommands(cmdCtx, event.BaseRepo, cmdCtx.Pull)
 	if err != nil {
 		if err != nil {
-			if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVCSStatus, command.Plan, "", err.Error()); statusErr != nil {
+			if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVCSStatus, cmd.Name, "", err.Error()); statusErr != nil {
 				cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 			}
 			return errors.Wrap(err, "getting project commands")
@@ -164,6 +164,7 @@ func (p *CommentEventWorkerProxy) notifyImpendingChanges(
 
 	if !allPlatformMode {
 		p.setQueuedStatus(ctx, request, event, cmd)
+		return
 	}
 
 	// if we're fully on platform mode for the repo, all plans still get forwarded to legacy,
