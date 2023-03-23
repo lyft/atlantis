@@ -31,7 +31,7 @@ func NewVCSEventsController(
 	scope tally.Scope,
 	webhookSecret []byte,
 	allowDraftPRs bool,
-	autoplanValidator gateway_handlers.Validator,
+	autoplanValidator *AutoplanValidator,
 	snsWriter gateway_handlers.Writer,
 	commentParser events.CommentParsing,
 	repoAllowlistChecker *events.RepoAllowlistChecker,
@@ -69,7 +69,7 @@ func NewVCSEventsController(
 		commentParser,
 		repoAllowlistChecker,
 		vcsClient,
-		gateway_handlers.NewCommentEventWorkerProxy(logger, snsWriter, featureAllocator, asyncScheduler, rootDeployer, vcsClient, vcsStatusUpdater, globalCfg),
+		gateway_handlers.NewCommentEventWorkerProxy(logger, scope.SubScope("comment"), snsWriter, featureAllocator, asyncScheduler, rootDeployer, vcsClient, vcsStatusUpdater, globalCfg, autoplanValidator),
 		logger,
 	)
 

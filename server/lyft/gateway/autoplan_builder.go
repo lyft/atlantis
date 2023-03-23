@@ -56,43 +56,14 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 		return false, errors.New("invalid command context")
 	}
 
-	// Update status and fail the req when preworkflow hook fails since this step is critical in determining if this req needs to be forwarded to the worker
-	err := r.PreWorkflowHooksCommandRunner.RunPreHooks(ctx, cmdCtx)
+	projectCmds, err := r.GetProjectCommands(cmdCtx, baseRepo, pull)
 	if err != nil {
 		if _, statusErr := r.VCSStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVCSStatus, command.Plan, "", err.Error()); statusErr != nil {
 			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 		}
-		return false, errors.Wrap(err, "running preworkflow hook")
+		return false, errors.Wrap(err, "getting project commands")
 	}
 
-	projectCmds, err := r.PrjCmdBuilder.BuildAutoplanCommands(cmdCtx)
-	if err != nil {
-		if _, statusErr := r.VCSStatusUpdater.UpdateCombined(ctx, baseRepo, pull, models.FailedVCSStatus, command.Plan, "", ""); statusErr != nil {
-			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
-		}
-		// If error happened after clone was made, we should clean it up here too
-		unlockFn, lockErr := r.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
-		if lockErr != nil {
-			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, "workspace was locked")
-			return false, errors.Wrap(err, lockErr.Error())
-		}
-		defer unlockFn()
-		if cloneErr := r.WorkingDir.Delete(baseRepo, pull); cloneErr != nil {
-			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, "unable to delete clone after autoplan failed", map[string]interface{}{"err": cloneErr})
-		}
-		r.OutputUpdater.UpdateOutput(cmdCtx, events.AutoplanCommand{}, command.Result{Error: err})
-		return false, errors.Wrap(err, "Failed building autoplan commands")
-	}
-	unlockFn, err := r.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
-	if err != nil {
-		cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, "workspace was locked")
-		return false, err
-	}
-	defer unlockFn()
-	// Delete repo clone generated to validate plan
-	if err := r.WorkingDir.Delete(baseRepo, pull); err != nil {
-		return false, errors.Wrap(err, "Failed deleting cloned repo")
-	}
 	if len(projectCmds) == 0 {
 		cmdCtx.Log.InfoContext(cmdCtx.RequestCtx, "no modified projects have been found")
 		for _, cmd := range []command.Name{command.Plan, command.Apply, command.PolicyCheck} {
@@ -115,6 +86,42 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 		cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %s", err))
 	}
 	return true, nil
+}
+
+func (r *AutoplanValidator) GetProjectCommands(cmdCtx *command.Context, baseRepo models.Repo, pull models.PullRequest) ([]command.ProjectContext, error) {
+	// Update status and fail the req when preworkflow hook fails since this step is critical in determining if this req needs to be forwarded to the worker
+	var result []command.ProjectContext
+	err := r.PreWorkflowHooksCommandRunner.RunPreHooks(cmdCtx.RequestCtx, cmdCtx)
+	if err != nil {
+		return result, errors.Wrap(err, "running preworkflow hook")
+	}
+
+	result, err = r.PrjCmdBuilder.BuildAutoplanCommands(cmdCtx)
+	if err != nil {
+		// If error happened after clone was made, we should clean it up here too
+		unlockFn, lockErr := r.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
+		if lockErr != nil {
+			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, "workspace was locked")
+			return result, errors.Wrap(err, lockErr.Error())
+		}
+		defer unlockFn()
+		if cloneErr := r.WorkingDir.Delete(baseRepo, pull); cloneErr != nil {
+			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, "unable to delete clone after autoplan failed", map[string]interface{}{"err": cloneErr})
+		}
+		r.OutputUpdater.UpdateOutput(cmdCtx, events.AutoplanCommand{}, command.Result{Error: err})
+		return result, errors.Wrap(err, "Failed building autoplan commands")
+	}
+	unlockFn, err := r.WorkingDirLocker.TryLock(baseRepo.FullName, pull.Num, DefaultWorkspace)
+	if err != nil {
+		cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, "workspace was locked")
+		return result, err
+	}
+	defer unlockFn()
+	// Delete repo clone generated to validate plan
+	if err := r.WorkingDir.Delete(baseRepo, pull); err != nil {
+		cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, "unable to delete clone", map[string]interface{}{"err": err})
+	}
+	return result, nil
 }
 
 func allProjectsInPlatformMode(cmds []command.ProjectContext) bool {

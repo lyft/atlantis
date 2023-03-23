@@ -3,16 +3,18 @@ package event_test
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"testing"
+
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/stretchr/testify/assert"
-	"regexp"
-	"testing"
 )
 
 var testRepo = models.Repo{
@@ -22,8 +24,19 @@ var testPull = models.PullRequest{
 	BaseRepo: testRepo,
 }
 
+type testProjectCommandGetter struct {
+	expectedProjectContext []command.ProjectContext
+}
+
+func (g *testProjectCommandGetter) GetProjectCommands(cmdCtx *command.Context, baseRepo models.Repo, pull models.PullRequest) ([]command.ProjectContext, error) {
+	return g.expectedProjectContext, nil
+}
+
 func TestCommentEventWorkerProxy_HandleAllocationError(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
+	scope, _, err := metrics.NewLoggingScope(logger, "")
+	assert.NoError(t, err)
+	getter := &testProjectCommandGetter{}
 	writer := &mockSnsWriter{}
 	allocator := &testAllocator{
 		t:                 t,
@@ -38,7 +51,7 @@ func TestCommentEventWorkerProxy_HandleAllocationError(t *testing.T) {
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -47,7 +60,7 @@ func TestCommentEventWorkerProxy_HandleAllocationError(t *testing.T) {
 	cmd := &command.Comment{
 		Name: command.Plan,
 	}
-	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
+	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
 	assert.False(t, rootDeployer.isCalled)
 	assert.False(t, commentCreator.isCalled)
@@ -57,6 +70,8 @@ func TestCommentEventWorkerProxy_HandleAllocationError(t *testing.T) {
 
 func TestCommentEventWorkerProxy_HandleForceApply(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
+	scope, _, err := metrics.NewLoggingScope(logger, "")
+	assert.NoError(t, err)
 	writer := &mockSnsWriter{}
 	allocator := &testAllocator{
 		t:                 t,
@@ -69,8 +84,10 @@ func TestCommentEventWorkerProxy_HandleForceApply(t *testing.T) {
 	rootDeployer := &mockRootDeployer{}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
+	getter := &testProjectCommandGetter{}
+
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -80,7 +97,7 @@ func TestCommentEventWorkerProxy_HandleForceApply(t *testing.T) {
 		Name:       command.Apply,
 		ForceApply: true,
 	}
-	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
+	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
 	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
@@ -90,6 +107,9 @@ func TestCommentEventWorkerProxy_HandleForceApply(t *testing.T) {
 
 func TestCommentEventWorkerProxy_HandlePlatformModeForceApply(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
+	scope, _, err := metrics.NewLoggingScope(logger, "")
+	assert.NoError(t, err)
+	getter := &testProjectCommandGetter{}
 	writer := &mockSnsWriter{}
 	allocator := &testAllocator{
 		t:                 t,
@@ -104,7 +124,7 @@ func TestCommentEventWorkerProxy_HandlePlatformModeForceApply(t *testing.T) {
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
 	bufReq := buildRequest(t)
 	testPull := models.PullRequest{
 		BaseRepo: testRepo,
@@ -117,7 +137,7 @@ func TestCommentEventWorkerProxy_HandlePlatformModeForceApply(t *testing.T) {
 		Name:       command.Apply,
 		ForceApply: true,
 	}
-	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
+	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
 	assert.True(t, commentCreator.isCalled)
 	assert.True(t, rootDeployer.isCalled)
@@ -127,6 +147,9 @@ func TestCommentEventWorkerProxy_HandlePlatformModeForceApply(t *testing.T) {
 
 func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
+	scope, _, err := metrics.NewLoggingScope(logger, "")
+	assert.NoError(t, err)
+	getter := &testProjectCommandGetter{}
 	writer := &mockSnsWriter{}
 	allocator := &testAllocator{
 		t:                 t,
@@ -140,7 +163,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -149,7 +172,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 	cmd := &command.Comment{
 		Name: command.Plan,
 	}
-	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
+	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
 	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
@@ -159,6 +182,9 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 
 func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
+	scope, _, err := metrics.NewLoggingScope(logger, "")
+	assert.NoError(t, err)
+	getter := &testProjectCommandGetter{}
 	writer := &mockSnsWriter{
 		err: assert.AnError,
 	}
@@ -174,7 +200,7 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -183,7 +209,7 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 	cmd := &command.Comment{
 		Name: command.Plan,
 	}
-	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
+	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.Error(t, err)
 	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
@@ -193,6 +219,9 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 
 func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
+	scope, _, err := metrics.NewLoggingScope(logger, "")
+	assert.NoError(t, err)
+	getter := &testProjectCommandGetter{}
 	writer := &mockSnsWriter{}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	rootDeployer := &mockRootDeployer{}
@@ -286,7 +315,7 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.descriptor, func(t *testing.T) {
-			commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, c.allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg)
+			commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, c.allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
 			err := commentEventWorkerProxy.Handle(context.Background(), bufReq, c.event, c.command)
 			assert.NoError(t, err)
 			assert.False(t, statusUpdater.isCalled)
