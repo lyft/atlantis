@@ -76,6 +76,15 @@ func (a *PlatformModeRunner) Run(ctx *command.Context, cmd *command.Comment) {
 	a.Runner.Run(ctx, cmd)
 }
 
+func allProjectInPlatformMode(cmds []command.ProjectContext) bool {
+	for _, cmd := range cmds {
+		if cmd.WorkflowModeType != valid.PlatformWorkflowMode {
+			return false
+		}
+	}
+	return true
+}
+
 // DefaultProjectCommandRunner implements ProjectCommandRunner.
 type PlatformModeProjectRunner struct { //create object and test
 	PlatformModeRunner events.ProjectCommandRunner
