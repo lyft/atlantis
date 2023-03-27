@@ -59,7 +59,7 @@ func (a *PlatformModeRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	if shouldAllocate && (projectCmds[0].WorkflowModeType == valid.PlatformWorkflowMode) {
+	if shouldAllocate && allProjectInPlatformMode(projectCmds) {
 		// return error if loading template fails since we should have default templates configured
 		comment, err := a.TemplateLoader.Load(template.LegacyApplyComment, ctx.Pull.BaseRepo, LegacyApplyCommentInput{})
 		if err != nil {

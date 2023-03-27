@@ -95,10 +95,10 @@ func (b *TestMultiBuilder) BuildApplyCommands(ctx *command.Context, comment *com
 	b.called = true
 	return []command.ProjectContext{
 		{
-			WorkflowModeType: valid.DefaultWorkflowMode,
+			WorkflowModeType: valid.PlatformWorkflowMode,
 		},
 		{
-			WorkflowModeType: valid.PlatformWorkflowMode,
+			WorkflowModeType: valid.DefaultWorkflowMode,
 		},
 	}, nil
 }
