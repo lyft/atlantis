@@ -108,7 +108,7 @@ func testDeployerWorkflow(ctx workflow.Context, r deployerRequest) (*deployment.
 func TestDeployer_FirstDeploy(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -176,7 +176,7 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -295,7 +295,7 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -391,7 +391,7 @@ func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {
 			ID: updateCheckRunRequest.ID,
 		}
 
-		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 		env.OnActivity(da.GithubUpdateCheckRun, mock.Anything, updateCheckRunRequest).Return(updateCheckRunResponse, nil)
 		env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
@@ -500,7 +500,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 			CommitComparison: activities.DirectionBehind,
 		}
 
-		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.Version(1))
+		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 2).Return(workflow.Version(1))
 		env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
 
 		env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
@@ -567,7 +567,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -729,7 +729,7 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
