@@ -441,7 +441,7 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
 
       var attachAddon = new AttachAddon.AttachAddon(socket);
       var fitAddon = new FitAddon.FitAddon();
-      var searchAddon = new SearchAddon.SearchAddon({});
+      var searchAddon = new SearchAddon.SearchAddon();
       var searchAddonBar = new SearchBarAddon.SearchBarAddon({searchAddon});
 
       term.loadAddon(searchAddon);
