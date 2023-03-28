@@ -281,13 +281,12 @@ func TestRun_InitDeletesLockFileIfPresentAndNotTracked(t *testing.T) {
 	terraform.VerifyWasCalledOnce().RunCommandWithVersion(ctx, prjCtx, repoDir, expectedArgs, map[string]string(nil), tfVersion, "workspace")
 }
 
-func runCmd(t *testing.T, dir string, name string, args ...string) string {
+func runCmd(t *testing.T, dir string, name string, args ...string) {
 	t.Helper()
 	cpCmd := exec.Command(name, args...)
 	cpCmd.Dir = dir
 	cpOut, err := cpCmd.CombinedOutput()
 	Assert(t, err == nil, "err running %q: %s", strings.Join(append([]string{name}, args...), " "), cpOut)
-	return string(cpOut)
 }
 
 func initRepo(t *testing.T) (string, func()) {

@@ -107,7 +107,7 @@ func (r *AutoplanValidator) isValid(ctx context.Context, logger logging.Logger, 
 	// before we set atlantis/apply status to success and allow PR to merge into the default branch
 	// TODO: Remove this after we remove the required atlantis/apply status check
 	if allProjectsInPlatformMode(projectCmds) {
-		if err := r.updateAtlantisApplyChecks(cmdCtx, baseRepo, projectCmds); err != nil {
+		if err := r.updateAtlantisApplyChecks(cmdCtx, baseRepo); err != nil {
 			cmdCtx.Log.ErrorContext(cmdCtx.RequestCtx, errors.Wrap(err, "updating atlantis apply status").Error())
 		}
 	}
@@ -171,7 +171,7 @@ func (r *AutoplanValidator) validateCtxAndComment(cmdCtx *command.Context) bool 
 	return true
 }
 
-func (r *AutoplanValidator) updateAtlantisApplyChecks(cmdCtx *command.Context, repo models.Repo, prjCmds []command.ProjectContext) error {
+func (r *AutoplanValidator) updateAtlantisApplyChecks(cmdCtx *command.Context, repo models.Repo) error {
 	shouldAllocate, err := r.Allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{
 		RepoName: repo.FullName,
 	})

@@ -25,7 +25,7 @@ func (f *CommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *command.Con
 		return command.PolicyCheckOutputStore{}, err
 	}
 
-	policyCheckCommands := f.getPolicyCheckCommands(ctx, prjCmds)
+	policyCheckCommands := f.getPolicyCheckCommands(prjCmds)
 	policyCheckOutputStore := command.NewPolicyCheckOutputStore()
 	for _, policyCheckCmd := range policyCheckCommands {
 		policyCheckResult := f.PrjCommandRunner.PolicyCheck(policyCheckCmd)
@@ -47,7 +47,6 @@ func (f *CommandOutputGenerator) GeneratePolicyCheckOutputStore(ctx *command.Con
 }
 
 func (f *CommandOutputGenerator) getPolicyCheckCommands(
-	ctx *command.Context,
 	cmds []command.ProjectContext,
 ) []command.ProjectContext {
 	policyCheckCmds := []command.ProjectContext{}

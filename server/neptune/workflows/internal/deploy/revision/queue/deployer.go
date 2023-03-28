@@ -106,7 +106,7 @@ func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform
 		return errors.Wrap(err, "persisting deployment")
 	}
 
-	if err := p.startPRRevisionWorkflow(ctx, deployment, scope); err != nil {
+	if err := p.startPRRevisionWorkflow(ctx, deployment); err != nil {
 		scope.Counter("prrevision_start_error").Inc(1)
 		return errors.Wrap(err, "starting PR Revision workflow")
 	}
@@ -114,7 +114,7 @@ func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform
 	return nil
 }
 
-func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo, scope metrics.Scope) error {
+func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
 	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 1)
 	if version == workflow.DefaultVersion {
 		return nil

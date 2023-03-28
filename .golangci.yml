@@ -17,9 +17,10 @@ linters:
     - vetshadow
     - dogsled
     - dupword
+    - unparam
 issues:
   exclude-rules:
-    - path: server/controllers/events/events_controller_test.go
+    - path: server/controllers/events/events_controller(.+)test.go
       linters:
         - dogsled
     - path: server/events/event_parser_test.go
