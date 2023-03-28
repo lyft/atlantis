@@ -103,6 +103,14 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 		return p.handleLegacyComment(ctx, request, event, cmd)
 	}
 
+	err = p.scheduler.Schedule(ctx, func(ctx context.Context) error {
+		return p.handle(ctx, request, event, cmd)
+	})
+
+	return errors.Wrap(err, "scheduling handle")
+}
+
+func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
 	cmdCtx := &command.Context{
 		HeadRepo:   event.HeadRepo,
 		Pull:       event.Pull,
@@ -113,20 +121,18 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 		RequestCtx: ctx,
 	}
 
-	cmds, err := p.projectCommandGetter.GetProjectCommands(cmdCtx, event.BaseRepo, cmdCtx.Pull)
+	roots, err := p.projectCommandGetter.GetProjectCommands(cmdCtx, event.BaseRepo, cmdCtx.Pull)
 	if err != nil {
-		if err != nil {
-			if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVCSStatus, cmd.Name, "", err.Error()); statusErr != nil {
-				cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
-			}
-			return errors.Wrap(err, "getting project commands")
+		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVCSStatus, cmd.Name, "", err.Error()); statusErr != nil {
+			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 		}
+		return errors.Wrap(err, "getting project commands")
 	}
 
-	platformModeRoots, defaultModeRoots := partitionRootsByMode(cmds)
+	platformModeRoots, defaultModeRoots := partitionRootsByMode(roots)
 	p.notifyImpendingChanges(
 		ctx,
-		len(platformModeRoots) == len(cmds),
+		len(platformModeRoots) == len(roots),
 		request,
 		event,
 		cmd,
@@ -142,9 +148,7 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 		rootNames = append(rootNames, r.ProjectName)
 	}
 
-	if err := p.scheduler.Schedule(ctx, func(ctx context.Context) error {
-		return p.forceApplyPlatformMode(ctx, event, rootNames)
-	}); err != nil {
+	if err := p.forceApplyPlatformMode(ctx, event, rootNames); err != nil {
 		return errors.Wrap(err, "force applying platform mode roots")
 	}
 
@@ -163,14 +167,15 @@ func (p *CommentEventWorkerProxy) notifyImpendingChanges(
 	ctx context.Context, allPlatformMode bool, request *http.BufferedRequest, event Comment, cmd *command.Comment) {
 
 	if !allPlatformMode {
-		p.setQueuedStatus(ctx, request, event, cmd)
+		p.setQueuedStatus(ctx, event, cmd)
 		return
 	}
 
 	// if we're fully on platform mode for the repo, all plans still get forwarded to legacy,
 	// however, `atlantis apply` is not valid so we shouldn't set this to queued
 	if cmd.Name != command.Apply {
-		p.setQueuedStatus(ctx, request, event, cmd)
+		p.setQueuedStatus(ctx, event, cmd)
+		return
 	}
 
 	// if all our roots are on platform mode and we're force applying, let's post a specific comment. Otherwise this happens on legacy worker
@@ -196,7 +201,7 @@ func partitionRootsByMode(cmds []command.ProjectContext) ([]command.ProjectConte
 	return platformModeCmds, defaultCmds
 }
 
-func (p *CommentEventWorkerProxy) setQueuedStatus(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) {
+func (p *CommentEventWorkerProxy) setQueuedStatus(ctx context.Context, event Comment, cmd *command.Comment) {
 	if p.shouldMarkEventQueued(event, cmd) {
 		if _, err := p.vcsStatusUpdater.UpdateCombined(ctx, event.BaseRepo, event.Pull, models.QueuedVCSStatus, cmd.Name, "", "Request received. Adding to the queue..."); err != nil {
 			p.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", err))
@@ -205,7 +210,7 @@ func (p *CommentEventWorkerProxy) setQueuedStatus(ctx context.Context, request *
 }
 
 func (p *CommentEventWorkerProxy) handleLegacyComment(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
-	p.setQueuedStatus(ctx, request, event, cmd)
+	p.setQueuedStatus(ctx, event, cmd)
 	return p.forwardToSns(ctx, request)
 }
 
