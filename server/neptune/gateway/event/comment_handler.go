@@ -129,11 +129,15 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 		return errors.Wrap(err, "getting project commands")
 	}
 
+	if len(roots) == 0 {
+		p.logger.WarnContext(ctx, "no roots to process in comment")
+		return nil
+	}
+
 	platformModeRoots, defaultModeRoots := partitionRootsByMode(roots)
 	p.notifyImpendingChanges(
 		ctx,
 		len(platformModeRoots) == len(roots),
-		request,
 		event,
 		cmd,
 	)
@@ -164,7 +168,7 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 }
 
 func (p *CommentEventWorkerProxy) notifyImpendingChanges(
-	ctx context.Context, allPlatformMode bool, request *http.BufferedRequest, event Comment, cmd *command.Comment) {
+	ctx context.Context, allPlatformMode bool, event Comment, cmd *command.Comment) {
 
 	if !allPlatformMode {
 		p.setQueuedStatus(ctx, event, cmd)
