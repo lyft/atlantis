@@ -37,7 +37,6 @@ func NewExecutorService(
 	openPullCleaner events.PullCleaner,
 	githubClient *vcs.GithubClient,
 ) *ExecutorService {
-
 	scheduledScope := statsScope.SubScope("scheduled")
 	garbageCollector := &GarbageCollector{
 		workingDirIterator: workingDirIterator,
@@ -138,7 +137,6 @@ func (s *ExecutorService) runScheduledJob(ctx context.Context, wg *sync.WaitGrou
 			}
 		}
 	}()
-
 }
 
 type Job interface {

@@ -23,7 +23,6 @@ import (
 )
 
 func TestConfTestVersionDownloader(t *testing.T) {
-
 	version, _ := version.NewVersion("0.25.0")
 	destPath := "some/path"
 
@@ -36,7 +35,6 @@ func TestConfTestVersionDownloader(t *testing.T) {
 	subject := ConfTestVersionDownloader{downloader: mockDownloader}
 
 	t.Run("success", func(t *testing.T) {
-
 		When(mockDownloader.GetFile(EqString(destPath), EqString(fullURL))).ThenReturn(nil)
 		binPath, err := subject.downloadConfTestVersion(version, destPath)
 
@@ -48,7 +46,6 @@ func TestConfTestVersionDownloader(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
-
 		When(mockDownloader.GetAny(EqString(destPath), EqString(fullURL))).ThenReturn(errors.New("err"))
 		_, err := subject.downloadConfTestVersion(version, destPath)
 
@@ -57,7 +54,6 @@ func TestConfTestVersionDownloader(t *testing.T) {
 }
 
 func TestEnsureExecutorVersion(t *testing.T) {
-
 	defaultVersion, _ := version.NewVersion("1.0")
 	expectedPath := "some/path"
 
@@ -125,7 +121,6 @@ func TestEnsureExecutorVersion(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-
 	RegisterMockTestingT(t)
 	mockResolver := conftest_mocks.NewMockSourceResolver()
 	mockExec := models_mocks.NewMockExec()
@@ -194,7 +189,6 @@ func TestRun(t *testing.T) {
 		Ok(t, err)
 
 		Assert(t, result == expectedResult, "result is expected")
-
 	})
 
 	t.Run("success extra args", func(t *testing.T) {
@@ -216,7 +210,6 @@ func TestRun(t *testing.T) {
 		Ok(t, err)
 
 		Assert(t, result == expectedResult, "result is expected")
-
 	})
 
 	t.Run("error resolving one policy source", func(t *testing.T) {
@@ -236,7 +229,6 @@ func TestRun(t *testing.T) {
 		Ok(t, err)
 
 		Assert(t, result == expectedResult, "result is expected")
-
 	})
 
 	t.Run("error resolving both policy sources", func(t *testing.T) {
@@ -255,7 +247,6 @@ func TestRun(t *testing.T) {
 		Ok(t, err)
 
 		Assert(t, result == "", "result is expected")
-
 	})
 
 	t.Run("error running cmd", func(t *testing.T) {
@@ -274,6 +265,5 @@ func TestRun(t *testing.T) {
 
 		Assert(t, result == expectedResult, "rseult is expected")
 		Assert(t, err != nil, "error is expected")
-
 	})
 }

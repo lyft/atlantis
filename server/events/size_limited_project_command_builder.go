@@ -32,11 +32,9 @@ func (b *SizeLimitedProjectCommandBuilder) BuildPlanCommands(ctx *command.Contex
 }
 
 func (b *SizeLimitedProjectCommandBuilder) CheckAgainstLimit(projects []command.ProjectContext) error {
-
 	var planCommands []command.ProjectContext
 
 	for _, project := range projects {
-
 		if project.CommandName == command.Plan {
 			planCommands = append(planCommands, project)
 		}

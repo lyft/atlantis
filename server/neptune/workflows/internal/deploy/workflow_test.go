@@ -48,7 +48,6 @@ type receiver struct {
 }
 
 func (n *receiver) Receive(c workflow.ReceiveChannel, more bool) {
-
 	var s string
 	c.Receive(n.ctx, &s)
 	n.receiveCalled = true

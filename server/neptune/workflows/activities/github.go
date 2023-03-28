@@ -190,7 +190,6 @@ func getCheckStateAndConclusion(internalState internal.CheckRunState) (string, s
 	// is just marked as complete, let's just deal with that stuff here because it's not intuitive for
 	// callers
 	switch internalState {
-
 	// default to queued if we have nothing
 	case internal.CheckRunUnknown:
 		state = string(internal.CheckRunQueued)

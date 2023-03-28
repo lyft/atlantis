@@ -31,7 +31,6 @@ func (t *testCommandBuilder) Build(ctx context.Context, v *version.Version, path
 }
 
 func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
-
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestActivityEnvironment()
 

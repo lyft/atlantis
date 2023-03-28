@@ -23,7 +23,6 @@ func NewStreamHandler(
 	logFilters valid.TerraformLogFilters,
 	logger logging.Logger,
 ) *StreamHandler {
-
 	logFilter := filter.LogFilter{
 		Regexes: logFilters.Regexes,
 	}

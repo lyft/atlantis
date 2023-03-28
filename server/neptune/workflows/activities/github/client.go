@@ -61,7 +61,6 @@ func (c *Client) GetArchiveLink(ctx Context, owner, repo string, archiveformat g
 	}
 
 	return client.Repositories.GetArchiveLink(ctx, owner, repo, archiveformat, opts, followRedirects)
-
 }
 
 func (c *Client) CompareCommits(ctx Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error) {

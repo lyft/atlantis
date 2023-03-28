@@ -171,7 +171,6 @@ func (b *RootConfigBuilder) validateAndGetRoots(config valid.RepoCfg, rootNames 
 	rootSet := make(map[string]valid.Project)
 
 	for _, p := range config.Projects {
-
 		// Project Name is not guaranteed in upstream atlantis but is guaranteed in ours so its OK to dereference
 		rootSet[*p.Name] = p
 	}

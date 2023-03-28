@@ -80,7 +80,6 @@ func NewGHSourcedAllocator(repoConfig RepoConfig, githubClient vcs.IGithubClient
 	}
 
 	return &PercentageBasedAllocator{logger: logger, featureFlag: ff}, err
-
 }
 
 // NewStringSourcedAllocator uses a string constant for the feature configuration

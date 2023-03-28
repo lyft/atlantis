@@ -151,7 +151,6 @@ func TestRootConfigBuilder_DetermineRootsError(t *testing.T) {
 	projectConfigs, err := rcb.Build(context.Background(), commit, 2)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
-
 }
 
 func TestRootConfigBuilder_ParserValidatorParseError(t *testing.T) {
@@ -171,7 +170,6 @@ func TestRootConfigBuilder_ParserValidatorParseError(t *testing.T) {
 	projectConfigs, err := rcb.Build(context.Background(), commit, 2)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
-
 }
 
 func TestRootConfigBuilder_GetModifiedFilesError(t *testing.T) {
@@ -208,7 +206,6 @@ func TestRootConfigBuilder_CloneError(t *testing.T) {
 	projectConfigs, err := rcb.Build(context.Background(), commit, 2)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
-
 }
 
 func TestRootConfigBuilder_HooksRunnerError(t *testing.T) {
@@ -228,7 +225,6 @@ func TestRootConfigBuilder_HooksRunnerError(t *testing.T) {
 	projectConfigs, err := rcb.Build(context.Background(), commit, 2)
 	assert.Error(t, err)
 	assert.Empty(t, projectConfigs)
-
 }
 
 // Mock implementations

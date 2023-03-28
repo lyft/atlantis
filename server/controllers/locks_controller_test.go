@@ -37,7 +37,7 @@ func AnyRepo() models.Repo {
 
 func TestCreateApplyLock(t *testing.T) {
 	t.Run("Creates apply lock", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+		req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 		w := httptest.NewRecorder()
 
 		layout := "2006-01-02T15:04:05.000Z"
@@ -61,7 +61,7 @@ func TestCreateApplyLock(t *testing.T) {
 	})
 
 	t.Run("Apply lock creation fails", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+		req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 		w := httptest.NewRecorder()
 
 		l := mocks.NewMockApplyLocker()
@@ -81,7 +81,7 @@ func TestCreateApplyLock(t *testing.T) {
 
 func TestUnlockApply(t *testing.T) {
 	t.Run("Apply lock deleted successfully", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+		req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 		w := httptest.NewRecorder()
 
 		l := mocks.NewMockApplyLocker()
@@ -97,7 +97,7 @@ func TestUnlockApply(t *testing.T) {
 	})
 
 	t.Run("Apply lock deletion failed", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+		req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 		w := httptest.NewRecorder()
 
 		l := mocks.NewMockApplyLocker()
@@ -115,7 +115,7 @@ func TestUnlockApply(t *testing.T) {
 
 func TestGetLockRoute_NoLockID(t *testing.T) {
 	t.Log("If there is no lock ID in the request then we should get a 400")
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	lc := controllers.LocksController{
 		Logger: logging.NewNoopCtxLogger(t),
@@ -129,7 +129,7 @@ func TestGetLock_InvalidLockID(t *testing.T) {
 	lc := controllers.LocksController{
 		Logger: logging.NewNoopCtxLogger(t),
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "%A@"})
 	w := httptest.NewRecorder()
 	lc.GetLock(w, req)
@@ -145,7 +145,7 @@ func TestGetLock_LockerErrorf(t *testing.T) {
 		Logger: logging.NewNoopCtxLogger(t),
 		Locker: l,
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "id"})
 	w := httptest.NewRecorder()
 	lc.GetLock(w, req)
@@ -161,7 +161,7 @@ func TestGetLock_None(t *testing.T) {
 		Logger: logging.NewNoopCtxLogger(t),
 		Locker: l,
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "id"})
 	w := httptest.NewRecorder()
 	lc.GetLock(w, req)
@@ -187,7 +187,7 @@ func TestGetLock_Success(t *testing.T) {
 		AtlantisVersion:    "1300135",
 		AtlantisURL:        atlantisURL,
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "id"})
 	w := httptest.NewRecorder()
 	lc.GetLock(w, req)
@@ -207,7 +207,7 @@ func TestGetLock_Success(t *testing.T) {
 
 func TestDeleteLock_NoLockID(t *testing.T) {
 	t.Log("If there is no lock ID in the request then we should get a 400")
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	lc := controllers.LocksController{Logger: logging.NewNoopCtxLogger(t)}
 	lc.DeleteLock(w, req)
@@ -217,7 +217,7 @@ func TestDeleteLock_NoLockID(t *testing.T) {
 func TestDeleteLock_InvalidLockID(t *testing.T) {
 	t.Log("If the lock ID is invalid then we should get a 400")
 	lc := controllers.LocksController{Logger: logging.NewNoopCtxLogger(t)}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "%A@"})
 	w := httptest.NewRecorder()
 	lc.DeleteLock(w, req)
@@ -233,7 +233,7 @@ func TestDeleteLock_LockerErrorf(t *testing.T) {
 		DeleteLockCommand: dlc,
 		Logger:            logging.NewNoopCtxLogger(t),
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "id"})
 	w := httptest.NewRecorder()
 	lc.DeleteLock(w, req)
@@ -249,7 +249,7 @@ func TestDeleteLock_None(t *testing.T) {
 		DeleteLockCommand: dlc,
 		Logger:            logging.NewNoopCtxLogger(t),
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "id"})
 	w := httptest.NewRecorder()
 	lc.DeleteLock(w, req)
@@ -267,7 +267,7 @@ func TestDeleteLock_OldFormat(t *testing.T) {
 		Logger:            logging.NewNoopCtxLogger(t),
 		VCSClient:         cp,
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "id"})
 	w := httptest.NewRecorder()
 	lc.DeleteLock(w, req)
@@ -323,7 +323,7 @@ func TestDeleteLock_UpdateProjectStatus(t *testing.T) {
 		WorkingDir:        workingDir,
 		DB:                db,
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "id"})
 	w := httptest.NewRecorder()
 	lc.DeleteLock(w, req)
@@ -365,7 +365,7 @@ func TestDeleteLock_CommentFailed(t *testing.T) {
 		WorkingDirLocker:  workingDirLocker,
 		DB:                db,
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "id"})
 	w := httptest.NewRecorder()
 	lc.DeleteLock(w, req)
@@ -402,7 +402,7 @@ func TestDeleteLock_CommentSuccess(t *testing.T) {
 		WorkingDir:        workingDir,
 		WorkingDirLocker:  workingDirLocker,
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req = mux.SetURLVars(req, map[string]string{"id": "id"})
 	w := httptest.NewRecorder()
 	lc.DeleteLock(w, req)

@@ -31,7 +31,6 @@ func (b *InstrumentedProjectCommandBuilder) BuildApplyCommands(ctx *command.Cont
 	}
 
 	return projectCmds, err
-
 }
 func (b *InstrumentedProjectCommandBuilder) BuildAutoplanCommands(ctx *command.Context) ([]command.ProjectContext, error) {
 	scope := ctx.Scope.SubScope("builder")
@@ -52,7 +51,6 @@ func (b *InstrumentedProjectCommandBuilder) BuildAutoplanCommands(ctx *command.C
 	}
 
 	return projectCmds, err
-
 }
 func (b *InstrumentedProjectCommandBuilder) BuildPlanCommands(ctx *command.Context, comment *command.Comment) ([]command.ProjectContext, error) {
 	scope := ctx.Scope.SubScope("builder")
@@ -73,5 +71,4 @@ func (b *InstrumentedProjectCommandBuilder) BuildPlanCommands(ctx *command.Conte
 	}
 
 	return projectCmds, err
-
 }

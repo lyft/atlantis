@@ -39,7 +39,6 @@ func DeDuplicateExtraArgs(commandArgs []string, extraArgs []string) []string {
 					break
 				}
 			}
-
 		}
 		if override != "" {
 			finalArgs = append(finalArgs, override)
@@ -78,7 +77,6 @@ func IsFileTracked(cloneDir string, filename string) (bool, error) {
 		return false, err
 	}
 	return len(output) > 0, nil
-
 }
 
 func stringInSlice(stringSlice []string, target string) bool {

@@ -159,7 +159,6 @@ func buildConfig(t *testing.T) config.Config {
 		},
 		App: githubapp.Config{},
 	}
-
 }
 
 type testSnsWriter struct {
@@ -242,7 +241,6 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 		snsWriter:            snsWriter,
 		revisionSetterClient: revSetterClient,
 	}
-
 }
 
 type testStreamCloser struct {
@@ -364,6 +362,6 @@ func (t *testRevSetterClient) Do(req *http.Request) (*http.Response, error) {
 
 	return &http.Response{
 		Body:       http.NoBody,
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 	}, nil
 }

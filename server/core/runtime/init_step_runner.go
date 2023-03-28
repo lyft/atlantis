@@ -23,7 +23,6 @@ func (i *InitStepRunner) Run(ctx context.Context, prjCtx command.ProjectContext,
 	terraformLockFileTracked, err := common.IsFileTracked(path, lockFileName)
 	if err != nil {
 		prjCtx.Log.WarnContext(prjCtx.RequestCtx, fmt.Sprintf("Error checking if %s is tracked in %s", lockFileName, path))
-
 	}
 	// If .terraform.lock.hcl is not tracked in git and it exists prior to init
 	// delete it as it probably has been created by a previous run of

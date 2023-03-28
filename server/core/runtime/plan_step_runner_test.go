@@ -739,7 +739,6 @@ func TestRun_NoOptionalVarsIn012(t *testing.T) {
 				prjCtx, "/path", expPlanArgs, map[string]string(nil), tfVersion, "default")
 		})
 	}
-
 }
 
 // Test plans if using remote ops.
@@ -760,7 +759,6 @@ locally at this time.
 	}
 	for name, remoteOpsErr := range cases {
 		t.Run(name, func(t *testing.T) {
-
 			logger := logging.NewNoopCtxLogger(t)
 			// Now that mocking is set up, we're ready to run the plan.
 			ctx := context.Background()

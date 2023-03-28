@@ -94,7 +94,6 @@ func TestPolicyCheckOutputGenerator(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, store.Get("project", "workspace").PolicyCheckOutput, "Policies Failed")
 	})
-
 }
 
 type strictTestPolicyCheckCommandRunner struct {

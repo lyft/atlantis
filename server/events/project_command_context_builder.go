@@ -90,7 +90,6 @@ func buildContext(
 	)
 
 	return projectCmds
-
 }
 
 func getSteps(

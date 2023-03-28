@@ -136,7 +136,6 @@ func testWorkerWorkflow(ctx workflow.Context, r workerRequest) (workerResponse, 
 	}
 
 	err := workflow.SetQueryHandler(ctx, "queue", func() (queueAndState, error) {
-
 		return queueAndState{
 			QueueIsEmpty:      q.IsEmpty(),
 			State:             worker.GetState(),
@@ -186,7 +185,6 @@ func TestWorker_ReceivesUnlockSignal(t *testing.T) {
 		assert.Equal(t, queue.WaitingWorkerState, q.State)
 
 		env.CancelWorkflow()
-
 	}, 10*time.Second)
 
 	env.ExecuteWorkflow(testWorkerWorkflow, workerRequest{
@@ -258,7 +256,6 @@ func TestWorker_DeploysItems(t *testing.T) {
 		})
 
 		env.CancelWorkflow()
-
 	}, 10*time.Second)
 
 	env.ExecuteWorkflow(testWorkerWorkflow, workerRequest{
@@ -315,7 +312,6 @@ func TestWorker_DeploysItems_ValidationError_SkipLatestDeploymentUpdate(t *testi
 		}, *q.LatestDeployment)
 
 		env.CancelWorkflow()
-
 	}, 10*time.Second)
 
 	repo := github.Repo{
@@ -436,7 +432,6 @@ func TestNewWorker(t *testing.T) {
 			Revision: "1234",
 			Status:   queue.LockedStatus,
 		}, r.Lock)
-
 	})
 
 	t.Run("last deploy was merged", func(t *testing.T) {
@@ -516,7 +511,6 @@ func TestWorker_DeploysItems_PlanRejectionError_SkipLatestDeploymentUpdate(t *te
 		}, *q.LatestDeployment)
 
 		env.CancelWorkflow()
-
 	}, 10*time.Second)
 
 	repo := github.Repo{
@@ -605,7 +599,6 @@ func TestWorker_DeploysItems_TerraformClientError_UpdateLatestDeployment(t *test
 		}, *q.LatestDeployment)
 
 		env.CancelWorkflow()
-
 	}, 10*time.Second)
 
 	repo := github.Repo{

@@ -8,7 +8,6 @@ import (
 )
 
 func TestMatches(t *testing.T) {
-
 	t.Run("in sync with builder", func(t *testing.T) {
 		titlePrefix := "atlantis-test"
 		command := "apply"

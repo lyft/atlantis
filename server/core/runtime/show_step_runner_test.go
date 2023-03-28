@@ -39,7 +39,6 @@ func TestShowStepRunnner(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-
 		When(mockExecutor.RunCommandWithVersion(
 			ctx, prjCtx, path, []string{"show", "-json", filepath.Join(path, "test-default.tfplan")}, envs, tfVersion, prjCtx.Workspace,
 		)).ThenReturn("success", nil)
@@ -52,11 +51,9 @@ func TestShowStepRunnner(t *testing.T) {
 
 		actualStr := string(actual)
 		Assert(t, actualStr == "success", fmt.Sprintf("expected '%s' to be success", actualStr))
-
 	})
 
 	t.Run("success w/ version override", func(t *testing.T) {
-
 		v, _ := version.NewVersion("0.13.0")
 
 		ctx := context.Background()
@@ -79,7 +76,6 @@ func TestShowStepRunnner(t *testing.T) {
 
 		actualStr := string(actual)
 		Assert(t, actualStr == "success", "got expected result")
-
 	})
 
 	t.Run("failure running command", func(t *testing.T) {
@@ -91,7 +87,5 @@ func TestShowStepRunnner(t *testing.T) {
 
 		Assert(t, err != nil, "error is returned")
 		Assert(t, r == "err", "returned expected result")
-
 	})
-
 }

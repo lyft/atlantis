@@ -916,7 +916,6 @@ func (s *ServerCmd) deprecationWarnings(userConfig *server.UserConfig) error {
 	if len(applyReqs) > 0 {
 		yamlCfg += fmt.Sprintf("\n  apply_requirements: [%s]", strings.Join(applyReqs, ", "))
 		jsonCfg += fmt.Sprintf(`, "apply_requirements":["%s"]`, strings.Join(applyReqs, "\", \""))
-
 	}
 	jsonCfg += "}]}"
 

@@ -244,7 +244,6 @@ func (p *PlanStepRunner) runRemotePlan(
 	path string,
 	tfVersion *version.Version,
 	envs map[string]string) (string, error) {
-
 	// updateStatusF will update the commit status and log any error.
 	updateStatusF := func(status models.VCSStatus, url string, statusID string) {
 		if _, err := p.VCSStatusUpdater.UpdateProject(ctx, prjCtx, command.Plan, status, url, statusID); err != nil {

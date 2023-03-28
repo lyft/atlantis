@@ -16,7 +16,7 @@ import (
 
 func TestStatusController_Startup(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
-	r, _ := http.NewRequest("GET", "/status", bytes.NewBuffer(nil))
+	r, _ := http.NewRequest(http.MethodGet, "/status", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	dr := &events.Drainer{}
 	d := &controllers.StatusController{
@@ -37,7 +37,7 @@ func TestStatusController_Startup(t *testing.T) {
 
 func TestStatusController_InProgress(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
-	r, _ := http.NewRequest("GET", "/status", bytes.NewBuffer(nil))
+	r, _ := http.NewRequest(http.MethodGet, "/status", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	dr := &events.Drainer{}
 	dr.StartOp()
@@ -60,7 +60,7 @@ func TestStatusController_InProgress(t *testing.T) {
 
 func TestStatusController_Shutdown(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
-	r, _ := http.NewRequest("GET", "/status", bytes.NewBuffer(nil))
+	r, _ := http.NewRequest(http.MethodGet, "/status", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	dr := &events.Drainer{}
 	dr.ShutdownBlocking()

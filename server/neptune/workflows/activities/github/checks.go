@@ -41,7 +41,6 @@ func CreatePlanReviewAction(t PlanReviewActionType) CheckRunAction {
 		Description: fmt.Sprintf("%s this plan to proceed", string(t)),
 		Label:       string(t),
 	}
-
 }
 
 type PlanReviewActionType string

@@ -15,7 +15,7 @@ func TestAzureDevopsValidate_WithBasicAuthErrorf(t *testing.T) {
 	RegisterMockTestingT(t)
 	g := events.DefaultAzureDevopsRequestValidator{}
 	buf := bytes.NewBufferString("")
-	req, err := http.NewRequest("POST", "http://localhost/event", buf)
+	req, err := http.NewRequest(http.MethodPost, "http://localhost/event", buf)
 	Ok(t, err)
 	req.Header.Set("Authorization", "Basic dXNlcjpwYXNz") // user:pass
 	req.Header.Set("Content-Type", "application/json")
@@ -30,7 +30,7 @@ func TestAzureDevopsValidate_WithBasicAuth(t *testing.T) {
 	RegisterMockTestingT(t)
 	g := events.DefaultAzureDevopsRequestValidator{}
 	buf := bytes.NewBufferString(`{"yo":true}`)
-	req, err := http.NewRequest("POST", "http://localhost/event", buf)
+	req, err := http.NewRequest(http.MethodPost, "http://localhost/event", buf)
 	Ok(t, err)
 	req.Header.Set("Authorization", "Basic dXNlcjpwYXNz") // user:pass
 	req.Header.Set("Content-Type", "application/json")
@@ -45,7 +45,7 @@ func TestAzureDevopsValidate_WithoutSecretInvalidContentType(t *testing.T) {
 	RegisterMockTestingT(t)
 	g := events.DefaultAzureDevopsRequestValidator{}
 	buf := bytes.NewBufferString("")
-	req, err := http.NewRequest("POST", "http://localhost/event", buf)
+	req, err := http.NewRequest(http.MethodPost, "http://localhost/event", buf)
 	Ok(t, err)
 	req.Header.Set("Content-Type", "invalid")
 
@@ -59,7 +59,7 @@ func TestAzureDevopsValidate_WithoutSecretJSON(t *testing.T) {
 	RegisterMockTestingT(t)
 	g := events.DefaultAzureDevopsRequestValidator{}
 	buf := bytes.NewBufferString(`{"yo":true}`)
-	req, err := http.NewRequest("POST", "http://localhost/event", buf)
+	req, err := http.NewRequest(http.MethodPost, "http://localhost/event", buf)
 	Ok(t, err)
 	req.Header.Set("Content-Type", "application/json")
 

@@ -171,7 +171,6 @@ $$$
 		},
 	}
 	for _, c := range cases {
-
 		templateResolver := TemplateResolver{
 			GlobalCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
@@ -194,7 +193,6 @@ $$$
 			Equals(t, expWithBackticks, s)
 		})
 	}
-
 }
 
 func TestRenderErrorf(t *testing.T) {
@@ -898,7 +896,6 @@ $$$
 				s := r.Render(res, c.Command, testRepo)
 				expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
 				Equals(t, expWithBackticks, s)
-
 			})
 		})
 	}
@@ -1977,7 +1974,6 @@ $$$`,
 		},
 	}
 	for _, c := range cases {
-
 		templateResolver := TemplateResolver{
 			GlobalCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
@@ -1998,7 +1994,6 @@ $$$`,
 			Equals(t, expWithBackticks, s)
 		})
 	}
-
 }
 
 func TestRenderProjectRenderErrorf(t *testing.T) {

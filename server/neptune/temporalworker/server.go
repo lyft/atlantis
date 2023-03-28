@@ -113,10 +113,10 @@ func NewServer(config *config.Config) (*Server, error) {
 
 	// router initialization
 	router := mux.NewRouter()
-	router.HandleFunc("/healthz", Healthz).Methods("GET")
+	router.HandleFunc("/healthz", Healthz).Methods(http.MethodGet)
 	router.PathPrefix("/static/").Handler(http.FileServer(&assetfs.AssetFS{Asset: static.Asset, AssetDir: static.AssetDir, AssetInfo: static.AssetInfo}))
-	router.HandleFunc("/jobs/{job-id}", jobsController.GetProjectJobs).Methods("GET").Name(ProjectJobsViewRouteName)
-	router.HandleFunc("/jobs/{job-id}/ws", jobsController.GetProjectJobsWS).Methods("GET")
+	router.HandleFunc("/jobs/{job-id}", jobsController.GetProjectJobs).Methods(http.MethodGet).Name(ProjectJobsViewRouteName)
+	router.HandleFunc("/jobs/{job-id}/ws", jobsController.GetProjectJobsWS).Methods(http.MethodGet)
 	n := negroni.New(&negroni.Recovery{
 		Logger:     log.New(os.Stdout, "", log.LstdFlags),
 		PrintStack: false,

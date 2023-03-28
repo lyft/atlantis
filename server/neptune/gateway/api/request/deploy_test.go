@@ -194,7 +194,6 @@ func (r *branchRetriever) GetBranch(ctx context.Context, installationToken int64
 	assert.Equal(r.expectedT, r.expectedBranch, branch)
 
 	return r.resultBranch, nil
-
 }
 
 type installationRetriever struct {

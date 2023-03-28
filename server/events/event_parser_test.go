@@ -863,7 +863,6 @@ func TestParseAzureDevopsRepo(t *testing.T) {
 			Type:     models.AzureDevops,
 		},
 	}, r)
-
 }
 
 func TestParseAzureDevopsPullEvent(t *testing.T) {

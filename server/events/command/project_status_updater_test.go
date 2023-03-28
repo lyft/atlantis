@@ -36,7 +36,6 @@ func (t *testCommitStatusUpdater) UpdateProject(ctx context.Context, projectCtx 
 }
 
 func TestProjectStatusUpdater_CloseJobWhenOperationComplete(t *testing.T) {
-
 	jobURLGenerator := testJobURLGenerator{
 		expectedURL: "url",
 		expectedErr: nil,
@@ -71,7 +70,6 @@ func TestProjectStatusUpdater_CloseJobWhenOperationComplete(t *testing.T) {
 }
 
 func TestProjectStatusUpdater_DoNotCloseJobWhenInProgress(t *testing.T) {
-
 	jobURLGenerator := testJobURLGenerator{
 		expectedURL: "url",
 		expectedErr: nil,

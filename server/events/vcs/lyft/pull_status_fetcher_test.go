@@ -13,7 +13,6 @@ func pointer(str string) *string {
 }
 
 func TestIsPRLocked(t *testing.T) {
-
 	// shouldn't need any fields for this
 	subject := SQBasedPullStatusFetcher{}
 

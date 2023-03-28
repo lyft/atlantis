@@ -77,7 +77,6 @@ func TestPriorityQueue(t *testing.T) {
 
 			q.Push(wrap("1"), p)
 			assert.True(t, q.HasItemsOfPriority(p))
-
 		})
 
 		t.Run("empty", func(t *testing.T) {
@@ -92,7 +91,6 @@ func TestPriorityQueue(t *testing.T) {
 
 func wrap(msg string) terraform.DeploymentInfo {
 	return terraform.DeploymentInfo{Revision: msg}
-
 }
 
 func unwrap(msg terraform.DeploymentInfo) string {

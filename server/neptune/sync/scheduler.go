@@ -34,7 +34,6 @@ func NewAsyncScheduler(logger logging.Logger, delegate *SynchronousScheduler) *A
 }
 
 func (s *AsyncScheduler) Schedule(ctx context.Context, f Executor) error {
-
 	// copy relevant context fields to a new ctx based off a single parent
 	// for easy cancellation when shutting down.
 	ctx = contextUtils.CopyFields(s.poolCtx, ctx)

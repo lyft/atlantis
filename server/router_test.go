@@ -48,7 +48,7 @@ func TestRouter_GenerateLockURL(t *testing.T) {
 	queryParam := "id"
 	routeName := "routename"
 	underlyingRouter := mux.NewRouter()
-	underlyingRouter.HandleFunc("/lock", func(_ http.ResponseWriter, _ *http.Request) {}).Methods("GET").Queries(queryParam, "{id}").Name(routeName)
+	underlyingRouter.HandleFunc("/lock", func(_ http.ResponseWriter, _ *http.Request) {}).Methods(http.MethodGet).Queries(queryParam, "{id}").Name(routeName)
 
 	for _, c := range cases {
 		t.Run(c.AtlantisURL, func(t *testing.T) {
@@ -71,7 +71,7 @@ func setupJobsRouter(t *testing.T) *server.Router {
 	Ok(t, err)
 
 	underlyingRouter := mux.NewRouter()
-	underlyingRouter.HandleFunc("/jobs/{job-id}", func(_ http.ResponseWriter, _ *http.Request) {}).Methods("GET").Name("project-jobs-detail")
+	underlyingRouter.HandleFunc("/jobs/{job-id}", func(_ http.ResponseWriter, _ *http.Request) {}).Methods(http.MethodGet).Name("project-jobs-detail")
 
 	return &server.Router{
 		AtlantisURL:              atlantisURL,

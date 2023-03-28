@@ -19,7 +19,6 @@ func (l *Logger) Middleware(next http.Handler) http.Handler {
 		logger: l.Logger,
 		next:   next,
 	}
-
 }
 
 type loggerHandler struct {

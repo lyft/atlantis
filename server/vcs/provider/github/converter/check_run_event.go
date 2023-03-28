@@ -44,5 +44,4 @@ func (p CheckRunEvent) Convert(e *github.CheckRunEvent) (event.CheckRun, error) 
 		HeadSha:           e.GetCheckRun().GetHeadSHA(),
 		InstallationToken: installationToken,
 	}, nil
-
 }

@@ -257,7 +257,6 @@ func TestHandle_CommentEvent(t *testing.T) {
 			err = subject.Handle(request)
 			assert.IsType(t, c.expectedErr, err)
 		})
-
 	}
 }
 
@@ -376,9 +375,7 @@ func TestHandle_PREvent(t *testing.T) {
 			err = subject.Handle(request)
 			assert.IsType(t, c.expectedErr, err)
 		})
-
 	}
-
 }
 
 func TestHandlePushEvent(t *testing.T) {
@@ -486,7 +483,6 @@ func TestHandlePushEvent(t *testing.T) {
 			err = subject.Handle(request)
 			assert.IsType(t, c.expectedErr, err)
 		})
-
 	}
 }
 
@@ -595,7 +591,6 @@ func TestHandleCheckRunEvent(t *testing.T) {
 			err = subject.Handle(request)
 			assert.IsType(t, c.expectedErr, err)
 		})
-
 	}
 }
 
@@ -722,6 +717,5 @@ func TestHandlePullRequestReviewEvent(t *testing.T) {
 			err = subject.Handle(request)
 			assert.IsType(t, c.expectedErr, err)
 		})
-
 	}
 }

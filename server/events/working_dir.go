@@ -185,7 +185,6 @@ func (w *FileWorkspace) warnDiverged(log logging.Logger, p models.PullRequest, h
 }
 
 func (w *FileWorkspace) HasDiverged(log logging.Logger, cloneDir string, baseRepo models.Repo) bool {
-
 	matchingRepo := w.GlobalCfg.MatchingRepo(baseRepo.ID())
 	checkoutMerge := matchingRepo.CheckoutStrategy == "merge"
 

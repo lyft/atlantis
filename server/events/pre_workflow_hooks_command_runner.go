@@ -84,7 +84,6 @@ func (w *DefaultPreWorkflowHooksCommandRunner) runHooks(
 	preWorkflowHooks []*valid.PreWorkflowHook,
 	repoDir string,
 ) error {
-
 	for _, hook := range preWorkflowHooks {
 		_, err := w.PreWorkflowHookRunner.Run(ctx, cmdCtx, hook.RunCommand, repoDir)
 

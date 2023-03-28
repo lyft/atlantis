@@ -151,7 +151,6 @@ func TestRefresh(t *testing.T) {
 				"config", "--global", "url.https://x-access-token@github.com.insteadOf", "ssh://git@github.com",
 			},
 		}, capturedGitArgs)
-
 	})
 
 	t.Run("only one transport created", func(t *testing.T) {
@@ -205,7 +204,5 @@ func TestRefresh(t *testing.T) {
 
 		assert.Equal(t, "https://x-access-token:70897098@github.com", string(raw))
 		assert.Equal(t, tc.numCalls, 1)
-
 	})
-
 }

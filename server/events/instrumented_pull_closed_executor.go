@@ -18,7 +18,6 @@ type InstrumentedPullClosedExecutor struct {
 func NewInstrumentedPullClosedExecutor(
 	scope tally.Scope, log logging.Logger, cleaner PullCleaner,
 ) PullCleaner {
-
 	return &InstrumentedPullClosedExecutor{
 		scope:   scope.SubScope("pullclosed.cleanup"),
 		log:     log,

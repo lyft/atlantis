@@ -251,7 +251,6 @@ func TestApplyLocker(t *testing.T) {
 			err := l.UnlockApply()
 			Equals(t, nil, err)
 		})
-
 	})
 
 	t.Run("CheckApplyLock", func(t *testing.T) {

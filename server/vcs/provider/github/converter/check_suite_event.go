@@ -31,5 +31,4 @@ func (s CheckSuiteEvent) Convert(e *github.CheckSuiteEvent) (event.CheckSuite, e
 		InstallationToken: installationToken,
 		Branch:            checkSuite.GetHeadBranch(),
 	}, nil
-
 }

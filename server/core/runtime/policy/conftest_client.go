@@ -85,7 +85,6 @@ type LocalSourceResolver struct {
 
 func (p *LocalSourceResolver) Resolve(policySet valid.PolicySet) (string, error) {
 	return policySet.Path, nil
-
 }
 
 // SourceResolverProxy proxies to underlying source resolvers dynamically
@@ -203,7 +202,6 @@ func (c *ConfTestExecutorWorkflow) Run(ctx context.Context, prjCtx command.Proje
 	cmdOutput, err := c.Exec.CombinedOutput(serializedArgs, envs, workdir)
 
 	return c.sanitizeOutput(inputFile, initialOutput+cmdOutput), err
-
 }
 
 func (c *ConfTestExecutorWorkflow) sanitizeOutput(inputFile string, output string) string {
@@ -231,7 +229,6 @@ func (c *ConfTestExecutorWorkflow) EnsureExecutorVersion(log logging.Logger, v *
 	}
 
 	return localPath, nil
-
 }
 
 func getDefaultVersion() (*version.Version, error) {

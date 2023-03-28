@@ -100,7 +100,5 @@ func TestCommentHandler(t *testing.T) {
 
 		err = commentEventHandler.Handle(context.Background(), request, event)
 		assert.NoError(t, err)
-
 	})
-
 }

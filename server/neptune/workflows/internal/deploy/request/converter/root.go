@@ -26,7 +26,6 @@ func Root(external request.Root) terraform.Root {
 		Rerun:        external.Rerun,
 		TrackedFiles: external.TrackedFiles,
 	}
-
 }
 
 func mode(mode request.PlanMode) *terraform.PlanMode {

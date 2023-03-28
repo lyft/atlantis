@@ -78,7 +78,6 @@ func TestUpdateApprovalActions(t *testing.T) {
 }
 
 func TestInitPlanJob(t *testing.T) {
-
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
 

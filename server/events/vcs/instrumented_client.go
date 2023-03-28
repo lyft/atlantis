@@ -194,7 +194,6 @@ func (c *InstrumentedClient) GetModifiedFiles(repo models.Repo, pull models.Pull
 	c.Logger.Info("fetched pull request modified files", fields.PullRequest(pull))
 
 	return files, err
-
 }
 func (c *InstrumentedClient) CreateComment(repo models.Repo, pullNum int, comment string, command string) error {
 	scope := c.StatsScope.SubScope("create_comment")
@@ -241,7 +240,6 @@ func (c *InstrumentedClient) HidePrevCommandComments(repo models.Repo, pullNum i
 		keys.PullNumKey.String():    strconv.Itoa(pullNum),
 	})
 	return nil
-
 }
 func (c *InstrumentedClient) PullIsApproved(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error) {
 	scope := c.StatsScope.SubScope("pull_is_approved")
@@ -265,7 +263,6 @@ func (c *InstrumentedClient) PullIsApproved(repo models.Repo, pull models.PullRe
 	c.Logger.Info("fetched pull request approval status", fields.PullRequest(pull))
 
 	return approvalStatus, err
-
 }
 func (c *InstrumentedClient) PullIsMergeable(repo models.Repo, pull models.PullRequest) (bool, error) {
 	scope := c.StatsScope.SubScope("pull_is_mergeable")
@@ -319,5 +316,4 @@ func (c *InstrumentedClient) UpdateStatus(ctx context.Context, request types.Upd
 
 	executionSuccess.Inc(1)
 	return statusID, nil
-
 }

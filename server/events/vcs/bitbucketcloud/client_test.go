@@ -342,7 +342,6 @@ func TestClient_PullIsMergeable(t *testing.T) {
 			Equals(t, c.ExpMergeable, actMergeable)
 		})
 	}
-
 }
 
 func TestClient_MarkdownPullLink(t *testing.T) {

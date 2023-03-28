@@ -169,7 +169,6 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 
 func (p *CommentEventWorkerProxy) notifyImpendingChanges(
 	ctx context.Context, allPlatformMode bool, event Comment, cmd *command.Comment) {
-
 	if !allPlatformMode {
 		p.setQueuedStatus(ctx, event, cmd)
 		return

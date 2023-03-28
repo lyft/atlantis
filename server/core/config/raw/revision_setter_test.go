@@ -11,7 +11,6 @@ import (
 
 func TestPRRevision_Unmarshal(t *testing.T) {
 	t.Run("yaml", func(t *testing.T) {
-
 		rawYaml := `
 url: https://test-url.com
 basic_auth:
@@ -39,7 +38,6 @@ basic_auth:
 		err := json.Unmarshal([]byte(rawJSON), &result)
 		assert.NoError(t, err)
 	})
-
 }
 
 func TestPRRevision_Validate_Success(t *testing.T) {

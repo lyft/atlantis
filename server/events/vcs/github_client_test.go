@@ -190,7 +190,7 @@ func TestGithubClient_PaginatesComments(t *testing.T) {
 				w.Write([]byte(minimizeResp)) // nolint: errcheck
 				return
 			default:
-				if r.Method != "GET" || !strings.HasPrefix(r.RequestURI, "/api/v3/repos/owner/repo/issues/123/comments") {
+				if r.Method != http.MethodGet || !strings.HasPrefix(r.RequestURI, "/api/v3/repos/owner/repo/issues/123/comments") {
 					t.Errorf("got unexpected request at %q", r.RequestURI)
 					http.Error(w, "not found", http.StatusNotFound)
 					return
@@ -657,7 +657,6 @@ func TestGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 	}
 
 	for _, c := range cases {
-
 		t.Run("blocked/"+c.description, func(t *testing.T) {
 			testServer := httptest.NewTLSServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -709,7 +708,6 @@ func TestGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 			Equals(t, c.expMergeable, actMergeable)
 		})
 	}
-
 }
 
 func TestGithubClient_MarkdownPullLink(t *testing.T) {
@@ -741,7 +739,6 @@ func TestGithubClient_SplitComments(t *testing.T) {
 
 	testServer := httptest.NewTLSServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 			switch r.Method + " " + r.RequestURI {
 			case "POST /api/v3/repos/runatlantis/atlantis/issues/1/comments":
 				defer r.Body.Close() // nolint: errcheck
@@ -808,15 +805,14 @@ func TestGithubClient_Retry404(t *testing.T) {
 
 	testServer := httptest.NewTLSServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 			switch r.Method + " " + r.RequestURI {
 			case "GET /api/v3/repos/runatlantis/atlantis/pulls/1":
 				defer r.Body.Close() // nolint: errcheck
 				numCalls++
 				if numCalls < 3 {
-					w.WriteHeader(404)
+					w.WriteHeader(http.StatusNotFound)
 				} else {
-					w.WriteHeader(200)
+					w.WriteHeader(http.StatusOK)
 				}
 				return
 			default:

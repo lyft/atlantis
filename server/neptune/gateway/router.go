@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"net/http"
 	"net/http/pprof"
 
 	"github.com/gorilla/mux"
@@ -31,9 +32,9 @@ func newRouter(
 
 	router := mux.NewRouter()
 	router.Use(requestID.Middleware, logging.Middleware, recovery.Middleware)
-	router.HandleFunc("/healthz", Healthz).Methods("GET")
-	router.HandleFunc("/status", statusController.Get).Methods("GET")
-	router.HandleFunc("/events", eventsController.Post).Methods("POST")
+	router.HandleFunc("/healthz", Healthz).Methods(http.MethodGet)
+	router.HandleFunc("/status", statusController.Get).Methods(http.MethodGet)
+	router.HandleFunc("/events", eventsController.Post).Methods(http.MethodPost)
 	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
 
 	apiSubrouter := router.PathPrefix("/api/admin").Subrouter()
@@ -42,7 +43,7 @@ func newRouter(
 	}
 
 	apiSubrouter.Use(auth.Middleware)
-	apiSubrouter.HandleFunc("/deploy", deployController.Handle).Methods("POST")
+	apiSubrouter.HandleFunc("/deploy", deployController.Handle).Methods(http.MethodPost)
 
 	return router
 }

@@ -114,7 +114,6 @@ type TestCommenter struct {
 }
 
 func (c *TestCommenter) CreateComment(repo models.Repo, pullNum int, comment string, command string) error {
-
 	c.called = true
 	assert.Equal(c.expectedT, c.expectedComment, comment)
 	assert.Equal(c.expectedT, c.expectedPullNum, pullNum)
@@ -125,7 +124,6 @@ func (c *TestCommenter) CreateComment(repo models.Repo, pullNum int, comment str
 }
 
 func TestPlatformModeRunner_allocatesButNotPlatformMode(t *testing.T) {
-
 	ctx := &command.Context{
 		RequestCtx: context.Background(),
 		HeadRepo: models.Repo{
@@ -181,7 +179,6 @@ func TestPlatformModeRunner_allocatesButNotPlatformMode(t *testing.T) {
 }
 
 func TestPlatformModeRunner_allocatesButPartialPlatformMode(t *testing.T) {
-
 	ctx := &command.Context{
 		RequestCtx: context.Background(),
 		HeadRepo: models.Repo{
@@ -235,7 +232,6 @@ func TestPlatformModeRunner_allocatesButPartialPlatformMode(t *testing.T) {
 }
 
 func TestPlatformModeRunner_doesntAllocate(t *testing.T) {
-
 	ctx := &command.Context{
 		RequestCtx: context.Background(),
 		HeadRepo: models.Repo{
@@ -291,7 +287,6 @@ func TestPlatformModeRunner_doesntAllocate(t *testing.T) {
 }
 
 func TestPlatformModeRunner_success(t *testing.T) {
-
 	ctx := &command.Context{
 		RequestCtx: context.Background(),
 		HeadRepo: models.Repo{
@@ -344,7 +339,6 @@ func TestPlatformModeRunner_success(t *testing.T) {
 	assert.True(t, runner.called)
 	assert.True(t, builder.called)
 	assert.True(t, commenter.called)
-
 }
 
 func TestPlatformModeProjectRunner_plan(t *testing.T) {

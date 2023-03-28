@@ -104,7 +104,6 @@ func (t *TemplateResolver) Resolve(common commonData, baseRepo models.Repo, numP
 
 // Resolves templates for project commands
 func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo models.Repo, common commonData) (*template.Template, interface{}) {
-
 	// Build template override for this repo
 	var templateOverrides map[string]string
 	repoCfg := t.GlobalCfg.MatchingRepo(baseRepo.ID())
@@ -173,7 +172,6 @@ func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo
 		}
 	}
 	return tmpl, templateData
-
 }
 
 func (t *TemplateResolver) filterOutput(s string) string {

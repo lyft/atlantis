@@ -11,7 +11,6 @@ import (
 
 func TestPersistence_Unmarshal(t *testing.T) {
 	t.Run("yaml", func(t *testing.T) {
-
 		rawYaml := `
 job_store_prefix: jobs
 deployment_store_prefix: deployments
@@ -43,7 +42,6 @@ default_store:
 		err := json.Unmarshal([]byte(rawJSON), &result)
 		assert.NoError(t, err)
 	})
-
 }
 
 func TestPersistence_ValidateSuccess(t *testing.T) {
@@ -58,7 +56,6 @@ func TestPersistence_ValidateSuccess(t *testing.T) {
 			},
 		}.Validate())
 	})
-
 }
 
 func TestPersistence_ValidateError(t *testing.T) {

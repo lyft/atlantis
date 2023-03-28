@@ -39,7 +39,6 @@ func NewQueue(callback func(workflow.Context, *Deploy), scope metrics.Scope) *De
 		lockStatusCallback: callback,
 		scope:              scope,
 	}
-
 }
 
 func (q *Deploy) GetLockState() LockState {

@@ -18,13 +18,11 @@ import (
 )
 
 func TestListCurrentWorkingDirPulls(t *testing.T) {
-
 	mockGHClient := vcsmocks.NewMockGithubPullRequestGetter()
 	mockEventParser := eventmocks.NewMockEventParsing()
 	log := logging.NewNoopCtxLogger(t)
 
 	t.Run("repos subdir not exist", func(t *testing.T) {
-
 		baseDir := t.TempDir()
 
 		subject := &events.FileWorkDirIterator{
@@ -41,7 +39,6 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 	})
 
 	t.Run("pull not found", func(t *testing.T) {
-
 		baseDir := t.TempDir()
 
 		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm)
@@ -64,7 +61,6 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 	})
 
 	t.Run("1 pull returned", func(t *testing.T) {
-
 		pullNum := 1
 
 		expectedGithubPull := &github.PullRequest{
@@ -96,7 +92,6 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 	})
 
 	t.Run("2 pulls same repo", func(t *testing.T) {
-
 		pullNum1 := 1
 
 		expectedGithubPull1 := &github.PullRequest{
@@ -141,7 +136,6 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 	})
 
 	t.Run("2 pulls multiple repos", func(t *testing.T) {
-
 		pullNum1 := 1
 
 		expectedGithubPull1 := &github.PullRequest{
@@ -184,5 +178,4 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 		assert.Contains(t, pulls, expectedInternalPull1)
 		assert.Contains(t, pulls, expectedInternalPull2)
 	})
-
 }

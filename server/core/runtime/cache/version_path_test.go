@@ -14,7 +14,6 @@ import (
 )
 
 func TestExecutionVersionDiskLayer(t *testing.T) {
-
 	binaryVersion := "bin1.0"
 	binaryName := "bin"
 
@@ -87,7 +86,6 @@ func TestExecutionVersionDiskLayer(t *testing.T) {
 			versionRootDir: mockFilePath,
 			exec:           mockExec,
 			loader: func(v *version.Version, destPath string) (models.FilePath, error) {
-
 				t.Fatalf("shouldn't be called")
 
 				return models.LocalFilePath(""), nil
@@ -121,7 +119,6 @@ func TestExecutionVersionDiskLayer(t *testing.T) {
 			versionRootDir: mockFilePath,
 			exec:           mockExec,
 			loader: func(v *version.Version, destPath string) (models.FilePath, error) {
-
 				if destPath == expectedLoaderPath && v == versionInput {
 					return mockLoadedBinaryPath, nil
 				}
@@ -163,7 +160,6 @@ func TestExecutionVersionDiskLayer(t *testing.T) {
 			versionRootDir: mockFilePath,
 			exec:           mockExec,
 			loader: func(v *version.Version, destPath string) (models.FilePath, error) {
-
 				if destPath == expectedLoaderPath && v == versionInput {
 					return models.LocalFilePath(""), errors.New("error")
 				}

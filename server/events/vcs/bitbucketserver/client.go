@@ -74,7 +74,7 @@ func (b *Client) GetModifiedFiles(repo models.Repo, pull models.PullRequest) ([]
 	// We'll only loop 1000 times as a safety measure.
 	maxLoops := 1000
 	for i := 0; i < maxLoops; i++ {
-		resp, err := b.makeRequest("GET", fmt.Sprintf("%s?start=%d", baseURL, nextPageStart), nil)
+		resp, err := b.makeRequest(http.MethodGet, fmt.Sprintf("%s?start=%d", baseURL, nextPageStart), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +157,7 @@ func (b *Client) postComment(repo models.Repo, pullNum int, comment string) erro
 		return err
 	}
 	path := fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/comments", b.BaseURL, projectKey, repo.Name, pullNum)
-	_, err = b.makeRequest("POST", path, bytes.NewBuffer(bodyBytes))
+	_, err = b.makeRequest(http.MethodPost, path, bytes.NewBuffer(bodyBytes))
 	return err
 }
 
@@ -168,7 +168,7 @@ func (b *Client) PullIsApproved(repo models.Repo, pull models.PullRequest) (appr
 		return approvalStatus, err
 	}
 	path := fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d", b.BaseURL, projectKey, repo.Name, pull.Num)
-	resp, err := b.makeRequest("GET", path, nil)
+	resp, err := b.makeRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return approvalStatus, err
 	}
@@ -196,7 +196,7 @@ func (b *Client) PullIsMergeable(repo models.Repo, pull models.PullRequest) (boo
 		return false, err
 	}
 	path := fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/merge", b.BaseURL, projectKey, repo.Name, pull.Num)
-	resp, err := b.makeRequest("GET", path, nil)
+	resp, err := b.makeRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return false, err
 	}
@@ -244,7 +244,7 @@ func (b *Client) UpdateStatus(ctx context.Context, request types.UpdateStatusReq
 	if err != nil {
 		return "", errors.Wrap(err, "json encoding")
 	}
-	_, err = b.makeRequest("POST", path, bytes.NewBuffer(bodyBytes))
+	_, err = b.makeRequest(http.MethodPost, path, bytes.NewBuffer(bodyBytes))
 	return "", err
 }
 

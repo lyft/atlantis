@@ -344,7 +344,6 @@ func TestStateReceive(t *testing.T) {
 
 			err = env.GetWorkflowResult(nil)
 			assert.NoError(t, err)
-
 		})
 
 		t.Run("new version", func(t *testing.T) {
@@ -391,7 +390,6 @@ func TestStateReceive(t *testing.T) {
 
 			err = env.GetWorkflowResult(nil)
 			assert.NoError(t, err)
-
 		})
 	}
 }

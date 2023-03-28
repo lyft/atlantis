@@ -140,7 +140,6 @@ func TestPartitionRegistry_Register(t *testing.T) {
 		}
 
 		assert.Equal(t, logs, receivedLogs)
-
 	})
 
 	t.Run("add to receiver registry when job is in progress", func(t *testing.T) {

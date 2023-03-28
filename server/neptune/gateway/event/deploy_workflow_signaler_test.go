@@ -58,7 +58,6 @@ func (s *testSignaler) SignalWorkflow(ctx context.Context, workflowID string, ru
 
 func (s *testSignaler) SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{},
 	options client.StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (client.WorkflowRun, error) {
-
 	s.called = true
 
 	assert.Equal(s.t, s.expectedWorkflowID, workflowID)

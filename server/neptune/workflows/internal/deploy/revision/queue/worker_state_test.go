@@ -113,7 +113,6 @@ func TestWorker_StartsWithEmptyQueue(t *testing.T) {
 			Status: queue.UnlockedStatus,
 		}, q.Lock)
 		assert.Equal(t, queue.WaitingWorkerState, q.State)
-
 	}, 2*time.Second)
 
 	env.RegisterDelayedCallback(func() {
@@ -146,7 +145,6 @@ func TestWorker_StartsWithEmptyQueue(t *testing.T) {
 			Status: queue.UnlockedStatus,
 		}, q.Lock)
 		assert.Equal(t, queue.WorkingWorkerState, q.State)
-
 	}, 6*time.Second)
 
 	env.RegisterDelayedCallback(func() {

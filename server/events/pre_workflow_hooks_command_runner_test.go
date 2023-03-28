@@ -39,7 +39,6 @@ func preWorkflowHooksSetup(t *testing.T) {
 }
 
 func TestRunPreHooks_Clone(t *testing.T) {
-
 	log := logging.NewNoopCtxLogger(t)
 
 	var newPull = fixtures.Pull

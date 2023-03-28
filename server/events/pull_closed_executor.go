@@ -165,7 +165,6 @@ func (p *PullClosedExecutor) buildTemplateData(locks []models.ProjectLock) []tem
 				RepoRelDir: p,
 				Workspaces: "workspaces: " + workspacesStr,
 			})
-
 		}
 	}
 	return projects

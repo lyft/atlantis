@@ -69,7 +69,6 @@ func TestJobStore_Get(t *testing.T) {
 }
 
 func TestJobStore_AppendOutput(t *testing.T) {
-
 	t.Run("append output when new job", func(t *testing.T) {
 		// Setup job store
 		storageBackend := mocks.NewMockStorageBackend()
@@ -128,7 +127,6 @@ func TestJobStore_AppendOutput(t *testing.T) {
 }
 
 func TestJobStore_UpdateJobStatus(t *testing.T) {
-
 	t.Run("retain job in memory when persist fails", func(t *testing.T) {
 		// Create new job and add it to store
 		jobID := "1234"
@@ -212,6 +210,5 @@ func TestJobStore_UpdateJobStatus(t *testing.T) {
 
 		err := jobStore.SetJobCompleteStatus(context.Background(), jobID, jobs.Complete)
 		assert.EqualError(t, err, expectedErrString)
-
 	})
 }

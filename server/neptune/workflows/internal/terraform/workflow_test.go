@@ -146,7 +146,6 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		// add a notifier which just appends to a list which allows us to
 		// test every state change
 		func(st *state.Workflow) error {
-
 			if st.Plan.Status == state.InProgressJobStatus && req.ShouldErrorDuringJobUpdate {
 				return fmt.Errorf("some error")
 			}
@@ -185,7 +184,6 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 	var planRejected bool
 	var updateJobErr bool
 	if err := subject.Run(ctx); err != nil {
-
 		var appErr *temporal.ApplicationError
 		if errors.As(err, &appErr) {
 			switch appErr.Type() {
@@ -196,7 +194,6 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 			default:
 				return nil, err
 			}
-
 		}
 	}
 
@@ -252,7 +249,6 @@ func TestSuccess(t *testing.T) {
 		assert.Equal(t, 1*time.Minute, info.HeartbeatTimeout)
 
 		return true
-
 	}), activities.FetchRootRequest{
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,

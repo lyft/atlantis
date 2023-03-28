@@ -24,7 +24,6 @@ type testStateReceiver struct {
 }
 
 func (r *testStateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo internalTerraform.DeploymentInfo) {
-
 	var payload testSignalPayload
 	c.Receive(ctx, &payload)
 

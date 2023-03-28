@@ -119,5 +119,4 @@ func TestConvert_CheckRunEvent(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, expectedResult, result)
 	})
-
 }
