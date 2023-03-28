@@ -23,6 +23,7 @@ import (
 // Client is used to make API calls to a VCS host like GitHub or GitLab.
 //
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_client.go Client
+//nolint:interfacebloat
 type Client interface {
 	// GetModifiedFiles returns the names of files that were modified in the merge request
 	// relative to the repo root, e.g. parent/child/file.txt.

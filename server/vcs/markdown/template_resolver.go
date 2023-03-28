@@ -92,7 +92,7 @@ func (t *TemplateResolver) Resolve(common commonData, baseRepo models.Repo, numP
 	case common.Command == approvePoliciesCommandTitle:
 		tmpl = template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(approveAllProjectsTmpl))
 	case common.Command == planCommandTitle, common.Command == policyCheckCommandTitle:
-		tmpl = t.getPlanTmpl(common, baseRepo, templateOverrides, numPrjResults, numPlanSuccesses, numPolicyCheckSuccesses)
+		tmpl = t.getPlanTmpl(common, templateOverrides, numPrjResults, numPlanSuccesses, numPolicyCheckSuccesses)
 	case common.Command == applyCommandTitle:
 		tmpl = t.getApplyTmpl(templateOverrides, numPrjResults)
 	case common.Command == versionCommandTitle:
@@ -220,7 +220,7 @@ func (t *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, outp
 	return strings.Count(output, "\n") > maxUnwrappedLines
 }
 
-func (t *TemplateResolver) getPlanTmpl(common commonData, baseRepo models.Repo, templateOverrides map[string]string, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
+func (t *TemplateResolver) getPlanTmpl(common commonData, templateOverrides map[string]string, numPrjResults int, numPlanSuccesses int, numPolicyCheckSuccesses int) *template.Template {
 	if fileName, ok := templateOverrides["plan"]; ok {
 		if content, err := os.ReadFile(fileName); err == nil {
 			return template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(content)))

@@ -291,6 +291,7 @@ func TestPost_PullOpenedOrUpdated(t *testing.T) {
 	}
 }
 
+//nolint:unparam
 func setup(t *testing.T) (events_controllers.VCSEventsController, *mocks.MockGitlabRequestParserValidator, *emocks.MockEventParsing, *emocks.MockPullCleaner, *vcsmocks.MockClient, *emocks.MockCommentParsing, *mocks.MockGitlabMergeRequestGetter) {
 	RegisterMockTestingT(t)
 	gitLabMock := mocks.NewMockGitlabMergeRequestGetter()

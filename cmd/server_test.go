@@ -771,7 +771,7 @@ func TestExecute_AutoplanFileList(t *testing.T) {
 	}
 }
 
-func setup(flags map[string]interface{}, t *testing.T) *cobra.Command {
+func setup(flags map[string]interface{}, _ *testing.T) *cobra.Command {
 	vipr := viper.New()
 	for k, v := range flags {
 		vipr.Set(k, v)
@@ -784,7 +784,7 @@ func setup(flags map[string]interface{}, t *testing.T) *cobra.Command {
 	return c.Init()
 }
 
-func setupWithDefaults(flags map[string]interface{}, t *testing.T) *cobra.Command {
+func setupWithDefaults(flags map[string]interface{}, _ *testing.T) *cobra.Command {
 	vipr := viper.New()
 	flags[GHUserFlag] = "user"
 	flags[GHTokenFlag] = "token"

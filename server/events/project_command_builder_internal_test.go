@@ -1232,6 +1232,7 @@ workflows:
 	}
 }
 
+//nolint:unparam
 func mustVersion(v string) *version.Version {
 	vers, err := version.NewVersion(v)
 	if err != nil {

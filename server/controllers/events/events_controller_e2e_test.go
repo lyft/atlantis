@@ -241,7 +241,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			},
 		},
 		{
-			Description:   "modules modules only",
+			Description:   "modules only",
 			RepoDir:       "modules",
 			ModifiedFiles: []string{"modules/null/main.tf", "staging/main.tf"},
 			Comments: []string{
@@ -706,7 +706,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	// TODO: investigate unifying this code with the above
 	dataDir, binDir, cacheDir := mkSubDirs(t)
 
-	// Set up test dependencies, this is where the code path would diverge from the the standard server
+	// Set up test dependencies, this is where the code path would diverge from the standard server
 	// initialization for testing purposes
 	// ! We should try to keep this as minimal as possible
 

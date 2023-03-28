@@ -52,7 +52,7 @@ type DefaultProjectFinder struct{}
 func (p *DefaultProjectFinder) DetermineProjects(requestCtx context.Context, log logging.Logger, modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList string) []models.Project {
 	var projects []models.Project
 
-	modifiedTerraformFiles := p.filterToFileList(log, modifiedFiles, autoplanFileList)
+	modifiedTerraformFiles := p.filterToFileList(modifiedFiles, autoplanFileList)
 	if len(modifiedTerraformFiles) == 0 {
 		return projects
 	}
@@ -142,7 +142,7 @@ func (p *DefaultProjectFinder) DetermineProjectsViaConfig(log logging.Logger, mo
 }
 
 // filterToFileList filters out files not included in the file list
-func (p *DefaultProjectFinder) filterToFileList(log logging.Logger, files []string, fileList string) []string {
+func (p *DefaultProjectFinder) filterToFileList(files []string, fileList string) []string {
 	var filtered []string
 	patterns := strings.Split(fileList, ",")
 	// Ignore pattern matcher error here as it was checked for errors in server validation

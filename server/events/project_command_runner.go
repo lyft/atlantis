@@ -126,12 +126,11 @@ type DefaultProjectCommandRunner struct { //create object and test
 
 // Plan runs terraform plan for the project described by ctx.
 func (p *DefaultProjectCommandRunner) Plan(ctx command.ProjectContext) command.ProjectResult {
-	planSuccess, failure, err := p.doPlan(ctx)
+	planSuccess, err := p.doPlan(ctx)
 	return command.ProjectResult{
 		Command:     command.Plan,
 		PlanSuccess: planSuccess,
 		Error:       err,
-		Failure:     failure,
 		RepoRelDir:  ctx.RepoRelDir,
 		Workspace:   ctx.Workspace,
 		ProjectName: ctx.ProjectName,
@@ -172,16 +171,15 @@ func (p *DefaultProjectCommandRunner) Apply(ctx command.ProjectContext) command.
 }
 
 func (p *DefaultProjectCommandRunner) ApprovePolicies(ctx command.ProjectContext) command.ProjectResult {
-	approvedOut, failure, err := p.doApprovePolicies(ctx)
 	return command.ProjectResult{
-		Command:            command.PolicyCheck,
-		Failure:            failure,
-		Error:              err,
-		PolicyCheckSuccess: approvedOut,
-		RepoRelDir:         ctx.RepoRelDir,
-		Workspace:          ctx.Workspace,
-		ProjectName:        ctx.ProjectName,
-		StatusID:           ctx.StatusID,
+		Command: command.PolicyCheck,
+		PolicyCheckSuccess: &models.PolicyCheckSuccess{
+			PolicyCheckOutput: "Policies approved",
+		},
+		RepoRelDir:  ctx.RepoRelDir,
+		Workspace:   ctx.Workspace,
+		ProjectName: ctx.ProjectName,
+		StatusID:    ctx.StatusID,
 	}
 }
 
@@ -196,16 +194,6 @@ func (p *DefaultProjectCommandRunner) Version(ctx command.ProjectContext) comman
 		Workspace:      ctx.Workspace,
 		ProjectName:    ctx.ProjectName,
 	}
-}
-
-func (p *DefaultProjectCommandRunner) doApprovePolicies(ctx command.ProjectContext) (*models.PolicyCheckSuccess, string, error) {
-
-	// TODO: Make this a bit smarter
-	// without checking some sort of state that the policy check has indeed passed this is likely to cause issues
-
-	return &models.PolicyCheckSuccess{
-		PolicyCheckOutput: "Policies approved",
-	}, "", nil
 }
 
 func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx command.ProjectContext) (*models.PolicyCheckSuccess, string, error) {
@@ -250,27 +238,27 @@ func (p *DefaultProjectCommandRunner) doPolicyCheck(ctx command.ProjectContext) 
 	}, "", nil
 }
 
-func (p *DefaultProjectCommandRunner) doPlan(ctx command.ProjectContext) (*models.PlanSuccess, string, error) {
+func (p *DefaultProjectCommandRunner) doPlan(ctx command.ProjectContext) (*models.PlanSuccess, error) {
 	unlockFn, err := p.WorkingDirLocker.TryLock(ctx.Pull.BaseRepo.FullName, ctx.Pull.Num, ctx.ProjectCloneDir())
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	defer unlockFn()
 
 	// Clone is idempotent so okay to run even if the repo was already cloned.
 	repoDir, hasDiverged, cloneErr := p.WorkingDir.Clone(ctx.Log, ctx.HeadRepo, ctx.Pull, ctx.ProjectCloneDir())
 	if cloneErr != nil {
-		return nil, "", cloneErr
+		return nil, cloneErr
 	}
 	projAbsPath := filepath.Join(repoDir, ctx.RepoRelDir)
 	if _, err = os.Stat(projAbsPath); os.IsNotExist(err) {
-		return nil, "", DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
+		return nil, DirNotExistErr{RepoRelDir: ctx.RepoRelDir}
 	}
 
 	outputs, err := p.StepsRunner.Run(ctx.RequestCtx, ctx, projAbsPath)
 
 	if err != nil {
-		return nil, "", fmt.Errorf("%s\n%s", err, outputs)
+		return nil, fmt.Errorf("%s\n%s", err, outputs)
 	}
 
 	return &models.PlanSuccess{
@@ -278,7 +266,7 @@ func (p *DefaultProjectCommandRunner) doPlan(ctx command.ProjectContext) (*model
 		RePlanCmd:       ctx.RePlanCmd,
 		ApplyCmd:        ctx.ApplyCmd,
 		HasDiverged:     hasDiverged,
-	}, "", nil
+	}, nil
 }
 
 func (p *DefaultProjectCommandRunner) doApply(ctx command.ProjectContext) (applyOut string, failure string, err error) {

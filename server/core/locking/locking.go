@@ -29,6 +29,8 @@ import (
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_backend.go Backend
 
 // Backend is an implementation of the locking API we require.
+//
+//nolint:interfacebloat
 type Backend interface {
 	TryLock(lock models.ProjectLock) (bool, models.ProjectLock, error)
 	Unlock(project models.Project, workspace string) (*models.ProjectLock, error)
