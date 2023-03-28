@@ -115,8 +115,8 @@ func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform
 }
 
 func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo, scope metrics.Scope) error {
-	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 1)
-	if version == workflow.DefaultVersion {
+	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 2)
+	if version == workflow.DefaultVersion || version == 2 {
 		return nil
 	}
 
