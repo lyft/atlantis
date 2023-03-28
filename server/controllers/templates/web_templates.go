@@ -399,7 +399,7 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
       }
 
       .xterm-search-bar__addon .search-bar__input {
-        width: 100% !important;
+        width: 100%;
         padding: 5px;
         font-size: 14px;
       }
@@ -425,7 +425,7 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
     <script src="https://unpkg.com/xterm@4.9.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-attach@0.6.0/lib/xterm-addon-attach.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.4.0/lib/xterm-addon-fit.js"></script>
-<script src="https://unpkg.com/xterm-addon-search@0.8.0/lib/xterm-addon-search.js"></script>
+    <script src="https://unpkg.com/xterm-addon-search@0.8.0/lib/xterm-addon-search.js"></script>
     <script src="https://unpkg.com/xterm-addon-search-bar@0.2.0/lib/xterm-addon-search-bar.js"></script>
 
     <script>
