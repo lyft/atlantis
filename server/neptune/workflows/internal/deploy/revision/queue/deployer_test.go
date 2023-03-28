@@ -391,7 +391,7 @@ func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {
 			ID: updateCheckRunRequest.ID,
 		}
 
-		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
+		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 		env.OnActivity(da.GithubUpdateCheckRun, mock.Anything, updateCheckRunRequest).Return(updateCheckRunResponse, nil)
 		env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
@@ -500,7 +500,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 			CommitComparison: activities.DirectionBehind,
 		}
 
-		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 2).Return(workflow.Version(1))
+		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 		env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
 
 		env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
