@@ -5,7 +5,7 @@ Custom Comment Templates can be defined to override the default VCS comment temp
 [[toc]]
 
 ##Usage
-Paths to custom templates for the supported steps can be specified in the Server Side Repo Config. The `template_overrides` key for a repo maps the template to override with the path the the template on the local filesystem. 
+Paths to custom templates for the supported steps can be specified in the Server Side Repo Config. The `template_overrides` key for a repo maps the template to override with the path the template on the local filesystem. 
 ```
 repos:
   - id: /github.com/*/

@@ -96,7 +96,7 @@ func parentWorkflow(ctx workflow.Context, r request) (response, error) {
 	}, nil
 }
 
-func buildDeploymentInfo(t *testing.T) internalTerraform.DeploymentInfo {
+func buildDeploymentInfo() internalTerraform.DeploymentInfo {
 	uuid := uuid.New()
 
 	return internalTerraform.DeploymentInfo{
@@ -118,7 +118,7 @@ func TestWorkflowRunner_Run(t *testing.T) {
 	env.RegisterWorkflow(testTerraformWorkflow)
 
 	env.ExecuteWorkflow(parentWorkflow, request{
-		Info: buildDeploymentInfo(t),
+		Info: buildDeploymentInfo(),
 	})
 
 	var resp response
@@ -141,7 +141,7 @@ func TestWorkflowRunner_RunWithDivergedCommit(t *testing.T) {
 	env.RegisterWorkflow(testTerraformWorkflow)
 
 	r := request{
-		Info:          buildDeploymentInfo(t),
+		Info:          buildDeploymentInfo(),
 		DiffDirection: activities.DirectionDiverged,
 	}
 
@@ -178,7 +178,7 @@ func TestWorkflowRunner_RunWithManuallyTriggeredRoot(t *testing.T) {
 	env.RegisterWorkflow(testTerraformWorkflow)
 
 	r := request{
-		Info:          buildDeploymentInfo(t),
+		Info:          buildDeploymentInfo(),
 		DiffDirection: activities.DirectionAhead,
 	}
 
@@ -219,7 +219,7 @@ func TestWorkflowRunner_PlanRejected(t *testing.T) {
 
 	env.ExecuteWorkflow(parentWorkflow, request{
 		PlanRejectionErr: true,
-		Info:             buildDeploymentInfo(t),
+		Info:             buildDeploymentInfo(),
 	})
 
 	var resp response

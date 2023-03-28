@@ -26,7 +26,7 @@ func (p MockPullGetter) GetPullRequest(_ models.Repo, _ int) (*github.PullReques
 	return p.pull, p.err
 }
 
-func setup(t *testing.T) (github.IssueCommentEvent, models.Repo, models.PullRequest, converter.PullConverter) {
+func setup() (github.IssueCommentEvent, models.Repo, models.PullRequest, converter.PullConverter) {
 	pullConverter := converter.PullConverter{
 		RepoConverter: converter.RepoConverter{
 			GithubUser:  GithubUser,
@@ -82,7 +82,7 @@ func setup(t *testing.T) (github.IssueCommentEvent, models.Repo, models.PullRequ
 
 func TestCommentEvent_Convert_Success(t *testing.T) {
 	// setup
-	comment, modelRepo, modelPull, pullConverter := setup(t)
+	comment, modelRepo, modelPull, pullConverter := setup()
 	githubPullGetter := MockPullGetter{
 		pull: &Pull,
 		err:  nil,
@@ -107,7 +107,7 @@ func TestCommentEvent_Convert_Success(t *testing.T) {
 
 func TestCommentEvent_Convert_Fail(t *testing.T) {
 	// setup
-	comment, _, _, pullConverter := setup(t)
+	comment, _, _, pullConverter := setup()
 	subject := converter.CommentEventConverter{
 		PullConverter: pullConverter,
 	}
@@ -136,7 +136,7 @@ func TestCommentEvent_Convert_Fail(t *testing.T) {
 
 func TestRunCommentCommand_GithubPullError(t *testing.T) {
 	// setup
-	comment, _, _, pullConverter := setup(t)
+	comment, _, _, pullConverter := setup()
 	githubPullGetter := MockPullGetter{
 		pull: nil,
 		err:  errors.New("err"),
@@ -155,7 +155,7 @@ func TestRunCommentCommand_GithubPullError(t *testing.T) {
 
 func TestRunCommentCommand_GithubPullParseError(t *testing.T) {
 	// setup
-	comment, _, _, pullConverter := setup(t)
+	comment, _, _, pullConverter := setup()
 	githubPullGetter := MockPullGetter{
 		pull: &github.PullRequest{},
 		err:  nil,

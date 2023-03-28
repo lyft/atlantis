@@ -277,11 +277,10 @@ func TestPendingPlanFinder_DeletePlans(t *testing.T) {
 	Equals(t, 0, len(foundPlans))
 }
 
-func runCmd(t *testing.T, dir string, name string, args ...string) string {
+func runCmd(t *testing.T, dir string, name string, args ...string) {
 	t.Helper()
 	cpCmd := exec.Command(name, args...)
 	cpCmd.Dir = dir
 	cpOut, err := cpCmd.CombinedOutput()
 	Assert(t, err == nil, "err running %q: %s", strings.Join(append([]string{name}, args...), " "), cpOut)
-	return string(cpOut)
 }

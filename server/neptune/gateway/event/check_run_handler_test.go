@@ -262,11 +262,13 @@ func TestCheckRunHandler(t *testing.T) {
 
 type testRootDeployer struct {
 	expectedT       *testing.T
+	isCalled        bool
 	expectedOptions event.RootDeployOptions
 	error           error
 }
 
 func (m *testRootDeployer) Deploy(_ context.Context, options event.RootDeployOptions) error {
 	assert.Equal(m.expectedT, m.expectedOptions, options)
+	m.isCalled = true
 	return m.error
 }

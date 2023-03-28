@@ -34,6 +34,7 @@ type multiplexor struct {
 }
 
 func NewMultiplexor(log logging.Logger, keyGenerator PartitionKeyGenerator, registry PartitionRegistry) Multiplexor {
+	//nolint:exhaustruct
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	return &multiplexor{

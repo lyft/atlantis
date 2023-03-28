@@ -138,6 +138,8 @@ func NewCommentCommand(repoRelDir string, flags []string, name command.Name, for
 // EventParsing parses webhook events from different VCS hosts into their
 // respective Atlantis models.
 // todo: rename to VCSParsing or the like because this also parses API responses #refactor
+//
+//nolint:interfacebloat
 type EventParsing interface {
 	// ParseGithubIssueCommentEvent parses GitHub pull request comment events.
 	// baseRepo is the repo that the pull request will be merged into.

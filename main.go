@@ -30,11 +30,9 @@ func main() {
 	// (as recommended by cobra) because it makes testing easier.
 	server := cmd.NewServerCmd(v, atlantisVersion)
 	version := &cmd.VersionCmd{AtlantisVersion: atlantisVersion}
-	testdrive := &cmd.TestdriveCmd{}
 
 	cmd.RootCmd.AddCommand(server.Init())
 	cmd.RootCmd.AddCommand(version.Init())
-	cmd.RootCmd.AddCommand(testdrive.Init())
 
 	cmd.Execute()
 }

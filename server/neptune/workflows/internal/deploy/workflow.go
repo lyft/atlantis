@@ -184,7 +184,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		}
 
 		// basically keep on adding timeouts until we can either break this loop or get another signal
-		// we need to use the timeoutCtx to ensure that this gets cancelled when when the receive is ready
+		// we need to use the timeoutCtx to ensure that this gets cancelled when the receive is ready
 		cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, onTimeout)
 	}
 	// wait on cancellation so we can gracefully terminate, unsure if temporal handles this for us,

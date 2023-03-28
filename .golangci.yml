@@ -1,17 +1,35 @@
 linters:
   enable:
-  - errcheck
-  - gochecknoinits
-# We don't use goconst because it gives false positives in the tests.
-#  - goconst
-  - gofmt
-  - revive
-  - gosec
-  - gosimple
-  - ineffassign
-  - staticcheck
-  - typecheck
-  - unconvert
-  - unused
-  - vet
-  - vetshadow
+    - errcheck
+    - gochecknoinits
+    # We don't use goconst because it gives false positives in the tests.
+    #  - goconst
+    - gofmt
+    - revive
+    - gosec
+    - gosimple
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unconvert
+    - unused
+    - vet
+    - vetshadow
+    - dogsled
+    - dupword
+    - unparam
+    - interfacebloat
+issues:
+  exclude-rules:
+    - path: server/controllers/events/events_controller(.+)test.go
+      linters:
+        - dogsled
+    - path: server/events/event_parser_test.go
+      linters:
+        - dogsled
+    - path: server/events/command_runner_test.go
+      linters:
+        - dogsled
+linters-settings:
+  interfacebloat:
+    max: 6

@@ -57,7 +57,7 @@ func (p *AuditProjectCommandWrapper) Apply(ctx command.ProjectContext) command.P
 		Revision:       ctx.Pull.HeadCommit,
 	}
 
-	if err := p.emit(ctx, AtlantisJobStateRunning, atlantisJobEvent); err != nil {
+	if err := p.emit(AtlantisJobStateRunning, atlantisJobEvent); err != nil {
 		// return an error if we are not able to write to sns
 		return command.ProjectResult{
 			Error: errors.Wrap(err, "emitting atlantis job event"),
@@ -67,14 +67,14 @@ func (p *AuditProjectCommandWrapper) Apply(ctx command.ProjectContext) command.P
 	result := p.ProjectCommandRunner.Apply(ctx)
 
 	if result.Error != nil || result.Failure != "" {
-		if err := p.emit(ctx, AtlantisJobStateFailure, atlantisJobEvent); err != nil {
+		if err := p.emit(AtlantisJobStateFailure, atlantisJobEvent); err != nil {
 			ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("failed to emit atlantis job event %v", err))
 		}
 
 		return result
 	}
 
-	if err := p.emit(ctx, AtlantisJobStateSuccess, atlantisJobEvent); err != nil {
+	if err := p.emit(AtlantisJobStateSuccess, atlantisJobEvent); err != nil {
 		ctx.Log.ErrorContext(ctx.RequestCtx, fmt.Sprintf("failed to emit atlantis job event %v", err))
 	}
 
@@ -82,7 +82,6 @@ func (p *AuditProjectCommandWrapper) Apply(ctx command.ProjectContext) command.P
 }
 
 func (p *AuditProjectCommandWrapper) emit(
-	ctx command.ProjectContext,
 	state AtlantisJobState,
 	atlantisJobEvent *AtlantisJobEvent,
 ) error {

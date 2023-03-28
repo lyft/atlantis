@@ -18,6 +18,7 @@ package logging
 
 import (
 	"context"
+	"io"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -34,24 +35,18 @@ import (
 type Logger interface {
 	logur.Logger
 	logur.LoggerContext
-	Closer
-}
-
-// Closer is responsible for closing an underlying logger.  This may mean,
-// flushing buffer contents on exit, but is up to the implementation.
-type Closer interface {
-	Close() error
+	io.Closer
 }
 
 type logger struct {
 	logur.LoggerFacade
-	Closer
+	io.Closer
 }
 
 func NewLoggerFromLevel(lvl LogLevel) (*logger, error) { //nolint:revive // avoiding refactor while adding linter action
 	structuredLogger, err := NewStructuredLoggerFromLevel(lvl)
 	if err != nil {
-		return &logger{}, err
+		return nil, err
 
 	}
 
@@ -73,6 +68,8 @@ func NewLoggerFromLevel(lvl LogLevel) (*logger, error) { //nolint:revive // avoi
 
 // Deprecated: Use Logger instead
 // SimpleLogging is the interface used for logging throughout the codebase.
+//
+//nolint:interfacebloat
 type SimpleLogging interface {
 	// These basically just fmt.Sprintf() the message and args.
 
@@ -84,14 +81,7 @@ type SimpleLogging interface {
 	Log(level LogLevel, format string, a ...interface{})
 	SetLevel(lvl LogLevel)
 
-	// With adds a variadic number of fields to the logging context. It accepts a
-	// mix of strongly-typed Field objects and loosely-typed key-value pairs. When
-	// processing pairs, the first element of the pair is used as the field key
-	// and the second as the field value.
-	With(a ...interface{}) SimpleLogging
-
-	// Closes the underlying log writer, flushing anything from the buffer
-	Close() error
+	io.Closer
 }
 
 type StructuredLogger struct {
@@ -127,13 +117,6 @@ func newStructuredLogger(cfg zap.Config) (*StructuredLogger, error) {
 		level:  cfg.Level,
 		Logger: logurzap.New(baseLogger),
 	}, nil
-}
-
-func (l *StructuredLogger) With(a ...interface{}) SimpleLogging {
-	return &StructuredLogger{
-		z:     l.z.With(a...),
-		level: l.level,
-	}
 }
 
 func (l *StructuredLogger) Debugf(format string, a ...interface{}) {
@@ -203,6 +186,7 @@ func NewNoopCtxLogger(t *testing.T) Logger {
 				return ctxInternal.ExtractFields(ctx)
 			},
 		),
+		Closer: io.NopCloser(nil),
 	}
 }
 

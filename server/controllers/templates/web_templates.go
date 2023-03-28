@@ -420,6 +420,7 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
   </div>
   <footer>
   </footer>
+  
     <script src="{{ .CleanedBasePath }}/static/js/jquery-3.5.1.min.js"></script>
     <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-4.9.0.js"></script>
     <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-addon-attach-0.6.0.js"></script>
