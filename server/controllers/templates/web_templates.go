@@ -420,14 +420,12 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
   </div>
   <footer>
   </footer>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/xterm@4.9.0/lib/xterm.js"></script>
-    <script src="https://unpkg.com/xterm-addon-attach@0.6.0/lib/xterm-addon-attach.js"></script>
-    <script src="https://unpkg.com/xterm-addon-fit@0.4.0/lib/xterm-addon-fit.js"></script>
-    <script src="https://unpkg.com/xterm-addon-search@0.8.0/lib/xterm-addon-search.js"></script>
-    <script src="https://unpkg.com/xterm-addon-search-bar@0.2.0/lib/xterm-addon-search-bar.js"></script>
-
+    <script src="{{ .CleanedBasePath }}/static/js/jquery-3.5.1.min.js"></script>
+    <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-4.9.0.js"></script>
+    <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-addon-attach-0.6.0.js"></script>
+    <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-addon-fit-0.4.0.js"></script>
+    <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-addon-search-0.8.0.js"></script>
+    <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-addon-search-bar-0.2.0.js"></script>
     <script>
      var term = new Terminal({scrollback: 50000});
       var socket = new WebSocket(
@@ -510,12 +508,10 @@ var ProjectJobsErrorTemplate = template.Must(template.New("blank.html.tmpl").Par
     </div>
     <footer>
     </footer>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/xterm@4.9.0/lib/xterm.js"></script>
-    <script src="https://unpkg.com/xterm-addon-attach@0.6.0/lib/xterm-addon-attach.js"></script>
-    <script src="https://unpkg.com/xterm-addon-fit@0.4.0/lib/xterm-addon-fit.js"></script>
-
+    <script src="{{ .CleanedBasePath }}/static/js/jquery-3.5.1.min.js"></script>
+    <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-4.9.0.js"></script>
+    <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-addon-attach-0.6.0.js"></script>
+    <script src="{{ .CleanedBasePath }}/static/js/xterm/xterm-addon-fit-0.4.0.js"></script>
     <script>
       var term = new Terminal();
       var socket = new WebSocket(
