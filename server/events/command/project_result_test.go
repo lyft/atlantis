@@ -173,6 +173,7 @@ func TestPlanSuccess_Summary(t *testing.T) {
 			expResult: "No changes. Infrastructure is up-to-date.",
 		},
 		{
+			//nolint:dupword
 			p: command.ProjectResult{
 				PlanSuccess: &models.PlanSuccess{
 					TerraformOutput: `
@@ -187,6 +188,7 @@ func TestPlanSuccess_Summary(t *testing.T) {
 			expResult: "\n**Note: Objects have changed outside of Terraform**\nNo changes. Your infrastructure matches the configuration.",
 		},
 		{
+			//nolint:dupword
 			p: command.ProjectResult{
 				PlanSuccess: &models.PlanSuccess{
 					TerraformOutput: `
