@@ -66,12 +66,12 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 
 		// allows all signals to be received even in a cancellation state
 		WaitForCancellation: true,
-		// SearchAttributes: map[string]interface{}{
-		// 	"atlantis_repository": deploymentInfo.Repo.GetFullName(),
-		// 	"atlantis_root":       deploymentInfo.Root.Name,
-		// 	"atlantis_trigger":    deploymentInfo.Root.Trigger,
-		// 	"atlantis_revision":   deploymentInfo.Revision,
-		// },
+		SearchAttributes: map[string]interface{}{
+			"atlantis_repository": deploymentInfo.Repo.GetFullName(),
+			"atlantis_root":       deploymentInfo.Root.Name,
+			"atlantis_trigger":    deploymentInfo.Root.Trigger,
+			"atlantis_revision":   deploymentInfo.Revision,
+		},
 	})
 
 	request := terraform.Request{
