@@ -229,6 +229,10 @@ func NewRevisionSetter(cfg valid.RevisionSetter) (*RevsionSetter, error) {
 		client = &http.Client{}
 	}
 
+	return NewRevisionSetterWithClient(client, cfg)
+}
+
+func NewRevisionSetterWithClient(client revisionSetterClient, cfg valid.RevisionSetter) (*RevsionSetter, error) {
 	return &RevsionSetter{
 		prRevisionSetterActivities: &prRevisionSetterActivities{
 			client:    client,
