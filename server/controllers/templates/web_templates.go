@@ -413,9 +413,11 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
     <script src="https://unpkg.com/xterm@4.9.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-attach@0.6.0/lib/xterm-addon-attach.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.4.0/lib/xterm-addon-fit.js"></script>
+<script src="https://unpkg.com/xterm-addon-search@0.8.0/lib/xterm-addon-search.js"></script>
+    <script src="https://unpkg.com/xterm-addon-search-bar@0.2.0/lib/xterm-addon-search-bar.js"></script>
 
     <script>
-      var term = new Terminal({scrollback: 50000});
+     var term = new Terminal({scrollback: 50000});
       var socket = new WebSocket(
         (document.location.protocol === "http:" ? "ws://" : "wss://") +
         document.location.host +
@@ -423,13 +425,26 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
         "/ws");
       window.addEventListener("unload", function(event) {
         websocket.close();
-      })
+      });
+
       var attachAddon = new AttachAddon.AttachAddon(socket);
       var fitAddon = new FitAddon.FitAddon();
+      var searchAddon = new SearchAddon.SearchAddon({});
+      var searchAddonBar = new SearchBarAddon.SearchBarAddon({searchAddon});
+
+      term.loadAddon(searchAddon);
+      searchAddon.activate(term);
+
+      term.loadAddon(searchAddonBar);
+      searchAddonBar.activate(term);
+
       term.loadAddon(attachAddon);
       term.loadAddon(fitAddon);
       term.open(document.getElementById("terminal"));
+      
       fitAddon.fit();
+      searchAddonBar.show();
+
       window.addEventListener("resize", () => fitAddon.fit());
     </script>
   </body>
