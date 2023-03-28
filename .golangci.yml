@@ -18,6 +18,7 @@ linters:
     - dogsled
     - dupword
     - unparam
+    - interfacebloat
 issues:
   exclude-rules:
     - path: server/controllers/events/events_controller(.+)test.go
@@ -29,3 +30,6 @@ issues:
     - path: server/events/command_runner_test.go
       linters:
         - dogsled
+linters-settings:
+  interfacebloat:
+    max: 6

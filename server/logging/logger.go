@@ -68,6 +68,8 @@ func NewLoggerFromLevel(lvl LogLevel) (*logger, error) { //nolint:revive // avoi
 
 // Deprecated: Use Logger instead
 // SimpleLogging is the interface used for logging throughout the codebase.
+//
+//nolint:interfacebloat
 type SimpleLogging interface {
 	// These basically just fmt.Sprintf() the message and args.
 

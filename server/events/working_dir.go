@@ -37,6 +37,8 @@ type WorkingDirIterator interface {
 //go:generate pegomock generate -m --use-experimental-model-gen --package events WorkingDir
 
 // WorkingDir handles the workspace on disk for running commands.
+//
+//nolint:interfacebloat
 type WorkingDir interface {
 	// Clone git clones headRepo, checks out the branch and then returns the
 	// absolute path to the root of the cloned repo. It also returns
