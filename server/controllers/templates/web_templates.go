@@ -379,7 +379,7 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
     <link rel="icon" type="image/png" href="/static/images/atlantis-icon.png">
     <style>
       #terminal {
-        position: fixed;
+        position: fixed !important;
         top: 200px;
         left: 0px;
         bottom: 0px;
@@ -390,6 +390,18 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
 
       .terminal.xterm {
         padding: 10px;
+      }
+
+      .xterm-search-bar__addon {
+        width: 100%;
+        left: 30px;
+        right: 30px;
+      }
+
+      .xterm-search-bar__addon .search-bar__input {
+        width: 100% !important;
+        padding: 5px;
+        font-size: 14px;
       }
     </style>
   </head>
