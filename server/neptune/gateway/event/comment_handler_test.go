@@ -380,6 +380,128 @@ func TestCommentEventWorkerProxy_HandleApplyComment_PartialMode(t *testing.T) {
 	assert.True(t, writer.isCalled)
 }
 
+func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
+	logger := logging.NewNoopCtxLogger(t)
+	scope, _, err := metrics.NewLoggingScope(logger, "")
+	assert.NoError(t, err)
+	getter := &testProjectCommandGetter{}
+	commentEvent := event.Comment{
+		Pull:     testPull,
+		PullNum:  testPull.Num,
+		BaseRepo: testRepo,
+		HeadRepo: testRepo,
+		User: models.User{
+			Username: "someuser",
+		},
+		InstallationToken: 123,
+	}
+	writer := &mockSnsWriter{}
+	allocator := &testAllocator{
+		t:                 t,
+		expectedFeatureID: feature.PlatformMode,
+		expectedFeatureCtx: feature.FeatureContext{
+			RepoName: repoFullName,
+		},
+		expectedAllocation: true,
+	}
+	scheduler := &sync.SynchronousScheduler{Logger: logger}
+	rootDeployer := &mockRootDeployer{}
+	commentCreator := &mockCommentCreator{}
+	statusUpdater := &multiMockStatusUpdater{
+		delegates: []*mockStatusUpdater{
+			{
+				expectedRepo:      testRepo,
+				expectedPull:      testPull,
+				expectedVCSStatus: models.SuccessVCSStatus,
+				expectedCmd:       command.Plan.String(),
+				expectedBody:      "no modified roots",
+				expectedT:         t,
+			},
+			{
+				expectedRepo:      testRepo,
+				expectedPull:      testPull,
+				expectedVCSStatus: models.SuccessVCSStatus,
+				expectedCmd:       command.PolicyCheck.String(),
+				expectedBody:      "no modified roots",
+				expectedT:         t,
+			},
+			{
+				expectedRepo:      testRepo,
+				expectedPull:      testPull,
+				expectedVCSStatus: models.SuccessVCSStatus,
+				expectedCmd:       command.Apply.String(),
+				expectedBody:      "no modified roots",
+				expectedT:         t,
+			},
+		},
+	}
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	bufReq := buildRequest(t)
+	cmd := &command.Comment{
+		Name: command.Plan,
+	}
+	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
+	assert.NoError(t, err)
+	assert.True(t, statusUpdater.AllCalled())
+	assert.False(t, commentCreator.isCalled)
+	assert.False(t, rootDeployer.isCalled)
+	assert.False(t, writer.isCalled)
+}
+
+func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
+	logger := logging.NewNoopCtxLogger(t)
+	scope, _, err := metrics.NewLoggingScope(logger, "")
+	assert.NoError(t, err)
+	getter := &testProjectCommandGetter{}
+	commentEvent := event.Comment{
+		Pull:     testPull,
+		PullNum:  testPull.Num,
+		BaseRepo: testRepo,
+		HeadRepo: testRepo,
+		User: models.User{
+			Username: "someuser",
+		},
+		InstallationToken: 123,
+	}
+	writer := &mockSnsWriter{}
+	allocator := &testAllocator{
+		t:                 t,
+		expectedFeatureID: feature.PlatformMode,
+		expectedFeatureCtx: feature.FeatureContext{
+			RepoName: repoFullName,
+		},
+		expectedAllocation: true,
+	}
+	scheduler := &sync.SynchronousScheduler{Logger: logger}
+	rootDeployer := &mockRootDeployer{}
+	commentCreator := &mockCommentCreator{}
+	statusUpdater := &multiMockStatusUpdater{
+		delegates: []*mockStatusUpdater{
+			{
+				expectedRepo:      testRepo,
+				expectedPull:      testPull,
+				expectedVCSStatus: models.SuccessVCSStatus,
+				expectedCmd:       command.Apply.String(),
+				expectedBody:      "no modified roots",
+				expectedT:         t,
+			},
+		},
+	}
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	bufReq := buildRequest(t)
+	cmd := &command.Comment{
+		Name: command.Apply,
+	}
+	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
+	assert.NoError(t, err)
+	assert.True(t, statusUpdater.AllCalled())
+	assert.False(t, commentCreator.isCalled)
+	assert.False(t, rootDeployer.isCalled)
+	assert.False(t, writer.isCalled)
+}
+
 func TestCommentEventWorkerProxy_HandlePlanComment_BothModes(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
@@ -627,6 +749,32 @@ func (c *mockCommentCreator) CreateComment(repo models.Repo, pull int, message s
 	assert.Equal(c.expectedT, c.expectedMessage, message)
 
 	return c.err
+}
+
+type multiMockStatusUpdater struct {
+	delegates []*mockStatusUpdater
+	index     int
+}
+
+func (s *multiMockStatusUpdater) AllCalled() bool {
+	for _, d := range s.delegates {
+		if !d.isCalled {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (s *multiMockStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, cmd fmt.Stringer, ss string, body string) (string, error) {
+	if s.index >= len(s.delegates) {
+		panic(nil)
+	}
+
+	result, err := s.delegates[s.index].UpdateCombined(ctx, repo, pull, status, cmd, ss, body)
+	s.index++
+
+	return result, err
 }
 
 type mockStatusUpdater struct {
