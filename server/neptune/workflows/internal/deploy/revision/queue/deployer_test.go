@@ -108,7 +108,7 @@ func testDeployerWorkflow(ctx workflow.Context, r deployerRequest) (*deployment.
 func TestDeployer_FirstDeploy(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -176,7 +176,7 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -295,7 +295,7 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -500,7 +500,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 			CommitComparison: activities.DirectionBehind,
 		}
 
-		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.Version(1))
+		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 		env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
 
 		env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
@@ -567,7 +567,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -729,7 +729,7 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -815,6 +815,7 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 func TestDeployer_SetPRRevision(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.Version(1))
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -901,6 +902,200 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 		Revision: "3455",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}, resp)
+}
+
+func TestDeployer_SetPRRevision_ForceApplyOld_v1(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.Version(1))
+
+	da := &testDeployActivity{}
+	env.RegisterActivity(da)
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	root := model.Root{
+		Name:    "root_1",
+		Trigger: model.ManualTrigger,
+	}
+
+	deploymentInfo := terraform.DeploymentInfo{
+		ID:         uuid.UUID{},
+		Revision:   "3455",
+		CheckRunID: 1234,
+		Root:       root,
+		Repo:       repo,
+	}
+
+	latestDeployedRevision := &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3255",
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}
+
+	storeDeploymentRequest := activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: &deployment.Info{
+			Version:  deployment.InfoSchemaVersion,
+			ID:       deploymentInfo.ID.String(),
+			Revision: deploymentInfo.Revision,
+			Root: deployment.Root{
+				Name:    deploymentInfo.Root.Name,
+				Trigger: "manual",
+			},
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name:  deploymentInfo.Repo.Name,
+			},
+		},
+	}
+
+	compareCommitRequest := activities.CompareCommitRequest{
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfo.Revision,
+		LatestDeployedRevision: latestDeployedRevision.Revision,
+	}
+
+	compareCommitResponse := activities.CompareCommitResponse{
+		CommitComparison: activities.DirectionAhead,
+	}
+
+	env.RegisterWorkflow(testPRRevWorkflow)
+	env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
+		Repo:     repo,
+		Root:     root,
+		Revision: deploymentInfo.Revision,
+	}).Return(nil)
+
+	env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
+	env.OnActivity(da.StoreLatestDeployment, mock.Anything, storeDeploymentRequest).Return(nil)
+
+	env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+		Info:         deploymentInfo,
+		LatestDeploy: latestDeployedRevision,
+	})
+
+	env.AssertExpectations(t)
+
+	var resp *deployment.Info
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	assert.Equal(t, &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3455",
+		Root: deployment.Root{
+			Name:    deploymentInfo.Root.Name,
+			Trigger: "manual",
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}, resp)
+}
+
+func TestDeployer_SetPRRevision_ForceApplyNew_v2(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	da := &testDeployActivity{}
+	env.RegisterActivity(da)
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	root := model.Root{
+		Name:    "root_1",
+		Trigger: model.ManualTrigger,
+	}
+
+	deploymentInfo := terraform.DeploymentInfo{
+		ID:         uuid.UUID{},
+		Revision:   "3455",
+		CheckRunID: 1234,
+		Root:       root,
+		Repo:       repo,
+	}
+
+	latestDeployedRevision := &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3255",
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}
+
+	storeDeploymentRequest := activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: &deployment.Info{
+			Version:  deployment.InfoSchemaVersion,
+			ID:       deploymentInfo.ID.String(),
+			Revision: deploymentInfo.Revision,
+			Root: deployment.Root{
+				Name:    deploymentInfo.Root.Name,
+				Trigger: "manual",
+			},
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name:  deploymentInfo.Repo.Name,
+			},
+		},
+	}
+
+	compareCommitRequest := activities.CompareCommitRequest{
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfo.Revision,
+		LatestDeployedRevision: latestDeployedRevision.Revision,
+	}
+
+	compareCommitResponse := activities.CompareCommitResponse{
+		CommitComparison: activities.DirectionAhead,
+	}
+
+	env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
+	env.OnActivity(da.StoreLatestDeployment, mock.Anything, storeDeploymentRequest).Return(nil)
+
+	env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+		Info:         deploymentInfo,
+		LatestDeploy: latestDeployedRevision,
+	})
+
+	env.AssertExpectations(t)
+
+	var resp *deployment.Info
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	assert.Equal(t, &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3455",
+		Root: deployment.Root{
+			Name:    deploymentInfo.Root.Name,
+			Trigger: "manual",
 		},
 		Repo: deployment.Repo{
 			Owner: deploymentInfo.Repo.Owner,

@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
@@ -115,9 +116,16 @@ func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform
 }
 
 func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
-	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 1)
-	if version == workflow.DefaultVersion {
+	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 2)
+	switch version {
+	case workflow.DefaultVersion:
 		return nil
+
+	// Skip rebasing open PRs on Force Apply
+	case 2:
+		if deployment.Root.Trigger == terraformActivities.ManualTrigger {
+			return nil
+		}
 	}
 
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
