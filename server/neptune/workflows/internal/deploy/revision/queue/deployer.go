@@ -73,13 +73,13 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		scope.Counter("invalid_commit_direction_err").Inc(1)
 		// always returns error for caller to skip revision
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil)
-		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Commit, latestDeployment.Revision)
+		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Commit.Revision, latestDeployment.Revision)
 	}
 	if requestedDeployment.Root.Rerun && commitDirection != activities.DirectionIdentical {
 		scope.Counter("invalid_rerun_err").Inc(1)
 		// always returns error for caller to skip revision
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, RerunNotIdenticalSummary, nil)
-		return nil, NewValidationError("requested revision %s is a re-run attempt but not identical to the latest deployed revision %s", requestedDeployment.Commit, latestDeployment.Revision)
+		return nil, NewValidationError("requested revision %s is a re-run attempt but not identical to the latest deployed revision %s", requestedDeployment.Commit.Revision, latestDeployment.Revision)
 	}
 
 	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
@@ -120,7 +120,7 @@ func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terr
 	case workflow.DefaultVersion:
 		return nil
 
-	// Skip rebasing open PRs on Force Apply
+	// Skip rebasing open PRs for deploys not from the default branch
 	case 2:
 		if deployment.Commit.Branch != deployment.Repo.DefaultBranch {
 			return nil

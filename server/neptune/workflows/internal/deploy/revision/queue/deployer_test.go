@@ -126,6 +126,7 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 		ID: uuid.UUID{},
 		Commit: github.Commit{
 			Revision: "3455",
+			Branch:   "default-branch",
 		},
 		CheckRunID: 1234,
 		Root:       root,
@@ -136,6 +137,7 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -150,6 +152,7 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
 			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -196,6 +199,7 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 		ID: uuid.UUID{},
 		Commit: github.Commit{
 			Revision: "3455",
+			Branch:   "default-branch",
 		},
 		CheckRunID: 1234,
 		Root:       root,
@@ -206,6 +210,7 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -220,6 +225,7 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
 			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -258,6 +264,7 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -281,6 +288,7 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 		ID: uuid.UUID{},
 		Commit: github.Commit{
 			Revision: "3455",
+			Branch:   "default-branch",
 		},
 		CheckRunID: 1234,
 		Root:       root,
@@ -291,6 +299,7 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -328,6 +337,7 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -352,6 +362,7 @@ func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {
 		ID: uuid.UUID{},
 		Commit: github.Commit{
 			Revision: "3455",
+			Branch:   "default-branch",
 		},
 		CheckRunID: 1234,
 		Root:       root,
@@ -362,6 +373,7 @@ func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -475,6 +487,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 		ID: uuid.UUID{},
 		Commit: github.Commit{
 			Revision: "3455",
+			Branch:   "default-branch",
 		},
 		CheckRunID: 1234,
 		Root:       root,
@@ -485,6 +498,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -595,6 +609,7 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 		ID: uuid.UUID{},
 		Commit: github.Commit{
 			Revision: "3455",
+			Branch:   "default-branch",
 		},
 		CheckRunID: 1234,
 		Root:       root,
@@ -605,6 +620,7 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -619,6 +635,7 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
 			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -657,6 +674,7 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -687,6 +705,7 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 		ID: uuid.UUID{},
 		Commit: github.Commit{
 			Revision: "3455",
+			Branch:   "default-branch",
 		},
 		CheckRunID: 1234,
 		Root:       root,
@@ -697,6 +716,7 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -761,6 +781,7 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 		ID: uuid.UUID{},
 		Commit: github.Commit{
 			Revision: "3455",
+			Branch:   "default-branch",
 		},
 		CheckRunID: 1234,
 		Root:       root,
@@ -771,6 +792,7 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -795,6 +817,7 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
 			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -849,6 +872,7 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 		ID: uuid.UUID{},
 		Commit: github.Commit{
 			Revision: "3455",
+			Branch:   "default-branch",
 		},
 		CheckRunID: 1234,
 		Root:       root,
@@ -866,6 +890,7 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -880,6 +905,7 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
 			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -918,6 +944,7 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -962,6 +989,7 @@ func TestDeployer_SetPRRevision_NonDefaultBranchOld_v1(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "main",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -1068,6 +1096,7 @@ func TestDeployer_SetPRRevision_NonDefaultBranchNew_v2(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "main",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},

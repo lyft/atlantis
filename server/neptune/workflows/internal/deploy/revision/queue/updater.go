@@ -63,7 +63,7 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 		}
 
 		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("updating check run for revision %s", i.Commit), key.ErrKey, err)
+			logger.Error(ctx, fmt.Sprintf("updating check run for revision %s", i.Commit.Revision), key.ErrKey, err)
 		}
 	}
 }
