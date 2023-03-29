@@ -39,7 +39,7 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 	for _, i := range infos {
 		request := notifier.GithubCheckRunRequest{
 			Title:   terraform.BuildCheckRunTitle(i.Root.Name),
-			Sha:     i.Revision,
+			Sha:     i.Commit.Revision,
 			State:   state,
 			Repo:    i.Repo,
 			Summary: summary,
@@ -63,7 +63,7 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 		}
 
 		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("updating check run for revision %s", i.Revision), key.ErrKey, err)
+			logger.Error(ctx, fmt.Sprintf("updating check run for revision %s", i.Commit), key.ErrKey, err)
 		}
 	}
 }

@@ -13,7 +13,7 @@ import (
 type DeploymentInfo struct {
 	ID             uuid.UUID
 	CheckRunID     int64
-	Revision       string
+	Commit         github.Commit
 	InitiatingUser github.User
 	Root           terraform.Root
 	Repo           github.Repo
@@ -24,7 +24,8 @@ func (i DeploymentInfo) BuildPersistableInfo() *deployment.Info {
 	return &deployment.Info{
 		Version:  deployment.InfoSchemaVersion,
 		ID:       i.ID.String(),
-		Revision: i.Revision,
+		Revision: i.Commit.Revision,
+		Branch:   i.Commit.Branch,
 		Root: deployment.Root{
 			Name:    i.Root.Name,
 			Trigger: string(i.Root.Trigger),

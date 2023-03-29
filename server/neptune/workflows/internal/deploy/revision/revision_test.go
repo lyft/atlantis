@@ -117,10 +117,12 @@ func TestEnqueue(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	rev := "1234"
+	branch := "default-branch"
 
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("test-signal", revision.NewRevisionRequest{
 			Revision: rev,
+			Branch:   branch,
 			Root: request.Root{
 				Name:    "root",
 				Trigger: request.MergeTrigger,
@@ -150,7 +152,10 @@ func TestEnqueue(t *testing.T) {
 
 	assert.Equal(t, []terraformWorkflow.DeploymentInfo{
 		{
-			Revision:   rev,
+			Commit: github.Commit{
+				Revision: rev,
+				Branch:   branch,
+			},
 			CheckRunID: 1,
 			Root:       terraform.Root{Name: "root", Trigger: terraform.MergeTrigger},
 			ID:         id,
@@ -168,10 +173,12 @@ func TestEnqueue_ManualTrigger(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	rev := "1234"
+	branch := "default-branch"
 
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("test-signal", revision.NewRevisionRequest{
 			Revision: rev,
+			Branch:   branch,
 			Root: request.Root{
 				Name:    "root",
 				Trigger: request.ManualTrigger,
@@ -201,7 +208,10 @@ func TestEnqueue_ManualTrigger(t *testing.T) {
 
 	assert.Equal(t, []terraformWorkflow.DeploymentInfo{
 		{
-			Revision:   rev,
+			Commit: github.Commit{
+				Revision: rev,
+				Branch:   branch,
+			},
 			CheckRunID: 1,
 			Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
 			ID:         id,
@@ -220,10 +230,12 @@ func TestEnqueue_ManualTrigger_QueueAlreadyLocked(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	rev := "1234"
+	branch := "default-branch"
 
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("test-signal", revision.NewRevisionRequest{
 			Revision: rev,
+			Branch:   branch,
 			Root: request.Root{
 				Name:    "root",
 				Trigger: request.ManualTrigger,
@@ -258,7 +270,10 @@ func TestEnqueue_ManualTrigger_QueueAlreadyLocked(t *testing.T) {
 
 	assert.Equal(t, []terraformWorkflow.DeploymentInfo{
 		{
-			Revision:   rev,
+			Commit: github.Commit{
+				Revision: rev,
+				Branch:   branch,
+			},
 			CheckRunID: 1,
 			Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
 			ID:         id,
@@ -277,10 +292,12 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	rev := "1234"
+	branch := "default-branch"
 
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("test-signal", revision.NewRevisionRequest{
 			Revision: rev,
+			Branch:   branch,
 			Root: request.Root{
 				Name:    "root",
 				Trigger: request.MergeTrigger,
@@ -317,7 +334,10 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 
 	assert.Equal(t, []terraformWorkflow.DeploymentInfo{
 		{
-			Revision:   rev,
+			Commit: github.Commit{
+				Revision: rev,
+				Branch:   branch,
+			},
 			CheckRunID: 1,
 			Root:       terraform.Root{Name: "root", Trigger: terraform.MergeTrigger},
 			ID:         id,
@@ -336,10 +356,12 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInQueue(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	rev := "1234"
+	branch := "default-branch"
 
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("test-signal", revision.NewRevisionRequest{
 			Revision: rev,
+			Branch:   branch,
 			Root: request.Root{
 				Name:    "root",
 				Trigger: request.ManualTrigger,
@@ -351,7 +373,10 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInQueue(t *testing.T) {
 	id := uuid.Must(uuid.NewUUID())
 
 	deploymentInfo := terraformWorkflow.DeploymentInfo{
-		Revision:   rev,
+		Commit: github.Commit{
+			Revision: rev,
+			Branch:   branch,
+		},
 		CheckRunID: 1,
 		Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
 		ID:         id,
@@ -376,10 +401,12 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInProgress(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 
 	rev := "1234"
+	branch := "default-branch"
 
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("test-signal", revision.NewRevisionRequest{
 			Revision: rev,
+			Branch:   branch,
 			Root: request.Root{
 				Name:    "root",
 				Trigger: request.ManualTrigger,
@@ -391,7 +418,10 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInProgress(t *testing.T) {
 	id := uuid.Must(uuid.NewUUID())
 
 	deploymentInfo := terraformWorkflow.DeploymentInfo{
-		Revision:   rev,
+		Commit: github.Commit{
+			Revision: rev,
+			Branch:   branch,
+		},
 		CheckRunID: 1,
 		Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
 		ID:         id,

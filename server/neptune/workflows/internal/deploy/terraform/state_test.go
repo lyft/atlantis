@@ -93,7 +93,9 @@ func TestStateReceive(t *testing.T) {
 		ID:         uuid.New(),
 		Root:       terraform.Root{Name: "root"},
 		Repo:       github.Repo{Name: "hello"},
-		Revision:   "12345",
+		Commit: github.Commit{
+			Revision: "12345",
+		},
 	}
 
 	cases := []struct {
@@ -194,7 +196,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
-				Revision:     internalDeploymentInfo.Revision,
+				Revision:     internalDeploymentInfo.Commit.Revision,
 				State:        activities.AtlantisJobStateRunning,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				IsForceApply: false,
@@ -217,7 +219,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
-				Revision:     internalDeploymentInfo.Revision,
+				Revision:     internalDeploymentInfo.Commit.Revision,
 				State:        activities.AtlantisJobStateFailure,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				EndTime:      strconv.FormatInt(endTime.Unix(), 10),
@@ -245,7 +247,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
-				Revision:     internalDeploymentInfo.Revision,
+				Revision:     internalDeploymentInfo.Commit.Revision,
 				State:        activities.AtlantisJobStateFailure,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				EndTime:      strconv.FormatInt(endTime.Unix(), 10),
@@ -273,7 +275,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
-				Revision:     internalDeploymentInfo.Revision,
+				Revision:     internalDeploymentInfo.Commit.Revision,
 				State:        activities.AtlantisJobStateFailure,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				EndTime:      strconv.FormatInt(endTime.Unix(), 10),
@@ -301,7 +303,7 @@ func TestStateReceive(t *testing.T) {
 			ExpectedAuditJobRequest: &activities.AuditJobRequest{
 				Root:         internalDeploymentInfo.Root,
 				Repo:         internalDeploymentInfo.Repo,
-				Revision:     internalDeploymentInfo.Revision,
+				Revision:     internalDeploymentInfo.Commit.Revision,
 				State:        activities.AtlantisJobStateSuccess,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				EndTime:      strconv.FormatInt(endTime.Unix(), 10),
@@ -376,7 +378,7 @@ func TestStateReceive(t *testing.T) {
 				DeploymentInfo: internalDeploymentInfo,
 				ExpectedRequest: notifier.GithubCheckRunRequest{
 					Title: "atlantis/deploy: root",
-					Sha:   internalDeploymentInfo.Revision,
+					Sha:   internalDeploymentInfo.Commit.Revision,
 					State: c.ExpectedCheckRunState,
 					Repo: github.Repo{
 						Name: "hello",

@@ -100,8 +100,10 @@ func buildDeploymentInfo() internalTerraform.DeploymentInfo {
 	uuid := uuid.New()
 
 	return internalTerraform.DeploymentInfo{
-		ID:         uuid,
-		Revision:   "1234",
+		ID: uuid,
+		Commit: github.Commit{
+			Revision: "1234",
+		},
 		CheckRunID: 1,
 		Root: terraform.Root{
 			Name: "some-root",
@@ -157,7 +159,7 @@ func TestWorkflowRunner_RunWithDivergedCommit(t *testing.T) {
 		},
 		Repo:         r.Info.Repo,
 		DeploymentID: r.Info.ID.String(),
-		Revision:     r.Info.Revision,
+		Revision:     r.Info.Commit.Revision,
 	}).Return(func(ctx workflow.Context, request terraformWorkflow.Request) error {
 		return nil
 	})
@@ -197,7 +199,7 @@ func TestWorkflowRunner_RunWithManuallyTriggeredRoot(t *testing.T) {
 		},
 		Repo:         r.Info.Repo,
 		DeploymentID: r.Info.ID.String(),
-		Revision:     r.Info.Revision,
+		Revision:     r.Info.Commit.Revision,
 	}).Return(func(ctx workflow.Context, request terraformWorkflow.Request) error {
 		return nil
 	})

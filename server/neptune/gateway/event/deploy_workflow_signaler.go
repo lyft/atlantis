@@ -45,6 +45,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, ro
 		workflows.DeployNewRevisionSignalID,
 		workflows.DeployNewRevisionSignalRequest{
 			Revision: rootDeployOptions.Revision,
+			Branch:   rootDeployOptions.Branch,
 			InitiatingUser: workflows.User{
 				Name: rootDeployOptions.Sender.Username,
 			},
