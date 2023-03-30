@@ -399,7 +399,7 @@ var ProjectJobsTemplate = template.Must(template.New("blank.html.tmpl").Parse(`
       }
 
       .xterm-search-bar__addon .search-bar__input {
-        width: 100%;
+        width: 100% !important;
         padding: 5px;
         font-size: 14px;
       }
