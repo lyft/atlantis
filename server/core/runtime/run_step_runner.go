@@ -36,8 +36,12 @@ func (r *RunStepRunner) Run(ctx context.Context, prjCtx command.ProjectContext, 
 	cmd := exec.Command("sh", "-c", command) // #nosec
 	cmd.Dir = path
 
+	loc, _ := prjCtx.Tags["manifest_path"]
+
 	baseEnvVars := os.Environ()
+
 	customEnvVars := map[string]string{
+		"MANIFEST_FILEPATH":          loc,
 		"ATLANTIS_TERRAFORM_VERSION": tfVersion.String(),
 		"BASE_BRANCH_NAME":           prjCtx.Pull.BaseBranch,
 		"BASE_REPO_NAME":             prjCtx.BaseRepo.Name,
