@@ -36,7 +36,14 @@ func (r *RunStepRunner) Run(ctx context.Context, prjCtx command.ProjectContext, 
 	cmd := exec.Command("sh", "-c", command) // #nosec
 	cmd.Dir = path
 
+	dynamicEnvVars := make(map[string]string)
+
+	if loc, ok := prjCtx.Tags["manifest_path"]; ok {
+		dynamicEnvVars["MANIFEST_FILEPATH"] = loc
+	}
+
 	baseEnvVars := os.Environ()
+
 	customEnvVars := map[string]string{
 		"ATLANTIS_TERRAFORM_VERSION": tfVersion.String(),
 		"BASE_BRANCH_NAME":           prjCtx.Pull.BaseBranch,
@@ -64,6 +71,9 @@ func (r *RunStepRunner) Run(ctx context.Context, prjCtx command.ProjectContext, 
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
 	for key, val := range envs {
+		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
+	}
+	for key, val := range dynamicEnvVars {
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
 	cmd.Env = finalEnvVars
