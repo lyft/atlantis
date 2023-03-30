@@ -36,7 +36,6 @@ func (r *RunStepRunner) Run(ctx context.Context, prjCtx command.ProjectContext, 
 	cmd := exec.Command("sh", "-c", command) // #nosec
 	cmd.Dir = path
 
-	loc, _ := prjCtx.Tags["manifest_path"]
 	dynamicEnvVars := make(map[string]string)
 
 	if loc, ok := prjCtx.Tags["manifest_path"]; ok {
