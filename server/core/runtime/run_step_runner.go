@@ -37,6 +37,11 @@ func (r *RunStepRunner) Run(ctx context.Context, prjCtx command.ProjectContext, 
 	cmd.Dir = path
 
 	loc, _ := prjCtx.Tags["manifest_path"]
+	dynamicEnvVars := make(map[string]string)
+
+	if loc, ok := prjCtx.Tags["manifest_path"]; ok {
+		dynamicEnvVars["MANIFEST_FILEPATH"] = loc
+	}
 
 	baseEnvVars := os.Environ()
 
@@ -68,6 +73,9 @@ func (r *RunStepRunner) Run(ctx context.Context, prjCtx command.ProjectContext, 
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
 	for key, val := range envs {
+		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
+	}
+	for key, val := range dynamicEnvVars {
 		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", key, val))
 	}
 	cmd.Env = finalEnvVars
