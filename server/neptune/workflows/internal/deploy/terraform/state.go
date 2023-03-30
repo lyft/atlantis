@@ -66,7 +66,7 @@ func (n *StateReceiver) updateCheckRun(ctx workflow.Context, workflowState *stat
 
 	request := notifier.GithubCheckRunRequest{
 		Title:   BuildCheckRunTitle(deploymentInfo.Root.Name),
-		Sha:     deploymentInfo.Revision,
+		Sha:     deploymentInfo.Commit.Revision,
 		State:   checkRunState,
 		Repo:    deploymentInfo.Repo,
 		Summary: summary,
@@ -129,7 +129,7 @@ func (n *StateReceiver) emitApplyEvents(ctx workflow.Context, jobState *state.Jo
 		JobID:          jobState.ID,
 		InitiatingUser: deploymentInfo.InitiatingUser,
 		Tags:           deploymentInfo.Tags,
-		Revision:       deploymentInfo.Revision,
+		Revision:       deploymentInfo.Commit.Revision,
 		State:          atlantisJobState,
 		StartTime:      startTime,
 		EndTime:        endTime,

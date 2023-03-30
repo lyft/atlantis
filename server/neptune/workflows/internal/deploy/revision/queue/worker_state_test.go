@@ -118,8 +118,10 @@ func TestWorker_StartsWithEmptyQueue(t *testing.T) {
 
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow("add-to-queue", internalTerraform.DeploymentInfo{
-			Revision: "1234",
-			ID:       uuid.New(),
+			Commit: github.Commit{
+				Revision: "1234",
+			},
+			ID: uuid.New(),
 			Root: terraform.Root{
 				Name:    "some-name",
 				Trigger: terraform.MergeTrigger,

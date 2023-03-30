@@ -108,7 +108,7 @@ func testDeployerWorkflow(ctx workflow.Context, r deployerRequest) (*deployment.
 func TestDeployer_FirstDeploy(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -123,8 +123,11 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 	}
 
 	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "3455",
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
 		CheckRunID: 1234,
 		Root:       root,
 		Repo:       repo,
@@ -134,6 +137,7 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -147,7 +151,8 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 		DeploymentInfo: &deployment.Info{
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
-			Revision: deploymentInfo.Revision,
+			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -176,7 +181,7 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -191,8 +196,11 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 	}
 
 	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "3455",
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
 		CheckRunID: 1234,
 		Root:       root,
 		Repo:       repo,
@@ -202,6 +210,7 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -215,7 +224,8 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 		DeploymentInfo: &deployment.Info{
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
-			Revision: deploymentInfo.Revision,
+			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -228,7 +238,7 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 
 	compareCommitRequest := activities.CompareCommitRequest{
 		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Revision,
+		DeployRequestRevision:  deploymentInfo.Commit.Revision,
 		LatestDeployedRevision: latestDeployedRevision.Revision,
 	}
 
@@ -254,6 +264,7 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -274,8 +285,11 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 		Rerun: true,
 	}
 	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "3455",
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
 		CheckRunID: 1234,
 		Root:       root,
 		Repo:       repo,
@@ -285,6 +299,7 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -295,13 +310,13 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
 	compareCommitRequest := activities.CompareCommitRequest{
 		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Revision,
+		DeployRequestRevision:  deploymentInfo.Commit.Revision,
 		LatestDeployedRevision: latestDeployedRevision.Revision,
 	}
 
@@ -322,6 +337,7 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -343,8 +359,11 @@ func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {
 		Rerun: true,
 	}
 	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "3455",
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
 		CheckRunID: 1234,
 		Root:       root,
 		Repo:       repo,
@@ -354,6 +373,7 @@ func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -371,7 +391,7 @@ func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {
 		env.RegisterActivity(da)
 		compareCommitRequest := activities.CompareCommitRequest{
 			Repo:                   repo,
-			DeployRequestRevision:  deploymentInfo.Revision,
+			DeployRequestRevision:  deploymentInfo.Commit.Revision,
 			LatestDeployedRevision: latestDeployedRevision.Revision,
 		}
 
@@ -417,7 +437,7 @@ func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {
 			env.RegisterActivity(da)
 			compareCommitRequest := activities.CompareCommitRequest{
 				Repo:                   repo,
-				DeployRequestRevision:  deploymentInfo.Revision,
+				DeployRequestRevision:  deploymentInfo.Commit.Revision,
 				LatestDeployedRevision: latestDeployedRevision.Revision,
 			}
 
@@ -464,8 +484,11 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 		Rerun: true,
 	}
 	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "3455",
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
 		CheckRunID: 1234,
 		Root:       root,
 		Repo:       repo,
@@ -475,6 +498,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -492,7 +516,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 		env.RegisterActivity(da)
 		compareCommitRequest := activities.CompareCommitRequest{
 			Repo:                   repo,
-			DeployRequestRevision:  deploymentInfo.Revision,
+			DeployRequestRevision:  deploymentInfo.Commit.Revision,
 			LatestDeployedRevision: latestDeployedRevision.Revision,
 		}
 
@@ -500,7 +524,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 			CommitComparison: activities.DirectionBehind,
 		}
 
-		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.Version(1))
+		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 		env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
 
 		env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
@@ -511,7 +535,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 				State:   github.CheckRunFailure,
 				Repo:    repo,
 				Summary: queue.DirectionBehindSummary,
-				Sha:     deploymentInfo.Revision,
+				Sha:     deploymentInfo.Commit.Revision,
 			},
 			ExpectedT: t,
 		})
@@ -532,7 +556,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 			env.RegisterActivity(da)
 			compareCommitRequest := activities.CompareCommitRequest{
 				Repo:                   repo,
-				DeployRequestRevision:  deploymentInfo.Revision,
+				DeployRequestRevision:  deploymentInfo.Commit.Revision,
 				LatestDeployedRevision: latestDeployedRevision.Revision,
 			}
 
@@ -551,7 +575,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 					State:   github.CheckRunFailure,
 					Repo:    repo,
 					Summary: queue.RerunNotIdenticalSummary,
-					Sha:     deploymentInfo.Revision,
+					Sha:     deploymentInfo.Commit.Revision,
 				},
 				ExpectedT: t,
 			})
@@ -567,7 +591,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -582,8 +606,11 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 	}
 
 	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "3455",
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
 		CheckRunID: 1234,
 		Root:       root,
 		Repo:       repo,
@@ -593,6 +620,7 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -606,7 +634,8 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 		DeploymentInfo: &deployment.Info{
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
-			Revision: deploymentInfo.Revision,
+			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -619,7 +648,7 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 
 	compareCommitRequest := activities.CompareCommitRequest{
 		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Revision,
+		DeployRequestRevision:  deploymentInfo.Commit.Revision,
 		LatestDeployedRevision: latestDeployedRevision.Revision,
 	}
 
@@ -645,6 +674,7 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -672,8 +702,11 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 	}
 
 	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "3455",
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
 		CheckRunID: 1234,
 		Root:       root,
 		Repo:       repo,
@@ -683,6 +716,7 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -694,7 +728,7 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 
 	compareCommitRequest := activities.CompareCommitRequest{
 		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Revision,
+		DeployRequestRevision:  deploymentInfo.Commit.Revision,
 		LatestDeployedRevision: latestDeployedRevision.Revision,
 	}
 
@@ -729,7 +763,7 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -744,8 +778,11 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 	}
 
 	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "3455",
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
 		CheckRunID: 1234,
 		Root:       root,
 		Repo:       repo,
@@ -755,6 +792,7 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -766,7 +804,7 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 
 	compareCommitRequest := activities.CompareCommitRequest{
 		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Revision,
+		DeployRequestRevision:  deploymentInfo.Commit.Revision,
 		LatestDeployedRevision: latestDeployedRevision.Revision,
 	}
 
@@ -778,7 +816,8 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 		DeploymentInfo: &deployment.Info{
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
-			Revision: deploymentInfo.Revision,
+			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -815,6 +854,7 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 func TestDeployer_SetPRRevision(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.Version(1))
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -829,8 +869,11 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 	}
 
 	deploymentInfo := terraform.DeploymentInfo{
-		ID:         uuid.UUID{},
-		Revision:   "3455",
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
 		CheckRunID: 1234,
 		Root:       root,
 		Repo:       repo,
@@ -840,13 +883,14 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 	env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
 		Repo:     repo,
 		Root:     root,
-		Revision: deploymentInfo.Revision,
+		Revision: deploymentInfo.Commit.Revision,
 	}).Return(nil)
 
 	latestDeployedRevision := &deployment.Info{
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3255",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
 		},
@@ -860,7 +904,8 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 		DeploymentInfo: &deployment.Info{
 			Version:  deployment.InfoSchemaVersion,
 			ID:       deploymentInfo.ID.String(),
-			Revision: deploymentInfo.Revision,
+			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
 			Root: deployment.Root{
 				Name: deploymentInfo.Root.Name,
 			},
@@ -873,7 +918,7 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 
 	compareCommitRequest := activities.CompareCommitRequest{
 		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Revision,
+		DeployRequestRevision:  deploymentInfo.Commit.Revision,
 		LatestDeployedRevision: latestDeployedRevision.Revision,
 	}
 
@@ -899,8 +944,217 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 		ID:       deploymentInfo.ID.String(),
 		Version:  1.0,
 		Revision: "3455",
+		Branch:   "default-branch",
 		Root: deployment.Root{
 			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}, resp)
+}
+
+func TestDeployer_SetPRRevision_NonDefaultBranchOld_v1(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.Version(1))
+
+	da := &testDeployActivity{}
+	env.RegisterActivity(da)
+
+	repo := github.Repo{
+		Owner:         "owner",
+		Name:          "test",
+		DefaultBranch: "main",
+	}
+
+	root := model.Root{
+		Name:    "root_1",
+		Trigger: model.ManualTrigger,
+	}
+
+	deploymentInfo := terraform.DeploymentInfo{
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "test-branch",
+		},
+		CheckRunID: 1234,
+		Root:       root,
+		Repo:       repo,
+	}
+
+	latestDeployedRevision := &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3255",
+		Branch:   "main",
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}
+
+	storeDeploymentRequest := activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: &deployment.Info{
+			Version:  deployment.InfoSchemaVersion,
+			ID:       deploymentInfo.ID.String(),
+			Revision: deploymentInfo.Commit.Revision,
+			Branch:   "test-branch",
+			Root: deployment.Root{
+				Name:    deploymentInfo.Root.Name,
+				Trigger: "manual",
+			},
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name:  deploymentInfo.Repo.Name,
+			},
+		},
+	}
+
+	compareCommitRequest := activities.CompareCommitRequest{
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfo.Commit.Revision,
+		LatestDeployedRevision: latestDeployedRevision.Revision,
+	}
+
+	compareCommitResponse := activities.CompareCommitResponse{
+		CommitComparison: activities.DirectionAhead,
+	}
+
+	env.RegisterWorkflow(testPRRevWorkflow)
+	env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
+		Repo:     repo,
+		Root:     root,
+		Revision: deploymentInfo.Commit.Revision,
+	}).Return(nil)
+
+	env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
+	env.OnActivity(da.StoreLatestDeployment, mock.Anything, storeDeploymentRequest).Return(nil)
+
+	env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+		Info:         deploymentInfo,
+		LatestDeploy: latestDeployedRevision,
+	})
+
+	env.AssertExpectations(t)
+
+	var resp *deployment.Info
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	assert.Equal(t, &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3455",
+		Branch:   "test-branch",
+		Root: deployment.Root{
+			Name:    deploymentInfo.Root.Name,
+			Trigger: "manual",
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}, resp)
+}
+
+func TestDeployer_SetPRRevision_NonDefaultBranchNew_v2(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	da := &testDeployActivity{}
+	env.RegisterActivity(da)
+
+	repo := github.Repo{
+		Owner:         "owner",
+		Name:          "test",
+		DefaultBranch: "main",
+	}
+
+	root := model.Root{
+		Name:    "root_1",
+		Trigger: model.ManualTrigger,
+	}
+
+	deploymentInfo := terraform.DeploymentInfo{
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "test-branch",
+		},
+		CheckRunID: 1234,
+		Root:       root,
+		Repo:       repo,
+	}
+
+	latestDeployedRevision := &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3255",
+		Branch:   "main",
+		Root: deployment.Root{
+			Name: deploymentInfo.Root.Name,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}
+
+	storeDeploymentRequest := activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: &deployment.Info{
+			Version:  deployment.InfoSchemaVersion,
+			ID:       deploymentInfo.ID.String(),
+			Revision: deploymentInfo.Commit.Revision,
+			Branch:   "test-branch",
+			Root: deployment.Root{
+				Name:    deploymentInfo.Root.Name,
+				Trigger: "manual",
+			},
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name:  deploymentInfo.Repo.Name,
+			},
+		},
+	}
+
+	compareCommitRequest := activities.CompareCommitRequest{
+		Repo:                   repo,
+		DeployRequestRevision:  deploymentInfo.Commit.Revision,
+		LatestDeployedRevision: latestDeployedRevision.Revision,
+	}
+
+	compareCommitResponse := activities.CompareCommitResponse{
+		CommitComparison: activities.DirectionAhead,
+	}
+
+	env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
+	env.OnActivity(da.StoreLatestDeployment, mock.Anything, storeDeploymentRequest).Return(nil)
+
+	env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+		Info:         deploymentInfo,
+		LatestDeploy: latestDeployedRevision,
+	})
+
+	env.AssertExpectations(t)
+
+	var resp *deployment.Info
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	assert.Equal(t, &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3455",
+		Branch:   "test-branch",
+		Root: deployment.Root{
+			Name:    deploymentInfo.Root.Name,
+			Trigger: "manual",
 		},
 		Repo: deployment.Repo{
 			Owner: deploymentInfo.Repo.Owner,

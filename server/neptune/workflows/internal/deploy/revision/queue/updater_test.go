@@ -42,7 +42,9 @@ func TestLockStateUpdater_unlocked_old_version(t *testing.T) {
 	info := terraform.DeploymentInfo{
 		CheckRunID: 123,
 		ID:         uuid.New(),
-		Revision:   "1",
+		Commit: github.Commit{
+			Revision: "1",
+		},
 		Root: tfActivity.Root{
 			Name:    "root",
 			Trigger: tfActivity.MergeTrigger,
@@ -86,7 +88,9 @@ func TestLockStateUpdater_locked_old_version(t *testing.T) {
 	info := terraform.DeploymentInfo{
 		CheckRunID: 123,
 		ID:         uuid.New(),
-		Revision:   "1",
+		Commit: github.Commit{
+			Revision: "1",
+		},
 		Root: tfActivity.Root{
 			Name:    "root",
 			Trigger: tfActivity.MergeTrigger,
@@ -138,7 +142,9 @@ func TestLockStateUpdater_unlocked_new_version(t *testing.T) {
 	info := terraform.DeploymentInfo{
 		CheckRunID: 123,
 		ID:         uuid.New(),
-		Revision:   "1",
+		Commit: github.Commit{
+			Revision: "1",
+		},
 		Root: tfActivity.Root{
 			Name:    "root",
 			Trigger: tfActivity.MergeTrigger,
@@ -164,7 +170,7 @@ func TestLockStateUpdater_unlocked_new_version(t *testing.T) {
 			Title: terraform.BuildCheckRunTitle(info.Root.Name),
 			State: github.CheckRunQueued,
 			Repo:  info.Repo,
-			Sha:   info.Revision,
+			Sha:   info.Commit.Revision,
 		},
 		ExpectedDeploymentID: info.ID.String(),
 		ExpectedT:            t,
@@ -186,7 +192,9 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 	info := terraform.DeploymentInfo{
 		CheckRunID: 123,
 		ID:         uuid.New(),
-		Revision:   "1",
+		Commit: github.Commit{
+			Revision: "1",
+		},
 		Root: tfActivity.Root{
 			Name:    "root",
 			Trigger: tfActivity.MergeTrigger,
@@ -224,7 +232,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 			Actions: []github.CheckRunAction{
 				github.CreateUnlockAction(),
 			},
-			Sha: info.Revision,
+			Sha: info.Commit.Revision,
 		},
 		ExpectedDeploymentID: info.ID.String(),
 		ExpectedT:            t,
