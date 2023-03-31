@@ -19,7 +19,6 @@ func NewStore(stowClient client) (*Store, error) {
 	return &Store{
 		stowClient: stowClient,
 	}, nil
-
 }
 
 type Store struct {
@@ -32,7 +31,6 @@ func (s *Store) GetDeploymentInfo(ctx context.Context, repoName string, rootName
 	reader, err := s.stowClient.Get(ctx, key)
 	if err != nil {
 		switch err.(type) {
-
 		// Fail if container is not found
 		case *storage.ContainerNotFoundError:
 			return nil, err

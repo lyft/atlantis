@@ -29,7 +29,6 @@ Terraform will perform the following actions:
 Plan: 0 to add, 0 to change, 1 to destroy.`
 
 func TestRunDelegate(t *testing.T) {
-
 	RegisterMockTestingT(t)
 
 	mockDefaultRunner := mocks.NewMockRunner()
@@ -69,7 +68,6 @@ func TestRunDelegate(t *testing.T) {
 
 		Equals(t, expectedOut, output)
 		Ok(t, err)
-
 	})
 
 	t.Run("Remote Runner Failure", func(t *testing.T) {
@@ -99,7 +97,6 @@ func TestRunDelegate(t *testing.T) {
 
 		Equals(t, expectedOut, output)
 		Assert(t, err != nil, "err should not be nil")
-
 	})
 
 	t.Run("Local Runner Success", func(t *testing.T) {
@@ -129,7 +126,6 @@ func TestRunDelegate(t *testing.T) {
 
 		Equals(t, expectedOut, output)
 		Ok(t, err)
-
 	})
 
 	t.Run("Local Runner Failure", func(t *testing.T) {
@@ -159,7 +155,5 @@ func TestRunDelegate(t *testing.T) {
 
 		Equals(t, expectedOut, output)
 		Assert(t, err != nil, "err should not be nil")
-
 	})
-
 }

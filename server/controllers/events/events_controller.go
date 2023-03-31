@@ -101,7 +101,6 @@ func NewRequestResolvers(
 	var resolvers []RequestResolver
 	for provider, resolverInitializer := range providerResolverInitializer {
 		for _, supportedProvider := range supportedProviders {
-
 			if provider != supportedProvider {
 				continue
 			}
@@ -136,7 +135,6 @@ func NewVCSEventsController(
 	azureDevopsPullGetter AzureDevopsPullGetter,
 	gitlabMergeRequestGetter GitlabMergeRequestGetter,
 ) *VCSEventsController {
-
 	prHandler := handlers.NewPullRequestEvent(
 		repoAllowlistChecker, pullCleaner, logger, commandRunner,
 	)
@@ -285,7 +283,6 @@ func (p *RequestRouter) Route(w http.ResponseWriter, r *http.Request) {
 func (p *RequestRouter) logAndWriteBody(ctx context.Context, w http.ResponseWriter, msg string, fields ...map[string]interface{}) {
 	fmt.Fprintln(w, msg)
 	p.Logger.InfoContext(ctx, msg, fields...)
-
 }
 
 // VCSEventsController handles all webhook requests which signify 'events' in the
@@ -593,7 +590,6 @@ func (e *VCSEventsController) handleGitlabPost(w http.ResponseWriter, r *http.Re
 	default:
 		e.respond(w, logging.Debug, http.StatusOK, "Ignoring unsupported event")
 	}
-
 }
 
 // HandleGitlabCommentEvent handles comment events from GitLab where Atlantis

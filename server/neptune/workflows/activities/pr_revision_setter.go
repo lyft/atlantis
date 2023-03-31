@@ -12,9 +12,8 @@ import (
 )
 
 const (
-	SetRevisionReason     = "new changes deployed to root modified in this PR"
-	SetRevisionMethodType = "POST"
-	SetRevisionEndpoint   = "set_minimum_service_pr_revision"
+	SetRevisionReason   = "new changes deployed to root modified in this PR"
+	SetRevisionEndpoint = "set_minimum_service_pr_revision"
 )
 
 type revisionSetterClient interface {
@@ -26,7 +25,7 @@ type NoopClient struct{}
 func (n *NoopClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{
 		Body:       http.NoBody,
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 	}, nil
 }
 
@@ -57,7 +56,7 @@ func generateURL(url string, request SetPRRevisionRequest) string {
 
 func (b *prRevisionSetterActivities) SetPRRevision(ctx context.Context, request SetPRRevisionRequest) error {
 	url := generateURL(b.url, request)
-	req, err := http.NewRequestWithContext(ctx, SetRevisionMethodType, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		return errors.Wrap(err, "creating request")
 	}
@@ -70,7 +69,7 @@ func (b *prRevisionSetterActivities) SetPRRevision(ctx context.Context, request 
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		bytes, err := io.ReadAll(response.Body)
 		if err != nil {
 			return errors.Wrap(err, "reading response body")

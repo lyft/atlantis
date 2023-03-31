@@ -567,12 +567,10 @@ func (g *GithubClient) resolveState(state models.VCSStatus) string {
 }
 
 func (g *GithubClient) createCheckRunOutput(request types.UpdateStatusRequest) *github.CheckRunOutput {
-
 	var summary string
 
 	// Project command
 	if strings.Contains(request.StatusName, ":") {
-
 		// plan/apply command
 		if request.DetailsURL != "" {
 			summary = fmt.Sprintf(projectCommandTemplateWithLogs,
@@ -602,7 +600,6 @@ func (g *GithubClient) createCheckRunOutput(request types.UpdateStatusRequest) *
 				request.CommandName,
 				g.resolveState(request.State))
 		}
-
 	}
 
 	// Add formatting to summary

@@ -193,7 +193,6 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 
 	err = r.JobRunner.Apply(ctx, root, jobID.String(), planResponse.PlanFile)
 	if err != nil {
-
 		if err := r.Store.UpdateApplyJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
 			EndTime: time.Now(),
 		}); err != nil {

@@ -84,7 +84,6 @@ func (c *testChecksClient) UpdateStatus(ctx context.Context, request types.Updat
 }
 
 func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
-
 	repo := models.Repo{
 		FullName: "nish/repo",
 	}

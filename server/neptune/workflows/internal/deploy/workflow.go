@@ -152,7 +152,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	s.AddReceive(r.NewRevisionSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		r.RevisionReceiver.Receive(c, more)
 		action = OnReceive
-
 	})
 	cancelTimer, _ := s.AddTimeout(ctx, r.Timeout, onTimeout)
 

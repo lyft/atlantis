@@ -35,7 +35,6 @@ func (f *RepoRootFinder) FindRoots(ctx context.Context, config valid.RepoCfg, ab
 	// TODO: rename struct roots
 	var roots []valid.Project
 	for _, root := range config.Projects {
-
 		// Check if root's directory exists
 		rootAbsDirectory := filepath.Join(absRepoDir, root.Dir)
 		_, err := os.Stat(rootAbsDirectory)

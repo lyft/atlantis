@@ -418,7 +418,6 @@ func (g GlobalCfg) DefaultProjCfg(log logging.Logger, repoID string, repoRelDir 
 // the matching repositories and assign relevant fields if they're defined.
 // This means returned object will contain the last matching repo's value as a it's fields
 func (g GlobalCfg) foldMatchingRepos(repoID string) Repo {
-
 	// rebase is enabled by default for all repos
 	rebaseEnabled := true
 	foldedRepo := Repo{

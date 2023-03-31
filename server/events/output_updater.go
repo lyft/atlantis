@@ -93,7 +93,6 @@ func (c *ChecksOutputUpdater) handleCommandFailure(ctx *command.Context, cmd Pul
 }
 
 func (c *ChecksOutputUpdater) buildJobURL(ctx *command.Context, cmd command.Name, jobID string) string {
-
 	if jobID == "" {
 		return ""
 	}

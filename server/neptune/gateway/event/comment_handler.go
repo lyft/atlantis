@@ -186,7 +186,6 @@ func (p *CommentEventWorkerProxy) markSuccessStatuses(ctx context.Context, cmdCt
 
 func (p *CommentEventWorkerProxy) notifyImpendingChanges(
 	ctx context.Context, allPlatformMode bool, event Comment, cmd *command.Comment) {
-
 	if !allPlatformMode {
 		p.setQueuedStatus(ctx, event, cmd)
 		return

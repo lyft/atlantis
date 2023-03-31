@@ -47,7 +47,6 @@ func NewLoggerFromLevel(lvl LogLevel) (*logger, error) { //nolint:revive // avoi
 	structuredLogger, err := NewStructuredLoggerFromLevel(lvl)
 	if err != nil {
 		return nil, err
-
 	}
 
 	ctxLogger := logur.WithContextExtractor(
@@ -61,7 +60,6 @@ func NewLoggerFromLevel(lvl LogLevel) (*logger, error) { //nolint:revive // avoi
 		LoggerFacade: ctxLogger,
 		Closer:       structuredLogger,
 	}, nil
-
 }
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_simple_logging.go SimpleLogging

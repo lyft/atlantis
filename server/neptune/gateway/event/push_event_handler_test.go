@@ -145,7 +145,6 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 		err := handler.Handle(context.Background(), e)
 		assert.NoError(t, err)
 	})
-
 }
 
 func TestHandlePushEvent(t *testing.T) {

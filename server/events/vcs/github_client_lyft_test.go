@@ -156,7 +156,6 @@ func TestLyftGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 	}
 
 	for _, c := range cases {
-
 		t.Run("blocked/"+c.description, func(t *testing.T) {
 			testServer := httptest.NewTLSServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -208,5 +207,4 @@ func TestLyftGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 			assert.Equal(t, c.expMergeable, actMergeable)
 		})
 	}
-
 }

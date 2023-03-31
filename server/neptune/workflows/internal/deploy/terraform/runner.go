@@ -156,7 +156,6 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 		if appErr.Type() == terraform.PlanRejectedErrorType {
 			return PlanRejectionError{msg: msg}
 		}
-
 	}
 
 	return errors.Wrap(err, "executing terraform workflow")

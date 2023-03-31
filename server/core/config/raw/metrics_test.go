@@ -11,7 +11,6 @@ import (
 
 func TestMetrics_Unmarshal(t *testing.T) {
 	t.Run("yaml", func(t *testing.T) {
-
 		rawYaml := `
 statsd:
   host: 127.0.0.1
@@ -41,7 +40,6 @@ statsd:
 	})
 }
 func TestMetrics_Validate_Success(t *testing.T) {
-
 	cases := []struct {
 		description string
 		subject     raw.Metrics
@@ -65,7 +63,6 @@ func TestMetrics_Validate_Success(t *testing.T) {
 			assert.NoError(t, c.subject.Validate())
 		})
 	}
-
 }
 func TestMetrics_Validate_Error(t *testing.T) {
 	cases := []struct {

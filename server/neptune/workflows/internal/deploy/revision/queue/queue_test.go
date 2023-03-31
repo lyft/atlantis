@@ -95,5 +95,4 @@ func wrap(msg string, trigger activity.Trigger) terraform.DeploymentInfo {
 	}, Root: activity.Root{
 		Trigger: trigger,
 	}}
-
 }

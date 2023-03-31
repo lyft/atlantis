@@ -37,7 +37,6 @@ func (p *ctxPropagator) InjectFromWorkflow(ctx workflow.Context, writer workflow
 
 	writer.Set(propagationKey, payload)
 	return nil
-
 }
 
 func (p *ctxPropagator) Extract(ctx context.Context, reader workflow.HeaderReader) (context.Context, error) {

@@ -357,7 +357,6 @@ func (b *BoltDB) UpdatePullWithResults(pull models.PullRequest, newResults []com
 					if res.Workspace == proj.Workspace &&
 						res.RepoRelDir == proj.RepoRelDir &&
 						res.ProjectName == proj.ProjectName {
-
 						proj.Status = res.PlanStatus()
 						updatedExisting = true
 						break

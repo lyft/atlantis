@@ -34,7 +34,6 @@ func (p ProjectResult) VcsStatus() models.VCSStatus {
 // PlanStatus returns the plan status.
 func (p ProjectResult) PlanStatus() models.ProjectPlanStatus {
 	switch p.Command {
-
 	case Plan:
 		if p.Error != nil {
 			return models.ErroredPlanStatus

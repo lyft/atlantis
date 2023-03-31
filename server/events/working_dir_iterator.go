@@ -50,7 +50,6 @@ func (f *FileWorkDirIterator) ListCurrentWorkingDirPulls() ([]models.PullRequest
 	}
 
 	err := filepath.WalkDir(baseFilePath, func(path string, d fs.DirEntry, err error) error {
-
 		if err != nil {
 			return err
 		}

@@ -10,7 +10,6 @@ import (
 
 func TestTerraformLogFilters_Unmarshal(t *testing.T) {
 	t.Run("yaml", func(t *testing.T) {
-
 		rawYaml := `
 regexes: [abc, xyz, 123]
 `
@@ -23,7 +22,6 @@ regexes: [abc, xyz, 123]
 }
 
 func TestTerraformLogFilters_Validate_Success(t *testing.T) {
-
 	cases := []struct {
 		description string
 		subject     raw.TerraformLogFilters
@@ -50,7 +48,6 @@ func TestTerraformLogFilters_Validate_Success(t *testing.T) {
 			assert.NoError(t, c.subject.Validate())
 		})
 	}
-
 }
 
 func TestTerraformLogFilters_Validate_Error(t *testing.T) {

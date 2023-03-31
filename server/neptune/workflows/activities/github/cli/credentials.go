@@ -107,7 +107,6 @@ func (c *Credentials) safeReadFile(file string) (string, error) {
 	// for some reason this gets read in with an additional new line. Maybe git config
 	// might be responsible :shrug
 	return strings.TrimSuffix(string(contents), "\n"), nil
-
 }
 
 func (c *Credentials) writeConfig(file string, contents []byte) error {

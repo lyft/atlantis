@@ -35,7 +35,6 @@ func (p *ParserValidator) ParseRepoCfg(absRepoDir string, repoID string) (valid.
 	configData, err := os.ReadFile(configFile) // nolint: gosec
 	if err != nil {
 		return valid.RepoCfg{}, errors.Wrapf(err, "unable to read %s file", AtlantisYAMLFilename)
-
 	}
 	return p.parseRepoCfgData(configData, repoID)
 }

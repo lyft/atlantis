@@ -136,7 +136,6 @@ func (c *PullMergeabilityChecker) Check(pull *github.PullRequest, statuses []*gi
 	//            hooks. Merging is allowed (green box).
 	// See: https://github.com/octokit/octokit.net/issues/1763
 	if state != "clean" && state != "unstable" && state != "has_hooks" {
-
 		//blocked: Blocked by a failing/missing required status check.
 		if state != "blocked" {
 			return false

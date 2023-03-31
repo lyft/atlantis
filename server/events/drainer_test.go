@@ -64,6 +64,5 @@ func TestDrainer_Shutdown(t *testing.T) {
 	case <-shutdown:
 	case <-timer.Done():
 		Assert(t, false, "Timer reached without shutdown")
-
 	}
 }

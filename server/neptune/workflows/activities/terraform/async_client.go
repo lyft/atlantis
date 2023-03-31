@@ -55,7 +55,6 @@ func NewAsyncClient(
 	return &AsyncClient{
 		CommandBuilder: builder,
 	}, nil
-
 }
 
 type cmdBuilder interface {
@@ -144,7 +143,6 @@ func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan st
 		}
 	case <-done:
 	}
-
 }
 
 func getDefaultVersion(overrideVersion string) (*version.Version, error) {

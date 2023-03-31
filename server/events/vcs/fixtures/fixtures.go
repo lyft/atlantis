@@ -534,7 +534,7 @@ func GithubAppTestServer(t *testing.T) (string, error) {
 			case "/api/v3/app/installations":
 				token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
 				if err := validateGithubToken(token); err != nil {
-					w.WriteHeader(403)
+					w.WriteHeader(http.StatusForbidden)
 					w.Write([]byte("Invalid token")) // nolint: errcheck
 					return
 				}
@@ -546,7 +546,7 @@ func GithubAppTestServer(t *testing.T) (string, error) {
 
 				// token is taken from githubAppTokenJSON
 				if token != "some-token" {
-					w.WriteHeader(403)
+					w.WriteHeader(http.StatusForbidden)
 					w.Write([]byte("Invalid installation token")) // nolint: errcheck
 					return
 				}
@@ -555,7 +555,7 @@ func GithubAppTestServer(t *testing.T) (string, error) {
 			case "/api/v3/app/installations/1/access_tokens":
 				token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
 				if err := validateGithubToken(token); err != nil {
-					w.WriteHeader(403)
+					w.WriteHeader(http.StatusForbidden)
 					w.Write([]byte("Invalid token")) // nolint: errcheck
 					return
 				}

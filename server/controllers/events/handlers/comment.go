@@ -41,7 +41,6 @@ func NewCommentEvent(
 		commentCreator:       commentCreator,
 		logger:               logger,
 	}
-
 }
 
 func NewCommentEventWithCommandHandler(
@@ -58,7 +57,6 @@ func NewCommentEventWithCommandHandler(
 		commentCreator:       commentCreator,
 		logger:               logger,
 	}
-
 }
 
 // commandHandler is the handler responsible for running a specific command

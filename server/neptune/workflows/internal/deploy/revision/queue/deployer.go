@@ -200,7 +200,6 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 			Actions: request.Actions,
 			ID:      deployRequest.CheckRunID,
 		}).Get(ctx, nil)
-
 	} else {
 		_, err = p.GithubCheckRunCache.CreateOrUpdate(ctx, deployRequest.ID.String(), request)
 	}

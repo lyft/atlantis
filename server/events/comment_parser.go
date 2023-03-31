@@ -383,7 +383,6 @@ func (e *CommentParser) HelpComment(applyDisabled bool) string {
 		return fmt.Sprintf("Failed to render template, this is a bug: %v", err)
 	}
 	return buf.String()
-
 }
 
 var helpCommentTemplate = "```cmake\n" +

@@ -61,5 +61,4 @@ func NewPlanSummaryFromJSON(b []byte) (PlanSummary, error) {
 		Deletions: deletions,
 		Updates:   updates,
 	}, nil
-
 }

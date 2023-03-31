@@ -43,7 +43,6 @@ type githubAppRequest struct {
 // A code query parameter is exchanged for this app's ID, key, and webhook_secret
 // Implements https://developer.github.com/apps/building-github-apps/creating-github-apps-from-a-manifest/#implementing-the-github-app-manifest-flow
 func (g *GithubAppController) ExchangeCode(w http.ResponseWriter, r *http.Request) {
-
 	if g.GithubSetupComplete {
 		g.respond(w, http.StatusBadRequest, "Atlantis already has GitHub credentials")
 		return
@@ -86,7 +85,6 @@ func (g *GithubAppController) ExchangeCode(w http.ResponseWriter, r *http.Reques
 
 // New redirects the user to create a new GitHub app
 func (g *GithubAppController) New(w http.ResponseWriter, r *http.Request) {
-
 	if g.GithubSetupComplete {
 		g.respond(w, http.StatusBadRequest, "Atlantis already has GitHub credentials")
 		return

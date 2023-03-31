@@ -1006,24 +1006,24 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 // Start creates the routes and starts serving traffic.
 func (s *Server) Start() error {
-	s.Router.HandleFunc("/healthz", s.Healthz).Methods("GET")
-	s.Router.HandleFunc("/status", s.StatusController.Get).Methods("GET")
+	s.Router.HandleFunc("/healthz", s.Healthz).Methods(http.MethodGet)
+	s.Router.HandleFunc("/status", s.StatusController.Get).Methods(http.MethodGet)
 	if s.LyftMode != Worker {
-		s.Router.HandleFunc("/events", s.VCSPostHandler.Post).Methods("POST")
+		s.Router.HandleFunc("/events", s.VCSPostHandler.Post).Methods(http.MethodPost)
 	}
-	s.Router.HandleFunc("/", s.Index).Methods("GET").MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
+	s.Router.HandleFunc("/", s.Index).Methods(http.MethodGet).MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
 		return r.URL.Path == "/" || r.URL.Path == "/index.html"
 	})
 	s.Router.PathPrefix("/static/").Handler(http.FileServer(&assetfs.AssetFS{Asset: static.Asset, AssetDir: static.AssetDir, AssetInfo: static.AssetInfo}))
-	s.Router.HandleFunc("/apply/lock", s.LocksController.LockApply).Methods("POST").Queries()
+	s.Router.HandleFunc("/apply/lock", s.LocksController.LockApply).Methods(http.MethodPost).Queries()
 	s.Router.HandleFunc("/apply/unlock", s.LocksController.UnlockApply).Methods("DELETE").Queries()
 	s.Router.HandleFunc("/locks", s.LocksController.DeleteLock).Methods("DELETE").Queries("id", "{id:.*}")
-	s.Router.HandleFunc("/lock", s.LocksController.GetLock).Methods("GET").
+	s.Router.HandleFunc("/lock", s.LocksController.GetLock).Methods(http.MethodGet).
 		Queries(LockViewRouteIDQueryParam, fmt.Sprintf("{%s}", LockViewRouteIDQueryParam)).Name(LockViewRouteName)
-	s.Router.HandleFunc("/jobs/{job-id}", s.JobsController.GetProjectJobs).Methods("GET").Name(ProjectJobsViewRouteName)
-	s.Router.HandleFunc("/jobs/{job-id}/ws", s.JobsController.GetProjectJobsWS).Methods("GET")
-	s.Router.HandleFunc("/github-app/exchange-code", s.GithubAppController.ExchangeCode).Methods("GET")
-	s.Router.HandleFunc("/github-app/setup", s.GithubAppController.New).Methods("GET")
+	s.Router.HandleFunc("/jobs/{job-id}", s.JobsController.GetProjectJobs).Methods(http.MethodGet).Name(ProjectJobsViewRouteName)
+	s.Router.HandleFunc("/jobs/{job-id}/ws", s.JobsController.GetProjectJobsWS).Methods(http.MethodGet)
+	s.Router.HandleFunc("/github-app/exchange-code", s.GithubAppController.ExchangeCode).Methods(http.MethodGet)
+	s.Router.HandleFunc("/github-app/setup", s.GithubAppController.New).Methods(http.MethodGet)
 
 	n := negroni.New(&negroni.Recovery{
 		Logger:     log.New(os.Stdout, "", log.LstdFlags),

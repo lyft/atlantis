@@ -57,7 +57,6 @@ func (p *AutoplannerValidatorProxy) handle(ctx context.Context, request *http.Bu
 		event.Pull.HeadRepo,
 		event.Pull,
 		event.User); ok {
-
 		return p.workerProxy.Handle(ctx, request, event)
 	}
 

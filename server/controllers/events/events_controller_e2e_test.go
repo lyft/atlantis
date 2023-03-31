@@ -89,7 +89,6 @@ func (m *LocalConftestCache) Get(key *version.Version) (string, error) {
 }
 
 func TestGitHubWorkflow(t *testing.T) {
-
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -375,14 +374,14 @@ func TestGitHubWorkflow(t *testing.T) {
 			// First, send the open pull request event which triggers autoplan.
 			pullOpenedReq := GitHubPullRequestOpenedEvent(t, headSHA)
 			ctrl.Post(w, pullOpenedReq)
-			ResponseContains(t, w, 200, "Processing...")
+			ResponseContains(t, w, http.StatusOK, "Processing...")
 
 			// Now send any other comments.
 			for _, comment := range c.Comments {
 				commentReq := GitHubCommentEvent(t, comment)
 				w = httptest.NewRecorder()
 				ctrl.Post(w, commentReq)
-				ResponseContains(t, w, 200, "Processing...")
+				ResponseContains(t, w, http.StatusOK, "Processing...")
 			}
 
 			// Send the "pull closed" event which would be triggered by the
@@ -390,7 +389,7 @@ func TestGitHubWorkflow(t *testing.T) {
 			pullClosedReq := GitHubPullRequestClosedEvent(t)
 			w = httptest.NewRecorder()
 			ctrl.Post(w, pullClosedReq)
-			ResponseContains(t, w, 200, "Processing...")
+			ResponseContains(t, w, http.StatusOK, "Processing...")
 
 			// Verify
 			actReplies := ghClient.CapturedComments
@@ -398,7 +397,6 @@ func TestGitHubWorkflow(t *testing.T) {
 			for i, expReply := range c.ExpReplies {
 				assertCommentEquals(t, expReply, actReplies[i], c.RepoDir, c.ExpParallel)
 			}
-
 		})
 	}
 }
@@ -536,13 +534,13 @@ policy-v2:
 			// First, send the open pull request event which triggers autoplan.
 			pullOpenedReq := GitHubPullRequestOpenedEvent(t, headSHA)
 			ctrl.Post(w, pullOpenedReq)
-			ResponseContains(t, w, 200, "Processing...")
+			ResponseContains(t, w, http.StatusOK, "Processing...")
 
 			if c.RepoDir != "policy-checks-multi-projects" {
 				pullReviewedReq := GitHubPullRequestReviewedEvent(t, headSHA)
 				w = httptest.NewRecorder()
 				ctrl.Post(w, pullReviewedReq)
-				ResponseContains(t, w, 200, "Processing...")
+				ResponseContains(t, w, http.StatusOK, "Processing...")
 			}
 
 			// Now send any other comments.
@@ -550,7 +548,7 @@ policy-v2:
 				commentReq := GitHubCommentEvent(t, comment)
 				w = httptest.NewRecorder()
 				ctrl.Post(w, commentReq)
-				ResponseContains(t, w, 200, "Processing...")
+				ResponseContains(t, w, http.StatusOK, "Processing...")
 			}
 
 			// Send the "pull closed" event which would be triggered by the
@@ -558,7 +556,7 @@ policy-v2:
 			pullClosedReq := GitHubPullRequestClosedEvent(t)
 			w = httptest.NewRecorder()
 			ctrl.Post(w, pullClosedReq)
-			ResponseContains(t, w, 200, "Processing...")
+			ResponseContains(t, w, http.StatusOK, "Processing...")
 
 			// Verify
 			actReplies := ghClient.CapturedComments
@@ -655,14 +653,14 @@ policy-v2:
 			// First, send the open pull request event which triggers autoplan.
 			pullOpenedReq := GitHubPullRequestOpenedEvent(t, headSHA)
 			ctrl.Post(w, pullOpenedReq)
-			ResponseContains(t, w, 200, "Processing...")
+			ResponseContains(t, w, http.StatusOK, "Processing...")
 
 			// Now send any other comments.
 			for _, comment := range c.Comments {
 				commentReq := GitHubCommentEvent(t, comment)
 				w = httptest.NewRecorder()
 				ctrl.Post(w, commentReq)
-				ResponseContains(t, w, 200, "Processing...")
+				ResponseContains(t, w, http.StatusOK, "Processing...")
 			}
 
 			// Send the "pull closed" event which would be triggered by the
@@ -670,7 +668,7 @@ policy-v2:
 			pullClosedReq := GitHubPullRequestClosedEvent(t)
 			w = httptest.NewRecorder()
 			ctrl.Post(w, pullClosedReq)
-			ResponseContains(t, w, 200, "Processing...")
+			ResponseContains(t, w, http.StatusOK, "Processing...")
 
 			// Verify
 			actReplies := ghClient.CapturedComments
@@ -687,7 +685,6 @@ type e2eOptions struct {
 }
 
 func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig, ghClient vcs.IGithubClient, options ...e2eOptions) (string, events_controllers.VCSEventsController, locking.ApplyLocker) {
-
 	var featureConfig ffclient.Retriever
 	for _, o := range options {
 		if o.featureConfig != nil {
@@ -1141,7 +1138,7 @@ func GitHubCommentEvent(t *testing.T, comment string) *http.Request {
 		},
 	)
 	modifiedCommentJSON := []byte(strings.Replace(commentJSON, "###comment body###", comment, 1))
-	req, err := http.NewRequest("POST", "/events", bytes.NewBuffer(modifiedCommentJSON))
+	req, err := http.NewRequest(http.MethodPost, "/events", bytes.NewBuffer(modifiedCommentJSON))
 	Ok(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(githubHeader, "issue_comment")
@@ -1159,7 +1156,7 @@ func GitHubPullRequestOpenedEvent(t *testing.T, headSHA string) *http.Request {
 	)
 	// Replace sha with expected sha.
 	requestJSONStr := strings.Replace(pullRequestOpenedJSON, "c31fd9ea6f557ad2ea659944c3844a059b83bc5d", headSHA, -1)
-	req, err := http.NewRequest("POST", "/events", bytes.NewBuffer([]byte(requestJSONStr)))
+	req, err := http.NewRequest(http.MethodPost, "/events", bytes.NewBuffer([]byte(requestJSONStr)))
 	Ok(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(githubHeader, "pull_request")
@@ -1176,7 +1173,7 @@ func GitHubPullRequestClosedEvent(t *testing.T) *http.Request {
 		},
 	)
 
-	req, err := http.NewRequest("POST", "/events", bytes.NewBuffer([]byte(pullRequestClosedJSON)))
+	req, err := http.NewRequest(http.MethodPost, "/events", bytes.NewBuffer([]byte(pullRequestClosedJSON)))
 	Ok(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(githubHeader, "pull_request")
@@ -1194,7 +1191,7 @@ func GitHubPullRequestReviewedEvent(t *testing.T, headSHA string) *http.Request 
 	)
 	// Replace sha with expected sha.
 	requestJSONStr := strings.Replace(pullRequestReviewedJSON, "c31fd9ea6f557ad2ea659944c3844a059b83bc5d", headSHA, -1)
-	req, err := http.NewRequest("POST", "/events", bytes.NewBuffer([]byte(requestJSONStr)))
+	req, err := http.NewRequest(http.MethodPost, "/events", bytes.NewBuffer([]byte(requestJSONStr)))
 	Ok(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(githubHeader, "pull_request_review")
@@ -1337,7 +1334,6 @@ func mkSubDirs(t *testing.T) (string, string, string) {
 
 // Will fail test if conftest isn't in path and isn't version >= 0.25.0
 func ensureRunningConftest(t *testing.T) {
-
 	var localPath string
 	var err error
 	localPath, err = exec.LookPath(fmt.Sprintf("conftest%s", ConftestVersion))
@@ -1504,20 +1500,16 @@ func (t *testGithubClient) SupportsSingleFileDownload(repo models.Repo) bool {
 
 func (t *testGithubClient) GetContents(owner, repo, branch, path string) ([]byte, error) {
 	return []byte{}, nil
-
 }
 func (t *testGithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest) ([]*github.RepoStatus, error) {
 	return []*github.RepoStatus{}, nil
-
 }
 func (t *testGithubClient) GetRepoChecks(repo models.Repo, commitSHA string) ([]*github.CheckRun, error) {
 	return []*github.CheckRun{}, nil
-
 }
 
 func (t *testGithubClient) GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error) {
 	return t.ExpectedPull, nil
-
 }
 func (t *testGithubClient) GetPullRequestFromName(repoName string, repoOwner string, pullNum int) (*github.PullRequest, error) {
 	return t.ExpectedPull, nil

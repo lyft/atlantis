@@ -402,7 +402,6 @@ func NewServer(config Config) (*Server, error) {
 		Server:         s,
 		CronScheduler:  cronScheduler,
 	}, nil
-
 }
 
 // Start is blocking and listens for incoming requests until a configured shutdown

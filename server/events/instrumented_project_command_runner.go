@@ -29,7 +29,6 @@ func (p *InstrumentedProjectCommandRunner) Apply(ctx command.ProjectContext) com
 }
 
 func RunAndEmitStats(commandName string, ctx command.ProjectContext, execute func(ctx command.ProjectContext) command.ProjectResult) command.ProjectResult {
-
 	// ensures we are differentiating between project level command and overall command
 	ctx.SetScope("project")
 
@@ -65,5 +64,4 @@ func RunAndEmitStats(commandName string, ctx command.ProjectContext, execute fun
 
 	executionSuccess.Inc(1)
 	return result
-
 }

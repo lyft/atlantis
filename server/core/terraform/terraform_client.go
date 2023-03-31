@@ -130,7 +130,6 @@ func NewClientWithVersionCache(
 		commandBuilder:  builder,
 		versionCache:    versionCache,
 	}, nil
-
 }
 
 func NewE2ETestClient(
@@ -284,7 +283,6 @@ func (l *VersionLoader) LoadVersion(v *version.Version, destPath string) (runtim
 	binPath := filepath.Join(destPath, "terraform")
 
 	return runtime_models.LocalFilePath(binPath), nil
-
 }
 
 func isAsyncEligibleCommand(cmd string) bool {

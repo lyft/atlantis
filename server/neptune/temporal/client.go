@@ -71,7 +71,6 @@ func NewClient(logger logur.Logger, cfg valid.Temporal, options *Options) (*Clie
 
 	if cfg.Host != "" || cfg.Port != "" {
 		opts.HostPort = fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
-
 	}
 
 	client, err := client.Dial(opts)
@@ -117,14 +116,12 @@ type clientMetricsInterceptor struct {
 func (i *clientMetricsInterceptor) InterceptClient(
 	next interceptor.ClientOutboundInterceptor,
 ) interceptor.ClientOutboundInterceptor {
-
 	return &clientMetricsOutboundInterceptor{
 		scope: i.scope,
 		ClientOutboundInterceptorBase: interceptor.ClientOutboundInterceptorBase{
 			Next: next,
 		},
 	}
-
 }
 
 type clientMetricsOutboundInterceptor struct {
@@ -149,7 +146,6 @@ func (i *clientMetricsOutboundInterceptor) ExecuteWorkflow(ctx context.Context, 
 
 	s.Counter("success").Inc(1)
 	return run, err
-
 }
 
 func (i *clientMetricsOutboundInterceptor) SignalWorkflow(ctx context.Context, in *interceptor.ClientSignalWorkflowInput) error {

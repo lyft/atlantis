@@ -27,7 +27,6 @@ const (
 // Pretty much copied from:
 // https://github.com/palantir/go-githubapp/blob/develop/githubapp/middleware.go#L41
 func ClientMetrics(scope tally.Scope) githubapp.ClientMiddleware {
-
 	return func(next http.RoundTripper) http.RoundTripper {
 		return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
 			res, err := next.RoundTrip(r)

@@ -58,7 +58,6 @@ func (v *ExecutionVersionDiskLayer) Get(key *version.Version) (string, error) {
 
 	// if the binary doesn't exist there, we need to load it.
 	if binaryPath.NotExists() {
-
 		// load it into a directory first and then sym link it to the serialized key aka binary version
 		loaderPath := v.versionRootDir.Join(v.binaryName, "versions", key.Original())
 
@@ -89,7 +88,6 @@ type ExecutionVersionMemoryLayer struct {
 }
 
 func (v *ExecutionVersionMemoryLayer) Get(key *version.Version) (string, error) {
-
 	// If we need to we can rip this out into a KeySerializer impl, for now this
 	// seems overkill
 	serializedKey := key.String()
@@ -116,7 +114,6 @@ func NewExecutionVersionLayeredLoadingCache(
 	versionRootDir string,
 	loader func(v *version.Version, destPath string) (models.FilePath, error),
 ) ExecutionVersionCache {
-
 	diskLayer := &ExecutionVersionDiskLayer{
 		exec:           models.LocalExec{},
 		versionRootDir: models.LocalFilePath(versionRootDir),

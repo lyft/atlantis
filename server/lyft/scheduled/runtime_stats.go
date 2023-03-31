@@ -124,5 +124,4 @@ func (r *RuntimeStatCollector) Run() {
 	r.runtimeMetrics.memoryGCLast.Update(float64(memStats.LastGC))
 	r.runtimeMetrics.memoryGCPauseTotal.Update(float64(memStats.PauseTotalNs))
 	r.runtimeMetrics.memoryGCCount.Update(float64(memStats.NumGC))
-
 }

@@ -43,7 +43,7 @@ func TestIndex_LockErrorf(t *testing.T) {
 	s := server.Server{
 		Locker: l,
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	s.Index(w, req)
 	ResponseContains(t, w, 503, "Could not retrieve locks: err")
@@ -85,7 +85,7 @@ func TestIndex_Success(t *testing.T) {
 		AtlantisURL:     u,
 		CtxLogger:       logging.NewNoopCtxLogger(t),
 	}
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	s.Index(w, req)
 	it.VerifyWasCalledOnce().Execute(w, templates.IndexData{
@@ -110,7 +110,7 @@ func TestIndex_Success(t *testing.T) {
 
 func TestHealthz(t *testing.T) {
 	s := server.Server{}
-	req, _ := http.NewRequest("GET", "/healthz", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "/healthz", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	s.Healthz(w, req)
 	Equals(t, http.StatusOK, w.Result().StatusCode)

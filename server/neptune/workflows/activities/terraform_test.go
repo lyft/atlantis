@@ -101,7 +101,6 @@ func (t *testTfClient) RunCommand(ctx context.Context, request *terraform.RunCom
 	}
 
 	return t.expectedError
-
 }
 
 func TestTerraformInit_RequestValidation(t *testing.T) {

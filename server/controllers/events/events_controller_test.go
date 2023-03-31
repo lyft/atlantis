@@ -60,7 +60,7 @@ func TestPost_NotGitlab(t *testing.T) {
 	t.Log("when the request is not for gitlab or github a 400 is returned")
 	e, _, _, _, _, _, _ := setup(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	e.Post(w, req)
 	ResponseContains(t, w, http.StatusBadRequest, "Ignoring request")
 }
@@ -69,7 +69,7 @@ func TestPost_UnsupportedVCSGitlab(t *testing.T) {
 	t.Log("when the request is for an unsupported vcs a 400 is returned")
 	e, _, _, _, _, _, _ := setup(t)
 	e.SupportedVCSHosts = nil
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req.Header.Set(gitlabHeader, "value")
 	w := httptest.NewRecorder()
 	e.Post(w, req)
@@ -80,7 +80,7 @@ func TestPost_InvalidGitlabSecret(t *testing.T) {
 	t.Log("when the gitlab payload can't be validated a 400 is returned")
 	e, gl, _, _, _, _, _ := setup(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req.Header.Set(gitlabHeader, "value")
 	When(gl.ParseAndValidate(req, secret)).ThenReturn(nil, errors.New("err"))
 	e.Post(w, req)
@@ -91,7 +91,7 @@ func TestPost_UnsupportedGitlabEvent(t *testing.T) {
 	t.Log("when the event type is an unsupported gitlab event we ignore it")
 	e, gl, _, _, _, _, _ := setup(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req.Header.Set(gitlabHeader, "value")
 	When(gl.ParseAndValidate(req, secret)).ThenReturn([]byte(`{"not an event": ""}`), nil)
 	e.Post(w, req)
@@ -102,7 +102,7 @@ func TestPost_UnsupportedGitlabEvent(t *testing.T) {
 // we give an error and ignore it.
 func TestPost_GitlabCommentOnCommit(t *testing.T) {
 	e, gl, _, _, _, _, _ := setup(t)
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	req.Header.Set(gitlabHeader, "value")
 	When(gl.ParseAndValidate(req, secret)).ThenReturn(gitlab.CommitCommentEvent{}, nil)
@@ -113,7 +113,7 @@ func TestPost_GitlabCommentOnCommit(t *testing.T) {
 func TestPost_GitlabCommentSuccess(t *testing.T) {
 	t.Log("when the event is a gitlab comment with a valid command we call the command handler")
 	e, gl, _, _, _, _, _ := setup(t)
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req.Header.Set(gitlabHeader, "value")
 	When(gl.ParseAndValidate(req, secret)).ThenReturn(gitlab.MergeCommentEvent{}, nil)
 	w := httptest.NewRecorder()
@@ -124,7 +124,7 @@ func TestPost_GitlabCommentSuccess(t *testing.T) {
 func TestPost_GitlabMergeRequestInvalid(t *testing.T) {
 	t.Log("when the event is a gitlab merge request with invalid data we return a 400")
 	e, gl, p, _, _, _, _ := setup(t)
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req.Header.Set(gitlabHeader, "value")
 	When(gl.ParseAndValidate(req, secret)).ThenReturn(gitlab.MergeEvent{}, nil)
 	repo := models.Repo{}
@@ -139,7 +139,7 @@ func TestPost_GitlabMergeRequestClosedErrCleaningPull(t *testing.T) {
 	t.Skip("relies too much on mocks, should use real event parser")
 	t.Log("when the event is a closed gitlab merge request and an error occurs calling CleanUpPull we return a 500")
 	e, gl, p, c, _, _, _ := setup(t)
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req.Header.Set(gitlabHeader, "value")
 	var event gitlab.MergeEvent
 	event.ObjectAttributes.Action = "close"
@@ -157,7 +157,7 @@ func TestPost_GitlabMergeRequestSuccess(t *testing.T) {
 	t.Skip("relies too much on mocks, should use real event parser")
 	t.Log("when the event is a gitlab merge request and the cleanup works we return a 200")
 	e, gl, p, _, _, _, _ := setup(t)
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req.Header.Set(gitlabHeader, "value")
 	When(gl.ParseAndValidate(req, secret)).ThenReturn(gitlab.MergeEvent{}, nil)
 	repo := models.Repo{}
@@ -173,7 +173,7 @@ func TestPost_GitlabMergeRequestError(t *testing.T) {
 
 	// setup
 	e, gl, p, _, _, _, glGetter := setup(t)
-	req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	req.Header.Set(gitlabHeader, "value")
 	repo := models.Repo{}
 	pullRequest := models.PullRequest{}
@@ -232,7 +232,7 @@ func TestPost_BBServerPullClosed(t *testing.T) {
 			// Replace the eventKey field with our event type.
 			requestJSON := strings.Replace(string(requestBytes), `"eventKey":"pr:deleted",`, fmt.Sprintf(`"eventKey":"%s",`, c.header), -1)
 			Ok(t, err)
-			req, err := http.NewRequest("POST", "/events", bytes.NewBuffer([]byte(requestJSON)))
+			req, err := http.NewRequest(http.MethodPost, "/events", bytes.NewBuffer([]byte(requestJSON)))
 			Ok(t, err)
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Event-Key", c.header)
@@ -269,7 +269,7 @@ func TestPost_PullOpenedOrUpdated(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
 			e, gl, p, _, _, _, _ := setup(t)
-			req, _ := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+			req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 			var pullRequest models.PullRequest
 			var repo models.Repo
 

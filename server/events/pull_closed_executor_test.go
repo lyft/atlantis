@@ -201,7 +201,6 @@ func TestCleanUpLogStreaming(t *testing.T) {
 	RegisterMockTestingT(t)
 
 	t.Run("Should Clean Up Log Streaming Resources When PR is closed", func(t *testing.T) {
-
 		// Create Log streaming resources
 		prjCmdOutput := make(chan *jobs.ProjectCmdOutputLine)
 		storageBackend := jobmocks.NewMockStorageBackend()

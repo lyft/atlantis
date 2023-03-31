@@ -8,7 +8,6 @@ import (
 )
 
 func TestEnvVar(t *testing.T) {
-
 	t.Run("prioritizes value", func(t *testing.T) {
 		subject := activities.EnvVar{
 			Name:  "some-name",

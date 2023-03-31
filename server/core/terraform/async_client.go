@@ -37,7 +37,6 @@ type AsyncClient struct {
 // If any error is passed on the out channel, there will be no
 // further output (so callers are free to exit).
 func (c *AsyncClient) RunCommandAsync(ctx context.Context, prjCtx command.ProjectContext, path string, args []string, customEnvVars map[string]string, v *version.Version, workspace string) <-chan helpers.Line {
-
 	input := make(chan string)
 	defer close(input)
 
@@ -49,7 +48,6 @@ func (c *AsyncClient) RunCommandAsyncWithInput(ctx context.Context, prjCtx comma
 	// We start a goroutine to do our work asynchronously and then immediately
 	// return our channels.
 	go func() {
-
 		// Ensure we close our channels when we exit.
 		defer func() {
 			close(outCh)

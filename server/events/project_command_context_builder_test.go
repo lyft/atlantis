@@ -16,7 +16,6 @@ import (
 )
 
 func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
-
 	scope := tally.NewTestScope("test", nil)
 	mockCommentBuilder := mocks.NewMockCommentBuilder()
 	subject := events.NewProjectCommandContextBuilder(mockCommentBuilder)

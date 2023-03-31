@@ -81,7 +81,6 @@ func TestRunStepRunner_Run(t *testing.T) {
 	}
 
 	for _, c := range cases {
-
 		var projVersion *version.Version
 		var err error
 
@@ -152,7 +151,6 @@ func TestRunStepRunner_Run(t *testing.T) {
 
 			terraform.VerifyWasCalledOnce().EnsureVersion(logger, projVersion)
 			terraform.VerifyWasCalled(Never()).EnsureVersion(logger, defaultVersion)
-
 		})
 	}
 }

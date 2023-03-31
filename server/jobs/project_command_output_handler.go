@@ -107,7 +107,6 @@ func (p *AsyncProjectCommandOutputHandler) Send(ctx command.ProjectContext, msg 
 
 func (p *AsyncProjectCommandOutputHandler) Handle() {
 	for msg := range p.projectCmdOutput {
-
 		// Filter out log lines from job output
 		if p.logFilter.ShouldFilterLine(msg.Line) {
 			continue

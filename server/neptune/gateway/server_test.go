@@ -12,7 +12,7 @@ import (
 )
 
 func TestHealthz(t *testing.T) {
-	req, _ := http.NewRequest("GET", "/healthz", bytes.NewBuffer(nil))
+	req, _ := http.NewRequest(http.MethodGet, "/healthz", bytes.NewBuffer(nil))
 	w := httptest.NewRecorder()
 	gateway.Healthz(w, req)
 	assert.Equal(t, http.StatusOK, w.Result().StatusCode)

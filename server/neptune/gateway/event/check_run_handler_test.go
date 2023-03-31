@@ -257,7 +257,6 @@ func TestCheckRunHandler(t *testing.T) {
 		assert.Error(t, err)
 		assert.True(t, signaler.called)
 	})
-
 }
 
 type testRootDeployer struct {

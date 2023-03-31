@@ -118,5 +118,4 @@ func TestAwait_autoApprove(t *testing.T) {
 	assert.Equal(t, r, res{
 		Status: gate.Approved,
 	})
-
 }

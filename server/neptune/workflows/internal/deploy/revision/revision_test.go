@@ -73,7 +73,6 @@ type response struct {
 }
 
 func testWorkflow(ctx workflow.Context, r req) (response, error) {
-
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		ScheduleToCloseTimeout: 5 * time.Second,
 	})

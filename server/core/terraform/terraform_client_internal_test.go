@@ -84,7 +84,6 @@ func TestVersionLoader_buildsURL(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
-
 		When(mockDownloader.GetAny(EqString(destPath), EqString(fullURL))).ThenReturn(fmt.Errorf("err"))
 		_, err := subject.LoadVersion(v, destPath)
 

@@ -22,5 +22,4 @@ func (a *workerInfoActivity) GetWorkerInfo(ctx context.Context) (*GetWorkerInfoR
 		ServerURL: a.ServerURL,
 		TaskQueue: a.TaskQueue,
 	}, nil
-
 }

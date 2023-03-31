@@ -191,7 +191,6 @@ func TestParse_InvalidCommand(t *testing.T) {
 }
 
 func TestParse_InvalidLogLevel(t *testing.T) {
-
 	comments := []string{
 		"atlantis plan -l warnz",
 		"atlantis plan --log-level strace",

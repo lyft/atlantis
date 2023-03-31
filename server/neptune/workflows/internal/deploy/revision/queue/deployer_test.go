@@ -346,7 +346,6 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 			Name:  deploymentInfo.Repo.Name,
 		},
 	}, resp)
-
 }
 
 func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {

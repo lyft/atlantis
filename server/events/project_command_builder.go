@@ -532,7 +532,6 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 	workspace string,
 	forceApply bool,
 	logLevel string) ([]command.ProjectContext, error) {
-
 	matchingProjects, repoCfgPtr, err := p.getCfg(ctx, projectName, repoRelDir, workspace, repoDir)
 	if err != nil {
 		return []command.ProjectContext{}, err

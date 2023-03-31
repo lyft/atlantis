@@ -54,7 +54,6 @@ type RootDeployOptions struct {
 }
 
 func (d *RootDeployer) Deploy(ctx context.Context, deployOptions RootDeployOptions) error {
-
 	commit := &RepoCommit{
 		Repo:          deployOptions.Repo,
 		Branch:        deployOptions.Branch,

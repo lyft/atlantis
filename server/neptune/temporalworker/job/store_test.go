@@ -339,5 +339,4 @@ func TestJobStore_Cleanup(t *testing.T) {
 		err := jobStore.Cleanup(context.TODO())
 		assert.Error(t, err)
 	})
-
 }

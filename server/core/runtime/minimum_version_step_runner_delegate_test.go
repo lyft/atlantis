@@ -125,5 +125,4 @@ func TestRunMinimumVersionDelegate(t *testing.T) {
 		Equals(t, "Version: 0.11.15 is unsupported for this step. Minimum version is: 0.12.0", output)
 		Ok(t, err)
 	})
-
 }

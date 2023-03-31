@@ -19,6 +19,8 @@ linters:
     - dupword
     - unparam
     - interfacebloat
+    - usestdlibvars
+    - whitespace
 issues:
   exclude-rules:
     - path: server/controllers/events/events_controller(.+)test.go

@@ -74,6 +74,5 @@ func TestStore_GetDeploymentInfo(t *testing.T) {
 		deploymentInfo, err := store.GetDeploymentInfo(context.TODO(), repoName, rootName)
 		assert.Nil(t, err)
 		assert.Nil(t, deploymentInfo)
-
 	})
 }

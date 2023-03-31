@@ -11,7 +11,6 @@ import (
 
 func TestTemporal_Unmarshal(t *testing.T) {
 	t.Run("yaml", func(t *testing.T) {
-
 		rawYaml := `
 host: 127.0.0.1
 port: 1234
@@ -39,7 +38,6 @@ port: 1234
 }
 
 func TestTemporal_Validate_Success(t *testing.T) {
-
 	cases := []struct {
 		description string
 		subject     *raw.Temporal
@@ -59,7 +57,6 @@ func TestTemporal_Validate_Success(t *testing.T) {
 			assert.NoError(t, c.subject.Validate())
 		})
 	}
-
 }
 
 func TestTemporal_Validate_Error(t *testing.T) {

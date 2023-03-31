@@ -275,7 +275,6 @@ func (s Step) ToValid() valid.Step {
 // It takes a parameter unmarshal that is a function that tries to unmarshal
 // the current element into a given object.
 func (s *Step) unmarshalGeneric(unmarshal func(interface{}) error) error {
-
 	// First try to unmarshal as a single string, ex.
 	// steps:
 	// - init

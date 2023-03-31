@@ -121,7 +121,7 @@ func (g *GitlabClient) GetModifiedFiles(repo models.Repo, pull models.PullReques
 			Page:    nextPage,
 			PerPage: maxPerPage,
 		}
-		req, err := g.Client.NewRequest("GET", apiURL, opts, nil)
+		req, err := g.Client.NewRequest(http.MethodGet, apiURL, opts, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -285,7 +285,7 @@ func (g *GitlabClient) MarkdownPullLink(pull models.PullRequest) (string, error)
 
 // GetVersion returns the version of the Gitlab server this client is using.
 func (g *GitlabClient) GetVersion() (*version.Version, error) {
-	req, err := g.Client.NewRequest("GET", "/version", nil, nil)
+	req, err := g.Client.NewRequest(http.MethodGet, "/version", nil, nil)
 	if err != nil {
 		return nil, err
 	}

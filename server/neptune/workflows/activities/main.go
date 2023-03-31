@@ -115,7 +115,6 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 	var versionCache cache.ExecutionVersionCache
 	var credentialsRefresher gitCredentialsRefresher
 	for _, o := range opts {
-
 		if o.VersionCache != nil {
 			versionCache = o.VersionCache
 		}
