@@ -5,7 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
@@ -170,14 +169,14 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			continue
 		}
 
-		logger.Info(ctx, "revision receiver timeout")
+		workflow.GetLogger(ctx).Info("revision receiver timeout")
 
 		// Since we timed out, let's determine whether we can shutdown our worker.
 		// If we have no incoming revisions and the worker is just waiting, thats the first sign.
 		// We also need to ensure that we're also checking whether the queue is empty since the worker can be in a waiting state
 		// if the queue is locked (ie. if the workflow has just started up with prior deploy state)
 		if !s.HasPending() && r.QueueWorker.GetState() != queue.WorkingWorkerState && r.Queue.IsEmpty() {
-			logger.Info(ctx, "initiating worker shutdown")
+			workflow.GetLogger(ctx).Info("initiating worker shutdown")
 			shutdownWorker()
 			break
 		}

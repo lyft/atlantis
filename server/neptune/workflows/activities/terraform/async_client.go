@@ -14,7 +14,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
+	"go.temporal.io/sdk/activity"
 )
 
 type ClientConfig struct {
@@ -121,10 +121,10 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan struct{}) {
 	select {
 	case <-ctx.Done():
-		logger.Warn(ctx, "Terminating terraform process gracefully")
+		activity.GetLogger(ctx).Warn("Terminating terraform process gracefully")
 		err := p.Signal(syscall.SIGTERM)
 		if err != nil {
-			logger.Error(ctx, "Unable to terminate process", key.ErrKey, err)
+			activity.GetLogger(ctx).Error("Unable to terminate process", key.ErrKey, err)
 		}
 
 		// if we still haven't shutdown after 60 seconds, we should just kill the process
@@ -134,10 +134,10 @@ func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan st
 
 		select {
 		case <-kill:
-			logger.Warn(ctx, "Killing terraform process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
+			activity.GetLogger(ctx).Warn("Killing terraform process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
 			err := p.Signal(syscall.SIGKILL)
 			if err != nil {
-				logger.Error(ctx, "Unable to kill process", key.ErrKey, err)
+				activity.GetLogger(ctx).Error("Unable to kill process", key.ErrKey, err)
 			}
 		case <-done:
 		}

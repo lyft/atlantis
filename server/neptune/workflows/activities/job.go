@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
+	"go.temporal.io/sdk/activity"
 )
 
 type closer interface {
@@ -22,7 +22,7 @@ type CloseJobRequest struct {
 func (t *jobActivities) CloseJob(ctx context.Context, request CloseJobRequest) error {
 	err := t.StreamCloser.CloseJob(ctx, request.JobID)
 	if err != nil {
-		logger.Error(ctx, errors.Wrapf(err, "closing job").Error())
+		activity.GetLogger(ctx).Error(errors.Wrapf(err, "closing job").Error())
 	}
 	return err
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"go.temporal.io/sdk/temporal"
@@ -136,7 +135,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 		}
 
 		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("Unknown error %s, worker is shutting down", err.Error()))
+			workflow.GetLogger(ctx).Error(fmt.Sprintf("Unknown error %s, worker is shutting down", err.Error()))
 			currentAction = canceled
 			return
 		}
@@ -163,12 +162,12 @@ func (w *Worker) Work(ctx workflow.Context) {
 		var err error
 		switch currentAction {
 		case canceled:
-			logger.Info(ctx, "Received cancelled signal, worker is shutting down")
+			workflow.GetLogger(ctx).Info("Received cancelled signal, worker is shutting down")
 			return
 		case process:
-			logger.Info(ctx, "Processing... ")
+			workflow.GetLogger(ctx).Info("Processing... ")
 		case receive:
-			logger.Info(ctx, "Received unlock signal... ")
+			workflow.GetLogger(ctx).Info("Received unlock signal... ")
 			workflow.GetMetricsHandler(ctx).WithTags(map[string]string{metricNames.SignalNameTag: UnlockSignalName}).
 				Counter(metricNames.SignalReceive).
 				Inc(1)
@@ -177,14 +176,14 @@ func (w *Worker) Work(ctx workflow.Context) {
 			})
 			continue
 		default:
-			logger.Warn(ctx, fmt.Sprintf("%s action not configured. This is probably a bug, skipping for now", currentAction))
+			workflow.GetLogger(ctx).Warn(fmt.Sprintf("%s action not configured. This is probably a bug, skipping for now", currentAction))
 			return
 		}
 
 		w.state = WorkingWorkerState
 		msg, err := w.Queue.Pop()
 		if err != nil {
-			logger.Error(ctx, "failed to pop next revision off of queue, this is most definitely a bug.", key.ErrKey, err)
+			workflow.GetLogger(ctx).Error("failed to pop next revision off of queue, this is most definitely a bug.", key.ErrKey, err)
 			continue
 		}
 
@@ -210,10 +209,10 @@ func (w *Worker) Work(ctx workflow.Context) {
 		switch e := err.(type) {
 		case *ValidationError:
 			readableErr = "validation"
-			logger.Error(ctx, "deploy validation failed, moving to next one", key.ErrKey, e)
+			workflow.GetLogger(ctx).Error("deploy validation failed, moving to next one", key.ErrKey, e)
 		case *terraform.PlanRejectionError:
 			readableErr = "plan_rejected"
-			logger.Warn(ctx, "Plan rejected")
+			workflow.GetLogger(ctx).Warn("Plan rejected")
 		default:
 
 			// If it's not a ValidationError or PlanRejectionError, it's most likely a TerraformClientError and it is possible the state file
@@ -223,7 +222,7 @@ func (w *Worker) Work(ctx workflow.Context) {
 			w.latestDeployment = currentDeployment
 
 			readableErr = "unknown"
-			logger.Error(ctx, "failed to deploy revision, moving to next one", key.ErrKey, err)
+			workflow.GetLogger(ctx).Error("failed to deploy revision, moving to next one", key.ErrKey, err)
 		}
 
 		scope.SubScopeWithTags(map[string]string{"error_type": readableErr}).Counter("failure").Inc(1)
