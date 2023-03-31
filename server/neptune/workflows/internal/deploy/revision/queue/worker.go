@@ -270,7 +270,8 @@ func (w *Worker) awaitWork(ctx workflow.Context) workflow.Future {
 }
 
 func setContextKeys(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo) workflow.Context {
-	ctx = workflow.WithValue(ctx, internalContext.SHAKey, requestedDeployment.Revision)
+	ctx = workflow.WithValue(ctx, internalContext.SHAKey, requestedDeployment.Commit.Revision)
+	ctx = workflow.WithValue(ctx, internalContext.BranchKey, requestedDeployment.Commit.Branch)
 	ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, requestedDeployment.ID)
 	ctx = workflow.WithValue(ctx, internalContext.PlanMode, string(requestedDeployment.Root.Plan.GetPlanMode()))
 	ctx = workflow.WithValue(ctx, internalContext.Trigger, string(requestedDeployment.Root.Trigger))

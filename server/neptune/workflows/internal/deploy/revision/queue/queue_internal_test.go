@@ -3,6 +3,7 @@ package queue
 import (
 	"testing"
 
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,19 +22,27 @@ func TestPriorityQueue(t *testing.T) {
 		highQueue := q.Scan(High)
 		assert.Equal(t, []terraform.DeploymentInfo{
 			{
-				Revision: "2",
+				Commit: github.Commit{
+					Revision: "2",
+				},
 			},
 			{
-				Revision: "3",
+				Commit: github.Commit{
+					Revision: "3",
+				},
 			}}, highQueue)
 
 		lowQueue := q.Scan(Low)
 		assert.Equal(t, []terraform.DeploymentInfo{
 			{
-				Revision: "1",
+				Commit: github.Commit{
+					Revision: "1",
+				},
 			},
 			{
-				Revision: "4",
+				Commit: github.Commit{
+					Revision: "4",
+				},
 			}}, lowQueue)
 
 		info, err := q.Pop()
@@ -90,9 +99,11 @@ func TestPriorityQueue(t *testing.T) {
 }
 
 func wrap(msg string) terraform.DeploymentInfo {
-	return terraform.DeploymentInfo{Revision: msg}
+	return terraform.DeploymentInfo{Commit: github.Commit{
+		Revision: msg,
+	}}
 }
 
 func unwrap(msg terraform.DeploymentInfo) string {
-	return msg.Revision
+	return msg.Commit.Revision
 }

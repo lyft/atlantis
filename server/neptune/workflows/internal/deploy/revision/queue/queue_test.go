@@ -3,6 +3,7 @@ package queue_test
 import (
 	"testing"
 
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	activity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
@@ -89,7 +90,9 @@ func TestQueue(t *testing.T) {
 }
 
 func wrap(msg string, trigger activity.Trigger) terraform.DeploymentInfo {
-	return terraform.DeploymentInfo{Revision: msg, Root: activity.Root{
+	return terraform.DeploymentInfo{Commit: github.Commit{
+		Revision: msg,
+	}, Root: activity.Root{
 		Trigger: trigger,
 	}}
 }

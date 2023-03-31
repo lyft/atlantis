@@ -151,7 +151,7 @@ type RateLimitStatsPublisher struct {
 
 func (r *RateLimitStatsPublisher) Run() {
 	errCounter := r.stats.Counter(metrics.ExecutionErrorMetric)
-	rateLimitRemainingCounter := r.stats.Counter("ratelimitremaining")
+	rateLimitRemainingCounter := r.stats.Gauge("ratelimitremaining")
 
 	rateLimits, err := r.client.GetRateLimits()
 
@@ -160,7 +160,7 @@ func (r *RateLimitStatsPublisher) Run() {
 		return
 	}
 
-	rateLimitRemainingCounter.Inc(int64(rateLimits.GetCore().Remaining))
+	rateLimitRemainingCounter.Update(float64(rateLimits.GetCore().Remaining))
 }
 
 var gcStaleClosedPullTemplate = template.Must(template.New("").Parse(

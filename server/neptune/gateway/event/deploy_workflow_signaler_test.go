@@ -76,6 +76,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 	repoName := "repo"
 	repoURL := "www.nish.com"
 	sha := "12345"
+	branch := "default-branch"
 
 	repo := models.Repo{
 		FullName: repoFullName,
@@ -107,6 +108,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			expectedSignalName: workflows.DeployNewRevisionSignalID,
 			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 				Revision: sha,
+				Branch:   branch,
 				Root: workflows.Root{
 					Name: testRoot,
 					Plan: workflows.Job{
@@ -152,6 +154,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 		rootDeployOptions := event.RootDeployOptions{
 			Repo:     repo,
 			Revision: sha,
+			Branch:   branch,
 			Sender:   user,
 			Trigger:  workflows.MergeTrigger,
 		}
@@ -179,6 +182,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			expectedSignalName: workflows.DeployNewRevisionSignalID,
 			expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 				Revision: sha,
+				Branch:   branch,
 				Root: workflows.Root{
 					Name: testRoot,
 					Plan: workflows.Job{
@@ -227,6 +231,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 		rootDeployOptions := event.RootDeployOptions{
 			Repo:     repo,
 			Revision: sha,
+			Branch:   branch,
 			Sender:   user,
 			Trigger:  workflows.MergeTrigger,
 		}
@@ -242,6 +247,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 	repoName := "repo"
 	repoURL := "www.nish.com"
 	sha := "12345"
+	branch := "default-branch"
 
 	user := models.User{
 		Username: "test-user",
@@ -271,6 +277,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 		expectedSignalName: workflows.DeployNewRevisionSignalID,
 		expectedSignalArg: workflows.DeployNewRevisionSignalRequest{
 			Revision: sha,
+			Branch:   branch,
 			Root: workflows.Root{
 				Name: testRoot,
 				Plan: workflows.Job{
@@ -317,6 +324,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 	rootDeployOptions := event.RootDeployOptions{
 		Repo:     repo,
 		Revision: sha,
+		Branch:   branch,
 		Sender:   user,
 		Trigger:  workflows.MergeTrigger,
 	}

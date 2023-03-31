@@ -70,7 +70,7 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 			"atlantis_repository": deploymentInfo.Repo.GetFullName(),
 			"atlantis_root":       deploymentInfo.Root.Name,
 			"atlantis_trigger":    deploymentInfo.Root.Trigger,
-			"atlantis_revision":   deploymentInfo.Revision,
+			"atlantis_revision":   deploymentInfo.Commit.Revision,
 		},
 	})
 
@@ -78,7 +78,7 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 		Repo:         deploymentInfo.Repo,
 		Root:         r.buildRequestRoot(deploymentInfo.Root, diffDirection, scope),
 		DeploymentID: id.String(),
-		Revision:     deploymentInfo.Revision,
+		Revision:     deploymentInfo.Commit.Revision,
 	}
 
 	future := workflow.ExecuteChildWorkflow(ctx, r.Workflow, request)

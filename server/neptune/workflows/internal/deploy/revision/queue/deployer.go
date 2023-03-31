@@ -73,13 +73,13 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		scope.Counter("invalid_commit_direction_err").Inc(1)
 		// always returns error for caller to skip revision
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil)
-		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
+		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Commit.Revision, latestDeployment.Revision)
 	}
 	if requestedDeployment.Root.Rerun && commitDirection != activities.DirectionIdentical {
 		scope.Counter("invalid_rerun_err").Inc(1)
 		// always returns error for caller to skip revision
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, RerunNotIdenticalSummary, nil)
-		return nil, NewValidationError("requested revision %s is a re-run attempt but not identical to the latest deployed revision %s", requestedDeployment.Revision, latestDeployment.Revision)
+		return nil, NewValidationError("requested revision %s is a re-run attempt but not identical to the latest deployed revision %s", requestedDeployment.Commit.Revision, latestDeployment.Revision)
 	}
 
 	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
@@ -115,9 +115,16 @@ func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform
 }
 
 func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
-	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 1)
-	if version == workflow.DefaultVersion {
+	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 2)
+	switch version {
+	case workflow.DefaultVersion:
 		return nil
+
+	// Skip rebasing open PRs for deploys not from the default branch
+	case 2:
+		if deployment.Commit.Branch != deployment.Repo.DefaultBranch {
+			return nil
+		}
 	}
 
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
@@ -130,7 +137,7 @@ func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terr
 	future := workflow.ExecuteChildWorkflow(ctx, p.PRRevisionWorkflow, prrevision.Request{
 		Repo:     deployment.Repo,
 		Root:     deployment.Root,
-		Revision: deployment.Revision,
+		Revision: deployment.Commit.Revision,
 	})
 
 	return future.GetChildWorkflowExecution().Get(ctx, nil)
@@ -156,7 +163,7 @@ func (p *Deployer) getDeployRequestCommitDirection(ctx workflow.Context, deployR
 	}
 	var compareCommitResp activities.CompareCommitResponse
 	err := workflow.ExecuteActivity(ctx, p.Activities.GithubCompareCommit, activities.CompareCommitRequest{
-		DeployRequestRevision:  deployRequest.Revision,
+		DeployRequestRevision:  deployRequest.Commit.Revision,
 		LatestDeployedRevision: latestDeployment.Revision,
 		Repo:                   deployRequest.Repo,
 	}).Get(ctx, &compareCommitResp)
@@ -174,7 +181,7 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 
 	request := notifier.GithubCheckRunRequest{
 		Title:   terraformWorkflow.BuildCheckRunTitle(deployRequest.Root.Name),
-		Sha:     deployRequest.Revision,
+		Sha:     deployRequest.Commit.Revision,
 		State:   state,
 		Repo:    deployRequest.Repo,
 		Summary: summary,

@@ -13,6 +13,7 @@ const (
 	RequestIDKey      = Key("gh-request-id")
 	RepositoryKey     = Key("repository")
 	SHAKey            = Key("sha")
+	BranchKey         = Key("branch")
 	PullNumKey        = Key("pull-num")
 	ProjectKey        = Key("project")
 	ErrKey            = Key("err")
@@ -21,7 +22,7 @@ const (
 	Trigger           = Key("workflow-trigger")
 )
 
-var Keys = []Key{RequestIDKey, RepositoryKey, PullNumKey, ProjectKey, SHAKey, InstallationIDKey, DeploymentIDKey, ErrKey}
+var Keys = []Key{RequestIDKey, RepositoryKey, PullNumKey, ProjectKey, SHAKey, BranchKey, InstallationIDKey, DeploymentIDKey, ErrKey}
 
 type KVStore interface {
 	Value(key interface{}) interface{}

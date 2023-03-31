@@ -34,6 +34,7 @@ type idGenerator func(ctx workflow.Context) (uuid.UUID, error)
 
 type NewRevisionRequest struct {
 	Revision       string
+	Branch         string
 	InitiatingUser request.User
 	Root           request.Root
 	Repo           request.Repo
@@ -121,11 +122,14 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	n.queue.Push(terraform.DeploymentInfo{
 		ID:             id,
 		Root:           root,
-		Revision:       request.Revision,
 		CheckRunID:     checkRunID,
 		Repo:           repo,
 		InitiatingUser: initiatingUser,
 		Tags:           request.Tags,
+		Commit: github.Commit{
+			Revision: request.Revision,
+			Branch:   request.Branch,
+		},
 	})
 }
 
@@ -160,12 +164,12 @@ func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, roo
 
 func (n *Receiver) isInProgress(revision string) bool {
 	current := n.worker.GetCurrentDeploymentState()
-	return revision == current.Deployment.Revision && current.Status == queue.InProgressStatus
+	return revision == current.Deployment.Commit.Revision && current.Status == queue.InProgressStatus
 }
 
 func (n *Receiver) queueContainsRevision(revision string) bool {
 	for _, deployment := range n.queue.Scan() {
-		if deployment.Root.Trigger == activity.ManualTrigger && revision == deployment.Revision {
+		if deployment.Root.Trigger == activity.ManualTrigger && revision == deployment.Commit.Revision {
 			return true
 		}
 	}

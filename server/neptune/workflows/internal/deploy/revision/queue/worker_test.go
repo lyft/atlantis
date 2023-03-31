@@ -118,7 +118,7 @@ func testWorkerWorkflow(ctx workflow.Context, r workerRequest) (workerResponse, 
 	var infos []*deployment.Info
 	for _, s := range r.Queue {
 		infos = append(infos, &deployment.Info{
-			Revision: s.Revision,
+			Revision: s.Commit.Revision,
 		})
 		q.Push(s)
 	}
@@ -216,8 +216,10 @@ func TestWorker_DeploysItems(t *testing.T) {
 
 	deploymentInfoList := []internalTerraform.DeploymentInfo{
 		{
-			ID:         uuid.UUID{},
-			Revision:   "1",
+			ID: uuid.UUID{},
+			Commit: github.Commit{
+				Revision: "1",
+			},
 			CheckRunID: 1234,
 			Root: terraform.Root{
 				Name: "root_1",
@@ -225,8 +227,10 @@ func TestWorker_DeploysItems(t *testing.T) {
 			Repo: repo,
 		},
 		{
-			ID:         uuid.UUID{},
-			Revision:   "2",
+			ID: uuid.UUID{},
+			Commit: github.Commit{
+				Revision: "2",
+			},
 			CheckRunID: 5678,
 			Root: terraform.Root{
 				Name: "root_2",
@@ -321,8 +325,10 @@ func TestWorker_DeploysItems_ValidationError_SkipLatestDeploymentUpdate(t *testi
 
 	deploymentInfoList := []internalTerraform.DeploymentInfo{
 		{
-			ID:         uuid.UUID{},
-			Revision:   "1",
+			ID: uuid.UUID{},
+			Commit: github.Commit{
+				Revision: "1",
+			},
 			CheckRunID: 1234,
 			Root: terraform.Root{
 				Name: "root_1",
@@ -330,8 +336,10 @@ func TestWorker_DeploysItems_ValidationError_SkipLatestDeploymentUpdate(t *testi
 			Repo: repo,
 		},
 		{
-			ID:         uuid.UUID{},
-			Revision:   "2",
+			ID: uuid.UUID{},
+			Commit: github.Commit{
+				Revision: "2",
+			},
 			CheckRunID: 5678,
 			Root: terraform.Root{
 				Name: "root_2",
@@ -520,8 +528,10 @@ func TestWorker_DeploysItems_PlanRejectionError_SkipLatestDeploymentUpdate(t *te
 
 	deploymentInfoList := []internalTerraform.DeploymentInfo{
 		{
-			ID:         uuid.UUID{},
-			Revision:   "1",
+			ID: uuid.UUID{},
+			Commit: github.Commit{
+				Revision: "1",
+			},
 			CheckRunID: 1234,
 			Root: terraform.Root{
 				Name: "root_1",
@@ -529,8 +539,10 @@ func TestWorker_DeploysItems_PlanRejectionError_SkipLatestDeploymentUpdate(t *te
 			Repo: repo,
 		},
 		{
-			ID:         uuid.UUID{},
-			Revision:   "2",
+			ID: uuid.UUID{},
+			Commit: github.Commit{
+				Revision: "2",
+			},
 			CheckRunID: 5678,
 			Root: terraform.Root{
 				Name: "root_2",
@@ -608,8 +620,10 @@ func TestWorker_DeploysItems_TerraformClientError_UpdateLatestDeployment(t *test
 
 	deploymentInfoList := []internalTerraform.DeploymentInfo{
 		{
-			ID:         uuid.UUID{},
-			Revision:   "1",
+			ID: uuid.UUID{},
+			Commit: github.Commit{
+				Revision: "1",
+			},
 			CheckRunID: 1234,
 			Root: terraform.Root{
 				Name: "root_1",
@@ -617,8 +631,10 @@ func TestWorker_DeploysItems_TerraformClientError_UpdateLatestDeployment(t *test
 			Repo: repo,
 		},
 		{
-			ID:         uuid.UUID{},
-			Revision:   "2",
+			ID: uuid.UUID{},
+			Commit: github.Commit{
+				Revision: "2",
+			},
 			CheckRunID: 5678,
 			Root: terraform.Root{
 				Name: "root_2",

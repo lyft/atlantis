@@ -9,6 +9,7 @@ type Info struct {
 	Version  int
 	ID       string
 	Revision string
+	Branch   string
 	Repo     Repo
 	Root     Root
 }

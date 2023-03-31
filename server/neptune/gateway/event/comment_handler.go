@@ -131,6 +131,7 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 
 	if len(roots) == 0 {
 		p.logger.WarnContext(ctx, "no roots to process in comment")
+		p.markSuccessStatuses(ctx, cmdCtx, cmd)
 		return nil
 	}
 
@@ -165,6 +166,22 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 	}
 
 	return nil
+}
+
+func (p *CommentEventWorkerProxy) markSuccessStatuses(ctx context.Context, cmdCtx *command.Context, cmd *command.Comment) {
+	if cmd.Name == command.Plan {
+		for _, name := range []command.Name{command.Plan, command.PolicyCheck, command.Apply} {
+			if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.SuccessVCSStatus, name, "", "no modified roots"); statusErr != nil {
+				cmdCtx.Log.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %v", statusErr))
+			}
+		}
+	}
+
+	if cmd.Name == command.Apply {
+		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.SuccessVCSStatus, cmd.Name, "", "no modified roots"); statusErr != nil {
+			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
+		}
+	}
 }
 
 func (p *CommentEventWorkerProxy) notifyImpendingChanges(
