@@ -22,8 +22,8 @@ const (
 	ThroughputCutOffDays = 30
 
 	// preserving the original tq name to account for existing workflow executions
-	TaskQueue              = "pr_revision"
-	LowThroughPutTaskQueue = "pr_revision_slow"
+	TaskQueue     = "pr_revision"
+	SlowTaskQueue = "pr_revision_slow"
 
 	RetryCount          = 3
 	StartToCloseTimeout = 30 * time.Second
@@ -92,7 +92,7 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 
 	// handle old PRs in the low throughput task queue
 	r.Scope.SubScope("open_prs").Counter("old").Inc(int64(len(prs)))
-	if err := r.setRevision(ctx, LowThroughPutTaskQueue, request, oldPRs); err != nil {
+	if err := r.setRevision(ctx, SlowTaskQueue, request, oldPRs); err != nil {
 		return errors.Wrap(err, "setting minimum revision for old prs modifiying root")
 	}
 
