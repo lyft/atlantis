@@ -107,45 +107,14 @@ func NewServer(config *config.Config) (*Server, error) {
 
 func (s Server) Start() error {
 	defer s.shutdown()
+	var wg sync.WaitGroup
 
 	ctx := context.Background()
-
-	var wg sync.WaitGroup
 	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		// validated during startup, log if fails
-		val, err := strconv.ParseFloat(s.Config.DefaultTaskQueue.ActivitiesPerSecond, 64)
-		if err != nil {
-			log.Fatalln(fmt.Sprintf("unable to parse task queue throughput config: %s", s.Config.DefaultTaskQueue.ActivitiesPerSecond), err)
-		}
-
-		prRevisionWorker := s.buildPRRevisionDefaultWorker(val)
-		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
-			log.Fatalln("unable to start pr revision default worker", err)
-		}
-
-		s.Logger.InfoContext(ctx, "Shutting down pr revision default worker, resource clean up may still be occurring in the background")
-	}()
+	go s.runDefaultWorker(ctx, &wg)
 
 	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		// validated during startup, log if fails
-		val, err := strconv.ParseFloat(s.Config.SlowTaskQueue.ActivitiesPerSecond, 64)
-		if err != nil {
-			log.Fatalln(fmt.Sprintf("unable to parse slow task queue throughput config: %s", s.Config.SlowTaskQueue.ActivitiesPerSecond), err)
-		}
-
-		prRevisionWorker := s.buildPRRevisionSlowWorker(val)
-		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
-			log.Fatalln("unable to start pr revision slow worker", err)
-		}
-
-		s.Logger.InfoContext(ctx, "Shutting down pr revision slow worker, resource clean up may still be occurring in the background")
-	}()
+	go s.runSlowWorker(ctx, &wg)
 
 	// Ensure server gracefully drains connections when stopped.
 	stop := make(chan os.Signal, 1)
@@ -175,36 +144,61 @@ func (s Server) shutdown() {
 	s.Logger.Close()
 }
 
-// slow worker handles activities scheduled on the slow task queue
-func (s Server) buildPRRevisionSlowWorker(taskQueueThroughput float64) worker.Worker {
-	taskQueueThroughput = 1
+func (s Server) runDefaultWorker(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// validated during startup, log if fails
+	tqThroughPut, err := strconv.ParseFloat(s.Config.DefaultTaskQueue.ActivitiesPerSecond, 64)
+	if err != nil {
+		log.Fatalln(fmt.Sprintf("unable to parse task queue throughput config: %s", s.Config.DefaultTaskQueue.ActivitiesPerSecond), err)
+	}
+
 	// pass the underlying client otherwise this will panic()
-	worker := worker.New(s.TemporalClient.Client, workflows.PRRevisionLowThroughputTaskQueue, worker.Options{
+	w := worker.New(s.TemporalClient.Client, workflows.PRRevisionLowThroughputTaskQueue, worker.Options{
 		WorkerStopTimeout: WorkerTimeout,
 		Interceptors: []interceptor.WorkerInterceptor{
 			temporal.NewWorkerInterceptor(),
 		},
 
-		TaskQueueActivitiesPerSecond: taskQueueThroughput,
+		TaskQueueActivitiesPerSecond: tqThroughPut,
 	})
-	worker.RegisterActivity(s.GithubActivities)
-	return worker
+
+	// register all activities and workflows in the default TQ
+	w.RegisterWorkflow(workflows.PRRevision)
+	w.RegisterActivity(s.GithubActivities)
+	w.RegisterActivity(s.RevisionSetterActivities)
+
+	if err := w.Run(worker.InterruptCh()); err != nil {
+		log.Fatalln("unable to start pr revision default worker", err)
+	}
+
+	s.Logger.InfoContext(ctx, "Shutting down pr revision default worker, resource clean up may still be occurring in the background")
 }
 
-// default worker handles workflow and activities scheduled on the default task queue
-func (s Server) buildPRRevisionDefaultWorker(taskQueueThroughput float64) worker.Worker {
+func (s Server) runSlowWorker(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	tqThroughPut, err := strconv.ParseFloat(s.Config.SlowTaskQueue.ActivitiesPerSecond, 64)
+	if err != nil {
+		log.Fatalln(fmt.Sprintf("unable to parse slow task queue throughput config: %s", s.Config.SlowTaskQueue.ActivitiesPerSecond), err)
+	}
+
 	// pass the underlying client otherwise this will panic()
-	taskQueueThroughput = 10
-	worker := worker.New(s.TemporalClient.Client, workflows.PRRevisionTaskQueue, worker.Options{
+	w := worker.New(s.TemporalClient.Client, workflows.PRRevisionLowThroughputTaskQueue, worker.Options{
 		WorkerStopTimeout: WorkerTimeout,
 		Interceptors: []interceptor.WorkerInterceptor{
 			temporal.NewWorkerInterceptor(),
 		},
 
-		TaskQueueActivitiesPerSecond: taskQueueThroughput,
+		TaskQueueActivitiesPerSecond: tqThroughPut,
 	})
-	worker.RegisterWorkflow(workflows.PRRevision)
-	worker.RegisterActivity(s.GithubActivities)
-	worker.RegisterActivity(s.RevisionSetterActivities)
-	return worker
+
+	// only GH activities executes in the slow task queue
+	w.RegisterActivity(s.GithubActivities)
+
+	if err := w.Run(worker.InterruptCh()); err != nil {
+		log.Fatalln("unable to start pr revision slow worker", err)
+	}
+
+	s.Logger.InfoContext(ctx, "Shutting down pr revision slow worker, resource clean up may still be occurring in the background")
 }
