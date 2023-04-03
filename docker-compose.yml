@@ -36,6 +36,17 @@ services:
         # Contains the flags that atlantis uses in env var form
         env_file:
             - ~/.atlantis-temporalworker.env
+    atlantis-prrevisionworker:
+        build:
+            context: .
+            dockerfile: Dockerfile.dev
+        volumes:
+            - ~/.ssh:/.ssh
+            - ./:/atlantis/src
+            - /tmp:/tmp
+        # Contains the flags that atlantis uses in env var form
+        env_file:
+            - ~/.atlantis-prrevisionworker.env
     temporalite:
         build: https://github.com/temporalio/temporalite.git#main
         ports:

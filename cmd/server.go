@@ -33,6 +33,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker"
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	prrevisionworker "github.com/runatlantis/atlantis/server/neptune/temporalworker/prrevision"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -414,9 +415,10 @@ type ServerCmd struct {
 func NewServerCmd(v *viper.Viper, version string) *ServerCmd {
 	return &ServerCmd{
 		ServerCreator: &ServerCreatorProxy{
-			GatewayCreator:        &GatewayCreator{},
-			WorkerCreator:         &WorkerCreator{},
-			TemporalWorkerCreator: &TemporalWorker{},
+			GatewayCreator:          &GatewayCreator{},
+			WorkerCreator:           &WorkerCreator{},
+			TemporalWorkerCreator:   &TemporalWorker{},
+			PrRevisionWorkerCreator: &PrRevisionWorker{},
 		},
 		Viper:           v,
 		AtlantisVersion: version,
@@ -540,11 +542,49 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 	return temporalworker.NewServer(cfg)
 }
 
+type PrRevisionWorker struct{}
+
+// NewServer returns the pr revision worker object
+func (t *PrRevisionWorker) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
+	ctxLogger, err := logging.NewLoggerFromLevel(userConfig.ToLogLevel())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build context logger")
+	}
+
+	globalCfg := valid.NewGlobalCfg(userConfig.DataDir)
+	validator := &cfgParser.ParserValidator{}
+	if userConfig.RepoConfig != "" {
+		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
+		}
+	}
+
+	// TODO: we should just supply a yaml file with this info and load it directly into the
+	// app config struct
+	appConfig, err := createGHAppConfig(userConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &neptune.Config{
+		TemporalCfg:              globalCfg.Temporal,
+		App:                      appConfig,
+		CtxLogger:                ctxLogger,
+		StatsNamespace:           userConfig.StatsNamespace,
+		Metrics:                  globalCfg.Metrics,
+		LyftAuditJobsSnsTopicArn: userConfig.LyftAuditJobsSnsTopicArn,
+		RevisionSetter:           globalCfg.RevisionSetter,
+	}
+	return prrevisionworker.NewServer(cfg)
+}
+
 // ServerCreatorProxy creates the correct server based on the mode passed in through user config
 type ServerCreatorProxy struct {
-	GatewayCreator        ServerCreator
-	WorkerCreator         ServerCreator
-	TemporalWorkerCreator ServerCreator
+	GatewayCreator          ServerCreator
+	WorkerCreator           ServerCreator
+	TemporalWorkerCreator   ServerCreator
+	PrRevisionWorkerCreator ServerCreator
 }
 
 func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
@@ -552,15 +592,17 @@ func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config serv
 	if err := os.MkdirAll(userConfig.DataDir, 0700); err != nil {
 		return nil, err
 	}
-	if userConfig.ToLyftMode() == server.Gateway {
+
+	switch userConfig.ToLyftMode() {
+	case server.Gateway:
 		return d.GatewayCreator.NewServer(userConfig, config)
-	}
-
-	if userConfig.ToLyftMode() == server.TemporalWorker {
+	case server.TemporalWorker:
 		return d.TemporalWorkerCreator.NewServer(userConfig, config)
+	case server.PrRevisionWorker:
+		return d.PrRevisionWorkerCreator.NewServer(userConfig, config)
+	default:
+		return d.WorkerCreator.NewServer(userConfig, config)
 	}
-
-	return d.WorkerCreator.NewServer(userConfig, config)
 }
 
 // Init returns the runnable cobra command.

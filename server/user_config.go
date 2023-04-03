@@ -11,6 +11,7 @@ const (
 	Gateway
 	Worker
 	TemporalWorker
+	PrRevisionWorker
 )
 
 // UserConfig holds config values passed in by the user.
@@ -116,6 +117,8 @@ func (u UserConfig) ToLyftMode() Mode {
 		return Worker
 	case "temporalworker":
 		return TemporalWorker
+	case "prrevisionworker":
+		return PrRevisionWorker
 	}
 	return Default
 }

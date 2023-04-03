@@ -17,6 +17,10 @@ url: https://test-url.com
 basic_auth:
   username: test-user
   password: tes-password
+default_task_queue:
+  activities_per_second: 2.5
+slow_task_queue:
+  activities_per_second: 1.5
 `
 		var result raw.RevisionSetter
 
@@ -31,6 +35,12 @@ basic_auth:
 		"basic_auth": {
 			"username": "test-user",
 			"password": "test-password"
+		},
+		"default_task_queue": {
+			"activities_per_second": "1.5"
+		},
+		"slow_task_queue": {
+			"activities_per_second": "2.5"
 		}
 	}
 	`
@@ -49,6 +59,12 @@ func TestPRRevision_Validate_Success(t *testing.T) {
 			Username: "test-username",
 			Password: "test-password",
 		},
+		DefaultTaskQueue: raw.TaskQueue{
+			ActivitesPerSecond: "10.0",
+		},
+		SlowTaskQueue: raw.TaskQueue{
+			ActivitesPerSecond: "1.5",
+		},
 	}
 	assert.NoError(t, prRevision.Validate())
 }
@@ -62,6 +78,12 @@ func TestPRRevision_Validate_Error(t *testing.T) {
 			description: "missing basic auth",
 			subject: raw.RevisionSetter{
 				URL: "https://tes-url.com",
+				DefaultTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "1.5",
+				},
+				SlowTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "2.5",
+				},
 			},
 		},
 		{
@@ -70,6 +92,12 @@ func TestPRRevision_Validate_Error(t *testing.T) {
 				URL: "https://tes-url.com",
 				BasicAuth: raw.BasicAuth{
 					Username: "test-username",
+				},
+				DefaultTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "1.5",
+				},
+				SlowTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "2.5",
 				},
 			},
 		},
@@ -80,6 +108,12 @@ func TestPRRevision_Validate_Error(t *testing.T) {
 				BasicAuth: raw.BasicAuth{
 					Password: "test-password",
 				},
+				DefaultTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "1.5",
+				},
+				SlowTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "2.5",
+				},
 			},
 		},
 		{
@@ -88,6 +122,12 @@ func TestPRRevision_Validate_Error(t *testing.T) {
 				BasicAuth: raw.BasicAuth{
 					Username: "test-username",
 					Password: "test-password",
+				},
+				DefaultTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "1.5",
+				},
+				SlowTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "2.5",
 				},
 			},
 		},
@@ -98,6 +138,28 @@ func TestPRRevision_Validate_Error(t *testing.T) {
 				BasicAuth: raw.BasicAuth{
 					Username: "test-username",
 					Password: "test-password",
+				},
+				DefaultTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "1.5",
+				},
+				SlowTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "2.5",
+				},
+			},
+		},
+		{
+			description: "invalid data type",
+			subject: raw.RevisionSetter{
+				URL: "tes-url.com",
+				BasicAuth: raw.BasicAuth{
+					Username: "test-username",
+					Password: "test-password",
+				},
+				DefaultTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "wedwe",
+				},
+				SlowTaskQueue: raw.TaskQueue{
+					ActivitesPerSecond: "wfwe",
 				},
 			},
 		},
