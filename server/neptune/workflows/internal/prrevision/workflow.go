@@ -12,12 +12,18 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision/version"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
 const (
-	TaskQueue = "pr_revision"
+	// PRs updated before n days will be processed in the LowThroughPutTaskQueue
+	ThroughputCutOffDays = 30
+
+	// preserving the original tq name to account for existing workflow executions
+	TaskQueue              = "pr_revision"
+	LowThroughPutTaskQueue = "pr_revision_slow"
 
 	RetryCount          = 3
 	StartToCloseTimeout = 30 * time.Second
@@ -71,10 +77,25 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 		return err
 	}
 
-	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
-	if err := r.setRevision(ctx, request, prs); err != nil {
-		return errors.Wrap(err, "setting minimum revision for pr modifiying root")
+	version := workflow.GetVersion(ctx, version.MultiQueue, workflow.DefaultVersion, 1)
+	if version == workflow.DefaultVersion {
+		return r.setRevisionV1(ctx, request, prs)
 	}
+
+	oldPRs, newPRs := r.partitionPRsByDateModified(workflow.Now(ctx), prs)
+
+	// handle new PRs in the high throughput task queue
+	r.Scope.SubScope("open_prs").Counter("new").Inc(int64(len(prs)))
+	if err := r.setRevision(ctx, TaskQueue, request, newPRs); err != nil {
+		return errors.Wrap(err, "setting minimum revision for new prs modifiying root")
+	}
+
+	// handle old PRs in the low throughput task queue
+	r.Scope.SubScope("open_prs").Counter("old").Inc(int64(len(prs)))
+	if err := r.setRevision(ctx, LowThroughPutTaskQueue, request, oldPRs); err != nil {
+		return errors.Wrap(err, "setting minimum revision for old prs modifiying root")
+	}
+
 	return nil
 }
 
@@ -91,11 +112,21 @@ func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.P
 	return resp.PullRequests, nil
 }
 
-func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.PullRequest) error {
+func (r *Runner) setRevisionV1(ctx workflow.Context, request Request, prs []github.PullRequest) error {
+	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
+
+	// schedule all PRs in the High Throughput TQ
+	if err := r.setRevision(ctx, TaskQueue, request, prs); err != nil {
+		return errors.Wrap(err, "setting minimum revision for pr modifiying root")
+	}
+	return nil
+}
+
+func (r *Runner) setRevision(ctx workflow.Context, taskQueue string, req Request, prs []github.PullRequest) error {
 	// spawn activities to list modified files in each open PR async
 	futuresByPullNum := map[github.PullRequest]workflow.Future{}
 	for _, pr := range prs {
-		futuresByPullNum[pr] = workflow.ExecuteActivity(ctx, r.GithubActivities.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
+		futuresByPullNum[pr] = r.listModifiedFilesFuture(ctx, taskQueue, activities.ListModifiedFilesRequest{
 			Repo:        req.Repo,
 			PullRequest: pr,
 		})
@@ -117,6 +148,14 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 	}
 
 	return nil
+}
+
+func (r *Runner) listModifiedFilesFuture(ctx workflow.Context, taskQueue string, req activities.ListModifiedFilesRequest) workflow.Future {
+	opts := workflow.GetActivityOptions(ctx)
+	opts.TaskQueue = taskQueue
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return workflow.ExecuteActivity(ctx, r.GithubActivities.GithubListModifiedFiles, req)
 }
 
 func (r *Runner) setRevisionForPR(ctx workflow.Context, req Request, pull github.PullRequest, future workflow.Future) workflow.Future {
@@ -172,4 +211,18 @@ func isRootModified(root terraform.Root, modifiedFiles []string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (r *Runner) partitionPRsByDateModified(now time.Time, prs []github.PullRequest) ([]github.PullRequest, []github.PullRequest) {
+	nDaysAgo := now.AddDate(0, 0, -ThroughputCutOffDays)
+	oldPRs, newPRs := []github.PullRequest{}, []github.PullRequest{}
+	for _, pr := range prs {
+		if pr.UpdatedAt.Before(nDaysAgo) {
+			oldPRs = append(oldPRs, pr)
+		} else {
+			newPRs = append(newPRs, pr)
+		}
+	}
+
+	return oldPRs, newPRs
 }

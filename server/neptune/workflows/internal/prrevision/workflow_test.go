@@ -318,3 +318,24 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	err := env.GetWorkflowResult(nil)
 	assert.NoError(t, err)
 }
+
+func TestPartitionByDateModified(t *testing.T) {
+	now := time.Now()
+	runner := Runner{}
+
+	// sample PRs
+	prUpdatedRecently := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -10),
+	}
+	prUpdatedLongAgo := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -40),
+	}
+
+	prs := []github.PullRequest{prUpdatedRecently, prUpdatedLongAgo}
+
+	oldPRs, newPRs := runner.partitionPRsByDateModified(now, prs)
+	assert.Equal(t, 1, len(oldPRs))
+	assert.Equal(t, 1, len(newPRs))
+	assert.Equal(t, prUpdatedLongAgo, oldPRs[0])
+	assert.Equal(t, prUpdatedRecently, newPRs[0])
+}

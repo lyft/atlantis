@@ -318,7 +318,8 @@ func (a *githubActivities) GithubListPRs(ctx context.Context, request ListPRsReq
 	pullRequests := []internal.PullRequest{}
 	for _, pullRequest := range prs {
 		pullRequests = append(pullRequests, internal.PullRequest{
-			Number: pullRequest.GetNumber(),
+			Number:    pullRequest.GetNumber(),
+			UpdatedAt: pullRequest.GetUpdatedAt(),
 		})
 	}
 

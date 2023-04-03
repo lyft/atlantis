@@ -8,6 +8,7 @@ import (
 type PRRevisionRevisionRequest = prrevision.Request
 
 var PRRevisionTaskQueue = prrevision.TaskQueue
+var PRRevisionLowThroughputTaskQueue = prrevision.LowThroughPutTaskQueue
 
 func PRRevision(ctx workflow.Context, request PRRevisionRevisionRequest) error {
 	return prrevision.Workflow(ctx, request)
