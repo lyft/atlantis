@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/gate"
 	runner "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/job"
@@ -147,7 +146,7 @@ func (r *Runner) Plan(ctx workflow.Context, root *terraform.LocalRoot, serverURL
 	if err != nil {
 		if e := r.Store.UpdatePlanJobWithStatus(state.FailedJobStatus); e != nil {
 			// not returning UpdateJobError here since we want to surface the job failure itself
-			logger.Error(ctx, "unable to update job with failed status, job failed with error. ", key.ErrKey, err)
+			workflow.GetLogger(ctx).Error("unable to update job with failed status, job failed with error. ", key.ErrKey, err)
 		}
 		return response, errors.Wrap(err, "running job")
 	}
@@ -174,13 +173,13 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 
 	planStatus, err := r.ReviewGate.Await(ctx, root.Root, planResponse.Summary)
 	if err != nil {
-		logger.Error(ctx, "error waiting for plan review.", key.ErrKey, err)
+		workflow.GetLogger(ctx).Error("error waiting for plan review.", key.ErrKey, err)
 		return newPlanRejectedError()
 	}
 
 	if planStatus == gate.Rejected {
 		if err := r.Store.UpdateApplyJobWithStatus(state.RejectedJobStatus); err != nil {
-			logger.Error(ctx, "unable to update job with rejected status.", key.ErrKey, err)
+			workflow.GetLogger(ctx).Error("unable to update job with rejected status.", key.ErrKey, err)
 		}
 		return newPlanRejectedError()
 	}
@@ -197,7 +196,7 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 			EndTime: time.Now(),
 		}); err != nil {
 			// not returning UpdateJobError here since we want to surface the job failure itself
-			logger.Error(ctx, "unable to update job with failed status, job failed with error. ", key.ErrKey, err)
+			workflow.GetLogger(ctx).Error("unable to update job with failed status, job failed with error. ", key.ErrKey, err)
 		}
 		return errors.Wrap(err, "running job")
 	}
@@ -241,7 +240,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			Reason: reason,
 		})
 		if updateErr != nil {
-			logger.Warn(ctx, "error updating completion status", key.ErrKey, err)
+			workflow.GetLogger(ctx).Warn("error updating completion status", key.ErrKey, err)
 		}
 	}()
 	err = r.run(ctx)
@@ -299,7 +298,7 @@ func (r *Runner) executeCleanup(ctx workflow.Context, handlers ...func(workflow.
 		cleanupErr := h(ctx)
 
 		if cleanupErr != nil {
-			logger.Warn(ctx, "error cleaning up local root", key.ErrKey, cleanupErr)
+			workflow.GetLogger(ctx).Warn("error cleaning up local root", key.ErrKey, cleanupErr)
 		}
 	}
 }

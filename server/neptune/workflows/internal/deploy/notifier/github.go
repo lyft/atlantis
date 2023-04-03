@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -114,6 +113,6 @@ func (c *GithubCheckRunCache) load(ctx workflow.Context, externalID string, requ
 	if err != nil {
 		return resp, errors.Wrap(err, "creating check run")
 	}
-	logger.Debug(ctx, "created checkrun with id", "checkRunID", resp.ID)
+	workflow.GetLogger(ctx).Debug("created checkrun with id", "checkRunID", resp.ID)
 	return resp, nil
 }

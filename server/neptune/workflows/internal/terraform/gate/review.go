@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/workflow"
@@ -64,7 +63,7 @@ func (r *Review) Await(ctx workflow.Context, root terraform.Root, planSummary te
 	var timedOut bool
 	selector.AddTimeout(ctx, r.Timeout, func(f workflow.Future) {
 		if err := f.Get(ctx, nil); err != nil {
-			logger.Warn(ctx, "Error timing out selector.  This is possibly due to a cancellation signal. ", context.ErrKey, err)
+			workflow.GetLogger(ctx).Warn("Error timing out selector.  This is possibly due to a cancellation signal. ", context.ErrKey, err)
 		}
 		timedOut = true
 	})

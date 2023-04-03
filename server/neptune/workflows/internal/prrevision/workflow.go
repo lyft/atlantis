@@ -10,7 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -123,7 +122,7 @@ func (r *Runner) setRevisionForPR(ctx workflow.Context, req Request, pull github
 	// let's be preventive and set minimum revision for this PR if this listModifiedFiles fails after 3 attempts
 	var result activities.ListModifiedFilesResponse
 	if err := future.Get(ctx, &result); err != nil {
-		logger.Error(ctx, "error listing modified files in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
+		workflow.GetLogger(ctx).Error("error listing modified files in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
 		return r.setMinRevision(ctx, req, pull)
 	}
 
@@ -131,7 +130,7 @@ func (r *Runner) setRevisionForPR(ctx workflow.Context, req Request, pull github
 	// let's be preventive and set minimum revision for this PR if file path match errors out
 	rootModified, err := isRootModified(req.Root, result.FilePaths)
 	if err != nil {
-		logger.Error(ctx, "error matching file paths in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
+		workflow.GetLogger(ctx).Error("error matching file paths in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
 		return r.setMinRevision(ctx, req, pull)
 	}
 

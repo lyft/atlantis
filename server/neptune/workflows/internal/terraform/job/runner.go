@@ -9,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	logger "github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -243,6 +242,6 @@ func (r *JobRunner) closeTerraformJob(executionCtx *ExecutionContext) {
 	}).Get(ctx, nil)
 
 	if err != nil {
-		logger.Error(ctx, "Error closing job", key.ErrKey, err)
+		workflow.GetLogger(ctx).Error("Error closing job", key.ErrKey, err)
 	}
 }

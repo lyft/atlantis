@@ -11,11 +11,11 @@ import (
 	"sync"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
+	"go.temporal.io/sdk/activity"
 
 	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
@@ -166,7 +166,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 
 	err = t.GitCLICredentials.Refresh(ctx, request.GithubInstallationID)
 	if err != nil {
-		logger.Warn(ctx, "Error refreshing git cli credentials. This is bug and will likely cause fetching of private modules to fail", key.ErrKey, err)
+		activity.GetLogger(ctx).Error("Error refreshing git cli credentials. This is bug and will likely cause fetching of private modules to fail", key.ErrKey, err)
 	}
 
 	// terraform init clones repos using git cli auth of which we chose git global configs.
@@ -177,7 +177,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 
 	out, err := t.runCommandWithOutputStream(ctx, request.JobID, r)
 	if err != nil {
-		logger.Error(ctx, out)
+		activity.GetLogger(ctx).Error(out)
 		return TerraformInitResponse{}, wrapTerraformError(err, "running init command")
 	}
 	return TerraformInitResponse{}, nil
@@ -242,7 +242,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	out, err := t.runCommandWithOutputStream(ctx, request.JobID, planRequest)
 
 	if err != nil {
-		logger.Error(ctx, out)
+		activity.GetLogger(ctx).Error(out)
 		return TerraformPlanResponse{}, wrapTerraformError(err, "running plan command")
 	}
 
@@ -266,13 +266,13 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 
 	// we shouldn't fail our activity just because show failed. Summaries aren't that critical.
 	if err != nil {
-		logger.Error(ctx, "error with terraform show", key.ErrKey, err)
+		activity.GetLogger(ctx).Error("error with terraform show", key.ErrKey, err)
 	}
 
 	summary, err := terraform.NewPlanSummaryFromJSON(showResultBuffer.Bytes())
 
 	if err != nil {
-		logger.Error(ctx, "error building plan summary", key.ErrKey, err)
+		activity.GetLogger(ctx).Error("error building plan summary", key.ErrKey, err)
 	}
 
 	return TerraformPlanResponse{
@@ -326,7 +326,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	out, err := t.runCommandWithOutputStream(ctx, request.JobID, applyRequest)
 
 	if err != nil {
-		logger.Error(ctx, out)
+		activity.GetLogger(ctx).Error(out)
 		return TerraformApplyResponse{}, wrapTerraformError(err, "running apply command")
 	}
 
@@ -344,7 +344,7 @@ func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jo
 		defer wg.Done()
 		defer func() {
 			if e := writer.Close(); e != nil {
-				logger.Error(ctx, "closing pipe writer", key.ErrKey, e)
+				activity.GetLogger(ctx).Error("closing pipe writer", key.ErrKey, e)
 			}
 		}()
 		err = t.TerraformClient.RunCommand(ctx, request, terraform.RunOptions{
@@ -363,7 +363,7 @@ func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jo
 	for s.Scan() {
 		_, err := output.WriteString(s.Text())
 		if err != nil {
-			logger.Warn(ctx, "unable to write tf output to buffer")
+			activity.GetLogger(ctx).Warn("unable to write tf output to buffer")
 		}
 		ch <- s.Text()
 	}

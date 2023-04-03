@@ -14,8 +14,8 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
+	"go.temporal.io/sdk/activity"
 )
 
 type ghInstallationTransportCreator struct{}
@@ -125,7 +125,7 @@ func (c *Credentials) writeCredentials(ctx context.Context, file string, token s
 
 	// if it doesn't exist write to file
 	if _, err := os.Stat(file); err != nil {
-		logger.Info(ctx, "writing global .git-credentials file")
+		activity.GetLogger(ctx).Info("writing global .git-credentials file")
 		return c.writeConfig(file, []byte(toWrite))
 	}
 
@@ -136,7 +136,7 @@ func (c *Credentials) writeCredentials(ctx context.Context, file string, token s
 
 	// our token was refreshed so let's write it
 	if contents != toWrite {
-		logger.Info(ctx, "token was refreshed, rewriting credentials")
+		activity.GetLogger(ctx).Info("token was refreshed, rewriting credentials")
 		return c.writeConfig(file, []byte(toWrite))
 	}
 

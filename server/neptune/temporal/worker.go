@@ -9,6 +9,7 @@ import (
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/interceptor"
+	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -84,6 +85,10 @@ func (a *activityOutboundInterceptor) GetMetricsHandler(ctx context.Context) cli
 	return handler.WithTags(getOptionalTags(ctx))
 }
 
+func (a *activityOutboundInterceptor) GetLogger(ctx context.Context) log.Logger {
+	return newLogger(ctx, a.Next.GetLogger(ctx))
+}
+
 type workflowInboundInterceptor struct {
 	interceptor.WorkflowInboundInterceptorBase
 }
@@ -145,4 +150,8 @@ func (w *workflowOutboundInterceptor) GetMetricsHandler(ctx workflow.Context) cl
 		"workflow", strings.ToLower(info.WorkflowType.Name),
 	)
 	return handler.WithTags(getOptionalTags(ctx))
+}
+
+func (w *workflowOutboundInterceptor) GetLogger(ctx workflow.Context) log.Logger {
+	return newLogger(ctx, w.Next.GetLogger(ctx))
 }

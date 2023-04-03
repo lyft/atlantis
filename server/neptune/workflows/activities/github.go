@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
+	"go.temporal.io/sdk/activity"
 
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/logger"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
@@ -257,7 +257,7 @@ func (a *githubActivities) GithubFetchRoot(ctx context.Context, request FetchRoo
 	rootSymlink := filepath.Join(deployBasePath, "root")
 	err = os.Symlink(rootPath, rootSymlink)
 	if err != nil {
-		logger.Warn(ctx, "unable to symlink to terraform root", key.ErrKey, err)
+		activity.GetLogger(ctx).Warn("unable to symlink to terraform root", key.ErrKey, err)
 	}
 
 	localRoot := terraform.BuildLocalRoot(request.Root, request.Repo, rootPath)

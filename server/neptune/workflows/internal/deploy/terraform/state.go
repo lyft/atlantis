@@ -12,7 +12,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
@@ -44,19 +43,19 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 
 	// TODO: if we never created a check run, there was likely some issue, we should attempt to create it again.
 	if deploymentInfo.CheckRunID == 0 {
-		logger.Error(ctx, "check run id is 0, skipping update of check run")
+		workflow.GetLogger(ctx).Error("check run id is 0, skipping update of check run")
 		return
 	}
 
 	// emit audit events when Apply operation is run
 	if workflowState.Apply != nil {
 		if err := n.emitApplyEvents(ctx, workflowState.Apply, deploymentInfo); err != nil {
-			logger.Error(ctx, errors.Wrap(err, "auditing apply job event").Error())
+			workflow.GetLogger(ctx).Error(errors.Wrap(err, "auditing apply job event").Error())
 		}
 	}
 
 	if err := n.updateCheckRun(ctx, workflowState, deploymentInfo); err != nil {
-		logger.Error(ctx, "updating check run", key.ErrKey, err)
+		workflow.GetLogger(ctx).Error("updating check run", key.ErrKey, err)
 	}
 }
 
