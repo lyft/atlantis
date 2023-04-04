@@ -13,3 +13,11 @@ type PullRequest struct {
 type PullRequestState string
 
 const OpenPullRequest PullRequestState = "open"
+
+type SortKey string
+
+const Updated SortKey = "updated"
+
+type Direction string
+
+const Descending Direction = "desc"

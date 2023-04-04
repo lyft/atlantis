@@ -2,6 +2,7 @@ package prrevision
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/docker/docker/pkg/fileutils"
@@ -10,17 +11,14 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	githubInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision/version"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
 const (
-	// PRs updated before n days will be processed in the LowThroughPutTaskQueue
-	ThroughputCutOffDays = 30
-
 	// preserving the original tq name to account for existing workflow executions
 	TaskQueue     = "pr_revision"
 	SlowTaskQueue = "pr_revision_slow"
@@ -30,18 +28,19 @@ const (
 )
 
 type Request struct {
-	Repo     github.Repo
-	Root     terraform.Root
-	Revision string
+	Repo                     github.Repo
+	Root                     terraform.Root
+	Revision                 string
+	SlowProcessingCutOffDays int
 }
 
 type setterActivities interface {
 	SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) error
 }
 
-type githubActivities interface {
-	GithubListPRs(ctx context.Context, request activities.ListPRsRequest) (activities.ListPRsResponse, error)
-	GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error)
+type activityExecutor interface {
+	GithubListModifiedFiles(ctx workflow.Context, taskqueue string, request activities.ListModifiedFilesRequest) workflow.Future
+	GithubListPRs(ctx workflow.Context, request activities.ListPRsRequest) workflow.Future
 }
 
 func Workflow(ctx workflow.Context, request Request) error {
@@ -57,30 +56,36 @@ func Workflow(ctx workflow.Context, request Request) error {
 	var ga *activities.Github
 	var ra *activities.RevsionSetter
 	runner := &Runner{
-		GithubActivities:         ga,
+		GithubActivityExecutor: &githubInternal.ActivityExecutor{
+			GithubActivities: ga,
+		},
 		RevisionSetterActivities: ra,
 		Scope:                    metrics.NewScope(ctx),
+		SlowProcessingCutOffDays: request.SlowProcessingCutOffDays,
 	}
 
 	return runner.Run(ctx, request)
 }
 
 type Runner struct {
-	GithubActivities         githubActivities
+	GithubActivityExecutor   activityExecutor
 	RevisionSetterActivities setterActivities
 	Scope                    metrics.Scope
+	SlowProcessingCutOffDays int
 }
 
 func (r *Runner) Run(ctx workflow.Context, request Request) error {
+	// sorted in descending order by date modified
 	prs, err := r.listOpenPRs(ctx, request.Repo)
 	if err != nil {
 		return err
 	}
 
-	version := workflow.GetVersion(ctx, version.MultiQueue, workflow.DefaultVersion, 1)
-	if version == workflow.DefaultVersion {
-		return r.setRevisionV1(ctx, request, prs)
+	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
+	if err := r.setRevision(ctx, request, prs); err != nil {
+		return errors.Wrap(err, "setting minimum revision for pr modifiying root")
 	}
+<<<<<<< HEAD
 
 	oldPRs, newPRs := r.partitionPRsByDateModified(workflow.Now(ctx), prs)
 
@@ -96,14 +101,18 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 		return errors.Wrap(err, "setting minimum revision for old prs modifiying root")
 	}
 
+=======
+>>>>>>> 39087e82 (address comments)
 	return nil
 }
 
 func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.PullRequest, error) {
 	var resp activities.ListPRsResponse
-	err := workflow.ExecuteActivity(ctx, r.GithubActivities.GithubListPRs, activities.ListPRsRequest{
-		Repo:  repo,
-		State: github.OpenPullRequest,
+	err := r.GithubActivityExecutor.GithubListPRs(ctx, activities.ListPRsRequest{
+		Repo:      repo,
+		State:     github.OpenPullRequest,
+		SortKey:   github.Updated,
+		Direction: github.Descending,
 	}).Get(ctx, &resp)
 	if err != nil {
 		return []github.PullRequest{}, errors.Wrap(err, "listing open PRs")
@@ -112,27 +121,10 @@ func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.P
 	return resp.PullRequests, nil
 }
 
-func (r *Runner) setRevisionV1(ctx workflow.Context, request Request, prs []github.PullRequest) error {
-	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
+func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.PullRequest) error {
+	futuresByPullNum := r.listModifiedFilesAsync(ctx, req, prs)
 
-	// schedule all PRs in the High Throughput TQ
-	if err := r.setRevision(ctx, TaskQueue, request, prs); err != nil {
-		return errors.Wrap(err, "setting minimum revision for pr modifiying root")
-	}
-	return nil
-}
-
-func (r *Runner) setRevision(ctx workflow.Context, taskQueue string, req Request, prs []github.PullRequest) error {
-	// spawn activities to list modified files in each open PR async
-	futuresByPullNum := map[github.PullRequest]workflow.Future{}
-	for _, pr := range prs {
-		futuresByPullNum[pr] = r.listModifiedFilesFuture(ctx, taskQueue, activities.ListModifiedFilesRequest{
-			Repo:        req.Repo,
-			PullRequest: pr,
-		})
-	}
-
-	// resolve the listModifiedFiles fututes and spawn activities to set minimum revision for PR if needed
+	// sorted by date modified ensures we resolve the futures for activities in the default task queue before resolving activities in the slow task queue
 	setRevisionFutures := []workflow.Future{}
 	for _, pr := range prs {
 		if future := r.setRevisionForPR(ctx, req, pr, futuresByPullNum[pr]); future != nil {
@@ -150,19 +142,41 @@ func (r *Runner) setRevision(ctx workflow.Context, taskQueue string, req Request
 	return nil
 }
 
-func (r *Runner) listModifiedFilesFuture(ctx workflow.Context, taskQueue string, req activities.ListModifiedFilesRequest) workflow.Future {
-	opts := workflow.GetActivityOptions(ctx)
-	opts.TaskQueue = taskQueue
-	ctx = workflow.WithActivityOptions(ctx, opts)
+func (r *Runner) listModifiedFilesAsync(ctx workflow.Context, req Request, prs []github.PullRequest) map[github.PullRequest]workflow.Future {
+	now := workflow.Now(ctx)
+	taskQueue := TaskQueue
+	futuresByPullNum := map[github.PullRequest]workflow.Future{}
 
-	return workflow.ExecuteActivity(ctx, r.GithubActivities.GithubListModifiedFiles, req)
+	oldPrsCount := 0
+	for _, pr := range prs {
+		// if new version of workflow and pr is not updated within ThroughputCutOffDays, change the tq
+		version := workflow.GetVersion(ctx, version.MultiQueue, workflow.DefaultVersion, 1)
+		if version != workflow.DefaultVersion && !r.isPrUpdatedWithinDays(now, pr, r.SlowProcessingCutOffDays) {
+			taskQueue = SlowTaskQueue
+			oldPrsCount++
+		}
+
+		futuresByPullNum[pr] = r.GithubActivityExecutor.GithubListModifiedFiles(ctx, taskQueue, activities.ListModifiedFilesRequest{
+			Repo:        req.Repo,
+			PullRequest: pr,
+		})
+	}
+
+	newPrsCount := len(prs) - oldPrsCount
+	r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", r.SlowProcessingCutOffDays)).Inc(int64(newPrsCount))
+	return futuresByPullNum
+}
+
+func (r *Runner) isPrUpdatedWithinDays(now time.Time, pr github.PullRequest, days int) bool {
+	nDaysAgo := now.AddDate(0, 0, -days)
+	return pr.UpdatedAt.After(nDaysAgo)
 }
 
 func (r *Runner) setRevisionForPR(ctx workflow.Context, req Request, pull github.PullRequest, future workflow.Future) workflow.Future {
 	// let's be preventive and set minimum revision for this PR if this listModifiedFiles fails after 3 attempts
 	var result activities.ListModifiedFilesResponse
 	if err := future.Get(ctx, &result); err != nil {
-		logger.Error(ctx, "error listing modified files in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
+		workflow.GetLogger(ctx).Error("error listing modified files in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
 		return r.setMinRevision(ctx, req, pull)
 	}
 
@@ -170,7 +184,7 @@ func (r *Runner) setRevisionForPR(ctx workflow.Context, req Request, pull github
 	// let's be preventive and set minimum revision for this PR if file path match errors out
 	rootModified, err := isRootModified(req.Root, result.FilePaths)
 	if err != nil {
-		logger.Error(ctx, "error matching file paths in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
+		workflow.GetLogger(ctx).Error("error matching file paths in PR", key.ErrKey, err, key.PullNumKey, pull.Number)
 		return r.setMinRevision(ctx, req, pull)
 	}
 
@@ -211,18 +225,4 @@ func isRootModified(root terraform.Root, modifiedFiles []string) (bool, error) {
 	}
 
 	return false, nil
-}
-
-func (r *Runner) partitionPRsByDateModified(now time.Time, prs []github.PullRequest) ([]github.PullRequest, []github.PullRequest) {
-	nDaysAgo := now.AddDate(0, 0, -ThroughputCutOffDays)
-	oldPRs, newPRs := []github.PullRequest{}, []github.PullRequest{}
-	for _, pr := range prs {
-		if pr.UpdatedAt.Before(nDaysAgo) {
-			oldPRs = append(oldPRs, pr)
-		} else {
-			newPRs = append(newPRs, pr)
-		}
-	}
-
-	return oldPRs, newPRs
 }

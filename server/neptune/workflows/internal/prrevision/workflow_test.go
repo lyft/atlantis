@@ -11,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
@@ -96,6 +97,21 @@ func Test_ShouldSetMinimumRevisionForPR(t *testing.T) {
 	}
 }
 
+type testGithubActivityExecutor struct {
+	t           *testing.T
+	exepctedTQs map[int]string
+	ga          *testGithubActivities
+}
+
+func (t *testGithubActivityExecutor) GithubListModifiedFiles(ctx workflow.Context, taskqueue string, request activities.ListModifiedFilesRequest) workflow.Future {
+	assert.Equal(t.t, t.exepctedTQs[request.PullRequest.Number], taskqueue)
+	return workflow.ExecuteActivity(ctx, t.ga.GithubListModifiedFiles, request)
+}
+
+func (t *testGithubActivityExecutor) GithubListPRs(ctx workflow.Context, request activities.ListPRsRequest) workflow.Future {
+	return workflow.ExecuteActivity(ctx, t.ga.GithubListPRs, request)
+}
+
 type testRevisionSetterActivities struct{}
 
 func (t *testRevisionSetterActivities) SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) error {
@@ -112,18 +128,30 @@ func (t *testGithubActivities) GithubListModifiedFiles(ctx context.Context, requ
 	return activities.ListModifiedFilesResponse{}, nil
 }
 
-func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request) error {
+type testRequest struct {
+	UnderlyingReq            Request
+	T                        *testing.T
+	ExpectedTQs              map[int]string
+	SlowProcessingCutOffDays int
+}
+
+func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r testRequest) error {
 	options := workflow.ActivityOptions{
 		ScheduleToCloseTimeout: 5 * time.Second,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
 	runner := Runner{
-		GithubActivities:         &testGithubActivities{},
+		GithubActivityExecutor: &testGithubActivityExecutor{
+			t:           r.T,
+			ga:          &testGithubActivities{},
+			exepctedTQs: r.ExpectedTQs,
+		},
 		RevisionSetterActivities: &testRevisionSetterActivities{},
 		Scope:                    metrics.NewNullableScope(),
+		SlowProcessingCutOffDays: r.SlowProcessingCutOffDays,
 	}
-	return runner.Run(ctx, r)
+	return runner.Run(ctx, r.UnderlyingReq)
 }
 
 func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
@@ -133,19 +161,25 @@ func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 	ga := &testGithubActivities{}
 	env.RegisterActivity(ga)
 
-	req := Request{
-		Repo: github.Repo{
-			Owner: "owner",
-			Name:  "test",
+	req := testRequest{
+		T: t,
+		UnderlyingReq: Request{
+			Repo: github.Repo{
+				Owner: "owner",
+				Name:  "test",
+			},
+			Root: terraform.Root{
+				Name: "test",
+			},
 		},
-		Root: terraform.Root{
-			Name: "test",
-		},
+		ExpectedTQs: map[int]string{},
 	}
 
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:      req.UnderlyingReq.Repo,
+		State:     github.OpenPullRequest,
+		SortKey:   github.Updated,
+		Direction: github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: []github.PullRequest{},
 	}, nil)
@@ -157,7 +191,7 @@ func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
+func TestMinRevisionSetter_OpenPR_SetMinRevision_Old(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
@@ -166,23 +200,34 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
 	env.RegisterActivity(ra)
 	env.RegisterActivity(ga)
 
-	req := Request{
-		Repo: github.Repo{
-			Owner: "owner",
-			Name:  "test",
-		},
-		Root: terraform.Root{
-			Path:         "test/dir2",
-			TrackedFiles: raw.DefaultAutoPlanWhenModified,
-		},
-	}
+	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	pullRequests := []github.PullRequest{
 		{
-			Number: 1,
+			Number:    1,
+			UpdatedAt: time.Now().AddDate(0, 0, -15),
 		},
 		{
-			Number: 2,
+			Number:    2,
+			UpdatedAt: time.Now().AddDate(0, 0, -5),
+		},
+	}
+
+	req := testRequest{
+		T: t,
+		UnderlyingReq: Request{
+			Repo: github.Repo{
+				Owner: "owner",
+				Name:  "test",
+			},
+			Root: terraform.Root{
+				Path:         "test/dir2",
+				TrackedFiles: raw.DefaultAutoPlanWhenModified,
+			},
+		},
+		ExpectedTQs: map[int]string{
+			pullRequests[0].Number: TaskQueue,
+			pullRequests[1].Number: TaskQueue,
 		},
 	}
 
@@ -190,28 +235,109 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
 	filesModifiedPr2 := []string{"test/dir1/no-rebase.tf"}
 
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:      req.UnderlyingReq.Repo,
+		State:     github.OpenPullRequest,
+		SortKey:   github.Updated,
+		Direction: github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)
 
 	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        req.Repo,
+		Repo:        req.UnderlyingReq.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(activities.ListModifiedFilesResponse{
 		FilePaths: filesModifiedPr1,
 	}, nil)
 
 	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        req.Repo,
+		Repo:        req.UnderlyingReq.Repo,
 		PullRequest: pullRequests[1],
 	}).Return(activities.ListModifiedFilesResponse{
 		FilePaths: filesModifiedPr2,
 	}, nil)
 
 	env.OnActivity(ra.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
-		Repository:  req.Repo,
+		Repository:  req.UnderlyingReq.Repo,
+		PullRequest: pullRequests[0],
+	}).Return(nil)
+
+	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req)
+	env.AssertExpectations(t)
+
+	err := env.GetWorkflowResult(nil)
+	assert.Nil(t, err)
+}
+
+func TestMinRevisionSetter_OpenPR_SetMinRevision_MultiTQ(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	ga := &testGithubActivities{}
+	ra := &testRevisionSetterActivities{}
+	env.RegisterActivity(ra)
+	env.RegisterActivity(ga)
+
+	pullRequests := []github.PullRequest{
+		{
+			Number:    1,
+			UpdatedAt: time.Now().AddDate(0, 0, -5),
+		},
+		{
+			Number:    2,
+			UpdatedAt: time.Now().AddDate(0, 0, -15),
+		},
+	}
+
+	req := testRequest{
+		T: t,
+		UnderlyingReq: Request{
+			Repo: github.Repo{
+				Owner: "owner",
+				Name:  "test",
+			},
+			Root: terraform.Root{
+				Path:         "test/dir2",
+				TrackedFiles: raw.DefaultAutoPlanWhenModified,
+			},
+		},
+		SlowProcessingCutOffDays: 10,
+		ExpectedTQs: map[int]string{
+			pullRequests[0].Number: TaskQueue,
+
+			// switch to slow task queue when older than cut off days
+			pullRequests[1].Number: SlowTaskQueue,
+		},
+	}
+
+	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
+	filesModifiedPr2 := []string{"test/dir1/no-rebase.tf"}
+
+	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
+		Repo:      req.UnderlyingReq.Repo,
+		State:     github.OpenPullRequest,
+		SortKey:   github.Updated,
+		Direction: github.Descending,
+	}).Return(activities.ListPRsResponse{
+		PullRequests: pullRequests,
+	}, nil)
+
+	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+		Repo:        req.UnderlyingReq.Repo,
+		PullRequest: pullRequests[0],
+	}).Return(activities.ListModifiedFilesResponse{
+		FilePaths: filesModifiedPr1,
+	}, nil)
+
+	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+		Repo:        req.UnderlyingReq.Repo,
+		PullRequest: pullRequests[1],
+	}).Return(activities.ListModifiedFilesResponse{
+		FilePaths: filesModifiedPr2,
+	}, nil)
+
+	env.OnActivity(ra.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
+		Repository:  req.UnderlyingReq.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(nil)
 
@@ -225,22 +351,12 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
 func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	ga := &testGithubActivities{}
 	ra := &testRevisionSetterActivities{}
 	env.RegisterActivity(ra)
 	env.RegisterActivity(ga)
-
-	req := Request{
-		Repo: github.Repo{
-			Owner: "owner",
-			Name:  "test",
-		},
-		Root: terraform.Root{
-			Path:         "test/dir2",
-			TrackedFiles: raw.DefaultAutoPlanWhenModified,
-		},
-	}
 
 	pullRequests := []github.PullRequest{
 		{
@@ -248,20 +364,39 @@ func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 		},
 	}
 
+	req := testRequest{
+		T: t,
+		UnderlyingReq: Request{
+			Repo: github.Repo{
+				Owner: "owner",
+				Name:  "test",
+			},
+			Root: terraform.Root{
+				Path:         "test/dir2",
+				TrackedFiles: raw.DefaultAutoPlanWhenModified,
+			},
+		},
+		ExpectedTQs: map[int]string{
+			pullRequests[0].Number: TaskQueue,
+		},
+	}
+
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:      req.UnderlyingReq.Repo,
+		State:     github.OpenPullRequest,
+		SortKey:   github.Updated,
+		Direction: github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)
 
 	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        req.Repo,
+		Repo:        req.UnderlyingReq.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(activities.ListModifiedFilesResponse{}, errors.New("error"))
 
 	env.OnActivity(ra.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
-		Repository:  req.Repo,
+		Repository:  req.UnderlyingReq.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(nil)
 
@@ -281,32 +416,40 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	env.RegisterActivity(ra)
 	env.RegisterActivity(ga)
 
-	req := Request{
-		Repo: github.Repo{
-			Owner: "owner",
-			Name:  "test",
-		},
-		Root: terraform.Root{
-			TrackedFiles: []string{"!"},
-		},
-	}
-
 	pullRequests := []github.PullRequest{
 		{
 			Number: 1,
 		},
 	}
 
+	req := testRequest{
+		T: t,
+		UnderlyingReq: Request{
+			Repo: github.Repo{
+				Owner: "owner",
+				Name:  "test",
+			},
+			Root: terraform.Root{
+				TrackedFiles: []string{"!"},
+			},
+		},
+		ExpectedTQs: map[int]string{
+			pullRequests[0].Number: TaskQueue,
+		},
+	}
+
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:      req.UnderlyingReq.Repo,
+		State:     github.OpenPullRequest,
+		SortKey:   github.Updated,
+		Direction: github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)
 
 	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
 	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        req.Repo,
+		Repo:        req.UnderlyingReq.Repo,
 		PullRequest: pullRequests[0],
 	}).Return(activities.ListModifiedFilesResponse{
 		FilePaths: filesModifiedPr1,
@@ -319,23 +462,31 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestPartitionByDateModified(t *testing.T) {
+func TestIsPrUpdatedWithinDays(t *testing.T) {
 	now := time.Now()
 	runner := Runner{}
 
-	// sample PRs
-	prUpdatedRecently := github.PullRequest{
-		UpdatedAt: now.AddDate(0, 0, -10),
-	}
-	prUpdatedLongAgo := github.PullRequest{
-		UpdatedAt: now.AddDate(0, 0, -40),
-	}
+	t.Run("updated before", func(t *testing.T) {
+		prUpdatedLongAgo := github.PullRequest{
+			UpdatedAt: now.AddDate(0, 0, -40),
+		}
 
-	prs := []github.PullRequest{prUpdatedRecently, prUpdatedLongAgo}
+		assert.False(t, runner.isPrUpdatedWithinDays(now, prUpdatedLongAgo, 10))
+	})
 
-	oldPRs, newPRs := runner.partitionPRsByDateModified(now, prs)
-	assert.Equal(t, 1, len(oldPRs))
-	assert.Equal(t, 1, len(newPRs))
-	assert.Equal(t, prUpdatedLongAgo, oldPRs[0])
-	assert.Equal(t, prUpdatedRecently, newPRs[0])
+	t.Run("updated at", func(t *testing.T) {
+		prUpdatedLongAgo := github.PullRequest{
+			UpdatedAt: now.AddDate(0, 0, -10),
+		}
+
+		assert.False(t, runner.isPrUpdatedWithinDays(now, prUpdatedLongAgo, 10))
+	})
+
+	t.Run("updated after", func(t *testing.T) {
+		prUpdatedLongAgo := github.PullRequest{
+			UpdatedAt: now.AddDate(0, 0, -10),
+		}
+
+		assert.True(t, runner.isPrUpdatedWithinDays(now, prUpdatedLongAgo, 20))
+	})
 }
