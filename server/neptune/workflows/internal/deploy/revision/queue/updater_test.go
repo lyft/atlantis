@@ -105,7 +105,7 @@ func TestLockStateUpdater_locked_old_version(t *testing.T) {
 		State:   github.CheckRunActionRequired,
 		Repo:    info.Repo,
 		ID:      info.CheckRunID,
-		Summary: "This deploy is locked from a manual deployment for revision https://github.com/some-org/some-repo/commit/1234.  Unlock to proceed.",
+		Summary: "This deploy is locked from a manual deployment for revision [1234](https://github.com/some-org/some-repo/commit/1234).  Unlock to proceed.",
 		Actions: []github.CheckRunAction{
 			github.CreateUnlockAction(),
 		},
@@ -209,7 +209,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 		State:   github.CheckRunActionRequired,
 		Repo:    info.Repo,
 		ID:      info.CheckRunID,
-		Summary: "This deploy is locked from a manual deployment for revision https://github.com/some-org/some-repo/commit/1234.  Unlock to proceed.",
+		Summary: "This deploy is locked from a manual deployment for revision [1234](https://github.com/some-org/some-repo/commit/1234).  Unlock to proceed.",
 		Actions: []github.CheckRunAction{
 			github.CreateUnlockAction(),
 		},
@@ -228,7 +228,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 			Title:   terraform.BuildCheckRunTitle(info.Root.Name),
 			State:   github.CheckRunActionRequired,
 			Repo:    info.Repo,
-			Summary: "This deploy is locked from a manual deployment for revision https://github.com/some-org/some-repo/commit/1234.  Unlock to proceed.",
+			Summary: "This deploy is locked from a manual deployment for revision [1234](https://github.com/some-org/some-repo/commit/1234).  Unlock to proceed.",
 			Actions: []github.CheckRunAction{
 				github.CreateUnlockAction(),
 			},
