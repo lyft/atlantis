@@ -202,14 +202,15 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision_Old(t *testing.T) {
 
 	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
+	now := time.Now()
 	pullRequests := []github.PullRequest{
 		{
 			Number:    1,
-			UpdatedAt: time.Now().AddDate(0, 0, -15),
+			UpdatedAt: now.AddDate(0, 0, -15),
 		},
 		{
 			Number:    2,
-			UpdatedAt: time.Now().AddDate(0, 0, -5),
+			UpdatedAt: now.AddDate(0, 0, -5),
 		},
 	}
 
@@ -278,14 +279,15 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision_MultiTQ(t *testing.T) {
 	env.RegisterActivity(ra)
 	env.RegisterActivity(ga)
 
+	now := time.Now()
 	pullRequests := []github.PullRequest{
 		{
 			Number:    1,
-			UpdatedAt: time.Now().AddDate(0, 0, -5),
+			UpdatedAt: now.AddDate(0, 0, -5),
 		},
 		{
 			Number:    2,
-			UpdatedAt: time.Now().AddDate(0, 0, -15),
+			UpdatedAt: now.AddDate(0, 0, -15),
 		},
 	}
 
