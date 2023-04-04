@@ -14,7 +14,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -313,41 +312,6 @@ func TestStateReceive(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run("old version", func(t *testing.T) {
-			ts := testsuite.WorkflowTestSuite{}
-			env := ts.NewTestWorkflowEnvironment()
-
-			var a = &testActivities{}
-			env.RegisterActivity(a)
-
-			env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
-
-			env.OnActivity(a.GithubUpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
-				Title: "atlantis/deploy: root",
-				State: c.ExpectedCheckRunState,
-				Repo: github.Repo{
-					Name: "hello",
-				},
-				Summary: markdown.RenderWorkflowStateTmpl(c.State),
-				ID:      1,
-				Actions: c.ExpectedActions,
-			}).Return(activities.UpdateCheckRunResponse{}, nil)
-
-			if c.ExpectedAuditJobRequest != nil {
-				env.OnActivity(a.AuditJob, mock.Anything, *c.ExpectedAuditJobRequest).Return(nil)
-			}
-
-			env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{
-				StatesToSend:   []*state.Workflow{c.State},
-				DeploymentInfo: internalDeploymentInfo,
-			})
-
-			env.AssertExpectations(t)
-
-			err = env.GetWorkflowResult(nil)
-			assert.NoError(t, err)
-		})
-
 		t.Run("new version", func(t *testing.T) {
 			ts := testsuite.WorkflowTestSuite{}
 			env := ts.NewTestWorkflowEnvironment()
@@ -365,8 +329,6 @@ func TestStateReceive(t *testing.T) {
 				ID:      1,
 				Actions: c.ExpectedActions,
 			})
-
-			env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.Version(1))
 
 			if c.ExpectedAuditJobRequest != nil {
 				env.OnActivity(a.AuditJob, mock.Anything, *c.ExpectedAuditJobRequest).Return(nil)

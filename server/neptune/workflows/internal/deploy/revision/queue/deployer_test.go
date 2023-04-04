@@ -348,131 +348,6 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 	}, resp)
 }
 
-func TestDeployer_CompareCommit_SkipDeploy_oldversion(t *testing.T) {
-	repo := github.Repo{
-		Owner: "owner",
-		Name:  "test",
-	}
-	root := model.Root{
-		Name:  "root_1",
-		Rerun: true,
-	}
-	deploymentInfo := terraform.DeploymentInfo{
-		ID: uuid.UUID{},
-		Commit: github.Commit{
-			Revision: "3455",
-			Branch:   "default-branch",
-		},
-		CheckRunID: 1234,
-		Root:       root,
-		Repo:       repo,
-	}
-
-	latestDeployedRevision := &deployment.Info{
-		ID:       deploymentInfo.ID.String(),
-		Version:  1.0,
-		Revision: "3255",
-		Branch:   "default-branch",
-		Root: deployment.Root{
-			Name: deploymentInfo.Root.Name,
-		},
-		Repo: deployment.Repo{
-			Owner: deploymentInfo.Repo.Owner,
-			Name:  deploymentInfo.Repo.Name,
-		},
-	}
-
-	t.Run("behind deploy", func(t *testing.T) {
-		ts := testsuite.WorkflowTestSuite{}
-		env := ts.NewTestWorkflowEnvironment()
-
-		da := &testDeployActivity{}
-		env.RegisterActivity(da)
-		compareCommitRequest := activities.CompareCommitRequest{
-			Repo:                   repo,
-			DeployRequestRevision:  deploymentInfo.Commit.Revision,
-			LatestDeployedRevision: latestDeployedRevision.Revision,
-		}
-
-		compareCommitResponse := activities.CompareCommitResponse{
-			CommitComparison: activities.DirectionBehind,
-		}
-
-		updateCheckRunRequest := activities.UpdateCheckRunRequest{
-			Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
-			State:   github.CheckRunFailure,
-			Repo:    repo,
-			ID:      deploymentInfo.CheckRunID,
-			Summary: queue.DirectionBehindSummary,
-		}
-
-		updateCheckRunResponse := activities.UpdateCheckRunResponse{
-			ID: updateCheckRunRequest.ID,
-		}
-
-		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
-
-		env.OnActivity(da.GithubUpdateCheckRun, mock.Anything, updateCheckRunRequest).Return(updateCheckRunResponse, nil)
-		env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
-
-		env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
-			Info:         deploymentInfo,
-			LatestDeploy: latestDeployedRevision,
-		})
-		env.AssertExpectations(t)
-		var resp *deployment.Info
-		err := env.GetWorkflowResult(&resp)
-		assert.Error(t, err)
-		assert.Nil(t, resp)
-	})
-
-	cases := []activities.DiffDirection{activities.DirectionAhead, activities.DirectionDiverged}
-	for _, diffDirection := range cases {
-		t.Run(fmt.Sprintf("rerun deploy %s", diffDirection), func(t *testing.T) {
-			ts := testsuite.WorkflowTestSuite{}
-			env := ts.NewTestWorkflowEnvironment()
-
-			da := &testDeployActivity{}
-			env.RegisterActivity(da)
-			compareCommitRequest := activities.CompareCommitRequest{
-				Repo:                   repo,
-				DeployRequestRevision:  deploymentInfo.Commit.Revision,
-				LatestDeployedRevision: latestDeployedRevision.Revision,
-			}
-
-			compareCommitResponse := activities.CompareCommitResponse{
-				CommitComparison: diffDirection,
-			}
-
-			updateCheckRunRequest := activities.UpdateCheckRunRequest{
-				Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
-				State:   github.CheckRunFailure,
-				Repo:    repo,
-				ID:      deploymentInfo.CheckRunID,
-				Summary: queue.RerunNotIdenticalSummary,
-			}
-
-			updateCheckRunResponse := activities.UpdateCheckRunResponse{
-				ID: updateCheckRunRequest.ID,
-			}
-			env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
-
-			env.OnActivity(da.GithubUpdateCheckRun, mock.Anything, updateCheckRunRequest).Return(updateCheckRunResponse, nil)
-			env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
-
-			env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
-				Info:         deploymentInfo,
-				LatestDeploy: latestDeployedRevision,
-			})
-			env.AssertExpectations(t)
-			var resp *deployment.Info
-			err := env.GetWorkflowResult(&resp)
-			assert.Error(t, err)
-			assert.Nil(t, resp)
-		})
-	}
-}
-
 func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 	repo := github.Repo{
 		Owner: "owner",
@@ -523,7 +398,6 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 			CommitComparison: activities.DirectionBehind,
 		}
 
-		env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 		env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
 
 		env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
@@ -563,7 +437,6 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 				CommitComparison: diffDirection,
 			}
 
-			env.OnGetVersion(version.CacheCheckRunSessions, workflow.DefaultVersion, 1).Return(workflow.Version(1))
 			env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
 
 			env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
