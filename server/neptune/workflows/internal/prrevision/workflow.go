@@ -85,27 +85,7 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 	if err := r.setRevision(ctx, request, prs); err != nil {
 		return errors.Wrap(err, "setting minimum revision for pr modifiying root")
 	}
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-	oldPRs, newPRs := r.partitionPRsByDateModified(workflow.Now(ctx), prs)
-
-	// handle new PRs in the high throughput task queue
-	r.Scope.SubScope("open_prs").Counter("new").Inc(int64(len(prs)))
-	if err := r.setRevision(ctx, TaskQueue, request, newPRs); err != nil {
-		return errors.Wrap(err, "setting minimum revision for new prs modifiying root")
-	}
-
-	// handle old PRs in the low throughput task queue
-	r.Scope.SubScope("open_prs").Counter("old").Inc(int64(len(prs)))
-	if err := r.setRevision(ctx, SlowTaskQueue, request, oldPRs); err != nil {
-		return errors.Wrap(err, "setting minimum revision for old prs modifiying root")
-	}
-
-=======
->>>>>>> 39087e82 (address comments)
-=======
->>>>>>> 39087e82 (address comments)
 	return nil
 }
 
