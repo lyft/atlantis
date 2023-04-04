@@ -141,7 +141,7 @@ func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, roo
 	if lock.Status == queue.LockedStatus && (root.Trigger == activity.MergeTrigger) {
 		actions = append(actions, github.CreateUnlockAction())
 		state = github.CheckRunActionRequired
-		revisionLink := github.BuildRevisionLink(repo.GetFullName(), lock.Revision)
+		revisionLink := github.BuildRevisionURLMarkdown(repo.GetFullName(), lock.Revision)
 		summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.", revisionLink)
 	}
 

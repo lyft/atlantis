@@ -31,7 +31,7 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 	if lock.Status == LockedStatus {
 		actions = append(actions, github.CreateUnlockAction())
 		state = github.CheckRunActionRequired
-		revisionLink := github.BuildRevisionLink(repoFullName, lock.Revision)
+		revisionLink := github.BuildRevisionURLMarkdown(repoFullName, lock.Revision)
 		summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.", revisionLink)
 	}
 
