@@ -44,7 +44,7 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 		}
 
 		workflow.GetLogger(ctx).Debug(fmt.Sprintf("Updating lock status for deployment id: %s", i.ID.String()))
-    _, err := u.GithubCheckRunCache.CreateOrUpdate(ctx, i.ID.String(), request)
+		_, err := u.GithubCheckRunCache.CreateOrUpdate(ctx, i.ID.String(), request)
 
 		if err != nil {
 			workflow.GetLogger(ctx).Debug(fmt.Sprintf("updating check run for revision %s", i.Commit.Revision), key.ErrKey, err)
