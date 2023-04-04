@@ -11,7 +11,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	activity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request/converter"
@@ -99,13 +98,13 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	id, err := n.idGenerator(ctx)
 
 	if err != nil {
-		logger.Error(ctx, "generating deployment id", key.ErrKey, err)
+		workflow.GetLogger(ctx).Error("generating deployment id", key.ErrKey, err)
 	}
 
 	// Do not push a duplicate/in-progress manual deployment to the queue
 	if root.Trigger == activity.ManualTrigger && (n.queueContainsRevision(request.Revision) || n.isInProgress(request.Revision)) {
 		//TODO: consider executing a comment activity to notify user
-		logger.Warn(ctx, "attempted to perform duplicate manual deploy", "revision", request.Revision)
+		workflow.GetLogger(ctx).Warn("attempted to perform duplicate manual deploy", "revision", request.Revision)
 		return
 	}
 
@@ -156,7 +155,7 @@ func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, roo
 
 	// don't block on error here, we'll just try again later when we have our result.
 	if err != nil {
-		logger.Error(ctx, err.Error())
+		workflow.GetLogger(ctx).Error(err.Error())
 	}
 
 	return cid

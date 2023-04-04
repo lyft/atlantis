@@ -6,7 +6,6 @@ import (
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"go.temporal.io/sdk/workflow"
@@ -43,12 +42,12 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 			Summary: summary,
 			Actions: actions,
 		}
-		logger.Debug(ctx, fmt.Sprintf("Updating lock status for deployment id: %s", i.ID.String()))
 
-		_, err := u.GithubCheckRunCache.CreateOrUpdate(ctx, i.ID.String(), request)
+		workflow.GetLogger(ctx).Debug(fmt.Sprintf("Updating lock status for deployment id: %s", i.ID.String()))
+    _, err := u.GithubCheckRunCache.CreateOrUpdate(ctx, i.ID.String(), request)
 
 		if err != nil {
-			logger.Error(ctx, fmt.Sprintf("updating check run for revision %s", i.Commit.Revision), key.ErrKey, err)
+			workflow.GetLogger(ctx).Debug(fmt.Sprintf("updating check run for revision %s", i.Commit.Revision), key.ErrKey, err)
 		}
 	}
 }

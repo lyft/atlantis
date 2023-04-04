@@ -10,7 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/config/logger"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
@@ -92,7 +91,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 
 	// log error and continue deploys if any of the post deploy task fails
 	if err := p.runPostDeployTasks(ctx, requestedDeployment, scope); err != nil {
-		logger.Error(ctx, "error running post deploy tasks", key.ErrKey, err)
+		workflow.GetLogger(ctx).Error("error running post deploy tasks", key.ErrKey, err)
 	}
 
 	// Count this as deployment as latest if it's not a PlanRejectionError which means it is a TerraformClientError
@@ -190,7 +189,7 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 	_, err := p.GithubCheckRunCache.CreateOrUpdate(ctx, deployRequest.ID.String(), request)
 
 	if err != nil {
-		logger.Error(ctx, "unable to update check run with validation error", key.ErrKey, err)
+		workflow.GetLogger(ctx).Error("unable to update check run with validation error", key.ErrKey, err)
 	}
 }
 
