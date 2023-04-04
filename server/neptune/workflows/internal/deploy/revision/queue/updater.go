@@ -66,7 +66,3 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 		}
 	}
 }
-
-func CreateRevisionLink(repoName string, revision string) string {
-	return fmt.Sprintf("https://github.com/%s/commit/%s", repoName, revision)
-}
