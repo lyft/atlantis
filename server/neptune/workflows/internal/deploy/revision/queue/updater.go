@@ -2,7 +2,6 @@ package queue
 
 import (
 	"fmt"
-
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -22,7 +21,7 @@ type LockStateUpdater struct {
 	GithubCheckRunCache CheckRunClient
 }
 
-func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *Deploy) {
+func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *Deploy, repoName string) {
 	lock := queue.GetLockState()
 	infos := queue.GetOrderedMergedItems()
 
@@ -32,7 +31,8 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 	if lock.Status == LockedStatus {
 		actions = append(actions, github.CreateUnlockAction())
 		state = github.CheckRunActionRequired
-		summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.", lock.Revision)
+		revisionLink := github.BuildRevisionLink(repoName, lock.Revision)
+		summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.", revisionLink)
 	}
 
 	for _, i := range infos {
@@ -65,4 +65,8 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 			workflow.GetLogger(ctx).Debug(fmt.Sprintf("updating check run for revision %s", i.Commit.Revision), key.ErrKey, err)
 		}
 	}
+}
+
+func CreateRevisionLink(repoName string, revision string) string {
+	return fmt.Sprintf("https://github.com/%s/commit/%s", repoName, revision)
 }

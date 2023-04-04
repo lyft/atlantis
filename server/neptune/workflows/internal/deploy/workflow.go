@@ -91,7 +91,7 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 		GithubCheckRunCache: checkRunCache,
 	}
 	revisionQueue := queue.NewQueue(func(ctx workflow.Context, d *queue.Deploy) {
-		lockStateUpdater.UpdateQueuedRevisions(ctx, d)
+		lockStateUpdater.UpdateQueuedRevisions(ctx, d, request.Repo.FullName)
 	}, scope)
 
 	worker, err := queue.NewWorker(ctx, revisionQueue, a, tfWorkflow, prRevWorkflow, request.Repo.FullName, request.Root.Name, checkRunCache)
