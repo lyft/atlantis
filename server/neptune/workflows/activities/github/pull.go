@@ -18,6 +18,6 @@ type SortKey string
 
 const Updated SortKey = "updated"
 
-type Direction string
+type Order string
 
-const Descending Direction = "desc"
+const Descending Order = "desc"

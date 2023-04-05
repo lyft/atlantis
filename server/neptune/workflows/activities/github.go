@@ -293,10 +293,10 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 }
 
 type ListPRsRequest struct {
-	Repo      internal.Repo
-	State     internal.PullRequestState
-	SortKey   internal.SortKey
-	Direction internal.Direction
+	Repo    internal.Repo
+	State   internal.PullRequestState
+	SortKey internal.SortKey
+	Order   internal.Order
 }
 
 type ListPRsResponse struct {
@@ -311,7 +311,7 @@ func (a *githubActivities) GithubListPRs(ctx context.Context, request ListPRsReq
 		request.Repo.DefaultBranch,
 		string(request.State),
 		string(request.SortKey),
-		string(request.Direction),
+		string(request.Order),
 	)
 	if err != nil {
 		return ListPRsResponse{}, errors.Wrap(err, "listing open pull requests")

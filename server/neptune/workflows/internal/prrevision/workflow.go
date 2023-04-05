@@ -12,7 +12,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
-	githubInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision/version"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -28,22 +27,21 @@ const (
 )
 
 type Request struct {
-	Repo                     github.Repo
-	Root                     terraform.Root
-	Revision                 string
-	SlowProcessingCutOffDays int
+	Repo     github.Repo
+	Root     terraform.Root
+	Revision string
 }
 
 type setterActivities interface {
 	SetPRRevision(ctx context.Context, request activities.SetPRRevisionRequest) error
 }
 
-type activityExecutor interface {
-	GithubListModifiedFiles(ctx workflow.Context, taskqueue string, request activities.ListModifiedFilesRequest) workflow.Future
-	GithubListPRs(ctx workflow.Context, request activities.ListPRsRequest) workflow.Future
+type githubActivities interface {
+	GithubListPRs(ctx context.Context, request activities.ListPRsRequest) (activities.ListPRsResponse, error)
+	GithubListModifiedFiles(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error)
 }
 
-func Workflow(ctx workflow.Context, request Request) error {
+func Workflow(ctx workflow.Context, request Request, slowProcessingCutOffDays int) error {
 	// GH API calls should not hit ratelimit issues since we cap the TaskQueueActivitiesPerSecond for the min revison setter TQ such that it's within our GH API budget
 	// Configuring both GH API calls and PRSetRevision calls to 3 retries before failing
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
@@ -56,19 +54,17 @@ func Workflow(ctx workflow.Context, request Request) error {
 	var ga *activities.Github
 	var ra *activities.RevsionSetter
 	runner := &Runner{
-		GithubActivityExecutor: &githubInternal.ActivityExecutor{
-			GithubActivities: ga,
-		},
+		GithubActivities:         ga,
 		RevisionSetterActivities: ra,
 		Scope:                    metrics.NewScope(ctx),
-		SlowProcessingCutOffDays: request.SlowProcessingCutOffDays,
+		SlowProcessingCutOffDays: slowProcessingCutOffDays,
 	}
 
 	return runner.Run(ctx, request)
 }
 
 type Runner struct {
-	GithubActivityExecutor   activityExecutor
+	GithubActivities         githubActivities
 	RevisionSetterActivities setterActivities
 	Scope                    metrics.Scope
 	SlowProcessingCutOffDays int
@@ -90,13 +86,18 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 }
 
 func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.PullRequest, error) {
+	req := activities.ListPRsRequest{
+		Repo:  repo,
+		State: github.OpenPullRequest,
+	}
+
+	if version := workflow.GetVersion(ctx, version.MultiQueue, workflow.DefaultVersion, 1); version != workflow.DefaultVersion {
+		req.SortKey = github.Updated
+		req.Order = github.Descending
+	}
+
 	var resp activities.ListPRsResponse
-	err := r.GithubActivityExecutor.GithubListPRs(ctx, activities.ListPRsRequest{
-		Repo:      repo,
-		State:     github.OpenPullRequest,
-		SortKey:   github.Updated,
-		Direction: github.Descending,
-	}).Get(ctx, &resp)
+	err := workflow.ExecuteActivity(ctx, r.GithubActivities.GithubListPRs, req).Get(ctx, &resp)
 	if err != nil {
 		return []github.PullRequest{}, errors.Wrap(err, "listing open PRs")
 	}
@@ -127,26 +128,25 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 
 func (r *Runner) listModifiedFilesAsync(ctx workflow.Context, req Request, prs []github.PullRequest) map[github.PullRequest]workflow.Future {
 	now := workflow.Now(ctx)
-	taskQueue := TaskQueue
 	futuresByPullNum := map[github.PullRequest]workflow.Future{}
+	oldPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_days", r.SlowProcessingCutOffDays))
+	newPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", r.SlowProcessingCutOffDays))
 
-	oldPrsCount := 0
 	for _, pr := range prs {
-		// if new version of workflow and pr is not updated within ThroughputCutOffDays, change the tq
-		version := workflow.GetVersion(ctx, version.MultiQueue, workflow.DefaultVersion, 1)
-		if version != workflow.DefaultVersion && !r.isPrUpdatedWithinDays(now, pr, r.SlowProcessingCutOffDays) {
-			taskQueue = SlowTaskQueue
-			oldPrsCount++
+		if !r.isPrUpdatedWithinDays(now, pr, r.SlowProcessingCutOffDays) {
+			options := workflow.GetActivityOptions(ctx)
+			options.TaskQueue = SlowTaskQueue
+			ctx = workflow.WithActivityOptions(ctx, options)
+			oldPRCounter.Inc(1)
+		} else {
+			newPRCounter.Inc(1)
 		}
 
-		futuresByPullNum[pr] = r.GithubActivityExecutor.GithubListModifiedFiles(ctx, taskQueue, activities.ListModifiedFilesRequest{
+		futuresByPullNum[pr] = workflow.ExecuteActivity(ctx, r.GithubActivities.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
 			Repo:        req.Repo,
 			PullRequest: pr,
 		})
 	}
-
-	newPrsCount := len(prs) - oldPrsCount
-	r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", r.SlowProcessingCutOffDays)).Inc(int64(newPrsCount))
 	return futuresByPullNum
 }
 
