@@ -156,7 +156,7 @@ type BasicAuth struct {
 }
 
 type TaskQueue struct {
-	ActivitiesPerSecond string
+	ActivitiesPerSecond float64
 }
 
 type RevisionSetter struct {

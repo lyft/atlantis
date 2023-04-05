@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -244,13 +243,7 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		// validated during startup, log if fails
-		tqThroughPut, err := strconv.ParseFloat(s.RevisionSetterConfig.DefaultTaskQueue.ActivitiesPerSecond, 64)
-		if err != nil {
-			log.Fatalln(fmt.Sprintf("unable to parse task queue throughput config: %s", s.RevisionSetterConfig.DefaultTaskQueue.ActivitiesPerSecond), err)
-		}
-
-		prRevisionWorker := s.buildPRRevisionWorker(workflows.PRRevisionTaskQueue, tqThroughPut, func(worker worker.Worker) {
+		prRevisionWorker := s.buildPRRevisionWorker(workflows.PRRevisionTaskQueue, s.RevisionSetterConfig.DefaultTaskQueue.ActivitiesPerSecond, func(worker worker.Worker) {
 			worker.RegisterWorkflow(workflows.PRRevision)
 			worker.RegisterActivity(s.GithubActivities)
 			worker.RegisterActivity(s.RevisionSetterActivities)
@@ -266,14 +259,8 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		// validated during startup, log if fails
-		tqThroughPut, err := strconv.ParseFloat(s.RevisionSetterConfig.SlowTaskQueue.ActivitiesPerSecond, 64)
-		if err != nil {
-			log.Fatalln(fmt.Sprintf("unable to parse task queue throughput config: %s", s.RevisionSetterConfig.SlowTaskQueue.ActivitiesPerSecond), err)
-		}
-
 		// only register github activities in the slow task queue
-		prRevisionWorker := s.buildPRRevisionWorker(workflows.PRRevisionSlowTaskQueue, tqThroughPut, func(worker worker.Worker) {
+		prRevisionWorker := s.buildPRRevisionWorker(workflows.PRRevisionSlowTaskQueue, s.RevisionSetterConfig.SlowTaskQueue.ActivitiesPerSecond, func(worker worker.Worker) {
 			worker.RegisterActivity(s.GithubActivities)
 		})
 		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {

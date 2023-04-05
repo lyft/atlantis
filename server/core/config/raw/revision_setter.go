@@ -52,12 +52,12 @@ func (b BasicAuth) ToValid() valid.BasicAuth {
 }
 
 type TaskQueue struct {
-	ActivitesPerSecond string `yaml:"activities_per_second" json:"activities_per_second"`
+	ActivitesPerSecond float64 `yaml:"activities_per_second" json:"activities_per_second"`
 }
 
 func (t TaskQueue) Validate() error {
 	return validation.ValidateStruct(&t,
-		validation.Field(&t.ActivitesPerSecond, is.Float))
+		validation.Field(&t.ActivitesPerSecond, validation.Required))
 }
 
 func (t TaskQueue) ToValid() valid.TaskQueue {
