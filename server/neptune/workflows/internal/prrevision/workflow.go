@@ -127,7 +127,7 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 }
 
 func (r *Runner) listModifiedFilesAsync(ctx workflow.Context, req Request, prs []github.PullRequest) map[github.PullRequest]workflow.Future {
-	now := workflow.Now(ctx)
+	now := workflow.Now(ctx).UTC()
 	futuresByPullNum := map[github.PullRequest]workflow.Future{}
 	oldPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_days", r.SlowProcessingCutOffDays))
 	newPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", r.SlowProcessingCutOffDays))
