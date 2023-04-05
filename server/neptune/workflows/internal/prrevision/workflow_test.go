@@ -404,31 +404,58 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestIsPrUpdatedWithinDays(t *testing.T) {
-	now := time.Now()
+func testPrUpdateWorkflow(ctx workflow.Context, pr github.PullRequest, days int) (bool, error) {
 	runner := Runner{}
+	return runner.isPrUpdatedWithinDays(ctx, pr, days), nil
+}
 
-	t.Run("updated before", func(t *testing.T) {
-		prUpdatedLongAgo := github.PullRequest{
-			UpdatedAt: now.AddDate(0, 0, -40),
-		}
+func TestIsPrUpdatedWithinDays_Before(t *testing.T) {
+	now := time.Now().UTC()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
 
-		assert.False(t, runner.isPrUpdatedWithinDays(now, prUpdatedLongAgo, 10))
-	})
+	pr := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -40),
+	}
 
-	t.Run("updated at", func(t *testing.T) {
-		prUpdatedLongAgo := github.PullRequest{
-			UpdatedAt: now.AddDate(0, 0, -10),
-		}
+	var isUpdated bool
+	env.ExecuteWorkflow(testPrUpdateWorkflow, pr, 10)
+	err := env.GetWorkflowResult(&isUpdated)
+	assert.NoError(t, err)
 
-		assert.False(t, runner.isPrUpdatedWithinDays(now, prUpdatedLongAgo, 10))
-	})
+	assert.False(t, isUpdated)
+}
 
-	t.Run("updated after", func(t *testing.T) {
-		prUpdatedLongAgo := github.PullRequest{
-			UpdatedAt: now.AddDate(0, 0, -10),
-		}
+func TestIsPrUpdatedWithinDays_At(t *testing.T) {
+	now := time.Now().UTC()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
 
-		assert.True(t, runner.isPrUpdatedWithinDays(now, prUpdatedLongAgo, 20))
-	})
+	pr := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -10),
+	}
+
+	var isUpdated bool
+	env.ExecuteWorkflow(testPrUpdateWorkflow, pr, 10)
+	err := env.GetWorkflowResult(&isUpdated)
+	assert.NoError(t, err)
+
+	assert.False(t, isUpdated)
+}
+
+func TestIsPrUpdatedWithinDays_After(t *testing.T) {
+	now := time.Now().UTC()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	pr := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -5),
+	}
+
+	var isUpdated bool
+	env.ExecuteWorkflow(testPrUpdateWorkflow, pr, 10)
+	err := env.GetWorkflowResult(&isUpdated)
+	assert.NoError(t, err)
+
+	assert.True(t, isUpdated)
 }

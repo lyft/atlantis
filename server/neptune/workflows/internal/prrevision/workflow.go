@@ -127,14 +127,12 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 }
 
 func (r *Runner) listModifiedFilesAsync(ctx workflow.Context, req Request, prs []github.PullRequest) map[github.PullRequest]workflow.Future {
-	now := workflow.Now(ctx).UTC()
 	futuresByPullNum := map[github.PullRequest]workflow.Future{}
-
 	oldPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_days", r.SlowProcessingCutOffDays))
 	newPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", r.SlowProcessingCutOffDays))
 	for _, pr := range prs {
 		// schedule on slow tq if pr is not updated within x days
-		if !r.isPrUpdatedWithinDays(now, pr, r.SlowProcessingCutOffDays) {
+		if !r.isPrUpdatedWithinDays(ctx, pr, r.SlowProcessingCutOffDays) {
 			options := workflow.GetActivityOptions(ctx)
 			options.TaskQueue = SlowTaskQueue
 			ctx = workflow.WithActivityOptions(ctx, options)
@@ -151,7 +149,8 @@ func (r *Runner) listModifiedFilesAsync(ctx workflow.Context, req Request, prs [
 	return futuresByPullNum
 }
 
-func (r *Runner) isPrUpdatedWithinDays(now time.Time, pr github.PullRequest, days int) bool {
+func (r *Runner) isPrUpdatedWithinDays(ctx workflow.Context, pr github.PullRequest, days int) bool {
+	now := workflow.Now(ctx).UTC()
 	nDaysAgo := now.AddDate(0, 0, -days)
 	return pr.UpdatedAt.After(nDaysAgo)
 }
