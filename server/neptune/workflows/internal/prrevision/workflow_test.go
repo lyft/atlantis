@@ -248,7 +248,7 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision_v1(t *testing.T) {
 		},
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	newPR := github.PullRequest{
 		Number:    1,
 		UpdatedAt: now.AddDate(0, 0, -5),
