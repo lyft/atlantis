@@ -133,7 +133,6 @@ func (r *Runner) listModifiedFilesAsync(ctx workflow.Context, req Request, prs [
 	oldPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_days", r.SlowProcessingCutOffDays))
 	newPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", r.SlowProcessingCutOffDays))
 	for _, pr := range prs {
-
 		// schedule on slow tq if pr is not updated within x days
 		if !r.isPrUpdatedWithinDays(now, pr, r.SlowProcessingCutOffDays) {
 			options := workflow.GetActivityOptions(ctx)

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -17,6 +18,7 @@ import (
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/metrics"
@@ -72,6 +74,7 @@ type Server struct {
 	GithubActivities         *activities.Github
 	RevisionSetterActivities *activities.RevsionSetter
 	TerraformTaskQueue       string
+	RevisionSetterConfig     valid.RevisionSetter
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -200,6 +203,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		GithubActivities:         githubActivities,
 		RevisionSetterActivities: revisionSetterActivities,
 		TerraformTaskQueue:       config.TemporalCfg.TerraformTaskQueue,
+		RevisionSetterConfig:     config.RevisionSetter,
 	}
 	return &server, nil
 }
@@ -240,12 +244,43 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		prRevisionWorker := s.buildPRRevisionWorker()
-		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
-			log.Fatalln("unable to start pr revision worker", err)
+		// validated during startup, log if fails
+		tqThroughPut, err := strconv.ParseFloat(s.RevisionSetterConfig.DefaultTaskQueue.ActivitiesPerSecond, 64)
+		if err != nil {
+			log.Fatalln(fmt.Sprintf("unable to parse task queue throughput config: %s", s.RevisionSetterConfig.DefaultTaskQueue.ActivitiesPerSecond), err)
 		}
 
-		s.Logger.InfoContext(ctx, "Shutting down pr revision worker, resource clean up may still be occurring in the background")
+		prRevisionWorker := s.buildPRRevisionWorker(workflows.PRRevisionTaskQueue, tqThroughPut, func(worker worker.Worker) {
+			worker.RegisterWorkflow(workflows.PRRevision)
+			worker.RegisterActivity(s.GithubActivities)
+			worker.RegisterActivity(s.RevisionSetterActivities)
+		})
+		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
+			log.Fatalln("unable to start pr revision default worker", err)
+		}
+
+		s.Logger.InfoContext(ctx, "Shutting down pr revision default worker, resource clean up may still be occurring in the background")
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		// validated during startup, log if fails
+		tqThroughPut, err := strconv.ParseFloat(s.RevisionSetterConfig.SlowTaskQueue.ActivitiesPerSecond, 64)
+		if err != nil {
+			log.Fatalln(fmt.Sprintf("unable to parse task queue throughput config: %s", s.RevisionSetterConfig.SlowTaskQueue.ActivitiesPerSecond), err)
+		}
+
+		// only register github activities in the slow task queue
+		prRevisionWorker := s.buildPRRevisionWorker(workflows.PRRevisionSlowTaskQueue, tqThroughPut, func(worker worker.Worker) {
+			worker.RegisterActivity(s.GithubActivities)
+		})
+		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
+			log.Fatalln("unable to start pr revision slow worker", err)
+		}
+
+		s.Logger.InfoContext(ctx, "Shutting down pr revision slow worker, resource clean up may still be occurring in the background")
 	}()
 
 	// Ensure server gracefully drains connections when stopped.
@@ -333,23 +368,37 @@ func (s Server) buildTerraformWorker() worker.Worker {
 }
 
 // PRRevision worker only handles activites for the PRRevision workflow
-func (s Server) buildPRRevisionWorker() worker.Worker {
+// func (s Server) buildPRRevisionWorker(taskQueue string, activitiesPerSecond float64) worker.Worker {
+// 	// pass the underlying client otherwise this will panic()
+// 	worker := worker.New(s.TemporalClient.Client, workflows.PRRevisionTaskQueue, worker.Options{
+// 		WorkerStopTimeout: PRRevisionWorkerTimeout,
+// 		Interceptors: []interceptor.WorkerInterceptor{
+// 			temporal.NewWorkerInterceptor(),
+// 		},
+
+// 		// Num Activity Executions in PR Revision Setter ~ Num Open PRs + Num PRs modifing root
+// 		// Assuming half of open PRs need to be rebased, Num Activity Executions = 1.5*(Num Open PRs) = 1.5*(Num GH API Calls)
+// 		// Allocating a budget of 4800 GH API calls per hour which is well within our current API usage gives us 4800*1.5 = 7200 activity executions per hour
+// 		// 7200 activity executions per hour -> 7200/60/60 -> 2 activities per second
+// 		TaskQueueActivitiesPerSecond: PRRevisionTaskQueueActivitiesPerSecond,
+// 	})
+// 	worker.RegisterWorkflow(workflows.PRRevision)
+// 	worker.RegisterActivity(s.GithubActivities)
+// 	worker.RegisterActivity(s.RevisionSetterActivities)
+// 	return worker
+// }
+
+func (s Server) buildPRRevisionWorker(taskQueue string, activitiesPerSecond float64, registerFn func(worker worker.Worker)) worker.Worker {
 	// pass the underlying client otherwise this will panic()
-	worker := worker.New(s.TemporalClient.Client, workflows.PRRevisionTaskQueue, worker.Options{
+	worker := worker.New(s.TemporalClient.Client, taskQueue, worker.Options{
 		WorkerStopTimeout: PRRevisionWorkerTimeout,
 		Interceptors: []interceptor.WorkerInterceptor{
 			temporal.NewWorkerInterceptor(),
 		},
 
-		// Num Activity Executions in PR Revision Setter ~ Num Open PRs + Num PRs modifing root
-		// Assuming half of open PRs need to be rebased, Num Activity Executions = 1.5*(Num Open PRs) = 1.5*(Num GH API Calls)
-		// Allocating a budget of 4800 GH API calls per hour which is well within our current API usage gives us 4800*1.5 = 7200 activity executions per hour
-		// 7200 activity executions per hour -> 7200/60/60 -> 2 activities per second
-		TaskQueueActivitiesPerSecond: PRRevisionTaskQueueActivitiesPerSecond,
+		TaskQueueActivitiesPerSecond: activitiesPerSecond,
 	})
-	worker.RegisterWorkflow(workflows.PRRevision)
-	worker.RegisterActivity(s.GithubActivities)
-	worker.RegisterActivity(s.RevisionSetterActivities)
+	registerFn(worker)
 	return worker
 }
 
