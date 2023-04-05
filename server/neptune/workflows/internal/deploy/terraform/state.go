@@ -13,7 +13,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -83,19 +82,6 @@ func (n *StateReceiver) updateCheckRun(ctx workflow.Context, workflowState *stat
 		ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 			MaximumAttempts: 3,
 		})
-	}
-
-	version := workflow.GetVersion(ctx, version.CacheCheckRunSessions, workflow.DefaultVersion, 1)
-
-	if version == workflow.DefaultVersion {
-		return workflow.ExecuteActivity(ctx, n.Activity.GithubUpdateCheckRun, activities.UpdateCheckRunRequest{
-			Title:   request.Title,
-			State:   request.State,
-			Repo:    request.Repo,
-			ID:      deploymentInfo.CheckRunID,
-			Summary: request.Summary,
-			Actions: request.Actions,
-		}).Get(ctx, nil)
 	}
 
 	_, err := n.CheckRunSessionCache.CreateOrUpdate(ctx, deploymentInfo.ID.String(), request)

@@ -186,22 +186,7 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 		Summary: summary,
 		Actions: actions,
 	}
-
-	version := workflow.GetVersion(ctx, version.CacheCheckRunSessions, workflow.DefaultVersion, 1)
-
-	var err error
-	if version == workflow.DefaultVersion {
-		err = workflow.ExecuteActivity(ctx, p.Activities.GithubUpdateCheckRun, activities.UpdateCheckRunRequest{
-			Title:   request.Title,
-			State:   request.State,
-			Repo:    request.Repo,
-			Summary: request.Summary,
-			Actions: request.Actions,
-			ID:      deployRequest.CheckRunID,
-		}).Get(ctx, nil)
-	} else {
-		_, err = p.GithubCheckRunCache.CreateOrUpdate(ctx, deployRequest.ID.String(), request)
-	}
+	_, err := p.GithubCheckRunCache.CreateOrUpdate(ctx, deployRequest.ID.String(), request)
 
 	if err != nil {
 		workflow.GetLogger(ctx).Error("unable to update check run with validation error", key.ErrKey, err)
