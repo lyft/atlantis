@@ -134,7 +134,6 @@ func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terr
 		ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
 	})
 
-	// TODO: Pass cut off days in the req
 	future := workflow.ExecuteChildWorkflow(ctx, p.PRRevisionWorkflow, prrevision.Request{
 		Repo:     deployment.Repo,
 		Root:     deployment.Root,

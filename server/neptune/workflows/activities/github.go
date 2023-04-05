@@ -37,7 +37,7 @@ type githubClient interface {
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
 	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
-	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, direction string) ([]*github.PullRequest, error)
+	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error)
 }
 
 type DiffDirection string
