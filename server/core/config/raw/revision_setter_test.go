@@ -150,7 +150,7 @@ func TestPRRevision_Validate_Error(t *testing.T) {
 		{
 			description: "missing activities_per_second_config",
 			subject: raw.RevisionSetter{
-				URL: "tes-url&^*&.com",
+				URL: "tes-url.com",
 				BasicAuth: raw.BasicAuth{
 					Username: "test-username",
 					Password: "test-password",
