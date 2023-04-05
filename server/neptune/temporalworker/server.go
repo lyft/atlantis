@@ -243,11 +243,17 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		prRevisionWorker := s.buildPRRevisionWorker(workflows.PRRevisionTaskQueue, s.RevisionSetterConfig.DefaultTaskQueue.ActivitiesPerSecond, func(worker worker.Worker) {
-			worker.RegisterWorkflow(workflows.PRRevision)
-			worker.RegisterActivity(s.GithubActivities)
-			worker.RegisterActivity(s.RevisionSetterActivities)
+		prRevisionWorker := worker.New(s.TemporalClient.Client, workflows.PRRevisionTaskQueue, worker.Options{
+			WorkerStopTimeout: PRRevisionWorkerTimeout,
+			Interceptors: []interceptor.WorkerInterceptor{
+				temporal.NewWorkerInterceptor(),
+			},
+			TaskQueueActivitiesPerSecond: s.RevisionSetterConfig.DefaultTaskQueue.ActivitiesPerSecond,
 		})
+		prRevisionWorker.RegisterWorkflow(workflows.PRRevision)
+		prRevisionWorker.RegisterActivity(s.GithubActivities)
+		prRevisionWorker.RegisterActivity(s.RevisionSetterActivities)
+
 		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start pr revision default worker", err)
 		}
@@ -259,10 +265,15 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		// only register github activities in the slow task queue
-		prRevisionWorker := s.buildPRRevisionWorker(workflows.PRRevisionSlowTaskQueue, s.RevisionSetterConfig.SlowTaskQueue.ActivitiesPerSecond, func(worker worker.Worker) {
-			worker.RegisterActivity(s.GithubActivities)
+		prRevisionWorker := worker.New(s.TemporalClient.Client, workflows.PRRevisionSlowTaskQueue, worker.Options{
+			WorkerStopTimeout: PRRevisionWorkerTimeout,
+			Interceptors: []interceptor.WorkerInterceptor{
+				temporal.NewWorkerInterceptor(),
+			},
+			TaskQueueActivitiesPerSecond: s.RevisionSetterConfig.SlowTaskQueue.ActivitiesPerSecond,
 		})
+		prRevisionWorker.RegisterActivity(s.GithubActivities)
+
 		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start pr revision slow worker", err)
 		}
@@ -352,20 +363,6 @@ func (s Server) buildTerraformWorker() worker.Worker {
 	terraformWorker.RegisterActivity(s.GithubActivities)
 	terraformWorker.RegisterWorkflow(workflows.Terraform)
 	return terraformWorker
-}
-
-func (s Server) buildPRRevisionWorker(taskQueue string, activitiesPerSecond float64, registerFn func(worker worker.Worker)) worker.Worker {
-	// pass the underlying client otherwise this will panic()
-	worker := worker.New(s.TemporalClient.Client, taskQueue, worker.Options{
-		WorkerStopTimeout: PRRevisionWorkerTimeout,
-		Interceptors: []interceptor.WorkerInterceptor{
-			temporal.NewWorkerInterceptor(),
-		},
-
-		TaskQueueActivitiesPerSecond: activitiesPerSecond,
-	})
-	registerFn(worker)
-	return worker
 }
 
 // Healthz returns the health check response. It always returns a 200 currently.
