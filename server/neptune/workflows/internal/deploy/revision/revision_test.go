@@ -318,7 +318,7 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 			Title:   "atlantis/deploy: root",
 			Sha:     rev,
 			Repo:    github.Repo{Name: "nish"},
-			Summary: "This deploy is locked from a manual deployment for revision 123334444555.  Unlock to proceed.",
+			Summary: "This deploy is locked from a manual deployment for revision [123334444555](https://github.com//nish/commit/123334444555).  Unlock to proceed.",
 			Actions: []github.CheckRunAction{github.CreateUnlockAction()},
 			State:   github.CheckRunActionRequired,
 		},

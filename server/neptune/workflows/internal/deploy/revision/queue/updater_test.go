@@ -107,7 +107,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 		State:   github.CheckRunActionRequired,
 		Repo:    info.Repo,
 		ID:      info.CheckRunID,
-		Summary: "This deploy is locked from a manual deployment for revision 1234.  Unlock to proceed.",
+		Summary: "This deploy is locked from a manual deployment for revision [1234](https://github.com/some-org/some-repo/commit/1234).  Unlock to proceed.",
 		Actions: []github.CheckRunAction{
 			github.CreateUnlockAction(),
 		},
@@ -125,7 +125,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 			Title:   terraform.BuildCheckRunTitle(info.Root.Name),
 			State:   github.CheckRunActionRequired,
 			Repo:    info.Repo,
-			Summary: "This deploy is locked from a manual deployment for revision 1234.  Unlock to proceed.",
+			Summary: "This deploy is locked from a manual deployment for revision [1234](https://github.com/some-org/some-repo/commit/1234).  Unlock to proceed.",
 			Actions: []github.CheckRunAction{
 				github.CreateUnlockAction(),
 			},
@@ -171,7 +171,7 @@ func testUpdaterWorkflow(ctx workflow.Context, r updaterReq) error {
 	}
 
 	q.SetLockForMergedItems(ctx, r.Lock)
-	subject.UpdateQueuedRevisions(ctx, q)
+	subject.UpdateQueuedRevisions(ctx, q, "some-org/some-repo")
 
 	return nil
 }
