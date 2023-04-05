@@ -367,27 +367,6 @@ func (s Server) buildTerraformWorker() worker.Worker {
 	return terraformWorker
 }
 
-// PRRevision worker only handles activites for the PRRevision workflow
-// func (s Server) buildPRRevisionWorker(taskQueue string, activitiesPerSecond float64) worker.Worker {
-// 	// pass the underlying client otherwise this will panic()
-// 	worker := worker.New(s.TemporalClient.Client, workflows.PRRevisionTaskQueue, worker.Options{
-// 		WorkerStopTimeout: PRRevisionWorkerTimeout,
-// 		Interceptors: []interceptor.WorkerInterceptor{
-// 			temporal.NewWorkerInterceptor(),
-// 		},
-
-// 		// Num Activity Executions in PR Revision Setter ~ Num Open PRs + Num PRs modifing root
-// 		// Assuming half of open PRs need to be rebased, Num Activity Executions = 1.5*(Num Open PRs) = 1.5*(Num GH API Calls)
-// 		// Allocating a budget of 4800 GH API calls per hour which is well within our current API usage gives us 4800*1.5 = 7200 activity executions per hour
-// 		// 7200 activity executions per hour -> 7200/60/60 -> 2 activities per second
-// 		TaskQueueActivitiesPerSecond: PRRevisionTaskQueueActivitiesPerSecond,
-// 	})
-// 	worker.RegisterWorkflow(workflows.PRRevision)
-// 	worker.RegisterActivity(s.GithubActivities)
-// 	worker.RegisterActivity(s.RevisionSetterActivities)
-// 	return worker
-// }
-
 func (s Server) buildPRRevisionWorker(taskQueue string, activitiesPerSecond float64, registerFn func(worker worker.Worker)) worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	worker := worker.New(s.TemporalClient.Client, taskQueue, worker.Options{
