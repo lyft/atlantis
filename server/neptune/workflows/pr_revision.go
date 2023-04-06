@@ -10,7 +10,7 @@ type PRRevisionRevisionRequest = prrevision.Request
 var PRRevisionTaskQueue = prrevision.TaskQueue
 var PRRevisionSlowTaskQueue = prrevision.SlowTaskQueue
 
-const SlowProcessingCutOffDays = 30
+const SlowProcessingCutOffDays = 14
 
 func PRRevision(ctx workflow.Context, request PRRevisionRevisionRequest) error {
 	return prrevision.Workflow(ctx, request, SlowProcessingCutOffDays)

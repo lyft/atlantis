@@ -459,3 +459,41 @@ func TestIsPrUpdatedWithinDays_After(t *testing.T) {
 
 	assert.True(t, isUpdated)
 }
+
+func testPrEmitMetricsWorkflow(ctx workflow.Context, pr github.PullRequest, week int) (bool, error) {
+	return isOlderThanXWeeks(ctx, week, pr), nil
+}
+
+func TestIsOlderThanXWeeks_Old(t *testing.T) {
+	now := time.Now().UTC()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	pr := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -10),
+	}
+
+	var isOld bool
+	env.ExecuteWorkflow(testPrEmitMetricsWorkflow, pr, 1)
+	err := env.GetWorkflowResult(&isOld)
+	assert.NoError(t, err)
+
+	assert.True(t, isOld)
+}
+
+func TestIsOlderThanXWeeks_New(t *testing.T) {
+	now := time.Now().UTC()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	pr := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -3),
+	}
+
+	var isOld bool
+	env.ExecuteWorkflow(testPrEmitMetricsWorkflow, pr, 1)
+	err := env.GetWorkflowResult(&isOld)
+	assert.NoError(t, err)
+
+	assert.False(t, isOld)
+}

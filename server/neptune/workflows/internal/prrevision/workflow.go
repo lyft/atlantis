@@ -24,6 +24,7 @@ const (
 
 	RetryCount          = 3
 	StartToCloseTimeout = 30 * time.Second
+	NumLookBackWeeks    = 12
 )
 
 type Request struct {
@@ -76,6 +77,9 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 	if err != nil {
 		return err
 	}
+
+	// [CS-4575] TODO: Tune our workflow by analyzing the age of open PRs
+	r.emitOpenPRAgeMetrics(ctx, prs, NumLookBackWeeks)
 
 	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
 	if err := r.setRevision(ctx, request, prs); err != nil {
@@ -208,4 +212,32 @@ func isRootModified(root terraform.Root, modifiedFiles []string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// emits metrics for past 12 weeks in less than_x_days & more_than_x_days format
+func (r *Runner) emitOpenPRAgeMetrics(ctx workflow.Context, prs []github.PullRequest, numWeeks int) {
+
+	// track open PRs older than x weeks
+	moreThanXWeeksOld := make([]int, numWeeks)
+	for _, pr := range prs {
+		for i := 0; i < numWeeks; i++ {
+			if isOlderThanXWeeks(ctx, i+1, pr) {
+				moreThanXWeeksOld[i]++
+			}
+		}
+	}
+
+	// emit metrics
+	for i := range moreThanXWeeksOld {
+		moreThan := moreThanXWeeksOld[i]
+		lessThan := len(prs) - moreThan
+		days := (i + 1) * 7
+		r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_days", days)).Inc(int64(moreThan))
+		r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", days)).Inc(int64(lessThan))
+	}
+}
+
+func isOlderThanXWeeks(ctx workflow.Context, week int, pr github.PullRequest) bool {
+	days := workflow.Now(ctx).Sub(pr.UpdatedAt).Hours() / 24
+	return days > float64(week)*7
 }
