@@ -2,7 +2,6 @@ package runtime_test
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/stretchr/testify/assert"
 	"testing"
 
@@ -66,28 +65,6 @@ func TestRun_EnsurerFailure(t *testing.T) {
 	assert.Empty(t, output)
 	assert.True(t, ensurer.isCalled)
 	assert.False(t, executor.isCalled)
-}
-
-type mockFeatureAllocator struct {
-	enabled  bool
-	err      error
-	isCalled bool
-}
-
-func (t *mockFeatureAllocator) ShouldAllocate(_ feature.Name, _ feature.FeatureContext) (bool, error) {
-	t.isCalled = true
-	return t.enabled, t.err
-}
-
-type mockLegacyExecutor struct {
-	output   string
-	err      error
-	isCalled bool
-}
-
-func (t *mockLegacyExecutor) Run(_ context.Context, _ command.ProjectContext, _ string, _ map[string]string, _ string, _ []string) (string, error) {
-	t.isCalled = true
-	return t.output, t.err
 }
 
 type mockExecutor struct {
