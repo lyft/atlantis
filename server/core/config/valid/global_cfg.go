@@ -154,9 +154,17 @@ type BasicAuth struct {
 	Username string
 	Password string
 }
+
+type TaskQueue struct {
+	ActivitiesPerSecond float64
+}
+
 type RevisionSetter struct {
 	BasicAuth BasicAuth
 	URL       string
+
+	DefaultTaskQueue TaskQueue
+	SlowTaskQueue    TaskQueue
 }
 
 // TODO: rename project to roots

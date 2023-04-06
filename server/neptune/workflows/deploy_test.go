@@ -330,7 +330,7 @@ func (c *testGithubClient) ListModifiedFiles(ctx internalGithub.Context, owner, 
 	}, nil
 }
 
-func (c *testGithubClient) ListPullRequests(ctx internalGithub.Context, owner, repo, base, state string) ([]*github.PullRequest, error) {
+func (c *testGithubClient) ListPullRequests(ctx internalGithub.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error) {
 	return []*github.PullRequest{
 		{
 			Number: github.Int(1),

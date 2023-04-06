@@ -19,8 +19,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
-const PullRequestOpenState = "open"
-
 type ClientContext struct {
 	InstallationToken int64
 	context.Context
@@ -39,7 +37,7 @@ type githubClient interface {
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
 	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
-	ListPullRequests(ctx internal.Context, owner, repo, base, state string) ([]*github.PullRequest, error)
+	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error)
 }
 
 type DiffDirection string
@@ -294,8 +292,10 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 }
 
 type ListPRsRequest struct {
-	Repo  internal.Repo
-	State internal.PullRequestState
+	Repo    internal.Repo
+	State   internal.PullRequestState
+	SortKey internal.SortKey
+	Order   internal.Order
 }
 
 type ListPRsResponse struct {
@@ -308,7 +308,9 @@ func (a *githubActivities) GithubListPRs(ctx context.Context, request ListPRsReq
 		request.Repo.Owner,
 		request.Repo.Name,
 		request.Repo.DefaultBranch,
-		PullRequestOpenState,
+		string(request.State),
+		string(request.SortKey),
+		string(request.Order),
 	)
 	if err != nil {
 		return ListPRsResponse{}, errors.Wrap(err, "listing open pull requests")
@@ -317,7 +319,8 @@ func (a *githubActivities) GithubListPRs(ctx context.Context, request ListPRsReq
 	pullRequests := []internal.PullRequest{}
 	for _, pullRequest := range prs {
 		pullRequests = append(pullRequests, internal.PullRequest{
-			Number: pullRequest.GetNumber(),
+			Number:    pullRequest.GetNumber(),
+			UpdatedAt: pullRequest.GetUpdatedAt(),
 		})
 	}
 

@@ -90,7 +90,7 @@ func (c *Client) ListModifiedFiles(ctx Context, owner, repo string, pullNumber i
 	return gh_helper.Iterate(ctx, run)
 }
 
-func (c *Client) ListPullRequests(ctx Context, owner, repo, base, state string) ([]*github.PullRequest, error) {
+func (c *Client) ListPullRequests(ctx Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error) {
 	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
 	if err != nil {
 		return nil, errors.Wrap(err, "creating client from installation")
@@ -103,6 +103,8 @@ func (c *Client) ListPullRequests(ctx Context, owner, repo, base, state string) 
 			ListOptions: github.ListOptions{
 				PerPage: 100,
 			},
+			Sort:      sortBy,
+			Direction: order,
 		}
 		prListOptions.ListOptions.Page = nextPage
 		return client.PullRequests.List(ctx, owner, repo, &prListOptions)
