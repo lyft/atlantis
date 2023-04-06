@@ -216,7 +216,6 @@ func isRootModified(root terraform.Root, modifiedFiles []string) (bool, error) {
 
 // emits metrics for past 12 weeks in less than_x_days & more_than_x_days format
 func (r *Runner) emitOpenPRAgeMetrics(ctx workflow.Context, prs []github.PullRequest, numWeeks int) {
-
 	// track open PRs older than x weeks
 	moreThanXWeeksOld := make([]int, numWeeks)
 	for _, pr := range prs {
