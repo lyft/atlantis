@@ -95,7 +95,6 @@ func NewVCSEventsController(
 	}
 
 	pullRequestReviewHandler := &gateway_handlers.PullRequestReviewWorkerProxy{
-		Allocator:       featureAllocator,
 		Scheduler:       asyncScheduler,
 		SnsWriter:       snsWriter,
 		Logger:          logger,

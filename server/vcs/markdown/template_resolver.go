@@ -16,11 +16,10 @@ import (
 )
 
 var (
-	planCommandTitle            = command.Plan.TitleString()
-	applyCommandTitle           = command.Apply.TitleString()
-	policyCheckCommandTitle     = command.PolicyCheck.TitleString()
-	approvePoliciesCommandTitle = command.ApprovePolicies.TitleString()
-	versionCommandTitle         = command.Version.TitleString()
+	planCommandTitle        = command.Plan.TitleString()
+	applyCommandTitle       = command.Apply.TitleString()
+	policyCheckCommandTitle = command.PolicyCheck.TitleString()
+	versionCommandTitle     = command.Version.TitleString()
 	// maxUnwrappedLines is the maximum number of lines the Terraform output
 	// can be before we wrap it in an expandable template.
 	maxUnwrappedLines = 12
@@ -89,8 +88,6 @@ func (t *TemplateResolver) Resolve(common commonData, baseRepo models.Repo, numP
 
 	var tmpl *template.Template
 	switch {
-	case common.Command == approvePoliciesCommandTitle:
-		tmpl = template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(approveAllProjectsTmpl))
 	case common.Command == planCommandTitle, common.Command == policyCheckCommandTitle:
 		tmpl = t.getPlanTmpl(common, templateOverrides, numPrjResults, numPlanSuccesses, numPolicyCheckSuccesses)
 	case common.Command == applyCommandTitle:
@@ -280,9 +277,6 @@ var singleProjectVersionSuccessTmpl string
 
 //go:embed templates/singleProjectVersionUnsuccessful.tmpl
 var singleProjectVersionUnsuccessfulTmpl string
-
-//go:embed templates/approveAllProjects.tmpl
-var approveAllProjectsTmpl string
 
 //go:embed templates/multiProjectPlan.tmpl
 var multiProjectPlanTmpl string

@@ -272,12 +272,6 @@ func (t *testProjectCommandRunner) PolicyCheck(ctx command.ProjectContext) comma
 	return t.result
 }
 
-func (t *testProjectCommandRunner) ApprovePolicies(ctx command.ProjectContext) command.ProjectResult {
-	assert.Equal(t.t, t.expPrjCtx, ctx)
-
-	return t.result
-}
-
 func (t *testProjectCommandRunner) Version(ctx command.ProjectContext) command.ProjectResult {
 	assert.Equal(t.t, t.expPrjCtx, ctx)
 

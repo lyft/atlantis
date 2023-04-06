@@ -99,7 +99,7 @@ type CommentParseResult struct {
 // Valid commands contain:
 //   - The initial "executable" name, 'run' or 'atlantis' or '@GithubUser'
 //     where GithubUser is the API user Atlantis is running as.
-//   - Then a cmd, either 'plan', 'apply', 'approve_policies', or 'help'.
+//   - Then a cmd, either 'plan', 'apply', or 'help'.
 //   - Then optional flags, then an optional separator '--' followed by optional
 //     extra flags to be appended to the terraform plan/apply command.
 //
@@ -109,7 +109,6 @@ type CommentParseResult struct {
 // - @GithubUser plan -w staging
 // - atlantis plan -w staging -d dir
 // - atlantis plan -- -key=value -key2 value2
-// - atlantis approve_policies
 func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) CommentParseResult {
 	if multiLineRegex.MatchString(comment) {
 		return CommentParseResult{Ignore: true}
@@ -168,7 +167,7 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	}
 
 	// Need to have a plan, apply, approve_policy or unlock at this point.
-	if !e.stringInSlice(cmd, []string{command.Plan.String(), command.Apply.String(), command.Unlock.String(), command.ApprovePolicies.String(), command.Version.String()}) {
+	if !e.stringInSlice(cmd, []string{command.Plan.String(), command.Apply.String(), command.Unlock.String(), command.Version.String()}) {
 		return CommentParseResult{CommentResponse: fmt.Sprintf("```\nError: unknown command %q.\nRun 'atlantis --help' for usage.\n```", cmd)}
 	}
 
@@ -199,10 +198,6 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 		flagSet.StringVarP(&project, projectFlagLong, projectFlagShort, "", fmt.Sprintf("Apply the plan for this project. Refers to the name of the project configured in %s. Cannot be used at same time as workspace or dir flags.", config.AtlantisYAMLFilename))
 		flagSet.BoolVarP(&force, forceFlagLong, forceFlagShort, false, "Force Atlantis to ignore apply requirements.")
 		flagSet.StringVarP(&logLevel, logFlagLong, logFlagShort, "", "Which log level to use when emitting terraform results, ex. 'trace'.")
-	case command.ApprovePolicies.String():
-		name = command.ApprovePolicies
-		flagSet = pflag.NewFlagSet(command.ApprovePolicies.String(), pflag.ContinueOnError)
-		flagSet.SetOutput(io.Discard)
 	case command.Unlock.String():
 		name = command.Unlock
 		flagSet = pflag.NewFlagSet(command.Unlock.String(), pflag.ContinueOnError)

@@ -17,7 +17,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/tally/v4"
 	"regexp"
@@ -27,7 +26,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/db"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	lyft_vcs "github.com/runatlantis/atlantis/server/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -63,7 +61,6 @@ var staleCommandChecker *mocks.MockStaleCommandChecker
 var dbUpdater *events.DBUpdater
 var pullUpdater events.OutputUpdater
 var policyCheckCommandRunner *events.PolicyCheckCommandRunner
-var approvePoliciesCommandRunner *events.ApprovePoliciesCommandRunner
 var planCommandRunner *events.PlanCommandRunner
 var applyLockChecker *lockingmocks.MockApplyLockChecker
 var applyCommandRunner *events.ApplyCommandRunner
@@ -135,13 +132,6 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 		parallelPoolSize,
 		pullReqStatusFetcher,
 	)
-	featureAllocator, featureAllocatorErr := feature.NewStringSourcedAllocator(logger)
-	assert.NoError(t, featureAllocatorErr)
-
-	approvePoliciesCommandRunner = events.NewApprovePoliciesCommandRunner(vcsUpdater, projectCommandBuilder, projectCommandRunner, pullUpdater, dbUpdater, &policies.CommandOutputGenerator{
-		PrjCommandRunner:  projectCommandRunner,
-		PrjCommandBuilder: projectCommandBuilder,
-	}, featureAllocator)
 
 	unlockCommandRunner = events.NewUnlockCommandRunner(
 		deleteLockCommand,
@@ -156,11 +146,10 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	)
 
 	commentCommandRunnerByCmd := map[command.Name]command.Runner{
-		command.Plan:            planCommandRunner,
-		command.Apply:           applyCommandRunner,
-		command.ApprovePolicies: approvePoliciesCommandRunner,
-		command.Unlock:          unlockCommandRunner,
-		command.Version:         versionCommandRunner,
+		command.Plan:    planCommandRunner,
+		command.Apply:   applyCommandRunner,
+		command.Unlock:  unlockCommandRunner,
+		command.Version: versionCommandRunner,
 	}
 
 	preWorkflowHooksCommandRunner = mocks.NewMockPreWorkflowHooksCommandRunner()
@@ -226,45 +215,6 @@ func TestRunCommentCommand_PreWorkflowHookError(t *testing.T) {
 			Equals(t, cmd, cmdName)
 		})
 	}
-
-	t.Run("if pre workflow hook errors out for approve policies, set the policy check status to failed", func(t *testing.T) {
-		RegisterMockTestingT(t)
-		_ = setup(t)
-		ctx := context.Background()
-		modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, Num: fixtures.Pull.Num, State: models.OpenPullState}
-		preWorkflowHooksCommandRunner = mocks.NewMockPreWorkflowHooksCommandRunner()
-
-		When(staleCommandChecker.CommandIsStale(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
-		When(preWorkflowHooksCommandRunner.RunPreHooks(matchers.AnyContextContext(), matchers.AnyPtrToEventsCommandContext())).ThenReturn(fmt.Errorf("catastrophic error"))
-
-		ch.PreWorkflowHooksCommandRunner = preWorkflowHooksCommandRunner
-
-		ch.RunCommentCommand(ctx, fixtures.GithubRepo, modelPull.BaseRepo, modelPull, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: command.ApprovePolicies}, time.Now(), 0)
-		_, _, _, status, cmdName, _, _ := vcsUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsVcsStatus(), matchers.AnyCommandName(), AnyString(), AnyString()).GetCapturedArguments()
-		Equals(t, models.FailedVCSStatus, status)
-		Equals(t, command.PolicyCheck, cmdName)
-	})
-}
-
-func TestRunCommentCommandApprovePolicy_NoProjects_SilenceEnabled(t *testing.T) {
-	t.Log("if an approve_policy command is run on a pull request and SilenceNoProjects is enabled and we are silencing all comments if the modified files don't have a matching project")
-	vcsClient := setup(t)
-	ctx := context.Background()
-	modelPull := models.PullRequest{BaseRepo: fixtures.GithubRepo, State: models.OpenPullState}
-	When(staleCommandChecker.CommandIsStale(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
-
-	ch.RunCommentCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, modelPull, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: command.ApprovePolicies}, time.Now(), 0)
-	vcsClient.VerifyWasCalled(Never()).CreateComment(matchers.AnyModelsRepo(), AnyInt(), AnyString(), AnyString())
-	vcsUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
-		matchers.AnyContextContext(),
-		matchers.AnyModelsRepo(),
-		matchers.AnyModelsPullRequest(),
-		matchers.EqModelsVcsStatus(models.SuccessVCSStatus),
-		matchers.EqModelsCommandName(command.PolicyCheck),
-		EqInt(0),
-		EqInt(0),
-		AnyString(),
-	)
 }
 
 func TestRunCommentCommand_DisableApplyAllDisabled(t *testing.T) {
@@ -405,90 +355,6 @@ func TestRunAutoplanCommand_PreWorkflowHookError(t *testing.T) {
 	_, _, _, status, cmdName, _, _ := vcsUpdater.VerifyWasCalledOnce().UpdateCombined(matchers.AnyContextContext(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), matchers.AnyModelsVcsStatus(), matchers.AnyCommandName(), AnyString(), AnyString()).GetCapturedArguments()
 	Equals(t, models.FailedVCSStatus, status)
 	Equals(t, command.Plan, cmdName)
-}
-
-func TestFailedApprovalCreatesFailedStatusUpdate(t *testing.T) {
-	t.Log("if \"atlantis approve_policies\" is run by non policy owner policy check status fails.")
-	setup(t)
-	ctx := context.Background()
-	tmp, cleanup := TempDir(t)
-	defer cleanup()
-	boltDB, err := db.New(tmp)
-	Ok(t, err)
-	dbUpdater.DB = boltDB
-
-	When(staleCommandChecker.CommandIsStale(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
-	When(projectCommandBuilder.BuildApprovePoliciesCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn([]command.ProjectContext{
-		{
-			CommandName: command.ApprovePolicies,
-		},
-		{
-			CommandName: command.ApprovePolicies,
-		},
-	}, nil)
-
-	When(workingDir.GetPullDir(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(tmp, nil)
-
-	ch.RunCommentCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, fixtures.Pull.Num, &command.Comment{Name: command.ApprovePolicies}, time.Now(), 0)
-	vcsUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
-		matchers.AnyContextContext(),
-		matchers.AnyModelsRepo(),
-		matchers.AnyModelsPullRequest(),
-		matchers.EqModelsVcsStatus(models.SuccessVCSStatus),
-		matchers.EqModelsCommandName(command.PolicyCheck),
-		EqInt(0),
-		EqInt(0),
-		AnyString(),
-	)
-}
-
-func TestApprovedPoliciesUpdateFailedPolicyStatus(t *testing.T) {
-	t.Log("if \"atlantis approve_policies\" is run by policy owner all policy checks are approved.")
-	setup(t)
-	ctx := context.Background()
-	tmp, cleanup := TempDir(t)
-	defer cleanup()
-	boltDB, err := db.New(tmp)
-	Ok(t, err)
-	dbUpdater.DB = boltDB
-
-	When(staleCommandChecker.CommandIsStale(matchers.AnyPtrToModelsCommandContext())).ThenReturn(false)
-	When(projectCommandBuilder.BuildApprovePoliciesCommands(matchers.AnyPtrToEventsCommandContext(), matchers.AnyPtrToEventsCommentCommand())).ThenReturn([]command.ProjectContext{
-		{
-			CommandName: command.ApprovePolicies,
-			PolicySets: valid.PolicySets{
-				Owners: valid.PolicyOwners{
-					Users: []string{fixtures.User.Username},
-				},
-			},
-		},
-	}, nil)
-
-	When(workingDir.GetPullDir(fixtures.GithubRepo, fixtures.Pull)).ThenReturn(tmp, nil)
-	When(projectCommandRunner.ApprovePolicies(matchers.AnyModelsProjectCommandContext())).Then(func(_ []Param) ReturnValues {
-		return ReturnValues{
-			command.ProjectResult{
-				Command: command.PolicyCheck,
-				PolicyCheckSuccess: &models.PolicyCheckSuccess{
-					PolicyCheckOutput: "Hello World",
-				},
-			},
-		}
-	})
-
-	ch.RunCommentCommand(ctx, fixtures.GithubRepo, fixtures.GithubRepo, fixtures.Pull, fixtures.User, fixtures.Pull.Num, &command.Comment{
-		Name: command.ApprovePolicies,
-	}, time.Now(), 0)
-	vcsUpdater.VerifyWasCalledOnce().UpdateCombinedCount(
-		matchers.AnyContextContext(),
-		matchers.AnyModelsRepo(),
-		matchers.AnyModelsPullRequest(),
-		matchers.EqModelsVcsStatus(models.SuccessVCSStatus),
-		matchers.EqModelsCommandName(command.PolicyCheck),
-		EqInt(1),
-		EqInt(1),
-		AnyString(),
-	)
 }
 
 func TestApplyMergeablityWhenPolicyCheckFails(t *testing.T) {

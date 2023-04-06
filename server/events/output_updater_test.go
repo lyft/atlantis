@@ -271,89 +271,6 @@ func TestChecksOutputUpdater_ProjectResults(t *testing.T) {
 	})
 }
 
-func TestChecksOutputUpdater_ProjectResults_ApprovePolicies(t *testing.T) {
-	repo := models.Repo{
-		FullName: "nish/repo",
-	}
-
-	createdAt := time.Now()
-	sha := "12345"
-
-	pull := models.PullRequest{
-		HeadCommit: sha,
-		Num:        1,
-		CreatedAt:  createdAt,
-		BaseRepo:   repo,
-	}
-
-	cmdCtx := &command.Context{
-		Pull:       pull,
-		RequestCtx: context.Background(),
-		HeadRepo:   repo,
-	}
-
-	output := "some output"
-
-	result := command.ProjectResult{
-		ProjectName: "project1",
-		RepoRelDir:  "somedir",
-		Workspace:   "default",
-		Command:     command.ApprovePolicies,
-	}
-
-	t.Run("handle approve policies", func(t *testing.T) {
-		commandResult := command.Result{
-			ProjectResults: []command.ProjectResult{
-				result,
-			},
-		}
-
-		client := &strictTestChecksClient{
-			clients: []*testChecksClient{
-				{
-					t: t,
-					expectedRequest: types.UpdateStatusRequest{
-						Repo:             repo,
-						Ref:              sha,
-						StatusName:       "nish/policy_check: project1",
-						Output:           "some output",
-						State:            models.SuccessVCSStatus,
-						PullCreationTime: createdAt,
-						PullNum:          1,
-
-						CommandName: "Approve Policies",
-						Project:     "project1",
-						Workspace:   "default",
-						Directory:   "somedir",
-					},
-				},
-			},
-		}
-		subject := events.ChecksOutputUpdater{
-			VCSClient: client,
-			MarkdownRenderer: &testRenderer{
-				t:                     t,
-				expectedCmdName:       command.ApprovePolicies,
-				expectedResult:        commandResult,
-				expectedRepo:          repo,
-				expectedOutput:        output,
-				expectedProjectResult: result,
-			},
-			TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: "nish"},
-			JobURLGenerator: &testJobURLGenerator{
-				t:        t,
-				expJobID: "",
-				url:      "",
-				err:      nil,
-			},
-		}
-
-		subject.UpdateOutput(cmdCtx, &command.Comment{
-			Name: command.ApprovePolicies,
-		}, commandResult)
-	})
-}
-
 func TestChecksOutputUpdater_CommandFailure(t *testing.T) {
 	repo := models.Repo{
 		FullName: "nish/repo",
@@ -374,44 +291,6 @@ func TestChecksOutputUpdater_CommandFailure(t *testing.T) {
 		RequestCtx: context.Background(),
 		HeadRepo:   repo,
 	}
-	t.Run("approve policies", func(t *testing.T) {
-		errorString := "error"
-		commandResult := command.Result{
-			Error: errors.New(errorString),
-		}
-
-		client := &strictTestChecksClient{
-			clients: []*testChecksClient{
-				{
-					t: t,
-					expectedRequest: types.UpdateStatusRequest{
-						Repo:             repo,
-						Ref:              sha,
-						StatusName:       "nish/policy_check",
-						Output:           errorString,
-						State:            models.FailedVCSStatus,
-						PullCreationTime: createdAt,
-						PullNum:          1,
-						CommandName:      "Approve Policies",
-					},
-				},
-			},
-		}
-		subject := events.ChecksOutputUpdater{
-			VCSClient:    client,
-			TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: "nish"},
-			JobURLGenerator: &testJobURLGenerator{
-				t:        t,
-				expJobID: "",
-				url:      "",
-				err:      nil,
-			},
-		}
-
-		subject.UpdateOutput(cmdCtx, command.Comment{
-			Name: command.ApprovePolicies,
-		}, commandResult)
-	})
 
 	t.Run("error", func(t *testing.T) {
 		errorString := "error"

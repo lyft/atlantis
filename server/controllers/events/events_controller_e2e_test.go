@@ -36,7 +36,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -407,13 +406,6 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
   true: true
   false: false
   default: false
-  trackEvents: false
-policy-v2:
-  percentage: 100
-  true: true
-  false: false
-  default: false
-  rule: key in ["runatlantis/atlantis-tests"]
   trackEvents: false`)
 	if testing.Short() {
 		t.SkipNow()
@@ -574,13 +566,6 @@ func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
   true: true
   false: false
   default: false
-  trackEvents: false
-policy-v2:
-  percentage: 100
-  true: true
-  false: false
-  default: false
-  rule: key in ["runatlantis/atlantis-tests"]
   trackEvents: false`)
 
 	if testing.Short() {
@@ -849,7 +834,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		conftestVersion,
 		conftextExec,
 		conftestExecutor,
-		featureAllocator,
 	)
 	Ok(t, err)
 	initStepRunner := &runtime.InitStepRunner{
@@ -960,19 +944,6 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		parallelPoolSize,
 	)
 
-	outputGenerator := &policies.CommandOutputGenerator{
-		PrjCommandRunner:  prjCmdRunner,
-		PrjCommandBuilder: projectCommandBuilder,
-	}
-	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
-		e2eStatusUpdater,
-		projectCommandBuilder,
-		prjCmdRunner,
-		pullUpdater,
-		dbUpdater,
-		outputGenerator,
-		featureAllocator)
-
 	unlockCommandRunner := events.NewUnlockCommandRunner(
 		deleteLockCommand,
 		vcsClient,
@@ -1002,11 +973,10 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	)
 
 	commentCommandRunnerByCmd := map[command.Name]command.Runner{
-		command.Plan:            planCommandRunner,
-		command.Apply:           applyCommandRunner,
-		command.ApprovePolicies: approvePoliciesCommandRunner,
-		command.Unlock:          unlockCommandRunner,
-		command.Version:         versionCommandRunner,
+		command.Plan:    planCommandRunner,
+		command.Apply:   applyCommandRunner,
+		command.Unlock:  unlockCommandRunner,
+		command.Version: versionCommandRunner,
 	}
 	staleCommandChecker := &testStaleCommandChecker{}
 	prrPolicyCommandRunner := &events.PRRPolicyCheckCommandRunner{

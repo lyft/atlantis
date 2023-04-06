@@ -72,11 +72,6 @@ type ProjectPolicyCheckCommandRunner interface {
 	PolicyCheck(ctx command.ProjectContext) command.ProjectResult
 }
 
-type ProjectApprovePoliciesCommandRunner interface {
-	// Approves any failing OPA policies.
-	ApprovePolicies(ctx command.ProjectContext) command.ProjectResult
-}
-
 type ProjectVersionCommandRunner interface {
 	// Version runs terraform version for the project described by ctx.
 	Version(ctx command.ProjectContext) command.ProjectResult
@@ -88,7 +83,6 @@ type ProjectCommandRunner interface {
 	ProjectPlanCommandRunner
 	ProjectApplyCommandRunner
 	ProjectPolicyCheckCommandRunner
-	ProjectApprovePoliciesCommandRunner
 	ProjectVersionCommandRunner
 }
 
