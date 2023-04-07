@@ -588,11 +588,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "creating github client creator")
 	}
 
-	legacyConftestExecutor := policy.NewConfTestExecutorWorkflow(ctxLogger, binDir, &terraform.DefaultDownloader{})
+	conftestEnsurer := policy.NewConfTestVersionEnsurer(ctxLogger, binDir, &terraform.DefaultDownloader{})
 	conftestExecutor := policy.NewConfTestExecutor(clientCreator, globalCfg.PolicySets)
 	policyCheckStepRunner, err := runtime.NewPolicyCheckStepRunner(
 		defaultTfVersion,
-		legacyConftestExecutor,
+		conftestEnsurer,
 		conftestExecutor,
 	)
 	if err != nil {

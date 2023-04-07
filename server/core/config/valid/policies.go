@@ -14,7 +14,6 @@ const (
 // context to enforce policies.
 type PolicySets struct {
 	Version      *version.Version
-	Owners       PolicyOwners
 	PolicySets   []PolicySet
 	Organization string // Github organization each policy set owner belongs to
 }
@@ -24,23 +23,11 @@ type PolicyOwners struct {
 }
 
 type PolicySet struct {
-	Source string // TODO: seems unused, remove when legacy policy checks are deprecated
-	Path   string // TODO: replaced by Paths, remove when legacy policy checks are deprecated
-	Name   string
-	Owner  string
-	Paths  []string
+	Name  string
+	Owner string
+	Paths []string
 }
 
 func (p *PolicySets) HasPolicies() bool {
 	return len(p.PolicySets) > 0
-}
-
-func (p *PolicySets) IsOwner(username string) bool {
-	for _, uname := range p.Owners.Users {
-		if uname == username {
-			return true
-		}
-	}
-
-	return false
 }
