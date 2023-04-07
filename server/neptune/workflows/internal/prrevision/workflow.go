@@ -3,6 +3,7 @@ package prrevision
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/docker/docker/pkg/fileutils"
@@ -79,7 +80,7 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 	}
 
 	// [CS-4575] TODO: Tune our workflow by analyzing the age of open PRs
-	r.emitOpenPRAgeMetrics(ctx, prs, NumLookBackWeeks)
+	r.emitOpenPRsAgeInWeeks(ctx, prs, NumLookBackWeeks)
 
 	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
 	if err := r.setRevision(ctx, request, prs); err != nil {
@@ -214,29 +215,24 @@ func isRootModified(root terraform.Root, modifiedFiles []string) (bool, error) {
 	return false, nil
 }
 
-// emits metrics for past 12 weeks in less than_x_days & more_than_x_days format
-func (r *Runner) emitOpenPRAgeMetrics(ctx workflow.Context, prs []github.PullRequest, numWeeks int) {
-	// track open PRs older than x weeks
-	moreThanXWeeksOld := make([]int, numWeeks)
+func (r *Runner) emitOpenPRsAgeInWeeks(ctx workflow.Context, prs []github.PullRequest, numWeeks int) {
+	ageInWeeks := make([]int, numWeeks)
+	olderThanNumWeeks := 0
 	for _, pr := range prs {
-		for i := 0; i < numWeeks; i++ {
-			if isOlderThanXWeeks(ctx, i+1, pr) {
-				moreThanXWeeksOld[i]++
-			}
+		if age := calculateAgeInWeeks(ctx, pr); age < len(ageInWeeks) {
+			ageInWeeks[age]++
+			continue
 		}
+		olderThanNumWeeks++
 	}
 
-	// emit metrics
-	for i := range moreThanXWeeksOld {
-		moreThan := moreThanXWeeksOld[i]
-		lessThan := len(prs) - moreThan
-		days := (i + 1) * 7
-		r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_days", days)).Inc(int64(moreThan))
-		r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", days)).Inc(int64(lessThan))
+	for i := range ageInWeeks {
+		r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("%d_weeks", i)).Inc(int64(ageInWeeks[i]))
 	}
+	r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_weeks", numWeeks)).Inc(int64(olderThanNumWeeks))
 }
 
-func isOlderThanXWeeks(ctx workflow.Context, week int, pr github.PullRequest) bool {
+func calculateAgeInWeeks(ctx workflow.Context, pr github.PullRequest) int {
 	days := workflow.Now(ctx).Sub(pr.UpdatedAt).Hours() / 24
-	return days > float64(week)*7
+	return int(math.Floor(days / 7))
 }
