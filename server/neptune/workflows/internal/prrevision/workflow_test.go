@@ -11,8 +11,10 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -112,9 +114,10 @@ func (t *testGithubActivities) GithubListModifiedFiles(ctx context.Context, requ
 	return activities.ListModifiedFilesResponse{}, nil
 }
 
-func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request) error {
+func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request, slowProcessingCutOffDays int) error {
 	options := workflow.ActivityOptions{
 		ScheduleToCloseTimeout: 5 * time.Second,
+		TaskQueue:              TaskQueue,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
@@ -122,6 +125,7 @@ func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request)
 		GithubActivities:         &testGithubActivities{},
 		RevisionSetterActivities: &testRevisionSetterActivities{},
 		Scope:                    metrics.NewNullableScope(),
+		SlowProcessingCutOffDays: slowProcessingCutOffDays,
 	}
 	return runner.Run(ctx, r)
 }
@@ -129,6 +133,7 @@ func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request)
 func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	ga := &testGithubActivities{}
 	env.RegisterActivity(ga)
@@ -150,16 +155,17 @@ func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 		PullRequests: []github.PullRequest{},
 	}, nil)
 
-	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req)
+	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req, 10)
 	env.AssertExpectations(t)
 
 	err := env.GetWorkflowResult(nil)
 	assert.Nil(t, err)
 }
 
-func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
+func TestMinRevisionSetter_OpenPR_SetMinRevision_Default(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	ga := &testGithubActivities{}
 	ra := &testRevisionSetterActivities{}
@@ -215,7 +221,84 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
 		PullRequest: pullRequests[0],
 	}).Return(nil)
 
-	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req)
+	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req, 10)
+	env.AssertExpectations(t)
+
+	err := env.GetWorkflowResult(nil)
+	assert.Nil(t, err)
+}
+
+func TestMinRevisionSetter_OpenPR_SetMinRevision_v1(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	ga := &testGithubActivities{}
+	ra := &testRevisionSetterActivities{}
+	env.RegisterActivity(ra)
+	env.RegisterActivity(ga)
+
+	req := Request{
+		Repo: github.Repo{
+			Owner: "owner",
+			Name:  "test",
+		},
+		Root: terraform.Root{
+			Path:         "test/dir2",
+			TrackedFiles: raw.DefaultAutoPlanWhenModified,
+		},
+	}
+
+	now := time.Now().UTC()
+	newPR := github.PullRequest{
+		Number:    1,
+		UpdatedAt: now.AddDate(0, 0, -5),
+	}
+	oldPR := github.PullRequest{
+		Number:    2,
+		UpdatedAt: now.AddDate(0, 0, -15),
+	}
+	pullRequests := []github.PullRequest{
+		newPR, oldPR,
+	}
+
+	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
+	filesModifiedPr2 := []string{"test/dir1/no-rebase.tf"}
+
+	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
+		Repo:    req.Repo,
+		State:   github.OpenPullRequest,
+		SortKey: github.Updated,
+		Order:   github.Descending,
+	}).Return(activities.ListPRsResponse{
+		PullRequests: pullRequests,
+	}, nil)
+
+	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+		Repo:        req.Repo,
+		PullRequest: newPR,
+	}).Return(func(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error) {
+		assert.Equal(t, TaskQueue, activity.GetInfo(ctx).TaskQueue)
+		return activities.ListModifiedFilesResponse{
+			FilePaths: filesModifiedPr1,
+		}, nil
+	})
+
+	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
+		Repo:        req.Repo,
+		PullRequest: oldPR,
+	}).Return(func(ctx context.Context, request activities.ListModifiedFilesRequest) (activities.ListModifiedFilesResponse, error) {
+		assert.Equal(t, SlowTaskQueue, activity.GetInfo(ctx).TaskQueue)
+		return activities.ListModifiedFilesResponse{
+			FilePaths: filesModifiedPr2,
+		}, nil
+	})
+
+	env.OnActivity(ra.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
+		Repository:  req.Repo,
+		PullRequest: pullRequests[0],
+	}).Return(nil)
+
+	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req, 10)
 	env.AssertExpectations(t)
 
 	err := env.GetWorkflowResult(nil)
@@ -225,6 +308,7 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision(t *testing.T) {
 func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	ga := &testGithubActivities{}
 	ra := &testRevisionSetterActivities{}
@@ -265,7 +349,7 @@ func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 		PullRequest: pullRequests[0],
 	}).Return(nil)
 
-	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req)
+	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req, 10)
 	env.AssertExpectations(t)
 
 	err := env.GetWorkflowResult(nil)
@@ -275,6 +359,7 @@ func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	ga := &testGithubActivities{}
 	ra := &testRevisionSetterActivities{}
@@ -312,9 +397,65 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 		FilePaths: filesModifiedPr1,
 	}, nil)
 
-	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req)
+	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req, 10)
 	env.AssertExpectations(t)
 
 	err := env.GetWorkflowResult(nil)
 	assert.NoError(t, err)
+}
+
+func testPrUpdateWorkflow(ctx workflow.Context, pr github.PullRequest, days int) (bool, error) {
+	runner := Runner{}
+	return runner.isPrUpdatedWithinDays(ctx, pr, days), nil
+}
+
+func TestIsPrUpdatedWithinDays_Before(t *testing.T) {
+	now := time.Now().UTC()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	pr := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -40),
+	}
+
+	var isUpdated bool
+	env.ExecuteWorkflow(testPrUpdateWorkflow, pr, 10)
+	err := env.GetWorkflowResult(&isUpdated)
+	assert.NoError(t, err)
+
+	assert.False(t, isUpdated)
+}
+
+func TestIsPrUpdatedWithinDays_At(t *testing.T) {
+	now := time.Now().UTC()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	pr := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -10),
+	}
+
+	var isUpdated bool
+	env.ExecuteWorkflow(testPrUpdateWorkflow, pr, 10)
+	err := env.GetWorkflowResult(&isUpdated)
+	assert.NoError(t, err)
+
+	assert.False(t, isUpdated)
+}
+
+func TestIsPrUpdatedWithinDays_After(t *testing.T) {
+	now := time.Now().UTC()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	pr := github.PullRequest{
+		UpdatedAt: now.AddDate(0, 0, -5),
+	}
+
+	var isUpdated bool
+	env.ExecuteWorkflow(testPrUpdateWorkflow, pr, 10)
+	err := env.GetWorkflowResult(&isUpdated)
+	assert.NoError(t, err)
+
+	assert.True(t, isUpdated)
 }
