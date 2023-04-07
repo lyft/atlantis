@@ -55,7 +55,6 @@ func (c *ChecksOutputUpdater) UpdateOutput(ctx *command.Context, cmd PullCommand
 			Output:           c.MarkdownRenderer.RenderProject(projectResult, projectResult.Command, ctx.HeadRepo),
 			State:            c.resolveState(projectResult),
 
-			// Also replaces ApprovePolicies with PolicyCheck
 			StatusName: c.buildStatusName(cmd, vcs.StatusTitleOptions{ProjectName: projectResult.ProjectName}),
 
 			// Additional fields to support templating for project level checkruns
@@ -120,10 +119,6 @@ func (c *ChecksOutputUpdater) buildOutput(res command.Result) string {
 
 func (c *ChecksOutputUpdater) buildStatusName(cmd PullCommand, options vcs.StatusTitleOptions) string {
 	commandName := cmd.CommandName()
-	if commandName == command.ApprovePolicies {
-		commandName = command.PolicyCheck
-	}
-
 	return c.TitleBuilder.Build(commandName.String(), options)
 }
 

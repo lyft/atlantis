@@ -212,9 +212,6 @@ func (c *DefaultCommandRunner) RunCommentCommand(ctx context.Context, baseRepo m
 		// Replace approve policies command with policy check if preworkflow hook fails since we don't use
 		// approve policies statuses
 		cmdName := cmd.Name
-		if cmdName == command.ApprovePolicies {
-			cmdName = command.PolicyCheck
-		}
 
 		c.Logger.ErrorContext(ctx, "Error running pre-workflow hooks", fields.PullRequestWithErr(pull, err))
 		_, err := c.VCSStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVCSStatus, cmdName, "", err.Error())

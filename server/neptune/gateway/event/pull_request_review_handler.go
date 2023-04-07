@@ -3,7 +3,6 @@ package event
 import (
 	"bytes"
 	"context"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"time"
 
 	"github.com/pkg/errors"
@@ -34,7 +33,6 @@ type PullRequestReviewWorkerProxy struct {
 	Scheduler       scheduler
 	SnsWriter       Writer
 	Logger          logging.Logger
-	Allocator       feature.Allocator
 	CheckRunFetcher fetcher
 }
 
@@ -45,17 +43,6 @@ func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullReq
 }
 
 func (p *PullRequestReviewWorkerProxy) handle(ctx context.Context, event PullRequestReview, request *http.BufferedRequest) error {
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PolicyV2, feature.FeatureContext{
-		RepoName: event.Repo.FullName,
-	})
-	if err != nil {
-		p.Logger.ErrorContext(ctx, "unable to allocate policy v2")
-		return err
-	}
-	if !shouldAllocate {
-		return nil
-	}
-
 	// Ignore non-approval events
 	if event.State != Approved {
 		return nil

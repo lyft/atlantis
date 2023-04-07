@@ -216,8 +216,6 @@ func TestParse_SubcommandUsage(t *testing.T) {
 		"atlantis plan --help",
 		"atlantis apply -h",
 		"atlantis apply --help",
-		"atlantis approve_policies -h",
-		"atlantis approve_policies --help",
 	}
 	for _, c := range comments {
 		r := commentParser.Parse(c, models.Github)
@@ -553,9 +551,6 @@ func TestParse_Parsing(t *testing.T) {
 				}
 				if cmdName == "apply" {
 					Assert(t, r.Command.Name == command.Apply, "did not parse comment %q as apply command", comment)
-				}
-				if cmdName == "approve_policies" {
-					Assert(t, r.Command.Name == command.ApprovePolicies, "did not parse comment %q as approve_policies command", comment)
 				}
 			})
 		}

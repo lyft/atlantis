@@ -71,7 +71,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/command/policies"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
@@ -595,7 +594,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		defaultTfVersion,
 		legacyConftestExecutor,
 		conftestExecutor,
-		featureAllocator,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing policy check runner")
@@ -762,21 +760,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		VCSClient:      vcsClient,
 	}
 
-	policyCheckOutputGenerator := policies.CommandOutputGenerator{
-		PrjCommandRunner:  prjCmdRunner,
-		PrjCommandBuilder: projectCommandBuilder,
-	}
-
-	approvePoliciesCommandRunner := events.NewApprovePoliciesCommandRunner(
-		vcsStatusUpdater,
-		projectCommandBuilder,
-		prjCmdRunner,
-		checksOutputUpdater,
-		dbUpdater,
-		&policyCheckOutputGenerator,
-		featureAllocator,
-	)
-
 	unlockCommandRunner := events.NewUnlockCommandRunner(
 		deleteLockCommand,
 		vcsClient,
@@ -797,11 +780,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	)
 
 	commentCommandRunnerByCmd := map[command.Name]command.Runner{
-		command.Plan:            planCommandRunner,
-		command.Apply:           applyCommandRunner,
-		command.ApprovePolicies: approvePoliciesCommandRunner,
-		command.Unlock:          unlockCommandRunner,
-		command.Version:         versionCommandRunner,
+		command.Plan:    planCommandRunner,
+		command.Apply:   applyCommandRunner,
+		command.Unlock:  unlockCommandRunner,
+		command.Version: versionCommandRunner,
 	}
 	cmdStatsScope := statsScope.SubScope("cmd")
 	staleCommandChecker := &events.StaleCommandHandler{

@@ -142,19 +142,6 @@ func (p *PlatformModeProjectRunner) Apply(ctx command.ProjectContext) command.Pr
 	return p.PrModeRunner.Apply(ctx)
 }
 
-func (p *PlatformModeProjectRunner) ApprovePolicies(ctx command.ProjectContext) command.ProjectResult {
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{RepoName: ctx.HeadRepo.FullName})
-	if err != nil {
-		p.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err))
-	}
-
-	if shouldAllocate && (ctx.WorkflowModeType == valid.PlatformWorkflowMode) {
-		return p.PlatformModeRunner.ApprovePolicies(ctx)
-	}
-
-	return p.PrModeRunner.ApprovePolicies(ctx)
-}
-
 func (p *PlatformModeProjectRunner) Version(ctx command.ProjectContext) command.ProjectResult {
 	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{RepoName: ctx.HeadRepo.FullName})
 	if err != nil {

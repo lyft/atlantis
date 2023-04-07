@@ -19,9 +19,6 @@ const (
 	Unlock
 	// PolicyCheck is a command to run conftest test.
 	PolicyCheck
-	// ApprovePolicies is a command to approve policies with owner check
-	// TODO: remove ApprovePolicies with policy v2
-	ApprovePolicies
 	// Autoplan is a command to run terrafor plan on PR open/update if autoplan is enabled
 	Autoplan
 	// Version is a command to run terraform version.
@@ -46,8 +43,6 @@ func (c Name) String() string {
 		return "unlock"
 	case PolicyCheck:
 		return "policy_check"
-	case ApprovePolicies:
-		return "approve_policies"
 	case Version:
 		return "version"
 	}

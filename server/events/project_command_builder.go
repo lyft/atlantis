@@ -84,11 +84,6 @@ type ProjectApplyCommandBuilder interface {
 	BuildApplyCommands(ctx *command.Context, comment *command.Comment) ([]command.ProjectContext, error)
 }
 
-type ProjectApprovePoliciesCommandBuilder interface {
-	// BuildApprovePoliciesCommands builds project PolicyCheck commands for this ctx and comment.
-	BuildApprovePoliciesCommands(ctx *command.Context, comment *command.Comment) ([]command.ProjectContext, error)
-}
-
 type ProjectVersionCommandBuilder interface {
 	// BuildVersionCommands builds project Version commands for this ctx and comment. If
 	// comment doesn't specify one project then there may be multiple commands
@@ -103,7 +98,6 @@ type ProjectCommandBuilder interface {
 	ProjectPlanCommandBuilder
 	ProjectPolicyCheckCommandBuilder
 	ProjectApplyCommandBuilder
-	ProjectApprovePoliciesCommandBuilder
 	ProjectVersionCommandBuilder
 }
 
