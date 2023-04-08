@@ -13,6 +13,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"go.temporal.io/sdk/temporal"
@@ -88,7 +89,15 @@ func NewWorker(
 	repoName, rootName string,
 	githubCheckRunCache CheckRunClient,
 ) (*Worker, error) {
-	tfWorkflowRunner := terraform.NewWorkflowRunner(a, tfWorkflow, githubCheckRunCache)
+	checkRunNotifier := &notifier.CheckRunNotifier{
+		CheckRunSessionCache: githubCheckRunCache,
+	}
+
+	snsNotifier := &notifier.SNSNotifier{
+		Activity: a,
+	}
+
+	tfWorkflowRunner := terraform.NewWorkflowRunner(a, tfWorkflow, checkRunNotifier, snsNotifier)
 	deployer := &Deployer{
 		Activities:              a,
 		TerraformWorkflowRunner: tfWorkflowRunner,

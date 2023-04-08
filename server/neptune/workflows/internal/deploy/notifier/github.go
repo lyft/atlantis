@@ -2,10 +2,15 @@ package notifier
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -115,4 +120,85 @@ func (c *GithubCheckRunCache) load(ctx workflow.Context, externalID string, requ
 	}
 	workflow.GetLogger(ctx).Debug("created checkrun with id", "checkRunID", resp.ID)
 	return resp, nil
+}
+
+// used so we can test dependencies in isolation
+type checkRunClient interface {
+	CreateOrUpdate(ctx workflow.Context, deploymentID string, request GithubCheckRunRequest) (int64, error)
+}
+
+type CheckRunNotifier struct {
+	CheckRunSessionCache checkRunClient
+}
+
+func (n *CheckRunNotifier) Notify(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo, workflowState *state.Workflow) error {
+	// TODO: if we never created a check run, there was likely some issue, we should attempt to create it again.
+	if deploymentInfo.CheckRunID == 0 {
+		return fmt.Errorf("check run id is 0, skipping update of check run")
+	}
+
+	return errors.Wrap(n.updateCheckRun(ctx, workflowState, deploymentInfo), "updating check run")
+}
+
+func (n *CheckRunNotifier) updateCheckRun(ctx workflow.Context, workflowState *state.Workflow, deploymentInfo terraform.DeploymentInfo) error {
+	summary := markdown.RenderWorkflowStateTmpl(workflowState)
+	checkRunState := determineCheckRunState(workflowState)
+
+	request := GithubCheckRunRequest{
+		Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
+		Sha:     deploymentInfo.Commit.Revision,
+		State:   checkRunState,
+		Repo:    deploymentInfo.Repo,
+		Summary: summary,
+	}
+
+	if workflowState.Apply != nil {
+		// add any actions pertaining to the apply job
+		for _, a := range workflowState.Apply.GetActions().Actions {
+			request.Actions = append(request.Actions, a.ToGithubCheckRunAction())
+		}
+	}
+
+	// cap our retries for non-terminal states to allow for at least some progress
+	if checkRunState != github.CheckRunFailure && checkRunState != github.CheckRunSuccess {
+		ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+			MaximumAttempts: 3,
+		})
+	}
+
+	_, err := n.CheckRunSessionCache.CreateOrUpdate(ctx, deploymentInfo.ID.String(), request)
+	return err
+}
+
+func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState {
+	if waitingForActionOn(workflowState.Plan) || waitingForActionOn(workflowState.Apply) {
+		return github.CheckRunActionRequired
+	}
+
+	if workflowState.Result.Status != state.CompleteWorkflowStatus {
+		return github.CheckRunPending
+	}
+
+	if workflowState.Result.Reason == state.SuccessfulCompletionReason {
+		return github.CheckRunSuccess
+	}
+
+	timeouts := []state.WorkflowCompletionReason{
+		state.TimeoutError,
+		state.ActivityDurationTimeoutError,
+		state.HeartbeatTimeoutError,
+		state.SchedulingTimeoutError,
+	}
+
+	for _, t := range timeouts {
+		if workflowState.Result.Reason == t {
+			return github.CheckRunTimeout
+		}
+	}
+
+	return github.CheckRunFailure
+}
+
+func waitingForActionOn(job *state.Job) bool {
+	return job != nil && job.Status == state.WaitingJobStatus && len(job.OnWaitingActions.Actions) > 0
 }
