@@ -208,7 +208,8 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 					t: t,
 				},
 				credsRefresher,
-				&file.RWLock{})
+				&file.RWLock{},
+				&mockWriter{})
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -267,7 +268,7 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 		t:                      t,
 	}
 
-	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{})
+	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{})
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -411,10 +412,14 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 			}
 
 			credsRefresher := &testCredsRefresher{}
+			fileWriter := &mockWriter{
+				t:            t,
+				expectedName: "some/path/output.json",
+			}
 
 			tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, &testStreamHandler{
 				t: t,
-			}, credsRefresher, &file.RWLock{})
+			}, credsRefresher, &file.RWLock{}, fileWriter)
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformPlan, req)
@@ -485,8 +490,12 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 	}
 
 	credsRefresher := &testCredsRefresher{}
+	fileWriter := &mockWriter{
+		t:            t,
+		expectedName: "some/path/output.json",
+	}
 
-	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{})
+	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, fileWriter)
 
 	env.RegisterActivity(tfActivity)
 
@@ -498,7 +507,8 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 	assert.NoError(t, result.Get(&resp))
 
 	assert.Equal(t, TerraformPlanResponse{
-		PlanFile: "some/path/output.tfplan",
+		PlanFile:     "some/path/output.tfplan",
+		PlanJSONFile: "some/path/output.json",
 		Summary: terraform.PlanSummary{
 			Updates: []terraform.ResourceSummary{
 				{
@@ -606,7 +616,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 
 			tfActivity := NewTerraformActivities(testClient, expectedVersion, &testStreamHandler{
 				t: t,
-			}, &testCredsRefresher{}, &file.RWLock{})
+			}, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{})
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformApply, req)
@@ -658,7 +668,7 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 		expectedJobID: jobID,
 	}
 
-	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, &testCredsRefresher{}, &file.RWLock{})
+	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{})
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformApply, req)
@@ -667,4 +677,14 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 	// wait before we check called value otherwise we might race
 	streamHandler.Wait()
 	assert.True(t, streamHandler.called)
+}
+
+type mockWriter struct {
+	t            *testing.T
+	expectedName string
+}
+
+func (m *mockWriter) Write(name string, _ []byte) error {
+	assert.Equal(m.t, m.expectedName, name)
+	return nil
 }

@@ -55,8 +55,9 @@ var RefreshArg = terraform.Argument{
 }
 
 const (
-	outArgKey      = "out"
-	PlanOutputFile = "output.tfplan"
+	outArgKey          = "out"
+	PlanOutputFile     = "output.tfplan"
+	PlanOutputJSONFile = "output.json"
 )
 
 // Setting the buffer size to 10mb
@@ -74,6 +75,10 @@ type gitCredentialsRefresher interface {
 	Refresh(ctx context.Context, token int64) error
 }
 
+type writer interface {
+	Write(name string, data []byte) error
+}
+
 type terraformActivities struct {
 	TerraformClient        TerraformClient
 	DefaultTFVersion       *version.Version
@@ -81,6 +86,7 @@ type terraformActivities struct {
 	GHAppConfig            githubapp.Config
 	GitCLICredentials      gitCredentialsRefresher
 	GitCredentialsFileLock *file.RWLock
+	FileWriter             writer
 }
 
 func NewTerraformActivities(
@@ -89,6 +95,7 @@ func NewTerraformActivities(
 	streamHandler streamer,
 	gitCredentialsRefresher gitCredentialsRefresher,
 	gitCredentialsFileLock *file.RWLock,
+	fileWriter writer,
 ) *terraformActivities { //nolint:revive // avoiding refactor while adding linter action
 	return &terraformActivities{
 		TerraformClient:        client,
@@ -96,6 +103,7 @@ func NewTerraformActivities(
 		StreamHandler:          streamHandler,
 		GitCLICredentials:      gitCredentialsRefresher,
 		GitCredentialsFileLock: gitCredentialsFileLock,
+		FileWriter:             fileWriter,
 	}
 }
 
@@ -187,9 +195,9 @@ type TerraformPlanRequest struct {
 }
 
 type TerraformPlanResponse struct {
-	PlanFile string
-	Output   string
-	Summary  terraform.PlanSummary
+	PlanFile     string
+	PlanJSONFile string
+	Summary      terraform.PlanSummary
 }
 
 func (t *terraformActivities) TerraformPlan(ctx context.Context, request TerraformPlanRequest) (TerraformPlanResponse, error) {
@@ -253,20 +261,28 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		StdErr: showResultBuffer,
 	})
 
-	// we shouldn't fail our activity just because show failed. Summaries aren't that critical.
 	if err != nil {
 		activity.GetLogger(ctx).Error("error with terraform show", key.ErrKey, err)
+		return TerraformPlanResponse{}, wrapTerraformError(err, "running show command")
 	}
 
-	summary, err := terraform.NewPlanSummaryFromJSON(showResultBuffer.Bytes())
-
+	showResults := showResultBuffer.Bytes()
+	summary, err := terraform.NewPlanSummaryFromJSON(showResults)
 	if err != nil {
 		activity.GetLogger(ctx).Error("error building plan summary", key.ErrKey, err)
 	}
 
+	// TODO: optimize by skipping write step when not in PR Mode
+	// write show results to disk
+	planJSONFile := filepath.Join(request.Path, PlanOutputJSONFile)
+	if err := t.FileWriter.Write(planJSONFile, showResults); err != nil {
+		return TerraformPlanResponse{}, errors.Wrap(err, "writing terraform show results to disk")
+	}
+
 	return TerraformPlanResponse{
-		PlanFile: filepath.Join(request.Path, PlanOutputFile),
-		Summary:  summary,
+		PlanFile:     planFile,
+		PlanJSONFile: planJSONFile,
+		Summary:      summary,
 	}, nil
 }
 
