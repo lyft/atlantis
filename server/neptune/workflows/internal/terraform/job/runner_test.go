@@ -109,7 +109,6 @@ func TestJobRunner_Plan(t *testing.T) {
 				req: activities.TerraformPlanRequest{
 					JobID: JobID,
 					Args:  []terraform_model.Argument{},
-					Envs:  map[string]string{},
 					DynamicEnvs: []activities.EnvVar{
 						{
 							Name:  "env1",
@@ -156,7 +155,6 @@ func TestJobRunner_Apply(t *testing.T) {
 				req: activities.TerraformApplyRequest{
 					JobID: JobID,
 					Args:  []terraform_model.Argument{},
-					Envs:  map[string]string{},
 					DynamicEnvs: []activities.EnvVar{
 						{
 							Name:  "env1",

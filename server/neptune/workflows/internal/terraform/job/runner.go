@@ -145,7 +145,6 @@ func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step 
 	})
 	err = workflow.ExecuteActivity(ctx, r.Activity.TerraformApply, activities.TerraformApplyRequest{
 		Args:        args,
-		Envs:        map[string]string{},
 		DynamicEnvs: envs,
 		TfVersion:   executionCtx.TfVersion,
 		Path:        executionCtx.Path,
@@ -172,7 +171,6 @@ func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, extraA
 	}
 	err = workflow.ExecuteActivity(ctx, r.Activity.TerraformPlan, activities.TerraformPlanRequest{
 		Args:        args,
-		Envs:        map[string]string{},
 		DynamicEnvs: envs,
 		TfVersion:   ctx.TfVersion,
 		JobID:       ctx.JobID,
@@ -199,7 +197,6 @@ func (r *JobRunner) init(ctx *ExecutionContext, localRoot *terraform.LocalRoot, 
 	var resp activities.TerraformInitResponse
 	err = workflow.ExecuteActivity(ctx.Context, r.Activity.TerraformInit, activities.TerraformInitRequest{
 		Args:                 args,
-		Envs:                 map[string]string{},
 		DynamicEnvs:          envs,
 		TfVersion:            ctx.TfVersion,
 		Path:                 ctx.Path,
