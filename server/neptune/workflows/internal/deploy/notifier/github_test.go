@@ -2,390 +2,285 @@ package notifier_test
 
 import (
 	"context"
+	"net/url"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
+	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
 
-type request struct {
-	Requests []struct {
-		DeploymentID string
-		Request      notifier.GithubCheckRunRequest
+type testCheckRunClient struct {
+	expectedRequest      notifier.GithubCheckRunRequest
+	expectedDeploymentID string
+	expectedT            *testing.T
+}
+
+func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID string, request notifier.GithubCheckRunRequest) (int64, error) {
+	assert.Equal(t.expectedT, t.expectedRequest, request)
+	assert.Equal(t.expectedT, t.expectedDeploymentID, deploymentID)
+
+	return 1, nil
+}
+
+func (a *testActivities) AuditJob(ctx context.Context, request activities.AuditJobRequest) error {
+	return nil
+}
+
+type checkrunNotifierRequest struct {
+	StatesToSend    []*state.Workflow
+	DeploymentInfo  internalTerraform.DeploymentInfo
+	ExpectedRequest notifier.GithubCheckRunRequest
+	T               *testing.T
+}
+
+func testCheckRunNotifier(ctx workflow.Context, r checkrunNotifierRequest) error {
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		ScheduleToCloseTimeout: 5 * time.Second,
+	})
+
+	notifier := &notifier.CheckRunNotifier{
+		CheckRunSessionCache: &testCheckRunClient{
+			expectedRequest: r.ExpectedRequest,
+			expectedT:       r.T,
+		},
 	}
-}
 
-type response struct {
-	IDs []int64
-}
-
-type testActivities struct{}
-
-func (a testActivities) GithubUpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error) {
-	return activities.UpdateCheckRunResponse{}, nil
-}
-
-func (a testActivities) GithubCreateCheckRun(ctx context.Context, request activities.CreateCheckRunRequest) (activities.CreateCheckRunResponse, error) {
-	return activities.CreateCheckRunResponse{}, nil
-}
-
-func testWorkflow(ctx workflow.Context, workflowRequest request) (response, error) {
-	ctx = workflow.WithStartToCloseTimeout(ctx, 5*time.Second)
-	var a testActivities
-	c := notifier.NewGithubCheckRunCache(a)
-
-	var ids []int64
-	for _, r := range workflowRequest.Requests {
-		id, err := c.CreateOrUpdate(ctx, r.DeploymentID, r.Request)
-
-		if err != nil {
-			return response{}, err
+	for _, s := range r.StatesToSend {
+		if err := notifier.Notify(ctx, r.DeploymentInfo, s); err != nil {
+			return err
 		}
-
-		ids = append(ids, id)
 	}
-	return response{
-		IDs: ids,
-	}, nil
+
+	return nil
 }
 
-func TestGithubCheckRunCache_CreatesThenUpdates(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	a := &testActivities{}
-
-	env.RegisterActivity(a)
-
-	testRequest1 := notifier.GithubCheckRunRequest{
-		Title: "title",
-		Sha:   "alskdjf",
-		Repo: github.Repo{
-			Name: "repo",
-		},
-		State: github.CheckRunQueued,
-		Actions: []github.CheckRunAction{
-			github.CreatePlanReviewAction(github.Approve),
-		},
-		Summary: "some summary",
-	}
-
-	testRequest2 := notifier.GithubCheckRunRequest{
-		Title: "title",
-		Sha:   "alskdjf",
-		Repo: github.Repo{
-			Name: "repo",
-		},
-		State:   github.CheckRunSuccess,
-		Summary: "some summary 2",
-	}
-
-	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
-		Title:      testRequest1.Title,
-		Sha:        testRequest1.Sha,
-		Repo:       testRequest1.Repo,
-		State:      testRequest1.State,
-		Actions:    testRequest1.Actions,
-		Summary:    testRequest1.Summary,
-		ExternalID: "1234",
-	}).Return(activities.CreateCheckRunResponse{
-		ID: 1,
-	}, nil)
-
-	env.OnActivity(a.GithubUpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
-		Title:      testRequest2.Title,
-		ID:         1,
-		Repo:       testRequest2.Repo,
-		State:      testRequest2.State,
-		Actions:    testRequest2.Actions,
-		Summary:    testRequest2.Summary,
-		ExternalID: "1234",
-	}).Return(activities.UpdateCheckRunResponse{
-		ID:     1,
-		Status: "completed",
-	}, nil)
-
-	env.ExecuteWorkflow(testWorkflow, request{
-		Requests: []struct {
-			DeploymentID string
-			Request      notifier.GithubCheckRunRequest
-		}{
-			{
-				DeploymentID: "1234",
-				Request:      testRequest1,
-			},
-			{
-				DeploymentID: "1234",
-				Request:      testRequest2,
-			},
-		},
-	})
-
-	env.AssertExpectations(t)
-
-	var r response
-	err := env.GetWorkflowResult(&r)
+func TestCheckRunNotifier(t *testing.T) {
+	outputURL, err := url.Parse("www.nish.com")
 	assert.NoError(t, err)
 
-	assert.Equal(t, r.IDs, []int64{1, 1})
-}
-
-func TestGithubCheckRunCache_CreatesAcrossDeploymentIDs(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	a := &testActivities{}
-
-	env.RegisterActivity(a)
-
-	testRequest1 := notifier.GithubCheckRunRequest{
-		Title: "title",
-		Sha:   "alskdjf",
-		Repo: github.Repo{
-			Name: "repo",
-		},
-		State:   github.CheckRunQueued,
-		Summary: "some summary",
+	jobOutput := &state.JobOutput{
+		URL: outputURL,
 	}
 
-	testRequest2 := notifier.GithubCheckRunRequest{
-		Title: "title",
-		Sha:   "alskdjf",
-		Repo: github.Repo{
-			Name: "repo",
+	stTime := time.Now()
+	endTime := stTime.Add(time.Second * 5)
+	internalDeploymentInfo := internalTerraform.DeploymentInfo{
+		CheckRunID: 1,
+		ID:         uuid.New(),
+		Root:       terraform.Root{Name: "root"},
+		Repo:       github.Repo{Name: "hello"},
+		Commit: github.Commit{
+			Revision: "12345",
 		},
-		State:   github.CheckRunQueued,
-		Summary: "some summary",
 	}
 
-	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
-		Title:      testRequest1.Title,
-		Sha:        testRequest1.Sha,
-		Repo:       testRequest1.Repo,
-		State:      testRequest1.State,
-		Actions:    testRequest1.Actions,
-		Summary:    testRequest1.Summary,
-		ExternalID: "1234",
-	}).Return(activities.CreateCheckRunResponse{
-		ID: 1,
-	}, nil).Once()
-
-	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
-		Title:      testRequest1.Title,
-		Sha:        testRequest1.Sha,
-		Repo:       testRequest1.Repo,
-		State:      testRequest1.State,
-		Actions:    testRequest1.Actions,
-		Summary:    testRequest1.Summary,
-		ExternalID: "12345",
-	}).Return(activities.CreateCheckRunResponse{
-		ID: 2,
-	}, nil).Once()
-
-	env.ExecuteWorkflow(testWorkflow, request{
-		Requests: []struct {
-			DeploymentID string
-			Request      notifier.GithubCheckRunRequest
-		}{
-			{
-				DeploymentID: "1234",
-				Request:      testRequest1,
+	cases := []struct {
+		State                 *state.Workflow
+		ExpectedCheckRunState github.CheckRunState
+		ExpectedActions       []github.CheckRunAction
+	}{
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.WaitingJobStatus,
+				},
 			},
-			{
-				DeploymentID: "12345",
-				Request:      testRequest2,
+			ExpectedCheckRunState: github.CheckRunPending,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.InProgressJobStatus,
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunPending,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.FailedJobStatus,
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunPending,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.FailedJobStatus,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.InternalServiceError,
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunFailure,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunPending,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Apply: &state.Job{
+					Output: jobOutput,
+					Status: state.WaitingJobStatus,
+					OnWaitingActions: state.JobActions{
+						Actions: []state.JobAction{
+							{
+								ID:   "Confirm",
+								Info: "confirm",
+							},
+						},
+					},
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunActionRequired,
+			ExpectedActions: []github.CheckRunAction{
+				{
+					Label:       "Confirm",
+					Description: "confirm",
+				},
 			},
 		},
-	})
-
-	env.AssertExpectations(t)
-
-	var r response
-	err := env.GetWorkflowResult(&r)
-	assert.NoError(t, err)
-
-	assert.Equal(t, []int64{1, 2}, r.IDs)
-}
-
-func TestGithubCheckRunCache_CreatesCompleted(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	a := &testActivities{}
-
-	env.RegisterActivity(a)
-
-	testRequest1 := notifier.GithubCheckRunRequest{
-		Title: "title",
-		Sha:   "alskdjf",
-		Repo: github.Repo{
-			Name: "repo",
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Apply: &state.Job{
+					Output:    jobOutput,
+					Status:    state.InProgressJobStatus,
+					StartTime: stTime,
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunPending,
 		},
-		State:   github.CheckRunQueued,
-		Summary: "some summary",
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Apply: &state.Job{
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunPending,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Apply: &state.Job{
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.InternalServiceError,
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunFailure,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Apply: &state.Job{
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.TimeoutError,
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunTimeout,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Apply: &state.Job{
+					Output:    jobOutput,
+					Status:    state.SuccessJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.SuccessfulCompletionReason,
+				},
+			},
+			ExpectedCheckRunState: github.CheckRunSuccess,
+		},
 	}
 
-	testRequest2 := notifier.GithubCheckRunRequest{
-		Title: "title",
-		Sha:   "alskdjf",
-		Repo: github.Repo{
-			Name: "repo",
-		},
-		State:   github.CheckRunQueued,
-		Summary: "some summary",
+	for _, c := range cases {
+		t.Run("", func(t *testing.T) {
+			ts := testsuite.WorkflowTestSuite{}
+			env := ts.NewTestWorkflowEnvironment()
+
+			var a = &testActivities{}
+			env.RegisterActivity(a)
+
+			env.ExecuteWorkflow(testCheckRunNotifier, checkrunNotifierRequest{
+				StatesToSend:   []*state.Workflow{c.State},
+				DeploymentInfo: internalDeploymentInfo,
+				ExpectedRequest: notifier.GithubCheckRunRequest{
+					Title: "atlantis/deploy: root",
+					Sha:   internalDeploymentInfo.Commit.Revision,
+					State: c.ExpectedCheckRunState,
+					Repo: github.Repo{
+						Name: "hello",
+					},
+					Summary: markdown.RenderWorkflowStateTmpl(c.State),
+					Actions: c.ExpectedActions,
+				},
+				T: t,
+			})
+
+			env.AssertExpectations(t)
+
+			err = env.GetWorkflowResult(nil)
+			assert.NoError(t, err)
+		})
 	}
-
-	var id int64
-	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
-		Title:      testRequest1.Title,
-		Sha:        testRequest1.Sha,
-		Repo:       testRequest1.Repo,
-		State:      testRequest1.State,
-		Actions:    testRequest1.Actions,
-		Summary:    testRequest1.Summary,
-		ExternalID: "1234",
-	}).Return(func(ctx context.Context, r activities.CreateCheckRunRequest) (activities.CreateCheckRunResponse, error) {
-		id++
-		return activities.CreateCheckRunResponse{
-			ID:     id,
-			Status: "completed",
-		}, nil
-	}).Twice()
-
-	env.ExecuteWorkflow(testWorkflow, request{
-		Requests: []struct {
-			DeploymentID string
-			Request      notifier.GithubCheckRunRequest
-		}{
-			{
-				DeploymentID: "1234",
-				Request:      testRequest1,
-			},
-			{
-				DeploymentID: "1234",
-				Request:      testRequest2,
-			},
-		},
-	})
-
-	env.AssertExpectations(t)
-
-	var r response
-	err := env.GetWorkflowResult(&r)
-	assert.NoError(t, err)
-
-	assert.Equal(t, []int64{1, 2}, r.IDs)
-}
-
-func TestGithubCheckRunCache_CreatesAfterCompleting(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	a := &testActivities{}
-
-	env.RegisterActivity(a)
-
-	testRequest1 := notifier.GithubCheckRunRequest{
-		Title: "title",
-		Sha:   "alskdjf",
-		Repo: github.Repo{
-			Name: "repo",
-		},
-		State:   github.CheckRunQueued,
-		Summary: "some summary",
-	}
-
-	testRequest2 := notifier.GithubCheckRunRequest{
-		Title: "title",
-		Sha:   "alskdjf",
-		Repo: github.Repo{
-			Name: "repo",
-		},
-		Actions: []github.CheckRunAction{
-			github.CreatePlanReviewAction(github.Approve),
-		},
-		State:   github.CheckRunActionRequired,
-		Summary: "some summary 2",
-	}
-
-	testRequest3 := notifier.GithubCheckRunRequest{
-		Title: "title",
-		Sha:   "alskdjf",
-		Repo: github.Repo{
-			Name: "repo",
-		},
-		State:   github.CheckRunPending,
-		Summary: "some summary",
-	}
-
-	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
-		Title:      testRequest1.Title,
-		Sha:        testRequest1.Sha,
-		Repo:       testRequest1.Repo,
-		State:      testRequest1.State,
-		Actions:    testRequest1.Actions,
-		Summary:    testRequest1.Summary,
-		ExternalID: "1234",
-	}).Return(activities.CreateCheckRunResponse{
-		ID: 1,
-	}, nil)
-
-	env.OnActivity(a.GithubUpdateCheckRun, mock.Anything, activities.UpdateCheckRunRequest{
-		Title:      testRequest2.Title,
-		ID:         1,
-		Repo:       testRequest2.Repo,
-		State:      testRequest2.State,
-		Actions:    testRequest2.Actions,
-		Summary:    testRequest2.Summary,
-		ExternalID: "1234",
-	}).Return(activities.UpdateCheckRunResponse{
-		ID:     1,
-		Status: "completed",
-	}, nil)
-
-	env.OnActivity(a.GithubCreateCheckRun, mock.Anything, activities.CreateCheckRunRequest{
-		Title:      testRequest3.Title,
-		Sha:        testRequest3.Sha,
-		Repo:       testRequest3.Repo,
-		State:      testRequest3.State,
-		Actions:    testRequest3.Actions,
-		Summary:    testRequest3.Summary,
-		ExternalID: "1234",
-	}).Return(activities.CreateCheckRunResponse{
-		ID: 2,
-	}, nil)
-
-	env.ExecuteWorkflow(testWorkflow, request{
-		Requests: []struct {
-			DeploymentID string
-			Request      notifier.GithubCheckRunRequest
-		}{
-			{
-				DeploymentID: "1234",
-				Request:      testRequest1,
-			},
-			{
-				DeploymentID: "1234",
-				Request:      testRequest2,
-			},
-			{
-				DeploymentID: "1234",
-				Request:      testRequest3,
-			},
-		},
-	})
-
-	env.AssertExpectations(t)
-
-	var r response
-	err := env.GetWorkflowResult(&r)
-	assert.NoError(t, err)
-
-	assert.Equal(t, []int64{1, 1, 2}, r.IDs)
 }
