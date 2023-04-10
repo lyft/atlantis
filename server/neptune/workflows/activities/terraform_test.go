@@ -116,7 +116,6 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 		RequestVersion  string
 		ExpectedVersion string
 		RequestArgs     []terraform.Argument
-		Envs            map[string]string
 		ExpectedEnvs    map[string]string
 		DynamicEnvs     []EnvVar
 		ExpectedArgs    []terraform.Argument
@@ -128,7 +127,6 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 
 			//defaults
 			ExpectedArgs: defaultArgs,
-			Envs:         map[string]string{},
 			ExpectedEnvs: map[string]string{},
 		},
 		{
@@ -148,12 +146,10 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 
 			// defaults
 			ExpectedVersion: defaultVersion,
-			Envs:            map[string]string{},
 			ExpectedEnvs:    map[string]string{},
 		},
 		{
 			// testing
-			Envs: map[string]string{"env1": "val1"},
 			DynamicEnvs: []EnvVar{
 				{
 					Name:  "env2",
@@ -161,7 +157,6 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 				},
 			},
 			ExpectedEnvs: map[string]string{
-				"env1": "val1",
 				"env2": "val2",
 			},
 
@@ -193,7 +188,6 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 			}
 
 			req := TerraformInitRequest{
-				Envs:                 c.Envs,
 				DynamicEnvs:          c.DynamicEnvs,
 				JobID:                jobID,
 				Path:                 path,
@@ -257,7 +251,6 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 	}
 
 	req := TerraformInitRequest{
-		Envs:                 map[string]string{},
 		JobID:                jobID,
 		Path:                 path,
 		GithubInstallationID: 1235,
@@ -306,7 +299,6 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		ExpectedArgs    []terraform.Argument
 		ExpectedFlags   []terraform.Flag
 		PlanMode        *terraform.PlanMode
-		Envs            map[string]string
 		ExpectedEnvs    map[string]string
 		DynamicEnvs     []EnvVar
 	}{
@@ -317,7 +309,6 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 
 			//default
 			ExpectedArgs: defaultArgs,
-			Envs:         map[string]string{},
 			ExpectedEnvs: map[string]string{},
 		},
 		{
@@ -342,7 +333,6 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 
 			// default
 			ExpectedVersion: defaultVersion,
-			Envs:            map[string]string{},
 			ExpectedEnvs:    map[string]string{},
 		},
 		{
@@ -357,12 +347,10 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 			// default
 			ExpectedArgs:    defaultArgs,
 			ExpectedVersion: defaultVersion,
-			Envs:            map[string]string{},
 			ExpectedEnvs:    map[string]string{},
 		},
 		{
 			// testing
-			Envs: map[string]string{"env1": "val1"},
 			DynamicEnvs: []EnvVar{
 				{
 					Name:  "env2",
@@ -370,7 +358,6 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 				},
 			},
 			ExpectedEnvs: map[string]string{
-				"env1": "val1",
 				"env2": "val2",
 			},
 
@@ -415,7 +402,6 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 			}
 
 			req := TerraformPlanRequest{
-				Envs:        c.Envs,
 				DynamicEnvs: c.DynamicEnvs,
 				JobID:       jobID,
 				Path:        path,
@@ -488,7 +474,6 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 	}
 
 	req := TerraformPlanRequest{
-		Envs:  map[string]string{},
 		JobID: jobID,
 		Path:  path,
 	}
@@ -542,7 +527,6 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 		ExpectedVersion string
 		RequestArgs     []terraform.Argument
 		ExpectedArgs    []terraform.Argument
-		Envs            map[string]string
 		ExpectedEnvs    map[string]string
 		DynamicEnvs     []EnvVar
 	}{
@@ -553,7 +537,6 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 
 			//default
 			ExpectedArgs: defaultArgs,
-			Envs:         map[string]string{},
 			ExpectedEnvs: map[string]string{},
 		},
 		{
@@ -571,12 +554,10 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 			},
 			//default
 			ExpectedVersion: defaultVersion,
-			Envs:            map[string]string{},
 			ExpectedEnvs:    map[string]string{},
 		},
 		{
 			//testing
-			Envs: map[string]string{"env1": "val1"},
 			DynamicEnvs: []EnvVar{
 				{
 					Name:  "env2",
@@ -584,7 +565,6 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 				},
 			},
 			ExpectedEnvs: map[string]string{
-				"env1": "val1",
 				"env2": "val2",
 			},
 
@@ -616,7 +596,6 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 			}
 
 			req := TerraformApplyRequest{
-				Envs:        c.Envs,
 				DynamicEnvs: c.DynamicEnvs,
 				JobID:       jobID,
 				Path:        path,
@@ -668,7 +647,6 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 	}
 
 	req := TerraformApplyRequest{
-		Envs:     map[string]string{},
 		JobID:    jobID,
 		Path:     path,
 		PlanFile: "some/path/output.tfplan",

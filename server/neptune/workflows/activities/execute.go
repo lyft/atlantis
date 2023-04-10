@@ -20,7 +20,6 @@ type ExecuteCommandResponse struct {
 type ExecuteCommandRequest struct {
 	Step           execute.Step
 	Path           string
-	EnvVars        map[string]string
 	DynamicEnvVars []EnvVar
 }
 
@@ -30,7 +29,7 @@ func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request E
 
 	finalEnvVars := os.Environ()
 
-	requestEnvVars, err := getEnvs(request.EnvVars, request.DynamicEnvVars)
+	requestEnvVars, err := getEnvs(request.DynamicEnvVars)
 	if err != nil {
 		return ExecuteCommandResponse{}, err
 	}

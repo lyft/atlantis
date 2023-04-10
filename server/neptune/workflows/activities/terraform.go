@@ -99,13 +99,8 @@ func NewTerraformActivities(
 	}
 }
 
-func getEnvs(directEnvs map[string]string, dynamicEnvs []EnvVar) (map[string]string, error) {
+func getEnvs(dynamicEnvs []EnvVar) (map[string]string, error) {
 	envs := make(map[string]string)
-
-	for k, v := range directEnvs {
-		envs[k] = v
-	}
-
 	for _, e := range dynamicEnvs {
 		v, err := e.GetValue()
 
@@ -121,10 +116,7 @@ func getEnvs(directEnvs map[string]string, dynamicEnvs []EnvVar) (map[string]str
 
 // Terraform Init
 type TerraformInitRequest struct {
-	Args []terraform.Argument
-	// deprecated: Use DynamicEnvs instead
-	// remove once we are sure this isn't used
-	Envs                 map[string]string
+	Args                 []terraform.Argument
 	DynamicEnvs          []EnvVar
 	JobID                string
 	TfVersion            string
@@ -151,7 +143,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	}
 	args = append(args, request.Args...)
 
-	envs, err := getEnvs(request.Envs, request.DynamicEnvs)
+	envs, err := getEnvs(request.DynamicEnvs)
 
 	if err != nil {
 		return TerraformInitResponse{}, err
@@ -186,10 +178,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 // Terraform Plan
 
 type TerraformPlanRequest struct {
-	Args []terraform.Argument
-	// deprecated: Use DynamicEnvs instead
-	// remove once we are sure this isn't used
-	Envs        map[string]string
+	Args        []terraform.Argument
 	DynamicEnvs []EnvVar
 	JobID       string
 	TfVersion   string
@@ -227,7 +216,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		flags = append(flags, request.Mode.ToFlag())
 	}
 
-	envs, err := getEnvs(request.Envs, request.DynamicEnvs)
+	envs, err := getEnvs(request.DynamicEnvs)
 
 	if err != nil {
 		return TerraformPlanResponse{}, err
@@ -284,10 +273,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 // Terraform Apply
 
 type TerraformApplyRequest struct {
-	Args []terraform.Argument
-	// deprecated: Use DynamicEnvs instead
-	// remove once we are sure this isn't used
-	Envs        map[string]string
+	Args        []terraform.Argument
 	DynamicEnvs []EnvVar
 	JobID       string
 	TfVersion   string
@@ -311,7 +297,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	args := []terraform.Argument{DisableInputArg}
 	args = append(args, request.Args...)
 
-	envs, err := getEnvs(request.Envs, request.DynamicEnvs)
+	envs, err := getEnvs(request.DynamicEnvs)
 
 	if err != nil {
 		return TerraformApplyResponse{}, err
