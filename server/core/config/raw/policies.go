@@ -8,10 +8,9 @@ import (
 
 // PolicySets is the raw schema for repo-level atlantis.yaml config.
 type PolicySets struct {
-	Version      *string      `yaml:"conftest_version,omitempty" json:"conftest_version,omitempty"`
-	Owners       PolicyOwners `yaml:"owners,omitempty" json:"owners,omitempty"`
-	PolicySets   []PolicySet  `yaml:"policy_sets" json:"policy_sets"`
-	Organization string       `yaml:"organization" json:"organization"`
+	Version      *string     `yaml:"conftest_version,omitempty" json:"conftest_version,omitempty"`
+	PolicySets   []PolicySet `yaml:"policy_sets" json:"policy_sets"`
+	Organization string      `yaml:"organization" json:"organization"`
 }
 
 func (p PolicySets) Validate() error {
@@ -28,7 +27,6 @@ func (p PolicySets) ToValid() valid.PolicySets {
 		policySets.Version, _ = version.NewVersion(*p.Version)
 	}
 
-	policySets.Owners = p.Owners.ToValid()
 	policySets.Organization = p.Organization
 
 	validPolicySets := make([]valid.PolicySet, 0)
@@ -40,34 +38,17 @@ func (p PolicySets) ToValid() valid.PolicySets {
 	return policySets
 }
 
-type PolicyOwners struct {
-	Users []string `yaml:"users,omitempty" json:"users,omitempty"`
-}
-
-func (o PolicyOwners) ToValid() valid.PolicyOwners {
-	var policyOwners valid.PolicyOwners
-
-	if len(o.Users) > 0 {
-		policyOwners.Users = o.Users
-	}
-	return policyOwners
-}
-
 type PolicySet struct {
-	Path   string   `yaml:"path" json:"path"`
-	Source string   `yaml:"source" json:"source"`
-	Name   string   `yaml:"name" json:"name"`
-	Owner  string   `yaml:"owner,omitempty" json:"owner,omitempty"`
-	Paths  []string `yaml:"paths" json:"paths"`
+	Name  string   `yaml:"name" json:"name"`
+	Owner string   `yaml:"owner,omitempty" json:"owner,omitempty"`
+	Paths []string `yaml:"paths" json:"paths"`
 }
 
 func (p PolicySet) Validate() error {
 	return validation.ValidateStruct(&p,
 		validation.Field(&p.Name, validation.Required.Error("is required")),
 		validation.Field(&p.Owner, validation.Required.Error("is required")),
-		validation.Field(&p.Path),
-		validation.Field(&p.Paths), // TODO: require when Path is deprecated
-		validation.Field(&p.Source, validation.In(valid.LocalPolicySet, valid.GithubPolicySet).Error("only 'local' and 'github' source types are supported")),
+		validation.Field(&p.Paths, validation.Required.Error("is required")),
 	)
 }
 
@@ -75,9 +56,7 @@ func (p PolicySet) ToValid() valid.PolicySet {
 	var policySet valid.PolicySet
 
 	policySet.Name = p.Name
-	policySet.Path = p.Path
 	policySet.Paths = p.Paths
-	policySet.Source = p.Source
 	policySet.Owner = p.Owner
 
 	return policySet

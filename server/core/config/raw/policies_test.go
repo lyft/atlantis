@@ -24,29 +24,6 @@ conftest_version: v1.0.0
 organization: org
 policy_sets:
 - name: policy-name
-  source: "local"
-  path: "rel/path/to/policy-set"
-`,
-			exp: raw.PolicySets{
-				Organization: "org",
-				Version:      String("v1.0.0"),
-				PolicySets: []raw.PolicySet{
-					{
-						Name:   "policy-name",
-						Source: valid.LocalPolicySet,
-						Path:   "rel/path/to/policy-set",
-					},
-				},
-			},
-		},
-		{
-			description: "valid yaml with multiple paths",
-			input: `
-conftest_version: v1.0.0
-organization: org
-policy_sets:
-- name: policy-name
-  source: "local"
   paths: ["rel/path/to/policy-set", "rel/path/to/another/policy-set"]
 `,
 			exp: raw.PolicySets{
@@ -54,9 +31,8 @@ policy_sets:
 				Version:      String("v1.0.0"),
 				PolicySets: []raw.PolicySet{
 					{
-						Name:   "policy-name",
-						Source: valid.LocalPolicySet,
-						Paths:  []string{"rel/path/to/policy-set", "rel/path/to/another/policy-set"},
+						Name:  "policy-name",
+						Paths: []string{"rel/path/to/policy-set", "rel/path/to/another/policy-set"},
 					},
 				},
 			},
@@ -99,22 +75,19 @@ func TestPolicySets_Validate(t *testing.T) {
 				Version:      String("v1.0.0"),
 				PolicySets: []raw.PolicySet{
 					{
-						Name:   "policy-name-1",
-						Owner:  "owner1",
-						Path:   "rel/path/to/source",
-						Source: valid.LocalPolicySet,
+						Name:  "policy-name-1",
+						Owner: "owner1",
+						Paths: []string{"rel/path/to/source"},
 					},
 					{
-						Name:   "policy-name-2",
-						Owner:  "owner2",
-						Path:   "rel/path/to/source",
-						Source: valid.GithubPolicySet,
+						Name:  "policy-name-2",
+						Owner: "owner2",
+						Paths: []string{"rel/path/to/source"},
 					},
 					{
-						Name:   "policy-name-3",
-						Owner:  "owner3",
-						Paths:  []string{"rel/path/to/source", "rel/diff/path/to/source"},
-						Source: valid.LocalPolicySet,
+						Name:  "policy-name-3",
+						Owner: "owner3",
+						Paths: []string{"rel/path/to/source", "rel/diff/path/to/source"},
 					},
 				},
 			},
@@ -135,21 +108,7 @@ func TestPolicySets_Validate(t *testing.T) {
 					{},
 				},
 			},
-			expErr: "policy_sets: (0: (name: is required; owner: is required.).).",
-		},
-		{
-			description: "invalid source type",
-			input: raw.PolicySets{
-				PolicySets: []raw.PolicySet{
-					{
-						Name:   "good-policy",
-						Owner:  "owner1",
-						Source: "invalid-source-type",
-						Path:   "rel/path/to/source",
-					},
-				},
-			},
-			expErr: "policy_sets: (0: (source: only 'local' and 'github' source types are supported.).).",
+			expErr: "policy_sets: (0: (name: is required; owner: is required; paths: is required.).).",
 		},
 		{
 			description: "empty string version",
@@ -157,10 +116,9 @@ func TestPolicySets_Validate(t *testing.T) {
 				Version: String(""),
 				PolicySets: []raw.PolicySet{
 					{
-						Name:   "policy-name-1",
-						Owner:  "owner1",
-						Path:   "rel/path/to/source",
-						Source: valid.LocalPolicySet,
+						Name:  "policy-name-1",
+						Owner: "owner1",
+						Paths: []string{"rel/path/to/source"},
 					},
 				},
 			},
@@ -172,10 +130,9 @@ func TestPolicySets_Validate(t *testing.T) {
 				Version: String("version123"),
 				PolicySets: []raw.PolicySet{
 					{
-						Name:   "policy-name-1",
-						Owner:  "owner1",
-						Path:   "rel/path/to/source",
-						Source: valid.LocalPolicySet,
+						Name:  "policy-name-1",
+						Owner: "owner1",
+						Paths: []string{"rel/path/to/source"},
 					},
 				},
 			},
@@ -203,48 +160,14 @@ func TestPolicySets_ToValid(t *testing.T) {
 		exp         valid.PolicySets
 	}{
 		{
-			description: "valid policies with owners",
-			input: raw.PolicySets{
-				Organization: "org",
-				Version:      String("v1.0.0"),
-				Owners: raw.PolicyOwners{
-					Users: []string{
-						"test",
-					},
-				},
-				PolicySets: []raw.PolicySet{
-					{
-						Name:   "good-policy",
-						Path:   "rel/path/to/source",
-						Source: valid.LocalPolicySet,
-					},
-				},
-			},
-			exp: valid.PolicySets{
-				Organization: "org",
-				Version:      version,
-				Owners: valid.PolicyOwners{
-					Users: []string{"test"},
-				},
-				PolicySets: []valid.PolicySet{
-					{
-						Name:   "good-policy",
-						Path:   "rel/path/to/source",
-						Source: "local",
-					},
-				},
-			},
-		},
-		{
-			description: "valid policies without owners",
+			description: "valid policies",
 			input: raw.PolicySets{
 				Organization: "org",
 				Version:      String("v1.0.0"),
 				PolicySets: []raw.PolicySet{
 					{
-						Name:   "good-policy",
-						Path:   "rel/path/to/source",
-						Source: valid.LocalPolicySet,
+						Name:  "good-policy",
+						Paths: []string{"rel/path/to/source"},
 					},
 				},
 			},
@@ -253,9 +176,8 @@ func TestPolicySets_ToValid(t *testing.T) {
 				Version:      version,
 				PolicySets: []valid.PolicySet{
 					{
-						Name:   "good-policy",
-						Path:   "rel/path/to/source",
-						Source: "local",
+						Name:  "good-policy",
+						Paths: []string{"rel/path/to/source"},
 					},
 				},
 			},
@@ -265,30 +187,20 @@ func TestPolicySets_ToValid(t *testing.T) {
 			input: raw.PolicySets{
 				Organization: "org",
 				Version:      String("v1.0.0"),
-				Owners: raw.PolicyOwners{
-					Users: []string{
-						"test",
-					},
-				},
 				PolicySets: []raw.PolicySet{
 					{
-						Name:   "good-policy",
-						Paths:  []string{"rel/path/to/source", "rel/path/to/source2"},
-						Source: valid.LocalPolicySet,
+						Name:  "good-policy",
+						Paths: []string{"rel/path/to/source", "rel/path/to/source2"},
 					},
 				},
 			},
 			exp: valid.PolicySets{
 				Organization: "org",
 				Version:      version,
-				Owners: valid.PolicyOwners{
-					Users: []string{"test"},
-				},
 				PolicySets: []valid.PolicySet{
 					{
-						Name:   "good-policy",
-						Paths:  []string{"rel/path/to/source", "rel/path/to/source2"},
-						Source: "local",
+						Name:  "good-policy",
+						Paths: []string{"rel/path/to/source", "rel/path/to/source2"},
 					},
 				},
 			},

@@ -6,4 +6,3 @@ policies:
       owner: someoneelse
       paths:
         - policies/policy.rego
-      source: local

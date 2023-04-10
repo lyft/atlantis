@@ -68,10 +68,6 @@ func (c *ConfTestExecutor) Run(_ context.Context, prjCtx command.ProjectContext,
 
 	for _, policySet := range prjCtx.PolicySets.PolicySets {
 		var policyArgs []Arg
-		// TODO: remove when policy v2 rollout is complete
-		if len(policySet.Paths) == 0 {
-			continue
-		}
 		for _, path := range policySet.Paths {
 			policyArgs = append(policyArgs, NewPolicyArg(path))
 		}
@@ -82,12 +78,7 @@ func (c *ConfTestExecutor) Run(_ context.Context, prjCtx command.ProjectContext,
 			InputFile:  inputFile,
 			Command:    executablePath,
 		}
-		serializedArgs, err := args.build()
-		if err != nil {
-			prjCtx.Log.WarnContext(prjCtx.RequestCtx, "No policies have been configured")
-			scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
-			return "", errors.Wrap(err, "building args")
-		}
+		serializedArgs := args.build()
 		policyScope := scope.SubScope(policySet.Name)
 		cmdOutput, cmdErr := c.Exec.CombinedOutput(serializedArgs, envs, workdir)
 		// Continue running other policies if one fails since it might not be the only failing one
