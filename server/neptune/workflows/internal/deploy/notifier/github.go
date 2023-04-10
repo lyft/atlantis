@@ -2,7 +2,6 @@ package notifier
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -132,11 +131,6 @@ type CheckRunNotifier struct {
 }
 
 func (n *CheckRunNotifier) Notify(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo, workflowState *state.Workflow) error {
-	// TODO: if we never created a check run, there was likely some issue, we should attempt to create it again.
-	if deploymentInfo.CheckRunID == 0 {
-		return fmt.Errorf("check run id is 0, skipping update of check run")
-	}
-
 	return errors.Wrap(n.updateCheckRun(ctx, workflowState, deploymentInfo), "updating check run")
 }
 
