@@ -36,7 +36,7 @@ type stateReceiver interface {
 	Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
 }
 
-func NewWorkflowRunner(a receiverActivities, w Workflow, notifiers ...TerraformWorkflowNotifier) *WorkflowRunner {
+func NewWorkflowRunner(a receiverActivities, w Workflow, notifiers ...WorkflowNotifier) *WorkflowRunner {
 	return &WorkflowRunner{
 		Workflow: w,
 		StateReceiver: &StateReceiver{

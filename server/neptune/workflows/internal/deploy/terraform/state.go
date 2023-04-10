@@ -13,7 +13,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type TerraformWorkflowNotifier interface {
+type WorkflowNotifier interface {
 	Notify(workflow.Context, DeploymentInfo, *state.Workflow) error
 }
 
@@ -28,7 +28,7 @@ type receiverActivities interface {
 
 type StateReceiver struct {
 	Activity  receiverActivities
-	Notifiers []TerraformWorkflowNotifier
+	Notifiers []WorkflowNotifier
 }
 
 func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
@@ -42,14 +42,6 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 	for _, notifier := range n.Notifiers {
 		if err := notifier.Notify(ctx, deploymentInfo, workflowState); err != nil {
 			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
-		}
-
-	}
-
-	// emit audit events when Apply operation is run
-	if workflowState.Apply != nil {
-		if err := n.emitApplyEvents(ctx, workflowState.Apply, deploymentInfo); err != nil {
-			workflow.GetLogger(ctx).Error(errors.Wrap(err, "auditing apply job event").Error())
 		}
 	}
 }

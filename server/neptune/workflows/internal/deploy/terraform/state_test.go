@@ -1,42 +1,19 @@
 package terraform_test
 
 import (
-	"context"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
-
-type testCheckRunClient struct {
-	expectedRequest      notifier.GithubCheckRunRequest
-	expectedDeploymentID string
-	expectedT            *testing.T
-}
-
-func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID string, request notifier.GithubCheckRunRequest) (int64, error) {
-	assert.Equal(t.expectedT, t.expectedRequest, request)
-	assert.Equal(t.expectedT, t.expectedDeploymentID, deploymentID)
-
-	return 1, nil
-}
-
-type testActivities struct {
-}
-
-func (a *testActivities) AuditJob(ctx context.Context, request activities.AuditJobRequest) error {
-	return nil
-}
 
 type testNotifier struct {
 	expectedInfo  internalTerraform.DeploymentInfo
@@ -77,7 +54,7 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 	}
 
 	receiver := &internalTerraform.StateReceiver{
-		Notifiers: []internalTerraform.TerraformWorkflowNotifier{
+		Notifiers: []internalTerraform.WorkflowNotifier{
 			notifier,
 		},
 	}
