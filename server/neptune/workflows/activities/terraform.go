@@ -55,8 +55,9 @@ var RefreshArg = terraform.Argument{
 }
 
 const (
-	outArgKey      = "out"
-	PlanOutputFile = "output.tfplan"
+	outArgKey          = "out"
+	PlanOutputFile     = "output.tfplan"
+	PlanOutputJSONFile = "output.json"
 )
 
 // Setting the buffer size to 10mb
@@ -74,6 +75,10 @@ type gitCredentialsRefresher interface {
 	Refresh(ctx context.Context, token int64) error
 }
 
+type writer interface {
+	Write(name string, data []byte) error
+}
+
 type terraformActivities struct {
 	TerraformClient        TerraformClient
 	DefaultTFVersion       *version.Version
@@ -81,6 +86,7 @@ type terraformActivities struct {
 	GHAppConfig            githubapp.Config
 	GitCLICredentials      gitCredentialsRefresher
 	GitCredentialsFileLock *file.RWLock
+	FileWriter             writer
 }
 
 func NewTerraformActivities(
@@ -89,6 +95,7 @@ func NewTerraformActivities(
 	streamHandler streamer,
 	gitCredentialsRefresher gitCredentialsRefresher,
 	gitCredentialsFileLock *file.RWLock,
+	fileWriter writer,
 ) *terraformActivities { //nolint:revive // avoiding refactor while adding linter action
 	return &terraformActivities{
 		TerraformClient:        client,
@@ -96,6 +103,7 @@ func NewTerraformActivities(
 		StreamHandler:          streamHandler,
 		GitCLICredentials:      gitCredentialsRefresher,
 		GitCredentialsFileLock: gitCredentialsFileLock,
+		FileWriter:             fileWriter,
 	}
 }
 
@@ -178,18 +186,19 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 // Terraform Plan
 
 type TerraformPlanRequest struct {
-	Args        []terraform.Argument
-	DynamicEnvs []EnvVar
-	JobID       string
-	TfVersion   string
-	Path        string
-	Mode        *terraform.PlanMode
+	Args         []terraform.Argument
+	DynamicEnvs  []EnvVar
+	JobID        string
+	TfVersion    string
+	Path         string
+	PlanMode     *terraform.PlanMode
+	WorkflowMode terraform.WorkflowMode
 }
 
 type TerraformPlanResponse struct {
-	PlanFile string
-	Output   string
-	Summary  terraform.PlanSummary
+	PlanFile     string
+	PlanJSONFile string
+	Summary      terraform.PlanSummary
 }
 
 func (t *terraformActivities) TerraformPlan(ctx context.Context, request TerraformPlanRequest) (TerraformPlanResponse, error) {
@@ -212,8 +221,8 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	args = append(args, request.Args...)
 	var flags []terraform.Flag
 
-	if request.Mode != nil {
-		flags = append(flags, request.Mode.ToFlag())
+	if request.PlanMode != nil {
+		flags = append(flags, request.PlanMode.ToFlag())
 	}
 
 	envs, err := getEnvs(request.DynamicEnvs)
@@ -248,25 +257,37 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	}
 
 	showResultBuffer := &bytes.Buffer{}
-	err = t.TerraformClient.RunCommand(ctx, showRequest, terraform.RunOptions{
+	showErr := t.TerraformClient.RunCommand(ctx, showRequest, terraform.RunOptions{
 		StdOut: showResultBuffer,
 		StdErr: showResultBuffer,
 	})
 
-	// we shouldn't fail our activity just because show failed. Summaries aren't that critical.
-	if err != nil {
+	// if used by the policy check step, we will fail when we can't find the file
+	if showErr != nil {
 		activity.GetLogger(ctx).Error("error with terraform show", key.ErrKey, err)
 	}
 
-	summary, err := terraform.NewPlanSummaryFromJSON(showResultBuffer.Bytes())
+	showResults := showResultBuffer.Bytes()
 
+	// write show results to disk
+	var planJSONFile string
+	if showErr == nil && request.WorkflowMode == terraform.PR {
+		planJSONFile = filepath.Join(request.Path, PlanOutputJSONFile)
+		if err = t.FileWriter.Write(planJSONFile, showResults); err != nil {
+			activity.GetLogger(ctx).Error("error writing show results to disk", key.ErrKey, err)
+		}
+	}
+
+	// build plan summaries
+	summary, err := terraform.NewPlanSummaryFromJSON(showResults)
 	if err != nil {
 		activity.GetLogger(ctx).Error("error building plan summary", key.ErrKey, err)
 	}
 
 	return TerraformPlanResponse{
-		PlanFile: filepath.Join(request.Path, PlanOutputFile),
-		Summary:  summary,
+		PlanFile:     planFile,
+		PlanJSONFile: planJSONFile,
+		Summary:      summary,
 	}, nil
 }
 

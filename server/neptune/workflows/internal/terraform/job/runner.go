@@ -175,7 +175,7 @@ func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, extraA
 		TfVersion:   ctx.TfVersion,
 		JobID:       ctx.JobID,
 		Path:        ctx.Path,
-		Mode:        mode,
+		PlanMode:    mode,
 	}).Get(ctx, &resp)
 	if err != nil {
 		return resp, errors.Wrap(err, "running terraform plan activity")

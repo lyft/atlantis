@@ -208,7 +208,8 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 					t: t,
 				},
 				credsRefresher,
-				&file.RWLock{})
+				&file.RWLock{},
+				&mockWriter{})
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -267,7 +268,7 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 		t:                      t,
 	}
 
-	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{})
+	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{})
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -299,11 +300,13 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		ExpectedArgs    []terraform.Argument
 		ExpectedFlags   []terraform.Flag
 		PlanMode        *terraform.PlanMode
+		WorkflowMode    terraform.WorkflowMode
 		ExpectedEnvs    map[string]string
 		DynamicEnvs     []EnvVar
 	}{
 		{
 			//testing
+			WorkflowMode:    terraform.PR,
 			RequestVersion:  "0.12.0",
 			ExpectedVersion: "0.12.0",
 
@@ -313,6 +316,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		},
 		{
 			//testing
+			WorkflowMode: terraform.PR,
 			ExpectedArgs: []terraform.Argument{
 				{
 					Key:   "input",
@@ -337,7 +341,8 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		},
 		{
 			// testing
-			PlanMode: terraform.NewDestroyPlanMode(),
+			PlanMode:     terraform.NewDestroyPlanMode(),
+			WorkflowMode: terraform.PR,
 			ExpectedFlags: []terraform.Flag{
 				{
 					Value: "destroy",
@@ -351,6 +356,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		},
 		{
 			// testing
+			WorkflowMode: terraform.PR,
 			DynamicEnvs: []EnvVar{
 				{
 					Name:  "env2",
@@ -402,19 +408,24 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 			}
 
 			req := TerraformPlanRequest{
-				DynamicEnvs: c.DynamicEnvs,
-				JobID:       jobID,
-				Path:        path,
-				TfVersion:   c.RequestVersion,
-				Args:        c.RequestArgs,
-				Mode:        c.PlanMode,
+				DynamicEnvs:  c.DynamicEnvs,
+				JobID:        jobID,
+				Path:         path,
+				TfVersion:    c.RequestVersion,
+				Args:         c.RequestArgs,
+				PlanMode:     c.PlanMode,
+				WorkflowMode: c.WorkflowMode,
 			}
 
 			credsRefresher := &testCredsRefresher{}
+			fileWriter := &mockWriter{
+				t:            t,
+				expectedName: "some/path/output.json",
+			}
 
 			tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, &testStreamHandler{
 				t: t,
-			}, credsRefresher, &file.RWLock{})
+			}, credsRefresher, &file.RWLock{}, fileWriter)
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformPlan, req)
@@ -486,7 +497,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 
 	credsRefresher := &testCredsRefresher{}
 
-	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{})
+	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{})
 
 	env.RegisterActivity(tfActivity)
 
@@ -606,7 +617,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 
 			tfActivity := NewTerraformActivities(testClient, expectedVersion, &testStreamHandler{
 				t: t,
-			}, &testCredsRefresher{}, &file.RWLock{})
+			}, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{})
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformApply, req)
@@ -658,7 +669,7 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 		expectedJobID: jobID,
 	}
 
-	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, &testCredsRefresher{}, &file.RWLock{})
+	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{})
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformApply, req)
@@ -667,4 +678,14 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 	// wait before we check called value otherwise we might race
 	streamHandler.Wait()
 	assert.True(t, streamHandler.called)
+}
+
+type mockWriter struct {
+	t            *testing.T
+	expectedName string
+}
+
+func (m *mockWriter) Write(name string, _ []byte) error {
+	assert.Equal(m.t, m.expectedName, name)
+	return nil
 }

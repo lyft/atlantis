@@ -162,6 +162,7 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 			DefaultTFVersion:       defaultTfVersion,
 			GitCLICredentials:      credentialsRefresher,
 			GitCredentialsFileLock: gitCredentialsFileLock,
+			FileWriter:             &file.Writer{},
 		},
 		jobActivities: &jobActivities{
 			StreamCloser: streamHandler,
