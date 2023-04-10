@@ -305,7 +305,7 @@ func NewServer(config Config) (*Server, error) {
 		Scope:     statsScope.SubScope("event.filters.root"),
 	}
 
-	deploySignaler := &deploy.DeployWorkflowSignaler{
+	deploySignaler := &deploy.WorkflowSignaler{
 		TemporalClient: temporalClient,
 	}
 	rootDeployer := &deploy.RootDeployer{

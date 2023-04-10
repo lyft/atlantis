@@ -2,9 +2,10 @@ package gateway
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
-	"net/http"
 
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
@@ -47,7 +48,7 @@ func NewVCSEventsController(
 	asyncScheduler scheduler,
 	temporalClient client.Client,
 	rootDeployer *deploy.RootDeployer,
-	deploySignaler *deploy.DeployWorkflowSignaler,
+	deploySignaler *deploy.WorkflowSignaler,
 	checkRunFetcher *github.CheckRunsFetcher,
 	vcsStatusUpdater *command.VCSStatusUpdater,
 	globalCfg valid.GlobalCfg) *VCSEventsController {

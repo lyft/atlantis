@@ -151,7 +151,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 				},
 			},
 		}
-		deploySignaler := deploy.DeployWorkflowSignaler{
+		deploySignaler := deploy.WorkflowSignaler{
 			TemporalClient: testSignaler,
 		}
 		rootDeployOptions := deploy.RootDeployOptions{
@@ -228,7 +228,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 				},
 			},
 		}
-		deploySignaler := deploy.DeployWorkflowSignaler{
+		deploySignaler := deploy.WorkflowSignaler{
 			TemporalClient: testSignaler,
 		}
 		rootDeployOptions := deploy.RootDeployOptions{
@@ -321,7 +321,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 		},
 		expectedErr: expectedErr,
 	}
-	deploySignaler := deploy.DeployWorkflowSignaler{
+	deploySignaler := deploy.WorkflowSignaler{
 		TemporalClient: testSignaler,
 	}
 	rootDeployOptions := deploy.RootDeployOptions{
