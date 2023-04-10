@@ -300,11 +300,13 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		ExpectedArgs    []terraform.Argument
 		ExpectedFlags   []terraform.Flag
 		PlanMode        *terraform.PlanMode
+		WorkflowMode    terraform.WorkflowMode
 		ExpectedEnvs    map[string]string
 		DynamicEnvs     []EnvVar
 	}{
 		{
 			//testing
+			WorkflowMode:    terraform.PR,
 			RequestVersion:  "0.12.0",
 			ExpectedVersion: "0.12.0",
 
@@ -314,6 +316,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		},
 		{
 			//testing
+			WorkflowMode: terraform.PR,
 			ExpectedArgs: []terraform.Argument{
 				{
 					Key:   "input",
@@ -338,7 +341,8 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		},
 		{
 			// testing
-			PlanMode: terraform.NewDestroyPlanMode(),
+			PlanMode:     terraform.NewDestroyPlanMode(),
+			WorkflowMode: terraform.PR,
 			ExpectedFlags: []terraform.Flag{
 				{
 					Value: "destroy",
@@ -352,6 +356,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		},
 		{
 			// testing
+			WorkflowMode: terraform.PR,
 			DynamicEnvs: []EnvVar{
 				{
 					Name:  "env2",
@@ -403,12 +408,13 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 			}
 
 			req := TerraformPlanRequest{
-				DynamicEnvs: c.DynamicEnvs,
-				JobID:       jobID,
-				Path:        path,
-				TfVersion:   c.RequestVersion,
-				Args:        c.RequestArgs,
-				Mode:        c.PlanMode,
+				DynamicEnvs:  c.DynamicEnvs,
+				JobID:        jobID,
+				Path:         path,
+				TfVersion:    c.RequestVersion,
+				Args:         c.RequestArgs,
+				PlanMode:     c.PlanMode,
+				WorkflowMode: c.WorkflowMode,
 			}
 
 			credsRefresher := &testCredsRefresher{}
@@ -490,12 +496,8 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 	}
 
 	credsRefresher := &testCredsRefresher{}
-	fileWriter := &mockWriter{
-		t:            t,
-		expectedName: "some/path/output.json",
-	}
 
-	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, fileWriter)
+	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{})
 
 	env.RegisterActivity(tfActivity)
 
@@ -507,8 +509,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 	assert.NoError(t, result.Get(&resp))
 
 	assert.Equal(t, TerraformPlanResponse{
-		PlanFile:     "some/path/output.tfplan",
-		PlanJSONFile: "some/path/output.json",
+		PlanFile: "some/path/output.tfplan",
 		Summary: terraform.PlanSummary{
 			Updates: []terraform.ResourceSummary{
 				{

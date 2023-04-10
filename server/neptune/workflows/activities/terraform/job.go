@@ -46,3 +46,10 @@ func (m PlanMode) ToFlag() Flag {
 func (m PlanMode) String() string {
 	return string(m)
 }
+
+type WorkflowMode int
+
+const (
+	Deploy WorkflowMode = iota
+	PR
+)

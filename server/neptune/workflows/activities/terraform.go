@@ -186,12 +186,13 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 // Terraform Plan
 
 type TerraformPlanRequest struct {
-	Args        []terraform.Argument
-	DynamicEnvs []EnvVar
-	JobID       string
-	TfVersion   string
-	Path        string
-	Mode        *terraform.PlanMode
+	Args         []terraform.Argument
+	DynamicEnvs  []EnvVar
+	JobID        string
+	TfVersion    string
+	Path         string
+	PlanMode     *terraform.PlanMode
+	WorkflowMode terraform.WorkflowMode
 }
 
 type TerraformPlanResponse struct {
@@ -220,8 +221,8 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	args = append(args, request.Args...)
 	var flags []terraform.Flag
 
-	if request.Mode != nil {
-		flags = append(flags, request.Mode.ToFlag())
+	if request.PlanMode != nil {
+		flags = append(flags, request.PlanMode.ToFlag())
 	}
 
 	envs, err := getEnvs(request.DynamicEnvs)
@@ -272,11 +273,13 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		activity.GetLogger(ctx).Error("error building plan summary", key.ErrKey, err)
 	}
 
-	// TODO: optimize by skipping write step when not in PR Mode
 	// write show results to disk
-	planJSONFile := filepath.Join(request.Path, PlanOutputJSONFile)
-	if err := t.FileWriter.Write(planJSONFile, showResults); err != nil {
-		return TerraformPlanResponse{}, errors.Wrap(err, "writing terraform show results to disk")
+	var planJSONFile string
+	if request.WorkflowMode == terraform.PR {
+		planJSONFile = filepath.Join(request.Path, PlanOutputJSONFile)
+		if err := t.FileWriter.Write(planJSONFile, showResults); err != nil {
+			return TerraformPlanResponse{}, errors.Wrap(err, "writing terraform show results to disk")
+		}
 	}
 
 	return TerraformPlanResponse{
