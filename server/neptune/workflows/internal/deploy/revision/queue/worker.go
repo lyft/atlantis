@@ -97,7 +97,7 @@ func NewWorker(
 		Activity: a,
 	}
 
-	tfWorkflowRunner := terraform.NewWorkflowRunner(a, tfWorkflow, checkRunNotifier, snsNotifier)
+	tfWorkflowRunner := terraform.NewWorkflowRunner(a, tfWorkflow, snsNotifier, checkRunNotifier)
 	deployer := &Deployer{
 		Activities:              a,
 		TerraformWorkflowRunner: tfWorkflowRunner,
