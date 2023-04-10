@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/request"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	internalGH "github.com/runatlantis/atlantis/server/vcs/provider/github"
@@ -18,7 +18,7 @@ const (
 )
 
 type rootDeployer interface {
-	Deploy(ctx context.Context, deployOptions event.RootDeployOptions) error
+	Deploy(ctx context.Context, deployOptions deploy.RootDeployOptions) error
 }
 
 type scheduler interface {
@@ -36,7 +36,7 @@ func (c *DeployHandler) Handle(ctx context.Context, r request.Deploy) error {
 
 	return c.Scheduler.Schedule(ctx,
 		func(ctx context.Context) error {
-			return c.Deployer.Deploy(ctx, event.RootDeployOptions{
+			return c.Deployer.Deploy(ctx, deploy.RootDeployOptions{
 				Repo:      r.Repo,
 				Branch:    r.Branch,
 				Revision:  r.Revision,

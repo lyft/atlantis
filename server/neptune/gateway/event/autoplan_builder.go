@@ -1,4 +1,4 @@
-package gateway
+package event
 
 import (
 	"context"

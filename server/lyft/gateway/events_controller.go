@@ -15,6 +15,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	gateway_handlers "github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	converters "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
@@ -31,7 +32,7 @@ func NewVCSEventsController(
 	scope tally.Scope,
 	webhookSecret []byte,
 	allowDraftPRs bool,
-	autoplanValidator *AutoplanValidator,
+	autoplanValidator *gateway_handlers.AutoplanValidator,
 	snsWriter gateway_handlers.Writer,
 	commentParser events.CommentParsing,
 	repoAllowlistChecker *events.RepoAllowlistChecker,
@@ -45,8 +46,8 @@ func NewVCSEventsController(
 	syncScheduler scheduler,
 	asyncScheduler scheduler,
 	temporalClient client.Client,
-	rootDeployer *gateway_handlers.RootDeployer,
-	deploySignaler *gateway_handlers.DeployWorkflowSignaler,
+	rootDeployer *deploy.RootDeployer,
+	deploySignaler *deploy.DeployWorkflowSignaler,
 	checkRunFetcher *github.CheckRunsFetcher,
 	vcsStatusUpdater *command.VCSStatusUpdater,
 	globalCfg valid.GlobalCfg) *VCSEventsController {

@@ -1,4 +1,4 @@
-package event
+package deploy
 
 import (
 	"context"
@@ -41,7 +41,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, ro
 
 	run, err := d.TemporalClient.SignalWithStartWorkflow(
 		ctx,
-		buildDeployWorkflowID(repo.FullName, rootCfg.Name),
+		BuildDeployWorkflowID(repo.FullName, rootCfg.Name),
 		workflows.DeployNewRevisionSignalID,
 		workflows.DeployNewRevisionSignalRequest{
 			Revision: rootDeployOptions.Revision,
@@ -91,7 +91,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, ro
 	return run, err
 }
 
-func buildDeployWorkflowID(repoName string, rootName string) string {
+func BuildDeployWorkflowID(repoName string, rootName string) string {
 	return fmt.Sprintf("%s||%s", repoName, rootName)
 }
 

@@ -1,4 +1,4 @@
-package event_test
+package config_test
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +25,7 @@ var globalConfig = valid.GlobalCfg{
 }
 
 func TestHasRepoCfg_DirDoesNotExist(t *testing.T) {
-	r := event.ParserValidator{
+	r := config.ParserValidator{
 		GlobalCfg: globalConfig,
 	}
 	_, err := r.ParseRepoCfg("/not/exist", "")
@@ -35,7 +35,7 @@ func TestHasRepoCfg_DirDoesNotExist(t *testing.T) {
 func TestHasRepoCfg_FileDoesNotExist(t *testing.T) {
 	tmpDir, cleanup := TempDir(t)
 	defer cleanup()
-	r := event.ParserValidator{
+	r := config.ParserValidator{
 		GlobalCfg: globalConfig,
 	}
 	_, err := r.ParseRepoCfg(tmpDir, "")
@@ -48,7 +48,7 @@ func TestHasRepoCfg_InvalidFileExtension(t *testing.T) {
 	_, err := os.Create(filepath.Join(tmpDir, "atlantis.yml"))
 	assert.NoError(t, err)
 
-	r := event.ParserValidator{
+	r := config.ParserValidator{
 		GlobalCfg: globalConfig,
 	}
 	_, err = r.ParseRepoCfg(tmpDir, "")
@@ -61,7 +61,7 @@ func TestParseRepoCfg_BadPermissions(t *testing.T) {
 	err := os.WriteFile(filepath.Join(tmpDir, "atlantis.yaml"), nil, 0000)
 	assert.NoError(t, err)
 
-	r := event.ParserValidator{
+	r := config.ParserValidator{
 		GlobalCfg: globalConfig,
 	}
 	_, err = r.ParseRepoCfg(tmpDir, "")
@@ -97,7 +97,7 @@ func TestParseCfgs_InvalidYAML(t *testing.T) {
 			confPath := filepath.Join(tmpDir, "atlantis.yaml")
 			err := os.WriteFile(confPath, []byte(c.input), 0600)
 			assert.NoError(t, err)
-			r := event.ParserValidator{
+			r := config.ParserValidator{
 				GlobalCfg: globalConfig,
 			}
 			_, err = r.ParseRepoCfg(tmpDir, "")
@@ -1028,7 +1028,7 @@ workflows:
 			err := os.WriteFile(filepath.Join(tmpDir, "atlantis.yaml"), []byte(c.input), 0600)
 			assert.NoError(t, err)
 
-			r := event.ParserValidator{
+			r := config.ParserValidator{
 				GlobalCfg: globalConfig,
 			}
 			act, err := r.ParseRepoCfg(tmpDir, "")
@@ -1058,7 +1058,7 @@ workflows:
 	err := os.WriteFile(filepath.Join(tmpDir, "atlantis.yaml"), []byte(repoCfg), 0600)
 	assert.NoError(t, err)
 
-	r := event.ParserValidator{
+	r := config.ParserValidator{
 		GlobalCfg: valid.NewGlobalCfg("somedir"),
 	}
 

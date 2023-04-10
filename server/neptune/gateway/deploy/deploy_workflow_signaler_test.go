@@ -1,18 +1,21 @@
-package event_test
+package deploy_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
 )
+
+var expectedErr = errors.New("some error") //nolint:revive // error name is fine for testing purposes
 
 type testRun struct{}
 
@@ -148,10 +151,10 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 				},
 			},
 		}
-		deploySignaler := event.DeployWorkflowSignaler{
+		deploySignaler := deploy.DeployWorkflowSignaler{
 			TemporalClient: testSignaler,
 		}
-		rootDeployOptions := event.RootDeployOptions{
+		rootDeployOptions := deploy.RootDeployOptions{
 			Repo:     repo,
 			Revision: sha,
 			Branch:   branch,
@@ -171,7 +174,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 				Apply: valid.DefaultApplyStage,
 			},
 			Tags: map[string]string{
-				event.Deprecated: event.Destroy,
+				deploy.Deprecated: deploy.Destroy,
 			},
 			TerraformVersion: version,
 		}
@@ -205,7 +208,7 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					URL:      repoURL,
 				},
 				Tags: map[string]string{
-					event.Deprecated: event.Destroy,
+					deploy.Deprecated: deploy.Destroy,
 				},
 			},
 			expectedWorkflow: workflows.Deploy,
@@ -225,10 +228,10 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 				},
 			},
 		}
-		deploySignaler := event.DeployWorkflowSignaler{
+		deploySignaler := deploy.DeployWorkflowSignaler{
 			TemporalClient: testSignaler,
 		}
-		rootDeployOptions := event.RootDeployOptions{
+		rootDeployOptions := deploy.RootDeployOptions{
 			Repo:     repo,
 			Revision: sha,
 			Branch:   branch,
@@ -318,10 +321,10 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 		},
 		expectedErr: expectedErr,
 	}
-	deploySignaler := event.DeployWorkflowSignaler{
+	deploySignaler := deploy.DeployWorkflowSignaler{
 		TemporalClient: testSignaler,
 	}
-	rootDeployOptions := event.RootDeployOptions{
+	rootDeployOptions := deploy.RootDeployOptions{
 		Repo:     repo,
 		Revision: sha,
 		Branch:   branch,
@@ -331,4 +334,18 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 	run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, rootDeployOptions)
 	assert.Error(t, err)
 	assert.Equal(t, testRun{}, run)
+}
+
+func convertTestSteps(steps []valid.Step) []workflows.Step {
+	var convertedSteps []workflows.Step
+	for _, step := range steps {
+		convertedSteps = append(convertedSteps, workflows.Step{
+			StepName:    step.StepName,
+			ExtraArgs:   step.ExtraArgs,
+			RunCommand:  step.RunCommand,
+			EnvVarName:  step.EnvVarName,
+			EnvVarValue: step.EnvVarValue,
+		})
+	}
+	return convertedSteps
 }

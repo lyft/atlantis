@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 )
 
@@ -38,7 +39,7 @@ func (h *CheckSuiteHandler) Handle(ctx context.Context, event CheckSuite) error 
 }
 
 func (h *CheckSuiteHandler) handle(ctx context.Context, event CheckSuite) error {
-	rootDeployOptions := RootDeployOptions{
+	rootDeployOptions := deploy.RootDeployOptions{
 		Repo:              event.Repo,
 		Branch:            event.Branch,
 		Revision:          event.HeadSha,

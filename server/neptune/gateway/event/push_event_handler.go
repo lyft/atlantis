@@ -7,6 +7,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"
@@ -34,7 +35,7 @@ type scheduler interface {
 }
 
 type rootDeployer interface {
-	Deploy(ctx context.Context, deployOptions RootDeployOptions) error
+	Deploy(ctx context.Context, deployOptions deploy.RootDeployOptions) error
 }
 
 type PushHandler struct {
@@ -75,7 +76,7 @@ func (p *PushHandler) Handle(ctx context.Context, event Push) error {
 }
 
 func (p *PushHandler) handle(ctx context.Context, event Push) error {
-	rootDeployOptions := RootDeployOptions{
+	rootDeployOptions := deploy.RootDeployOptions{
 		Repo:              event.Repo,
 		Branch:            event.Ref.Name,
 		Revision:          event.Sha,

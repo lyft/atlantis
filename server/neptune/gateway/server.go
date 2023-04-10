@@ -30,6 +30,8 @@ import (
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/request"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
+	deployCfg "github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	httpInternal "github.com/runatlantis/atlantis/server/neptune/http"
@@ -238,7 +240,7 @@ func NewServer(config Config) (*Server, error) {
 
 	gatewaySnsWriter := sns.NewWriterWithStats(session, config.SNSTopicArn, statsScope.SubScope("aws.sns.gateway"))
 	vcsStatusUpdater := &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: config.GithubStatusName}}
-	autoplanValidator := &lyft_gateway.AutoplanValidator{
+	autoplanValidator := &event.AutoplanValidator{
 		Scope:                         statsScope.SubScope("validator"),
 		VCSClient:                     vcsClient,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
@@ -290,12 +292,12 @@ func NewServer(config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "creating github client creator")
 	}
 
-	rootConfigBuilder := &event.RootConfigBuilder{
+	rootConfigBuilder := &deployCfg.RootConfigBuilder{
 		RepoFetcher:     repoFetcher,
 		HooksRunner:     hooksRunner,
-		ParserValidator: &event.ParserValidator{GlobalCfg: globalCfg},
-		Strategy: &event.ModifiedRootsStrategy{
-			RootFinder:  &event.RepoRootFinder{Logger: ctxLogger},
+		ParserValidator: &deployCfg.ParserValidator{GlobalCfg: globalCfg},
+		Strategy: &deployCfg.ModifiedRootsStrategy{
+			RootFinder:  &deploy.RepoRootFinder{Logger: ctxLogger},
 			FileFetcher: &github.RemoteFileFetcher{ClientCreator: clientCreator},
 		},
 		GlobalCfg: globalCfg,
@@ -303,10 +305,10 @@ func NewServer(config Config) (*Server, error) {
 		Scope:     statsScope.SubScope("event.filters.root"),
 	}
 
-	deploySignaler := &event.DeployWorkflowSignaler{
+	deploySignaler := &deploy.DeployWorkflowSignaler{
 		TemporalClient: temporalClient,
 	}
-	rootDeployer := &event.RootDeployer{
+	rootDeployer := &deploy.RootDeployer{
 		Logger:            ctxLogger,
 		RootConfigBuilder: rootConfigBuilder,
 		DeploySignaler:    deploySignaler,
