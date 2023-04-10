@@ -217,19 +217,16 @@ func isRootModified(root terraform.Root, modifiedFiles []string) (bool, error) {
 
 func (r *Runner) emitOpenPRsAgeInWeeks(ctx workflow.Context, prs []github.PullRequest, numWeeks int) {
 	ageInWeeks := make([]int, numWeeks)
-	olderThanNumWeeks := 0
 	for _, pr := range prs {
-		if age := calculateAgeInWeeks(ctx, pr); age < len(ageInWeeks) {
+		if age := calculateAgeInWeeks(ctx, pr); age < numWeeks {
 			ageInWeeks[age]++
 			continue
 		}
-		olderThanNumWeeks++
 	}
 
 	for i := range ageInWeeks {
-		r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("%d_weeks", i)).Inc(int64(ageInWeeks[i]))
+		r.Scope.SubScope("open_prs").Gauge(fmt.Sprintf("%d_weeks", i)).Update(float64(ageInWeeks[i]))
 	}
-	r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_weeks", numWeeks)).Inc(int64(olderThanNumWeeks))
 }
 
 func calculateAgeInWeeks(ctx workflow.Context, pr github.PullRequest) int {
