@@ -8,14 +8,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_versionedexecutorworkflow.go VersionedExecutorWorkflow
-
-// VersionedExecutorWorkflow defines a versioned execution for a given project context
-type VersionedExecutorWorkflow interface {
-	ExecutorVersionEnsurer
-	Executor
-}
-
 // Executor runs an executable with provided environment variables and arguments and returns stdout
 type Executor interface {
 	Run(ctx context.Context, prjCtx command.ProjectContext, executablePath string, envs map[string]string, workdir string, extraArgs []string) (string, error)

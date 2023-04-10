@@ -16,7 +16,7 @@ type PolicyCheckStepRunner struct {
 // NewPolicyCheckStepRunner creates a new step runner from an Executor workflow
 func NewPolicyCheckStepRunner(
 	defaultTfVersion *version.Version,
-	versionEnsurer VersionedExecutorWorkflow,
+	versionEnsurer ExecutorVersionEnsurer,
 	executor Executor) (Runner, error) {
 	runner := &PlanTypeStepRunnerDelegate{
 		defaultRunner: &PolicyCheckStepRunner{

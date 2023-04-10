@@ -812,7 +812,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	conftestVersion, err := version.NewVersion(ConftestVersion)
 	Ok(t, err)
 
-	conftextExec := policy.NewConfTestExecutorWorkflow(ctxLogger, binDir, downloader)
+	conftextExec := policy.NewConfTestVersionEnsurer(ctxLogger, binDir, downloader)
 
 	// swapping out version cache to something that always returns local contest
 	// binary

@@ -550,8 +550,7 @@ repos:
 policies:
   policy_sets:
     - name: good-policy
-      source: local
-      path: rel/path/to/source
+      paths: [rel/path/to/source]
 `,
 			repoID: "github.com/owner/repo",
 			proj: valid.Project{
@@ -581,9 +580,8 @@ policies:
 					Version: nil,
 					PolicySets: []valid.PolicySet{
 						{
-							Name:   "good-policy",
-							Path:   "rel/path/to/source",
-							Source: "local",
+							Name:  "good-policy",
+							Paths: []string{"rel/path/to/source"},
 						},
 					},
 				},
@@ -602,8 +600,7 @@ policies:
   conftest_version: v1.0.0
   policy_sets:
     - name: good-policy
-      source: local
-      path: rel/path/to/source
+      paths: [rel/path/to/source]
 `,
 			repoID: "github.com/owner/repo",
 			proj: valid.Project{
@@ -633,9 +630,8 @@ policies:
 					Version: version,
 					PolicySets: []valid.PolicySet{
 						{
-							Name:   "good-policy",
-							Path:   "rel/path/to/source",
-							Source: "local",
+							Name:  "good-policy",
+							Paths: []string{"rel/path/to/source"},
 						},
 					},
 				},

@@ -1,7 +1,6 @@
 package policy
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -10,12 +9,8 @@ import (
 
 	"github.com/hashicorp/go-version"
 	. "github.com/petergtz/pegomock"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache/mocks"
-	models_mocks "github.com/runatlantis/atlantis/server/core/runtime/models/mocks"
-	conftest_mocks "github.com/runatlantis/atlantis/server/core/runtime/policy/mocks"
 	terraform_mocks "github.com/runatlantis/atlantis/server/core/terraform/mocks"
-	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 	"golang.org/x/text/cases"
@@ -63,7 +58,7 @@ func TestEnsureExecutorVersion(t *testing.T) {
 	log := logging.NewNoopCtxLogger(t)
 
 	t.Run("no specified version or default version", func(t *testing.T) {
-		subject := &ConfTestExecutorWorkflow{
+		subject := &ConfTestVersionEnsurer{
 			VersionCache: mockCache,
 		}
 
@@ -73,7 +68,7 @@ func TestEnsureExecutorVersion(t *testing.T) {
 	})
 
 	t.Run("use default version", func(t *testing.T) {
-		subject := &ConfTestExecutorWorkflow{
+		subject := &ConfTestVersionEnsurer{
 			VersionCache:           mockCache,
 			DefaultConftestVersion: defaultVersion,
 		}
@@ -88,7 +83,7 @@ func TestEnsureExecutorVersion(t *testing.T) {
 	})
 
 	t.Run("use specified version", func(t *testing.T) {
-		subject := &ConfTestExecutorWorkflow{
+		subject := &ConfTestVersionEnsurer{
 			VersionCache:           mockCache,
 			DefaultConftestVersion: defaultVersion,
 		}
@@ -105,7 +100,7 @@ func TestEnsureExecutorVersion(t *testing.T) {
 	})
 
 	t.Run("cache error", func(t *testing.T) {
-		subject := &ConfTestExecutorWorkflow{
+		subject := &ConfTestVersionEnsurer{
 			VersionCache:           mockCache,
 			DefaultConftestVersion: defaultVersion,
 		}
@@ -117,153 +112,5 @@ func TestEnsureExecutorVersion(t *testing.T) {
 		_, err := subject.EnsureExecutorVersion(log, versionInput)
 
 		Assert(t, err != nil, "path is expected")
-	})
-}
-
-func TestRun(t *testing.T) {
-	RegisterMockTestingT(t)
-	mockResolver := conftest_mocks.NewMockSourceResolver()
-	mockExec := models_mocks.NewMockExec()
-
-	subject := &ConfTestExecutorWorkflow{
-		SourceResolver: mockResolver,
-		Exec:           mockExec,
-	}
-	log := logging.NewNoopCtxLogger(t)
-
-	policySetName1 := "policy1"
-	policySetPath1 := "/some/path"
-	localPolicySetPath1 := "/tmp/some/path"
-
-	policySetName2 := "policy2"
-	policySetPath2 := "/some/path2"
-	localPolicySetPath2 := "/tmp/some/path2"
-	executablePath := "/usr/bin/conftest"
-	envs := map[string]string{
-		"key": "val",
-	}
-	workdir := "/some_workdir"
-
-	policySet1 := valid.PolicySet{
-		Source: valid.LocalPolicySet,
-		Path:   policySetPath1,
-		Name:   policySetName1,
-	}
-
-	policySet2 := valid.PolicySet{
-		Source: valid.LocalPolicySet,
-		Path:   policySetPath2,
-		Name:   policySetName2,
-	}
-
-	ctx := context.Background()
-	prjCtx := command.ProjectContext{
-		PolicySets: valid.PolicySets{
-			PolicySets: []valid.PolicySet{
-				policySet1,
-				policySet2,
-			},
-		},
-		ProjectName: "testproj",
-		Workspace:   "default",
-		Log:         log,
-		RequestCtx:  context.TODO(),
-	}
-
-	t.Run("success", func(t *testing.T) {
-		var extraArgs []string
-
-		expectedOutput := "Success"
-		expectedResult := "Checking plan against the following policies: \n  policy1\n  policy2\nSuccess"
-		expectedArgs := []string{executablePath, "test", "-p", localPolicySetPath1, "-p", localPolicySetPath2, "/some_workdir/testproj-default.json", "--no-color"}
-
-		When(mockResolver.Resolve(policySet1)).ThenReturn(localPolicySetPath1, nil)
-		When(mockResolver.Resolve(policySet2)).ThenReturn(localPolicySetPath2, nil)
-
-		When(mockExec.CombinedOutput(expectedArgs, envs, workdir)).ThenReturn(expectedOutput, nil)
-
-		result, err := subject.Run(ctx, prjCtx, executablePath, envs, workdir, extraArgs)
-
-		fmt.Println(result)
-
-		Ok(t, err)
-
-		Assert(t, result == expectedResult, "result is expected")
-	})
-
-	t.Run("success extra args", func(t *testing.T) {
-		extraArgs := []string{"--all-namespaces"}
-
-		expectedOutput := "Success"
-		expectedResult := "Checking plan against the following policies: \n  policy1\n  policy2\nSuccess"
-		expectedArgs := []string{executablePath, "test", "-p", localPolicySetPath1, "-p", localPolicySetPath2, "/some_workdir/testproj-default.json", "--no-color", "--all-namespaces"}
-
-		When(mockResolver.Resolve(policySet1)).ThenReturn(localPolicySetPath1, nil)
-		When(mockResolver.Resolve(policySet2)).ThenReturn(localPolicySetPath2, nil)
-
-		When(mockExec.CombinedOutput(expectedArgs, envs, workdir)).ThenReturn(expectedOutput, nil)
-
-		result, err := subject.Run(ctx, prjCtx, executablePath, envs, workdir, extraArgs)
-
-		fmt.Println(result)
-
-		Ok(t, err)
-
-		Assert(t, result == expectedResult, "result is expected")
-	})
-
-	t.Run("error resolving one policy source", func(t *testing.T) {
-		var extraArgs []string
-
-		expectedOutput := "Success"
-		expectedResult := "Checking plan against the following policies: \n  policy1\nSuccess"
-		expectedArgs := []string{executablePath, "test", "-p", localPolicySetPath1, "/some_workdir/testproj-default.json", "--no-color"}
-
-		When(mockResolver.Resolve(policySet1)).ThenReturn(localPolicySetPath1, nil)
-		When(mockResolver.Resolve(policySet2)).ThenReturn("", errors.New("err"))
-
-		When(mockExec.CombinedOutput(expectedArgs, envs, workdir)).ThenReturn(expectedOutput, nil)
-
-		result, err := subject.Run(ctx, prjCtx, executablePath, envs, workdir, extraArgs)
-
-		Ok(t, err)
-
-		Assert(t, result == expectedResult, "result is expected")
-	})
-
-	t.Run("error resolving both policy sources", func(t *testing.T) {
-		var extraArgs []string
-
-		expectedResult := "Success"
-		expectedArgs := []string{executablePath, "test", "-p", localPolicySetPath1, "/some_workdir/testproj-default.json", "--no-color"}
-
-		When(mockResolver.Resolve(policySet1)).ThenReturn("", errors.New("err"))
-		When(mockResolver.Resolve(policySet2)).ThenReturn("", errors.New("err"))
-
-		When(mockExec.CombinedOutput(expectedArgs, envs, workdir)).ThenReturn(expectedResult, nil)
-
-		result, err := subject.Run(ctx, prjCtx, executablePath, envs, workdir, extraArgs)
-
-		Ok(t, err)
-
-		Assert(t, result == "", "result is expected")
-	})
-
-	t.Run("error running cmd", func(t *testing.T) {
-		var extraArgs []string
-
-		expectedOutput := "FAIL - /some_workdir/testproj-default.json - failure"
-		expectedResult := "Checking plan against the following policies: \n  policy1\n  policy2\nFAIL - <redacted plan file> - failure"
-		expectedArgs := []string{executablePath, "test", "-p", localPolicySetPath1, "-p", localPolicySetPath2, "/some_workdir/testproj-default.json", "--no-color"}
-
-		When(mockResolver.Resolve(policySet1)).ThenReturn(localPolicySetPath1, nil)
-		When(mockResolver.Resolve(policySet2)).ThenReturn(localPolicySetPath2, nil)
-
-		When(mockExec.CombinedOutput(expectedArgs, envs, workdir)).ThenReturn(expectedOutput, errors.New("exit status code 1"))
-
-		result, err := subject.Run(ctx, prjCtx, executablePath, envs, workdir, extraArgs)
-
-		Assert(t, result == expectedResult, "rseult is expected")
-		Assert(t, err != nil, "error is expected")
 	})
 }

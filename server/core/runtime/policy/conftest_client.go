@@ -1,23 +1,18 @@
 package policy
 
 import (
-	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
-
-	version "github.com/hashicorp/go-version"
+	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 	runtime_models "github.com/runatlantis/atlantis/server/core/runtime/models"
 	"github.com/runatlantis/atlantis/server/core/terraform"
-	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/logging"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"os"
+	"path/filepath"
+	"runtime"
 )
 
 const (
@@ -50,12 +45,7 @@ type ConftestTestCommandArgs struct {
 	Command    string
 }
 
-func (c ConftestTestCommandArgs) build() ([]string, error) {
-	// TODO: remove check when legacy contest client is depreccated
-	if len(c.PolicyArgs) == 0 {
-		return []string{}, errors.New("no policies specified")
-	}
-
+func (c ConftestTestCommandArgs) build() []string {
 	// add the subcommand
 	commandArgs := []string{c.Command, "test"}
 
@@ -69,36 +59,7 @@ func (c ConftestTestCommandArgs) build() ([]string, error) {
 	// add extra args provided through server config
 	commandArgs = append(commandArgs, c.ExtraArgs...)
 
-	return commandArgs, nil
-}
-
-// SourceResolver resolves the policy set to a local fs path
-//
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_conftest_client.go SourceResolver
-type SourceResolver interface {
-	Resolve(policySet valid.PolicySet) (string, error)
-}
-
-// LocalSourceResolver resolves a local policy set to a local fs path
-type LocalSourceResolver struct {
-}
-
-func (p *LocalSourceResolver) Resolve(policySet valid.PolicySet) (string, error) {
-	return policySet.Path, nil
-}
-
-// SourceResolverProxy proxies to underlying source resolvers dynamically
-type SourceResolverProxy struct {
-	LocalSourceResolver SourceResolver
-}
-
-func (p *SourceResolverProxy) Resolve(policySet valid.PolicySet) (string, error) {
-	switch source := policySet.Source; source {
-	case valid.LocalPolicySet:
-		return p.LocalSourceResolver.Resolve(policySet)
-	default:
-		return "", fmt.Errorf("unable to resolve policy set source %s", source)
-	}
+	return commandArgs
 }
 
 type ConfTestVersionDownloader struct {
@@ -126,16 +87,12 @@ func (c ConfTestVersionDownloader) downloadConfTestVersion(v *version.Version, d
 	return runtime_models.LocalFilePath(binPath), nil
 }
 
-// ConfTestExecutorWorkflow runs a versioned conftest binary with the args built from the project context.
-// Project context defines whether conftest runs a local policy set or runs a test on a remote policy set.
-type ConfTestExecutorWorkflow struct {
-	SourceResolver         SourceResolver
+type ConfTestVersionEnsurer struct {
 	VersionCache           cache.ExecutionVersionCache
 	DefaultConftestVersion *version.Version
-	Exec                   runtime_models.Exec
 }
 
-func NewConfTestExecutorWorkflow(log logging.Logger, versionRootDir string, conftestDownloder terraform.Downloader) *ConfTestExecutorWorkflow {
+func NewConfTestVersionEnsurer(log logging.Logger, versionRootDir string, conftestDownloder terraform.Downloader) *ConfTestVersionEnsurer {
 	downloader := ConfTestVersionDownloader{
 		downloader: conftestDownloder,
 	}
@@ -152,63 +109,13 @@ func NewConfTestExecutorWorkflow(log logging.Logger, versionRootDir string, conf
 		downloader.downloadConfTestVersion,
 	)
 
-	return &ConfTestExecutorWorkflow{
+	return &ConfTestVersionEnsurer{
 		VersionCache:           versionCache,
 		DefaultConftestVersion: version,
-		SourceResolver: &SourceResolverProxy{
-			LocalSourceResolver: &LocalSourceResolver{},
-		},
-		Exec: runtime_models.LocalExec{},
 	}
 }
 
-func (c *ConfTestExecutorWorkflow) Run(ctx context.Context, prjCtx command.ProjectContext, executablePath string, envs map[string]string, workdir string, extraArgs []string) (string, error) {
-	policyArgs := []Arg{}
-	policySetNames := []string{}
-	for _, policySet := range prjCtx.PolicySets.PolicySets {
-		path, err := c.SourceResolver.Resolve(policySet)
-
-		// Let's not fail the whole step because of a single failure. Log and fail silently
-		if err != nil {
-			prjCtx.Log.ErrorContext(prjCtx.RequestCtx, fmt.Sprintf("Error resolving policyset %s. err: %s", policySet.Name, err.Error()))
-			continue
-		}
-
-		policyArg := NewPolicyArg(path)
-		policyArgs = append(policyArgs, policyArg)
-
-		policySetNames = append(policySetNames, policySet.Name)
-	}
-
-	inputFile := filepath.Join(workdir, prjCtx.GetShowResultFileName())
-
-	args := ConftestTestCommandArgs{
-		PolicyArgs: policyArgs,
-		ExtraArgs:  extraArgs,
-		InputFile:  inputFile,
-		Command:    executablePath,
-	}
-
-	serializedArgs, err := args.build()
-
-	if err != nil {
-		prjCtx.Log.WarnContext(prjCtx.RequestCtx, "No policies have been configured")
-		return "", nil
-		// TODO: enable when we can pass policies in otherwise e2e tests with policy checks fail
-		// return "", errors.Wrap(err, "building args")
-	}
-
-	initialOutput := fmt.Sprintf("Checking plan against the following policies: \n  %s\n", strings.Join(policySetNames, "\n  "))
-	cmdOutput, err := c.Exec.CombinedOutput(serializedArgs, envs, workdir)
-
-	return c.sanitizeOutput(inputFile, initialOutput+cmdOutput), err
-}
-
-func (c *ConfTestExecutorWorkflow) sanitizeOutput(inputFile string, output string) string {
-	return strings.Replace(output, inputFile, "<redacted plan file>", -1)
-}
-
-func (c *ConfTestExecutorWorkflow) EnsureExecutorVersion(log logging.Logger, v *version.Version) (string, error) {
+func (c *ConfTestVersionEnsurer) EnsureExecutorVersion(log logging.Logger, v *version.Version) (string, error) {
 	// we have no information to proceed so fail hard
 	if c.DefaultConftestVersion == nil && v == nil {
 		return "", errors.New("no conftest version configured/specified")

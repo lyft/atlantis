@@ -1340,8 +1340,7 @@ policies:
   conftest_version: v1.0.0
   policy_sets:
     - name: good-policy
-      path: rel/path/to/policy
-      source: local
+      paths: [rel/path/to/policy]
 `,
 			exp: valid.GlobalCfg{
 				Repos: []valid.Repo{
@@ -1371,9 +1370,8 @@ policies:
 					Version: conftestVersion,
 					PolicySets: []valid.PolicySet{
 						{
-							Name:   "good-policy",
-							Path:   "rel/path/to/policy",
-							Source: valid.LocalPolicySet,
+							Name:  "good-policy",
+							Paths: []string{"rel/path/to/policy"},
 						},
 					},
 				},
@@ -1702,8 +1700,7 @@ policies:
   conftest_version: v1.0.0
   policy_sets:
     - name: good-policy
-      path: rel/path/to/policy
-      source: local
+      paths: [rel/path/to/policy]
 `,
 			exp: valid.GlobalCfg{
 				Repos: []valid.Repo{
@@ -1740,9 +1737,8 @@ policies:
 					Version: conftestVersion,
 					PolicySets: []valid.PolicySet{
 						{
-							Name:   "good-policy",
-							Path:   "rel/path/to/policy",
-							Source: valid.LocalPolicySet,
+							Name:  "good-policy",
+							Paths: []string{"rel/path/to/policy"},
 						},
 					},
 				},
@@ -1984,8 +1980,7 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
     "policy_sets": [
       {
         "name": "good-policy",
-        "source": "local",
-        "path": "rel/path/to/policy"
+        "paths": ["rel/path/to/policy"]
       }
     ]
   }
@@ -2027,9 +2022,8 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 					Version: conftestVersion,
 					PolicySets: []valid.PolicySet{
 						{
-							Name:   "good-policy",
-							Path:   "rel/path/to/policy",
-							Source: valid.LocalPolicySet,
+							Name:  "good-policy",
+							Paths: []string{"rel/path/to/policy"},
 						},
 					},
 				},
@@ -2187,8 +2181,7 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
     "policy_sets": [
       {
         "name": "good-policy",
-        "source": "local",
-        "path": "rel/path/to/policy"
+        "paths": ["rel/path/to/policy"]
       }
     ]
   }
@@ -2235,9 +2228,8 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 					Version: conftestVersion,
 					PolicySets: []valid.PolicySet{
 						{
-							Name:   "good-policy",
-							Path:   "rel/path/to/policy",
-							Source: valid.LocalPolicySet,
+							Name:  "good-policy",
+							Paths: []string{"rel/path/to/policy"},
 						},
 					},
 				},
