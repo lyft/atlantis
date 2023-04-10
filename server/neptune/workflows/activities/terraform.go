@@ -257,29 +257,31 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	}
 
 	showResultBuffer := &bytes.Buffer{}
-	err = t.TerraformClient.RunCommand(ctx, showRequest, terraform.RunOptions{
+	showErr := t.TerraformClient.RunCommand(ctx, showRequest, terraform.RunOptions{
 		StdOut: showResultBuffer,
 		StdErr: showResultBuffer,
 	})
 
 	// if used by the policy check step, we will fail when we can't find the file
-	if err != nil {
+	if showErr != nil {
 		activity.GetLogger(ctx).Error("error with terraform show", key.ErrKey, err)
 	}
 
 	showResults := showResultBuffer.Bytes()
-	summary, err := terraform.NewPlanSummaryFromJSON(showResults)
-	if err != nil {
-		activity.GetLogger(ctx).Error("error building plan summary", key.ErrKey, err)
-	}
 
 	// write show results to disk
 	var planJSONFile string
-	if request.WorkflowMode == terraform.PR {
+	if showErr == nil && request.WorkflowMode == terraform.PR {
 		planJSONFile = filepath.Join(request.Path, PlanOutputJSONFile)
 		if err = t.FileWriter.Write(planJSONFile, showResults); err != nil {
 			activity.GetLogger(ctx).Error("error writing show results to disk", key.ErrKey, err)
 		}
+	}
+
+	// build plan summaries
+	summary, err := terraform.NewPlanSummaryFromJSON(showResults)
+	if err != nil {
+		activity.GetLogger(ctx).Error("error building plan summary", key.ErrKey, err)
 	}
 
 	return TerraformPlanResponse{
