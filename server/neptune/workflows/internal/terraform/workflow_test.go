@@ -67,34 +67,6 @@ var testLocalRoot = &terraformModel.LocalRoot{
 	Repo: testGithubRepo,
 }
 
-var testLocalPRRoot = &terraformModel.LocalRoot{
-	Root: terraformModel.Root{
-		Name: testRootName,
-		Plan: terraformModel.PlanJob{
-			Job: execute.Job{
-				Steps: []execute.Step{
-					{
-						StepName: "step1",
-					},
-				},
-			},
-			Approval: terraformModel.PlanApproval{
-				Type:   terraformModel.ManualApproval,
-				Reason: approvalReason,
-			},
-		},
-		Apply: execute.Job{
-			Steps: []execute.Step{
-				{
-					StepName: "step2",
-				},
-			},
-		},
-	},
-	Path: testPath,
-	Repo: testGithubRepo,
-}
-
 type testURLGenerator struct{}
 
 func (g *testURLGenerator) Generate(jobID fmt.Stringer, BaseURL fmt.Stringer) (*url.URL, error) {
@@ -499,10 +471,10 @@ func TestSuccess_PRMode(t *testing.T) {
 		return true
 	}), activities.FetchRootRequest{
 		Repo:         testGithubRepo,
-		Root:         testLocalPRRoot.Root,
+		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
 	}).Return(activities.FetchRootResponse{
-		LocalRoot:       testLocalPRRoot,
+		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
 	}, nil)
 	env.OnActivity(ta.Cleanup, mock.Anything, activities.CleanupRequest{
