@@ -75,7 +75,7 @@ func testJobPlanWorkflow(ctx workflow.Context, r terraform.Request) (activities.
 	var a *testTerraformActivity
 	jobRunner := job.NewRunner(&job.CmdStepRunner{}, &job.EnvStepRunner{}, a)
 
-	return jobRunner.Plan(ctx, &localRoot, JobID)
+	return jobRunner.Plan(ctx, &localRoot, JobID, terraform_model.Deploy)
 }
 
 // test workflow that runs the plan job

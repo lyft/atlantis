@@ -13,6 +13,7 @@ type Request struct {
 	Repo         github.Repo
 	DeploymentID string
 	Revision     string
+	WorkflowMode terraform.WorkflowMode
 }
 
 const (

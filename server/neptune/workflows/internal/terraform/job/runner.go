@@ -57,7 +57,7 @@ func NewRunner(runStepRunner stepRunner, envStepRunner envStepRunner, tfActiviti
 	}
 }
 
-func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string) (activities.TerraformPlanResponse, error) {
+func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, workflowMode terraform.WorkflowMode) (activities.TerraformPlanResponse, error) {
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		NonRetryableErrorTypes: []string{TerraformClientErrorType},
 	})
@@ -79,7 +79,7 @@ func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, j
 		case "init":
 			err = r.init(jobCtx, localRoot, step)
 		case "plan":
-			resp, err = r.plan(jobCtx, localRoot.Root.Plan.Mode, step.ExtraArgs)
+			resp, err = r.plan(jobCtx, localRoot.Root.Plan.Mode, workflowMode, step.ExtraArgs)
 		}
 		if err != nil {
 			return resp, errors.Wrapf(err, "running step %s", step.StepName)
@@ -93,6 +93,11 @@ func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, j
 	}
 
 	return resp, nil
+}
+
+func (r *JobRunner) Validate(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) error {
+	// TODO: implement validate job
+	return nil
 }
 
 func (r *JobRunner) Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, planFile string) error {
@@ -158,7 +163,7 @@ func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step 
 	return nil
 }
 
-func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, extraArgs []string) (activities.TerraformPlanResponse, error) {
+func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, workflowMode terraform.WorkflowMode, extraArgs []string) (activities.TerraformPlanResponse, error) {
 	var resp activities.TerraformPlanResponse
 
 	args, err := terraform.NewArgumentList(extraArgs)
@@ -170,12 +175,13 @@ func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, extraA
 		envs = append(envs, e.ToActivityEnvVar())
 	}
 	err = workflow.ExecuteActivity(ctx, r.Activity.TerraformPlan, activities.TerraformPlanRequest{
-		Args:        args,
-		DynamicEnvs: envs,
-		TfVersion:   ctx.TfVersion,
-		JobID:       ctx.JobID,
-		Path:        ctx.Path,
-		PlanMode:    mode,
+		Args:         args,
+		DynamicEnvs:  envs,
+		TfVersion:    ctx.TfVersion,
+		JobID:        ctx.JobID,
+		Path:         ctx.Path,
+		PlanMode:     mode,
+		WorkflowMode: workflowMode,
 	}).Get(ctx, &resp)
 	if err != nil {
 		return resp, errors.Wrap(err, "running terraform plan activity")

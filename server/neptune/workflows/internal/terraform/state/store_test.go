@@ -227,3 +227,70 @@ func TestUpdatePlanJob(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, notifier.called)
 }
+
+func TestInitValidateJob(t *testing.T) {
+	expectedURL, err := url.Parse("www.test.com/jobs/1234")
+	assert.NoError(t, err)
+
+	jobID := bytes.NewBufferString("1234")
+	notifier := &testNotifier{
+		expectedState: &state.Workflow{
+			Validate: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: expectedURL,
+				},
+				ID: jobID.String(),
+			},
+		},
+		t: t,
+	}
+
+	subject := state.NewWorkflowStore(
+		notifier.notify,
+	)
+
+	baseURL := bytes.NewBufferString("www.test.com")
+
+	err = subject.InitValidateJob(jobID, baseURL)
+	assert.NoError(t, err)
+	assert.True(t, notifier.called)
+}
+
+func TestUpdateValidateJob(t *testing.T) {
+	route := &mux.Route{}
+	route.Path("/jobs/{job-id}")
+
+	expectedURL, err := url.Parse("www.test.com/jobs/1234")
+	assert.NoError(t, err)
+
+	jobID := bytes.NewBufferString("1234")
+	notifier := &testNotifier{
+		expectedState: &state.Workflow{
+			Validate: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: expectedURL,
+				},
+				ID: jobID.String(),
+			},
+		},
+		t: t,
+	}
+
+	subject := state.NewWorkflowStore(
+		notifier.notify,
+	)
+
+	baseURL := bytes.NewBufferString("www.test.com")
+
+	// init and then update
+	err = subject.InitValidateJob(jobID, baseURL)
+	assert.NoError(t, err)
+
+	notifier.expectedState.Validate.Status = state.FailedJobStatus
+
+	err = subject.UpdateValidateJobWithStatus(state.FailedJobStatus)
+	assert.NoError(t, err)
+	assert.True(t, notifier.called)
+}
