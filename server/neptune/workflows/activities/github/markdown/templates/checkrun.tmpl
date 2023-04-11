@@ -10,7 +10,11 @@ Github Actions are blocking this deployment from proceeding.
 | Operation | **Status** | **Logs** |  
 | - | - | - |
 | Plan | {{ if .PlanStatus }}`{{.PlanStatus}}`{{else}}N/A{{end}} |{{ if .PlanLogURL }}[Click Here]({{.PlanLogURL}}){{else}}N/A{{end}} |
+{{ if .PRMode }}
+| Policy Check | {{ if .PolicyCheckStatus }}`{{.PolicyCheckStatus}}`{{else}}N/A{{end}} |{{ if .PolicyCheckLogURL }}[Click Here]({{.PolicyCheckLogURL}}){{else}}N/A{{end}} |
+{{else}}
 | Apply | {{ if .ApplyStatus }}`{{.ApplyStatus}}`{{else}}N/A{{end}} |{{ if .ApplyLogURL }}[Click Here]({{.ApplyLogURL}}){{else}}N/A{{end}} |
+{{end}}
 
 {{if .InternalError }}
 ## Deployment Error :boom:

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed" //embedding files
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"html/template"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
@@ -19,6 +20,8 @@ type checkrunTemplateData struct {
 	ApplyActionsSummary     string
 	PlanStatus              string
 	PlanLogURL              string
+	PolicyCheckStatus       string
+	PolicyLogURL            string
 	ApplyStatus             string
 	ApplyLogURL             string
 	InternalError           bool
@@ -26,11 +29,12 @@ type checkrunTemplateData struct {
 	ActivityDurationTimeout bool
 	SchedulingTimeout       bool
 	HeartbeatTimeout        bool
+	PRMode                  bool
 }
 
-func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
-	// TODO: handle policy check state updates
+func RenderWorkflowStateTmpl(workflowState *state.Workflow, workflowMode terraform.WorkflowMode) string {
 	planStatus, planLogURL := getJobStatusAndOutput(workflowState.Plan)
+	policyCheckStatus, policyCheckLogURL := getJobStatusAndOutput(workflowState.PolicyCheck)
 	applyStatus, applyLogURL := getJobStatusAndOutput(workflowState.Apply)
 
 	// we can probably pass in the completion reason but i like doing all the boolean
@@ -40,6 +44,7 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	activityDurationTimeout := workflowState.Result.Reason == state.ActivityDurationTimeoutError
 	schedulingTimeout := workflowState.Result.Reason == state.SchedulingTimeoutError
 	hearbeatTimeout := workflowState.Result.Reason == state.HeartbeatTimeoutError
+	prMode := workflowMode == terraform.PR
 
 	var applyActionsSummary string
 
@@ -49,8 +54,11 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	return renderTemplate(checkrunTemplate, checkrunTemplateData{
 		PlanStatus:              planStatus,
 		PlanLogURL:              planLogURL,
+		PolicyCheckStatus:       policyCheckStatus,
+		PolicyLogURL:            policyCheckLogURL,
 		ApplyStatus:             applyStatus,
 		ApplyLogURL:             applyLogURL,
+		PRMode:                  prMode,
 		InternalError:           internalError,
 		TimedOut:                timedOut,
 		ActivityDurationTimeout: activityDurationTimeout,

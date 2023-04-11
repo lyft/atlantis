@@ -86,6 +86,7 @@ func TestCheckRunNotifier(t *testing.T) {
 
 	cases := []struct {
 		State                 *state.Workflow
+		Mode                  terraform.WorkflowMode
 		ExpectedCheckRunState github.CheckRunState
 		ExpectedActions       []github.CheckRunAction
 	}{
@@ -96,6 +97,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Status: state.WaitingJobStatus,
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
 		{
@@ -105,6 +107,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Status: state.InProgressJobStatus,
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
 		{
@@ -114,6 +117,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Status: state.FailedJobStatus,
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
 		{
@@ -127,6 +131,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Reason: state.InternalServiceError,
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunFailure,
 		},
 		{
@@ -136,6 +141,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Status: state.SuccessJobStatus,
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
 		{
@@ -157,6 +163,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					},
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunActionRequired,
 			ExpectedActions: []github.CheckRunAction{
 				{
@@ -177,6 +184,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					StartTime: stTime,
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
 		{
@@ -192,6 +200,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					EndTime:   endTime,
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
 		{
@@ -211,6 +220,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Reason: state.InternalServiceError,
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunFailure,
 		},
 		{
@@ -230,6 +240,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Reason: state.TimeoutError,
 				},
 			},
+			Mode:                  terraform.Deploy,
 			ExpectedCheckRunState: github.CheckRunTimeout,
 		},
 		{
@@ -249,6 +260,112 @@ func TestCheckRunNotifier(t *testing.T) {
 					Reason: state.SuccessfulCompletionReason,
 				},
 			},
+			Mode:                  terraform.Deploy,
+			ExpectedCheckRunState: github.CheckRunSuccess,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				PolicyCheck: &state.Job{
+					Output: jobOutput,
+					Status: state.WaitingJobStatus,
+				},
+			},
+			Mode:                  terraform.PR,
+			ExpectedCheckRunState: github.CheckRunQueued,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				PolicyCheck: &state.Job{
+					Output:    jobOutput,
+					Status:    state.InProgressJobStatus,
+					StartTime: stTime,
+				},
+			},
+			Mode:                  terraform.PR,
+			ExpectedCheckRunState: github.CheckRunPending,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				PolicyCheck: &state.Job{
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+			},
+			Mode:                  terraform.PR,
+			ExpectedCheckRunState: github.CheckRunPending,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				PolicyCheck: &state.Job{
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.InternalServiceError,
+				},
+			},
+			Mode:                  terraform.PR,
+			ExpectedCheckRunState: github.CheckRunFailure,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				PolicyCheck: &state.Job{
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.TimeoutError,
+				},
+			},
+			Mode:                  terraform.PR,
+			ExpectedCheckRunState: github.CheckRunTimeout,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				PolicyCheck: &state.Job{
+					Output:    jobOutput,
+					Status:    state.SuccessJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.SuccessfulCompletionReason,
+				},
+			},
+			Mode:                  terraform.PR,
 			ExpectedCheckRunState: github.CheckRunSuccess,
 		},
 	}
@@ -271,7 +388,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Repo: github.Repo{
 						Name: "hello",
 					},
-					Summary: markdown.RenderWorkflowStateTmpl(c.State),
+					Summary: markdown.RenderWorkflowStateTmpl(c.State, c.Mode),
 					Actions: c.ExpectedActions,
 				},
 				T: t,

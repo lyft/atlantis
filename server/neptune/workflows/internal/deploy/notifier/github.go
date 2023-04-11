@@ -135,8 +135,7 @@ func (n *CheckRunNotifier) Notify(ctx workflow.Context, deploymentInfo terraform
 }
 
 func (n *CheckRunNotifier) updateCheckRun(ctx workflow.Context, workflowState *state.Workflow, deploymentInfo terraform.DeploymentInfo) error {
-	// TODO: handle policy check state updates
-	summary := markdown.RenderWorkflowStateTmpl(workflowState)
+	summary := markdown.RenderWorkflowStateTmpl(workflowState, deploymentInfo.Root.WorkflowMode)
 	checkRunState := determineCheckRunState(workflowState)
 
 	request := GithubCheckRunRequest{
