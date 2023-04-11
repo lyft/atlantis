@@ -44,7 +44,10 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	activityDurationTimeout := workflowState.Result.Reason == state.ActivityDurationTimeoutError
 	schedulingTimeout := workflowState.Result.Reason == state.SchedulingTimeoutError
 	hearbeatTimeout := workflowState.Result.Reason == state.HeartbeatTimeoutError
-	prMode := *workflowState.Mode == terraform.PR
+	var prMode bool
+	if workflowState.Mode != nil {
+		prMode = *workflowState.Mode == terraform.PR
+	}
 
 	var applyActionsSummary string
 
