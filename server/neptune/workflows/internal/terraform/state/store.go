@@ -95,6 +95,36 @@ func (s *WorkflowStore) UpdateApprovalActions(approval terraform.PlanApproval) e
 	return s.notifier(s.state)
 }
 
+func (s *WorkflowStore) InitPolicyCheckJob(jobID fmt.Stringer, serverURL fmt.Stringer) error {
+	outputURL, err := s.outputURLGenerator.Generate(jobID, serverURL)
+
+	if err != nil {
+		return errors.Wrap(err, "generating url for policy check job")
+	}
+	s.state.PolicyCheck = &Job{
+		ID: jobID.String(),
+		Output: &JobOutput{
+			URL: outputURL,
+		},
+		Status: WaitingJobStatus,
+	}
+
+	return s.notifier(s.state)
+}
+
+func (s *WorkflowStore) UpdatePolicyCheckJobWithStatus(status JobStatus, options ...UpdateOptions) error {
+	switch status {
+	case InProgressJobStatus:
+		s.state.PolicyCheck.StartTime = getStartTimeFromOpts(options...)
+
+	case FailedJobStatus, SuccessJobStatus:
+		s.state.PolicyCheck.EndTime = getEndTimeFromOpts(options...)
+	}
+
+	s.state.PolicyCheck.Status = status
+	return s.notifier(s.state)
+}
+
 func (s *WorkflowStore) InitApplyJob(jobID fmt.Stringer, serverURL fmt.Stringer) error {
 	outputURL, err := s.outputURLGenerator.Generate(jobID, serverURL)
 

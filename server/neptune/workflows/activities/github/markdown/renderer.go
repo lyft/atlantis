@@ -29,6 +29,7 @@ type checkrunTemplateData struct {
 }
 
 func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
+	// TODO: handle policy check state updates
 	planStatus, planLogURL := getJobStatusAndOutput(workflowState.Plan)
 	applyStatus, applyLogURL := getJobStatusAndOutput(workflowState.Apply)
 

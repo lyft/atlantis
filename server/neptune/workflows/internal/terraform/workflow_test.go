@@ -41,7 +41,37 @@ var approvalReason = "Because I want"
 
 var testLocalRoot = &terraformModel.LocalRoot{
 	Root: terraformModel.Root{
-		Name: testRootName,
+		Name:         testRootName,
+		WorkflowMode: terraformModel.Deploy,
+		Plan: terraformModel.PlanJob{
+			Job: execute.Job{
+				Steps: []execute.Step{
+					{
+						StepName: "step1",
+					},
+				},
+			},
+			Approval: terraformModel.PlanApproval{
+				Type:   terraformModel.ManualApproval,
+				Reason: approvalReason,
+			},
+		},
+		Apply: execute.Job{
+			Steps: []execute.Step{
+				{
+					StepName: "step2",
+				},
+			},
+		},
+	},
+	Path: testPath,
+	Repo: testGithubRepo,
+}
+
+var testLocalPRRoot = &terraformModel.LocalRoot{
+	Root: terraformModel.Root{
+		Name:         testRootName,
+		WorkflowMode: terraformModel.PR,
 		Plan: terraformModel.PlanJob{
 			Job: execute.Job{
 				Steps: []execute.Step{
@@ -103,6 +133,10 @@ func (r *jobRunner) Apply(ctx workflow.Context, localRoot *terraformModel.LocalR
 	return r.expectedError
 }
 
+func (r *jobRunner) PolicyCheck(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, showFile string) error {
+	return r.expectedError
+}
+
 func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string) (activities.TerraformPlanResponse, error) {
 	return activities.TerraformPlanResponse{
 		Summary: terraformModel.PlanSummary{
@@ -118,6 +152,7 @@ func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRo
 type request struct {
 	// bool since our errors are not serializable using json
 	ShouldErrorDuringJobUpdate bool
+	PRMode                     bool
 }
 
 type response struct {
@@ -160,6 +195,10 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		Root:         testLocalRoot.Root,
 		Repo:         testGithubRepo,
 		DeploymentID: testDeploymentID,
+	}
+
+	if req.PRMode {
+		runnerReq.Root.WorkflowMode = terraformModel.PR
 	}
 
 	subject := &terraform.Runner{
@@ -217,6 +256,15 @@ func copy(s *state.Workflow) state.Workflow {
 		}
 	}
 
+	if s.PolicyCheck != nil {
+		copy.PolicyCheck = &state.Job{
+			Status: s.PolicyCheck.Status,
+			Output: &state.JobOutput{
+				URL: s.PolicyCheck.Output.URL,
+			},
+		}
+	}
+
 	if s.Apply != nil {
 		copy.Apply = &state.Job{
 			Status: s.Apply.Status,
@@ -230,7 +278,7 @@ func copy(s *state.Workflow) state.Workflow {
 	return copy
 }
 
-func TestSuccess(t *testing.T) {
+func TestSuccess_DeployMode(t *testing.T) {
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
 	ga := &githubActivities{}
@@ -422,6 +470,144 @@ func TestSuccess(t *testing.T) {
 						},
 					},
 					Summary: approvalReason,
+				},
+			},
+			Result: state.WorkflowResult{
+				Reason: state.SuccessfulCompletionReason,
+				Status: state.CompleteWorkflowStatus,
+			},
+		},
+	}, resp.States)
+}
+
+func TestSuccess_PRMode(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	ga := &githubActivities{}
+	ta := &terraformActivities{}
+	env.RegisterActivity(ga)
+	env.RegisterActivity(ta)
+
+	outputURL, err := url.Parse("www.test.com/jobs/1235")
+	assert.NoError(t, err)
+
+	// set activity expectations
+	env.OnActivity(ga.GithubFetchRoot, mock.MatchedBy(func(ctx context.Context) bool {
+		info := activity.GetInfo(ctx)
+
+		assert.Equal(t, "taskqueue", info.TaskQueue)
+		assert.Equal(t, 1*time.Minute, info.HeartbeatTimeout)
+
+		return true
+	}), activities.FetchRootRequest{
+		Repo:         testGithubRepo,
+		Root:         testLocalPRRoot.Root,
+		DeploymentID: testDeploymentID,
+	}).Return(activities.FetchRootResponse{
+		LocalRoot:       testLocalPRRoot,
+		DeployDirectory: DeployDir,
+	}, nil)
+	env.OnActivity(ta.Cleanup, mock.Anything, activities.CleanupRequest{
+		DeployDirectory: DeployDir,
+	}).Return(activities.CleanupResponse{}, nil)
+
+	// send approval of plan
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow("planreview", gate.PlanReviewSignalRequest{
+			Status: gate.Approved,
+		})
+	}, 5*time.Second)
+
+	// execute workflow
+	env.ExecuteWorkflow(testTerraformWorkflow, request{
+		PRMode: true,
+	})
+	assert.True(t, env.IsWorkflowCompleted())
+
+	var resp response
+	err = env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	// assert results are expected
+	env.AssertExpectations(t)
+	assert.Equal(t, []state.Workflow{
+		{
+			Plan: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.InProgressJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			PolicyCheck: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			PolicyCheck: &state.Job{
+				Status: state.InProgressJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			PolicyCheck: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			PolicyCheck: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
 				},
 			},
 			Result: state.WorkflowResult{

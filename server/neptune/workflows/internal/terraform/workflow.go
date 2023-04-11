@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
@@ -33,6 +34,7 @@ type terraformActivities interface {
 type jobRunner interface {
 	Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string) (activities.TerraformPlanResponse, error)
 	Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, planFile string) error
+	PolicyCheck(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) error
 }
 
 const (
@@ -159,6 +161,43 @@ func (r *Runner) Plan(ctx workflow.Context, root *terraform.LocalRoot, serverURL
 	return response, nil
 }
 
+func (r *Runner) PolicyCheck(ctx workflow.Context, root *terraform.LocalRoot, serverURL *url.URL, showFile string) error {
+	jobID, err := sideeffect.GenerateUUID(ctx)
+	if err != nil {
+		return errors.Wrap(err, "generating job id")
+	}
+
+	// fail if we error here since all successive calls to update this will fail otherwise
+	if err := r.Store.InitPolicyCheckJob(jobID, serverURL); err != nil {
+		return errors.Wrap(err, "initializing job")
+	}
+
+	if err := r.Store.UpdatePolicyCheckJobWithStatus(state.InProgressJobStatus, state.UpdateOptions{
+		StartTime: time.Now(),
+	}); err != nil {
+		return newUpdateJobError(err, "unable to update job with success status")
+	}
+
+	err = r.JobRunner.PolicyCheck(ctx, root, jobID.String(), showFile)
+	if err != nil {
+		if err := r.Store.UpdatePolicyCheckJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
+			EndTime: time.Now(),
+		}); err != nil {
+			// not returning UpdateJobError here since we want to surface the job failure itself
+			workflow.GetLogger(ctx).Error("unable to update job with failed status, job failed with error. ", key.ErrKey, err)
+		}
+		return errors.Wrap(err, "running job")
+	}
+
+	if err := r.Store.UpdatePolicyCheckJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
+		EndTime: time.Now(),
+	}); err != nil {
+		return newUpdateJobError(err, "unable to update job with success status")
+	}
+
+	return nil
+}
+
 func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverURL fmt.Stringer, planResponse activities.TerraformPlanResponse) error {
 	jobID, err := sideeffect.GenerateUUID(ctx)
 
@@ -274,7 +313,14 @@ func (r *Runner) run(ctx workflow.Context) error {
 		return r.toExternalError(err, "running plan job")
 	}
 
-	if err := r.Apply(ctx, root, response.ServerURL, planResponse); err != nil {
+	if root.Root.WorkflowMode == terraform.PR {
+		if err = r.PolicyCheck(ctx, root, response.ServerURL, planResponse.PlanJSONFile); err != nil {
+			return r.toExternalError(err, "running apply job")
+		}
+		return nil
+	}
+
+	if err = r.Apply(ctx, root, response.ServerURL, planResponse); err != nil {
 		return r.toExternalError(err, "running apply job")
 	}
 	return nil

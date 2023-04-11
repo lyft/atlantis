@@ -20,6 +20,7 @@ type Root struct {
 	Trigger      Trigger
 	Rerun        bool
 	TrackedFiles []string
+	WorkflowMode WorkflowMode
 }
 
 func (r Root) GetTrackedFilesRelativeToRepo() []string {
