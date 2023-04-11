@@ -74,6 +74,7 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 		Root:         r.buildRequestRoot(deploymentInfo.Root, diffDirection, scope),
 		DeploymentID: id.String(),
 		Revision:     deploymentInfo.Commit.Revision,
+		WorkflowMode: terraformActivities.Deploy,
 	}
 
 	future := workflow.ExecuteChildWorkflow(ctx, r.Workflow, request)
