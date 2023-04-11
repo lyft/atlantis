@@ -32,7 +32,7 @@ type terraformActivities interface {
 
 // jobRunner runs a deploy plan/apply job
 type jobRunner interface {
-	Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string) (activities.TerraformPlanResponse, error)
+	Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, workflowMode terraform.WorkflowMode) (activities.TerraformPlanResponse, error)
 	Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, planFile string) error
 	PolicyCheck(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) error
 }
@@ -143,7 +143,7 @@ func (r *Runner) Plan(ctx workflow.Context, root *terraform.LocalRoot, serverURL
 		return response, newUpdateJobError(err, "unable to update job with in-progress status")
 	}
 
-	response, err = r.JobRunner.Plan(ctx, root, jobID.String())
+	response, err = r.JobRunner.Plan(ctx, root, jobID.String(), r.Request.WorkflowMode)
 
 	if err != nil {
 		if e := r.Store.UpdatePlanJobWithStatus(state.FailedJobStatus); e != nil {
@@ -313,9 +313,9 @@ func (r *Runner) run(ctx workflow.Context) error {
 		return r.toExternalError(err, "running plan job")
 	}
 
-	if root.Root.WorkflowMode == terraform.PR {
+	if r.Request.WorkflowMode == terraform.PR {
 		if err = r.PolicyCheck(ctx, root, response.ServerURL, planResponse.PlanJSONFile); err != nil {
-			return r.toExternalError(err, "running apply job")
+			return r.toExternalError(err, "running policy check job")
 		}
 		return nil
 	}

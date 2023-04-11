@@ -57,7 +57,7 @@ func NewRunner(runStepRunner stepRunner, envStepRunner envStepRunner, tfActiviti
 	}
 }
 
-func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string) (activities.TerraformPlanResponse, error) {
+func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, workflowMode terraform.WorkflowMode) (activities.TerraformPlanResponse, error) {
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		NonRetryableErrorTypes: []string{TerraformClientErrorType},
 	})
@@ -79,7 +79,7 @@ func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, j
 		case "init":
 			err = r.init(jobCtx, localRoot, step)
 		case "plan":
-			resp, err = r.plan(jobCtx, localRoot.Root.Plan.Mode, localRoot.Root.WorkflowMode, step.ExtraArgs)
+			resp, err = r.plan(jobCtx, localRoot.Root.Plan.Mode, workflowMode, step.ExtraArgs)
 		}
 		if err != nil {
 			return resp, errors.Wrapf(err, "running step %s", step.StepName)

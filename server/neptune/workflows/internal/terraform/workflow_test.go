@@ -41,8 +41,7 @@ var approvalReason = "Because I want"
 
 var testLocalRoot = &terraformModel.LocalRoot{
 	Root: terraformModel.Root{
-		Name:         testRootName,
-		WorkflowMode: terraformModel.Deploy,
+		Name: testRootName,
 		Plan: terraformModel.PlanJob{
 			Job: execute.Job{
 				Steps: []execute.Step{
@@ -70,8 +69,7 @@ var testLocalRoot = &terraformModel.LocalRoot{
 
 var testLocalPRRoot = &terraformModel.LocalRoot{
 	Root: terraformModel.Root{
-		Name:         testRootName,
-		WorkflowMode: terraformModel.PR,
+		Name: testRootName,
 		Plan: terraformModel.PlanJob{
 			Job: execute.Job{
 				Steps: []execute.Step{
@@ -137,7 +135,7 @@ func (r *jobRunner) PolicyCheck(ctx workflow.Context, localRoot *terraformModel.
 	return r.expectedError
 }
 
-func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string) (activities.TerraformPlanResponse, error) {
+func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, workflowMode terraformModel.WorkflowMode) (activities.TerraformPlanResponse, error) {
 	return activities.TerraformPlanResponse{
 		Summary: terraformModel.PlanSummary{
 			Updates: []terraformModel.ResourceSummary{
@@ -198,7 +196,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 	}
 
 	if req.PRMode {
-		runnerReq.Root.WorkflowMode = terraformModel.PR
+		runnerReq.WorkflowMode = terraformModel.PR
 	}
 
 	subject := &terraform.Runner{
