@@ -99,6 +99,7 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 		func(s *state.Workflow) error {
 			return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.WorkflowStateChangeSignal, s).Get(ctx, nil)
 		},
+		request.WorkflowMode,
 	)
 
 	return &Runner{

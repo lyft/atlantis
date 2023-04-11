@@ -47,6 +47,7 @@ func TestUpdateApprovalActions(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -97,6 +98,7 @@ func TestInitPlanJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -129,6 +131,7 @@ func TestInitApplyJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -163,6 +166,7 @@ func TestUpdateApplyJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -213,6 +217,7 @@ func TestUpdatePlanJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -235,6 +240,7 @@ func TestInitValidateJob(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: terraform.PR,
 			Validate: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -248,6 +254,7 @@ func TestInitValidateJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.PR,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -267,6 +274,7 @@ func TestUpdateValidateJob(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: terraform.PR,
 			Validate: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -280,6 +288,7 @@ func TestUpdateValidateJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.PR,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")

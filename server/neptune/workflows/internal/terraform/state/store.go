@@ -34,22 +34,25 @@ type UpdateOptions struct {
 	EndTime      time.Time
 }
 
-func NewWorkflowStoreWithGenerator(notifier UpdateNotifier, g urlGenerator) *WorkflowStore {
+func NewWorkflowStoreWithGenerator(notifier UpdateNotifier, g urlGenerator, mode terraform.WorkflowMode) *WorkflowStore {
+	initialState := &Workflow{
+		Mode: mode,
+	}
 	return &WorkflowStore{
-		state:              &Workflow{},
+		state:              initialState,
 		notifier:           notifier,
 		outputURLGenerator: g,
 	}
 }
 
-func NewWorkflowStore(notifier UpdateNotifier) *WorkflowStore {
+func NewWorkflowStore(notifier UpdateNotifier, mode terraform.WorkflowMode) *WorkflowStore {
 	// Create a dummy route with the correct jobs path
 	route := &mux.Route{}
 	route.Path("/jobs/{job-id}")
 	urlGenerator := &OutputURLGenerator{
 		URLBuilder: route,
 	}
-	return NewWorkflowStoreWithGenerator(notifier, urlGenerator)
+	return NewWorkflowStoreWithGenerator(notifier, urlGenerator, mode)
 }
 
 func (s *WorkflowStore) InitPlanJob(jobID fmt.Stringer, serverURL fmt.Stringer) error {
