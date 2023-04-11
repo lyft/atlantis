@@ -103,7 +103,7 @@ func (r *jobRunner) Apply(ctx workflow.Context, localRoot *terraformModel.LocalR
 	return r.expectedError
 }
 
-func (r *jobRunner) PolicyCheck(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, showFile string) error {
+func (r *jobRunner) Validate(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, showFile string) error {
 	return r.expectedError
 }
 
@@ -226,11 +226,11 @@ func copy(s *state.Workflow) state.Workflow {
 		}
 	}
 
-	if s.PolicyCheck != nil {
-		copy.PolicyCheck = &state.Job{
-			Status: s.PolicyCheck.Status,
+	if s.Validate != nil {
+		copy.Validate = &state.Job{
+			Status: s.Validate.Status,
 			Output: &state.JobOutput{
-				URL: s.PolicyCheck.Output.URL,
+				URL: s.Validate.Output.URL,
 			},
 		}
 	}
@@ -532,7 +532,7 @@ func TestSuccess_PRMode(t *testing.T) {
 					URL: outputURL,
 				},
 			},
-			PolicyCheck: &state.Job{
+			Validate: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
@@ -546,7 +546,7 @@ func TestSuccess_PRMode(t *testing.T) {
 					URL: outputURL,
 				},
 			},
-			PolicyCheck: &state.Job{
+			Validate: &state.Job{
 				Status: state.InProgressJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
@@ -560,7 +560,7 @@ func TestSuccess_PRMode(t *testing.T) {
 					URL: outputURL,
 				},
 			},
-			PolicyCheck: &state.Job{
+			Validate: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
@@ -574,7 +574,7 @@ func TestSuccess_PRMode(t *testing.T) {
 					URL: outputURL,
 				},
 			},
-			PolicyCheck: &state.Job{
+			Validate: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,

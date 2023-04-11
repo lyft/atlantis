@@ -95,13 +95,13 @@ func (s *WorkflowStore) UpdateApprovalActions(approval terraform.PlanApproval) e
 	return s.notifier(s.state)
 }
 
-func (s *WorkflowStore) InitPolicyCheckJob(jobID fmt.Stringer, serverURL fmt.Stringer) error {
+func (s *WorkflowStore) InitValidateJob(jobID fmt.Stringer, serverURL fmt.Stringer) error {
 	outputURL, err := s.outputURLGenerator.Generate(jobID, serverURL)
 
 	if err != nil {
-		return errors.Wrap(err, "generating url for policy check job")
+		return errors.Wrap(err, "generating url for validate job")
 	}
-	s.state.PolicyCheck = &Job{
+	s.state.Validate = &Job{
 		ID: jobID.String(),
 		Output: &JobOutput{
 			URL: outputURL,
@@ -112,16 +112,16 @@ func (s *WorkflowStore) InitPolicyCheckJob(jobID fmt.Stringer, serverURL fmt.Str
 	return s.notifier(s.state)
 }
 
-func (s *WorkflowStore) UpdatePolicyCheckJobWithStatus(status JobStatus, options ...UpdateOptions) error {
+func (s *WorkflowStore) UpdateValidateJobWithStatus(status JobStatus, options ...UpdateOptions) error {
 	switch status {
 	case InProgressJobStatus:
-		s.state.PolicyCheck.StartTime = getStartTimeFromOpts(options...)
+		s.state.Validate.StartTime = getStartTimeFromOpts(options...)
 
 	case FailedJobStatus, SuccessJobStatus:
-		s.state.PolicyCheck.EndTime = getEndTimeFromOpts(options...)
+		s.state.Validate.EndTime = getEndTimeFromOpts(options...)
 	}
 
-	s.state.PolicyCheck.Status = status
+	s.state.Validate.Status = status
 	return s.notifier(s.state)
 }
 

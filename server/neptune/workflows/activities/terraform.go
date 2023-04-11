@@ -262,7 +262,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		StdErr: showResultBuffer,
 	})
 
-	// if used by the policy check step, we will fail when we can't find the file
+	// if used by the validate step, we will fail when we can't find the file
 	if showErr != nil {
 		activity.GetLogger(ctx).Error("error with terraform show", key.ErrKey, err)
 	}

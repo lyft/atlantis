@@ -89,8 +89,8 @@ type WorkflowResult struct {
 }
 
 type Workflow struct {
-	Plan        *Job
-	PolicyCheck *Job
-	Apply       *Job
-	Result      WorkflowResult
+	Plan     *Job
+	Validate *Job
+	Apply    *Job
+	Result   WorkflowResult
 }

@@ -95,8 +95,8 @@ func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, j
 	return resp, nil
 }
 
-func (r *JobRunner) PolicyCheck(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) error {
-	// TODO: implement policy check job
+func (r *JobRunner) Validate(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) error {
+	// TODO: implement validate job
 	return nil
 }
 

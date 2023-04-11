@@ -228,14 +228,14 @@ func TestUpdatePlanJob(t *testing.T) {
 	assert.True(t, notifier.called)
 }
 
-func TestInitPolicyCheckJob(t *testing.T) {
+func TestInitValidateJob(t *testing.T) {
 	expectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
-			PolicyCheck: &state.Job{
+			Validate: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
 					URL: expectedURL,
@@ -252,12 +252,12 @@ func TestInitPolicyCheckJob(t *testing.T) {
 
 	baseURL := bytes.NewBufferString("www.test.com")
 
-	err = subject.InitPolicyCheckJob(jobID, baseURL)
+	err = subject.InitValidateJob(jobID, baseURL)
 	assert.NoError(t, err)
 	assert.True(t, notifier.called)
 }
 
-func TestUpdatePolicyCheckJob(t *testing.T) {
+func TestUpdateValidateJob(t *testing.T) {
 	route := &mux.Route{}
 	route.Path("/jobs/{job-id}")
 
@@ -267,7 +267,7 @@ func TestUpdatePolicyCheckJob(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
-			PolicyCheck: &state.Job{
+			Validate: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
 					URL: expectedURL,
@@ -285,12 +285,12 @@ func TestUpdatePolicyCheckJob(t *testing.T) {
 	baseURL := bytes.NewBufferString("www.test.com")
 
 	// init and then update
-	err = subject.InitPolicyCheckJob(jobID, baseURL)
+	err = subject.InitValidateJob(jobID, baseURL)
 	assert.NoError(t, err)
 
-	notifier.expectedState.PolicyCheck.Status = state.FailedJobStatus
+	notifier.expectedState.Validate.Status = state.FailedJobStatus
 
-	err = subject.UpdatePolicyCheckJobWithStatus(state.FailedJobStatus)
+	err = subject.UpdateValidateJobWithStatus(state.FailedJobStatus)
 	assert.NoError(t, err)
 	assert.True(t, notifier.called)
 }
