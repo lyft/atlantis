@@ -24,6 +24,9 @@ func (n *testNotifier) notify(state *state.Workflow) error {
 	return nil
 }
 
+var prMode = terraform.PR
+var deployMode = terraform.Deploy
+
 func TestUpdateApprovalActions(t *testing.T) {
 	route := &mux.Route{}
 	route.Path("/jobs/{job-id}")
@@ -34,6 +37,7 @@ func TestUpdateApprovalActions(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Apply: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -85,6 +89,7 @@ func TestInitPlanJob(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Plan: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -118,6 +123,7 @@ func TestInitApplyJob(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Apply: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -153,6 +159,7 @@ func TestUpdateApplyJob(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Apply: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -204,6 +211,7 @@ func TestUpdatePlanJob(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Plan: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -240,7 +248,7 @@ func TestInitValidateJob(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
-			Mode: terraform.PR,
+			Mode: &prMode,
 			Validate: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -274,7 +282,7 @@ func TestUpdateValidateJob(t *testing.T) {
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
-			Mode: terraform.PR,
+			Mode: &prMode,
 			Validate: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{

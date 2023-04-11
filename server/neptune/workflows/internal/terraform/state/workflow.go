@@ -89,7 +89,7 @@ type WorkflowResult struct {
 }
 
 type Workflow struct {
-	Mode     terraform.WorkflowMode
+	Mode     *terraform.WorkflowMode
 	Plan     *Job
 	Validate *Job
 	Apply    *Job

@@ -36,7 +36,7 @@ type UpdateOptions struct {
 
 func NewWorkflowStoreWithGenerator(notifier UpdateNotifier, g urlGenerator, mode terraform.WorkflowMode) *WorkflowStore {
 	initialState := &Workflow{
-		Mode: mode,
+		Mode: &mode,
 	}
 	return &WorkflowStore{
 		state:              initialState,
