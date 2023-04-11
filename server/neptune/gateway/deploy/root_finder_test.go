@@ -11,7 +11,7 @@
 // limitations under the License.
 // Modified hereafter by contributors to runatlantis/atlantis.
 
-package event_test
+package deploy_test
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
@@ -245,7 +245,7 @@ func TestDefaultProjectFinder_FindRoots(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
-			rf := event.RepoRootFinder{
+			rf := deploy.RepoRootFinder{
 				Logger: logging.NewNoopCtxLogger(t),
 			}
 			tempDir := t.TempDir()

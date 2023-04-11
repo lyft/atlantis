@@ -1,4 +1,4 @@
-package event
+package deploy
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"go.temporal.io/sdk/client"
@@ -19,7 +20,7 @@ type deploySignaler interface {
 }
 
 type rootConfigBuilder interface {
-	Build(ctx context.Context, commit *RepoCommit, installationToken int64, opts ...BuilderOptions) ([]*valid.MergedProjectCfg, error)
+	Build(ctx context.Context, commit *config.RepoCommit, installationToken int64, opts ...config.BuilderOptions) ([]*valid.MergedProjectCfg, error)
 }
 
 type RootDeployer struct {
@@ -54,14 +55,14 @@ type RootDeployOptions struct {
 }
 
 func (d *RootDeployer) Deploy(ctx context.Context, deployOptions RootDeployOptions) error {
-	commit := &RepoCommit{
+	commit := &config.RepoCommit{
 		Repo:          deployOptions.Repo,
 		Branch:        deployOptions.Branch,
 		Sha:           deployOptions.Revision,
 		OptionalPRNum: deployOptions.OptionalPullNum,
 	}
 
-	opts := BuilderOptions{
+	opts := config.BuilderOptions{
 		RootNames:          deployOptions.RootNames,
 		RepoFetcherOptions: deployOptions.RepoFetcherOptions,
 	}

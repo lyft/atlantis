@@ -2,11 +2,15 @@ package event_test
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"testing"
 
+	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/neptune/sync"
+	"go.temporal.io/sdk/client"
+
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/stretchr/testify/assert"
 )
@@ -66,7 +70,7 @@ func TestCheckRunHandler(t *testing.T) {
 			Logger: logging.NewNoopCtxLogger(t),
 			RootDeployer: &testRootDeployer{
 				expectedT: t,
-				expectedOptions: event.RootDeployOptions{
+				expectedOptions: deploy.RootDeployOptions{
 					RootNames: []string{
 						testRoot,
 					},
@@ -262,12 +266,84 @@ func TestCheckRunHandler(t *testing.T) {
 type testRootDeployer struct {
 	expectedT       *testing.T
 	isCalled        bool
-	expectedOptions event.RootDeployOptions
+	expectedOptions deploy.RootDeployOptions
 	error           error
 }
 
-func (m *testRootDeployer) Deploy(_ context.Context, options event.RootDeployOptions) error {
+func (m *testRootDeployer) Deploy(_ context.Context, options deploy.RootDeployOptions) error {
 	assert.Equal(m.expectedT, m.expectedOptions, options)
 	m.isCalled = true
 	return m.error
+}
+
+type mockDeploySignaler struct {
+	run    client.WorkflowRun
+	error  error
+	called bool
+}
+
+func (d *mockDeploySignaler) SignalWorkflow(_ context.Context, _ string, _ string, _ string, _ interface{}) error {
+	d.called = true
+	return d.error
+}
+
+func (d *mockDeploySignaler) SignalWithStartWorkflow(_ context.Context, _ *valid.MergedProjectCfg, _ deploy.RootDeployOptions) (client.WorkflowRun, error) {
+	d.called = true
+	return d.run, d.error
+}
+
+type testSignaler struct {
+	t                    *testing.T
+	expectedWorkflowID   string
+	expectedRunID        string
+	expectedSignalName   string
+	expectedSignalArg    interface{}
+	expectedOptions      client.StartWorkflowOptions
+	expectedWorkflow     interface{}
+	expectedWorkflowArgs interface{}
+	expectedErr          error
+
+	called bool
+}
+
+func (s *testSignaler) SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error {
+	s.called = true
+	assert.Equal(s.t, s.expectedWorkflowID, workflowID)
+	assert.Equal(s.t, s.expectedRunID, runID)
+	assert.Equal(s.t, s.expectedSignalName, signalName)
+	assert.Equal(s.t, s.expectedSignalArg, arg)
+
+	return s.expectedErr
+}
+
+func (s *testSignaler) SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{},
+	options client.StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (client.WorkflowRun, error) {
+	s.called = true
+
+	assert.Equal(s.t, s.expectedWorkflowID, workflowID)
+	assert.Equal(s.t, s.expectedSignalName, signalName)
+	assert.Equal(s.t, s.expectedSignalArg, signalArg)
+	assert.Equal(s.t, s.expectedOptions, options)
+	assert.IsType(s.t, s.expectedWorkflow, workflow)
+	assert.Equal(s.t, []interface{}{s.expectedWorkflowArgs}, workflowArgs)
+
+	return testRun{}, s.expectedErr
+}
+
+type testRun struct{}
+
+func (r testRun) GetID() string {
+	return "123"
+}
+
+func (r testRun) GetRunID() string {
+	return "456"
+}
+
+func (r testRun) Get(ctx context.Context, valuePtr interface{}) error {
+	return nil
+}
+
+func (r testRun) GetWithOptions(ctx context.Context, valuePtr interface{}, options client.WorkflowRunGetOptions) error {
+	return nil
 }

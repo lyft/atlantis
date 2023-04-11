@@ -12,6 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
@@ -160,7 +161,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_BothModes(t *testing.T) {
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	rootDeployer := &testRootDeployer{
 		expectedT: t,
-		expectedOptions: event.RootDeployOptions{
+		expectedOptions: deploy.RootDeployOptions{
 			Repo:              testRepo,
 			RootNames:         []string{"root1"},
 			Branch:            testPull.HeadBranch,
@@ -234,7 +235,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_AllPlatform(t *testing.T) {
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	rootDeployer := &testRootDeployer{
 		expectedT: t,
-		expectedOptions: event.RootDeployOptions{
+		expectedOptions: deploy.RootDeployOptions{
 			Repo:              testRepo,
 			RootNames:         []string{"root1", "root2"},
 			Branch:            testPull.HeadBranch,

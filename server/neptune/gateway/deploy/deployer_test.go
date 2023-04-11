@@ -1,4 +1,4 @@
-package event_test
+package deploy_test
 
 import (
 	"context"
@@ -8,18 +8,21 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
 )
+
+const testRoot = "testroot"
 
 func TestDeploy(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	version, err := version.NewVersion("1.0.3")
 	assert.NoError(t, err)
 	// use default values for testing
-	deployOptions := event.RootDeployOptions{
+	deployOptions := deploy.RootDeployOptions{
 		Repo: models.Repo{
 			Name: "test",
 		},
@@ -33,7 +36,7 @@ func TestDeploy(t *testing.T) {
 		InstallationToken: 2,
 	}
 
-	commit := &event.RepoCommit{
+	commit := &config.RepoCommit{
 		Repo:          deployOptions.Repo,
 		Branch:        deployOptions.Branch,
 		Sha:           deployOptions.Revision,
@@ -43,14 +46,14 @@ func TestDeploy(t *testing.T) {
 	t.Run("root config builder error", func(t *testing.T) {
 		signaler := &mockDeploySignaler{}
 		ctx := context.Background()
-		deployer := event.RootDeployer{
+		deployer := deploy.RootDeployer{
 			DeploySignaler: signaler,
 			Logger:         logger,
 			RootConfigBuilder: &mockRootConfigBuilder{
 				expectedT:      t,
 				expectedCommit: commit,
 				expectedToken:  deployOptions.InstallationToken,
-				expectedOptions: []event.BuilderOptions{
+				expectedOptions: []config.BuilderOptions{
 					{
 						RootNames:          deployOptions.RootNames,
 						RepoFetcherOptions: deployOptions.RepoFetcherOptions,
@@ -80,14 +83,14 @@ func TestDeploy(t *testing.T) {
 		rootCfgs := []*valid.MergedProjectCfg{
 			&rootCfg,
 		}
-		deployer := event.RootDeployer{
+		deployer := deploy.RootDeployer{
 			DeploySignaler: signaler,
 			Logger:         logger,
 			RootConfigBuilder: &mockRootConfigBuilder{
 				expectedT:      t,
 				expectedCommit: commit,
 				expectedToken:  deployOptions.InstallationToken,
-				expectedOptions: []event.BuilderOptions{
+				expectedOptions: []config.BuilderOptions{
 					{
 						RootNames:          deployOptions.RootNames,
 						RepoFetcherOptions: deployOptions.RepoFetcherOptions,
@@ -117,14 +120,14 @@ func TestDeploy(t *testing.T) {
 		rootCfgs := []*valid.MergedProjectCfg{
 			&rootCfg,
 		}
-		deployer := event.RootDeployer{
+		deployer := deploy.RootDeployer{
 			DeploySignaler: signaler,
 			Logger:         logger,
 			RootConfigBuilder: &mockRootConfigBuilder{
 				expectedT:      t,
 				expectedCommit: commit,
 				expectedToken:  deployOptions.InstallationToken,
-				expectedOptions: []event.BuilderOptions{
+				expectedOptions: []config.BuilderOptions{
 					{
 						RootNames:          deployOptions.RootNames,
 						RepoFetcherOptions: deployOptions.RepoFetcherOptions,
@@ -141,15 +144,15 @@ func TestDeploy(t *testing.T) {
 }
 
 type mockRootConfigBuilder struct {
-	expectedCommit  *event.RepoCommit
+	expectedCommit  *config.RepoCommit
 	expectedToken   int64
-	expectedOptions []event.BuilderOptions
+	expectedOptions []config.BuilderOptions
 	expectedT       *testing.T
 	rootConfigs     []*valid.MergedProjectCfg
 	error           error
 }
 
-func (r *mockRootConfigBuilder) Build(_ context.Context, commit *event.RepoCommit, installationToken int64, opts ...event.BuilderOptions) ([]*valid.MergedProjectCfg, error) {
+func (r *mockRootConfigBuilder) Build(_ context.Context, commit *config.RepoCommit, installationToken int64, opts ...config.BuilderOptions) ([]*valid.MergedProjectCfg, error) {
 	assert.Equal(r.expectedT, r.expectedCommit, commit)
 	assert.Equal(r.expectedT, r.expectedToken, installationToken)
 	assert.Equal(r.expectedT, r.expectedOptions, opts)
@@ -167,7 +170,7 @@ func (d *mockDeploySignaler) SignalWorkflow(_ context.Context, _ string, _ strin
 	return d.error
 }
 
-func (d *mockDeploySignaler) SignalWithStartWorkflow(_ context.Context, _ *valid.MergedProjectCfg, _ event.RootDeployOptions) (client.WorkflowRun, error) {
+func (d *mockDeploySignaler) SignalWithStartWorkflow(_ context.Context, _ *valid.MergedProjectCfg, _ deploy.RootDeployOptions) (client.WorkflowRun, error) {
 	d.called = true
 	return d.run, d.error
 }

@@ -4,13 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
-	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"
 	"github.com/stretchr/testify/assert"
 )
@@ -258,26 +257,12 @@ func TestHandlePushEvent(t *testing.T) {
 	})
 }
 
-func convertTestSteps(steps []valid.Step) []workflows.Step {
-	var convertedSteps []workflows.Step
-	for _, step := range steps {
-		convertedSteps = append(convertedSteps, workflows.Step{
-			StepName:    step.StepName,
-			ExtraArgs:   step.ExtraArgs,
-			RunCommand:  step.RunCommand,
-			EnvVarName:  step.EnvVarName,
-			EnvVarValue: step.EnvVarValue,
-		})
-	}
-	return convertedSteps
-}
-
 type mockRootDeployer struct {
 	isCalled bool
 	error    error
 }
 
-func (m *mockRootDeployer) Deploy(_ context.Context, _ event.RootDeployOptions) error {
+func (m *mockRootDeployer) Deploy(_ context.Context, _ deploy.RootDeployOptions) error {
 	m.isCalled = true
 	return m.error
 }

@@ -1,4 +1,4 @@
-package event
+package deploy
 
 import (
 	"context"
@@ -20,11 +20,11 @@ const (
 	Destroy    = "-destroy"
 )
 
-type DeployWorkflowSignaler struct {
+type WorkflowSignaler struct {
 	TemporalClient signaler
 }
 
-func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, rootDeployOptions RootDeployOptions) (client.WorkflowRun, error) {
+func (d *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, rootDeployOptions RootDeployOptions) (client.WorkflowRun, error) {
 	options := client.StartWorkflowOptions{
 		TaskQueue: workflows.DeployTaskQueue,
 		SearchAttributes: map[string]interface{}{
@@ -41,7 +41,7 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, ro
 
 	run, err := d.TemporalClient.SignalWithStartWorkflow(
 		ctx,
-		buildDeployWorkflowID(repo.FullName, rootCfg.Name),
+		BuildDeployWorkflowID(repo.FullName, rootCfg.Name),
 		workflows.DeployNewRevisionSignalID,
 		workflows.DeployNewRevisionSignalRequest{
 			Revision: rootDeployOptions.Revision,
@@ -91,11 +91,11 @@ func (d *DeployWorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, ro
 	return run, err
 }
 
-func buildDeployWorkflowID(repoName string, rootName string) string {
+func BuildDeployWorkflowID(repoName string, rootName string) string {
 	return fmt.Sprintf("%s||%s", repoName, rootName)
 }
 
-func (d *DeployWorkflowSignaler) generateSteps(steps []valid.Step) []workflows.Step {
+func (d *WorkflowSignaler) generateSteps(steps []valid.Step) []workflows.Step {
 	// NOTE: for deployment workflows, we won't support command level user requests for log level output verbosity
 	var workflowSteps []workflows.Step
 	for _, step := range steps {
@@ -110,7 +110,7 @@ func (d *DeployWorkflowSignaler) generateSteps(steps []valid.Step) []workflows.S
 	return workflowSteps
 }
 
-func (d *DeployWorkflowSignaler) generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PlanMode {
+func (d *WorkflowSignaler) generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PlanMode {
 	t, ok := cfg.Tags[Deprecated]
 	if ok && t == Destroy {
 		return workflows.DestroyPlanMode
@@ -119,6 +119,6 @@ func (d *DeployWorkflowSignaler) generatePlanMode(cfg *valid.MergedProjectCfg) w
 	return workflows.NormalPlanMode
 }
 
-func (d *DeployWorkflowSignaler) SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, args interface{}) error {
+func (d *WorkflowSignaler) SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, args interface{}) error {
 	return d.TemporalClient.SignalWorkflow(ctx, workflowID, runID, signalName, args)
 }

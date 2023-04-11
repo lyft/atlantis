@@ -6,11 +6,14 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
+	"go.temporal.io/sdk/client"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 )
 
@@ -18,6 +21,11 @@ const (
 	RequestedActionType   = "requested_action"
 	ReRequestedActionType = "rerequested"
 )
+
+type deploySignaler interface {
+	SignalWithStartWorkflow(ctx context.Context, rootCfg *valid.MergedProjectCfg, rootDeployOptions deploy.RootDeployOptions) (client.WorkflowRun, error)
+	SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error
+}
 
 var checkRunRegex = regexp.MustCompile("atlantis/deploy: (?P<name>.+)")
 
@@ -133,7 +141,7 @@ func (h *CheckRunHandler) signalPlanReviewWorkflowChannel(ctx context.Context, e
 }
 
 func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event CheckRun, rootName string) error {
-	workflowID := buildDeployWorkflowID(event.Repo.FullName, rootName)
+	workflowID := deploy.BuildDeployWorkflowID(event.Repo.FullName, rootName)
 	err := h.DeploySignaler.SignalWorkflow(
 		ctx,
 		// deploy workflow id is repo||root (the name of the check run is the root)
@@ -152,7 +160,7 @@ func (h *CheckRunHandler) signalUnlockWorkflowChannel(ctx context.Context, event
 }
 
 func (h *CheckRunHandler) buildRoot(ctx context.Context, event CheckRun, rootName string) error {
-	deployOptions := RootDeployOptions{
+	deployOptions := deploy.RootDeployOptions{
 		Repo:              event.Repo,
 		Branch:            event.Branch,
 		RootNames:         []string{rootName},

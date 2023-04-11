@@ -1,4 +1,4 @@
-package event_test
+package config_test
 
 import (
 	"context"
@@ -10,22 +10,23 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	"github.com/stretchr/testify/assert"
 )
 
-var rcb event.RootConfigBuilder
+var rcb config.RootConfigBuilder
 var globalCfg valid.GlobalCfg
 var expectedErr = errors.New("some error") //nolint:revive // error name is fine for testing purposes
+const testRoot = "testroot"
 
 func setupTesting(t *testing.T) {
 	globalCfg = valid.NewGlobalCfg("somedir")
 	// creates a default PCB to used in each test; individual tests mutate a specific field to test certain functionalities
-	rcb = event.RootConfigBuilder{
+	rcb = config.RootConfigBuilder{
 		RepoFetcher:     &mockRepoFetcher{},
 		HooksRunner:     &mockHooksRunner{},
 		ParserValidator: &mockParserValidator{},
-		Strategy: &event.ModifiedRootsStrategy{
+		Strategy: &config.ModifiedRootsStrategy{
 			RootFinder:  &mockRootFinder{},
 			FileFetcher: &mockFileFetcher{},
 		},
@@ -40,7 +41,7 @@ func TestRootConfigBuilder_Success(t *testing.T) {
 		FullName: "nish/repo",
 	}
 
-	commit := &event.RepoCommit{
+	commit := &config.RepoCommit{
 		Repo: repo,
 		Sha:  "1234",
 	}
@@ -68,7 +69,7 @@ func TestRootConfigBuilder_Success_explicitRoots(t *testing.T) {
 		FullName: "nish/repo",
 	}
 
-	commit := &event.RepoCommit{
+	commit := &config.RepoCommit{
 		Repo: repo,
 		Sha:  "1234",
 	}
@@ -97,7 +98,7 @@ func TestRootConfigBuilder_Success_explicitRoots(t *testing.T) {
 		&projCfg,
 	}
 
-	projectConfigs, err := rcb.Build(context.Background(), commit, 2, event.BuilderOptions{
+	projectConfigs, err := rcb.Build(context.Background(), commit, 2, config.BuilderOptions{
 		RootNames: []string{root},
 	})
 	assert.NoError(t, err)
@@ -111,7 +112,7 @@ func TestRootConfigBuilder_Success_explicitRoots_invalid(t *testing.T) {
 		FullName: "nish/repo",
 	}
 
-	commit := &event.RepoCommit{
+	commit := &config.RepoCommit{
 		Repo: repo,
 		Sha:  "1234",
 	}
@@ -128,7 +129,7 @@ func TestRootConfigBuilder_Success_explicitRoots_invalid(t *testing.T) {
 		},
 	}
 
-	_, err := rcb.Build(context.Background(), commit, 2, event.BuilderOptions{
+	_, err := rcb.Build(context.Background(), commit, 2, config.BuilderOptions{
 		RootNames: []string{"another root"},
 	})
 	assert.Error(t, err)
@@ -140,7 +141,7 @@ func TestRootConfigBuilder_DetermineRootsError(t *testing.T) {
 		FullName: "nish/repo",
 	}
 
-	commit := &event.RepoCommit{
+	commit := &config.RepoCommit{
 		Repo: repo,
 		Sha:  "1234",
 	}
@@ -159,7 +160,7 @@ func TestRootConfigBuilder_ParserValidatorParseError(t *testing.T) {
 		FullName: "nish/repo",
 	}
 
-	commit := &event.RepoCommit{
+	commit := &config.RepoCommit{
 		Repo: repo,
 		Sha:  "1234",
 	}
@@ -178,7 +179,7 @@ func TestRootConfigBuilder_GetModifiedFilesError(t *testing.T) {
 		FullName: "nish/repo",
 	}
 
-	commit := &event.RepoCommit{
+	commit := &config.RepoCommit{
 		Repo: repo,
 		Sha:  "1234",
 	}
@@ -196,7 +197,7 @@ func TestRootConfigBuilder_CloneError(t *testing.T) {
 		FullName: "nish/repo",
 	}
 
-	commit := &event.RepoCommit{
+	commit := &config.RepoCommit{
 		Repo: repo,
 		Sha:  "1234",
 	}
@@ -214,7 +215,7 @@ func TestRootConfigBuilder_HooksRunnerError(t *testing.T) {
 		FullName: "nish/repo",
 	}
 
-	commit := &event.RepoCommit{
+	commit := &config.RepoCommit{
 		Repo: repo,
 		Sha:  "1234",
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/uber-go/tally/v4"
 
@@ -267,7 +268,7 @@ func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *htt
 }
 
 func (p *CommentEventWorkerProxy) forceApplyPlatformMode(ctx context.Context, event Comment, rootNames []string) error {
-	rootDeployOptions := RootDeployOptions{
+	rootDeployOptions := deploy.RootDeployOptions{
 		RootNames:         rootNames,
 		Repo:              event.HeadRepo,
 		Branch:            event.Pull.HeadBranch,

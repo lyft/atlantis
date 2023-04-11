@@ -1,4 +1,4 @@
-package gateway_test
+package event_test
 
 import (
 	"context"
@@ -16,13 +16,13 @@ import (
 	vcsmocks "github.com/runatlantis/atlantis/server/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
-	"github.com/runatlantis/atlantis/server/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 	. "github.com/runatlantis/atlantis/testing"
 )
 
-var autoplanValidator gateway.AutoplanValidator
+var autoplanValidator event.AutoplanValidator
 var preWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
 var projectCommandBuilder *mocks.MockProjectCommandBuilder
 var drainer *events.Drainer
@@ -60,7 +60,7 @@ func setupAutoplan(t *testing.T) *vcsmocks.MockClient {
 	globalCfg := valid.NewGlobalCfg("somedir")
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
-	autoplanValidator = gateway.AutoplanValidator{
+	autoplanValidator = event.AutoplanValidator{
 		Scope:                         scope,
 		VCSClient:                     vcsClient,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
