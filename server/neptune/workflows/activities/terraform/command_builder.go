@@ -14,9 +14,9 @@ import (
 )
 
 type commandBuilder struct {
-	defaultVersion          *version.Version
-	versionCache            cache.ExecutionVersionCache
-	terraformPluginCacheDir string
+	defaultVersion *version.Version
+	versionCache   cache.ExecutionVersionCache
+	cacheDir       string
 }
 
 func (c *commandBuilder) Build(_ context.Context, v *version.Version, path string, subCommand *SubCommand) (*exec.Cmd, error) {
@@ -36,7 +36,7 @@ func (c *commandBuilder) Build(_ context.Context, v *version.Version, path strin
 		"TF_IN_AUTOMATION=true",
 		fmt.Sprintf("ATLANTIS_TERRAFORM_VERSION=%s", v.String()),
 		fmt.Sprintf("DIR=%s", path),
-		fmt.Sprintf("TF_PLUGIN_CACHE_DIR=%s", c.terraformPluginCacheDir),
+		fmt.Sprintf("TF_PLUGIN_CACHE_DIR=%s", c.cacheDir),
 	}
 	// Append current Atlantis process's environment variables, ex.
 	// AWS_ACCESS_KEY.

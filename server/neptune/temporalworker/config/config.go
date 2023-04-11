@@ -20,9 +20,10 @@ type ServerConfig struct {
 }
 
 type TerraformConfig struct {
-	DefaultVersionStr      string
-	DefaultVersionFlagName string
-	DownloadURL            string
+	TFDefaultVersion       string
+	TFDownloadURL          string
+	ConftestDefaultVersion string
+	ConftestDownloadURL    string
 	LogFilters             valid.TerraformLogFilters
 }
 

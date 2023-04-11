@@ -29,9 +29,9 @@ const (
 	// binDirName is the name of the directory inside our data dir where
 	// we download binaries.
 	BinDirName = "bin"
-	// terraformPluginCacheDir is the name of the dir inside our data dir
-	// where we tell terraform to cache plugins and modules.
-	TerraformPluginCacheDirName = "plugin-cache"
+	// PluginCacheDir is the name of the dir inside our data dir
+	// where we tell commands to cache plugins and modules.
+	PluginCacheDirName = "plugin-cache"
 )
 
 // Exported Activites should be here.
@@ -81,7 +81,8 @@ type StreamCloser interface {
 }
 
 type TerraformOptions struct {
-	VersionCache            cache.ExecutionVersionCache
+	TFVersionCache          cache.ExecutionVersionCache
+	ConftestVersionCache    cache.ExecutionVersionCache
 	GitCredentialsRefresher gitCredentialsRefresher
 }
 
@@ -91,32 +92,23 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 		return nil, err
 	}
 
-	cacheDir, err := mkSubDir(dataDir, TerraformPluginCacheDirName)
+	cacheDir, err := mkSubDir(dataDir, PluginCacheDirName)
 	if err != nil {
 		return nil, err
 	}
-
-	defaultTfVersion, err := version.NewVersion(config.DefaultVersionStr)
-	if err != nil {
-		return nil, errors.Wrapf(err, "parsing version %s", config.DefaultVersionStr)
-	}
-
-	tfClientConfig := terraform.ClientConfig{
-		BinDir:        binDir,
-		CacheDir:      cacheDir,
-		TfDownloadURL: config.DownloadURL,
-	}
-
 	downloader := &legacy_tf.DefaultDownloader{}
-	loader := legacy_tf.NewVersionLoader(downloader, config.DownloadURL)
-
 	gitCredentialsFileLock := &file.RWLock{}
 
-	var versionCache cache.ExecutionVersionCache
+	var tfVersionCache cache.ExecutionVersionCache
+	var conftestVersionCache cache.ExecutionVersionCache
 	var credentialsRefresher gitCredentialsRefresher
 	for _, o := range opts {
-		if o.VersionCache != nil {
-			versionCache = o.VersionCache
+		if o.TFVersionCache != nil {
+			tfVersionCache = o.TFVersionCache
+		}
+
+		if o.ConftestVersionCache != nil {
+			conftestVersionCache = o.ConftestVersionCache
 		}
 
 		if credentialsRefresher != nil {
@@ -124,32 +116,57 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 		}
 	}
 
-	if versionCache == nil {
-		versionCache = cache.NewExecutionVersionLayeredLoadingCache(
+	tfLoader := legacy_tf.NewVersionLoader(downloader, config.TFDownloadURL)
+	if tfVersionCache == nil {
+		tfVersionCache = cache.NewExecutionVersionLayeredLoadingCache(
 			"terraform",
 			binDir,
-			loader.LoadVersion,
+			tfLoader.LoadVersion,
+		)
+	}
+
+	conftestLoader := legacy_tf.NewVersionLoader(downloader, config.ConftestDownloadURL)
+	if conftestVersionCache == nil {
+		conftestVersionCache = cache.NewExecutionVersionLayeredLoadingCache(
+			"conftest",
+			binDir,
+			conftestLoader.LoadVersion,
 		)
 	}
 
 	if credentialsRefresher == nil {
 		credentialsRefresher, err = cli.NewCredentials(ghAppConfig, gitCredentialsFileLock)
-
 		if err != nil {
 			return nil, errors.Wrap(err, "initializing credentials")
 		}
 	}
 
 	tfClient, err := terraform.NewAsyncClient(
-		tfClientConfig,
-		config.DefaultVersionStr,
-		downloader,
-		versionCache,
+		cacheDir,
+		config.TFDefaultVersion,
+		tfVersionCache,
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	conftestClient, err := terraform.NewAsyncClient(
+		cacheDir,
+		config.ConftestDefaultVersion,
+		conftestVersionCache,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTfVersion, err := version.NewVersion(config.TFDefaultVersion)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing version %s", config.TFDefaultVersion)
+	}
+	defaultConftestVersion, err := version.NewVersion(config.ConftestDefaultVersion)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing version %s", config.ConftestDefaultVersion)
+	}
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
 		workerInfoActivity: &workerInfoActivity{
@@ -158,7 +175,9 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 		},
 		terraformActivities: &terraformActivities{
 			TerraformClient:        tfClient,
+			ConftestClient:         conftestClient,
 			StreamHandler:          streamHandler,
+			DefaultConftestVersion: defaultConftestVersion,
 			DefaultTFVersion:       defaultTfVersion,
 			GitCLICredentials:      credentialsRefresher,
 			GitCredentialsFileLock: gitCredentialsFileLock,

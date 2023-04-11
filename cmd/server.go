@@ -521,10 +521,9 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 			Port:    userConfig.Port,
 		},
 		TerraformCfg: neptune.TerraformConfig{
-			DefaultVersionFlagName: config.DefaultTFVersionFlag,
-			DefaultVersionStr:      userConfig.DefaultTFVersion,
-			DownloadURL:            userConfig.TFDownloadURL,
-			LogFilters:             globalCfg.TerraformLogFilter,
+			TFDefaultVersion: userConfig.DefaultTFVersion,
+			TFDownloadURL:    userConfig.TFDownloadURL,
+			LogFilters:       globalCfg.TerraformLogFilter,
 		},
 		JobConfig:                globalCfg.PersistenceConfig.Jobs,
 		DeploymentConfig:         globalCfg.PersistenceConfig.Deployments,

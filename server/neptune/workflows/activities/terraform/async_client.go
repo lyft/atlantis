@@ -12,16 +12,9 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
-	"github.com/runatlantis/atlantis/server/core/terraform"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/sdk/activity"
 )
-
-type ClientConfig struct {
-	BinDir        string
-	CacheDir      string
-	TfDownloadURL string
-}
 
 // Line represents a line that was output from a terraform command.
 type Line struct {
@@ -30,9 +23,8 @@ type Line struct {
 }
 
 func NewAsyncClient(
-	cfg ClientConfig,
+	cacheDir string,
 	defaultVersion string,
-	tfDownloader terraform.Downloader,
 	versionCache cache.ExecutionVersionCache,
 ) (*AsyncClient, error) {
 	version, err := getDefaultVersion(defaultVersion)
@@ -47,9 +39,9 @@ func NewAsyncClient(
 	}
 
 	builder := &commandBuilder{
-		defaultVersion:          version,
-		versionCache:            versionCache,
-		terraformPluginCacheDir: cfg.CacheDir,
+		defaultVersion: version,
+		versionCache:   versionCache,
+		cacheDir:       cacheDir,
 	}
 
 	return &AsyncClient{
