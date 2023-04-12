@@ -194,6 +194,7 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 		streamCloser,
 		activities.TerraformOptions{
 			TFVersionCache:          cache.NewLocalBinaryCache("terraform"),
+			ConftestVersionCache:    cache.NewLocalBinaryCache("conftest"),
 			GitCredentialsRefresher: noopCredentialsRefresher{},
 		},
 	)

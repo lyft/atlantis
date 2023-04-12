@@ -521,6 +521,7 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 			Port:    userConfig.Port,
 		},
 		TerraformCfg: neptune.TerraformConfig{
+			// TODO: add conftest download url + default version
 			TFDefaultVersion: userConfig.DefaultTFVersion,
 			TFDownloadURL:    userConfig.TFDownloadURL,
 			LogFilters:       globalCfg.TerraformLogFilter,

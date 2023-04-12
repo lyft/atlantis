@@ -26,6 +26,6 @@ type ConftestResponse struct {
 }
 
 func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest) (ConftestResponse, error) {
-	// TODO: Implement
+	// TODO: Implement conftest activity
 	return ConftestResponse{}, nil
 }

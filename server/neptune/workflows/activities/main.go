@@ -1,7 +1,6 @@
 package activities
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,6 +15,7 @@ import (
 	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
