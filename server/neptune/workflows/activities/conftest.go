@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"github.com/hashicorp/go-version"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 )
 
@@ -10,6 +11,7 @@ type conftestActivity struct {
 	DefaultConftestVersion *version.Version
 	ConftestClient         *command.AsyncClient
 	StreamHandler          streamer
+	Policies               valid.PolicySets
 }
 
 type ConftestRequest struct {

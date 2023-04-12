@@ -13,17 +13,17 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 )
 
-type execCmdBuilder struct {
+type execBuilder struct {
 	defaultVersion *version.Version
 	versionCache   cache.ExecutionVersionCache
 }
 
-func (c *execCmdBuilder) Build(_ context.Context, v *version.Version, path string, subCommand *SubCommand) (*exec.Cmd, error) {
+func (e *execBuilder) Build(_ context.Context, v *version.Version, path string, subCommand *SubCommand) (*exec.Cmd, error) {
 	if v == nil {
-		v = c.defaultVersion
+		v = e.defaultVersion
 	}
 
-	binPath, err := c.versionCache.Get(v)
+	binPath, err := e.versionCache.Get(v)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting version from cache %s", v.String())
 	}

@@ -167,11 +167,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	if err != nil {
 		return TerraformInitResponse{}, err
 	}
-
-	envs[TFInAutomation] = TFInAutomationVal
-	envs[AtlantisTerraformVersion] = tfVersion.String()
-	envs[Dir] = request.Path
-	envs[TFPluginCacheDir] = t.CacheDir
+	t.addTerraformEnvs(envs, request.Path, tfVersion)
 
 	r := &command.RunCommandRequest{
 		RootPath:          request.Path,
@@ -245,11 +241,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	if err != nil {
 		return TerraformPlanResponse{}, err
 	}
-
-	envs[TFInAutomation] = TFInAutomationVal
-	envs[AtlantisTerraformVersion] = tfVersion.String()
-	envs[Dir] = request.Path
-	envs[TFPluginCacheDir] = t.CacheDir
+	t.addTerraformEnvs(envs, request.Path, tfVersion)
 
 	planRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,
@@ -342,11 +334,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	if err != nil {
 		return TerraformApplyResponse{}, err
 	}
-
-	envs[TFInAutomation] = TFInAutomationVal
-	envs[AtlantisTerraformVersion] = tfVersion.String()
-	envs[Dir] = request.Path
-	envs[TFPluginCacheDir] = t.CacheDir
+	t.addTerraformEnvs(envs, request.Path, tfVersion)
 
 	applyRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,
@@ -421,4 +409,11 @@ func (t *terraformActivities) resolveVersion(v string) (*version.Version, error)
 		return version, nil
 	}
 	return t.DefaultTFVersion, nil
+}
+
+func (t *terraformActivities) addTerraformEnvs(envs map[string]string, path string, tfVersion *version.Version) {
+	envs[TFInAutomation] = TFInAutomationVal
+	envs[AtlantisTerraformVersion] = tfVersion.String()
+	envs[Dir] = path
+	envs[TFPluginCacheDir] = t.CacheDir
 }

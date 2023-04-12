@@ -156,6 +156,7 @@ func NewServer(config *config.Config) (*Server, error) {
 
 	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
+		config.ValidationConfig,
 		config.App,
 		config.DataDir,
 		config.ServerCfg.URL,

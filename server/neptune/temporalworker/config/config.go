@@ -20,11 +20,15 @@ type ServerConfig struct {
 }
 
 type TerraformConfig struct {
-	TFDefaultVersion       string
-	TFDownloadURL          string
-	ConftestDefaultVersion string
-	ConftestDownloadURL    string
-	LogFilters             valid.TerraformLogFilters
+	DefaultVersion string
+	DownloadURL    string
+	LogFilters     valid.TerraformLogFilters
+}
+
+type ValidationConfig struct {
+	DefaultVersion string
+	DownloadURL    string
+	Policies       valid.PolicySets
 }
 
 // Config is TemporalWorker specific user config
@@ -33,6 +37,7 @@ type Config struct {
 	ServerCfg        ServerConfig
 	TemporalCfg      valid.Temporal
 	TerraformCfg     TerraformConfig
+	ValidationConfig ValidationConfig
 	DeploymentConfig valid.StoreConfig
 	JobConfig        valid.StoreConfig
 	Metrics          valid.Metrics

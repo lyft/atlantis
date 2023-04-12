@@ -30,9 +30,9 @@ const (
 	// binDirName is the name of the directory inside our data dir where
 	// we download binaries.
 	BinDirName = "bin"
-	// PluginCacheDir is the name of the dir inside our data dir
-	// where we tell commands to cache plugins and modules.
-	PluginCacheDirName = "plugin-cache"
+	// TerraformPluginCacheDir is the name of the dir inside our data dir
+	// where we tell terraform to cache plugins and modules.
+	TerraformPluginCacheDirName = "plugin-cache"
 )
 
 // Exported Activites should be here.
@@ -88,13 +88,13 @@ type TerraformOptions struct {
 	GitCredentialsRefresher gitCredentialsRefresher
 }
 
-func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, dataDir string, serverURL *url.URL, taskQueue string, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
+func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.ValidationConfig, ghAppConfig githubapp.Config, dataDir string, serverURL *url.URL, taskQueue string, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
 	}
 
-	cacheDir, err := mkSubDir(dataDir, PluginCacheDirName)
+	cacheDir, err := mkSubDir(dataDir, TerraformPluginCacheDirName)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 		}
 	}
 
-	tfLoader := legacy_tf.NewVersionLoader(downloader, config.TFDownloadURL)
+	tfLoader := legacy_tf.NewVersionLoader(downloader, tfConfig.DownloadURL)
 	if tfVersionCache == nil {
 		tfVersionCache = cache.NewExecutionVersionLayeredLoadingCache(
 			"terraform",
@@ -127,7 +127,7 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 		)
 	}
 
-	conftestLoader := legacy_tf.NewVersionLoader(downloader, config.ConftestDownloadURL)
+	conftestLoader := legacy_tf.NewVersionLoader(downloader, validationConfig.DownloadURL)
 	if conftestVersionCache == nil {
 		conftestVersionCache = cache.NewExecutionVersionLayeredLoadingCache(
 			"conftest",
@@ -144,7 +144,7 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 	}
 
 	tfClient, err := command.NewAsyncClient(
-		config.TFDefaultVersion,
+		tfConfig.DefaultVersion,
 		tfVersionCache,
 	)
 	if err != nil {
@@ -152,20 +152,20 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 	}
 
 	conftestClient, err := command.NewAsyncClient(
-		config.ConftestDefaultVersion,
+		validationConfig.DefaultVersion,
 		conftestVersionCache,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	defaultTfVersion, err := version.NewVersion(config.TFDefaultVersion)
+	defaultTfVersion, err := version.NewVersion(tfConfig.DefaultVersion)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing version %s", config.TFDefaultVersion)
+		return nil, errors.Wrapf(err, "parsing version %s", tfConfig.DefaultVersion)
 	}
-	defaultConftestVersion, err := version.NewVersion(config.ConftestDefaultVersion)
+	defaultConftestVersion, err := version.NewVersion(validationConfig.DefaultVersion)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing version %s", config.ConftestDefaultVersion)
+		return nil, errors.Wrapf(err, "parsing version %s", validationConfig.DefaultVersion)
 	}
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
@@ -186,6 +186,7 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 			DefaultConftestVersion: defaultConftestVersion,
 			ConftestClient:         conftestClient,
 			StreamHandler:          streamHandler,
+			Policies:               validationConfig.Policies,
 		},
 		jobActivities: &jobActivities{
 			StreamCloser: streamHandler,

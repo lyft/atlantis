@@ -522,9 +522,14 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 		},
 		TerraformCfg: neptune.TerraformConfig{
 			// TODO: add conftest download url + default version
-			TFDefaultVersion: userConfig.DefaultTFVersion,
-			TFDownloadURL:    userConfig.TFDownloadURL,
-			LogFilters:       globalCfg.TerraformLogFilter,
+			DefaultVersion: userConfig.DefaultTFVersion,
+			DownloadURL:    userConfig.TFDownloadURL,
+			LogFilters:     globalCfg.TerraformLogFilter,
+		},
+		ValidationConfig: neptune.ValidationConfig{
+			DefaultVersion: "",
+			DownloadURL:    "",
+			Policies:       globalCfg.PolicySets,
 		},
 		JobConfig:                globalCfg.PersistenceConfig.Jobs,
 		DeploymentConfig:         globalCfg.PersistenceConfig.Deployments,

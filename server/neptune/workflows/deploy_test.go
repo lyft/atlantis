@@ -151,8 +151,10 @@ func buildConfig(t *testing.T) config.Config {
 			TerraformTaskQueue: "taskqueue",
 		},
 		TerraformCfg: config.TerraformConfig{
-			TFDefaultVersion:       "1.0.2",
-			ConftestDefaultVersion: "0.25.0",
+			DefaultVersion: "1.0.2",
+		},
+		ValidationConfig: config.ValidationConfig{
+			DefaultVersion: "0.25.0",
 		},
 		DataDir: dataDir,
 		ServerCfg: config.ServerConfig{
@@ -187,6 +189,7 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 
 	terraformActivities, err := activities.NewTerraform(
 		cfg.TerraformCfg,
+		cfg.ValidationConfig,
 		cfg.App,
 		cfg.DataDir,
 		cfg.ServerCfg.URL,

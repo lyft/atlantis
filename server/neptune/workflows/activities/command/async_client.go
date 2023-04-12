@@ -37,7 +37,7 @@ func NewAsyncClient(
 		return nil, errors.Wrapf(err, "getting default version %s", defaultVersion)
 	}
 
-	cmdBuilder := &execCmdBuilder{
+	cmdBuilder := &execBuilder{
 		defaultVersion: version,
 		versionCache:   versionCache,
 	}
