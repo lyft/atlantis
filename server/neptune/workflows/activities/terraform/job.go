@@ -1,6 +1,7 @@
 package terraform
 
 import (
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
 )
 
@@ -37,8 +38,8 @@ func (m PlanJob) GetPlanMode() PlanMode {
 	return PlanMode("default")
 }
 
-func (m PlanMode) ToFlag() Flag {
-	return Flag{
+func (m PlanMode) ToFlag() command.Flag {
+	return command.Flag{
 		Value: string(m),
 	}
 }

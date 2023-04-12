@@ -1,6 +1,7 @@
 package activities
 
 import (
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"io"
 	"net/http"
 	"net/url"
@@ -69,6 +70,7 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig, snsWriter io.Writer) (*Depl
 
 type Terraform struct {
 	*terraformActivities
+	*conftestActivity
 	*executeCommandActivities
 	*workerInfoActivity
 	*cleanupActivities
@@ -141,7 +143,7 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 		}
 	}
 
-	tfClient, err := terraform.NewAsyncClient(
+	tfClient, err := command.NewAsyncClient(
 		cacheDir,
 		config.TFDefaultVersion,
 		tfVersionCache,
@@ -150,7 +152,7 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 		return nil, err
 	}
 
-	conftestClient, err := terraform.NewAsyncClient(
+	conftestClient, err := command.NewAsyncClient(
 		cacheDir,
 		config.ConftestDefaultVersion,
 		conftestVersionCache,
@@ -175,13 +177,16 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 		},
 		terraformActivities: &terraformActivities{
 			TerraformClient:        tfClient,
-			ConftestClient:         conftestClient,
 			StreamHandler:          streamHandler,
-			DefaultConftestVersion: defaultConftestVersion,
 			DefaultTFVersion:       defaultTfVersion,
 			GitCLICredentials:      credentialsRefresher,
 			GitCredentialsFileLock: gitCredentialsFileLock,
 			FileWriter:             &file.Writer{},
+		},
+		conftestActivity: &conftestActivity{
+			DefaultConftestVersion: defaultConftestVersion,
+			ConftestClient:         conftestClient,
+			StreamHandler:          streamHandler,
 		},
 		jobActivities: &jobActivities{
 			StreamCloser: streamHandler,

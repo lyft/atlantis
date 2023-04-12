@@ -1,4 +1,4 @@
-package terraform
+package command
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"go.temporal.io/sdk/activity"
 )
 
-// Line represents a line that was output from a terraform command.
+// Line represents a line that was output from a command.
 type Line struct {
 	// Line is the contents of the line (without the newline).
 	Line string
@@ -38,23 +38,23 @@ func NewAsyncClient(
 		return nil, errors.Wrapf(err, "getting default terraform version %s", defaultVersion)
 	}
 
-	builder := &commandBuilder{
+	cmdBuilder := &execCmdBuilder{
 		defaultVersion: version,
 		versionCache:   versionCache,
 		cacheDir:       cacheDir,
 	}
 
 	return &AsyncClient{
-		CommandBuilder: builder,
+		ExecBuilder: cmdBuilder,
 	}, nil
 }
 
-type cmdBuilder interface {
+type builder interface {
 	Build(ctx context.Context, v *version.Version, path string, subcommand *SubCommand) (*exec.Cmd, error)
 }
 
 type AsyncClient struct {
-	CommandBuilder cmdBuilder
+	ExecBuilder builder
 }
 
 type RunOptions struct {
@@ -70,7 +70,7 @@ type RunCommandRequest struct {
 }
 
 func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest, options ...RunOptions) error {
-	cmd, err := c.CommandBuilder.Build(ctx, request.Version, request.RootPath, request.SubCommand)
+	cmd, err := c.ExecBuilder.Build(ctx, request.Version, request.RootPath, request.SubCommand)
 	if err != nil {
 		return errors.Wrapf(err, "building command")
 	}
@@ -90,7 +90,7 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 	}
 
 	if err := cmd.Start(); err != nil {
-		return errors.Wrap(err, "starting terraform command")
+		return errors.Wrap(err, "starting command")
 	}
 
 	done := make(chan struct{})

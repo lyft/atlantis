@@ -1,4 +1,4 @@
-package terraform
+package command
 
 import (
 	"bytes"
@@ -48,7 +48,7 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 		err:        nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
+		ExecBuilder: testCommandBuilder,
 	}
 
 	testFunc := func(ctx context.Context) (string, error) {
@@ -89,7 +89,7 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 		err:        nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
+		ExecBuilder: testCommandBuilder,
 	}
 	testFunc := func(ctx context.Context) (string, error) {
 		buf := &bytes.Buffer{}
@@ -130,7 +130,7 @@ func TestDefaultClient_RunCommandAsync_EnvValues(t *testing.T) {
 		err:        nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
+		ExecBuilder: testCommandBuilder,
 	}
 	testFunc := func(ctx context.Context) (string, error) {
 		buf := &bytes.Buffer{}
@@ -171,7 +171,7 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 		err:        nil,
 	}
 	client := &AsyncClient{
-		CommandBuilder: testCommandBuilder,
+		ExecBuilder: testCommandBuilder,
 	}
 
 	testFunc := func(ctx context.Context) (string, error) {

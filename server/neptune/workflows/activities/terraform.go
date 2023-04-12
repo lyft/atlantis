@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"io"
 	"path/filepath"
 	"strings"
@@ -44,12 +45,12 @@ func wrapTerraformError(err error, message string) TerraformClientError {
 	}
 }
 
-var DisableInputArg = terraform.Argument{
+var DisableInputArg = command.Argument{
 	Key:   "input",
 	Value: "false",
 }
 
-var RefreshArg = terraform.Argument{
+var RefreshArg = command.Argument{
 	Key:   "refresh",
 	Value: "true",
 }
@@ -64,7 +65,7 @@ const (
 const bufioScannerBufferSize = 10 * 1024 * 1024
 
 type TerraformClient interface {
-	RunCommand(ctx context.Context, request *terraform.RunCommandRequest, options ...terraform.RunOptions) error
+	RunCommand(ctx context.Context, request *command.RunCommandRequest, options ...command.RunOptions) error
 }
 
 type streamer interface {
@@ -124,7 +125,7 @@ func getEnvs(dynamicEnvs []EnvVar) (map[string]string, error) {
 
 // Terraform Init
 type TerraformInitRequest struct {
-	Args                 []terraform.Argument
+	Args                 []command.Argument
 	DynamicEnvs          []EnvVar
 	JobID                string
 	TfVersion            string
@@ -146,7 +147,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 		return TerraformInitResponse{}, err
 	}
 
-	args := []terraform.Argument{
+	args := []command.Argument{
 		DisableInputArg,
 	}
 	args = append(args, request.Args...)
@@ -157,9 +158,9 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 		return TerraformInitResponse{}, err
 	}
 
-	r := &terraform.RunCommandRequest{
+	r := &command.RunCommandRequest{
 		RootPath:          request.Path,
-		SubCommand:        terraform.NewSubCommand(terraform.Init).WithArgs(args...),
+		SubCommand:        command.NewSubCommand(command.Init).WithArgs(args...),
 		AdditionalEnvVars: envs,
 		Version:           tfVersion,
 	}
@@ -186,7 +187,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 // Terraform Plan
 
 type TerraformPlanRequest struct {
-	Args         []terraform.Argument
+	Args         []command.Argument
 	DynamicEnvs  []EnvVar
 	JobID        string
 	TfVersion    string
@@ -210,7 +211,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	}
 	planFile := filepath.Join(request.Path, PlanOutputFile)
 
-	args := []terraform.Argument{
+	args := []command.Argument{
 		DisableInputArg,
 		RefreshArg,
 		{
@@ -219,7 +220,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		},
 	}
 	args = append(args, request.Args...)
-	var flags []terraform.Flag
+	var flags []command.Flag
 
 	if request.PlanMode != nil {
 		flags = append(flags, request.PlanMode.ToFlag())
@@ -231,9 +232,9 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 		return TerraformPlanResponse{}, err
 	}
 
-	planRequest := &terraform.RunCommandRequest{
+	planRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,
-		SubCommand:        terraform.NewSubCommand(terraform.Plan).WithArgs(args...).WithFlags(flags...),
+		SubCommand:        command.NewSubCommand(command.Plan).WithArgs(args...).WithFlags(flags...),
 		AdditionalEnvVars: envs,
 		Version:           tfVersion,
 	}
@@ -245,10 +246,10 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	}
 
 	// let's run terraform show right after to get the plan as a structured object
-	showRequest := &terraform.RunCommandRequest{
+	showRequest := &command.RunCommandRequest{
 		RootPath: request.Path,
-		SubCommand: terraform.NewSubCommand(terraform.Show).
-			WithFlags(terraform.Flag{
+		SubCommand: command.NewSubCommand(command.Show).
+			WithFlags(command.Flag{
 				Value: "json",
 			}).
 			WithInput(planFile),
@@ -257,7 +258,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	}
 
 	showResultBuffer := &bytes.Buffer{}
-	showErr := t.TerraformClient.RunCommand(ctx, showRequest, terraform.RunOptions{
+	showErr := t.TerraformClient.RunCommand(ctx, showRequest, command.RunOptions{
 		StdOut: showResultBuffer,
 		StdErr: showResultBuffer,
 	})
@@ -294,7 +295,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 // Terraform Apply
 
 type TerraformApplyRequest struct {
-	Args        []terraform.Argument
+	Args        []command.Argument
 	DynamicEnvs []EnvVar
 	JobID       string
 	TfVersion   string
@@ -315,7 +316,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	}
 
 	planFile := request.PlanFile
-	args := []terraform.Argument{DisableInputArg}
+	args := []command.Argument{DisableInputArg}
 	args = append(args, request.Args...)
 
 	envs, err := getEnvs(request.DynamicEnvs)
@@ -324,9 +325,9 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 		return TerraformApplyResponse{}, err
 	}
 
-	applyRequest := &terraform.RunCommandRequest{
+	applyRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,
-		SubCommand:        terraform.NewSubCommand(terraform.Apply).WithInput(planFile).WithArgs(args...),
+		SubCommand:        command.NewSubCommand(command.Apply).WithInput(planFile).WithArgs(args...),
 		AdditionalEnvVars: envs,
 		Version:           tfVersion,
 	}
@@ -340,7 +341,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	return TerraformApplyResponse{}, nil
 }
 
-func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jobID string, request *terraform.RunCommandRequest) (string, error) {
+func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jobID string, request *command.RunCommandRequest) (string, error) {
 	reader, writer := io.Pipe()
 
 	var wg sync.WaitGroup
@@ -354,7 +355,7 @@ func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jo
 				activity.GetLogger(ctx).Error("closing pipe writer", key.ErrKey, e)
 			}
 		}()
-		err = t.TerraformClient.RunCommand(ctx, request, terraform.RunOptions{
+		err = t.TerraformClient.RunCommand(ctx, request, command.RunOptions{
 			StdOut: writer,
 			StdErr: writer,
 		})

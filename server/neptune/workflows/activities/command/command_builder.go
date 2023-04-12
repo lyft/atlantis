@@ -1,4 +1,4 @@
-package terraform
+package command
 
 import (
 	"context"
@@ -13,13 +13,13 @@ import (
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
 )
 
-type commandBuilder struct {
+type execCmdBuilder struct {
 	defaultVersion *version.Version
 	versionCache   cache.ExecutionVersionCache
 	cacheDir       string
 }
 
-func (c *commandBuilder) Build(_ context.Context, v *version.Version, path string, subCommand *SubCommand) (*exec.Cmd, error) {
+func (c *execCmdBuilder) Build(_ context.Context, v *version.Version, path string, subCommand *SubCommand) (*exec.Cmd, error) {
 	if v == nil {
 		v = c.defaultVersion
 	}

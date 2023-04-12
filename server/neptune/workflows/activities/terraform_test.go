@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"strings"
 	"sync"
 	"testing"
@@ -57,7 +58,7 @@ type multiCallTfClient struct {
 	count int
 }
 
-func (t *multiCallTfClient) RunCommand(ctx context.Context, request *terraform.RunCommandRequest, options ...terraform.RunOptions) error {
+func (t *multiCallTfClient) RunCommand(ctx context.Context, request *command.RunCommandRequest, options ...command.RunOptions) error {
 	if t.count >= len(t.clients) {
 		return fmt.Errorf("expected less calls to RunCommand")
 	}
@@ -79,7 +80,7 @@ type testTfClient struct {
 	t             *testing.T
 	jobID         string
 	path          string
-	cmd           *terraform.SubCommand
+	cmd           *command.SubCommand
 	customEnvVars map[string]string
 	version       *version.Version
 	resp          string
@@ -87,7 +88,7 @@ type testTfClient struct {
 	expectedError error
 }
 
-func (t *testTfClient) RunCommand(ctx context.Context, request *terraform.RunCommandRequest, options ...terraform.RunOptions) error {
+func (t *testTfClient) RunCommand(ctx context.Context, request *command.RunCommandRequest, options ...command.RunOptions) error {
 	assert.Equal(t.t, t.path, request.RootPath)
 	assert.Equal(t.t, t.cmd, request.SubCommand)
 	assert.Equal(t.t, t.customEnvVars, request.AdditionalEnvVars)
@@ -104,7 +105,7 @@ func (t *testTfClient) RunCommand(ctx context.Context, request *terraform.RunCom
 }
 
 func TestTerraformInit_RequestValidation(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -115,10 +116,10 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 	cases := []struct {
 		RequestVersion  string
 		ExpectedVersion string
-		RequestArgs     []terraform.Argument
+		RequestArgs     []command.Argument
 		ExpectedEnvs    map[string]string
 		DynamicEnvs     []EnvVar
-		ExpectedArgs    []terraform.Argument
+		ExpectedArgs    []command.Argument
 	}{
 		{
 			//testing
@@ -131,13 +132,13 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 		},
 		{
 			//testing
-			ExpectedArgs: []terraform.Argument{
+			ExpectedArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "true",
 				},
 			},
-			RequestArgs: []terraform.Argument{
+			RequestArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "true",
@@ -181,7 +182,7 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 				t:             t,
 				jobID:         jobID,
 				path:          path,
-				cmd:           terraform.NewSubCommand(terraform.Init).WithArgs(c.ExpectedArgs...),
+				cmd:           command.NewSubCommand(command.Init).WithArgs(c.ExpectedArgs...),
 				customEnvVars: c.ExpectedEnvs,
 				version:       expectedVersion,
 				resp:          "",
@@ -221,7 +222,7 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 }
 
 func TestTerraformInit_StreamsOutput(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -245,7 +246,7 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 		t:             t,
 		jobID:         jobID,
 		path:          path,
-		cmd:           terraform.NewSubCommand(terraform.Init).WithArgs(defaultArgs...),
+		cmd:           command.NewSubCommand(command.Init).WithArgs(defaultArgs...),
 		customEnvVars: map[string]string{},
 		version:       expectedVersion,
 		resp:          expectedMsgStr,
@@ -280,7 +281,7 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 }
 
 func TestTerraformPlan_RequestValidation(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -296,9 +297,9 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 	cases := []struct {
 		RequestVersion  string
 		ExpectedVersion string
-		RequestArgs     []terraform.Argument
-		ExpectedArgs    []terraform.Argument
-		ExpectedFlags   []terraform.Flag
+		RequestArgs     []command.Argument
+		ExpectedArgs    []command.Argument
+		ExpectedFlags   []command.Flag
 		PlanMode        *terraform.PlanMode
 		WorkflowMode    terraform.WorkflowMode
 		ExpectedEnvs    map[string]string
@@ -317,7 +318,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 		{
 			//testing
 			WorkflowMode: terraform.PR,
-			ExpectedArgs: []terraform.Argument{
+			ExpectedArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "true",
@@ -328,7 +329,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 					Key:   "out",
 					Value: "some/path/output.tfplan",
 				}},
-			RequestArgs: []terraform.Argument{
+			RequestArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "true",
@@ -343,7 +344,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 			// testing
 			PlanMode:     terraform.NewDestroyPlanMode(),
 			WorkflowMode: terraform.PR,
-			ExpectedFlags: []terraform.Flag{
+			ExpectedFlags: []command.Flag{
 				{
 					Value: "destroy",
 				},
@@ -390,7 +391,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 						t:             t,
 						jobID:         jobID,
 						path:          path,
-						cmd:           terraform.NewSubCommand(terraform.Plan).WithArgs(c.ExpectedArgs...).WithFlags(c.ExpectedFlags...),
+						cmd:           command.NewSubCommand(command.Plan).WithArgs(c.ExpectedArgs...).WithFlags(c.ExpectedFlags...),
 						customEnvVars: c.ExpectedEnvs,
 						version:       expectedVersion,
 						resp:          "",
@@ -399,7 +400,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 						t:             t,
 						jobID:         jobID,
 						path:          path,
-						cmd:           terraform.NewSubCommand(terraform.Show).WithFlags(terraform.Flag{Value: "json"}).WithInput("some/path/output.tfplan"),
+						cmd:           command.NewSubCommand(command.Show).WithFlags(command.Flag{Value: "json"}).WithInput("some/path/output.tfplan"),
 						customEnvVars: c.ExpectedEnvs,
 						version:       expectedVersion,
 						resp:          "{}",
@@ -436,7 +437,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 }
 
 func TestTerraformPlan_ReturnsResponse(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -467,7 +468,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 				t:             t,
 				jobID:         jobID,
 				path:          path,
-				cmd:           terraform.NewSubCommand(terraform.Plan).WithArgs(defaultArgs...),
+				cmd:           command.NewSubCommand(command.Plan).WithArgs(defaultArgs...),
 				customEnvVars: map[string]string{},
 				version:       expectedVersion,
 				resp:          expectedMsgStr,
@@ -476,7 +477,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 				t:             t,
 				jobID:         jobID,
 				path:          path,
-				cmd:           terraform.NewSubCommand(terraform.Show).WithFlags(terraform.Flag{Value: "json"}).WithInput("some/path/output.tfplan"),
+				cmd:           command.NewSubCommand(command.Show).WithFlags(command.Flag{Value: "json"}).WithInput("some/path/output.tfplan"),
 				customEnvVars: map[string]string{},
 				version:       expectedVersion,
 				resp:          "{\"format_version\": \"1.0\",\"resource_changes\":[{\"change\":{\"actions\":[\"update\"]},\"address\":\"type.resource\"}]}",
@@ -525,7 +526,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 }
 
 func TestTerraformApply_RequestValidation(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -536,8 +537,8 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 	cases := []struct {
 		RequestVersion  string
 		ExpectedVersion string
-		RequestArgs     []terraform.Argument
-		ExpectedArgs    []terraform.Argument
+		RequestArgs     []command.Argument
+		ExpectedArgs    []command.Argument
 		ExpectedEnvs    map[string]string
 		DynamicEnvs     []EnvVar
 	}{
@@ -552,12 +553,12 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 		},
 		{
 			//testing
-			ExpectedArgs: []terraform.Argument{
+			ExpectedArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "false",
 				}},
-			RequestArgs: []terraform.Argument{
+			RequestArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "false",
@@ -600,7 +601,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 				t:             t,
 				jobID:         jobID,
 				path:          path,
-				cmd:           terraform.NewSubCommand(terraform.Apply).WithArgs(c.ExpectedArgs...).WithInput("some/path/output.tfplan"),
+				cmd:           command.NewSubCommand(command.Apply).WithArgs(c.ExpectedArgs...).WithInput("some/path/output.tfplan"),
 				customEnvVars: c.ExpectedEnvs,
 				version:       expectedVersion,
 				resp:          "",
@@ -627,7 +628,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 }
 
 func TestTerraformApply_StreamsOutput(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -651,7 +652,7 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 		t:             t,
 		jobID:         jobID,
 		path:          path,
-		cmd:           terraform.NewSubCommand(terraform.Apply).WithArgs(defaultArgs...).WithInput("some/path/output.tfplan"),
+		cmd:           command.NewSubCommand(command.Apply).WithArgs(defaultArgs...).WithInput("some/path/output.tfplan"),
 		customEnvVars: map[string]string{},
 		version:       expectedVersion,
 		resp:          expectedMsgStr,
