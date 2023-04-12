@@ -22,6 +22,14 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
+const (
+	TF_IN_AUTOMATION           = "TF_IN_AUTOMATION"
+	TF_IN_AUTOMATION_VAL       = "true"
+	ATLANTIS_TERRAFORM_VERSION = "ATLANTIS_TERRAFORM_VERSION"
+	DIR                        = "DIR"
+	TF_PLUGIN_CACHE_DIR        = "TF_PLUGIN_CACHE_DIR"
+)
+
 // TerraformClientError can be used to assert a non-retryable error type for
 // callers of this activity
 type TerraformClientError struct {
@@ -88,6 +96,7 @@ type terraformActivities struct {
 	GitCLICredentials      gitCredentialsRefresher
 	GitCredentialsFileLock *file.RWLock
 	FileWriter             writer
+	CacheDir               string
 }
 
 func NewTerraformActivities(
@@ -97,6 +106,7 @@ func NewTerraformActivities(
 	gitCredentialsRefresher gitCredentialsRefresher,
 	gitCredentialsFileLock *file.RWLock,
 	fileWriter writer,
+	cacheDir string,
 ) *terraformActivities { //nolint:revive // avoiding refactor while adding linter action
 	return &terraformActivities{
 		TerraformClient:        client,
@@ -105,6 +115,7 @@ func NewTerraformActivities(
 		GitCLICredentials:      gitCredentialsRefresher,
 		GitCredentialsFileLock: gitCredentialsFileLock,
 		FileWriter:             fileWriter,
+		CacheDir:               cacheDir,
 	}
 }
 
@@ -153,10 +164,14 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	args = append(args, request.Args...)
 
 	envs, err := getEnvs(request.DynamicEnvs)
-
 	if err != nil {
 		return TerraformInitResponse{}, err
 	}
+
+	envs[TF_IN_AUTOMATION] = TF_IN_AUTOMATION_VAL
+	envs[ATLANTIS_TERRAFORM_VERSION] = tfVersion.String()
+	envs[DIR] = request.Path
+	envs[TF_PLUGIN_CACHE_DIR] = t.CacheDir
 
 	r := &command.RunCommandRequest{
 		RootPath:          request.Path,
@@ -227,10 +242,14 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	}
 
 	envs, err := getEnvs(request.DynamicEnvs)
-
 	if err != nil {
 		return TerraformPlanResponse{}, err
 	}
+
+	envs[TF_IN_AUTOMATION] = TF_IN_AUTOMATION_VAL
+	envs[ATLANTIS_TERRAFORM_VERSION] = tfVersion.String()
+	envs[DIR] = request.Path
+	envs[TF_PLUGIN_CACHE_DIR] = t.CacheDir
 
 	planRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,
@@ -320,10 +339,14 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 	args = append(args, request.Args...)
 
 	envs, err := getEnvs(request.DynamicEnvs)
-
 	if err != nil {
 		return TerraformApplyResponse{}, err
 	}
+
+	envs[TF_IN_AUTOMATION] = TF_IN_AUTOMATION_VAL
+	envs[ATLANTIS_TERRAFORM_VERSION] = tfVersion.String()
+	envs[DIR] = request.Path
+	envs[TF_PLUGIN_CACHE_DIR] = t.CacheDir
 
 	applyRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,

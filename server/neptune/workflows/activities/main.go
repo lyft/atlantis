@@ -144,7 +144,6 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 	}
 
 	tfClient, err := command.NewAsyncClient(
-		cacheDir,
 		config.TFDefaultVersion,
 		tfVersionCache,
 	)
@@ -153,7 +152,6 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 	}
 
 	conftestClient, err := command.NewAsyncClient(
-		cacheDir,
 		config.ConftestDefaultVersion,
 		conftestVersionCache,
 	)
@@ -182,6 +180,7 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 			GitCLICredentials:      credentialsRefresher,
 			GitCredentialsFileLock: gitCredentialsFileLock,
 			FileWriter:             &file.Writer{},
+			CacheDir:               cacheDir,
 		},
 		conftestActivity: &conftestActivity{
 			DefaultConftestVersion: defaultConftestVersion,

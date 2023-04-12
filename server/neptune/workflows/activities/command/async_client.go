@@ -23,7 +23,6 @@ type Line struct {
 }
 
 func NewAsyncClient(
-	cacheDir string,
 	defaultVersion string,
 	versionCache cache.ExecutionVersionCache,
 ) (*AsyncClient, error) {
@@ -41,7 +40,6 @@ func NewAsyncClient(
 	cmdBuilder := &execCmdBuilder{
 		defaultVersion: version,
 		versionCache:   versionCache,
-		cacheDir:       cacheDir,
 	}
 
 	return &AsyncClient{

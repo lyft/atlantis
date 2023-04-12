@@ -16,7 +16,6 @@ import (
 type execCmdBuilder struct {
 	defaultVersion *version.Version
 	versionCache   cache.ExecutionVersionCache
-	cacheDir       string
 }
 
 func (c *execCmdBuilder) Build(_ context.Context, v *version.Version, path string, subCommand *SubCommand) (*exec.Cmd, error) {
@@ -29,26 +28,12 @@ func (c *execCmdBuilder) Build(_ context.Context, v *version.Version, path strin
 		return nil, errors.Wrapf(err, "getting version from cache %s", v.String())
 	}
 
-	// We add custom variables so that if `extra_args` is specified with env
-	// vars then they'll be substituted.
-	// TODO: configure these to only be set by terraform activities
-	envVars := []string{
-		// Will de-emphasize specific commands to run in output.
-		"TF_IN_AUTOMATION=true",
-		fmt.Sprintf("ATLANTIS_TERRAFORM_VERSION=%s", v.String()),
-		fmt.Sprintf("DIR=%s", path),
-		fmt.Sprintf("TF_PLUGIN_CACHE_DIR=%s", c.cacheDir),
-	}
-	// Append current Atlantis process's environment variables, ex.
-	// AWS_ACCESS_KEY.
-	envVars = append(envVars, os.Environ()...)
 	tfCmd := fmt.Sprintf("%s %s", binPath, strings.Join(subCommand.Build(), " "))
-
 	cmd := exec.Command("sh", "-c", tfCmd)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
 	cmd.Dir = path
-	cmd.Env = envVars
+	cmd.Env = os.Environ()
 	return cmd, nil
 }
