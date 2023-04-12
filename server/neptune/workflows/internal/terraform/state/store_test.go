@@ -24,15 +24,13 @@ func (n *testNotifier) notify(state *state.Workflow) error {
 	return nil
 }
 
-var prMode = terraform.PR
-var deployMode = terraform.Deploy
-
 func TestUpdateApprovalActions(t *testing.T) {
 	route := &mux.Route{}
 	route.Path("/jobs/{job-id}")
 
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
@@ -85,6 +83,7 @@ func TestUpdateApprovalActions(t *testing.T) {
 func TestInitPlanJob(t *testing.T) {
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
@@ -119,6 +118,7 @@ func TestInitApplyJob(t *testing.T) {
 
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
@@ -155,6 +155,7 @@ func TestUpdateApplyJob(t *testing.T) {
 	endTime := stTime.Add(time.Second * 10)
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
@@ -207,6 +208,7 @@ func TestUpdatePlanJob(t *testing.T) {
 
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
@@ -244,6 +246,7 @@ func TestUpdatePlanJob(t *testing.T) {
 func TestInitValidateJob(t *testing.T) {
 	expectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	prMode := terraform.PR
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
@@ -278,6 +281,7 @@ func TestUpdateValidateJob(t *testing.T) {
 
 	expectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	prMode := terraform.PR
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{

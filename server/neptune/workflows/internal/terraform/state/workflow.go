@@ -89,6 +89,7 @@ type WorkflowResult struct {
 }
 
 type Workflow struct {
+	// Mode is used to determine which jobs are populated
 	Mode     *terraform.WorkflowMode
 	Plan     *Job
 	Validate *Job
