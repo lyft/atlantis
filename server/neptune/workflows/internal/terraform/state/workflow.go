@@ -90,6 +90,8 @@ type WorkflowResult struct {
 
 type Workflow struct {
 	// Mode is used to determine which jobs are populated
+	// Deploy mode: runs plan + apply jobs to create and deploy the changes merged into the default branch/force applied
+	// PR mode: runs plan + validate jobs to create a terraform plan and run conftest checks against PR's diff
 	Mode     *terraform.WorkflowMode
 	Plan     *Job
 	Validate *Job
