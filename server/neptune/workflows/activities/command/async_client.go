@@ -35,7 +35,7 @@ func NewAsyncClient(
 	// warm the cache with this version
 	_, err = versionCache.Get(version)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting default terraform version %s", defaultVersion)
+		return nil, errors.Wrapf(err, "getting default version %s", defaultVersion)
 	}
 
 	cmdBuilder := &execCmdBuilder{
@@ -100,11 +100,11 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 	err = cmd.Wait()
 
 	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "waiting for terraform process")
+		return errors.Wrap(ctx.Err(), "waiting for process")
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "waiting for terraform process")
+		return errors.Wrap(err, "waiting for process")
 	}
 
 	return nil
@@ -113,7 +113,7 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan struct{}) {
 	select {
 	case <-ctx.Done():
-		activity.GetLogger(ctx).Warn("Terminating terraform process gracefully")
+		activity.GetLogger(ctx).Warn("Terminating process gracefully")
 		err := p.Signal(syscall.SIGTERM)
 		if err != nil {
 			activity.GetLogger(ctx).Error("Unable to terminate process", key.ErrKey, err)
@@ -126,7 +126,7 @@ func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan st
 
 		select {
 		case <-kill:
-			activity.GetLogger(ctx).Warn("Killing terraform process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
+			activity.GetLogger(ctx).Warn("Killing process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
 			err := p.Signal(syscall.SIGKILL)
 			if err != nil {
 				activity.GetLogger(ctx).Error("Unable to kill process", key.ErrKey, err)

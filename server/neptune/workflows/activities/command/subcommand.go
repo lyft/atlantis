@@ -17,7 +17,7 @@ const (
 	Show  Operation = "show"
 )
 
-// Argument is the key value pair passed into the terraform command
+// Argument is the key value pair passed into the command
 type Argument struct {
 	Key   string
 	Value string

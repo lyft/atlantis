@@ -31,6 +31,7 @@ func (c *execCmdBuilder) Build(_ context.Context, v *version.Version, path strin
 
 	// We add custom variables so that if `extra_args` is specified with env
 	// vars then they'll be substituted.
+	// TODO: configure these to only be set by terraform activities
 	envVars := []string{
 		// Will de-emphasize specific commands to run in output.
 		"TF_IN_AUTOMATION=true",
