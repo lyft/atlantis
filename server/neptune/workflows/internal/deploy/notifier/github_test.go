@@ -19,9 +19,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-var prMode = terraform.PR
-var deployMode = terraform.Deploy
-
 type testCheckRunClient struct {
 	expectedRequest      notifier.GithubCheckRunRequest
 	expectedDeploymentID string
@@ -70,6 +67,9 @@ func testCheckRunNotifier(ctx workflow.Context, r checkrunNotifierRequest) error
 func TestCheckRunNotifier(t *testing.T) {
 	outputURL, err := url.Parse("www.nish.com")
 	assert.NoError(t, err)
+
+	deployMode := terraform.Deploy
+	prMode := terraform.PR
 
 	jobOutput := &state.JobOutput{
 		URL: outputURL,
