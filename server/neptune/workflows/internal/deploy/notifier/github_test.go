@@ -68,6 +68,9 @@ func TestCheckRunNotifier(t *testing.T) {
 	outputURL, err := url.Parse("www.nish.com")
 	assert.NoError(t, err)
 
+	deployMode := terraform.Deploy
+	prMode := terraform.PR
+
 	jobOutput := &state.JobOutput{
 		URL: outputURL,
 	}
@@ -95,6 +98,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Output: jobOutput,
 					Status: state.WaitingJobStatus,
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
@@ -104,6 +108,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Output: jobOutput,
 					Status: state.InProgressJobStatus,
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
@@ -113,6 +118,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Output: jobOutput,
 					Status: state.FailedJobStatus,
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
@@ -126,6 +132,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Status: state.CompleteWorkflowStatus,
 					Reason: state.InternalServiceError,
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunFailure,
 		},
@@ -135,6 +142,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Output: jobOutput,
 					Status: state.SuccessJobStatus,
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
@@ -156,6 +164,7 @@ func TestCheckRunNotifier(t *testing.T) {
 						},
 					},
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunActionRequired,
 			ExpectedActions: []github.CheckRunAction{
@@ -176,6 +185,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Status:    state.InProgressJobStatus,
 					StartTime: stTime,
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
@@ -191,6 +201,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					StartTime: stTime,
 					EndTime:   endTime,
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunPending,
 		},
@@ -210,6 +221,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Status: state.CompleteWorkflowStatus,
 					Reason: state.InternalServiceError,
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunFailure,
 		},
@@ -229,6 +241,7 @@ func TestCheckRunNotifier(t *testing.T) {
 					Status: state.CompleteWorkflowStatus,
 					Reason: state.TimeoutError,
 				},
+				Mode: &deployMode,
 			},
 			ExpectedCheckRunState: github.CheckRunTimeout,
 		},
@@ -248,6 +261,112 @@ func TestCheckRunNotifier(t *testing.T) {
 					Status: state.CompleteWorkflowStatus,
 					Reason: state.SuccessfulCompletionReason,
 				},
+				Mode: &deployMode,
+			},
+			ExpectedCheckRunState: github.CheckRunSuccess,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Validate: &state.Job{
+					Output: jobOutput,
+					Status: state.WaitingJobStatus,
+				},
+				Mode: &prMode,
+			},
+			ExpectedCheckRunState: github.CheckRunQueued,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Validate: &state.Job{
+					Output:    jobOutput,
+					Status:    state.InProgressJobStatus,
+					StartTime: stTime,
+				},
+				Mode: &prMode,
+			},
+			ExpectedCheckRunState: github.CheckRunPending,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Validate: &state.Job{
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Mode: &prMode,
+			},
+			ExpectedCheckRunState: github.CheckRunPending,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Validate: &state.Job{
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.InternalServiceError,
+				},
+				Mode: &prMode,
+			},
+			ExpectedCheckRunState: github.CheckRunFailure,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Validate: &state.Job{
+					Output:    jobOutput,
+					Status:    state.FailedJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.TimeoutError,
+				},
+				Mode: &prMode,
+			},
+			ExpectedCheckRunState: github.CheckRunTimeout,
+		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Validate: &state.Job{
+					Output:    jobOutput,
+					Status:    state.SuccessJobStatus,
+					StartTime: stTime,
+					EndTime:   endTime,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.SuccessfulCompletionReason,
+				},
+				Mode: &prMode,
 			},
 			ExpectedCheckRunState: github.CheckRunSuccess,
 		},

@@ -122,7 +122,7 @@ func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRo
 type request struct {
 	// bool since our errors are not serializable using json
 	ShouldErrorDuringJobUpdate bool
-	PRMode                     bool
+	WorkflowMode               terraformModel.WorkflowMode
 }
 
 type response struct {
@@ -159,16 +159,14 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 			return nil
 		},
 		&testURLGenerator{},
+		req.WorkflowMode,
 	)
 
 	runnerReq := terraform.Request{
 		Root:         testLocalRoot.Root,
 		Repo:         testGithubRepo,
 		DeploymentID: testDeploymentID,
-	}
-
-	if req.PRMode {
-		runnerReq.WorkflowMode = terraformModel.PR
+		WorkflowMode: req.WorkflowMode,
 	}
 
 	subject := &terraform.Runner{
@@ -490,7 +488,7 @@ func TestSuccess_PRMode(t *testing.T) {
 
 	// execute workflow
 	env.ExecuteWorkflow(testTerraformWorkflow, request{
-		PRMode: true,
+		WorkflowMode: terraformModel.PR,
 	})
 	assert.True(t, env.IsWorkflowCompleted())
 

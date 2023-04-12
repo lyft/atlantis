@@ -30,10 +30,12 @@ func TestUpdateApprovalActions(t *testing.T) {
 
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Apply: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -47,6 +49,7 @@ func TestUpdateApprovalActions(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -80,10 +83,12 @@ func TestUpdateApprovalActions(t *testing.T) {
 func TestInitPlanJob(t *testing.T) {
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Plan: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -97,6 +102,7 @@ func TestInitPlanJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -112,10 +118,12 @@ func TestInitApplyJob(t *testing.T) {
 
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Apply: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -129,6 +137,7 @@ func TestInitApplyJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -146,10 +155,12 @@ func TestUpdateApplyJob(t *testing.T) {
 	endTime := stTime.Add(time.Second * 10)
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Apply: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -163,6 +174,7 @@ func TestUpdateApplyJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -196,10 +208,12 @@ func TestUpdatePlanJob(t *testing.T) {
 
 	exoectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	deployMode := terraform.Deploy
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &deployMode,
 			Plan: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -213,6 +227,7 @@ func TestUpdatePlanJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.Deploy,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -231,10 +246,12 @@ func TestUpdatePlanJob(t *testing.T) {
 func TestInitValidateJob(t *testing.T) {
 	expectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	prMode := terraform.PR
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &prMode,
 			Validate: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -248,6 +265,7 @@ func TestInitValidateJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.PR,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
@@ -263,10 +281,12 @@ func TestUpdateValidateJob(t *testing.T) {
 
 	expectedURL, err := url.Parse("www.test.com/jobs/1234")
 	assert.NoError(t, err)
+	prMode := terraform.PR
 
 	jobID := bytes.NewBufferString("1234")
 	notifier := &testNotifier{
 		expectedState: &state.Workflow{
+			Mode: &prMode,
 			Validate: &state.Job{
 				Status: state.WaitingJobStatus,
 				Output: &state.JobOutput{
@@ -280,6 +300,7 @@ func TestUpdateValidateJob(t *testing.T) {
 
 	subject := state.NewWorkflowStore(
 		notifier.notify,
+		terraform.PR,
 	)
 
 	baseURL := bytes.NewBufferString("www.test.com")
