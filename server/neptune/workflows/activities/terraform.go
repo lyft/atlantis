@@ -175,7 +175,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 
 	r := &command.RunCommandRequest{
 		RootPath:          request.Path,
-		SubCommand:        command.NewSubCommand(command.Init).WithArgs(args...),
+		SubCommand:        command.NewSubCommand(command.TerraformInit).WithArgs(args...),
 		AdditionalEnvVars: envs,
 		Version:           tfVersion,
 	}
@@ -253,7 +253,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 
 	planRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,
-		SubCommand:        command.NewSubCommand(command.Plan).WithArgs(args...).WithFlags(flags...),
+		SubCommand:        command.NewSubCommand(command.TerraformPlan).WithArgs(args...).WithFlags(flags...),
 		AdditionalEnvVars: envs,
 		Version:           tfVersion,
 	}
@@ -267,7 +267,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 	// let's run terraform show right after to get the plan as a structured object
 	showRequest := &command.RunCommandRequest{
 		RootPath: request.Path,
-		SubCommand: command.NewSubCommand(command.Show).
+		SubCommand: command.NewSubCommand(command.TerraformShow).
 			WithFlags(command.Flag{
 				Value: "json",
 			}).
@@ -350,7 +350,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 
 	applyRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,
-		SubCommand:        command.NewSubCommand(command.Apply).WithInput(planFile).WithArgs(args...),
+		SubCommand:        command.NewSubCommand(command.TerraformApply).WithInput(planFile).WithArgs(args...),
 		AdditionalEnvVars: envs,
 		Version:           tfVersion,
 	}

@@ -36,7 +36,7 @@ func TestDefaultClient_RunCommandAsync_Success(t *testing.T) {
 
 	path := "some/path"
 
-	cmd := NewSubCommand(Plan)
+	cmd := NewSubCommand(TerraformPlan)
 	echoCommand := exec.Command("sh", "-c", "echo hello")
 
 	testCommandBuilder := &testCommandBuilder{
@@ -79,7 +79,7 @@ func TestDefaultClient_RunCommandAsync_StderrOutput(t *testing.T) {
 	path := "some/path"
 	echoCommand := exec.Command("sh", "-c", "echo stderr >&2")
 
-	cmd := NewSubCommand(Plan)
+	cmd := NewSubCommand(TerraformPlan)
 	testCommandBuilder := &testCommandBuilder{
 		t:          t,
 		version:    nil,
@@ -120,7 +120,7 @@ func TestDefaultClient_RunCommandAsync_EnvValues(t *testing.T) {
 	path := "some/path"
 	echoCommand := exec.Command("sh", "-c", "echo $env_key")
 
-	cmd := NewSubCommand(Plan)
+	cmd := NewSubCommand(TerraformPlan)
 	testCommandBuilder := &testCommandBuilder{
 		t:          t,
 		version:    nil,
@@ -161,7 +161,7 @@ func TestDefaultClient_RunCommandAsync_ExitOne(t *testing.T) {
 	path := "some/path"
 	echoCommand := exec.Command("sh", "-c", "echo dying && exit 1")
 
-	cmd := NewSubCommand(Plan)
+	cmd := NewSubCommand(TerraformPlan)
 	testCommandBuilder := &testCommandBuilder{
 		t:          t,
 		version:    nil,

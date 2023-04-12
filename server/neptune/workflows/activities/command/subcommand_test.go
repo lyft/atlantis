@@ -9,7 +9,7 @@ import (
 
 func TestCommandArguments_Build(t *testing.T) {
 	t.Run("with flags", func(t *testing.T) {
-		c := command.NewSubCommand(command.Show)
+		c := command.NewSubCommand(command.TerraformShow)
 
 		c.WithFlags(command.Flag{
 			Value: "json",
@@ -19,7 +19,7 @@ func TestCommandArguments_Build(t *testing.T) {
 	})
 
 	t.Run("with input", func(t *testing.T) {
-		c := command.NewSubCommand(command.Apply)
+		c := command.NewSubCommand(command.TerraformApply)
 
 		c.WithInput("input.tfplan")
 
@@ -27,7 +27,7 @@ func TestCommandArguments_Build(t *testing.T) {
 	})
 
 	t.Run("with args", func(t *testing.T) {
-		c := command.NewSubCommand(command.Init)
+		c := command.NewSubCommand(command.TerraformInit)
 
 		c.WithArgs(command.Argument{
 			Key:   "input",
@@ -38,7 +38,7 @@ func TestCommandArguments_Build(t *testing.T) {
 	})
 
 	t.Run("dedups last first", func(t *testing.T) {
-		c := command.NewSubCommand(command.Init)
+		c := command.NewSubCommand(command.TerraformInit)
 
 		c.WithArgs(
 			command.Argument{
