@@ -10,7 +10,11 @@ Github Actions are blocking this deployment from proceeding.
 | Operation | **Status** | **Logs** |  
 | - | - | - |
 | Plan | {{ if .PlanStatus }}`{{.PlanStatus}}`{{else}}N/A{{end}} |{{ if .PlanLogURL }}[Click Here]({{.PlanLogURL}}){{else}}N/A{{end}} |
+{{ if .PRMode }}
+| Validate | {{ if .ValidateStatus }}`{{.ValidateStatus}}`{{else}}N/A{{end}} |{{ if .ValidateLogURL }}[Click Here]({{.ValidateLogURL}}){{else}}N/A{{end}} |
+{{else}}
 | Apply | {{ if .ApplyStatus }}`{{.ApplyStatus}}`{{else}}N/A{{end}} |{{ if .ApplyLogURL }}[Click Here]({{.ApplyLogURL}}){{else}}N/A{{end}} |
+{{end}}
 
 {{if .InternalError }}
 ## Deployment Error :boom:
@@ -37,7 +41,7 @@ To increase this timeout value beyond 60 minutes, please contact the owners of a
 
 {{if .SchedulingTimeout }}
 ## Timeout :clock1:
-:point_right: An operation has failed to be scheduled. Terraform operations need to be scheduled on the same worker so this is indicative of a worker process dying.  Hang tight while 
+:point_right: An operation has failed to be scheduled. Terraform operations need to be scheduled on the same worker so this is indicative of a worker process dying.  Hang tight while
 we reschedule the workflow on another worker.  This check run will be updated with the new results.
 {{end}}
 
