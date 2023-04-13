@@ -12,7 +12,7 @@ import (
 	"runtime"
 )
 
-const conftestDownloadUrl = "https://github.com/open-policy-agent/conftest/releases/download/v"
+const conftestDownloadURL = "https://github.com/open-policy-agent/conftest/releases/download/v"
 
 var HashiGetAny = func(dst, src string) error {
 	return getter.GetAny(dst, src)
@@ -44,7 +44,7 @@ func (t *TFVersionLoader) LoadVersion(v *version.Version, destPath string) (runt
 type ConftestVersionLoader struct{}
 
 func (c *ConftestVersionLoader) LoadVersion(v *version.Version, destPath string) (runtime_models.FilePath, error) {
-	urlPrefix := fmt.Sprintf("%s%s", conftestDownloadUrl, v.Original())
+	urlPrefix := fmt.Sprintf("%s%s", conftestDownloadURL, v.Original())
 	binURL := fmt.Sprintf("%s/conftest_%s_%s_x86_64.tar.gz", urlPrefix, v.Original(), cases.Title(language.English).String(runtime.GOOS))
 	checksumURL := fmt.Sprintf("%s/checksums.txt", urlPrefix)
 	fullSrcURL := fmt.Sprintf("%s?checksum=file:%s", binURL, checksumURL)
