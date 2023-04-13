@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
-	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
@@ -98,7 +97,6 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 	if err != nil {
 		return nil, err
 	}
-	downloader := &legacy_tf.DefaultDownloader{}
 	gitCredentialsFileLock := &file.RWLock{}
 
 	var tfVersionCache cache.ExecutionVersionCache
@@ -118,7 +116,7 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 		}
 	}
 
-	tfLoader := legacy_tf.NewVersionLoader(downloader, tfConfig.DownloadURL)
+	tfLoader := NewTFVersionLoader(tfConfig.DownloadURL)
 	if tfVersionCache == nil {
 		tfVersionCache = cache.NewExecutionVersionLayeredLoadingCache(
 			"terraform",
@@ -127,7 +125,7 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 		)
 	}
 
-	conftestLoader := legacy_tf.NewVersionLoader(downloader, validationConfig.DownloadURL)
+	conftestLoader := ConftestVersionLoader{}
 	if conftestVersionCache == nil {
 		conftestVersionCache = cache.NewExecutionVersionLayeredLoadingCache(
 			"conftest",

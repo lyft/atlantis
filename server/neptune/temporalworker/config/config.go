@@ -27,7 +27,6 @@ type TerraformConfig struct {
 
 type ValidationConfig struct {
 	DefaultVersion string
-	DownloadURL    string
 	Policies       valid.PolicySets
 }
 
