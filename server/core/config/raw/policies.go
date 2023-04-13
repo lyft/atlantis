@@ -2,7 +2,6 @@ package raw
 
 import (
 	validation "github.com/go-ozzo/ozzo-validation"
-	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 )
 
@@ -22,11 +21,9 @@ func (p PolicySets) Validate() error {
 
 func (p PolicySets) ToValid() valid.PolicySets {
 	policySets := valid.PolicySets{}
-
 	if p.Version != nil {
-		policySets.Version, _ = version.NewVersion(*p.Version)
+		policySets.Version = *p.Version
 	}
-
 	policySets.Organization = p.Organization
 
 	validPolicySets := make([]valid.PolicySet, 0)

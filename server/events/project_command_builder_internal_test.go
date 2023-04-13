@@ -22,7 +22,6 @@ import (
 func TestBuildProjectCmdCtx(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	emptyPolicySets := valid.PolicySets{
-		Version:    nil,
 		PolicySets: []valid.PolicySet{},
 	}
 	baseRepo := models.Repo{
@@ -655,7 +654,6 @@ projects:
 func TestBuildProjectCmdCtx_LogLevel(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	emptyPolicySets := valid.PolicySets{
-		Version:    nil,
 		PolicySets: []valid.PolicySet{},
 	}
 	baseRepo := models.Repo{
@@ -831,7 +829,6 @@ workflows:
 
 func TestBuildProjectCmdCtx_WithRegExpCmdEnabled(t *testing.T) {
 	emptyPolicySets := valid.PolicySets{
-		Version:    nil,
 		PolicySets: []valid.PolicySet{},
 	}
 	baseRepo := models.Repo{
@@ -1026,7 +1023,6 @@ projects:
 func TestBuildProjectCmdCtx_WithPolicCheckEnabled(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	emptyPolicySets := valid.PolicySets{
-		Version:    nil,
 		PolicySets: []valid.PolicySet{},
 	}
 	baseRepo := models.Repo{

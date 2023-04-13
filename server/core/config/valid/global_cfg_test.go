@@ -8,7 +8,6 @@ import (
 
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/local"
-	"github.com/hashicorp/go-version"
 	"github.com/mohae/deepcopy"
 	"github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -536,7 +535,6 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 }
 
 func TestGlobalCfg_WithPolicySets(t *testing.T) {
-	version, _ := version.NewVersion("v1.0.0")
 	cases := map[string]struct {
 		gCfg   string
 		proj   valid.Project
@@ -548,6 +546,7 @@ func TestGlobalCfg_WithPolicySets(t *testing.T) {
 repos:
 - id: /.*/
 policies:
+  conftest_version: 1.0.0
   policy_sets:
     - name: good-policy
       paths: [rel/path/to/source]
@@ -577,7 +576,7 @@ policies:
 					Plan:  valid.DefaultPlanStage,
 				},
 				PolicySets: valid.PolicySets{
-					Version: nil,
+					Version: "1.0.0",
 					PolicySets: []valid.PolicySet{
 						{
 							Name:  "good-policy",
@@ -597,7 +596,7 @@ policies:
 repos:
 - id: /.*/
 policies:
-  conftest_version: v1.0.0
+  conftest_version: 1.0.0
   policy_sets:
     - name: good-policy
       paths: [rel/path/to/source]
@@ -627,7 +626,7 @@ policies:
 					Plan:  valid.DefaultPlanStage,
 				},
 				PolicySets: valid.PolicySets{
-					Version: version,
+					Version: "1.0.0",
 					PolicySets: []valid.PolicySet{
 						{
 							Name:  "good-policy",

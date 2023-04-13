@@ -19,15 +19,13 @@ const (
 )
 
 func buildTestPrjCtx(t *testing.T) command.ProjectContext {
-	v, err := version.NewVersion("1.0")
-	assert.NoError(t, err)
 	return command.ProjectContext{
 		Log: logging.NewNoopCtxLogger(t),
 		BaseRepo: models.Repo{
 			FullName: "owner/repo",
 		},
 		PolicySets: valid.PolicySets{
-			Version:    v,
+			Version:    "1.0",
 			PolicySets: []valid.PolicySet{},
 		},
 	}

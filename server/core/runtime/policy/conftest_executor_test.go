@@ -29,7 +29,6 @@ func buildTestProjectCtx(t *testing.T, policySets []valid.PolicySet) command.Pro
 	ctx := context.WithValue(context.Background(), contextInternal.InstallationIDKey, int64(1))
 	return command.ProjectContext{
 		PolicySets: valid.PolicySets{
-			Version:    nil,
 			PolicySets: policySets,
 		},
 		Log:               logging.NewNoopCtxLogger(t),
@@ -163,7 +162,6 @@ func TestConfTestExecutor_MissingInstallationToken(t *testing.T) {
 	}
 	prjCtx := command.ProjectContext{
 		PolicySets: valid.PolicySets{
-			Version:    nil,
 			PolicySets: policySets,
 		},
 		Log:        logging.NewNoopCtxLogger(t),

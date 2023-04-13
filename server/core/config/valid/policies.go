@@ -1,9 +1,5 @@
 package valid
 
-import (
-	"github.com/hashicorp/go-version"
-)
-
 const (
 	LocalPolicySet  string = "local"
 	GithubPolicySet string = "github"
@@ -13,7 +9,7 @@ const (
 // PolicySet objects. PolicySets struct is used by PolicyCheck workflow to build
 // context to enforce policies.
 type PolicySets struct {
-	Version      *version.Version
+	Version      string
 	PolicySets   []PolicySet
 	Organization string // Github organization each policy set owner belongs to
 }

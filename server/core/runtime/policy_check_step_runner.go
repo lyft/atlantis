@@ -31,9 +31,13 @@ func NewPolicyCheckStepRunner(
 
 // Run ensures a given version for the executable, builds the args from the project context and then runs executable returning the result
 func (p *PolicyCheckStepRunner) Run(ctx context.Context, cmdCtx command.ProjectContext, extraArgs []string, path string, envs map[string]string) (string, error) {
-	executable, err := p.VersionEnsurer.EnsureExecutorVersion(cmdCtx.Log, cmdCtx.PolicySets.Version)
+	version, err := version.NewVersion(cmdCtx.PolicySets.Version)
 	if err != nil {
-		return "", errors.Wrapf(err, "ensuring policy Executor version")
+		return "", errors.Wrapf(err, "building conftest version")
+	}
+	executable, err := p.VersionEnsurer.EnsureExecutorVersion(cmdCtx.Log, version)
+	if err != nil {
+		return "", errors.Wrapf(err, "ensuring policy executor version")
 	}
 	return p.Executor.Run(ctx, cmdCtx, executable, envs, path, extraArgs)
 }

@@ -3,7 +3,6 @@ package raw_test
 import (
 	"testing"
 
-	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/core/config/raw"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	. "github.com/runatlantis/atlantis/testing"
@@ -62,6 +61,7 @@ policy_sets:
 }
 
 func TestPolicySets_Validate(t *testing.T) {
+	version := "1.0.0"
 	cases := []struct {
 		description string
 		input       raw.PolicySets
@@ -97,13 +97,16 @@ func TestPolicySets_Validate(t *testing.T) {
 		// Invalid inputs.
 		{
 			description: "empty elem",
-			input:       raw.PolicySets{},
-			expErr:      "policy_sets: cannot be empty; Declare policies that you would like to enforce.",
+			input: raw.PolicySets{
+				Version: &version,
+			},
+			expErr: "policy_sets: cannot be empty; Declare policies that you would like to enforce.",
 		},
 
 		{
 			description: "missing policy name",
 			input: raw.PolicySets{
+				Version: &version,
 				PolicySets: []raw.PolicySet{
 					{},
 				},
@@ -153,7 +156,6 @@ func TestPolicySets_Validate(t *testing.T) {
 }
 
 func TestPolicySets_ToValid(t *testing.T) {
-	version, _ := version.NewVersion("v1.0.0")
 	cases := []struct {
 		description string
 		input       raw.PolicySets
@@ -173,7 +175,7 @@ func TestPolicySets_ToValid(t *testing.T) {
 			},
 			exp: valid.PolicySets{
 				Organization: "org",
-				Version:      version,
+				Version:      "v1.0.0",
 				PolicySets: []valid.PolicySet{
 					{
 						Name:  "good-policy",
@@ -196,7 +198,7 @@ func TestPolicySets_ToValid(t *testing.T) {
 			},
 			exp: valid.PolicySets{
 				Organization: "org",
-				Version:      version,
+				Version:      "v1.0.0",
 				PolicySets: []valid.PolicySet{
 					{
 						Name:  "good-policy",

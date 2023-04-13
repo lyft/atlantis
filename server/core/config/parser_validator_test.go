@@ -1163,8 +1163,6 @@ func TestParseGlobalCfg(t *testing.T) {
 		},
 	}
 
-	conftestVersion, _ := version.NewVersion("v1.0.0")
-
 	cases := map[string]struct {
 		input  string
 		expErr string
@@ -1337,7 +1335,7 @@ workflows:
       - run: custom command
       - apply
 policies:
-  conftest_version: v1.0.0
+  conftest_version: 1.0.0
   policy_sets:
     - name: good-policy
       paths: [rel/path/to/policy]
@@ -1367,7 +1365,7 @@ policies:
 					"custom1": customWorkflow1,
 				},
 				PolicySets: valid.PolicySets{
-					Version: conftestVersion,
+					Version: "1.0.0",
 					PolicySets: []valid.PolicySet{
 						{
 							Name:  "good-policy",
@@ -1627,7 +1625,6 @@ func TestParseGlobalCfg_PlatformMode(t *testing.T) {
 		Apply: customApply1,
 	}
 
-	conftestVersion, _ := version.NewVersion("v1.0.0")
 	defaultWorkflow := defaultCfg.Workflows["default"]
 	defaultRebaseEnabled := true
 
@@ -1697,7 +1694,7 @@ deployment_workflows:
       - run: custom command
       - apply
 policies:
-  conftest_version: v1.0.0
+  conftest_version: 1.0.0
   policy_sets:
     - name: good-policy
       paths: [rel/path/to/policy]
@@ -1734,7 +1731,7 @@ policies:
 				},
 				Temporal: valid.Temporal{TerraformTaskQueue: raw.DefaultTaskqueue},
 				PolicySets: valid.PolicySets{
-					Version: conftestVersion,
+					Version: "1.0.0",
 					PolicySets: []valid.PolicySet{
 						{
 							Name:  "good-policy",
@@ -1920,7 +1917,6 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 		},
 	}
 
-	conftestVersion, _ := version.NewVersion("v1.0.0")
 	gCfg := valid.NewGlobalCfg("somedir")
 	gCfg.Temporal.TerraformTaskQueue = raw.DefaultTaskqueue
 
@@ -1976,7 +1972,7 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
     }
   },
   "policies": {
-    "conftest_version": "v1.0.0",
+    "conftest_version": "1.0.0",
     "policy_sets": [
       {
         "name": "good-policy",
@@ -2019,7 +2015,7 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 				},
 				Temporal: valid.Temporal{TerraformTaskQueue: raw.DefaultTaskqueue},
 				PolicySets: valid.PolicySets{
-					Version: conftestVersion,
+					Version: "1.0.0",
 					PolicySets: []valid.PolicySet{
 						{
 							Name:  "good-policy",
@@ -2109,7 +2105,6 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 		},
 	}
 
-	conftestVersion, _ := version.NewVersion("v1.0.0")
 	globalCfg := valid.NewGlobalCfg("somedir")
 	globalCfg.Temporal.TerraformTaskQueue = raw.DefaultTaskqueue
 
@@ -2177,7 +2172,7 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
     }
   },
   "policies": {
-    "conftest_version": "v1.0.0",
+    "conftest_version": "1.0.0",
     "policy_sets": [
       {
         "name": "good-policy",
@@ -2225,7 +2220,7 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 				},
 				Temporal: valid.Temporal{TerraformTaskQueue: raw.DefaultTaskqueue},
 				PolicySets: valid.PolicySets{
-					Version: conftestVersion,
+					Version: "1.0.0",
 					PolicySets: []valid.PolicySet{
 						{
 							Name:  "good-policy",
