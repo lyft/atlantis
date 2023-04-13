@@ -1,6 +1,7 @@
 repos:
   - id: /.*/
 policies:
+  conftest_version: 0.25.0
   policy_sets:
     - name: test_policy
       owner: someoneelse
