@@ -12,13 +12,13 @@ type snsPublisher interface {
 
 type Writer struct {
 	Client   snsPublisher
-	TopicArn *string
+	TopicArn string
 }
 
 func (w *Writer) Write(payload []byte) (int, error) {
 	if _, err := w.Client.Publish(&awsSns.PublishInput{
 		Message:  aws.String(string(payload)),
-		TopicArn: w.TopicArn,
+		TopicArn: aws.String(w.TopicArn),
 	}); err != nil {
 		return 0, err
 	}

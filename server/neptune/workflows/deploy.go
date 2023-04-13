@@ -1,10 +1,12 @@
 package workflows
 
 import (
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -33,9 +35,40 @@ type DeployUnlockSignalRequest = queue.UnlockSignalRequest
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 
 var DeployTaskQueue = deploy.TaskQueue
-
 var DeployNewRevisionSignalID = revision.NewRevisionSignalID
 
-func Deploy(ctx workflow.Context, request DeployRequest) error {
-	return deploy.Workflow(ctx, request, Terraform, PRRevision)
+// Workflow name
+var Deploy = "Deploy"
+
+// Workflow function is a closure, so make sure to register with a name
+type DeployFunc func(workflow.Context, DeployRequest) error
+
+// This is used to have user defined components of the workflow.
+type InitDeployPlugins func(workflow.Context, DeployRequest) (*plugins.Deploy, error)
+
+// NoPlugin is the default and should be used when there are no plugins to add
+func NoPlugins(ctx workflow.Context, req DeployRequest) (*plugins.Deploy, error) {
+	return nil, nil
+}
+
+func GetDeployWithPlugins(InitPlugins InitDeployPlugins) DeployFunc {
+	return func(ctx workflow.Context, req DeployRequest) error {
+		plugins, err := InitPlugins(ctx, req)
+		if err != nil {
+			return errors.Wrap(err, "building plugin")
+		}
+		return deploy.Workflow(
+			ctx,
+			req,
+			deploy.ChildWorkflows{
+				Terraform:     Terraform,
+				SetPRRevision: PRRevision,
+			},
+			plugins,
+		)
+	}
+}
+
+func GetDeploy() DeployFunc {
+	return GetDeployWithPlugins(NoPlugins)
 }

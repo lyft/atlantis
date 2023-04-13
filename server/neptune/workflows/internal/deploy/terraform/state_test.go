@@ -54,7 +54,7 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 	}
 
 	receiver := &internalTerraform.StateReceiver{
-		Notifiers: []internalTerraform.WorkflowNotifier{
+		InternalNotifiers: []internalTerraform.WorkflowNotifier{
 			notifier,
 		},
 	}
