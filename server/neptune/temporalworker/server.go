@@ -340,10 +340,10 @@ func (s Server) buildDeployWorker() worker.Worker {
 	deployWorker.RegisterActivity(s.LyftActivities)
 	deployWorker.RegisterActivity(s.TerraformActivities)
 	deployWorker.RegisterWorkflow(workflows.GetDeployWithPlugins(
-		func(ctx workflow.Context, dr workflows.DeployRequest) (*plugins.Deploy, error) {
+		func(ctx workflow.Context, dr workflows.DeployRequest) (plugins.Deploy, error) {
 			var a *lyftActivities.Activities
 
-			return &plugins.Deploy{
+			return plugins.Deploy{
 				Notifiers: []plugins.TerraformWorkflowNotifier{
 					&notifier.SNSNotifier{
 						Activity: a,

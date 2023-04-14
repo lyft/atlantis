@@ -44,11 +44,11 @@ var Deploy = "Deploy"
 type DeployFunc func(workflow.Context, DeployRequest) error
 
 // This is used to have user defined components of the workflow.
-type InitDeployPlugins func(workflow.Context, DeployRequest) (*plugins.Deploy, error)
+type InitDeployPlugins func(workflow.Context, DeployRequest) (plugins.Deploy, error)
 
 // NoPlugin is the default and should be used when there are no plugins to add
-func NoPlugins(ctx workflow.Context, req DeployRequest) (*plugins.Deploy, error) {
-	return nil, nil
+func NoPlugins(ctx workflow.Context, req DeployRequest) (plugins.Deploy, error) {
+	return plugins.Deploy{}, nil
 }
 
 func GetDeployWithPlugins(InitPlugins InitDeployPlugins) DeployFunc {

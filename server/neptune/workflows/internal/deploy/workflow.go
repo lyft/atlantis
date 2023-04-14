@@ -56,7 +56,7 @@ type ChildWorkflows struct {
 	SetPRRevision queue.Workflow
 }
 
-func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, plugins *plugins.Deploy) error {
+func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) error {
 	options := workflow.ActivityOptions{
 		TaskQueue:           TaskQueue,
 		StartToCloseTimeout: 5 * time.Second,
@@ -82,7 +82,7 @@ type Runner struct {
 	Scope                    workflowMetrics.Scope
 }
 
-func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, plugins *plugins.Deploy) (*Runner, error) {
+func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) (*Runner, error) {
 	// inject dependencies
 
 	// temporal effectively "injects" this, it just cares about the method names,
