@@ -33,12 +33,14 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 	// TODO: Add the version clause to clean this up
 	for _, notifier := range n.AdditionalNotifiers {
 		if err := notifier.Notify(ctx, deploymentInfo.ToExternalInfo(), workflowState.ToExternalWorkflowState()); err != nil {
+			workflow.GetMetricsHandler(ctx).Counter("notifier_plugin_failure").Inc(1)
 			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
 		}
 	}
 
 	for _, notifier := range n.InternalNotifiers {
 		if err := notifier.Notify(ctx, deploymentInfo, workflowState); err != nil {
+			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
 			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
 		}
 	}

@@ -113,8 +113,15 @@ type Workflow struct {
 
 func (w *Workflow) ToExternalWorkflowState() *plugins.TerraformWorkflowState {
 	return &plugins.TerraformWorkflowState{
-		Plan:     w.Plan.toExternalJob(),
-		Apply:    w.Apply.toExternalJob(),
-		Validate: w.Validate.toExternalJob(),
+		Plan:     getExternalJob(w.Plan),
+		Apply:    getExternalJob(w.Apply),
+		Validate: getExternalJob(w.Validate),
 	}
+}
+
+func getExternalJob(j *Job) *plugins.Job {
+	if j == nil {
+		return nil
+	}
+	return j.toExternalJob()
 }
