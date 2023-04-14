@@ -225,7 +225,7 @@ func (r *Runner) emitOpenPRsAgeInWeeks(ctx workflow.Context, prs []github.PullRe
 	}
 
 	for i := range ageInWeeks {
-		r.Scope.SubScope("open_prs").Gauge(fmt.Sprintf("%d_weeks", i)).Update(float64(ageInWeeks[i]))
+		r.Scope.SubScope("open_prs").Gauge(fmt.Sprintf("%d_weeks", i+1)).Update(float64(ageInWeeks[i]))
 	}
 }
 
