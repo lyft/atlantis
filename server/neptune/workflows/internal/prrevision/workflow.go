@@ -3,6 +3,7 @@ package prrevision
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/docker/docker/pkg/fileutils"
@@ -24,6 +25,7 @@ const (
 
 	RetryCount          = 3
 	StartToCloseTimeout = 30 * time.Second
+	NumLookBackWeeks    = 12
 )
 
 type Request struct {
@@ -77,7 +79,10 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 		return err
 	}
 
-	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
+	// [CS-4575] TODO: Tune our workflow by analyzing the age of open PRs
+	r.emitOpenPRsAgeInWeeks(ctx, prs, NumLookBackWeeks)
+
+	r.Scope.Gauge("open_prs").Update(float64(len(prs)))
 	if err := r.setRevision(ctx, request, prs); err != nil {
 		return errors.Wrap(err, "setting minimum revision for pr modifiying root")
 	}
@@ -208,4 +213,23 @@ func isRootModified(root terraform.Root, modifiedFiles []string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (r *Runner) emitOpenPRsAgeInWeeks(ctx workflow.Context, prs []github.PullRequest, numWeeks int) {
+	ageInWeeks := make([]int, numWeeks)
+	for _, pr := range prs {
+		if age := calculateAgeInWeeks(ctx, pr); age < numWeeks {
+			ageInWeeks[age]++
+			continue
+		}
+	}
+
+	for i := range ageInWeeks {
+		r.Scope.SubScope("open_prs").Gauge(fmt.Sprintf("%d_weeks", i+1)).Update(float64(ageInWeeks[i]))
+	}
+}
+
+func calculateAgeInWeeks(ctx workflow.Context, pr github.PullRequest) int {
+	days := workflow.Now(ctx).Sub(pr.UpdatedAt).Hours() / 24
+	return int(math.Floor(days / 7))
 }
