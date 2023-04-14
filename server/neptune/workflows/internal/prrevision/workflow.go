@@ -82,7 +82,7 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 	// [CS-4575] TODO: Tune our workflow by analyzing the age of open PRs
 	r.emitOpenPRsAgeInWeeks(ctx, prs, NumLookBackWeeks)
 
-	r.Scope.Counter("open_prs").Inc(int64(len(prs)))
+	r.Scope.Gauge("open_prs").Update(float64(len(prs)))
 	if err := r.setRevision(ctx, request, prs); err != nil {
 		return errors.Wrap(err, "setting minimum revision for pr modifiying root")
 	}
