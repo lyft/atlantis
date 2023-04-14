@@ -60,9 +60,9 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 	stTime := time.Now()
 	endTime := stTime.Add(time.Second * 5)
 	internalDeploymentInfo := plugins.TerraformDeploymentInfo{
-		ID:         uuid.New(),
-		Root:       terraform.Root{Name: "root"},
-		Repo:       github.Repo{Name: "hello"},
+		ID:   uuid.New(),
+		Root: terraform.Root{Name: "root"},
+		Repo: github.Repo{Name: "hello"},
 		Commit: github.Commit{
 			Revision: "12345",
 		},
@@ -205,9 +205,9 @@ func TestSNSNotifier_IfApplyJobNil(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	internalDeploymentInfo := plugins.TerraformDeploymentInfo{
-		ID:         uuid.New(),
-		Root:       terraform.Root{Name: "root"},
-		Repo:       github.Repo{Name: "hello"},
+		ID:   uuid.New(),
+		Root: terraform.Root{Name: "root"},
+		Repo: github.Repo{Name: "hello"},
 		Commit: github.Commit{
 			Revision: "12345",
 		},

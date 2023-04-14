@@ -7,7 +7,7 @@ import (
 )
 
 // TerraformDeploymentInfo contains all the information required for a Terraform deployment
-// to occur. 
+// to occur.
 type TerraformDeploymentInfo struct {
 	ID             uuid.UUID
 	Commit         github.Commit
