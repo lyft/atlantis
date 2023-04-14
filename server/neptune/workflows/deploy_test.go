@@ -158,15 +158,6 @@ func buildConfig(t *testing.T) config.Config {
 	}
 }
 
-type testSnsWriter struct {
-	writes [][]byte
-}
-
-func (t *testSnsWriter) Write(p []byte) (n int, err error) {
-	t.writes = append(t.writes, p)
-	return 0, nil
-}
-
 func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment, revReq workflows.DeployNewRevisionSignalRequest) *testSingletons {
 	cfg := buildConfig(t)
 

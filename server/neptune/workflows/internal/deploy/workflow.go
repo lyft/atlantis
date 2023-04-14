@@ -100,7 +100,7 @@ func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, p
 		lockStateUpdater.UpdateQueuedRevisions(ctx, d, request.Repo.FullName)
 	}, scope)
 
-	worker, err := queue.NewWorker(ctx, revisionQueue, a, children.Terraform, children.SetPRRevision, request.Repo.FullName, request.Root.Name, checkRunCache)
+	worker, err := queue.NewWorker(ctx, revisionQueue, a, children.Terraform, children.SetPRRevision, request.Repo.FullName, request.Root.Name, checkRunCache, plugins.Notifiers...)
 	if err != nil {
 		return nil, err
 	}

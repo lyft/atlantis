@@ -105,7 +105,6 @@ func NewActivities(snsTopicArn string) (*Activities, error) {
 			SnsWriter: snsWriter,
 		},
 	}, nil
-
 }
 
 type Activities struct {

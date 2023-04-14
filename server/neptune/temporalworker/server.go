@@ -350,7 +350,6 @@ func (s Server) buildDeployWorker() worker.Worker {
 					},
 				},
 			}, nil
-
 		},
 	))
 	deployWorker.RegisterWorkflow(workflows.Terraform)
