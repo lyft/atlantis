@@ -76,8 +76,8 @@ type Job struct {
 	EndTime          time.Time
 }
 
-func (j *Job) toExternalJob() *plugins.Job {
-	return &plugins.Job{
+func (j *Job) toExternalJob() *plugins.JobState {
+	return &plugins.JobState{
 		ID: j.ID,
 
 		// we can probably do this in a cleaner way
@@ -119,7 +119,7 @@ func (w *Workflow) ToExternalWorkflowState() *plugins.TerraformWorkflowState {
 	}
 }
 
-func getExternalJob(j *Job) *plugins.Job {
+func getExternalJob(j *Job) *plugins.JobState {
 	if j == nil {
 		return nil
 	}

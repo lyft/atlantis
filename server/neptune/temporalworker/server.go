@@ -339,7 +339,7 @@ func (s Server) buildDeployWorker() worker.Worker {
 	deployWorker.RegisterActivity(s.GithubActivities)
 	deployWorker.RegisterActivity(s.LyftActivities)
 	deployWorker.RegisterActivity(s.TerraformActivities)
-	deployWorker.RegisterWorkflow(workflows.GetDeployWithPlugins(
+	deployWorker.RegisterWorkflowWithOptions(workflows.GetDeployWithPlugins(
 		func(ctx workflow.Context, dr workflows.DeployRequest) (plugins.Deploy, error) {
 			var a *lyftActivities.Activities
 
@@ -351,7 +351,9 @@ func (s Server) buildDeployWorker() worker.Worker {
 				},
 			}, nil
 		},
-	))
+	), workflow.RegisterOptions{
+		Name: workflows.Deploy,
+	})
 	deployWorker.RegisterWorkflow(workflows.Terraform)
 	return deployWorker
 }

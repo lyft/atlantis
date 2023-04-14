@@ -6,10 +6,10 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
-// ideally we should make this protos or something that has backwards compatible changes
+// TerraformDeploymentInfo contains all the information required for a Terraform deployment
+// to occur. 
 type TerraformDeploymentInfo struct {
 	ID             uuid.UUID
-	CheckRunID     int64
 	Commit         github.Commit
 	InitiatingUser github.User
 	Root           terraform.Root

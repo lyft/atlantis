@@ -60,7 +60,6 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 	stTime := time.Now()
 	endTime := stTime.Add(time.Second * 5)
 	internalDeploymentInfo := plugins.TerraformDeploymentInfo{
-		CheckRunID: 1,
 		ID:         uuid.New(),
 		Root:       terraform.Root{Name: "root"},
 		Repo:       github.Repo{Name: "hello"},
@@ -75,10 +74,10 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 	}{
 		{
 			State: &plugins.TerraformWorkflowState{
-				Plan: &plugins.Job{
+				Plan: &plugins.JobState{
 					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &plugins.Job{
+				Apply: &plugins.JobState{
 					Status:    plugins.InProgressJobStatus,
 					StartTime: stTime,
 				},
@@ -94,10 +93,10 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 		},
 		{
 			State: &plugins.TerraformWorkflowState{
-				Plan: &plugins.Job{
+				Plan: &plugins.JobState{
 					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &plugins.Job{
+				Apply: &plugins.JobState{
 					Status:    plugins.FailedJobStatus,
 					StartTime: stTime,
 					EndTime:   endTime,
@@ -115,10 +114,10 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 		},
 		{
 			State: &plugins.TerraformWorkflowState{
-				Plan: &plugins.Job{
+				Plan: &plugins.JobState{
 					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &plugins.Job{
+				Apply: &plugins.JobState{
 					Status:    plugins.FailedJobStatus,
 					StartTime: stTime,
 					EndTime:   endTime,
@@ -136,10 +135,10 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 		},
 		{
 			State: &plugins.TerraformWorkflowState{
-				Plan: &plugins.Job{
+				Plan: &plugins.JobState{
 					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &plugins.Job{
+				Apply: &plugins.JobState{
 					Status:    plugins.FailedJobStatus,
 					StartTime: stTime,
 					EndTime:   endTime,
@@ -157,10 +156,10 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 		},
 		{
 			State: &plugins.TerraformWorkflowState{
-				Plan: &plugins.Job{
+				Plan: &plugins.JobState{
 					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &plugins.Job{
+				Apply: &plugins.JobState{
 					Status:    plugins.SuccessJobStatus,
 					StartTime: stTime,
 					EndTime:   endTime,
@@ -206,7 +205,6 @@ func TestSNSNotifier_IfApplyJobNil(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	internalDeploymentInfo := plugins.TerraformDeploymentInfo{
-		CheckRunID: 1,
 		ID:         uuid.New(),
 		Root:       terraform.Root{Name: "root"},
 		Repo:       github.Repo{Name: "hello"},
@@ -221,7 +219,7 @@ func TestSNSNotifier_IfApplyJobNil(t *testing.T) {
 	env.ExecuteWorkflow(testSNSNotifierWorkflow, snsNotifierRequest{
 		StatesToSend: []*plugins.TerraformWorkflowState{
 			{
-				Plan: &plugins.Job{
+				Plan: &plugins.JobState{
 					Status: plugins.SuccessJobStatus,
 				},
 			},
