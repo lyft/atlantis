@@ -141,22 +141,6 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 		}
 	}
 
-	tfClient, err := command.NewAsyncClient(
-		tfConfig.DefaultVersion,
-		tfVersionCache,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	conftestClient, err := command.NewAsyncClient(
-		validationConfig.DefaultVersion,
-		conftestVersionCache,
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	defaultTfVersion, err := version.NewVersion(tfConfig.DefaultVersion)
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing version %s", tfConfig.DefaultVersion)
@@ -165,6 +149,23 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing version %s", validationConfig.DefaultVersion)
 	}
+
+	tfClient, err := command.NewAsyncClient(
+		defaultTfVersion,
+		tfVersionCache,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	conftestClient, err := command.NewAsyncClient(
+		defaultConftestVersion,
+		conftestVersionCache,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
 		workerInfoActivity: &workerInfoActivity{

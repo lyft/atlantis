@@ -22,23 +22,15 @@ type Line struct {
 	Line string
 }
 
-func NewAsyncClient(
-	defaultVersion string,
-	versionCache cache.ExecutionVersionCache,
-) (*AsyncClient, error) {
-	version, err := getDefaultVersion(defaultVersion)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting default version")
-	}
-
+func NewAsyncClient(defaultVersion *version.Version, versionCache cache.ExecutionVersionCache) (*AsyncClient, error) {
 	// warm the cache with this version
-	_, err = versionCache.Get(version)
+	_, err := versionCache.Get(defaultVersion)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting default version %s", defaultVersion)
 	}
 
 	cmdBuilder := &execBuilder{
-		defaultVersion: version,
+		defaultVersion: defaultVersion,
 		versionCache:   versionCache,
 	}
 
@@ -133,13 +125,4 @@ func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan st
 		}
 	case <-done:
 	}
-}
-
-func getDefaultVersion(overrideVersion string) (*version.Version, error) {
-	v, err := version.NewVersion(overrideVersion)
-	if err != nil {
-		return nil, errors.Wrapf(err, "parsing version %s", overrideVersion)
-	}
-
-	return v, nil
 }
