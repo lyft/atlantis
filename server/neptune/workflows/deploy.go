@@ -60,7 +60,7 @@ func GetDeployWithPlugins(InitPlugins InitDeployPlugins) DeployFunc {
 	return func(ctx workflow.Context, req DeployRequest) error {
 		plugins, err := InitPlugins(ctx, req)
 		if err != nil {
-			return errors.Wrap(err, "building plugin")
+			return errors.Wrap(err, "initializing plugins")
 		}
 		return deploy.Workflow(
 			ctx,
