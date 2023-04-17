@@ -92,7 +92,6 @@ func TestNewGlobalCfg(t *testing.T) {
 		},
 	}
 
-	rebaseEnabled := true
 	baseCfg := valid.GlobalCfg{
 		Repos: []valid.Repo{
 			{
@@ -106,7 +105,6 @@ func TestNewGlobalCfg(t *testing.T) {
 				AllowedOverrides:     []string{},
 				AllowCustomWorkflows: Bool(false),
 				CheckoutStrategy:     "branch",
-				RebaseEnabled:        &rebaseEnabled,
 			},
 		},
 		Workflows: map[string]valid.Workflow{

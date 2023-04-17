@@ -1116,7 +1116,6 @@ func TestParseGlobalCfg(t *testing.T) {
 	}
 	preWorkflowHooks := []*valid.PreWorkflowHook{preWorkflowHook}
 	defaultCfg.Temporal.TerraformTaskQueue = raw.DefaultTaskqueue
-	defaultRebaseEnabled := true
 
 	customWorkflow1 := valid.Workflow{
 		Name: "custom1",
@@ -1457,7 +1456,6 @@ workflows:
 						IDRegex:           regexp.MustCompile(".*"),
 						BranchRegex:       regexp.MustCompile(".*"),
 						ApplyRequirements: []string{},
-						RebaseEnabled:     &defaultRebaseEnabled,
 						Workflow: &valid.Workflow{
 							Name: "default",
 							Apply: valid.Stage{
@@ -1629,7 +1627,6 @@ func TestParseGlobalCfg_PlatformMode(t *testing.T) {
 
 	conftestVersion, _ := version.NewVersion("v1.0.0")
 	defaultWorkflow := defaultCfg.Workflows["default"]
-	defaultRebaseEnabled := true
 
 	cases := map[string]struct {
 		input  string
@@ -1769,7 +1766,6 @@ deployment_workflows:
 						BranchRegex:       regexp.MustCompile(".*"),
 						ApplyRequirements: []string{},
 						Workflow:          &defaultWorkflow,
-						RebaseEnabled:     &defaultRebaseEnabled,
 						PullRequestWorkflow: &valid.Workflow{
 							Name: "default",
 							Apply: valid.Stage{
