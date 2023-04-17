@@ -178,7 +178,6 @@ type MergedProjectCfg struct {
 	Workspace           string
 	Name                string
 	AutoplanEnabled     bool
-	RebaseEnabled       bool
 	WhenModified        []string
 	TerraformVersion    *version.Version
 	RepoCfgVersion      int
