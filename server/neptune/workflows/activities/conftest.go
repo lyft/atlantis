@@ -60,8 +60,8 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 	}
 
 	var policyNames []string
-	var failedPolicies map[string]valid.PolicySet
 	var totalCmdOutput []string
+	failedPolicies := make(map[string]valid.PolicySet)
 
 	// run each policy separately to track which pass and fail
 	for _, policy := range c.Policies.PolicySets {
