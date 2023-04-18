@@ -2,6 +2,7 @@ package job_test
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"testing"
 	"time"
 
@@ -108,7 +109,7 @@ func TestJobRunner_Plan(t *testing.T) {
 			}{
 				req: activities.TerraformPlanRequest{
 					JobID: JobID,
-					Args:  []terraform_model.Argument{},
+					Args:  []command.Argument{},
 					DynamicEnvs: []activities.EnvVar{
 						{
 							Name:  "env1",
@@ -154,7 +155,7 @@ func TestJobRunner_Apply(t *testing.T) {
 			}{
 				req: activities.TerraformApplyRequest{
 					JobID: JobID,
-					Args:  []terraform_model.Argument{},
+					Args:  []command.Argument{},
 					DynamicEnvs: []activities.EnvVar{
 						{
 							Name:  "env1",

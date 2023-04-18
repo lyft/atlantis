@@ -459,3 +459,39 @@ func TestIsPrUpdatedWithinDays_After(t *testing.T) {
 
 	assert.True(t, isUpdated)
 }
+
+func testCalculateAgeWorkflow(ctx workflow.Context, prs []github.PullRequest) ([]int, error) {
+	results := []int{}
+	for _, pr := range prs {
+		results = append(results, calculateAgeInWeeks(ctx, pr))
+	}
+	return results, nil
+}
+
+func TestCalculateAgeInWeeks(t *testing.T) {
+	now := time.Now().UTC()
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	prs := []github.PullRequest{
+		// less than 1
+		{
+			UpdatedAt: now.AddDate(0, 0, -5),
+		},
+		// 1 week
+		{
+			UpdatedAt: now.AddDate(0, 0, -9),
+		},
+		// 6 weeks
+		{
+			UpdatedAt: now.AddDate(0, 0, -43),
+		},
+	}
+
+	var results []int
+	env.ExecuteWorkflow(testCalculateAgeWorkflow, prs)
+	err := env.GetWorkflowResult(&results)
+	assert.NoError(t, err)
+
+	assert.Equal(t, []int{0, 1, 6}, results)
+}

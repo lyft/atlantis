@@ -1,17 +1,17 @@
-package terraform_test
+package command_test
 
 import (
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCommandArguments_Build(t *testing.T) {
 	t.Run("with flags", func(t *testing.T) {
-		c := terraform.NewSubCommand(terraform.Show)
+		c := command.NewSubCommand(command.TerraformShow)
 
-		c.WithFlags(terraform.Flag{
+		c.WithFlags(command.Flag{
 			Value: "json",
 		})
 
@@ -19,7 +19,7 @@ func TestCommandArguments_Build(t *testing.T) {
 	})
 
 	t.Run("with input", func(t *testing.T) {
-		c := terraform.NewSubCommand(terraform.Apply)
+		c := command.NewSubCommand(command.TerraformApply)
 
 		c.WithInput("input.tfplan")
 
@@ -27,9 +27,9 @@ func TestCommandArguments_Build(t *testing.T) {
 	})
 
 	t.Run("with args", func(t *testing.T) {
-		c := terraform.NewSubCommand(terraform.Init)
+		c := command.NewSubCommand(command.TerraformInit)
 
-		c.WithArgs(terraform.Argument{
+		c.WithArgs(command.Argument{
 			Key:   "input",
 			Value: "false",
 		})
@@ -38,22 +38,22 @@ func TestCommandArguments_Build(t *testing.T) {
 	})
 
 	t.Run("dedups last first", func(t *testing.T) {
-		c := terraform.NewSubCommand(terraform.Init)
+		c := command.NewSubCommand(command.TerraformInit)
 
 		c.WithArgs(
-			terraform.Argument{
+			command.Argument{
 				Key:   "input",
 				Value: "false",
 			},
-			terraform.Argument{
+			command.Argument{
 				Key:   "a",
 				Value: "b",
 			},
-			terraform.Argument{
+			command.Argument{
 				Key:   "input",
 				Value: "true",
 			},
-			terraform.Argument{
+			command.Argument{
 				Key:   "c",
 				Value: "d",
 			},
