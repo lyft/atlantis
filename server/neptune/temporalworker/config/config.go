@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/hashicorp/go-version"
 	"net/url"
 
 	"github.com/palantir/go-githubapp/githubapp"
@@ -26,7 +27,7 @@ type TerraformConfig struct {
 }
 
 type ValidationConfig struct {
-	DefaultVersion string
+	DefaultVersion *version.Version
 	Policies       valid.PolicySets
 }
 

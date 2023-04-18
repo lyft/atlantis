@@ -2,6 +2,7 @@ package workflows_test
 
 import (
 	"context"
+	"github.com/hashicorp/go-version"
 	"net/http"
 	"net/url"
 	"os"
@@ -137,6 +138,8 @@ func buildConfig(t *testing.T) config.Config {
 	// storage client uses this for it's local backend.
 	err = os.Mkdir(filepath.Join(dataDir, "container"), os.ModePerm)
 	assert.NoError(t, err)
+	conftestVersion, err := version.NewVersion("0.25.0")
+	assert.NoError(t, err)
 
 	return config.Config{
 		DeploymentConfig: valid.StoreConfig{
@@ -154,7 +157,7 @@ func buildConfig(t *testing.T) config.Config {
 			DefaultVersion: "1.0.2",
 		},
 		ValidationConfig: config.ValidationConfig{
-			DefaultVersion: "0.25.0",
+			DefaultVersion: conftestVersion,
 		},
 		DataDir: dataDir,
 		ServerCfg: config.ServerConfig{
