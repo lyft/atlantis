@@ -10,9 +10,9 @@ Github Actions are blocking this deployment from proceeding.
 | Operation | **Status** | **Logs** |  
 | - | - | - |
 | Plan | {{ if .PlanStatus }}`{{.PlanStatus}}`{{else}}N/A{{end}} |{{ if .PlanLogURL }}[Click Here]({{.PlanLogURL}}){{else}}N/A{{end}} |
-{{ if .PRMode }}
+{{ if .PRMode -}}
 | Validate | {{ if .ValidateStatus }}`{{.ValidateStatus}}`{{else}}N/A{{end}} |{{ if .ValidateLogURL }}[Click Here]({{.ValidateLogURL}}){{else}}N/A{{end}} |
-{{else}}
+{{else -}}
 | Apply | {{ if .ApplyStatus }}`{{.ApplyStatus}}`{{else}}N/A{{end}} |{{ if .ApplyLogURL }}[Click Here]({{.ApplyLogURL}}){{else}}N/A{{end}} |
 {{end}}
 
