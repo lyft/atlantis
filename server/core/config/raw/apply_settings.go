@@ -6,21 +6,28 @@ import (
 )
 
 type ApplySettings struct {
-	PRRequirements    []string
-	BranchRestriction string
-	Team              string
+	PRRequirements    []string `yaml:"pr_requirements" json:"pr_requirements"`
+	BranchRestriction string   `yaml:"branch_restriction" json:"branch_restriction"`
+	Team              string   `yaml:"team" json:"team"`
 }
 
 func (s ApplySettings) Validate() error {
 	return validation.ValidateStruct(&s,
-		validation.Field(&s.PRRequirements, validation.In(valid.ApprovedApplyReq, valid.PoliciesPassedApplyReq)),
-		validation.Field(&s.BranchRestriction, validation.In(valid.NoBranchRestriction, valid.DefaultBranchRestriction)),
+		validation.Field(&s.PRRequirements, validation.By(func(value interface{}) error {
+			v := value.([]string)
+
+			for _, item := range v {
+				return validation.In(valid.ApprovedApplyReq).Validate(item)
+			}
+			return nil
+		})),
+		validation.Field(&s.BranchRestriction, validation.In(string(valid.NoBranchRestriction), string(valid.DefaultBranchRestriction))),
 		validation.Field(&s.Team),
 	)
 }
 
 func (s ApplySettings) ToValid() valid.ApplySettings {
-	branchRestriction := valid.NoBranchRestriction
+	branchRestriction := valid.DefaultBranchRestriction
 	if len(s.BranchRestriction) != 0 {
 		branchRestriction = valid.BranchRestriction(s.BranchRestriction)
 	}

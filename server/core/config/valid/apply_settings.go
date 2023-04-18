@@ -3,8 +3,8 @@ package valid
 type BranchRestriction string
 
 const (
-	NoBranchRestriction        BranchRestriction = "none"
-	DefaultBranchRestriction   BranchRestriction = "default_branch"
+	NoBranchRestriction      BranchRestriction = "none"
+	DefaultBranchRestriction BranchRestriction = "default_branch"
 )
 
 type ApplySettings struct {

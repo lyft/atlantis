@@ -23,6 +23,9 @@ var globalCfg = valid.GlobalCfg{
 			AllowCustomWorkflows: Bool(true),
 			AllowedOverrides:     []string{"apply_requirements", "workflow"},
 			CheckoutStrategy:     "branch",
+			ApplySettings: valid.ApplySettings{
+				BranchRestriction: valid.DefaultBranchRestriction,
+			},
 		},
 	},
 }
@@ -1219,6 +1222,33 @@ func TestParseGlobalCfg(t *testing.T) {
 			input: `workflows:`,
 			exp:   defaultCfg,
 		},
+		"apply settings": {
+			input: `repos:
+- id: github.com/owner/repo
+  apply_settings:
+    pr_requirements: [approved]
+    branch_restriction: none
+    team: some_team`,
+			exp: valid.GlobalCfg{
+				Repos: []valid.Repo{
+					defaultCfg.Repos[0],
+					{
+						ID:               "github.com/owner/repo",
+						CheckoutStrategy: "branch",
+						ApplySettings: valid.ApplySettings{
+							PRRequirements:    []string{"approved"},
+							BranchRestriction: valid.NoBranchRestriction,
+							Team:              "some_team",
+						},
+					},
+				},
+				Workflows:            defaultCfg.Workflows,
+				DeploymentWorkflows:  defaultCfg.DeploymentWorkflows,
+				PullRequestWorkflows: defaultCfg.PullRequestWorkflows,
+				Temporal:             valid.Temporal{TerraformTaskQueue: raw.DefaultTaskqueue},
+				PersistenceConfig:    defaultCfg.PersistenceConfig,
+			},
+		},
 		"workflow name but the rest is empty": {
 			input: `
 workflows:
@@ -1352,6 +1382,9 @@ policies:
 						AllowedOverrides:     []string{"apply_requirements", "workflow"},
 						AllowCustomWorkflows: Bool(true),
 						CheckoutStrategy:     "merge",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 					{
 						IDRegex:           regexp.MustCompile(".*"),
@@ -1359,6 +1392,9 @@ policies:
 						ApplyRequirements: []string{"policies_passed"},
 						PreWorkflowHooks:  preWorkflowHooks,
 						CheckoutStrategy:  "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 				},
 				Workflows: map[string]valid.Workflow{
@@ -1395,6 +1431,9 @@ repos:
 					{
 						IDRegex:          regexp.MustCompile("github.com/"),
 						CheckoutStrategy: "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 				},
 				Workflows: map[string]valid.Workflow{
@@ -1423,6 +1462,9 @@ repos:
 						ID:               "github.com/owner/repo",
 						Workflow:         defaultCfg.Repos[0].Workflow,
 						CheckoutStrategy: "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 				},
 				Workflows: map[string]valid.Workflow{
@@ -1487,6 +1529,9 @@ workflows:
 						AllowedOverrides:     []string{},
 						AllowCustomWorkflows: Bool(false),
 						CheckoutStrategy:     "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 				},
 				Workflows: map[string]valid.Workflow{
@@ -1711,6 +1756,9 @@ policies:
 						AllowedOverrides:     []string{"apply_requirements", "pull_request_workflow", "deployment_workflow", "workflow"},
 						AllowCustomWorkflows: Bool(true),
 						CheckoutStrategy:     "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 					{
 						IDRegex:           regexp.MustCompile(".*"),
@@ -1718,6 +1766,9 @@ policies:
 						ApplyRequirements: []string{"policies_passed"},
 						PreWorkflowHooks:  preWorkflowHooks,
 						CheckoutStrategy:  "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 				},
 				Workflows: defaultCfg.Workflows,
@@ -1804,6 +1855,9 @@ deployment_workflows:
 						AllowedOverrides:     []string{},
 						AllowCustomWorkflows: Bool(false),
 						CheckoutStrategy:     "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 				},
 				Workflows: defaultCfg.Workflows,
@@ -1993,6 +2047,9 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 						AllowedOverrides:     []string{"workflow", "apply_requirements"},
 						AllowCustomWorkflows: Bool(true),
 						CheckoutStrategy:     "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 					{
 						ID:                   "github.com/owner/repo",
@@ -2001,6 +2058,9 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 						AllowedOverrides:     nil,
 						AllowCustomWorkflows: nil,
 						CheckoutStrategy:     "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 				},
 				Workflows: map[string]valid.Workflow{
@@ -2196,6 +2256,9 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 						AllowedOverrides:            []string{"pull_request_workflow", "deployment_workflow"},
 						AllowCustomWorkflows:        Bool(true),
 						CheckoutStrategy:            "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 					{
 						ID:                          "github.com/owner/repo",
@@ -2206,6 +2269,9 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 						AllowedDeploymentWorkflows:  nil,
 						AllowCustomWorkflows:        nil,
 						CheckoutStrategy:            "branch",
+						ApplySettings: valid.ApplySettings{
+							BranchRestriction: valid.DefaultBranchRestriction,
+						},
 					},
 				},
 				Workflows: map[string]valid.Workflow{
