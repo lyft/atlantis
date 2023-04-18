@@ -1,4 +1,4 @@
-package terraform
+package command
 
 import (
 	"fmt"
@@ -11,13 +11,13 @@ import (
 type Operation string
 
 const (
-	Init  Operation = "init"
-	Plan  Operation = "plan"
-	Apply Operation = "apply"
-	Show  Operation = "show"
+	TerraformInit  Operation = "init"
+	TerraformPlan  Operation = "plan"
+	TerraformApply Operation = "apply"
+	TerraformShow  Operation = "show"
 )
 
-// Argument is the key value pair passed into the terraform command
+// Argument is the key value pair passed into the command
 type Argument struct {
 	Key   string
 	Value string

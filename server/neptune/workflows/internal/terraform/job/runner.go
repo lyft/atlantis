@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
@@ -131,7 +132,7 @@ func (r *JobRunner) Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, 
 }
 
 func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step execute.Step) error {
-	args, err := terraform.NewArgumentList(step.ExtraArgs)
+	args, err := command.NewArgumentList(step.ExtraArgs)
 
 	if err != nil {
 		return errors.Wrapf(err, "creating argument list")
@@ -166,7 +167,7 @@ func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step 
 func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, workflowMode terraform.WorkflowMode, extraArgs []string) (activities.TerraformPlanResponse, error) {
 	var resp activities.TerraformPlanResponse
 
-	args, err := terraform.NewArgumentList(extraArgs)
+	args, err := command.NewArgumentList(extraArgs)
 	if err != nil {
 		return resp, errors.Wrapf(err, "creating argument list")
 	}
@@ -191,7 +192,7 @@ func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, workfl
 }
 
 func (r *JobRunner) init(ctx *ExecutionContext, localRoot *terraform.LocalRoot, step execute.Step) error {
-	args, err := terraform.NewArgumentList(step.ExtraArgs)
+	args, err := command.NewArgumentList(step.ExtraArgs)
 
 	if err != nil {
 		return errors.Wrap(err, "creating argument list")

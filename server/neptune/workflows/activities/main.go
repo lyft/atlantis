@@ -12,9 +12,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
-	legacy_tf "github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -29,7 +29,7 @@ const (
 	// binDirName is the name of the directory inside our data dir where
 	// we download binaries.
 	BinDirName = "bin"
-	// terraformPluginCacheDir is the name of the dir inside our data dir
+	// TerraformPluginCacheDir is the name of the dir inside our data dir
 	// where we tell terraform to cache plugins and modules.
 	TerraformPluginCacheDirName = "plugin-cache"
 )
@@ -69,6 +69,7 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig, snsWriter io.Writer) (*Depl
 
 type Terraform struct {
 	*terraformActivities
+	*conftestActivity
 	*executeCommandActivities
 	*workerInfoActivity
 	*cleanupActivities
@@ -81,11 +82,12 @@ type StreamCloser interface {
 }
 
 type TerraformOptions struct {
-	VersionCache            cache.ExecutionVersionCache
+	TFVersionCache          cache.ExecutionVersionCache
+	ConftestVersionCache    cache.ExecutionVersionCache
 	GitCredentialsRefresher gitCredentialsRefresher
 }
 
-func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, dataDir string, serverURL *url.URL, taskQueue string, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
+func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.ValidationConfig, ghAppConfig githubapp.Config, dataDir string, serverURL *url.URL, taskQueue string, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -95,28 +97,18 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 	if err != nil {
 		return nil, err
 	}
-
-	defaultTfVersion, err := version.NewVersion(config.DefaultVersionStr)
-	if err != nil {
-		return nil, errors.Wrapf(err, "parsing version %s", config.DefaultVersionStr)
-	}
-
-	tfClientConfig := terraform.ClientConfig{
-		BinDir:        binDir,
-		CacheDir:      cacheDir,
-		TfDownloadURL: config.DownloadURL,
-	}
-
-	downloader := &legacy_tf.DefaultDownloader{}
-	loader := legacy_tf.NewVersionLoader(downloader, config.DownloadURL)
-
 	gitCredentialsFileLock := &file.RWLock{}
 
-	var versionCache cache.ExecutionVersionCache
+	var tfVersionCache cache.ExecutionVersionCache
+	var conftestVersionCache cache.ExecutionVersionCache
 	var credentialsRefresher gitCredentialsRefresher
 	for _, o := range opts {
-		if o.VersionCache != nil {
-			versionCache = o.VersionCache
+		if o.TFVersionCache != nil {
+			tfVersionCache = o.TFVersionCache
+		}
+
+		if o.ConftestVersionCache != nil {
+			conftestVersionCache = o.ConftestVersionCache
 		}
 
 		if credentialsRefresher != nil {
@@ -124,27 +116,51 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 		}
 	}
 
-	if versionCache == nil {
-		versionCache = cache.NewExecutionVersionLayeredLoadingCache(
+	tfLoader := NewTFVersionLoader(tfConfig.DownloadURL)
+	if tfVersionCache == nil {
+		tfVersionCache = cache.NewExecutionVersionLayeredLoadingCache(
 			"terraform",
 			binDir,
-			loader.LoadVersion,
+			tfLoader.LoadVersion,
+		)
+	}
+
+	conftestLoader := ConftestVersionLoader{}
+	if conftestVersionCache == nil {
+		conftestVersionCache = cache.NewExecutionVersionLayeredLoadingCache(
+			"conftest",
+			binDir,
+			conftestLoader.LoadVersion,
 		)
 	}
 
 	if credentialsRefresher == nil {
 		credentialsRefresher, err = cli.NewCredentials(ghAppConfig, gitCredentialsFileLock)
-
 		if err != nil {
 			return nil, errors.Wrap(err, "initializing credentials")
 		}
 	}
 
-	tfClient, err := terraform.NewAsyncClient(
-		tfClientConfig,
-		config.DefaultVersionStr,
-		downloader,
-		versionCache,
+	defaultTfVersion, err := version.NewVersion(tfConfig.DefaultVersion)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing version %s", tfConfig.DefaultVersion)
+	}
+	defaultConftestVersion, err := version.NewVersion(validationConfig.DefaultVersion)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing version %s", validationConfig.DefaultVersion)
+	}
+
+	tfClient, err := command.NewAsyncClient(
+		defaultTfVersion,
+		tfVersionCache,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	conftestClient, err := command.NewAsyncClient(
+		defaultConftestVersion,
+		conftestVersionCache,
 	)
 	if err != nil {
 		return nil, err
@@ -163,6 +179,13 @@ func NewTerraform(config config.TerraformConfig, ghAppConfig githubapp.Config, d
 			GitCLICredentials:      credentialsRefresher,
 			GitCredentialsFileLock: gitCredentialsFileLock,
 			FileWriter:             &file.Writer{},
+			CacheDir:               cacheDir,
+		},
+		conftestActivity: &conftestActivity{
+			DefaultConftestVersion: defaultConftestVersion,
+			ConftestClient:         conftestClient,
+			StreamHandler:          streamHandler,
+			Policies:               validationConfig.Policies,
 		},
 		jobActivities: &jobActivities{
 			StreamCloser: streamHandler,

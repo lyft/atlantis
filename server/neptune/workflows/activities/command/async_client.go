@@ -1,4 +1,4 @@
-package terraform
+package command
 
 import (
 	"context"
@@ -12,57 +12,39 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/runtime/cache"
-	"github.com/runatlantis/atlantis/server/core/terraform"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/sdk/activity"
 )
 
-type ClientConfig struct {
-	BinDir        string
-	CacheDir      string
-	TfDownloadURL string
-}
-
-// Line represents a line that was output from a terraform command.
+// Line represents a line that was output from a command.
 type Line struct {
 	// Line is the contents of the line (without the newline).
 	Line string
 }
 
-func NewAsyncClient(
-	cfg ClientConfig,
-	defaultVersion string,
-	tfDownloader terraform.Downloader,
-	versionCache cache.ExecutionVersionCache,
-) (*AsyncClient, error) {
-	version, err := getDefaultVersion(defaultVersion)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting default version")
-	}
-
+func NewAsyncClient(defaultVersion *version.Version, versionCache cache.ExecutionVersionCache) (*AsyncClient, error) {
 	// warm the cache with this version
-	_, err = versionCache.Get(version)
+	_, err := versionCache.Get(defaultVersion)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting default terraform version %s", defaultVersion)
+		return nil, errors.Wrapf(err, "getting default version %s", defaultVersion)
 	}
 
-	builder := &commandBuilder{
-		defaultVersion:          version,
-		versionCache:            versionCache,
-		terraformPluginCacheDir: cfg.CacheDir,
+	cmdBuilder := &execBuilder{
+		defaultVersion: defaultVersion,
+		versionCache:   versionCache,
 	}
 
 	return &AsyncClient{
-		CommandBuilder: builder,
+		ExecBuilder: cmdBuilder,
 	}, nil
 }
 
-type cmdBuilder interface {
+type builder interface {
 	Build(ctx context.Context, v *version.Version, path string, subcommand *SubCommand) (*exec.Cmd, error)
 }
 
 type AsyncClient struct {
-	CommandBuilder cmdBuilder
+	ExecBuilder builder
 }
 
 type RunOptions struct {
@@ -78,7 +60,7 @@ type RunCommandRequest struct {
 }
 
 func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest, options ...RunOptions) error {
-	cmd, err := c.CommandBuilder.Build(ctx, request.Version, request.RootPath, request.SubCommand)
+	cmd, err := c.ExecBuilder.Build(ctx, request.Version, request.RootPath, request.SubCommand)
 	if err != nil {
 		return errors.Wrapf(err, "building command")
 	}
@@ -98,7 +80,7 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 	}
 
 	if err := cmd.Start(); err != nil {
-		return errors.Wrap(err, "starting terraform command")
+		return errors.Wrap(err, "starting command")
 	}
 
 	done := make(chan struct{})
@@ -108,11 +90,11 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 	err = cmd.Wait()
 
 	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "waiting for terraform process")
+		return errors.Wrap(ctx.Err(), "waiting for process")
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "waiting for terraform process")
+		return errors.Wrap(err, "waiting for process")
 	}
 
 	return nil
@@ -121,7 +103,7 @@ func (c *AsyncClient) RunCommand(ctx context.Context, request *RunCommandRequest
 func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan struct{}) {
 	select {
 	case <-ctx.Done():
-		activity.GetLogger(ctx).Warn("Terminating terraform process gracefully")
+		activity.GetLogger(ctx).Warn("Terminating process gracefully")
 		err := p.Signal(syscall.SIGTERM)
 		if err != nil {
 			activity.GetLogger(ctx).Error("Unable to terminate process", key.ErrKey, err)
@@ -134,7 +116,7 @@ func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan st
 
 		select {
 		case <-kill:
-			activity.GetLogger(ctx).Warn("Killing terraform process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
+			activity.GetLogger(ctx).Warn("Killing process since graceful shutdown is taking suspiciously long. State corruption may have occurred.")
 			err := p.Signal(syscall.SIGKILL)
 			if err != nil {
 				activity.GetLogger(ctx).Error("Unable to kill process", key.ErrKey, err)
@@ -143,13 +125,4 @@ func terminateOnCtxCancellation(ctx context.Context, p *os.Process, done chan st
 		}
 	case <-done:
 	}
-}
-
-func getDefaultVersion(overrideVersion string) (*version.Version, error) {
-	v, err := version.NewVersion(overrideVersion)
-	if err != nil {
-		return nil, errors.Wrapf(err, "parsing version %s", overrideVersion)
-	}
-
-	return v, nil
 }

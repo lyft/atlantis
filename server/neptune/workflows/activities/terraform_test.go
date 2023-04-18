@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"strings"
 	"sync"
 	"testing"
@@ -57,7 +58,7 @@ type multiCallTfClient struct {
 	count int
 }
 
-func (t *multiCallTfClient) RunCommand(ctx context.Context, request *terraform.RunCommandRequest, options ...terraform.RunOptions) error {
+func (t *multiCallTfClient) RunCommand(ctx context.Context, request *command.RunCommandRequest, options ...command.RunOptions) error {
 	if t.count >= len(t.clients) {
 		return fmt.Errorf("expected less calls to RunCommand")
 	}
@@ -79,7 +80,7 @@ type testTfClient struct {
 	t             *testing.T
 	jobID         string
 	path          string
-	cmd           *terraform.SubCommand
+	cmd           *command.SubCommand
 	customEnvVars map[string]string
 	version       *version.Version
 	resp          string
@@ -87,7 +88,7 @@ type testTfClient struct {
 	expectedError error
 }
 
-func (t *testTfClient) RunCommand(ctx context.Context, request *terraform.RunCommandRequest, options ...terraform.RunOptions) error {
+func (t *testTfClient) RunCommand(ctx context.Context, request *command.RunCommandRequest, options ...command.RunOptions) error {
 	assert.Equal(t.t, t.path, request.RootPath)
 	assert.Equal(t.t, t.cmd, request.SubCommand)
 	assert.Equal(t.t, t.customEnvVars, request.AdditionalEnvVars)
@@ -104,7 +105,7 @@ func (t *testTfClient) RunCommand(ctx context.Context, request *terraform.RunCom
 }
 
 func TestTerraformInit_RequestValidation(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -115,10 +116,10 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 	cases := []struct {
 		RequestVersion  string
 		ExpectedVersion string
-		RequestArgs     []terraform.Argument
+		RequestArgs     []command.Argument
 		ExpectedEnvs    map[string]string
 		DynamicEnvs     []EnvVar
-		ExpectedArgs    []terraform.Argument
+		ExpectedArgs    []command.Argument
 	}{
 		{
 			//testing
@@ -127,17 +128,22 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 
 			//defaults
 			ExpectedArgs: defaultArgs,
-			ExpectedEnvs: map[string]string{},
+			ExpectedEnvs: map[string]string{
+				"ATLANTIS_TERRAFORM_VERSION": "0.12.0",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+			},
 		},
 		{
 			//testing
-			ExpectedArgs: []terraform.Argument{
+			ExpectedArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "true",
 				},
 			},
-			RequestArgs: []terraform.Argument{
+			RequestArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "true",
@@ -146,7 +152,12 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 
 			// defaults
 			ExpectedVersion: defaultVersion,
-			ExpectedEnvs:    map[string]string{},
+			ExpectedEnvs: map[string]string{
+				"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+			},
 		},
 		{
 			// testing
@@ -157,7 +168,11 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 				},
 			},
 			ExpectedEnvs: map[string]string{
-				"env2": "val2",
+				"env2":                       "val2",
+				"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
 			},
 
 			// defaults
@@ -181,7 +196,7 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 				t:             t,
 				jobID:         jobID,
 				path:          path,
-				cmd:           terraform.NewSubCommand(terraform.Init).WithArgs(c.ExpectedArgs...),
+				cmd:           command.NewSubCommand(command.TerraformInit).WithArgs(c.ExpectedArgs...),
 				customEnvVars: c.ExpectedEnvs,
 				version:       expectedVersion,
 				resp:          "",
@@ -209,7 +224,8 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 				},
 				credsRefresher,
 				&file.RWLock{},
-				&mockWriter{})
+				&mockWriter{},
+				"some/dir")
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -221,7 +237,7 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 }
 
 func TestTerraformInit_StreamsOutput(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -242,13 +258,18 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	testTfClient := &testTfClient{
-		t:             t,
-		jobID:         jobID,
-		path:          path,
-		cmd:           terraform.NewSubCommand(terraform.Init).WithArgs(defaultArgs...),
-		customEnvVars: map[string]string{},
-		version:       expectedVersion,
-		resp:          expectedMsgStr,
+		t:     t,
+		jobID: jobID,
+		path:  path,
+		cmd:   command.NewSubCommand(command.TerraformInit).WithArgs(defaultArgs...),
+		customEnvVars: map[string]string{
+			"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+			"DIR":                        "some/path",
+			"TF_IN_AUTOMATION":           "true",
+			"TF_PLUGIN_CACHE_DIR":        "some/dir",
+		},
+		version: expectedVersion,
+		resp:    expectedMsgStr,
 	}
 
 	req := TerraformInitRequest{
@@ -268,7 +289,7 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 		t:                      t,
 	}
 
-	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{})
+	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{}, "some/dir")
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -280,7 +301,7 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 }
 
 func TestTerraformPlan_RequestValidation(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -296,9 +317,9 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 	cases := []struct {
 		RequestVersion  string
 		ExpectedVersion string
-		RequestArgs     []terraform.Argument
-		ExpectedArgs    []terraform.Argument
-		ExpectedFlags   []terraform.Flag
+		RequestArgs     []command.Argument
+		ExpectedArgs    []command.Argument
+		ExpectedFlags   []command.Flag
 		PlanMode        *terraform.PlanMode
 		WorkflowMode    terraform.WorkflowMode
 		ExpectedEnvs    map[string]string
@@ -312,12 +333,17 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 
 			//default
 			ExpectedArgs: defaultArgs,
-			ExpectedEnvs: map[string]string{},
+			ExpectedEnvs: map[string]string{
+				"ATLANTIS_TERRAFORM_VERSION": "0.12.0",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+			},
 		},
 		{
 			//testing
 			WorkflowMode: terraform.PR,
-			ExpectedArgs: []terraform.Argument{
+			ExpectedArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "true",
@@ -328,7 +354,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 					Key:   "out",
 					Value: "some/path/output.tfplan",
 				}},
-			RequestArgs: []terraform.Argument{
+			RequestArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "true",
@@ -337,13 +363,18 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 
 			// default
 			ExpectedVersion: defaultVersion,
-			ExpectedEnvs:    map[string]string{},
+			ExpectedEnvs: map[string]string{
+				"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+			},
 		},
 		{
 			// testing
 			PlanMode:     terraform.NewDestroyPlanMode(),
 			WorkflowMode: terraform.PR,
-			ExpectedFlags: []terraform.Flag{
+			ExpectedFlags: []command.Flag{
 				{
 					Value: "destroy",
 				},
@@ -352,7 +383,12 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 			// default
 			ExpectedArgs:    defaultArgs,
 			ExpectedVersion: defaultVersion,
-			ExpectedEnvs:    map[string]string{},
+			ExpectedEnvs: map[string]string{
+				"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+			},
 		},
 		{
 			// testing
@@ -364,7 +400,11 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 				},
 			},
 			ExpectedEnvs: map[string]string{
-				"env2": "val2",
+				"env2":                       "val2",
+				"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
 			},
 
 			// default
@@ -390,7 +430,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 						t:             t,
 						jobID:         jobID,
 						path:          path,
-						cmd:           terraform.NewSubCommand(terraform.Plan).WithArgs(c.ExpectedArgs...).WithFlags(c.ExpectedFlags...),
+						cmd:           command.NewSubCommand(command.TerraformPlan).WithArgs(c.ExpectedArgs...).WithFlags(c.ExpectedFlags...),
 						customEnvVars: c.ExpectedEnvs,
 						version:       expectedVersion,
 						resp:          "",
@@ -399,7 +439,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 						t:             t,
 						jobID:         jobID,
 						path:          path,
-						cmd:           terraform.NewSubCommand(terraform.Show).WithFlags(terraform.Flag{Value: "json"}).WithInput("some/path/output.tfplan"),
+						cmd:           command.NewSubCommand(command.TerraformShow).WithFlags(command.Flag{Value: "json"}).WithInput("some/path/output.tfplan"),
 						customEnvVars: c.ExpectedEnvs,
 						version:       expectedVersion,
 						resp:          "{}",
@@ -425,7 +465,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 
 			tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, &testStreamHandler{
 				t: t,
-			}, credsRefresher, &file.RWLock{}, fileWriter)
+			}, credsRefresher, &file.RWLock{}, fileWriter, "some/dir")
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformPlan, req)
@@ -436,7 +476,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 }
 
 func TestTerraformPlan_ReturnsResponse(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -464,22 +504,32 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 	testTfClient := multiCallTfClient{
 		clients: []*testTfClient{
 			{
-				t:             t,
-				jobID:         jobID,
-				path:          path,
-				cmd:           terraform.NewSubCommand(terraform.Plan).WithArgs(defaultArgs...),
-				customEnvVars: map[string]string{},
-				version:       expectedVersion,
-				resp:          expectedMsgStr,
+				t:     t,
+				jobID: jobID,
+				path:  path,
+				cmd:   command.NewSubCommand(command.TerraformPlan).WithArgs(defaultArgs...),
+				customEnvVars: map[string]string{
+					"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+					"DIR":                        "some/path",
+					"TF_IN_AUTOMATION":           "true",
+					"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				},
+				version: expectedVersion,
+				resp:    expectedMsgStr,
 			},
 			{
-				t:             t,
-				jobID:         jobID,
-				path:          path,
-				cmd:           terraform.NewSubCommand(terraform.Show).WithFlags(terraform.Flag{Value: "json"}).WithInput("some/path/output.tfplan"),
-				customEnvVars: map[string]string{},
-				version:       expectedVersion,
-				resp:          "{\"format_version\": \"1.0\",\"resource_changes\":[{\"change\":{\"actions\":[\"update\"]},\"address\":\"type.resource\"}]}",
+				t:     t,
+				jobID: jobID,
+				path:  path,
+				cmd:   command.NewSubCommand(command.TerraformShow).WithFlags(command.Flag{Value: "json"}).WithInput("some/path/output.tfplan"),
+				customEnvVars: map[string]string{
+					"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+					"DIR":                        "some/path",
+					"TF_IN_AUTOMATION":           "true",
+					"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				},
+				version: expectedVersion,
+				resp:    "{\"format_version\": \"1.0\",\"resource_changes\":[{\"change\":{\"actions\":[\"update\"]},\"address\":\"type.resource\"}]}",
 			},
 		},
 	}
@@ -497,7 +547,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 
 	credsRefresher := &testCredsRefresher{}
 
-	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{})
+	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{}, "some/dir")
 
 	env.RegisterActivity(tfActivity)
 
@@ -525,7 +575,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 }
 
 func TestTerraformApply_RequestValidation(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -536,8 +586,8 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 	cases := []struct {
 		RequestVersion  string
 		ExpectedVersion string
-		RequestArgs     []terraform.Argument
-		ExpectedArgs    []terraform.Argument
+		RequestArgs     []command.Argument
+		ExpectedArgs    []command.Argument
 		ExpectedEnvs    map[string]string
 		DynamicEnvs     []EnvVar
 	}{
@@ -548,16 +598,21 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 
 			//default
 			ExpectedArgs: defaultArgs,
-			ExpectedEnvs: map[string]string{},
+			ExpectedEnvs: map[string]string{
+				"ATLANTIS_TERRAFORM_VERSION": "0.12.0",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+			},
 		},
 		{
 			//testing
-			ExpectedArgs: []terraform.Argument{
+			ExpectedArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "false",
 				}},
-			RequestArgs: []terraform.Argument{
+			RequestArgs: []command.Argument{
 				{
 					Key:   "input",
 					Value: "false",
@@ -565,7 +620,12 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 			},
 			//default
 			ExpectedVersion: defaultVersion,
-			ExpectedEnvs:    map[string]string{},
+			ExpectedEnvs: map[string]string{
+				"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+			},
 		},
 		{
 			//testing
@@ -576,7 +636,11 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 				},
 			},
 			ExpectedEnvs: map[string]string{
-				"env2": "val2",
+				"env2":                       "val2",
+				"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+				"DIR":                        "some/path",
+				"TF_IN_AUTOMATION":           "true",
+				"TF_PLUGIN_CACHE_DIR":        "some/dir",
 			},
 
 			//default
@@ -600,7 +664,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 				t:             t,
 				jobID:         jobID,
 				path:          path,
-				cmd:           terraform.NewSubCommand(terraform.Apply).WithArgs(c.ExpectedArgs...).WithInput("some/path/output.tfplan"),
+				cmd:           command.NewSubCommand(command.TerraformApply).WithArgs(c.ExpectedArgs...).WithInput("some/path/output.tfplan"),
 				customEnvVars: c.ExpectedEnvs,
 				version:       expectedVersion,
 				resp:          "",
@@ -617,7 +681,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 
 			tfActivity := NewTerraformActivities(testClient, expectedVersion, &testStreamHandler{
 				t: t,
-			}, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{})
+			}, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{}, "some/dir")
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformApply, req)
@@ -627,7 +691,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 }
 
 func TestTerraformApply_StreamsOutput(t *testing.T) {
-	defaultArgs := []terraform.Argument{
+	defaultArgs := []command.Argument{
 		{
 			Key:   "input",
 			Value: "false",
@@ -648,13 +712,18 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	testTfClient := &testTfClient{
-		t:             t,
-		jobID:         jobID,
-		path:          path,
-		cmd:           terraform.NewSubCommand(terraform.Apply).WithArgs(defaultArgs...).WithInput("some/path/output.tfplan"),
-		customEnvVars: map[string]string{},
-		version:       expectedVersion,
-		resp:          expectedMsgStr,
+		t:     t,
+		jobID: jobID,
+		path:  path,
+		cmd:   command.NewSubCommand(command.TerraformApply).WithArgs(defaultArgs...).WithInput("some/path/output.tfplan"),
+		customEnvVars: map[string]string{
+			"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+			"DIR":                        "some/path",
+			"TF_IN_AUTOMATION":           "true",
+			"TF_PLUGIN_CACHE_DIR":        "some/dir",
+		},
+		version: expectedVersion,
+		resp:    expectedMsgStr,
 	}
 
 	req := TerraformApplyRequest{
@@ -669,7 +738,7 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 		expectedJobID: jobID,
 	}
 
-	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{})
+	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{}, "some/dir")
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformApply, req)
