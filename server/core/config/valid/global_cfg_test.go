@@ -105,6 +105,9 @@ func TestNewGlobalCfg(t *testing.T) {
 				AllowedOverrides:     []string{},
 				AllowCustomWorkflows: Bool(false),
 				CheckoutStrategy:     "branch",
+				ApplySettings: valid.ApplySettings{
+					BranchRestriction: valid.DefaultBranchRestriction,
+				},
 			},
 		},
 		Workflows: map[string]valid.Workflow{
