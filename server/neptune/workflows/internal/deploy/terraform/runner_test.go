@@ -34,12 +34,12 @@ type testSignalPayload struct {
 	S string
 }
 
-func testTerraformWorklfowWithPlanRejectionError(ctx workflow.Context, request terraformWorkflow.Request) error {
-	return temporal.NewNonRetryableApplicationError("some message", terraformWorkflow.PlanRejectedErrorType, terraformWorkflow.ApplicationError{ErrType: terraformWorkflow.PlanRejectedErrorType, Msg: "something"})
+func testTerraformWorklfowWithPlanRejectionError(ctx workflow.Context, request terraformWorkflow.Request) (terraformWorkflow.Response, error) {
+	return terraformWorkflow.Response{}, temporal.NewNonRetryableApplicationError("some message", terraformWorkflow.PlanRejectedErrorType, terraformWorkflow.ApplicationError{ErrType: terraformWorkflow.PlanRejectedErrorType, Msg: "something"})
 }
 
 // signals parent twice with a sleep in between to mimic what our real terraform workflow would be like
-func testTerraformWorkflow(ctx workflow.Context, request terraformWorkflow.Request) error {
+func testTerraformWorkflow(ctx workflow.Context, request terraformWorkflow.Request) (terraformWorkflow.Response, error) {
 	info := workflow.GetInfo(ctx)
 	parentExecution := info.ParentWorkflowExecution
 
@@ -48,14 +48,14 @@ func testTerraformWorkflow(ctx workflow.Context, request terraformWorkflow.Reque
 	}
 
 	if err := workflow.SignalExternalWorkflow(ctx, parentExecution.ID, parentExecution.RunID, state.WorkflowStateChangeSignal, payload).Get(ctx, nil); err != nil {
-		return err
+		return terraformWorkflow.Response{}, err
 	}
 
 	if err := workflow.Sleep(ctx, 5*time.Second); err != nil {
-		return err
+		return terraformWorkflow.Response{}, err
 	}
 
-	return workflow.SignalExternalWorkflow(ctx, parentExecution.ID, parentExecution.RunID, state.WorkflowStateChangeSignal, payload).Get(ctx, nil)
+	return terraformWorkflow.Response{}, workflow.SignalExternalWorkflow(ctx, parentExecution.ID, parentExecution.RunID, state.WorkflowStateChangeSignal, payload).Get(ctx, nil)
 }
 
 type request struct {
@@ -159,8 +159,8 @@ func TestWorkflowRunner_RunWithDivergedCommit(t *testing.T) {
 		Repo:         r.Info.Repo,
 		DeploymentID: r.Info.ID.String(),
 		Revision:     r.Info.Commit.Revision,
-	}).Return(func(ctx workflow.Context, request terraformWorkflow.Request) error {
-		return nil
+	}).Return(func(ctx workflow.Context, request terraformWorkflow.Request) (terraformWorkflow.Response, error) {
+		return terraformWorkflow.Response{}, nil
 	})
 
 	env.ExecuteWorkflow(parentWorkflow, r)
@@ -199,8 +199,8 @@ func TestWorkflowRunner_RunWithManuallyTriggeredRoot(t *testing.T) {
 		Repo:         r.Info.Repo,
 		DeploymentID: r.Info.ID.String(),
 		Revision:     r.Info.Commit.Revision,
-	}).Return(func(ctx workflow.Context, request terraformWorkflow.Request) error {
-		return nil
+	}).Return(func(ctx workflow.Context, request terraformWorkflow.Request) (terraformWorkflow.Response, error) {
+		return terraformWorkflow.Response{}, nil
 	})
 
 	env.ExecuteWorkflow(parentWorkflow, r)

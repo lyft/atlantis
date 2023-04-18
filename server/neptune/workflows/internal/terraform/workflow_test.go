@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"net/url"
 	"testing"
 	"time"
@@ -103,8 +104,8 @@ func (r *jobRunner) Apply(ctx workflow.Context, localRoot *terraformModel.LocalR
 	return r.expectedError
 }
 
-func (r *jobRunner) Validate(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, showFile string) error {
-	return r.expectedError
+func (r *jobRunner) Validate(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, showFile string) (map[string]valid.PolicySet, error) {
+	return nil, r.expectedError
 }
 
 func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, workflowMode terraformModel.WorkflowMode) (activities.TerraformPlanResponse, error) {
@@ -190,7 +191,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 
 	var planRejected bool
 	var updateJobErr bool
-	if err := subject.Run(ctx); err != nil {
+	if _, err := subject.Run(ctx); err != nil {
 		var appErr *temporal.ApplicationError
 		if errors.As(err, &appErr) {
 			switch appErr.Type() {

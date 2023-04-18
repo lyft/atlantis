@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
@@ -97,7 +98,7 @@ func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, j
 	return resp, nil
 }
 
-func (r *JobRunner) Validate(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) error {
+func (r *JobRunner) Validate(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) (map[string]valid.PolicySet, error) {
 	// Execution ctx for a job that handles setting up the env vars from the previous steps
 	jobCtx := &ExecutionContext{
 		Context: ctx,
@@ -106,23 +107,24 @@ func (r *JobRunner) Validate(ctx workflow.Context, localRoot *terraform.LocalRoo
 	}
 	defer r.closeTerraformJob(jobCtx)
 
+	failedPolicies := make(map[string]valid.PolicySet)
 	for _, step := range localRoot.Root.Validate.GetSteps() {
 		var err error
 		switch step.StepName {
 		case "policy_check":
-			err = r.validate(jobCtx, showFile, step)
+			failedPolicies, err = r.validate(jobCtx, showFile, step)
 		}
 
 		if err != nil {
-			return errors.Wrapf(err, "running step %s", step.StepName)
+			return failedPolicies, errors.Wrapf(err, "running step %s", step.StepName)
 		}
 
 		err = r.runOptionalSteps(jobCtx, localRoot, step)
 		if err != nil {
-			return errors.Wrapf(err, "running step %s", step.StepName)
+			return failedPolicies, errors.Wrapf(err, "running step %s", step.StepName)
 		}
 	}
-	return nil
+	return failedPolicies, nil
 }
 
 func (r *JobRunner) Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, planFile string) error {
@@ -155,10 +157,10 @@ func (r *JobRunner) Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, 
 	return nil
 }
 
-func (r *JobRunner) validate(executionCtx *ExecutionContext, showFile string, step execute.Step) error {
+func (r *JobRunner) validate(executionCtx *ExecutionContext, showFile string, step execute.Step) (map[string]valid.PolicySet, error) {
 	args, err := command.NewArgumentList(step.ExtraArgs)
 	if err != nil {
-		return errors.Wrapf(err, "creating argument list")
+		return map[string]valid.PolicySet{}, errors.Wrapf(err, "creating argument list")
 	}
 
 	var envs []activities.EnvVar
@@ -166,7 +168,6 @@ func (r *JobRunner) validate(executionCtx *ExecutionContext, showFile string, st
 		envs = append(envs, e.ToActivityEnvVar())
 	}
 
-	// TODO: modify Terraform workflow to support conftest response as output
 	var resp activities.ConftestResponse
 	err = workflow.ExecuteActivity(executionCtx, r.Activity.Conftest, activities.ConftestRequest{
 		Args:        args,
@@ -176,9 +177,9 @@ func (r *JobRunner) validate(executionCtx *ExecutionContext, showFile string, st
 		ShowFile:    showFile,
 	}).Get(executionCtx, &resp)
 	if err != nil {
-		return errors.Wrap(err, "running terraform apply activity")
+		return resp.FailedPolicies, errors.Wrap(err, "running conftest activity")
 	}
-	return nil
+	return resp.FailedPolicies, nil
 }
 
 func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step execute.Step) error {

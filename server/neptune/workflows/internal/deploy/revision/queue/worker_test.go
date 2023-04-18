@@ -383,8 +383,8 @@ func TestWorker_DeploysItems_ValidationError_SkipLatestDeploymentUpdate(t *testi
 }
 
 func TestNewWorker(t *testing.T) {
-	emptyWorkflow := func(ctx workflow.Context, request terraformWorkflow.Request) error {
-		return nil
+	emptyWorkflow := func(ctx workflow.Context, request terraformWorkflow.Request) (terraformWorkflow.Response, error) {
+		return terraformWorkflow.Response{}, nil
 	}
 
 	emptyPRRevWorkflow := func(ctx workflow.Context, request prrevision.Request) error {
