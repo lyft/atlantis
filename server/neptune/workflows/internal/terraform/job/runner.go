@@ -31,6 +31,7 @@ type terraformActivities interface {
 	TerraformInit(ctx context.Context, request activities.TerraformInitRequest) (activities.TerraformInitResponse, error)
 	TerraformPlan(ctx context.Context, request activities.TerraformPlanRequest) (activities.TerraformPlanResponse, error)
 	TerraformApply(ctx context.Context, request activities.TerraformApplyRequest) (activities.TerraformApplyResponse, error)
+	Conftest(ctx context.Context, request activities.ConftestRequest) (activities.ConftestResponse, error)
 	CloseJob(ctx context.Context, request activities.CloseJobRequest) error
 }
 
@@ -97,7 +98,30 @@ func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, j
 }
 
 func (r *JobRunner) Validate(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) error {
-	// TODO: implement validate job
+	// Execution ctx for a job that handles setting up the env vars from the previous steps
+	jobCtx := &ExecutionContext{
+		Context: ctx,
+		Path:    localRoot.Path,
+		JobID:   jobID,
+	}
+	defer r.closeTerraformJob(jobCtx)
+
+	for _, step := range localRoot.Root.Validate.GetSteps() {
+		var err error
+		switch step.StepName {
+		case "policy_check":
+			err = r.validate(jobCtx, showFile, step)
+		}
+
+		if err != nil {
+			return errors.Wrapf(err, "running step %s", step.StepName)
+		}
+
+		err = r.runOptionalSteps(jobCtx, localRoot, step)
+		if err != nil {
+			return errors.Wrapf(err, "running step %s", step.StepName)
+		}
+	}
 	return nil
 }
 
@@ -128,6 +152,32 @@ func (r *JobRunner) Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, 
 		}
 	}
 
+	return nil
+}
+
+func (r *JobRunner) validate(executionCtx *ExecutionContext, showFile string, step execute.Step) error {
+	args, err := command.NewArgumentList(step.ExtraArgs)
+	if err != nil {
+		return errors.Wrapf(err, "creating argument list")
+	}
+
+	var envs []activities.EnvVar
+	for _, e := range executionCtx.Envs {
+		envs = append(envs, e.ToActivityEnvVar())
+	}
+
+	// TODO: modify Terraform workflow to support conftest response as output
+	var resp activities.ConftestResponse
+	err = workflow.ExecuteActivity(executionCtx, r.Activity.Conftest, activities.ConftestRequest{
+		Args:        args,
+		DynamicEnvs: envs,
+		Path:        executionCtx.Path,
+		JobID:       executionCtx.JobID,
+		ShowFile:    showFile,
+	}).Get(executionCtx, &resp)
+	if err != nil {
+		return errors.Wrap(err, "running terraform apply activity")
+	}
 	return nil
 }
 

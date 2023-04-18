@@ -186,6 +186,7 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 			ConftestClient:         conftestClient,
 			StreamHandler:          streamHandler,
 			Policies:               validationConfig.Policies,
+			FileValidator:          &file.Validator{},
 		},
 		jobActivities: &jobActivities{
 			StreamCloser: streamHandler,

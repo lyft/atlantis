@@ -61,4 +61,29 @@ func TestCommandArguments_Build(t *testing.T) {
 
 		assert.Equal(t, []string{"init", "-a=b", "-c=d", "-input=true"}, c.Build())
 	})
+
+	t.Run("duplicate args allowed", func(t *testing.T) {
+		c := command.NewSubCommand(command.ConftestTest)
+
+		c.WithDupArgs(
+			command.Argument{
+				Key:   "p",
+				Value: "path1",
+			},
+			command.Argument{
+				Key:   "a",
+				Value: "b",
+			},
+			command.Argument{
+				Key:   "p",
+				Value: "path2",
+			},
+			command.Argument{
+				Key:   "c",
+				Value: "d",
+			},
+		)
+
+		assert.Equal(t, []string{"test", "-p=path1", "-a=b", "-p=path2", "-c=d"}, c.Build())
+	})
 }
