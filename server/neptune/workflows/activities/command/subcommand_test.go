@@ -29,7 +29,7 @@ func TestCommandArguments_Build(t *testing.T) {
 	t.Run("with args", func(t *testing.T) {
 		c := command.NewSubCommand(command.TerraformInit)
 
-		c.WithArgs(command.Argument{
+		c.WithUniqueArgs(command.Argument{
 			Key:   "input",
 			Value: "false",
 		})
@@ -40,7 +40,7 @@ func TestCommandArguments_Build(t *testing.T) {
 	t.Run("dedups last first", func(t *testing.T) {
 		c := command.NewSubCommand(command.TerraformInit)
 
-		c.WithArgs(
+		c.WithUniqueArgs(
 			command.Argument{
 				Key:   "input",
 				Value: "false",
@@ -65,7 +65,7 @@ func TestCommandArguments_Build(t *testing.T) {
 	t.Run("duplicate args allowed", func(t *testing.T) {
 		c := command.NewSubCommand(command.ConftestTest)
 
-		c.WithDupArgs(
+		c.WithArgs(
 			command.Argument{
 				Key:   "p",
 				Value: "path1",

@@ -77,7 +77,7 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 		args := append(policyArgs, request.Args...)
 		conftestRequest := &command.RunCommandRequest{
 			RootPath:          request.Path,
-			SubCommand:        command.NewSubCommand(command.ConftestTest).WithInput(showFile).WithFlags(NoColorFlag).WithDupArgs(args...),
+			SubCommand:        command.NewSubCommand(command.ConftestTest).WithInput(showFile).WithFlags(NoColorFlag).WithArgs(args...),
 			AdditionalEnvVars: envs,
 			Version:           c.DefaultConftestVersion,
 		}

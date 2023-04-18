@@ -83,16 +83,16 @@ func NewSubCommand(op Operation) *SubCommand {
 	}
 }
 
-// WithDupArgs adds args without de-duplicating them for
+// WithArgs adds args without de-duplicating them for
 // commands that allow for multiple identical arg keys to exist
-func (c *SubCommand) WithDupArgs(args ...Argument) *SubCommand {
+func (c *SubCommand) WithArgs(args ...Argument) *SubCommand {
 	c.args = args
 	return c
 }
 
-// WithArgs dedups incoming args using a "last one wins" approach
+// WithUniqueArgs dedups incoming args using a "last one wins" approach
 // and sets them appropriately on the receiver
-func (c *SubCommand) WithArgs(args ...Argument) *SubCommand {
+func (c *SubCommand) WithUniqueArgs(args ...Argument) *SubCommand {
 	c.args = c.dedup(args)
 	return c
 }
