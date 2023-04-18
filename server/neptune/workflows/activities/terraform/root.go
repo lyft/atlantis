@@ -17,6 +17,7 @@ type Root struct {
 	TfVersion    string
 	Apply        execute.Job
 	Plan         PlanJob
+	Validate     execute.Job
 	Trigger      Trigger
 	Rerun        bool
 	TrackedFiles []string

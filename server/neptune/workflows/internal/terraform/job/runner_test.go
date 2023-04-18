@@ -31,6 +31,11 @@ type testTerraformActivity struct {
 		resp activities.TerraformPlanResponse
 		err  error
 	}
+	validate struct {
+		req  activities.ConftestRequest
+		resp activities.ConftestResponse
+		err  error
+	}
 	apply struct {
 		req  activities.TerraformApplyRequest
 		resp activities.TerraformApplyResponse
@@ -49,6 +54,11 @@ func (t *testTerraformActivity) TerraformInit(ctx context.Context, request activ
 func (t *testTerraformActivity) TerraformPlan(ctx context.Context, request activities.TerraformPlanRequest) (activities.TerraformPlanResponse, error) {
 	assert.Equal(t.t, t.plan.req, request)
 	return t.plan.resp, t.plan.err
+}
+
+func (t *testTerraformActivity) Conftest(ctx context.Context, request activities.ConftestRequest) (activities.ConftestResponse, error) {
+	assert.Equal(t.t, t.validate.req, request)
+	return t.validate.resp, t.validate.err
 }
 
 func (t *testTerraformActivity) TerraformApply(ctx context.Context, request activities.TerraformApplyRequest) (activities.TerraformApplyResponse, error) {
@@ -96,6 +106,23 @@ func testJobApplyWorkflow(ctx workflow.Context, r terraform.Request) error {
 	return jobRunner.Apply(ctx, &localRoot, JobID, "")
 }
 
+// test workflow that runs validate job
+func testJobValidateWorkflow(ctx workflow.Context, r terraform.Request) error {
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		ScheduleToCloseTimeout: 100 * time.Second,
+	})
+
+	localRoot := terraform_model.LocalRoot{
+		Root: r.Root,
+		Repo: r.Repo,
+		Path: ProjectPath,
+	}
+
+	var a *testTerraformActivity
+	jobRunner := job.NewRunner(&job.CmdStepRunner{}, &job.EnvStepRunner{}, a)
+	return jobRunner.Validate(ctx, &localRoot, JobID, "")
+}
+
 func TestJobRunner_Plan(t *testing.T) {
 	t.Run("should close job after plan operation", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
@@ -139,6 +166,48 @@ func TestJobRunner_Plan(t *testing.T) {
 		var resp activities.TerraformPlanResponse
 		err := env.GetWorkflowResult(&resp)
 		assert.NoError(t, err)
+	})
+}
+
+func TestJobRunner_Validate(t *testing.T) {
+	t.Run("should close job after validate operation", func(t *testing.T) {
+		ts := testsuite.WorkflowTestSuite{}
+		env := ts.NewTestWorkflowEnvironment()
+		testTerraformActivity := &testTerraformActivity{
+			t: t,
+			validate: struct {
+				req  activities.ConftestRequest
+				resp activities.ConftestResponse
+				err  error
+			}{
+				req: activities.ConftestRequest{
+					JobID: JobID,
+					Args:  []command.Argument{},
+					DynamicEnvs: []activities.EnvVar{
+						{
+							Name:  "env1",
+							Value: "v1",
+						},
+					},
+					Path: ProjectPath,
+				},
+			},
+			close: struct {
+				req activities.CloseJobRequest
+				err error
+			}{
+				req: activities.CloseJobRequest{
+					JobID: JobID,
+				},
+			},
+		}
+		env.RegisterActivity(testTerraformActivity)
+		env.RegisterWorkflow(testJobValidateWorkflow)
+
+		env.ExecuteWorkflow(testJobValidateWorkflow, terraform.Request{
+			Root: getTestRootForValidate(),
+			Repo: repo,
+		})
 	})
 }
 
@@ -199,6 +268,25 @@ func getTestRootForPlan() terraform_model.Root {
 					{
 						StepName: "plan",
 					},
+				},
+			},
+		},
+	}
+}
+
+func getTestRootForValidate() terraform_model.Root {
+	return terraform_model.Root{
+		Name: ProjectName,
+		Path: "project",
+		Apply: execute.Job{
+			Steps: []execute.Step{
+				{
+					StepName:    "env",
+					EnvVarName:  "env1",
+					EnvVarValue: "v1",
+				},
+				{
+					StepName: "policy_check",
 				},
 			},
 		},

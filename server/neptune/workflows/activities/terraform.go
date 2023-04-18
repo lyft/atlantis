@@ -171,7 +171,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 
 	r := &command.RunCommandRequest{
 		RootPath:          request.Path,
-		SubCommand:        command.NewSubCommand(command.TerraformInit).WithArgs(args...),
+		SubCommand:        command.NewSubCommand(command.TerraformInit).WithUniqueArgs(args...),
 		AdditionalEnvVars: envs,
 		Version:           tfVersion,
 	}
@@ -245,7 +245,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 
 	planRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,
-		SubCommand:        command.NewSubCommand(command.TerraformPlan).WithArgs(args...).WithFlags(flags...),
+		SubCommand:        command.NewSubCommand(command.TerraformPlan).WithUniqueArgs(args...).WithFlags(flags...),
 		AdditionalEnvVars: envs,
 		Version:           tfVersion,
 	}
@@ -338,7 +338,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 
 	applyRequest := &command.RunCommandRequest{
 		RootPath:          request.Path,
-		SubCommand:        command.NewSubCommand(command.TerraformApply).WithInput(planFile).WithArgs(args...),
+		SubCommand:        command.NewSubCommand(command.TerraformApply).WithInput(planFile).WithUniqueArgs(args...),
 		AdditionalEnvVars: envs,
 		Version:           tfVersion,
 	}

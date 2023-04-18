@@ -11,10 +11,14 @@ import (
 type Operation string
 
 const (
+	// Terraform operations
 	TerraformInit  Operation = "init"
 	TerraformPlan  Operation = "plan"
 	TerraformApply Operation = "apply"
 	TerraformShow  Operation = "show"
+
+	// Conftest operations
+	ConftestTest Operation = "test"
 )
 
 // Argument is the key value pair passed into the command
@@ -79,9 +83,16 @@ func NewSubCommand(op Operation) *SubCommand {
 	}
 }
 
-// WithArgs dedups incoming args using a "last one wins" approach
-// and sets them appropriately on the receiver
+// WithArgs adds args without de-duplicating them for
+// commands that allow for multiple identical arg keys to exist
 func (c *SubCommand) WithArgs(args ...Argument) *SubCommand {
+	c.args = args
+	return c
+}
+
+// WithUniqueArgs dedups incoming args using a "last one wins" approach
+// and sets them appropriately on the receiver
+func (c *SubCommand) WithUniqueArgs(args ...Argument) *SubCommand {
 	c.args = c.dedup(args)
 	return c
 }
