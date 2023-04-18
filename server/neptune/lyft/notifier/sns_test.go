@@ -2,18 +2,16 @@ package notifier_test
 
 import (
 	"context"
-	"net/url"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/activities"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
-	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
@@ -34,8 +32,8 @@ func (a *testSNSActivities) AuditJob(ctx context.Context, request activities.Aud
 }
 
 type snsNotifierRequest struct {
-	StatesToSend   []*state.Workflow
-	DeploymentInfo internalTerraform.DeploymentInfo
+	StatesToSend   []*plugins.TerraformWorkflowState
+	DeploymentInfo plugins.TerraformDeploymentInfo
 	T              *testing.T
 }
 
@@ -59,38 +57,28 @@ func testSNSNotifierWorkflow(ctx workflow.Context, r snsNotifierRequest) error {
 }
 
 func TestSNSNotifier_SendsMessage(t *testing.T) {
-	outputURL, err := url.Parse("www.nish.com")
-	assert.NoError(t, err)
-
-	jobOutput := &state.JobOutput{
-		URL: outputURL,
-	}
-
 	stTime := time.Now()
 	endTime := stTime.Add(time.Second * 5)
-	internalDeploymentInfo := internalTerraform.DeploymentInfo{
-		CheckRunID: 1,
-		ID:         uuid.New(),
-		Root:       terraform.Root{Name: "root"},
-		Repo:       github.Repo{Name: "hello"},
+	internalDeploymentInfo := plugins.TerraformDeploymentInfo{
+		ID:   uuid.New(),
+		Root: terraform.Root{Name: "root"},
+		Repo: github.Repo{Name: "hello"},
 		Commit: github.Commit{
 			Revision: "12345",
 		},
 	}
 
 	cases := []struct {
-		State                   *state.Workflow
+		State                   *plugins.TerraformWorkflowState
 		ExpectedAuditJobRequest activities.AuditJobRequest
 	}{
 		{
-			State: &state.Workflow{
-				Plan: &state.Job{
-					Output: jobOutput,
-					Status: state.SuccessJobStatus,
+			State: &plugins.TerraformWorkflowState{
+				Plan: &plugins.JobState{
+					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &state.Job{
-					Output:    jobOutput,
-					Status:    state.InProgressJobStatus,
+				Apply: &plugins.JobState{
+					Status:    plugins.InProgressJobStatus,
 					StartTime: stTime,
 				},
 			},
@@ -104,14 +92,12 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 			},
 		},
 		{
-			State: &state.Workflow{
-				Plan: &state.Job{
-					Output: jobOutput,
-					Status: state.SuccessJobStatus,
+			State: &plugins.TerraformWorkflowState{
+				Plan: &plugins.JobState{
+					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &state.Job{
-					Output:    jobOutput,
-					Status:    state.FailedJobStatus,
+				Apply: &plugins.JobState{
+					Status:    plugins.FailedJobStatus,
 					StartTime: stTime,
 					EndTime:   endTime,
 				},
@@ -127,20 +113,14 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 			},
 		},
 		{
-			State: &state.Workflow{
-				Plan: &state.Job{
-					Output: jobOutput,
-					Status: state.SuccessJobStatus,
+			State: &plugins.TerraformWorkflowState{
+				Plan: &plugins.JobState{
+					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &state.Job{
-					Output:    jobOutput,
-					Status:    state.FailedJobStatus,
+				Apply: &plugins.JobState{
+					Status:    plugins.FailedJobStatus,
 					StartTime: stTime,
 					EndTime:   endTime,
-				},
-				Result: state.WorkflowResult{
-					Status: state.CompleteWorkflowStatus,
-					Reason: state.InternalServiceError,
 				},
 			},
 			ExpectedAuditJobRequest: activities.AuditJobRequest{
@@ -154,20 +134,14 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 			},
 		},
 		{
-			State: &state.Workflow{
-				Plan: &state.Job{
-					Output: jobOutput,
-					Status: state.SuccessJobStatus,
+			State: &plugins.TerraformWorkflowState{
+				Plan: &plugins.JobState{
+					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &state.Job{
-					Output:    jobOutput,
-					Status:    state.FailedJobStatus,
+				Apply: &plugins.JobState{
+					Status:    plugins.FailedJobStatus,
 					StartTime: stTime,
 					EndTime:   endTime,
-				},
-				Result: state.WorkflowResult{
-					Status: state.CompleteWorkflowStatus,
-					Reason: state.TimeoutError,
 				},
 			},
 			ExpectedAuditJobRequest: activities.AuditJobRequest{
@@ -181,20 +155,14 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 			},
 		},
 		{
-			State: &state.Workflow{
-				Plan: &state.Job{
-					Output: jobOutput,
-					Status: state.SuccessJobStatus,
+			State: &plugins.TerraformWorkflowState{
+				Plan: &plugins.JobState{
+					Status: plugins.SuccessJobStatus,
 				},
-				Apply: &state.Job{
-					Output:    jobOutput,
-					Status:    state.SuccessJobStatus,
+				Apply: &plugins.JobState{
+					Status:    plugins.SuccessJobStatus,
 					StartTime: stTime,
 					EndTime:   endTime,
-				},
-				Result: state.WorkflowResult{
-					Status: state.CompleteWorkflowStatus,
-					Reason: state.SuccessfulCompletionReason,
 				},
 			},
 			ExpectedAuditJobRequest: activities.AuditJobRequest{
@@ -221,12 +189,12 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 			env.RegisterActivity(a)
 
 			env.ExecuteWorkflow(testSNSNotifierWorkflow, snsNotifierRequest{
-				StatesToSend:   []*state.Workflow{c.State},
+				StatesToSend:   []*plugins.TerraformWorkflowState{c.State},
 				DeploymentInfo: internalDeploymentInfo,
 				T:              t,
 			})
 
-			err = env.GetWorkflowResult(nil)
+			err := env.GetWorkflowResult(nil)
 			assert.NoError(t, err)
 			assert.True(t, a.Called)
 		})
@@ -234,20 +202,12 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 }
 
 func TestSNSNotifier_IfApplyJobNil(t *testing.T) {
-	outputURL, err := url.Parse("www.nish.com")
-	assert.NoError(t, err)
-
-	jobOutput := &state.JobOutput{
-		URL: outputURL,
-	}
-
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	internalDeploymentInfo := internalTerraform.DeploymentInfo{
-		CheckRunID: 1,
-		ID:         uuid.New(),
-		Root:       terraform.Root{Name: "root"},
-		Repo:       github.Repo{Name: "hello"},
+	internalDeploymentInfo := plugins.TerraformDeploymentInfo{
+		ID:   uuid.New(),
+		Root: terraform.Root{Name: "root"},
+		Repo: github.Repo{Name: "hello"},
 		Commit: github.Commit{
 			Revision: "12345",
 		},
@@ -257,11 +217,10 @@ func TestSNSNotifier_IfApplyJobNil(t *testing.T) {
 	env.RegisterActivity(a)
 
 	env.ExecuteWorkflow(testSNSNotifierWorkflow, snsNotifierRequest{
-		StatesToSend: []*state.Workflow{
+		StatesToSend: []*plugins.TerraformWorkflowState{
 			{
-				Plan: &state.Job{
-					Output: jobOutput,
-					Status: state.SuccessJobStatus,
+				Plan: &plugins.JobState{
+					Status: plugins.SuccessJobStatus,
 				},
 			},
 		},
@@ -269,7 +228,7 @@ func TestSNSNotifier_IfApplyJobNil(t *testing.T) {
 		T:              t,
 	})
 
-	err = env.GetWorkflowResult(nil)
+	err := env.GetWorkflowResult(nil)
 	assert.NoError(t, err)
 	assert.False(t, a.Called)
 }

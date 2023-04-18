@@ -12,6 +12,7 @@ import (
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -50,14 +51,19 @@ type QueueWorker interface {
 	GetState() queue.WorkerState
 }
 
-func Workflow(ctx workflow.Context, request Request, tfWorkflow terraform.Workflow, prWorkflow queue.Workflow) error {
+type ChildWorkflows struct {
+	Terraform     terraform.Workflow
+	SetPRRevision queue.Workflow
+}
+
+func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) error {
 	options := workflow.ActivityOptions{
 		TaskQueue:           TaskQueue,
 		StartToCloseTimeout: 5 * time.Second,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
-	runner, err := newRunner(ctx, request, tfWorkflow, prWorkflow)
+	runner, err := newRunner(ctx, request, children, plugins)
 
 	if err != nil {
 		return errors.Wrap(err, "initializing workflow runner")
@@ -76,7 +82,7 @@ type Runner struct {
 	Scope                    workflowMetrics.Scope
 }
 
-func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workflow, prRevWorkflow queue.Workflow) (*Runner, error) {
+func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) (*Runner, error) {
 	// inject dependencies
 
 	// temporal effectively "injects" this, it just cares about the method names,
@@ -94,7 +100,7 @@ func newRunner(ctx workflow.Context, request Request, tfWorkflow terraform.Workf
 		lockStateUpdater.UpdateQueuedRevisions(ctx, d, request.Repo.FullName)
 	}, scope)
 
-	worker, err := queue.NewWorker(ctx, revisionQueue, a, tfWorkflow, prRevWorkflow, request.Repo.FullName, request.Root.Name, checkRunCache)
+	worker, err := queue.NewWorker(ctx, revisionQueue, a, children.Terraform, children.SetPRRevision, request.Repo.FullName, request.Root.Name, checkRunCache, plugins.Notifiers...)
 	if err != nil {
 		return nil, err
 	}

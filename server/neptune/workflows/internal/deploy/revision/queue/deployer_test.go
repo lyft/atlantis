@@ -68,10 +68,6 @@ func (t *testDeployActivity) GithubUpdateCheckRun(ctx context.Context, deployerR
 	return activities.UpdateCheckRunResponse{}, nil
 }
 
-func (t *testDeployActivity) AuditJob(ctx context.Context, request activities.AuditJobRequest) error {
-	return nil
-}
-
 type deployerRequest struct {
 	Info              terraform.DeploymentInfo
 	LatestDeploy      *deployment.Info

@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
@@ -31,6 +32,22 @@ func (n *testNotifier) Notify(ctx workflow.Context, info internalTerraform.Deplo
 	return nil
 }
 
+type testExternalNotifier struct {
+	expectedInfo  plugins.TerraformDeploymentInfo
+	expectedState *plugins.TerraformWorkflowState
+	expectedT     *testing.T
+	called        bool
+}
+
+func (n *testExternalNotifier) Notify(ctx workflow.Context, info plugins.TerraformDeploymentInfo, s *plugins.TerraformWorkflowState) error {
+	assert.Equal(n.expectedT, n.expectedInfo, info)
+	assert.Equal(n.expectedT, n.expectedState, s)
+
+	n.called = true
+
+	return nil
+}
+
 type stateReceiveRequest struct {
 	State          *state.Workflow
 	DeploymentInfo internalTerraform.DeploymentInfo
@@ -38,7 +55,8 @@ type stateReceiveRequest struct {
 }
 
 type stateReceiveResponse struct {
-	NotifierCalled bool
+	NotifierCalled         bool
+	ExternalNotifierCalled bool
 }
 
 func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stateReceiveResponse, error) {
@@ -53,9 +71,18 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 		expectedT:     r.T,
 	}
 
+	externalNotifier := &testExternalNotifier{
+		expectedInfo:  r.DeploymentInfo.ToExternalInfo(),
+		expectedState: r.State.ToExternalWorkflowState(),
+		expectedT:     r.T,
+	}
+
 	receiver := &internalTerraform.StateReceiver{
-		Notifiers: []internalTerraform.WorkflowNotifier{
+		InternalNotifiers: []internalTerraform.WorkflowNotifier{
 			notifier,
+		},
+		AdditionalNotifiers: []plugins.TerraformWorkflowNotifier{
+			externalNotifier,
 		},
 	}
 
@@ -66,7 +93,8 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 	receiver.Receive(ctx, ch, r.DeploymentInfo)
 
 	return stateReceiveResponse{
-		NotifierCalled: notifier.called,
+		NotifierCalled:         notifier.called,
+		ExternalNotifierCalled: externalNotifier.called,
 	}, nil
 }
 
@@ -88,7 +116,7 @@ func TestStateReceive(t *testing.T) {
 		},
 	}
 
-	t.Run("calls notifier with state", func(t *testing.T) {
+	t.Run("calls notifiers with state", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
@@ -108,6 +136,7 @@ func TestStateReceive(t *testing.T) {
 		var result stateReceiveResponse
 		err = env.GetWorkflowResult(&result)
 		assert.True(t, result.NotifierCalled)
+		assert.True(t, result.ExternalNotifierCalled)
 		assert.NoError(t, err)
 	})
 }

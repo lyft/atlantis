@@ -45,7 +45,9 @@ func TestDeployWorkflow(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
-	env.RegisterWorkflow(workflows.Deploy)
+	deployWorkflow := workflows.GetDeploy()
+
+	env.RegisterWorkflow(deployWorkflow)
 	env.RegisterWorkflow(workflows.Terraform)
 	env.RegisterWorkflow(workflows.PRRevision)
 
@@ -92,7 +94,7 @@ func TestDeployWorkflow(t *testing.T) {
 		signalWorkflow(env, revRequest)
 	}, 5*time.Second)
 
-	env.ExecuteWorkflow(workflows.Deploy, workflows.DeployRequest{
+	env.ExecuteWorkflow(deployWorkflow, workflows.DeployRequest{
 		Root: workflows.DeployRequestRoot{
 			Name: root.Name,
 		},
@@ -110,10 +112,6 @@ func TestDeployWorkflow(t *testing.T) {
 
 	// we should have output for 2 different jobs
 	assert.Len(t, s.streamCloser.CapturedJobOutput, 2)
-
-	// we should emit 3 events: IN_PROGRESS, SUCCESS, SUCCESS
-	// two success events are emitted since one happens on completion of the workflow.
-	assert.Len(t, s.snsWriter.writes, 3)
 }
 
 func signalWorkflow(env *testsuite.TestWorkflowEnvironment, revRequest workflows.DeployNewRevisionSignalRequest) {
@@ -125,7 +123,6 @@ type testSingletons struct {
 	githubClient         *testGithubClient
 	revisionSetterClient *testRevSetterClient
 	streamCloser         *testStreamCloser
-	snsWriter            *testSnsWriter
 }
 
 func buildConfig(t *testing.T) config.Config {
@@ -164,22 +161,10 @@ func buildConfig(t *testing.T) config.Config {
 	}
 }
 
-type testSnsWriter struct {
-	writes [][]byte
-}
-
-func (t *testSnsWriter) Write(p []byte) (n int, err error) {
-	t.writes = append(t.writes, p)
-	return 0, nil
-}
-
 func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment, revReq workflows.DeployNewRevisionSignalRequest) *testSingletons {
 	cfg := buildConfig(t)
 
-	snsWriter := &testSnsWriter{
-		writes: [][]byte{},
-	}
-	deployActivities, err := activities.NewDeploy(cfg.DeploymentConfig, snsWriter)
+	deployActivities, err := activities.NewDeploy(cfg.DeploymentConfig)
 
 	assert.NoError(t, err)
 
@@ -243,7 +228,6 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 		},
 		githubClient:         githubClient,
 		streamCloser:         streamCloser,
-		snsWriter:            snsWriter,
 		revisionSetterClient: revSetterClient,
 	}
 }

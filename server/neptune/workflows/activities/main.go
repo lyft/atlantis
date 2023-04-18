@@ -1,7 +1,6 @@
 package activities
 
 import (
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -43,10 +42,9 @@ const (
 // registering multiple workflows to the same worker
 type Deploy struct {
 	*dbActivities
-	*auditActivities
 }
 
-func NewDeploy(deploymentStoreCfg valid.StoreConfig, snsWriter io.Writer) (*Deploy, error) {
+func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
 	storageClient, err := storage.NewClient(deploymentStoreCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "intializing stow client")
@@ -60,9 +58,6 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig, snsWriter io.Writer) (*Depl
 	return &Deploy{
 		dbActivities: &dbActivities{
 			DeploymentInfoStore: deploymentStore,
-		},
-		auditActivities: &auditActivities{
-			SnsWriter: snsWriter,
 		},
 	}, nil
 }

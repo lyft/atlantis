@@ -1,13 +1,11 @@
 package terraform
 
 import (
-	"context"
-
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -15,18 +13,12 @@ type WorkflowNotifier interface {
 	Notify(workflow.Context, DeploymentInfo, *state.Workflow) error
 }
 
-type auditActivities interface {
-	AuditJob(ctx context.Context, request activities.AuditJobRequest) error
-}
-
-type receiverActivities interface {
-	auditActivities
-	GithubUpdateCheckRun(ctx context.Context, request activities.UpdateCheckRunRequest) (activities.UpdateCheckRunResponse, error)
-}
-
 type StateReceiver struct {
-	Activity  receiverActivities
-	Notifiers []WorkflowNotifier
+
+	// We have separate classes of notifiers since we can be more flexible with our internal ones in terms of the data model
+	// What we support externally should be well thought out so for now this is kept to a minimum.
+	InternalNotifiers   []WorkflowNotifier
+	AdditionalNotifiers []plugins.TerraformWorkflowNotifier
 }
 
 func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
@@ -37,8 +29,18 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		metrics.SignalNameTag: state.WorkflowStateChangeSignal,
 	}).Counter(metrics.SignalReceive).Inc(1)
 
-	for _, notifier := range n.Notifiers {
+	// for now we are doing these notifiers first because otherwise we'd need to version (since audit activities were moved here)
+	// TODO: Add the version clause to clean this up
+	for _, notifier := range n.AdditionalNotifiers {
+		if err := notifier.Notify(ctx, deploymentInfo.ToExternalInfo(), workflowState.ToExternalWorkflowState()); err != nil {
+			workflow.GetMetricsHandler(ctx).Counter("notifier_plugin_failure").Inc(1)
+			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
+		}
+	}
+
+	for _, notifier := range n.InternalNotifiers {
 		if err := notifier.Notify(ctx, deploymentInfo, workflowState); err != nil {
+			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
 			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
 		}
 	}

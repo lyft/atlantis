@@ -6,6 +6,7 @@ import (
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 )
 
 type JobStatus string
@@ -75,6 +76,17 @@ type Job struct {
 	EndTime          time.Time
 }
 
+func (j *Job) toExternalJob() *plugins.JobState {
+	return &plugins.JobState{
+		ID: j.ID,
+
+		// we can probably do this in a cleaner way
+		Status:    plugins.JobStatus(string(j.Status)),
+		StartTime: j.StartTime,
+		EndTime:   j.EndTime,
+	}
+}
+
 func (j Job) GetActions() JobActions {
 	if j.Status == WaitingJobStatus {
 		return j.OnWaitingActions
@@ -97,4 +109,19 @@ type Workflow struct {
 	Validate *Job
 	Apply    *Job
 	Result   WorkflowResult
+}
+
+func (w *Workflow) ToExternalWorkflowState() *plugins.TerraformWorkflowState {
+	return &plugins.TerraformWorkflowState{
+		Plan:     getExternalJob(w.Plan),
+		Apply:    getExternalJob(w.Apply),
+		Validate: getExternalJob(w.Validate),
+	}
+}
+
+func getExternalJob(j *Job) *plugins.JobState {
+	if j == nil {
+		return nil
+	}
+	return j.toExternalJob()
 }

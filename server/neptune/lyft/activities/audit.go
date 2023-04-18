@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	awsSns "github.com/aws/aws-sdk-go/service/sns"
+
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/activities/sns"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
@@ -79,6 +83,32 @@ type AuditJobRequest struct {
 	EndTime        string
 	IsForceApply   bool
 	Tags           map[string]string
+}
+
+func NewActivities(snsTopicArn string) (*Activities, error) {
+	var snsWriter io.Writer
+	if snsTopicArn != "" {
+		session, err := session.NewSession()
+		if err != nil {
+			return nil, errors.Wrap(err, "initializing new aws session")
+		}
+		snsWriter = &sns.Writer{
+			Client:   awsSns.New(session),
+			TopicArn: snsTopicArn,
+		}
+	} else {
+		snsWriter = io.Discard
+	}
+
+	return &Activities{
+		auditActivities: &auditActivities{
+			SnsWriter: snsWriter,
+		},
+	}, nil
+}
+
+type Activities struct {
+	*auditActivities
 }
 
 type auditActivities struct {

@@ -13,15 +13,15 @@ import (
 	"syscall"
 	"time"
 
-	awsSns "github.com/aws/aws-sdk-go/service/sns"
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/metrics"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
+	lyftActivities "github.com/runatlantis/atlantis/server/neptune/lyft/activities"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/notifier"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -30,12 +30,13 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/aws/sns"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"github.com/runatlantis/atlantis/server/static"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/negroni"
 	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 )
 
 const (
@@ -72,8 +73,11 @@ type Server struct {
 	TerraformActivities      *activities.Terraform
 	GithubActivities         *activities.Github
 	RevisionSetterActivities *activities.RevsionSetter
-	TerraformTaskQueue       string
-	RevisionSetterConfig     valid.RevisionSetter
+	// Temporary until we move this into our private code
+	LyftActivities       *lyftActivities.Activities
+	TerraformTaskQueue   string
+	RevisionSetterConfig valid.RevisionSetter
+	AdditionalNotifiers  []plugins.TerraformWorkflowNotifier
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -133,23 +137,11 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	//TODO: move this within the activity construction
-	// we only initialize the AWS session if we have a topic, otherwise we just drop the message,
-	// for now this is how we get around local testing without aws resources.
-	var snsWriter io.Writer
-	if config.LyftAuditJobsSnsTopicArn != "" {
-		session, err := aws.NewSession()
-		if err != nil {
-			return nil, errors.Wrap(err, "initializing new aws session")
-		}
-		snsWriter = &sns.Writer{
-			Client:   awsSns.New(session),
-			TopicArn: &config.LyftAuditJobsSnsTopicArn,
-		}
-	} else {
-		snsWriter = io.Discard
+	lyftActivities, err := lyftActivities.NewActivities(config.LyftAuditJobsSnsTopicArn)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing lyft activities")
 	}
-	deployActivities, err := activities.NewDeploy(config.DeploymentConfig, snsWriter)
+	deployActivities, err := activities.NewDeploy(config.DeploymentConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")
 	}
@@ -204,6 +196,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		RevisionSetterActivities: revisionSetterActivities,
 		TerraformTaskQueue:       config.TemporalCfg.TerraformTaskQueue,
 		RevisionSetterConfig:     config.RevisionSetter,
+		LyftActivities:           lyftActivities,
 	}
 	return &server, nil
 }
@@ -345,8 +338,23 @@ func (s Server) buildDeployWorker() worker.Worker {
 	})
 	deployWorker.RegisterActivity(s.DeployActivities)
 	deployWorker.RegisterActivity(s.GithubActivities)
+	deployWorker.RegisterActivity(s.LyftActivities)
 	deployWorker.RegisterActivity(s.TerraformActivities)
-	deployWorker.RegisterWorkflow(workflows.Deploy)
+	deployWorker.RegisterWorkflowWithOptions(workflows.GetDeployWithPlugins(
+		func(ctx workflow.Context, dr workflows.DeployRequest) (plugins.Deploy, error) {
+			var a *lyftActivities.Activities
+
+			return plugins.Deploy{
+				Notifiers: []plugins.TerraformWorkflowNotifier{
+					&notifier.SNSNotifier{
+						Activity: a,
+					},
+				},
+			}, nil
+		},
+	), workflow.RegisterOptions{
+		Name: workflows.Deploy,
+	})
 	deployWorker.RegisterWorkflow(workflows.Terraform)
 	return deployWorker
 }

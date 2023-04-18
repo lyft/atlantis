@@ -1,13 +1,11 @@
 package notifier_test
 
 import (
-	"context"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
@@ -30,10 +28,6 @@ func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID s
 	assert.Equal(t.expectedT, t.expectedDeploymentID, deploymentID)
 
 	return 1, nil
-}
-
-func (a *testActivities) AuditJob(ctx context.Context, request activities.AuditJobRequest) error {
-	return nil
 }
 
 type checkrunNotifierRequest struct {

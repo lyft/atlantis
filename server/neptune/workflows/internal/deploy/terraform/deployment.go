@@ -6,6 +6,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 
 	"github.com/google/uuid"
 )
@@ -18,6 +19,17 @@ type DeploymentInfo struct {
 	Root           terraform.Root
 	Repo           github.Repo
 	Tags           map[string]string
+}
+
+func (i DeploymentInfo) ToExternalInfo() plugins.TerraformDeploymentInfo {
+	return plugins.TerraformDeploymentInfo{
+		ID:             i.ID,
+		Commit:         i.Commit,
+		InitiatingUser: i.InitiatingUser,
+		Root:           i.Root,
+		Repo:           i.Repo,
+		Tags:           i.Tags,
+	}
 }
 
 func (i DeploymentInfo) BuildPersistableInfo() *deployment.Info {

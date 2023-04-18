@@ -3,10 +3,9 @@ package notifier
 import (
 	"context"
 
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/activities"
 	t "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/workflow"
 
 	"strconv"
@@ -20,7 +19,7 @@ type SNSNotifier struct {
 	Activity auditActivity
 }
 
-func (n *SNSNotifier) Notify(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo, workflowState *state.Workflow) error {
+func (n *SNSNotifier) Notify(ctx workflow.Context, deploymentInfo plugins.TerraformDeploymentInfo, workflowState *plugins.TerraformWorkflowState) error {
 	if workflowState.Apply == nil {
 		return nil
 	}
@@ -32,12 +31,12 @@ func (n *SNSNotifier) Notify(ctx workflow.Context, deploymentInfo terraform.Depl
 
 	var endTime string
 	switch jobState.Status {
-	case state.InProgressJobStatus:
+	case plugins.InProgressJobStatus:
 		atlantisJobState = activities.AtlantisJobStateRunning
-	case state.SuccessJobStatus:
+	case plugins.SuccessJobStatus:
 		atlantisJobState = activities.AtlantisJobStateSuccess
 		endTime = strconv.FormatInt(jobState.EndTime.Unix(), 10)
-	case state.FailedJobStatus:
+	case plugins.FailedJobStatus:
 		atlantisJobState = activities.AtlantisJobStateFailure
 		endTime = strconv.FormatInt(jobState.EndTime.Unix(), 10)
 

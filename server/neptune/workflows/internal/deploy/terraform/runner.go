@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -36,12 +37,12 @@ type stateReceiver interface {
 	Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
 }
 
-func NewWorkflowRunner(a receiverActivities, w Workflow, notifiers ...WorkflowNotifier) *WorkflowRunner {
+func NewWorkflowRunner(w Workflow, internalNotifiers []WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *WorkflowRunner {
 	return &WorkflowRunner{
 		Workflow: w,
 		StateReceiver: &StateReceiver{
-			Activity:  a,
-			Notifiers: notifiers,
+			InternalNotifiers:   internalNotifiers,
+			AdditionalNotifiers: additionalNotifiers,
 		},
 	}
 }

@@ -1,7 +1,6 @@
 package queue
 
 import (
-	"context"
 	"fmt"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
@@ -10,12 +9,12 @@ import (
 
 	"github.com/pkg/errors"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -33,7 +32,6 @@ type deployer interface {
 
 type workerActivities interface {
 	deployerActivities
-	AuditJob(ctx context.Context, request activities.AuditJobRequest) error
 }
 
 type WorkerState string
@@ -88,16 +86,15 @@ func NewWorker(
 	prRevWorkflow Workflow,
 	repoName, rootName string,
 	githubCheckRunCache CheckRunClient,
+	additionalNotifiers ...plugins.TerraformWorkflowNotifier,
 ) (*Worker, error) {
-	checkRunNotifier := &notifier.CheckRunNotifier{
-		CheckRunSessionCache: githubCheckRunCache,
+	notifiers := []terraform.WorkflowNotifier{
+		&notifier.CheckRunNotifier{
+			CheckRunSessionCache: githubCheckRunCache,
+		},
 	}
 
-	snsNotifier := &notifier.SNSNotifier{
-		Activity: a,
-	}
-
-	tfWorkflowRunner := terraform.NewWorkflowRunner(a, tfWorkflow, snsNotifier, checkRunNotifier)
+	tfWorkflowRunner := terraform.NewWorkflowRunner(tfWorkflow, notifiers, additionalNotifiers...)
 	deployer := &Deployer{
 		Activities:              a,
 		TerraformWorkflowRunner: tfWorkflowRunner,
