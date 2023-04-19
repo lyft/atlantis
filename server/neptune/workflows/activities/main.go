@@ -82,6 +82,12 @@ type TerraformOptions struct {
 	GitCredentialsRefresher gitCredentialsRefresher
 }
 
+type PolicySet struct {
+	Name  string
+	Owner string
+	Paths []string
+}
+
 func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.ValidationConfig, ghAppConfig githubapp.Config, dataDir string, serverURL *url.URL, taskQueue string, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
@@ -258,12 +264,6 @@ func NewRevisionSetterWithClient(client revisionSetterClient, cfg valid.Revision
 			basicAuth: cfg.BasicAuth,
 		},
 	}, nil
-}
-
-type PolicySet struct {
-	Name  string
-	Owner string
-	Paths []string
 }
 
 func convertPolicies(policies []valid.PolicySet) []PolicySet {
