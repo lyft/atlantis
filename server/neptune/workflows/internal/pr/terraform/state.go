@@ -15,7 +15,6 @@ type WorkflowNotifier interface {
 
 type StateReceiver struct {
 	InternalNotifiers []WorkflowNotifier
-	//TODO: support additional notifiers?
 }
 
 func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, prRootInfo PRRootInfo) {
