@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"net/url"
 	"testing"
 	"time"
@@ -96,7 +97,8 @@ func (a *terraformActivities) GetWorkerInfo(ctx context.Context) (*activities.Ge
 }
 
 type jobRunner struct {
-	expectedError error
+	validateResults []activities.ValidationResult
+	expectedError   error
 }
 
 func (r *jobRunner) Apply(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, planFile string) error {
@@ -104,7 +106,7 @@ func (r *jobRunner) Apply(ctx workflow.Context, localRoot *terraformModel.LocalR
 }
 
 func (r *jobRunner) Validate(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, showFile string) ([]activities.ValidationResult, error) {
-	return nil, r.expectedError
+	return r.validateResults, r.expectedError
 }
 
 func (r *jobRunner) Plan(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, workflowMode terraformModel.WorkflowMode) (activities.TerraformPlanResponse, error) {
@@ -123,6 +125,7 @@ type request struct {
 	// bool since our errors are not serializable using json
 	ShouldErrorDuringJobUpdate bool
 	WorkflowMode               terraformModel.WorkflowMode
+	ValidateResults            []activities.ValidationResult
 }
 
 type response struct {
@@ -142,7 +145,8 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 
 	var expectedError error
 	runner := &jobRunner{
-		expectedError: expectedError,
+		expectedError:   expectedError,
+		validateResults: req.ValidateResults,
 	}
 
 	var s []state.Workflow
@@ -489,6 +493,12 @@ func TestSuccess_PRMode(t *testing.T) {
 	// execute workflow
 	env.ExecuteWorkflow(testTerraformWorkflow, request{
 		WorkflowMode: terraformModel.PR,
+		ValidateResults: []activities.ValidationResult{
+			{
+				Status:    activities.Success,
+				PolicySet: valid.PolicySet{},
+			},
+		},
 	})
 	assert.True(t, env.IsWorkflowCompleted())
 
@@ -574,6 +584,150 @@ func TestSuccess_PRMode(t *testing.T) {
 			},
 			Validate: &state.Job{
 				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Result: state.WorkflowResult{
+				Reason: state.SuccessfulCompletionReason,
+				Status: state.CompleteWorkflowStatus,
+			},
+		},
+	}, resp.States)
+}
+
+func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	ga := &githubActivities{}
+	ta := &terraformActivities{}
+	env.RegisterActivity(ga)
+	env.RegisterActivity(ta)
+
+	outputURL, err := url.Parse("www.test.com/jobs/1235")
+	assert.NoError(t, err)
+
+	// set activity expectations
+	env.OnActivity(ga.GithubFetchRoot, mock.MatchedBy(func(ctx context.Context) bool {
+		info := activity.GetInfo(ctx)
+
+		assert.Equal(t, "taskqueue", info.TaskQueue)
+		assert.Equal(t, 1*time.Minute, info.HeartbeatTimeout)
+
+		return true
+	}), activities.FetchRootRequest{
+		Repo:         testGithubRepo,
+		Root:         testLocalRoot.Root,
+		DeploymentID: testDeploymentID,
+	}).Return(activities.FetchRootResponse{
+		LocalRoot:       testLocalRoot,
+		DeployDirectory: DeployDir,
+	}, nil)
+	env.OnActivity(ta.Cleanup, mock.Anything, activities.CleanupRequest{
+		DeployDirectory: DeployDir,
+	}).Return(activities.CleanupResponse{}, nil)
+
+	// send approval of plan
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow("planreview", gate.PlanReviewSignalRequest{
+			Status: gate.Approved,
+		})
+	}, 5*time.Second)
+
+	// execute workflow
+	env.ExecuteWorkflow(testTerraformWorkflow, request{
+		WorkflowMode: terraformModel.PR,
+		ValidateResults: []activities.ValidationResult{
+			{
+				Status:    activities.Fail,
+				PolicySet: valid.PolicySet{},
+			},
+		},
+	})
+	assert.True(t, env.IsWorkflowCompleted())
+
+	var resp response
+	err = env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	// assert results are expected
+	env.AssertExpectations(t)
+	assert.Equal(t, []state.Workflow{
+		{
+			Plan: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.InProgressJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Validate: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Validate: &state.Job{
+				Status: state.InProgressJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Validate: &state.Job{
+				Status: state.FailedJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+			Validate: &state.Job{
+				Status: state.FailedJobStatus,
 				Output: &state.JobOutput{
 					URL: outputURL,
 				},
