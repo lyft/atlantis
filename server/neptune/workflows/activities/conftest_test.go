@@ -2,7 +2,6 @@ package activities
 
 import (
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
@@ -86,12 +85,10 @@ func TestConftest_RequestValidation(t *testing.T) {
 				ShowFile:    "some/path/output.json",
 			}
 
-			policySets := valid.PolicySets{
-				PolicySets: []valid.PolicySet{
-					{
-						Name:  "policy1",
-						Paths: []string{"path/one", "path/two"},
-					},
+			policySets := []PolicySet{
+				{
+					Name:  "policy1",
+					Paths: []string{"path/one", "path/two"},
 				},
 			}
 			activity := conftestActivity{
@@ -161,12 +158,10 @@ func TestConftest_StreamsOutput(t *testing.T) {
 		expectedJobID: jobID,
 	}
 
-	policySets := valid.PolicySets{
-		PolicySets: []valid.PolicySet{
-			{
-				Name:  "policy1",
-				Paths: []string{"path/one", "path/two"},
-			},
+	policySets := []PolicySet{
+		{
+			Name:  "policy1",
+			Paths: []string{"path/one", "path/two"},
 		},
 	}
 	activity := conftestActivity{

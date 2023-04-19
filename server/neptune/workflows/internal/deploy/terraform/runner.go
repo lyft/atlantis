@@ -31,7 +31,7 @@ func (e PlanRejectionError) Error() string {
 	return e.msg
 }
 
-type Workflow func(ctx workflow.Context, request terraform.Request) error
+type Workflow func(ctx workflow.Context, request terraform.Request) (terraform.Response, error)
 
 type stateReceiver interface {
 	Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)

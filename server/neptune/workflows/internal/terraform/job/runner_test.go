@@ -120,7 +120,8 @@ func testJobValidateWorkflow(ctx workflow.Context, r terraform.Request) error {
 
 	var a *testTerraformActivity
 	jobRunner := job.NewRunner(&job.CmdStepRunner{}, &job.EnvStepRunner{}, a)
-	return jobRunner.Validate(ctx, &localRoot, JobID, "")
+	_, err := jobRunner.Validate(ctx, &localRoot, JobID, "")
+	return err
 }
 
 func TestJobRunner_Plan(t *testing.T) {
