@@ -179,7 +179,7 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 	})
 
 	request := notifier.GithubCheckRunRequest{
-		Title:   notifier.BuildCheckRunTitle("deploy", deployRequest.Root.Name),
+		Title:   notifier.BuildDeployCheckRunTitle(deployRequest.Root.Name),
 		Sha:     deployRequest.Commit.Revision,
 		State:   state,
 		Repo:    deployRequest.Repo,

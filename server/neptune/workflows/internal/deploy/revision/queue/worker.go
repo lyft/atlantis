@@ -91,7 +91,7 @@ func NewWorker(
 	notifiers := []terraform.WorkflowNotifier{
 		&notifier.CheckRunNotifier{
 			CheckRunSessionCache: githubCheckRunCache,
-			Mode:                 "deploy",
+			Mode:                 notifier.Deploy,
 		},
 	}
 

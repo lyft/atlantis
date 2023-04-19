@@ -34,7 +34,7 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 
 	for _, i := range infos {
 		request := notifier.GithubCheckRunRequest{
-			Title:   notifier.BuildCheckRunTitle("deploy", i.Root.Name),
+			Title:   notifier.BuildDeployCheckRunTitle(i.Root.Name),
 			Sha:     i.Commit.Revision,
 			State:   state,
 			Repo:    i.Repo,

@@ -126,9 +126,16 @@ type checkRunClient interface {
 	CreateOrUpdate(ctx workflow.Context, deploymentID string, request GithubCheckRunRequest) (int64, error)
 }
 
+type Mode int
+
+const (
+	Deploy Mode = iota
+	PR
+)
+
 type CheckRunNotifier struct {
 	CheckRunSessionCache checkRunClient
-	Mode                 string
+	Mode                 Mode
 }
 
 type Info struct {
@@ -146,8 +153,15 @@ func (n *CheckRunNotifier) updateCheckRun(ctx workflow.Context, workflowState *s
 	summary := markdown.RenderWorkflowStateTmpl(workflowState)
 	checkRunState := determineCheckRunState(workflowState)
 
+	var title string
+	if n.Mode == Deploy {
+		title = BuildDeployCheckRunTitle(info.RootName)
+	} else {
+		title = BuildPlanCheckRunTitle(info.RootName)
+	}
+
 	request := GithubCheckRunRequest{
-		Title:   BuildCheckRunTitle(n.Mode, info.RootName),
+		Title:   title,
 		Sha:     info.Commit.Revision,
 		State:   checkRunState,
 		Repo:    info.Repo,
@@ -205,6 +219,10 @@ func waitingForActionOn(job *state.Job) bool {
 	return job != nil && job.Status == state.WaitingJobStatus && len(job.OnWaitingActions.Actions) > 0
 }
 
-func BuildCheckRunTitle(mode string, rootName string) string {
-	return fmt.Sprintf("atlantis/%s: %s", mode, rootName)
+func BuildDeployCheckRunTitle(rootName string) string {
+	return fmt.Sprintf("atlantis/deploy: %s", rootName)
+}
+
+func BuildPlanCheckRunTitle(rootName string) string {
+	return fmt.Sprintf("atlantis/plan: %s", rootName)
 }

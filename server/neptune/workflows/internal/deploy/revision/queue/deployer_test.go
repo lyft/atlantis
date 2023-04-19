@@ -400,7 +400,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 			Info:         deploymentInfo,
 			LatestDeploy: latestDeployedRevision,
 			ExpectedGHRequest: notifier.GithubCheckRunRequest{
-				Title:   notifier.BuildCheckRunTitle("deploy", deploymentInfo.Root.Name),
+				Title:   notifier.BuildDeployCheckRunTitle(deploymentInfo.Root.Name),
 				State:   github.CheckRunFailure,
 				Repo:    repo,
 				Summary: queue.DirectionBehindSummary,
@@ -439,7 +439,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 				Info:         deploymentInfo,
 				LatestDeploy: latestDeployedRevision,
 				ExpectedGHRequest: notifier.GithubCheckRunRequest{
-					Title:   notifier.BuildCheckRunTitle("deploy", deploymentInfo.Root.Name),
+					Title:   notifier.BuildDeployCheckRunTitle(deploymentInfo.Root.Name),
 					State:   github.CheckRunFailure,
 					Repo:    repo,
 					Summary: queue.RerunNotIdenticalSummary,

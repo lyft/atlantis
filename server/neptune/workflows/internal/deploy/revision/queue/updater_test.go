@@ -54,7 +54,7 @@ func TestLockStateUpdater_unlocked_new_version(t *testing.T) {
 	}
 
 	updateCheckRunRequest := activities.UpdateCheckRunRequest{
-		Title: notifier.BuildCheckRunTitle("deploy", info.Root.Name),
+		Title: notifier.BuildDeployCheckRunTitle(info.Root.Name),
 		State: github.CheckRunQueued,
 		Repo:  info.Repo,
 		ID:    info.CheckRunID,
@@ -65,7 +65,7 @@ func TestLockStateUpdater_unlocked_new_version(t *testing.T) {
 	env.ExecuteWorkflow(testUpdaterWorkflow, updaterReq{
 		Queue: []terraform.DeploymentInfo{info},
 		ExpectedRequest: notifier.GithubCheckRunRequest{
-			Title: notifier.BuildCheckRunTitle("deploy", info.Root.Name),
+			Title: notifier.BuildDeployCheckRunTitle(info.Root.Name),
 			State: github.CheckRunQueued,
 			Repo:  info.Repo,
 			Sha:   info.Commit.Revision,
@@ -103,7 +103,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 	}
 
 	updateCheckRunRequest := activities.UpdateCheckRunRequest{
-		Title:   notifier.BuildCheckRunTitle("deploy", info.Root.Name),
+		Title:   notifier.BuildDeployCheckRunTitle(info.Root.Name),
 		State:   github.CheckRunActionRequired,
 		Repo:    info.Repo,
 		ID:      info.CheckRunID,
@@ -122,7 +122,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 			Revision: "1234",
 		},
 		ExpectedRequest: notifier.GithubCheckRunRequest{
-			Title:   notifier.BuildCheckRunTitle("deploy", info.Root.Name),
+			Title:   notifier.BuildDeployCheckRunTitle(info.Root.Name),
 			State:   github.CheckRunActionRequired,
 			Repo:    info.Repo,
 			Summary: "This deploy is locked from a manual deployment for revision [1234](https://github.com/some-org/some-repo/commit/1234).  Unlock to proceed.",

@@ -146,7 +146,7 @@ func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, roo
 	}
 
 	cid, err := n.checkRunClient.CreateOrUpdate(ctx, id, notifier.GithubCheckRunRequest{
-		Title:   notifier.BuildCheckRunTitle("deploy", root.Name),
+		Title:   notifier.BuildDeployCheckRunTitle(root.Name),
 		Sha:     revision,
 		Repo:    repo,
 		Summary: summary,
