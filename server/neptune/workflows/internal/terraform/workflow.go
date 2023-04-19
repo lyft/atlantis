@@ -176,18 +176,27 @@ func (r *Runner) Validate(ctx workflow.Context, root *terraform.LocalRoot, serve
 	if err := r.Store.UpdateValidateJobWithStatus(state.InProgressJobStatus, state.UpdateOptions{
 		StartTime: time.Now(),
 	}); err != nil {
-		return nil, newUpdateJobError(err, "unable to update job with success status")
+		return nil, newUpdateJobError(err, "unable to update job with in-progress status")
 	}
 
 	validateResults, err := r.JobRunner.Validate(ctx, root, jobID.String(), showFile)
 	if err != nil {
-		if err := r.Store.UpdateValidateJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
+		if e := r.Store.UpdateValidateJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
 			EndTime: time.Now(),
-		}); err != nil {
+		}); e != nil {
 			// not returning UpdateJobError here since we want to surface the job failure itself
-			workflow.GetLogger(ctx).Error("unable to update job with failed status, job failed with error. ", key.ErrKey, err)
+			workflow.GetLogger(ctx).Error("unable to update job with failed status, job failed with error. ", key.ErrKey, e)
 		}
 		return nil, errors.Wrap(err, "running job")
+	}
+
+	if containsFailure(validateResults) {
+		if e := r.Store.UpdateValidateJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
+			EndTime: time.Now(),
+		}); e != nil {
+			return nil, newUpdateJobError(e, "unable to update job with failed status")
+		}
+		return validateResults, nil
 	}
 
 	if err := r.Store.UpdateValidateJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
@@ -197,6 +206,15 @@ func (r *Runner) Validate(ctx workflow.Context, root *terraform.LocalRoot, serve
 	}
 
 	return validateResults, nil
+}
+
+func containsFailure(results []activities.ValidationResult) bool {
+	for _, result := range results {
+		if result.Status == activities.Fail {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverURL fmt.Stringer, planResponse activities.TerraformPlanResponse) error {
