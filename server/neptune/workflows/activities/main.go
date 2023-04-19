@@ -158,6 +158,8 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 		return nil, err
 	}
 
+	policies := convertPolicies(validationConfig.Policies.PolicySets)
+
 	return &Terraform{
 		executeCommandActivities: &executeCommandActivities{},
 		workerInfoActivity: &workerInfoActivity{
@@ -177,7 +179,7 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 			DefaultConftestVersion: defaultConftestVersion,
 			ConftestClient:         conftestClient,
 			StreamHandler:          streamHandler,
-			Policies:               validationConfig.Policies,
+			Policies:               policies,
 			FileValidator:          &file.Validator{},
 		},
 		jobActivities: &jobActivities{
@@ -256,4 +258,22 @@ func NewRevisionSetterWithClient(client revisionSetterClient, cfg valid.Revision
 			basicAuth: cfg.BasicAuth,
 		},
 	}, nil
+}
+
+type PolicySet struct {
+	Name  string
+	Owner string
+	Paths []string
+}
+
+func convertPolicies(policies []valid.PolicySet) []PolicySet {
+	var convertedPolicies []PolicySet
+	for _, policy := range policies {
+		convertedPolicies = append(convertedPolicies, PolicySet{
+			Name:  policy.Name,
+			Owner: policy.Owner,
+			Paths: policy.Paths,
+		})
+	}
+	return convertedPolicies
 }

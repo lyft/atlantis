@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"net/url"
 	"testing"
 	"time"
@@ -496,7 +495,7 @@ func TestSuccess_PRMode(t *testing.T) {
 		ValidateResults: []activities.ValidationResult{
 			{
 				Status:    activities.Success,
-				PolicySet: valid.PolicySet{},
+				PolicySet: activities.PolicySet{},
 			},
 		},
 	})
@@ -640,7 +639,7 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 		ValidateResults: []activities.ValidationResult{
 			{
 				Status:    activities.Fail,
-				PolicySet: valid.PolicySet{},
+				PolicySet: activities.PolicySet{},
 			},
 		},
 	})

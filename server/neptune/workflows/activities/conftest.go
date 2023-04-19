@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
 	"go.temporal.io/sdk/activity"
@@ -28,7 +27,7 @@ type conftestActivity struct {
 	DefaultConftestVersion *version.Version
 	ConftestClient         asyncClient
 	StreamHandler          streamer
-	Policies               valid.PolicySets
+	Policies               []PolicySet
 	FileValidator          fileValidator
 }
 
@@ -50,7 +49,7 @@ const (
 
 type ValidationResult struct {
 	Status    ValidationStatus
-	PolicySet valid.PolicySet
+	PolicySet PolicySet
 }
 
 type ConftestResponse struct {
@@ -77,7 +76,7 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 	var validationResults []ValidationResult
 
 	// run each policy separately to track which pass and fail
-	for _, policy := range c.Policies.PolicySets {
+	for _, policy := range c.Policies {
 		// add paths as arguments
 		var policyArgs []command.Argument
 		for _, path := range policy.Paths {
@@ -141,7 +140,7 @@ func (c *conftestActivity) sanitizeOutput(inputFile string, output string) strin
 	return strings.Replace(output, inputFile, "<redacted plan file>", -1)
 }
 
-func (c *conftestActivity) processOutput(output string, policySet valid.PolicySet, err error) string {
+func (c *conftestActivity) processOutput(output string, policySet PolicySet, err error) string {
 	// errored results need an extra newline
 	if err != nil {
 		return policySet.Name + ":\n" + output
