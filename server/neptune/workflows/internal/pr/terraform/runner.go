@@ -30,7 +30,7 @@ type WorkflowRunner struct {
 	Workflow      Workflow
 }
 
-func (r *WorkflowRunner) Run(ctx workflow.Context, prRootInfo PRRootInfo) (map[string]activities.PolicySet, error) {
+func (r *WorkflowRunner) Run(ctx workflow.Context, prRootInfo PRRootInfo) ([]activities.PolicySet, error) {
 	id := prRootInfo.ID
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		WorkflowID: id.String(),
@@ -60,7 +60,7 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, prRootInfo PRRootInfo) (map[s
 	return r.awaitWorkflow(ctx, future, prRootInfo)
 }
 
-func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.ChildWorkflowFuture, prInfo PRRootInfo) (map[string]activities.PolicySet, error) {
+func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.ChildWorkflowFuture, prInfo PRRootInfo) ([]activities.PolicySet, error) {
 	selector := workflow.NewNamedSelector(ctx, "TerraformChildWorkflow")
 	ch := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
 	selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {
@@ -68,14 +68,14 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 	})
 	var workflowComplete bool
 	var err error
-	failedPolicies := make(map[string]activities.PolicySet)
+	var failedPolicies []activities.PolicySet
 	selector.AddFuture(future, func(f workflow.Future) {
 		workflowComplete = true
 		var resp terraform.Response
 		err = f.Get(ctx, &resp)
 		for _, result := range resp.ValidationResults {
 			if result.Status == activities.Fail {
-				failedPolicies[result.PolicySet.Name] = result.PolicySet
+				failedPolicies = append(failedPolicies, result.PolicySet)
 			}
 		}
 	})
