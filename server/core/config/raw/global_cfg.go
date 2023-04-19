@@ -76,6 +76,7 @@ type Repo struct {
 	AllowCustomWorkflows        *bool             `yaml:"allow_custom_workflows,omitempty" json:"allow_custom_workflows,omitempty"`
 	TemplateOverrides           map[string]string `yaml:"template_overrides,omitempty" json:"template_overrides,omitempty"`
 	CheckoutStrategy            string            `yaml:"checkout_strategy,omitempty" json:"checkout_strategy,omitempty"`
+	ApplySettings               ApplySettings     `yaml:"apply_settings" json:"apply_settings"`
 }
 
 func (g GlobalCfg) GetWorkflowNames() []string {
@@ -259,6 +260,7 @@ func (r Repo) Validate() error {
 		validation.Field(&r.Workflow, validation.By(workflowExists)),
 		validation.Field(&r.PullRequestWorkflow, validation.By(workflowExists)),
 		validation.Field(&r.DeploymentWorkflow, validation.By(workflowExists)),
+		validation.Field(&r.ApplySettings),
 	)
 }
 
@@ -354,6 +356,7 @@ OUTER:
 		AllowCustomWorkflows:        r.AllowCustomWorkflows,
 		TemplateOverrides:           r.TemplateOverrides,
 		CheckoutStrategy:            checkoutStrategy,
+		ApplySettings:               r.ApplySettings.ToValid(),
 	}
 }
 
