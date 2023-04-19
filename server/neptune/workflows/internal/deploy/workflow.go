@@ -1,11 +1,11 @@
 package deploy
 
 import (
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"

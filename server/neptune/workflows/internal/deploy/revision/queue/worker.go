@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
@@ -11,7 +12,6 @@ import (
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
@@ -91,6 +91,7 @@ func NewWorker(
 	notifiers := []terraform.WorkflowNotifier{
 		&notifier.CheckRunNotifier{
 			CheckRunSessionCache: githubCheckRunCache,
+			Mode:                 tfModel.Deploy,
 		},
 	}
 

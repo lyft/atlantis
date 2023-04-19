@@ -2,12 +2,12 @@ package notifier_test
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"testing"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"

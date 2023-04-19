@@ -1,13 +1,13 @@
 package revision_test
 
 import (
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"

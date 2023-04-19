@@ -1,6 +1,7 @@
 package terraform_test
 
 import (
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"net/url"
 	"testing"
 	"time"
@@ -17,13 +18,13 @@ import (
 )
 
 type testNotifier struct {
-	expectedInfo  internalTerraform.DeploymentInfo
+	expectedInfo  notifier.Info
 	expectedState *state.Workflow
 	expectedT     *testing.T
 	called        bool
 }
 
-func (n *testNotifier) Notify(ctx workflow.Context, info internalTerraform.DeploymentInfo, s *state.Workflow) error {
+func (n *testNotifier) Notify(ctx workflow.Context, info notifier.Info, s *state.Workflow) error {
 	assert.Equal(n.expectedT, n.expectedInfo, info)
 	assert.Equal(n.expectedT, n.expectedState, s)
 
@@ -66,7 +67,7 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 	ch := workflow.NewChannel(ctx)
 
 	notifier := &testNotifier{
-		expectedInfo:  r.DeploymentInfo,
+		expectedInfo:  r.DeploymentInfo.ToInternalInfo(),
 		expectedState: r.State,
 		expectedT:     r.T,
 	}

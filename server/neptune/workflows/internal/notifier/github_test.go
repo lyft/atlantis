@@ -1,6 +1,7 @@
 package notifier_test
 
 import (
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"net/url"
 	"testing"
 	"time"
@@ -9,8 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
-	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
@@ -32,7 +31,7 @@ func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID s
 
 type checkrunNotifierRequest struct {
 	StatesToSend    []*state.Workflow
-	DeploymentInfo  internalTerraform.DeploymentInfo
+	NotifierInfo    notifier.Info
 	ExpectedRequest notifier.GithubCheckRunRequest
 	T               *testing.T
 }
@@ -50,7 +49,7 @@ func testCheckRunNotifier(ctx workflow.Context, r checkrunNotifierRequest) error
 	}
 
 	for _, s := range r.StatesToSend {
-		if err := notifier.Notify(ctx, r.DeploymentInfo, s); err != nil {
+		if err := notifier.Notify(ctx, r.NotifierInfo, s); err != nil {
 			return err
 		}
 	}
@@ -71,14 +70,13 @@ func TestCheckRunNotifier(t *testing.T) {
 
 	stTime := time.Now()
 	endTime := stTime.Add(time.Second * 5)
-	internalDeploymentInfo := internalTerraform.DeploymentInfo{
-		CheckRunID: 1,
-		ID:         uuid.New(),
-		Root:       terraform.Root{Name: "root"},
-		Repo:       github.Repo{Name: "hello"},
+	notifierInfo := notifier.Info{
+		ID:   uuid.New(),
+		Repo: github.Repo{Name: "hello"},
 		Commit: github.Commit{
 			Revision: "12345",
 		},
+		RootName: "root",
 	}
 
 	cases := []struct {
@@ -375,11 +373,11 @@ func TestCheckRunNotifier(t *testing.T) {
 			env.RegisterActivity(a)
 
 			env.ExecuteWorkflow(testCheckRunNotifier, checkrunNotifierRequest{
-				StatesToSend:   []*state.Workflow{c.State},
-				DeploymentInfo: internalDeploymentInfo,
+				StatesToSend: []*state.Workflow{c.State},
+				NotifierInfo: notifierInfo,
 				ExpectedRequest: notifier.GithubCheckRunRequest{
 					Title: "atlantis/deploy: root",
-					Sha:   internalDeploymentInfo.Commit.Revision,
+					Sha:   notifierInfo.Commit.Revision,
 					State: c.ExpectedCheckRunState,
 					Repo: github.Repo{
 						Name: "hello",

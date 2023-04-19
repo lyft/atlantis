@@ -3,6 +3,7 @@ package revision
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
@@ -11,7 +12,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	activity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request/converter"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
@@ -146,7 +146,7 @@ func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, roo
 	}
 
 	cid, err := n.checkRunClient.CreateOrUpdate(ctx, id, notifier.GithubCheckRunRequest{
-		Title:   terraform.BuildCheckRunTitle(root.Name),
+		Title:   notifier.BuildDeployCheckRunTitle(root.Name),
 		Sha:     revision,
 		Repo:    repo,
 		Summary: summary,

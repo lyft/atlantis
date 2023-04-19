@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"testing"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	model "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
@@ -400,7 +400,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 			Info:         deploymentInfo,
 			LatestDeploy: latestDeployedRevision,
 			ExpectedGHRequest: notifier.GithubCheckRunRequest{
-				Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
+				Title:   notifier.BuildDeployCheckRunTitle(deploymentInfo.Root.Name),
 				State:   github.CheckRunFailure,
 				Repo:    repo,
 				Summary: queue.DirectionBehindSummary,
@@ -439,7 +439,7 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 				Info:         deploymentInfo,
 				LatestDeploy: latestDeployedRevision,
 				ExpectedGHRequest: notifier.GithubCheckRunRequest{
-					Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
+					Title:   notifier.BuildDeployCheckRunTitle(deploymentInfo.Root.Name),
 					State:   github.CheckRunFailure,
 					Repo:    repo,
 					Summary: queue.RerunNotIdenticalSummary,
