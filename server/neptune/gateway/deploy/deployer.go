@@ -50,8 +50,7 @@ type RootDeployOptions struct {
 	// TODO: Remove this from this struct, consumers shouldn't need to know about this
 	// instead we should just inject implementations of RepoFetcher to handle different scenarios
 	RepoFetcherOptions *github.RepoFetcherOptions
-	Trigger            workflows.Trigger
-	Rerun              bool
+	TriggerInfo        workflows.DeployTriggerInfo
 }
 
 func (d *RootDeployer) Deploy(ctx context.Context, deployOptions RootDeployOptions) error {

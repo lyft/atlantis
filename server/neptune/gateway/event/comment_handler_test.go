@@ -169,7 +169,10 @@ func TestCommentEventWorkerProxy_HandleForceApply_BothModes(t *testing.T) {
 			OptionalPullNum:   testPull.Num,
 			Sender:            commentEvent.User,
 			InstallationToken: commentEvent.InstallationToken,
-			Trigger:           workflows.ManualTrigger,
+			TriggerInfo: workflows.DeployTriggerInfo{
+				Type:  workflows.ManualTrigger,
+				Force: true,
+			},
 		},
 	}
 	commentCreator := &mockCommentCreator{}
@@ -243,7 +246,10 @@ func TestCommentEventWorkerProxy_HandleForceApply_AllPlatform(t *testing.T) {
 			OptionalPullNum:   testPull.Num,
 			Sender:            commentEvent.User,
 			InstallationToken: commentEvent.InstallationToken,
-			Trigger:           workflows.ManualTrigger,
+			TriggerInfo: workflows.DeployTriggerInfo{
+				Type:  workflows.ManualTrigger,
+				Force: true,
+			},
 		},
 	}
 	commentCreator := &mockCommentCreator{
