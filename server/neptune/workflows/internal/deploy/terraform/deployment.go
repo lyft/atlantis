@@ -1,7 +1,7 @@
 package terraform
 
 import (
-	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -49,6 +49,11 @@ func (i DeploymentInfo) BuildPersistableInfo() *deployment.Info {
 	}
 }
 
-func BuildCheckRunTitle(rootName string) string {
-	return fmt.Sprintf("atlantis/deploy: %s", rootName)
+func (i DeploymentInfo) ToInternalInfo() notifier.Info {
+	return notifier.Info{
+		ID:       i.ID,
+		Commit:   i.Commit,
+		RootName: i.Root.Name,
+		Repo:     i.Repo,
+	}
 }

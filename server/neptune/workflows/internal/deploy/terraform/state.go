@@ -3,6 +3,7 @@ package terraform
 import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
@@ -10,7 +11,7 @@ import (
 )
 
 type WorkflowNotifier interface {
-	Notify(workflow.Context, DeploymentInfo, *state.Workflow) error
+	Notify(workflow.Context, notifier.Info, *state.Workflow) error
 }
 
 type StateReceiver struct {
@@ -39,7 +40,7 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 	}
 
 	for _, notifier := range n.InternalNotifiers {
-		if err := notifier.Notify(ctx, deploymentInfo, workflowState); err != nil {
+		if err := notifier.Notify(ctx, deploymentInfo.ToInternalInfo(), workflowState); err != nil {
 			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
 			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
 		}

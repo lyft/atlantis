@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
@@ -179,7 +179,7 @@ func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformW
 	})
 
 	request := notifier.GithubCheckRunRequest{
-		Title:   terraformWorkflow.BuildCheckRunTitle(deployRequest.Root.Name),
+		Title:   notifier.BuildCheckRunTitle("deploy", deployRequest.Root.Name),
 		Sha:     deployRequest.Commit.Revision,
 		State:   state,
 		Repo:    deployRequest.Repo,

@@ -2,12 +2,12 @@ package notifier
 
 import (
 	"context"
-
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -128,21 +128,29 @@ type checkRunClient interface {
 
 type CheckRunNotifier struct {
 	CheckRunSessionCache checkRunClient
+	Mode                 string
 }
 
-func (n *CheckRunNotifier) Notify(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo, workflowState *state.Workflow) error {
-	return errors.Wrap(n.updateCheckRun(ctx, workflowState, deploymentInfo), "updating check run")
+type Info struct {
+	ID       uuid.UUID
+	Commit   github.Commit
+	RootName string
+	Repo     github.Repo
 }
 
-func (n *CheckRunNotifier) updateCheckRun(ctx workflow.Context, workflowState *state.Workflow, deploymentInfo terraform.DeploymentInfo) error {
+func (n *CheckRunNotifier) Notify(ctx workflow.Context, info Info, workflowState *state.Workflow) error {
+	return errors.Wrap(n.updateCheckRun(ctx, workflowState, info), "updating check run")
+}
+
+func (n *CheckRunNotifier) updateCheckRun(ctx workflow.Context, workflowState *state.Workflow, info Info) error {
 	summary := markdown.RenderWorkflowStateTmpl(workflowState)
 	checkRunState := determineCheckRunState(workflowState)
 
 	request := GithubCheckRunRequest{
-		Title:   terraform.BuildCheckRunTitle(deploymentInfo.Root.Name),
-		Sha:     deploymentInfo.Commit.Revision,
+		Title:   BuildCheckRunTitle(n.Mode, info.RootName),
+		Sha:     info.Commit.Revision,
 		State:   checkRunState,
-		Repo:    deploymentInfo.Repo,
+		Repo:    info.Repo,
 		Summary: summary,
 	}
 
@@ -160,7 +168,7 @@ func (n *CheckRunNotifier) updateCheckRun(ctx workflow.Context, workflowState *s
 		})
 	}
 
-	_, err := n.CheckRunSessionCache.CreateOrUpdate(ctx, deploymentInfo.ID.String(), request)
+	_, err := n.CheckRunSessionCache.CreateOrUpdate(ctx, info.ID.String(), request)
 	return err
 }
 
@@ -195,4 +203,8 @@ func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState 
 
 func waitingForActionOn(job *state.Job) bool {
 	return job != nil && job.Status == state.WaitingJobStatus && len(job.OnWaitingActions.Actions) > 0
+}
+
+func BuildCheckRunTitle(mode string, rootName string) string {
+	return fmt.Sprintf("atlantis/%s: %s", mode, rootName)
 }

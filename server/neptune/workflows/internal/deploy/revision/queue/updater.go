@@ -3,10 +3,9 @@ package queue
 import (
 	"fmt"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/notifier"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -35,7 +34,7 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 
 	for _, i := range infos {
 		request := notifier.GithubCheckRunRequest{
-			Title:   terraform.BuildCheckRunTitle(i.Root.Name),
+			Title:   notifier.BuildCheckRunTitle("deploy", i.Root.Name),
 			Sha:     i.Commit.Revision,
 			State:   state,
 			Repo:    i.Repo,
