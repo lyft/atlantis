@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -126,16 +127,9 @@ type checkRunClient interface {
 	CreateOrUpdate(ctx workflow.Context, deploymentID string, request GithubCheckRunRequest) (int64, error)
 }
 
-type Mode int
-
-const (
-	Deploy Mode = iota
-	PR
-)
-
 type CheckRunNotifier struct {
 	CheckRunSessionCache checkRunClient
-	Mode                 Mode
+	Mode                 terraform.WorkflowMode
 }
 
 type Info struct {
@@ -154,7 +148,7 @@ func (n *CheckRunNotifier) updateCheckRun(ctx workflow.Context, workflowState *s
 	checkRunState := determineCheckRunState(workflowState)
 
 	var title string
-	if n.Mode == Deploy {
+	if n.Mode == terraform.Deploy {
 		title = BuildDeployCheckRunTitle(info.RootName)
 	} else {
 		title = BuildPlanCheckRunTitle(info.RootName)
