@@ -22,7 +22,6 @@ func (s ApplySettings) Validate() error {
 			return nil
 		})),
 		validation.Field(&s.BranchRestriction, validation.In(string(valid.NoBranchRestriction), string(valid.DefaultBranchRestriction))),
-		validation.Field(&s.Team),
 	)
 }
 
