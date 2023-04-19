@@ -1,7 +1,9 @@
 package terraform
 
-import "github.com/runatlantis/atlantis/server/core/config/valid"
+import (
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+)
 
 type Response struct {
-	FailedPolicies map[string]valid.PolicySet
+	ValidationResults []activities.ValidationResult
 }

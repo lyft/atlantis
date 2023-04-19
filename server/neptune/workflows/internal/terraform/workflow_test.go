@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"net/url"
 	"testing"
 	"time"
@@ -104,7 +103,7 @@ func (r *jobRunner) Apply(ctx workflow.Context, localRoot *terraformModel.LocalR
 	return r.expectedError
 }
 
-func (r *jobRunner) Validate(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, showFile string) (map[string]valid.PolicySet, error) {
+func (r *jobRunner) Validate(ctx workflow.Context, localRoot *terraformModel.LocalRoot, jobID string, showFile string) ([]activities.ValidationResult, error) {
 	return nil, r.expectedError
 }
 

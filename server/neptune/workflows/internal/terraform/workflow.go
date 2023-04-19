@@ -3,7 +3,6 @@ package terraform
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"net/url"
 	"time"
 
@@ -35,7 +34,7 @@ type terraformActivities interface {
 type jobRunner interface {
 	Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, workflowMode terraform.WorkflowMode) (activities.TerraformPlanResponse, error)
 	Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, planFile string) error
-	Validate(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) (map[string]valid.PolicySet, error)
+	Validate(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) ([]activities.ValidationResult, error)
 }
 
 const (
@@ -163,25 +162,24 @@ func (r *Runner) Plan(ctx workflow.Context, root *terraform.LocalRoot, serverURL
 	return response, nil
 }
 
-func (r *Runner) Validate(ctx workflow.Context, root *terraform.LocalRoot, serverURL *url.URL, showFile string) (map[string]valid.PolicySet, error) {
-	failedPolicies := make(map[string]valid.PolicySet)
+func (r *Runner) Validate(ctx workflow.Context, root *terraform.LocalRoot, serverURL *url.URL, showFile string) ([]activities.ValidationResult, error) {
 	jobID, err := sideeffect.GenerateUUID(ctx)
 	if err != nil {
-		return failedPolicies, errors.Wrap(err, "generating job id")
+		return nil, errors.Wrap(err, "generating job id")
 	}
 
 	// fail if we error here since all successive calls to update this will fail otherwise
 	if err := r.Store.InitValidateJob(jobID, serverURL); err != nil {
-		return failedPolicies, errors.Wrap(err, "initializing job")
+		return nil, errors.Wrap(err, "initializing job")
 	}
 
 	if err := r.Store.UpdateValidateJobWithStatus(state.InProgressJobStatus, state.UpdateOptions{
 		StartTime: time.Now(),
 	}); err != nil {
-		return failedPolicies, newUpdateJobError(err, "unable to update job with success status")
+		return nil, newUpdateJobError(err, "unable to update job with success status")
 	}
 
-	failedPolicies, err = r.JobRunner.Validate(ctx, root, jobID.String(), showFile)
+	validateResults, err := r.JobRunner.Validate(ctx, root, jobID.String(), showFile)
 	if err != nil {
 		if err := r.Store.UpdateValidateJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
 			EndTime: time.Now(),
@@ -189,16 +187,16 @@ func (r *Runner) Validate(ctx workflow.Context, root *terraform.LocalRoot, serve
 			// not returning UpdateJobError here since we want to surface the job failure itself
 			workflow.GetLogger(ctx).Error("unable to update job with failed status, job failed with error. ", key.ErrKey, err)
 		}
-		return failedPolicies, errors.Wrap(err, "running job")
+		return nil, errors.Wrap(err, "running job")
 	}
 
 	if err := r.Store.UpdateValidateJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
 		EndTime: time.Now(),
 	}); err != nil {
-		return failedPolicies, newUpdateJobError(err, "unable to update job with success status")
+		return nil, newUpdateJobError(err, "unable to update job with success status")
 	}
 
-	return failedPolicies, nil
+	return validateResults, nil
 }
 
 func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverURL fmt.Stringer, planResponse activities.TerraformPlanResponse) error {
@@ -317,11 +315,11 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 	}
 
 	if r.Request.WorkflowMode == terraform.PR {
-		failedPolicies, err := r.Validate(ctx, root, response.ServerURL, planResponse.PlanJSONFile)
+		validationResults, err := r.Validate(ctx, root, response.ServerURL, planResponse.PlanJSONFile)
 		if err != nil {
 			return Response{}, r.toExternalError(err, "running validate job")
 		}
-		return Response{FailedPolicies: failedPolicies}, nil
+		return Response{ValidationResults: validationResults}, nil
 	}
 
 	if err = r.Apply(ctx, root, response.ServerURL, planResponse); err != nil {

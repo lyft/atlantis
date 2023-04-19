@@ -40,8 +40,20 @@ type ConftestRequest struct {
 	ShowFile    string
 }
 
+type ValidationStatus int
+
+const (
+	Success ValidationStatus = iota
+	Fail
+)
+
+type ValidationResult struct {
+	Status    ValidationStatus
+	PolicySet valid.PolicySet
+}
+
 type ConftestResponse struct {
-	FailedPolicies map[string]valid.PolicySet
+	ValidationResults []ValidationResult
 }
 
 func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest) (ConftestResponse, error) {
@@ -61,7 +73,7 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 
 	var policyNames []string
 	var totalCmdOutput []string
-	failedPolicies := make(map[string]valid.PolicySet)
+	var validationResults []ValidationResult
 
 	// run each policy separately to track which pass and fail
 	for _, policy := range c.Policies.PolicySets {
@@ -85,14 +97,22 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 		// Continue running other policies if one fails since it might not be the only failing one
 		if cmdErr != nil {
 			activity.GetLogger(ctx).Error(cmdOutput)
-			failedPolicies[policy.Name] = policy
+			validationResults = append(validationResults, ValidationResult{
+				Status:    Fail,
+				PolicySet: policy,
+			})
+		} else {
+			validationResults = append(validationResults, ValidationResult{
+				Status:    Success,
+				PolicySet: policy,
+			})
 		}
 		totalCmdOutput = append(totalCmdOutput, c.processOutput(cmdOutput, policy, cmdErr))
 	}
 	title := c.buildTitle(policyNames)
 	output := c.sanitizeOutput(showFile, title+strings.Join(totalCmdOutput, "\n"))
 	c.writeOutput(output, request.JobID)
-	return ConftestResponse{FailedPolicies: failedPolicies}, nil
+	return ConftestResponse{ValidationResults: validationResults}, nil
 }
 
 func (c *conftestActivity) runCommand(ctx context.Context, request *command.RunCommandRequest) (string, error) {

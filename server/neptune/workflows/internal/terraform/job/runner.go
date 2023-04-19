@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
@@ -98,7 +97,7 @@ func (r *JobRunner) Plan(ctx workflow.Context, localRoot *terraform.LocalRoot, j
 	return resp, nil
 }
 
-func (r *JobRunner) Validate(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) (map[string]valid.PolicySet, error) {
+func (r *JobRunner) Validate(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, showFile string) ([]activities.ValidationResult, error) {
 	// Execution ctx for a job that handles setting up the env vars from the previous steps
 	jobCtx := &ExecutionContext{
 		Context: ctx,
@@ -107,24 +106,24 @@ func (r *JobRunner) Validate(ctx workflow.Context, localRoot *terraform.LocalRoo
 	}
 	defer r.closeTerraformJob(jobCtx)
 
-	failedPolicies := make(map[string]valid.PolicySet)
+	var validateResults []activities.ValidationResult
 	for _, step := range localRoot.Root.Validate.GetSteps() {
 		var err error
 		switch step.StepName {
 		case "policy_check":
-			failedPolicies, err = r.validate(jobCtx, showFile, step)
+			validateResults, err = r.validate(jobCtx, showFile, step)
 		}
 
 		if err != nil {
-			return failedPolicies, errors.Wrapf(err, "running step %s", step.StepName)
+			return validateResults, errors.Wrapf(err, "running step %s", step.StepName)
 		}
 
 		err = r.runOptionalSteps(jobCtx, localRoot, step)
 		if err != nil {
-			return failedPolicies, errors.Wrapf(err, "running step %s", step.StepName)
+			return validateResults, errors.Wrapf(err, "running step %s", step.StepName)
 		}
 	}
-	return failedPolicies, nil
+	return validateResults, nil
 }
 
 func (r *JobRunner) Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, jobID string, planFile string) error {
@@ -157,10 +156,10 @@ func (r *JobRunner) Apply(ctx workflow.Context, localRoot *terraform.LocalRoot, 
 	return nil
 }
 
-func (r *JobRunner) validate(executionCtx *ExecutionContext, showFile string, step execute.Step) (map[string]valid.PolicySet, error) {
+func (r *JobRunner) validate(executionCtx *ExecutionContext, showFile string, step execute.Step) ([]activities.ValidationResult, error) {
 	args, err := command.NewArgumentList(step.ExtraArgs)
 	if err != nil {
-		return map[string]valid.PolicySet{}, errors.Wrapf(err, "creating argument list")
+		return nil, errors.Wrapf(err, "creating argument list")
 	}
 
 	var envs []activities.EnvVar
@@ -177,9 +176,9 @@ func (r *JobRunner) validate(executionCtx *ExecutionContext, showFile string, st
 		ShowFile:    showFile,
 	}).Get(executionCtx, &resp)
 	if err != nil {
-		return resp.FailedPolicies, errors.Wrap(err, "running conftest activity")
+		return resp.ValidationResults, errors.Wrap(err, "running conftest activity")
 	}
-	return resp.FailedPolicies, nil
+	return resp.ValidationResults, nil
 }
 
 func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step execute.Step) error {
