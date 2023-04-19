@@ -7,6 +7,12 @@ const (
 	NormalPlanMode  PlanMode = "normal"
 )
 
+type TriggerInfo struct {
+	Type  Trigger
+	Force bool
+	Rerun bool
+}
+
 type Trigger string
 
 const (
@@ -34,8 +40,12 @@ type Root struct {
 	TfVersion    string
 	PlanMode     PlanMode
 	PlanApproval PlanApproval
-	Trigger      Trigger
-	Rerun        bool
+	TriggerInfo  TriggerInfo
+
+	// todo: keeping for backwards compatibility with existing workflows
+	// remove once we cutover to using TriggerInfo
+	Trigger Trigger
+	Rerun   bool
 }
 
 type Job struct {

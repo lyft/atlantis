@@ -276,7 +276,11 @@ func (p *CommentEventWorkerProxy) forceApplyPlatformMode(ctx context.Context, ev
 		OptionalPullNum:   event.Pull.Num,
 		Sender:            event.User,
 		InstallationToken: event.InstallationToken,
-		Trigger:           workflows.ManualTrigger,
+		TriggerInfo: workflows.DeployTriggerInfo{
+			Type:  workflows.ManualTrigger,
+			Force: true,
+		},
 	}
+
 	return p.rootDeployer.Deploy(ctx, rootDeployOptions)
 }

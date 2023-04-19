@@ -51,7 +51,9 @@ func (c *DeployHandler) Handle(ctx context.Context, r request.Deploy) error {
 					CloneDepth: 1,
 				},
 
-				Trigger: workflows.ManualTrigger,
+				TriggerInfo: workflows.DeployTriggerInfo{
+					Type: workflows.ManualTrigger,
+				},
 			})
 		},
 	)

@@ -22,6 +22,7 @@ type AppCredentials = request.AppCredentials
 type User = request.User
 type PlanMode = request.PlanMode
 type Trigger = request.Trigger
+type DeployTriggerInfo = request.TriggerInfo
 
 const DestroyPlanMode = request.DestroyPlanMode
 const NormalPlanMode = request.NormalPlanMode
