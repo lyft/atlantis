@@ -33,9 +33,6 @@ type RootDeployer struct {
 type RootDeployOptions struct {
 	Repo models.Repo
 
-	// Safe deployments
-	Safe bool
-
 	// RootNames specify an optional list of roots to deploy for, if this is not provided, the roots are computed
 	// via the configured fallback strategy.
 	RootNames []string
