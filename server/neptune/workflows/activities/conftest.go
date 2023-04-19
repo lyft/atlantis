@@ -45,6 +45,7 @@ type ValidationStatus int
 const (
 	Success ValidationStatus = iota
 	Fail
+	//todo: support warn status
 )
 
 type ValidationResult struct {
