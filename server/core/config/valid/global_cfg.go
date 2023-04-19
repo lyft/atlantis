@@ -273,6 +273,9 @@ func NewGlobalCfg(dataDir string) GlobalCfg {
 		AllowCustomWorkflows: &allowCustomWorkflows,
 		AllowedOverrides:     []string{},
 		CheckoutStrategy:     "branch",
+		ApplySettings: ApplySettings{
+			BranchRestriction: DefaultBranchRestriction,
+		},
 	}
 
 	globalCfg := GlobalCfg{

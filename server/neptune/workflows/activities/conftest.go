@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
 	"go.temporal.io/sdk/activity"
@@ -28,7 +27,7 @@ type conftestActivity struct {
 	DefaultConftestVersion *version.Version
 	ConftestClient         asyncClient
 	StreamHandler          streamer
-	Policies               valid.PolicySets
+	Policies               []PolicySet
 	FileValidator          fileValidator
 }
 
@@ -40,8 +39,21 @@ type ConftestRequest struct {
 	ShowFile    string
 }
 
+type ValidationStatus int
+
+const (
+	Success ValidationStatus = iota
+	Fail
+	//todo: support warn status
+)
+
+type ValidationResult struct {
+	Status    ValidationStatus
+	PolicySet PolicySet
+}
+
 type ConftestResponse struct {
-	FailedPolicies map[string]valid.PolicySet
+	ValidationResults []ValidationResult
 }
 
 func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest) (ConftestResponse, error) {
@@ -61,10 +73,10 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 
 	var policyNames []string
 	var totalCmdOutput []string
-	failedPolicies := make(map[string]valid.PolicySet)
+	var validationResults []ValidationResult
 
 	// run each policy separately to track which pass and fail
-	for _, policy := range c.Policies.PolicySets {
+	for _, policy := range c.Policies {
 		// add paths as arguments
 		var policyArgs []command.Argument
 		for _, path := range policy.Paths {
@@ -85,14 +97,22 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 		// Continue running other policies if one fails since it might not be the only failing one
 		if cmdErr != nil {
 			activity.GetLogger(ctx).Error(cmdOutput)
-			failedPolicies[policy.Name] = policy
+			validationResults = append(validationResults, ValidationResult{
+				Status:    Fail,
+				PolicySet: policy,
+			})
+		} else {
+			validationResults = append(validationResults, ValidationResult{
+				Status:    Success,
+				PolicySet: policy,
+			})
 		}
 		totalCmdOutput = append(totalCmdOutput, c.processOutput(cmdOutput, policy, cmdErr))
 	}
 	title := c.buildTitle(policyNames)
 	output := c.sanitizeOutput(showFile, title+strings.Join(totalCmdOutput, "\n"))
 	c.writeOutput(output, request.JobID)
-	return ConftestResponse{FailedPolicies: failedPolicies}, nil
+	return ConftestResponse{ValidationResults: validationResults}, nil
 }
 
 func (c *conftestActivity) runCommand(ctx context.Context, request *command.RunCommandRequest) (string, error) {
@@ -120,7 +140,7 @@ func (c *conftestActivity) sanitizeOutput(inputFile string, output string) strin
 	return strings.Replace(output, inputFile, "<redacted plan file>", -1)
 }
 
-func (c *conftestActivity) processOutput(output string, policySet valid.PolicySet, err error) string {
+func (c *conftestActivity) processOutput(output string, policySet PolicySet, err error) string {
 	// errored results need an extra newline
 	if err != nil {
 		return policySet.Name + ":\n" + output
