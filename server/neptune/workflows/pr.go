@@ -8,5 +8,5 @@ import (
 type PRRequest = pr.Request
 
 func PR(ctx workflow.Context, request PRRequest) error {
-	return pr.Workflow(ctx, request)
+	return pr.Workflow(ctx, request, Terraform)
 }
