@@ -17,6 +17,7 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
+	deployCfg "github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	gateway_handlers "github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	converters "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
@@ -48,6 +49,7 @@ func NewVCSEventsController(
 	asyncScheduler scheduler,
 	temporalClient client.Client,
 	rootDeployer *deploy.RootDeployer,
+	rootConfigBuilder *deployCfg.RootConfigBuilder,
 	deploySignaler *deploy.WorkflowSignaler,
 	checkRunFetcher *github.CheckRunsFetcher,
 	vcsStatusUpdater *command.VCSStatusUpdater,
@@ -71,7 +73,7 @@ func NewVCSEventsController(
 		commentParser,
 		repoAllowlistChecker,
 		vcsClient,
-		gateway_handlers.NewCommentEventWorkerProxy(logger, scope.SubScope("comment"), snsWriter, featureAllocator, asyncScheduler, rootDeployer, vcsClient, vcsStatusUpdater, globalCfg, autoplanValidator),
+		gateway_handlers.NewCommentEventWorkerProxy(logger, scope.SubScope("comment"), snsWriter, featureAllocator, asyncScheduler, deploySignaler, vcsClient, vcsStatusUpdater, globalCfg, rootConfigBuilder),
 		logger,
 	)
 

@@ -13,10 +13,12 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/stretchr/testify/assert"
+	"go.temporal.io/sdk/client"
 )
 
 var testRepo = models.Repo{
@@ -29,19 +31,71 @@ var testPull = models.PullRequest{
 	Num:        1,
 }
 
-type testProjectCommandGetter struct {
-	expectedProjectContext []command.ProjectContext
+type mockRootConfigBuilder struct {
+	expectedCommit  *config.RepoCommit
+	expectedToken   int64
+	expectedOptions []config.BuilderOptions
+	expectedT       *testing.T
+	rootConfigs     []*valid.MergedProjectCfg
+	error           error
 }
 
-func (g *testProjectCommandGetter) GetProjectCommands(cmdCtx *command.Context, baseRepo models.Repo, pull models.PullRequest) ([]command.ProjectContext, error) {
-	return g.expectedProjectContext, nil
+func (r *mockRootConfigBuilder) Build(_ context.Context, commit *config.RepoCommit, installationToken int64, opts ...config.BuilderOptions) ([]*valid.MergedProjectCfg, error) {
+	assert.Equal(r.expectedT, r.expectedCommit, commit)
+	assert.Equal(r.expectedT, r.expectedToken, installationToken)
+	assert.Equal(r.expectedT, r.expectedOptions, opts)
+	return r.rootConfigs, r.error
+}
+
+type testMultiDeploySignaler struct {
+	signalers []*testDeploySignaler
+	count     int
+}
+
+func (d *testMultiDeploySignaler) SignalWorkflow(_ context.Context, _ string, _ string, _ string, _ interface{}) error {
+	return nil
+}
+
+func (d *testMultiDeploySignaler) SignalWithStartWorkflow(ctx context.Context, cfg *valid.MergedProjectCfg, opts deploy.RootDeployOptions) (client.WorkflowRun, error) {
+
+	if d.count >= len(d.signalers) {
+		panic(nil)
+	}
+
+	r, e := d.signalers[d.count].SignalWithStartWorkflow(ctx, cfg, opts)
+	d.count += 1
+
+	return r, e
+}
+
+func (d *testMultiDeploySignaler) called() bool {
+	return d.count == len(d.signalers)
+}
+
+type testDeploySignaler struct {
+	expectedT   *testing.T
+	called      bool
+	expectedCfg *valid.MergedProjectCfg
+	expOpts     deploy.RootDeployOptions
+}
+
+func (d *testDeploySignaler) SignalWorkflow(_ context.Context, _ string, _ string, _ string, _ interface{}) error {
+	d.called = true
+	return nil
+}
+
+func (d *testDeploySignaler) SignalWithStartWorkflow(ctx context.Context, cfg *valid.MergedProjectCfg, opts deploy.RootDeployOptions) (client.WorkflowRun, error) {
+	assert.Equal(d.expectedT, cfg, d.expectedCfg)
+	assert.Equal(d.expectedT, opts, d.expOpts)
+	d.called = true
+
+	return nil, nil
 }
 
 func TestCommentEventWorkerProxy_HandleAllocationError(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{}
 	writer := &mockSnsWriter{}
 	allocator := &testAllocator{
 		t:                 t,
@@ -52,11 +106,21 @@ func TestCommentEventWorkerProxy_HandleAllocationError(t *testing.T) {
 		expectedError: assert.AnError,
 	}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &mockRootDeployer{}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
+	testSignaler := &testDeploySignaler{}
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -82,7 +146,27 @@ func TestCommentEventWorkerProxy_HandleForceApply_default(t *testing.T) {
 		},
 	}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &mockRootDeployer{}
+	testSignaler := &mockDeploySignaler{}
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+		rootConfigs: []*valid.MergedProjectCfg{
+			{
+				Name:         "root1",
+				WorkflowMode: valid.DefaultWorkflowMode,
+			},
+			{
+				Name:         "root2",
+				WorkflowMode: valid.DefaultWorkflowMode,
+			},
+		},
+	}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{
 		expectedRepo:      testRepo,
@@ -92,21 +176,9 @@ func TestCommentEventWorkerProxy_HandleForceApply_default(t *testing.T) {
 		expectedBody:      "Request received. Adding to the queue...",
 		expectedT:         t,
 	}
-	getter := &testProjectCommandGetter{
-		expectedProjectContext: []command.ProjectContext{
-			{
-				WorkflowModeType: valid.DefaultWorkflowMode,
-				ProjectName:      "root1",
-			},
-			{
-				WorkflowModeType: valid.DefaultWorkflowMode,
-				ProjectName:      "root2",
-			},
-		},
-	}
 
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -120,7 +192,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_default(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
-	assert.False(t, rootDeployer.isCalled)
+	assert.False(t, testSignaler.called)
 	assert.True(t, writer.isCalled)
 }
 
@@ -128,15 +200,54 @@ func TestCommentEventWorkerProxy_HandleForceApply_BothModes(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{
-		expectedProjectContext: []command.ProjectContext{
+	commentEvent := event.Comment{
+		Pull:     testPull,
+		PullNum:  testPull.Num,
+		BaseRepo: testRepo,
+		HeadRepo: testRepo,
+		User: models.User{
+			Username: "someuser",
+		},
+		InstallationToken: 123,
+	}
+	expectedOpts := deploy.RootDeployOptions{
+		Repo:              testRepo,
+		Branch:            testPull.HeadBranch,
+		Revision:          testPull.HeadCommit,
+		OptionalPullNum:   testPull.Num,
+		Sender:            commentEvent.User,
+		InstallationToken: commentEvent.InstallationToken,
+		TriggerInfo: workflows.DeployTriggerInfo{
+			Type:  workflows.ManualTrigger,
+			Force: true,
+		},
+	}
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				WorkflowModeType: valid.PlatformWorkflowMode,
-				ProjectName:      "root1",
+				Name:         "root1",
+				WorkflowMode: valid.PlatformWorkflowMode,
 			},
 			{
-				WorkflowModeType: valid.DefaultWorkflowMode,
-				ProjectName:      "root2",
+				Name:         "root2",
+				WorkflowMode: valid.DefaultWorkflowMode,
+			},
+		},
+	}
+	testSignaler := &testMultiDeploySignaler{
+		signalers: []*testDeploySignaler{
+			{
+				expectedT:   t,
+				expectedCfg: rootConfigBuilder.rootConfigs[0],
+				expOpts:     expectedOpts,
 			},
 		},
 	}
@@ -149,32 +260,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_BothModes(t *testing.T) {
 		},
 		expectedAllocation: true,
 	}
-	commentEvent := event.Comment{
-		Pull:     testPull,
-		BaseRepo: testRepo,
-		HeadRepo: testRepo,
-		User: models.User{
-			Username: "someuser",
-		},
-		InstallationToken: 123,
-	}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &testRootDeployer{
-		expectedT: t,
-		expectedOptions: deploy.RootDeployOptions{
-			Repo:              testRepo,
-			RootNames:         []string{"root1"},
-			Branch:            testPull.HeadBranch,
-			Revision:          testPull.HeadCommit,
-			OptionalPullNum:   testPull.Num,
-			Sender:            commentEvent.User,
-			InstallationToken: commentEvent.InstallationToken,
-			TriggerInfo: workflows.DeployTriggerInfo{
-				Type:  workflows.ManualTrigger,
-				Force: true,
-			},
-		},
-	}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{
 		expectedRepo:      testRepo,
@@ -185,7 +271,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_BothModes(t *testing.T) {
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 
 	cmd := &command.Comment{
@@ -195,7 +281,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_BothModes(t *testing.T) {
 	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
 	assert.False(t, commentCreator.isCalled)
-	assert.True(t, rootDeployer.isCalled)
+	assert.True(t, testSignaler.called())
 	assert.True(t, writer.isCalled)
 	assert.True(t, statusUpdater.isCalled)
 }
@@ -204,15 +290,59 @@ func TestCommentEventWorkerProxy_HandleForceApply_AllPlatform(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{
-		expectedProjectContext: []command.ProjectContext{
+	commentEvent := event.Comment{
+		Pull:     testPull,
+		PullNum:  testPull.Num,
+		BaseRepo: testRepo,
+		HeadRepo: testRepo,
+		User: models.User{
+			Username: "someuser",
+		},
+		InstallationToken: 123,
+	}
+	expectedOpts := deploy.RootDeployOptions{
+		Repo:              testRepo,
+		Branch:            testPull.HeadBranch,
+		Revision:          testPull.HeadCommit,
+		OptionalPullNum:   testPull.Num,
+		Sender:            commentEvent.User,
+		InstallationToken: commentEvent.InstallationToken,
+		TriggerInfo: workflows.DeployTriggerInfo{
+			Type:  workflows.ManualTrigger,
+			Force: true,
+		},
+	}
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				WorkflowModeType: valid.PlatformWorkflowMode,
-				ProjectName:      "root1",
+				Name:         "root1",
+				WorkflowMode: valid.PlatformWorkflowMode,
 			},
 			{
-				WorkflowModeType: valid.PlatformWorkflowMode,
-				ProjectName:      "root2",
+				Name:         "root2",
+				WorkflowMode: valid.PlatformWorkflowMode,
+			},
+		},
+	}
+	testSignaler := &testMultiDeploySignaler{
+		signalers: []*testDeploySignaler{
+			{
+				expectedT:   t,
+				expectedCfg: rootConfigBuilder.rootConfigs[0],
+				expOpts:     expectedOpts,
+			},
+			{
+				expectedT:   t,
+				expectedCfg: rootConfigBuilder.rootConfigs[1],
+				expOpts:     expectedOpts,
 			},
 		},
 	}
@@ -225,33 +355,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_AllPlatform(t *testing.T) {
 		},
 		expectedAllocation: true,
 	}
-	commentEvent := event.Comment{
-		Pull:     testPull,
-		PullNum:  testPull.Num,
-		BaseRepo: testRepo,
-		HeadRepo: testRepo,
-		User: models.User{
-			Username: "someuser",
-		},
-		InstallationToken: 123,
-	}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &testRootDeployer{
-		expectedT: t,
-		expectedOptions: deploy.RootDeployOptions{
-			Repo:              testRepo,
-			RootNames:         []string{"root1", "root2"},
-			Branch:            testPull.HeadBranch,
-			Revision:          testPull.HeadCommit,
-			OptionalPullNum:   testPull.Num,
-			Sender:            commentEvent.User,
-			InstallationToken: commentEvent.InstallationToken,
-			TriggerInfo: workflows.DeployTriggerInfo{
-				Type:  workflows.ManualTrigger,
-				Force: true,
-			},
-		},
-	}
 	commentCreator := &mockCommentCreator{
 		expectedT:       t,
 		expectedRepo:    testRepo,
@@ -260,7 +364,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_AllPlatform(t *testing.T) {
 	}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name:       command.Apply,
@@ -269,7 +373,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_AllPlatform(t *testing.T) {
 	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
 	assert.True(t, commentCreator.isCalled)
-	assert.True(t, rootDeployer.isCalled)
+	assert.True(t, testSignaler.called())
 	assert.False(t, writer.isCalled)
 	assert.False(t, statusUpdater.isCalled)
 }
@@ -278,18 +382,27 @@ func TestCommentEventWorkerProxy_HandleApplyComment_AllPlatformMode(t *testing.T
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{
-		expectedProjectContext: []command.ProjectContext{
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				WorkflowModeType: valid.PlatformWorkflowMode,
-				ProjectName:      "root1",
+				Name:         "root1",
+				WorkflowMode: valid.PlatformWorkflowMode,
 			},
 			{
-				WorkflowModeType: valid.PlatformWorkflowMode,
-				ProjectName:      "root2",
+				Name:         "root2",
+				WorkflowMode: valid.PlatformWorkflowMode,
 			},
 		},
 	}
+	testSignaler := &testDeploySignaler{}
 	commentEvent := event.Comment{
 		Pull:     testPull,
 		PullNum:  testPull.Num,
@@ -310,11 +423,10 @@ func TestCommentEventWorkerProxy_HandleApplyComment_AllPlatformMode(t *testing.T
 		expectedAllocation: true,
 	}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &mockRootDeployer{}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -323,7 +435,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_AllPlatformMode(t *testing.T
 	assert.NoError(t, err)
 	assert.False(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
-	assert.False(t, rootDeployer.isCalled)
+	assert.False(t, testSignaler.called)
 	assert.True(t, writer.isCalled)
 }
 
@@ -331,18 +443,29 @@ func TestCommentEventWorkerProxy_HandleApplyComment_PartialMode(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{
-		expectedProjectContext: []command.ProjectContext{
+
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				WorkflowModeType: valid.PlatformWorkflowMode,
-				ProjectName:      "root1",
+				Name:         "root1",
+				WorkflowMode: valid.PlatformWorkflowMode,
 			},
 			{
-				WorkflowModeType: valid.DefaultWorkflowMode,
-				ProjectName:      "root2",
+				Name:         "root2",
+				WorkflowMode: valid.DefaultWorkflowMode,
 			},
 		},
 	}
+	testSignaler := &testDeploySignaler{}
+
 	commentEvent := event.Comment{
 		Pull:     testPull,
 		PullNum:  testPull.Num,
@@ -363,7 +486,6 @@ func TestCommentEventWorkerProxy_HandleApplyComment_PartialMode(t *testing.T) {
 		expectedAllocation: true,
 	}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &mockRootDeployer{}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{
 		expectedRepo:      testRepo,
@@ -374,7 +496,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_PartialMode(t *testing.T) {
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -383,7 +505,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_PartialMode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
-	assert.False(t, rootDeployer.isCalled)
+	assert.False(t, testSignaler.called)
 	assert.True(t, writer.isCalled)
 }
 
@@ -391,7 +513,17 @@ func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{}
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+	}
+	testSignaler := &testDeploySignaler{}
 	commentEvent := event.Comment{
 		Pull:     testPull,
 		PullNum:  testPull.Num,
@@ -412,7 +544,6 @@ func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
 		expectedAllocation: true,
 	}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &mockRootDeployer{}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &multiMockStatusUpdater{
 		delegates: []*mockStatusUpdater{
@@ -443,7 +574,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
 		},
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -452,7 +583,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, statusUpdater.AllCalled())
 	assert.False(t, commentCreator.isCalled)
-	assert.False(t, rootDeployer.isCalled)
+	assert.False(t, testSignaler.called)
 	assert.False(t, writer.isCalled)
 }
 
@@ -460,7 +591,17 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{}
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+	}
+	testSignaler := &testDeploySignaler{}
 	commentEvent := event.Comment{
 		Pull:     testPull,
 		PullNum:  testPull.Num,
@@ -481,7 +622,6 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 		expectedAllocation: true,
 	}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &mockRootDeployer{}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &multiMockStatusUpdater{
 		delegates: []*mockStatusUpdater{
@@ -496,7 +636,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 		},
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -505,7 +645,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, statusUpdater.AllCalled())
 	assert.False(t, commentCreator.isCalled)
-	assert.False(t, rootDeployer.isCalled)
+	assert.False(t, testSignaler.called)
 	assert.False(t, writer.isCalled)
 }
 
@@ -513,18 +653,27 @@ func TestCommentEventWorkerProxy_HandlePlanComment_BothModes(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{
-		expectedProjectContext: []command.ProjectContext{
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				WorkflowModeType: valid.DefaultWorkflowMode,
-				ProjectName:      "root1",
+				Name:         "root1",
+				WorkflowMode: valid.DefaultWorkflowMode,
 			},
 			{
-				WorkflowModeType: valid.PlatformWorkflowMode,
-				ProjectName:      "root2",
+				Name:         "root2",
+				WorkflowMode: valid.PlatformWorkflowMode,
 			},
 		},
 	}
+	testSignaler := &testDeploySignaler{}
 	commentEvent := event.Comment{
 		Pull:     testPull,
 		PullNum:  testPull.Num,
@@ -545,7 +694,6 @@ func TestCommentEventWorkerProxy_HandlePlanComment_BothModes(t *testing.T) {
 		expectedAllocation: true,
 	}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &mockRootDeployer{}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{
 		expectedRepo:      testRepo,
@@ -556,7 +704,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment_BothModes(t *testing.T) {
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -565,7 +713,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment_BothModes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
-	assert.False(t, rootDeployer.isCalled)
+	assert.False(t, testSignaler.called)
 	assert.True(t, writer.isCalled)
 }
 
@@ -573,7 +721,17 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{}
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+	}
+	testSignaler := &testDeploySignaler{}
 	writer := &mockSnsWriter{
 		err: assert.AnError,
 	}
@@ -596,7 +754,7 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -617,18 +775,26 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, err := metrics.NewLoggingScope(logger, "")
 	assert.NoError(t, err)
-	getter := &testProjectCommandGetter{
-		expectedProjectContext: []command.ProjectContext{
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				WorkflowModeType: valid.DefaultWorkflowMode,
-				ProjectName:      "root1",
+				Name:         "root1",
+				WorkflowMode: valid.DefaultWorkflowMode,
 			},
 			{
-				WorkflowModeType: valid.PlatformWorkflowMode,
-				ProjectName:      "root2",
+				Name:         "root2",
+				WorkflowMode: valid.PlatformWorkflowMode,
 			},
 		},
 	}
+
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	cfg := valid.NewGlobalCfg("somedir")
 	// add branch regex
@@ -669,6 +835,7 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 			command:    &command.Comment{Name: command.Unlock},
 			event: event.Comment{
 				Pull:     testPull,
+				PullNum:  testPull.Num,
 				BaseRepo: testRepo,
 			},
 		},
@@ -685,6 +852,7 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 			command: &command.Comment{Name: command.Apply},
 			event: event.Comment{
 				Pull:     testPull,
+				PullNum:  testPull.Num,
 				BaseRepo: testRepo,
 			},
 		},
@@ -694,6 +862,7 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 			command:    &command.Comment{Name: command.Plan},
 			event: event.Comment{
 				Pull:     forkedPull,
+				PullNum:  forkedPull.Num,
 				BaseRepo: testRepo,
 			},
 		},
@@ -703,6 +872,7 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 			command:    &command.Comment{Name: command.Plan},
 			event: event.Comment{
 				Pull:     closedPull,
+				PullNum:  closedPull.Num,
 				BaseRepo: testRepo,
 			},
 		},
@@ -712,6 +882,7 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 			command:    &command.Comment{Name: command.Plan},
 			event: event.Comment{
 				Pull:     testPull,
+				PullNum:  testPull.Num,
 				BaseRepo: testRepo,
 			},
 		},
@@ -719,7 +890,7 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.descriptor, func(t *testing.T) {
 			writer := &mockSnsWriter{}
-			rootDeployer := &mockRootDeployer{}
+			testSignaler := &testDeploySignaler{}
 			commentCreator := &mockCommentCreator{}
 			statusUpdater := &mockStatusUpdater{
 				expectedRepo:      testRepo,
@@ -729,12 +900,12 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 				expectedBody:      "Request received. Adding to the queue...",
 				expectedT:         t,
 			}
-			commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, c.allocator, scheduler, rootDeployer, commentCreator, statusUpdater, cfg, getter)
+			commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, c.allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
 			err := commentEventWorkerProxy.Handle(context.Background(), bufReq, c.event, c.command)
 			assert.NoError(t, err)
 			assert.False(t, statusUpdater.isCalled)
 			assert.False(t, commentCreator.isCalled)
-			assert.False(t, rootDeployer.isCalled)
+			assert.False(t, testSignaler.called)
 			assert.True(t, writer.isCalled)
 		})
 	}

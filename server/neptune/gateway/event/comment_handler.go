@@ -17,6 +17,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/http"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 )
 
 const warningMessage = "⚠️ WARNING ⚠️\n\n You are force applying changes from your PR instead of merging into your default branch 🚀. This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘.\n\n To confirm behavior, review and confirm the plan within the generated atlantis/deploy GH check below.\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
@@ -31,8 +32,8 @@ type commentCreator interface {
 	CreateComment(repo models.Repo, pullNum int, comment string, command string) error
 }
 
-type projectCommandGetter interface {
-	GetProjectCommands(cmdCtx *command.Context, baseRepo models.Repo, pull models.PullRequest) ([]command.ProjectContext, error)
+type rootConfigBuilder interface {
+	Build(ctx context.Context, commit *config.RepoCommit, installationToken int64, opts ...config.BuilderOptions) ([]*valid.MergedProjectCfg, error)
 }
 
 // Comment is our internal representation of a vcs based comment event.
@@ -54,37 +55,38 @@ func NewCommentEventWorkerProxy(
 	snsWriter Writer,
 	allocator feature.Allocator,
 	scheduler scheduler,
-	rootDeployer rootDeployer,
+	signaler deploySignaler,
 	commentCreator commentCreator,
 	vcsStatusUpdater statusUpdater,
 	globalCfg valid.GlobalCfg,
-	projectCommandGetter projectCommandGetter,
+	rootConfigBuilder rootConfigBuilder,
 ) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
-		logger:               logger,
-		scope:                scope,
-		snsWriter:            snsWriter,
-		allocator:            allocator,
-		scheduler:            scheduler,
-		commentCreator:       commentCreator,
-		rootDeployer:         rootDeployer,
-		vcsStatusUpdater:     vcsStatusUpdater,
-		globalCfg:            globalCfg,
-		projectCommandGetter: projectCommandGetter,
+		logger:            logger,
+		scope:             scope,
+		snsWriter:         snsWriter,
+		allocator:         allocator,
+		scheduler:         scheduler,
+		commentCreator:    commentCreator,
+		signaler:          signaler,
+		vcsStatusUpdater:  vcsStatusUpdater,
+		globalCfg:         globalCfg,
+		rootConfigBuilder: rootConfigBuilder,
 	}
 }
 
 type CommentEventWorkerProxy struct {
-	logger               logging.Logger
-	scope                tally.Scope
-	snsWriter            Writer
-	allocator            feature.Allocator
-	scheduler            scheduler
-	commentCreator       commentCreator
-	rootDeployer         rootDeployer
-	vcsStatusUpdater     statusUpdater
-	globalCfg            valid.GlobalCfg
-	projectCommandGetter projectCommandGetter
+	logger            logging.Logger
+	scope             tally.Scope
+	snsWriter         Writer
+	allocator         feature.Allocator
+	scheduler         scheduler
+	commentCreator    commentCreator
+	rootDeployer      rootDeployer
+	vcsStatusUpdater  statusUpdater
+	globalCfg         valid.GlobalCfg
+	rootConfigBuilder rootConfigBuilder
+	signaler          deploySignaler
 }
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
@@ -112,27 +114,23 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 }
 
 func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
-	cmdCtx := &command.Context{
-		HeadRepo:   event.HeadRepo,
-		Pull:       event.Pull,
-		Scope:      p.scope,
-		User:       event.User,
-		Log:        p.logger,
-		Trigger:    command.CommentTrigger,
-		RequestCtx: ctx,
-	}
+	roots, err := p.rootConfigBuilder.Build(ctx, &config.RepoCommit{
+		Repo:          event.BaseRepo,
+		Branch:        event.Pull.HeadBranch,
+		Sha:           event.Pull.HeadCommit,
+		OptionalPRNum: event.PullNum,
+	}, event.InstallationToken)
 
-	roots, err := p.projectCommandGetter.GetProjectCommands(cmdCtx, event.BaseRepo, cmdCtx.Pull)
 	if err != nil {
-		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.FailedVCSStatus, cmd.Name, "", err.Error()); statusErr != nil {
-			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
+		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, event.HeadRepo, event.Pull, models.FailedVCSStatus, cmd.Name, "", err.Error()); statusErr != nil {
+			p.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 		}
 		return errors.Wrap(err, "getting project commands")
 	}
 
 	if len(roots) == 0 {
 		p.logger.WarnContext(ctx, "no roots to process in comment")
-		p.markSuccessStatuses(ctx, cmdCtx, cmd)
+		p.markSuccessStatuses(ctx, event, cmd)
 		return nil
 	}
 
@@ -148,13 +146,7 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 		return p.forwardToSns(ctx, request)
 	}
 
-	// first process any platform mode force applies.
-	var rootNames []string
-	for _, r := range platformModeRoots {
-		rootNames = append(rootNames, r.ProjectName)
-	}
-
-	if err := p.forceApplyPlatformMode(ctx, event, rootNames); err != nil {
+	if err := p.applyPlatformMode(ctx, event, platformModeRoots, cmd.ForceApply); err != nil {
 		return errors.Wrap(err, "force applying platform mode roots")
 	}
 
@@ -169,18 +161,18 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 	return nil
 }
 
-func (p *CommentEventWorkerProxy) markSuccessStatuses(ctx context.Context, cmdCtx *command.Context, cmd *command.Comment) {
+func (p *CommentEventWorkerProxy) markSuccessStatuses(ctx context.Context, event Comment, cmd *command.Comment) {
 	if cmd.Name == command.Plan {
 		for _, name := range []command.Name{command.Plan, command.PolicyCheck, command.Apply} {
-			if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.SuccessVCSStatus, name, "", "no modified roots"); statusErr != nil {
-				cmdCtx.Log.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %v", statusErr))
+			if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, event.HeadRepo, event.Pull, models.SuccessVCSStatus, name, "", "no modified roots"); statusErr != nil {
+				p.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 			}
 		}
 	}
 
 	if cmd.Name == command.Apply {
-		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, cmdCtx.HeadRepo, cmdCtx.Pull, models.SuccessVCSStatus, cmd.Name, "", "no modified roots"); statusErr != nil {
-			cmdCtx.Log.WarnContext(cmdCtx.RequestCtx, fmt.Sprintf("unable to update commit status: %v", statusErr))
+		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, event.HeadRepo, event.Pull, models.SuccessVCSStatus, cmd.Name, "", "no modified roots"); statusErr != nil {
+			p.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 		}
 	}
 }
@@ -208,11 +200,11 @@ func (p *CommentEventWorkerProxy) notifyImpendingChanges(
 	}
 }
 
-func partitionRootsByMode(cmds []command.ProjectContext) ([]command.ProjectContext, []command.ProjectContext) {
-	var platformModeCmds []command.ProjectContext
-	var defaultCmds []command.ProjectContext
+func partitionRootsByMode(cmds []*valid.MergedProjectCfg) ([]*valid.MergedProjectCfg, []*valid.MergedProjectCfg) {
+	var platformModeCmds []*valid.MergedProjectCfg
+	var defaultCmds []*valid.MergedProjectCfg
 	for _, cmd := range cmds {
-		if cmd.WorkflowModeType == valid.PlatformWorkflowMode {
+		if cmd.WorkflowMode == valid.PlatformWorkflowMode {
 			platformModeCmds = append(platformModeCmds, cmd)
 		} else {
 			defaultCmds = append(defaultCmds, cmd)
@@ -267,9 +259,8 @@ func (p *CommentEventWorkerProxy) forwardToSns(ctx context.Context, request *htt
 	return nil
 }
 
-func (p *CommentEventWorkerProxy) forceApplyPlatformMode(ctx context.Context, event Comment, rootNames []string) error {
-	rootDeployOptions := deploy.RootDeployOptions{
-		RootNames:         rootNames,
+func (p *CommentEventWorkerProxy) applyPlatformMode(ctx context.Context, event Comment, roots []*valid.MergedProjectCfg, force bool) error {
+	opts := deploy.RootDeployOptions{
 		Repo:              event.HeadRepo,
 		Branch:            event.Pull.HeadBranch,
 		Revision:          event.Pull.HeadCommit,
@@ -278,9 +269,16 @@ func (p *CommentEventWorkerProxy) forceApplyPlatformMode(ctx context.Context, ev
 		InstallationToken: event.InstallationToken,
 		TriggerInfo: workflows.DeployTriggerInfo{
 			Type:  workflows.ManualTrigger,
-			Force: true,
+			Force: force,
 		},
 	}
 
-	return p.rootDeployer.Deploy(ctx, rootDeployOptions)
+	for _, r := range roots {
+		_, err := p.signaler.SignalWithStartWorkflow(ctx, r, opts)
+		if err != nil {
+			return errors.Wrap(err, "signalling workflow")
+		}
+	}
+
+	return nil
 }
