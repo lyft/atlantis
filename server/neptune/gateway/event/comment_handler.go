@@ -82,7 +82,6 @@ type CommentEventWorkerProxy struct {
 	allocator         feature.Allocator
 	scheduler         scheduler
 	commentCreator    commentCreator
-	rootDeployer      rootDeployer
 	vcsStatusUpdater  statusUpdater
 	globalCfg         valid.GlobalCfg
 	rootConfigBuilder rootConfigBuilder
