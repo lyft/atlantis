@@ -45,7 +45,7 @@ type Runner struct {
 
 	// mutable state
 	state                 RunnerState
-	lastProcessedRevision string
+	lastAttemptedRevision string
 }
 
 func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflowRunner *internalTerraform.WorkflowRunner, a *prActivities) *Runner {
@@ -114,8 +114,8 @@ func (r *Runner) Run(ctx workflow.Context) error {
 // dealing with any failed policies by reviewing set of approvals
 func (r *Runner) processRevision(ctx workflow.Context, prRevision receiver.Revision) {
 	r.state = Working
+	r.lastAttemptedRevision = prRevision.Revision
 	defer func() {
-		r.lastProcessedRevision = prRevision.Revision
 		r.state = Waiting
 	}()
 	failedPolicies := sync.Map{}
@@ -164,29 +164,32 @@ func (r *Runner) runTerraformWorkflow(ctx workflow.Context, root terraform.Root,
 }
 
 func (r *Runner) shouldProcessRevision(ctx workflow.Context, prRevision receiver.Revision) (bool, error) {
-	if r.state == Working {
-		return false, nil
-	}
-	if r.lastProcessedRevision == "" {
-		return true, nil
-	}
 	direction, err := r.getCommitDirection(ctx, prRevision)
 	if err != nil {
 		return false, err
 	}
-	// TODO: should we handle diverged?
-	return direction != activities.DirectionBehind, nil
+	switch direction {
+	case activities.DirectionAhead:
+		return true, nil
+	case activities.DirectionBehind:
+		return false, nil
+	case activities.DirectionIdentical, activities.DirectionDiverged:
+		if r.state == Waiting {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (r *Runner) getCommitDirection(ctx workflow.Context, prRevision receiver.Revision) (activities.DiffDirection, error) {
-	// this means we are deploying this root for the first time
-	if r.lastProcessedRevision == "" {
+	// this means this is the first revision
+	if r.lastAttemptedRevision == "" {
 		return activities.DirectionAhead, nil
 	}
 	var compareCommitResp activities.CompareCommitResponse
 	err := workflow.ExecuteActivity(ctx, r.Activities.GithubCompareCommit, activities.CompareCommitRequest{
 		DeployRequestRevision:  prRevision.Revision,
-		LatestDeployedRevision: r.lastProcessedRevision,
+		LatestDeployedRevision: r.lastAttemptedRevision,
 		Repo:                   prRevision.Repo,
 	}).Get(ctx, &compareCommitResp)
 	if err != nil {
