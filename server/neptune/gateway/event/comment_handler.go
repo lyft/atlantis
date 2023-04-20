@@ -87,7 +87,7 @@ type NeptuneWorkerProxy struct {
 	commentCreator commentCreator
 }
 
-func (h *NeptuneWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
+func (p *NeptuneWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
 	// currently the only comments on platform mode are force applies, we can add to this as necessary.
 	if !cmd.ForceApply {
 		return nil
@@ -97,8 +97,8 @@ func (h *NeptuneWorkerProxy) Handle(ctx context.Context, request *http.BufferedR
 
 	// let's only comment on the PR if we're fully on platform mode, otherwise there will be duplicates from the legacy worker and this.
 	if len(platformModeRoots) == len(roots) {
-		if err := h.commentCreator.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); err != nil {
-			h.logger.ErrorContext(ctx, err.Error())
+		if err := p.commentCreator.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); err != nil {
+			p.logger.ErrorContext(ctx, err.Error())
 		}
 	}
 
@@ -116,7 +116,7 @@ func (h *NeptuneWorkerProxy) Handle(ctx context.Context, request *http.BufferedR
 	}
 
 	for _, r := range platformModeRoots {
-		_, err := h.signaler.SignalWithStartWorkflow(ctx, r, opts)
+		_, err := p.signaler.SignalWithStartWorkflow(ctx, r, opts)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")
 		}
@@ -131,24 +131,24 @@ type SNSWorkerProxy struct {
 	globalCfg        valid.GlobalCfg
 }
 
-func (h *SNSWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
+func (p *SNSWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
 	defaultModeRoots := partitionRootsByMode(valid.DefaultWorkflowMode, roots)
 
 	// cut off force applies here itself, since the legacy worker doesn't check the root workflow mode type before attempting
 	// a force apply
 	if len(defaultModeRoots) == 0 && cmd.ForceApply {
-		h.logger.InfoContext(ctx, "no default mode roots to force apply")
+		p.logger.InfoContext(ctx, "no default mode roots to force apply")
 		return nil
 	}
 
 	// only set queued status if we have default mode roots, we don't currently need this in the temporal world
 	// but this is subject to change
 	if len(defaultModeRoots) > 0 {
-		h.SetQueuedStatus(ctx, event, cmd)
+		p.SetQueuedStatus(ctx, event, cmd)
 	}
 
 	// forward everything to sns for now since platform mode doesn't do anything w.r.t to comments atm.
-	if err := h.ForwardToSns(ctx, request); err != nil {
+	if err := p.ForwardToSns(ctx, request); err != nil {
 		return errors.Wrap(err, "forwarding request through sns")
 	}
 	return nil
@@ -168,15 +168,15 @@ func (p *SNSWorkerProxy) ForwardToSns(ctx context.Context, request *http.Buffere
 	return nil
 }
 
-func (h *SNSWorkerProxy) SetQueuedStatus(ctx context.Context, event Comment, cmd *command.Comment) {
-	if h.shouldMarkEventQueued(event, cmd) {
-		if _, err := h.vcsStatusUpdater.UpdateCombined(ctx, event.BaseRepo, event.Pull, models.QueuedVCSStatus, cmd.Name, "", "Request received. Adding to the queue..."); err != nil {
-			h.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", err))
+func (p *SNSWorkerProxy) SetQueuedStatus(ctx context.Context, event Comment, cmd *command.Comment) {
+	if p.shouldMarkEventQueued(event, cmd) {
+		if _, err := p.vcsStatusUpdater.UpdateCombined(ctx, event.BaseRepo, event.Pull, models.QueuedVCSStatus, cmd.Name, "", "Request received. Adding to the queue..."); err != nil {
+			p.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", err))
 		}
 	}
 }
 
-func (h *SNSWorkerProxy) shouldMarkEventQueued(event Comment, cmd *command.Comment) bool {
+func (p *SNSWorkerProxy) shouldMarkEventQueued(event Comment, cmd *command.Comment) bool {
 	// pending status should only be for plan and apply step
 	if cmd.Name != command.Plan && cmd.Name != command.Apply {
 		return false
@@ -190,7 +190,7 @@ func (h *SNSWorkerProxy) shouldMarkEventQueued(event Comment, cmd *command.Comme
 		return false
 	}
 	// pull event should not use an invalid base branch
-	repo := h.globalCfg.MatchingRepo(event.Pull.BaseRepo.ID())
+	repo := p.globalCfg.MatchingRepo(event.Pull.BaseRepo.ID())
 	return repo.BranchMatches(event.Pull.BaseBranch)
 }
 
