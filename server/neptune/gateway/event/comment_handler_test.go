@@ -57,7 +57,6 @@ func (d *testMultiDeploySignaler) SignalWorkflow(_ context.Context, _ string, _ 
 }
 
 func (d *testMultiDeploySignaler) SignalWithStartWorkflow(ctx context.Context, cfg *valid.MergedProjectCfg, opts deploy.RootDeployOptions) (client.WorkflowRun, error) {
-
 	if d.count >= len(d.signalers) {
 		panic(nil)
 	}
