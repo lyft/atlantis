@@ -174,7 +174,7 @@ func (r *Runner) shouldProcessRevision(ctx workflow.Context, prRevision receiver
 	if err != nil {
 		return false, err
 	}
-	return direction != activities.DirectionBehind, nil
+	return direction != activities.DirectionBehind && direction != activities.DirectionDiverged, nil
 }
 
 func (r *Runner) getCommitDirection(ctx workflow.Context, prRevision receiver.Revision) (activities.DiffDirection, error) {
