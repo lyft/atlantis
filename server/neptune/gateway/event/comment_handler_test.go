@@ -62,7 +62,7 @@ func (d *testMultiDeploySignaler) SignalWithStartWorkflow(ctx context.Context, c
 	}
 
 	r, e := d.signalers[d.count].SignalWithStartWorkflow(ctx, cfg, opts)
-	d.count += 1
+	d.count++
 
 	return r, e
 }
