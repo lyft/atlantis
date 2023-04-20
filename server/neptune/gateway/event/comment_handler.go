@@ -196,7 +196,6 @@ func (p *SNSWorkerProxy) shouldMarkEventQueued(event Comment, cmd *command.Comme
 
 type CommentEventWorkerProxy struct {
 	logger             logging.Logger
-	scope              tally.Scope
 	allocator          feature.Allocator
 	scheduler          scheduler
 	vcsStatusUpdater   statusUpdater
