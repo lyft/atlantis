@@ -98,6 +98,8 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			inProgressCtx, inProgressCancel = workflow.WithCancel(ctx)
 			inProgressCtx = workflow.WithValue(inProgressCtx, internalContext.SHAKey, prRevision.Revision)
 			workflow.GetLogger(inProgressCtx).Info("received revision")
+			r.state = Working
+			r.lastAttemptedRevision = prRevision.Revision
 			workflow.Go(inProgressCtx, func(c workflow.Context) {
 				r.processRevision(c, prRevision)
 			})
@@ -113,8 +115,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 // processRevision handles spinning off child Terraform workflows per root and
 // dealing with any failed policies by reviewing set of approvals
 func (r *Runner) processRevision(ctx workflow.Context, prRevision receiver.Revision) {
-	r.state = Working
-	r.lastAttemptedRevision = prRevision.Revision
 	defer func() {
 		r.state = Waiting
 	}()
