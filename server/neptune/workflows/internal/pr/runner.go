@@ -12,22 +12,21 @@ import (
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	"go.temporal.io/sdk/workflow"
-	"sync"
 )
 
 type Action int64
 
 const (
-	OnNewPRRevision Action = iota
-	OnShutdown
+	onNewRevision Action = iota
+	onShutdown
 )
 
 type RunnerState int64
 
 const (
-	Working RunnerState = iota
-	Waiting
-	Complete
+	working RunnerState = iota
+	waiting
+	complete
 )
 
 type runnerActivities interface {
@@ -72,41 +71,36 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	s := workflow.NewSelector(ctx)
 	s.AddReceive(r.RevisionSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		prRevision = r.RevisionReceiver.Receive(c, more)
-		action = OnNewPRRevision
+		action = onNewRevision
 	})
 
 	s.AddReceive(r.ShutdownSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		r.ShutdownReceiver.Receive(c, more)
-		action = OnShutdown
-		r.state = Complete
+		action = onShutdown
+		r.state = complete
 	})
 
 	inProgressCtx, inProgressCancel := workflow.WithCancel(ctx)
 	for {
 		s.Select(ctx)
 		switch action {
-		case OnNewPRRevision:
-			shouldProcess, err := r.shouldProcessRevision(ctx, prRevision)
-			if err != nil {
-				return err
-			}
-			if !shouldProcess {
+		case onNewRevision:
+			ctx = workflow.WithValue(ctx, internalContext.SHAKey, prRevision.Revision)
+			workflow.GetLogger(ctx).Info("received revision")
+			if process := r.shouldProcessRevision(prRevision); !process {
 				continue
 			}
 			// cancel in progress workflow (if it exists) and start up a new one
 			inProgressCancel()
 			inProgressCtx, inProgressCancel = workflow.WithCancel(ctx)
-			inProgressCtx = workflow.WithValue(inProgressCtx, internalContext.SHAKey, prRevision.Revision)
-			workflow.GetLogger(inProgressCtx).Info("received revision")
-			r.state = Working
+			r.state = working
 			r.lastAttemptedRevision = prRevision.Revision
 			workflow.Go(inProgressCtx, func(c workflow.Context) {
 				r.processRevision(c, prRevision)
 			})
-		case OnShutdown:
-			// shutdown in progress workflow if it exists and return
-			workflow.GetLogger(inProgressCtx).Info("received shutdown request")
-			inProgressCancel()
+		case onShutdown:
+			//todo: maybe optimize by cancelling in progress child workflows
+			workflow.GetLogger(ctx).Info("received shutdown request")
 			return nil
 		}
 	}
@@ -116,30 +110,36 @@ func (r *Runner) Run(ctx workflow.Context) error {
 // dealing with any failed policies by reviewing set of approvals
 func (r *Runner) processRevision(ctx workflow.Context, prRevision receiver.Revision) {
 	defer func() {
-		r.state = Waiting
+		r.state = waiting
 	}()
-	failedPolicies := sync.Map{}
-	var wg sync.WaitGroup
-	wg.Add(len(prRevision.Roots))
+	failedPolicies := make(map[string]activities.PolicySet)
+	remainingRoots := len(prRevision.Roots)
 	for _, root := range prRevision.Roots {
 		rootCtx := workflow.WithValue(ctx, internalContext.ProjectKey, root.Name)
 		workflow.Go(rootCtx, func(c workflow.Context) {
-			defer wg.Done()
+			defer func() {
+				remainingRoots--
+			}()
 			failedRootPolicies, err := r.runTerraformWorkflow(c, root, prRevision)
 			if err != nil {
 				// choosing to not fail workflow and let it continue to exist
 				// until PR close/timeout
-				errCtx := workflow.WithValue(ctx, internalContext.ErrKey, err)
-				workflow.GetLogger(errCtx).Error("processing pr revision")
+				workflow.GetLogger(workflow.WithValue(ctx, internalContext.ErrKey, err)).Error("processing pr revision")
 			}
 			// consolidate failures across all roots
 			// policy sets are identical so multiple roots can fail the same policy without issue
 			for _, failedPolicy := range failedRootPolicies {
-				failedPolicies.LoadOrStore(failedPolicy.Name, failedPolicy)
+				failedPolicies[failedPolicy.Name] = failedPolicy
 			}
 		})
 	}
-	wg.Wait()
+	err := workflow.Await(ctx, func() bool {
+		return remainingRoots == 0
+	})
+	if err != nil {
+		workflow.GetLogger(workflow.WithValue(ctx, internalContext.ErrKey, err)).Error("await error")
+		return
+	}
 	// TODO: check for policy failures
 }
 
@@ -163,37 +163,10 @@ func (r *Runner) runTerraformWorkflow(ctx workflow.Context, root terraform.Root,
 	return failedPolicies, err
 }
 
-func (r *Runner) shouldProcessRevision(ctx workflow.Context, prRevision receiver.Revision) (bool, error) {
-	direction, err := r.getCommitDirection(ctx, prRevision)
-	if err != nil {
-		return false, err
+func (r *Runner) shouldProcessRevision(prRevision receiver.Revision) bool {
+	// ignore reruns when revision is still in progress
+	if r.lastAttemptedRevision == prRevision.Revision && r.state != waiting {
+		return false
 	}
-	switch direction {
-	case activities.DirectionAhead:
-		return true, nil
-	case activities.DirectionBehind:
-		return false, nil
-	case activities.DirectionIdentical, activities.DirectionDiverged:
-		if r.state == Waiting {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func (r *Runner) getCommitDirection(ctx workflow.Context, prRevision receiver.Revision) (activities.DiffDirection, error) {
-	// this means this is the first revision
-	if r.lastAttemptedRevision == "" {
-		return activities.DirectionAhead, nil
-	}
-	var compareCommitResp activities.CompareCommitResponse
-	err := workflow.ExecuteActivity(ctx, r.Activities.GithubCompareCommit, activities.CompareCommitRequest{
-		DeployRequestRevision:  prRevision.Revision,
-		LatestDeployedRevision: r.lastAttemptedRevision,
-		Repo:                   prRevision.Repo,
-	}).Get(ctx, &compareCommitResp)
-	if err != nil {
-		return "", errors.Wrap(err, "unable to determine new revision commit direction")
-	}
-	return compareCommitResp.CommitComparison, nil
+	return true
 }
