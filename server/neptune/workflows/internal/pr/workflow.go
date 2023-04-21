@@ -39,6 +39,6 @@ func Workflow(ctx workflow.Context, request Request, tfWorkflow terraform.Workfl
 		},
 	}
 	tfWorkflowRunner := terraform.NewWorkflowRunner(tfWorkflow, notifiers)
-	runner := newRunner(ctx, scope, tfWorkflowRunner, a)
+	runner := newRunner(ctx, scope, tfWorkflowRunner)
 	return runner.Run(ctx)
 }

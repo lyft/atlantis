@@ -1,7 +1,6 @@
 package pr
 
 import (
-	"context"
 	"github.com/pkg/errors"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -29,16 +28,11 @@ const (
 	complete
 )
 
-type runnerActivities interface {
-	GithubCompareCommit(ctx context.Context, request activities.CompareCommitRequest) (activities.CompareCommitResponse, error)
-}
-
 type Runner struct {
 	RevisionSignalChannel workflow.ReceiveChannel
 	RevisionReceiver      *receiver.RevisionReceiver
 	ShutdownSignalChannel workflow.ReceiveChannel
 	ShutdownReceiver      *receiver.ShutdownReceiver
-	Activities            runnerActivities
 	Scope                 workflowMetrics.Scope
 	TFWorkflowRunner      *internalTerraform.WorkflowRunner
 
@@ -47,7 +41,7 @@ type Runner struct {
 	lastAttemptedRevision string
 }
 
-func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflowRunner *internalTerraform.WorkflowRunner, a *prActivities) *Runner {
+func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflowRunner *internalTerraform.WorkflowRunner) *Runner {
 	revisionReceiver := receiver.NewRevisionReceiver(ctx, scope)
 	shutdownReceiver := receiver.NewShutdownReceiver(ctx, scope)
 	return &Runner{
@@ -55,7 +49,6 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflowRunn
 		RevisionReceiver:      &revisionReceiver,
 		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, receiver.ShutdownSignalID),
 		ShutdownReceiver:      &shutdownReceiver,
-		Activities:            a,
 		Scope:                 scope,
 		TFWorkflowRunner:      tfWorkflowRunner,
 	}
