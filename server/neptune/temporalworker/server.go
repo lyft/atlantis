@@ -222,6 +222,24 @@ func (s Server) Start() error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		prWorker := worker.New(s.TemporalClient.Client, workflows.PRTaskQueue, worker.Options{
+			WorkerStopTimeout: TemporalWorkerTimeout,
+			Interceptors: []interceptor.WorkerInterceptor{
+				temporal.NewWorkerInterceptor(),
+			},
+		})
+		prWorker.RegisterActivity(s.GithubActivities)
+		prWorker.RegisterWorkflow(workflows.PR)
+		if err := prWorker.Run(worker.InterruptCh()); err != nil {
+			log.Fatalln("unable to start pr worker", err)
+		}
+
+		s.Logger.InfoContext(ctx, "Shutting down pr worker, resource clean up may still be occurring in the background")
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
 		terraformWorker := s.buildTerraformWorker()
 		if err := terraformWorker.Run(worker.InterruptCh()); err != nil {

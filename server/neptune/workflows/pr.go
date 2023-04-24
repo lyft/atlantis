@@ -5,6 +5,8 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+var PRTaskQueue = pr.TaskQueue
+
 type PRRequest = pr.Request
 
 func PR(ctx workflow.Context, request PRRequest) error {
