@@ -229,7 +229,9 @@ func (s Server) Start() error {
 			},
 		})
 		prWorker.RegisterActivity(s.GithubActivities)
+		prWorker.RegisterActivity(s.TerraformActivities)
 		prWorker.RegisterWorkflow(workflows.PR)
+		prWorker.RegisterWorkflow(workflows.Terraform)
 		if err := prWorker.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start pr worker", err)
 		}
