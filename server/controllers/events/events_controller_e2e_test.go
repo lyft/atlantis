@@ -4,6 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/docker/docker/pkg/fileutils"
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-version"
@@ -22,15 +33,6 @@ import (
 	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/request"
 	ffclient "github.com/thomaspoignant/go-feature-flag"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"sync"
-	"testing"
 
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
 	"github.com/runatlantis/atlantis/server/core/terraform"
@@ -716,7 +718,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	t.Cleanup(featureAllocator.Close)
 
-	terraformClient, err := terraform.NewE2ETestClient(binDir, cacheDir, "", "", "", "default-tf-version", "https://releases.hashicorp.com", downloader, false, projectCmdOutputHandler)
+	terraformClient, err := terraform.NewE2ETestClient(binDir, cacheDir, "", "", "", "https://releases.hashicorp.com", downloader, false, projectCmdOutputHandler)
 	Ok(t, err)
 
 	// Set real dependencies here.
@@ -791,6 +793,8 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		projectContextBuilder = projectContextBuilder.EnablePolicyChecks(commentParser)
 	}
 
+	repoAllowlist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 	projectCommandBuilder := events.NewProjectCommandBuilder(
 		projectContextBuilder,
 		parser,
@@ -801,7 +805,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		globalCfg,
 		&events.DefaultPendingPlanFinder{},
 		false,
-		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+		repoAllowlist,
 		ctxLogger,
 		events.InfiniteProjectsPerPR,
 	)
@@ -996,7 +1000,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		PolicyCommandRunner:           prrPolicyCommandRunner,
 	}
 
-	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")
+	repoAllowlistChecker, err := events.NewRepoAllowlistChecker([]string{"*"})
 	Ok(t, err)
 
 	autoplanner := &handlers.Autoplanner{
@@ -1041,8 +1045,8 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	)
 
 	repoConverter := github_converter.RepoConverter{
-		GithubUser:  userConfig.GithubUser,
-		GithubToken: userConfig.GithubToken,
+		GithubUser:  string(userConfig.GithubSecrets.User),
+		GithubToken: userConfig.GithubSecrets.Token,
 	}
 
 	pullConverter := github_converter.PullConverter{

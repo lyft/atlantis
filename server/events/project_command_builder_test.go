@@ -3,11 +3,13 @@ package events_test
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/docker/docker/pkg/fileutils"
+	"github.com/stretchr/testify/assert"
 
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/core/config"
@@ -143,6 +145,8 @@ projects:
 				Ok(t, err)
 			}
 
+			autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 			builder := events.NewProjectCommandBuilder(
 				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 				&config.ParserValidator{},
@@ -153,7 +157,7 @@ projects:
 				valid.NewGlobalCfg("somedir"),
 				&events.DefaultPendingPlanFinder{},
 				false,
-				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+				autoplanFilelist,
 				logger,
 				events.InfiniteProjectsPerPR,
 			)
@@ -406,6 +410,13 @@ projects:
 				globalCfg := valid.NewGlobalCfg("somedir")
 				globalCfg.Repos[0].AllowedOverrides = []string{"apply_requirements"}
 
+				autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{
+					"**/*.tf",
+					"**/*.tfvars",
+					"**/*.tfvars.json",
+					"**/terragrunt.hcl",
+				})
+
 				builder := events.NewProjectCommandBuilder(
 					events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 					&config.ParserValidator{},
@@ -416,7 +427,7 @@ projects:
 					globalCfg,
 					&events.DefaultPendingPlanFinder{},
 					true,
-					"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+					autoplanFilelist,
 					logger,
 					events.InfiniteProjectsPerPR,
 				)
@@ -553,6 +564,8 @@ projects:
 				Ok(t, err)
 			}
 
+			autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 			builder := events.NewProjectCommandBuilder(
 				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 				&config.ParserValidator{},
@@ -563,7 +576,7 @@ projects:
 				valid.NewGlobalCfg("somedir"),
 				&events.DefaultPendingPlanFinder{},
 				false,
-				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+				autoplanFilelist,
 				logger,
 				events.InfiniteProjectsPerPR,
 			)
@@ -636,6 +649,8 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
+	autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 	builder := events.NewProjectCommandBuilder(
 		events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 		&config.ParserValidator{},
@@ -646,7 +661,7 @@ func TestDefaultProjectCommandBuilder_BuildMultiApply(t *testing.T) {
 		valid.NewGlobalCfg("somedir"),
 		&events.DefaultPendingPlanFinder{},
 		false,
-		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+		autoplanFilelist,
 		logger,
 		events.InfiniteProjectsPerPR,
 	)
@@ -713,6 +728,8 @@ projects:
 	logger := logging.NewNoopCtxLogger(t)
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
+	autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 	builder := events.NewProjectCommandBuilder(
 		events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 		&config.ParserValidator{},
@@ -723,7 +740,7 @@ projects:
 		valid.NewGlobalCfg("somedir"),
 		&events.DefaultPendingPlanFinder{},
 		false,
-		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+		autoplanFilelist,
 		logger,
 		events.InfiniteProjectsPerPR,
 	)
@@ -783,6 +800,8 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 			vcsClient := vcsmocks.NewMockClient()
 			When(vcsClient.GetModifiedFiles(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn([]string{"main.tf"}, nil)
 
+			autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 			builder := events.NewProjectCommandBuilder(
 				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 				&config.ParserValidator{},
@@ -793,7 +812,7 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 				valid.NewGlobalCfg("somedir"),
 				&events.DefaultPendingPlanFinder{},
 				false,
-				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+				autoplanFilelist,
 				logger,
 				events.InfiniteProjectsPerPR,
 			)
@@ -957,6 +976,8 @@ projects:
 				matchers.AnyModelsPullRequest(),
 				AnyString())).ThenReturn(tmpDir, nil)
 
+			autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 			builder := events.NewProjectCommandBuilder(
 				events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 				&config.ParserValidator{},
@@ -967,7 +988,7 @@ projects:
 				valid.NewGlobalCfg("somedir"),
 				&events.DefaultPendingPlanFinder{},
 				false,
-				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+				autoplanFilelist,
 				logger,
 				events.InfiniteProjectsPerPR,
 			)
@@ -1019,6 +1040,8 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
 		EnablePolicyChecks(commentParser)
 
+	autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 	builder := events.NewProjectCommandBuilder(
 		contextBuilder,
 		&config.ParserValidator{},
@@ -1029,7 +1052,7 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 		globalCfg,
 		&events.DefaultPendingPlanFinder{},
 		false,
-		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+		autoplanFilelist,
 		logger,
 		events.InfiniteProjectsPerPR,
 	)
@@ -1093,6 +1116,8 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	scope := tally.NewTestScope("test", nil)
 
+	autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 	builder := events.NewProjectCommandBuilder(
 		events.NewProjectCommandContextBuilder(&events.CommentParser{}),
 		&config.ParserValidator{},
@@ -1103,7 +1128,7 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 		valid.NewGlobalCfg("somedir"),
 		&events.DefaultPendingPlanFinder{},
 		false,
-		"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+		autoplanFilelist,
 		logger,
 		events.InfiniteProjectsPerPR,
 	)

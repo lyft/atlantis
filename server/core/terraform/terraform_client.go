@@ -87,14 +87,13 @@ func NewClientWithVersionCache(
 	binDir string,
 	cacheDir string,
 	defaultVersionStr string,
-	defaultVersionFlagName string,
 	tfDownloadURL string,
 	tfDownloader Downloader,
 	usePluginCache bool,
 	projectCmdOutputHandler jobs.ProjectCommandOutputHandler,
 	versionCache cache.ExecutionVersionCache,
 ) (*DefaultClient, error) {
-	version, err := getDefaultVersion(defaultVersionStr, defaultVersionFlagName)
+	version, err := getDefaultVersion(defaultVersionStr)
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting default version")
@@ -138,7 +137,6 @@ func NewE2ETestClient(
 	tfeToken string,
 	tfeHostname string,
 	defaultVersionStr string,
-	defaultVersionFlagName string,
 	tfDownloadURL string,
 	tfDownloader Downloader,
 	usePluginCache bool,
@@ -149,7 +147,6 @@ func NewE2ETestClient(
 		binDir,
 		cacheDir,
 		defaultVersionStr,
-		defaultVersionFlagName,
 		tfDownloadURL,
 		tfDownloader,
 		usePluginCache,
@@ -162,7 +159,6 @@ func NewClient(
 	binDir string,
 	cacheDir string,
 	defaultVersionStr string,
-	defaultVersionFlagName string,
 	tfDownloadURL string,
 	tfDownloader Downloader,
 	usePluginCache bool,
@@ -182,7 +178,6 @@ func NewClient(
 		binDir,
 		cacheDir,
 		defaultVersionStr,
-		defaultVersionFlagName,
 		tfDownloadURL,
 		tfDownloader,
 		usePluginCache,
@@ -294,7 +289,7 @@ func isAsyncEligibleCommand(cmd string) bool {
 	return false
 }
 
-func getDefaultVersion(overrideVersion string, versionFlagName string) (*version.Version, error) {
+func getDefaultVersion(overrideVersion string) (*version.Version, error) {
 	if overrideVersion != "" {
 		v, err := version.NewVersion(overrideVersion)
 		if err != nil {
@@ -310,7 +305,7 @@ func getDefaultVersion(overrideVersion string, versionFlagName string) (*version
 	// and if thats the case we won't be redownloading the version of this binary to our cache
 	localPath, err := exec.LookPath("terraform")
 	if err != nil {
-		return nil, fmt.Errorf("terraform not found in $PATH. Set --%s or download terraform from https://www.terraform.io/downloads.html", versionFlagName)
+		return nil, fmt.Errorf("terraform not found in $PATH. Set default TF version flag or download terraform from https://www.terraform.io/downloads.html")
 	}
 
 	return getVersion(localPath)

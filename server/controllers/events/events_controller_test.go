@@ -208,7 +208,7 @@ func TestPost_BBServerPullClosed(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.header, func(t *testing.T) {
 			RegisterMockTestingT(t)
-			allowlist, err := events.NewRepoAllowlistChecker("*")
+			allowlist, err := events.NewRepoAllowlistChecker([]string{"*"})
 			Ok(t, err)
 			ctxLogger := logging.NewNoopCtxLogger(t)
 			scope, _, _ := metrics.NewLoggingScope(ctxLogger, "null")
@@ -301,7 +301,7 @@ func setup(t *testing.T) (events_controllers.VCSEventsController, *mocks.MockGit
 	cp := emocks.NewMockCommentParsing()
 	c := emocks.NewMockPullCleaner()
 	vcsmock := vcsmocks.NewMockClient()
-	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")
+	repoAllowlistChecker, err := events.NewRepoAllowlistChecker([]string{"*"})
 	Ok(t, err)
 	ctxLogger := logging.NewNoopCtxLogger(t)
 	scope, _, _ := metrics.NewLoggingScope(ctxLogger, "null")

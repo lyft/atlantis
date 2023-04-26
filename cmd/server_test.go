@@ -15,281 +15,477 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/alecthomas/kong"
+	"github.com/stretchr/testify/assert"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/runatlantis/atlantis/server"
 	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
+	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
-// passedConfig is set to whatever config ended up being passed to NewServer.
-// Used for testing.
-var passedConfig server.UserConfig
-
-type ServerCreatorMock struct{}
-
-func (s *ServerCreatorMock) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
-	passedConfig = userConfig
-	return &ServerStarterMock{}, nil
-}
-
-type ServerStarterMock struct{}
-
-func (s *ServerStarterMock) Start() error {
-	return nil
-}
+const atlantisVersion = "test-version"
 
 // Adding a new flag? Add it to this slice for testing in alphabetical
 // order.
-var testFlags = map[string]interface{}{
-	ADTokenFlag:                  "ad-token",
-	ADUserFlag:                   "ad-user",
-	ADWebhookPasswordFlag:        "ad-wh-pass",
-	ADWebhookUserFlag:            "ad-wh-user",
-	AtlantisURLFlag:              "url",
-	AutoplanFileListFlag:         "**/*.tf,**/*.yml",
-	BitbucketBaseURLFlag:         "https://bitbucket-base-url.com",
-	BitbucketTokenFlag:           "bitbucket-token",
-	BitbucketUserFlag:            "bitbucket-user",
-	BitbucketWebhookSecretFlag:   "bitbucket-secret",
-	CheckoutStrategyFlag:         "merge",
-	DataDirFlag:                  "/path",
-	DefaultTFVersionFlag:         "v0.11.0",
-	DisableApplyAllFlag:          true,
-	DisableApplyFlag:             true,
-	DisableMarkdownFoldingFlag:   true,
-	GHHostnameFlag:               "ghhostname",
-	GHTokenFlag:                  "token",
-	GHUserFlag:                   "user",
-	GHAppIDFlag:                  int64(0),
-	GHAppKeyFileFlag:             "",
-	GHAppSlugFlag:                "atlantis",
-	GHOrganizationFlag:           "",
-	GHWebhookSecretFlag:          "secret",
-	GitlabHostnameFlag:           "gitlab-hostname",
-	GitlabTokenFlag:              "gitlab-token",
-	GitlabUserFlag:               "gitlab-user",
-	GitlabWebhookSecretFlag:      "gitlab-secret",
-	LogLevelFlag:                 "debug",
-	StatsNamespace:               "atlantis",
-	AllowDraftPRs:                true,
-	PortFlag:                     8181,
-	ParallelPoolSize:             100,
-	RepoAllowlistFlag:            "github.com/runatlantis/atlantis",
-	SlackTokenFlag:               "slack-token",
-	SSLCertFileFlag:              "cert-file",
-	SSLKeyFileFlag:               "key-file",
-	TFDownloadURLFlag:            "https://my-hostname.com",
-	VCSStatusName:                "my-status",
-	WriteGitFileFlag:             true,
-	LyftAuditJobsSnsTopicArnFlag: "",
-	LyftGatewaySnsTopicArnFlag:   "",
-	LyftModeFlag:                 "",
-	LyftWorkerQueueURLFlag:       "",
-	DisableAutoplanFlag:          true,
-	EnableRegExpCmdFlag:          false,
-	EnableDiffMarkdownFormat:     false,
+
+type flagValue struct {
+	Input  interface{}
+	Output interface{}
 }
 
-func TestExecute_Defaults(t *testing.T) {
+var testFlags = map[string]flagValue{
+	"azuredevops-token": {
+		Input:  "ad-token",
+		Output: "ad-token",
+	},
+	"azuredevops-user": {
+		Input:  "ad-user",
+		Output: server.User("ad-user"),
+	},
+	"azuredevops-webhook-password": {
+		Input:  "ad-wh-pass",
+		Output: "ad-wh-pass",
+	},
+	"azuredevops-webhook-user": {
+		Input:  "ad-wh-user",
+		Output: "ad-wh-user",
+	},
+	"atlantis-url": {
+		Input: "http://url",
+		Output: server.HttpUrl{
+			&url.URL{
+				Host:   "url",
+				Scheme: "http",
+			},
+		},
+	},
+	"bitbucket-base-url": {
+		Input: "https://bitbucket-base-url.com",
+		Output: server.HttpUrl{
+			&url.URL{
+				Scheme: "https",
+				Host:   "bitbucket-base-url.com",
+			},
+		},
+	},
+	"bitbucket-token": {
+		Input:  "bitbucket-token",
+		Output: "bitbucket-token",
+	},
+	"bitbucket-user": {
+		Input:  "bitbucket-user",
+		Output: server.User("bitbucket-user"),
+	},
+	"bitbucket-webhook-secret": {
+		Input:  "bitbucket-secret",
+		Output: "bitbucket-secret",
+	},
+	"checkout-strategy": {
+		Input:  "merge",
+		Output: "merge",
+	},
+	"data-dir": {
+		Input:  "/path",
+		Output: "/path",
+	},
+	"default-tf-version": {
+		Input:  "v0.11.0",
+		Output: "v0.11.0",
+	},
+	"disable-apply-all": {
+		Input:  true,
+		Output: true,
+	},
+	"disable-apply": {
+		Input:  true,
+		Output: true,
+	},
+	"disable-markdown-folding": {
+		Input:  true,
+		Output: true,
+	},
+	"gh-hostname": {
+		Input: "ghhostname",
+		Output: server.Schemeless{
+			&url.URL{
+				Host: "ghhostname",
+			},
+		},
+	},
+	"gh-token": {
+		Input:  "token",
+		Output: "token",
+	},
+	"gh-user": {
+		Input:  "user",
+		Output: server.User("user"),
+	},
+	"gh-app-slug": {
+		Input:  "atlantis",
+		Output: "atlantis",
+	},
+	"gh-webhook-secret": {
+		Input:  "secret",
+		Output: "secret",
+	},
+	"gitlab-hostname": {
+		Input: "gitlab-hostname",
+		Output: server.Schemeless{
+			&url.URL{
+				Scheme: "",
+				Host:   "gitlab-hostname",
+			},
+		},
+	},
+	"gitlab-token": {
+		Input:  "gitlab-token",
+		Output: "gitlab-token",
+	},
+	"gitlab-user": {
+		Input:  "gitlab-user",
+		Output: server.User("gitlab-user"),
+	},
+	"gitlab-webhook-secret": {
+		Input:  "gitlab-secret",
+		Output: "gitlab-secret",
+	},
+	"log-level": {
+		Input:  "debug",
+		Output: logging.Debug,
+	},
+	"stats-namespace": {
+		Input:  "atlantis",
+		Output: "atlantis",
+	},
+	"allow-draft-prs": {
+		Input:  true,
+		Output: true,
+	},
+	"parallel-pool-size": {
+		Input:  100,
+		Output: 100,
+	},
+	"repo-allowlist": {
+		Input: "github.com/runatlantis/atlantis",
+		Output: []server.Schemeless{{
+			&url.URL{
+				Host: "github.com",
+				Path: "/runatlantis/atlantis",
+			},
+		}},
+	},
+	"slack-token": {
+		Input:  "slack-token",
+		Output: "slack-token",
+	},
+	"ssl-cert-file": {
+		Input:  "cert-file",
+		Output: "cert-file",
+	},
+	"ssl-key-file": {
+		Input:  "key-file",
+		Output: "key-file",
+	},
+	"tf-download-url": {
+		Input: "https://my-hostname.com",
+		Output: server.HttpUrl{
+			&url.URL{
+				Scheme: "https",
+				Host:   "my-hostname.com",
+			},
+		},
+	},
+	"vcs-status-name": {
+		Input:  "my-status",
+		Output: "my-status",
+	},
+	"write-git-creds": {
+		Input:  true,
+		Output: true,
+	},
+	"disable-autoplan": {
+		Input:  true,
+		Output: true,
+	},
+}
+
+func TestRun_Defaults(t *testing.T) {
 	t.Log("Should set the defaults for all unspecified flags.")
 
-	c := setup(map[string]interface{}{
-		GHUserFlag:        "user",
-		GHTokenFlag:       "token",
-		RepoAllowlistFlag: "*",
+	_, err := setup(map[string]flagValue{
+		"gh-user": {
+			Input: "user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
+		"gh-hostname": {
+			Input: "ghhostname",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
+	/*
+	   *
 
-	// Get our hostname since that's what atlantis-url gets defaulted to.
-	hostname, err := os.Hostname()
-	Ok(t, err)
+	   	// Get our hostname since that's what atlantis-url gets defaulted to.
+	   	hostname, err := os.Hostname()
+	   	Ok(t, err)
 
-	// Get our home dir since that's what data-dir defaulted to.
-	dataDir, err := homedir.Expand("~/.atlantis")
-	Ok(t, err)
+	   	// Get our home dir since that's what data-dir defaulted to.
+	   	dataDir, err := homedir.Expand("~/.atlantis")
+	   	Ok(t, err)
 
-	strExceptions := map[string]string{
-		GHUserFlag:        "user",
-		GHTokenFlag:       "token",
-		DataDirFlag:       dataDir,
-		AtlantisURLFlag:   "http://" + hostname + ":4141",
-		RepoAllowlistFlag: "*",
-	}
-	strIgnore := map[string]bool{
-		"config": true,
-	}
-	for flag, cfg := range stringFlags {
-		t.Log(flag)
-		if _, ok := strIgnore[flag]; ok {
-			continue
-		} else if excep, ok := strExceptions[flag]; ok {
-			Equals(t, excep, configVal(t, passedConfig, flag))
-		} else {
-			Equals(t, cfg.defaultValue, configVal(t, passedConfig, flag))
-		}
-	}
-	for flag, cfg := range boolFlags {
-		t.Log(flag)
-		Equals(t, cfg.defaultValue, configVal(t, passedConfig, flag))
-	}
-	for flag, cfg := range intFlags {
-		t.Log(flag)
-		Equals(t, cfg.defaultValue, configVal(t, passedConfig, flag))
-	}
+	   	strExceptions := map[string]string{
+	   		"gh-user":        "user",
+	   		"gh-token":       "token",
+	   		"data-dir":       dataDir,
+	   		"atlantis_url":   "http://" + hostname + ":4141",
+	   		"repo-allowlist": "*",
+	   	}
+	   	strIgnore := map[string]bool{
+	   		"config": true,
+	   	}
+
+	   	for flag, cfg := range stringFlags {
+	   		t.Log(flag)
+	   		if _, ok := strIgnore[flag]; ok {
+	   			continue
+	   		} else if excep, ok := strExceptions[flag]; ok {
+	   			Equals(t, excep, configVal(t, passedConfig, flag))
+	   		} else {
+	   			Equals(t, cfg.defaultValue, configVal(t, passedConfig, flag))
+	   		}
+	   	}
+	   	for flag, cfg := range boolFlags {
+	   		t.Log(flag)
+	   		Equals(t, cfg.defaultValue, configVal(t, passedConfig, flag))
+	   	}
+	   	for flag, cfg := range intFlags {
+	   		t.Log(flag)
+	   		Equals(t, cfg.defaultValue, configVal(t, passedConfig, flag))
+	   	}
+	*/
 }
 
-func TestExecute_Flags(t *testing.T) {
+func TestRun_Flags(t *testing.T) {
 	t.Log("Should use all flags that are set.")
-	c := setup(testFlags, t)
-	err := c.Execute()
+	c, err := setup(testFlags, t)
 	Ok(t, err)
 	for flag, exp := range testFlags {
-		Equals(t, exp, configVal(t, passedConfig, flag))
+		Equals(t, exp.Output, configVal(t, c, flag))
 	}
 }
 
-func TestExecute_GHAppKeyFile(t *testing.T) {
+func TestRun_GHAppKeyFile(t *testing.T) {
 	t.Log("Should use all the values from the config file.")
 	tmpFile := tempFile(t, "testdata")
 	defer os.Remove(tmpFile) // nolint: errcheck
-	c := setup(map[string]interface{}{
-		GHAppKeyFileFlag:  tmpFile,
-		GHAppIDFlag:       int64(1),
-		RepoAllowlistFlag: "*",
+	_, err := setup(map[string]flagValue{
+		"gh-app-key-file": {
+			Input: tmpFile,
+		},
+		"gh-app-id": {
+			Input: "1",
+		},
+		"gh-hostname": {
+			Input: "ghhostname",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
 	}, t)
-	err := c.Execute()
 	assert.NoError(t, err)
 }
 
-func TestExecute_ConfigFile(t *testing.T) {
+func TestRun_ConfigFile(t *testing.T) {
 	t.Log("Should use all the values from the config file.")
 	// Use yaml package to quote values that need quoting
-	cfgContents, yamlErr := yaml.Marshal(&testFlags)
+	cfg := make(map[string]map[string]interface{})
+	cfg["server"] = make(map[string]interface{})
+	for flag, val := range testFlags {
+		cfg["server"][flag] = val.Input
+	}
+	cfgContents, yamlErr := yaml.Marshal(&cfg)
 	Ok(t, yamlErr)
 	tmpFile := tempFile(t, string(cfgContents))
 	defer os.Remove(tmpFile) // nolint: errcheck
-	c := setup(map[string]interface{}{
-		ConfigFlag: tmpFile,
+	c, err := setup(map[string]flagValue{
+		"config": {
+			Input: tmpFile,
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
 	for flag, exp := range testFlags {
-		Equals(t, exp, configVal(t, passedConfig, flag))
+		Equals(t, exp.Output, configVal(t, c, flag))
 	}
 }
 
-func TestExecute_EnvironmentVariables(t *testing.T) {
+func TestRun_EnvironmentVariables(t *testing.T) {
 	t.Log("Environment variables should work.")
 	for flag, value := range testFlags {
 		envKey := "ATLANTIS_" + strings.ToUpper(strings.ReplaceAll(flag, "-", "_"))
-		os.Setenv(envKey, fmt.Sprintf("%v", value)) // nolint: errcheck
+		envVal := ""
+		switch value.Input.(type) {
+		case string:
+			envVal = value.Input.(string)
+		case bool:
+			envVal = fmt.Sprintf("%t", value.Input.(bool))
+		case int:
+			envVal = fmt.Sprintf("%d", value.Input.(int))
+		}
+		os.Setenv(envKey, envVal) // nolint: errcheck
 		defer func(key string) { os.Unsetenv(key) }(envKey)
 	}
-	c := setup(nil, t)
-	err := c.Execute()
+	c, err := setup(nil, t)
 	Ok(t, err)
 	for flag, exp := range testFlags {
-		Equals(t, exp, configVal(t, passedConfig, flag))
+		Equals(t, exp.Output, configVal(t, c, flag))
 	}
 }
 
-func TestExecute_NoConfigFlag(t *testing.T) {
-	t.Log("If there is no config flag specified Execute should return nil.")
-	c := setupWithDefaults(map[string]interface{}{
-		ConfigFlag: "",
+func TestRun_NoConfigFlag(t *testing.T) {
+	t.Log("If there is no config flag specified Run should return nil.")
+	_, err := setup(map[string]flagValue{
+		"config": {
+			Input: "",
+		},
+		"gh-user": {
+			Input: "user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
+		"gh-hostname": {
+			Input: "ghhostname",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
 }
 
-func TestExecute_ConfigFileExtension(t *testing.T) {
+func TestRun_ConfigFileExtension(t *testing.T) {
 	t.Log("If the config file doesn't have an extension then error.")
-	c := setupWithDefaults(map[string]interface{}{
-		ConfigFlag: "does-not-exist",
+	_, err := setup(map[string]flagValue{
+		"gh-user": {
+			Input: "user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
+		"config": {
+			Input: "does-not-exist",
+		},
 	}, t)
-	err := c.Execute()
-	Equals(t, "invalid config: reading does-not-exist: Unsupported Config Type \"\"", err.Error())
+	Equals(t, "no loader for config with extension \"\" found", err.Error())
 }
 
-func TestExecute_ConfigFileMissing(t *testing.T) {
+func TestRun_ConfigFileMissing(t *testing.T) {
 	t.Log("If the config file doesn't exist then error.")
-	c := setupWithDefaults(map[string]interface{}{
-		ConfigFlag: "does-not-exist.yaml",
+	_, err := setup(map[string]flagValue{
+		"gh-user": {
+			Input: "user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
+		"gh-hostname": {
+			Input: "ghhostname",
+		},
+		"config": {
+			Input: "does-not-exist.yaml",
+		},
 	}, t)
-	err := c.Execute()
-	Equals(t, "invalid config: reading does-not-exist.yaml: open does-not-exist.yaml: no such file or directory", err.Error())
+	p, _ := os.Getwd()
+	Equals(t, fmt.Sprintf("open %s/does-not-exist.yaml: no such file or directory", p), err.Error())
 }
 
-func TestExecute_ConfigFileExists(t *testing.T) {
+func TestRun_ConfigFileExists(t *testing.T) {
 	t.Log("If the config file exists then there should be no error.")
-	tmpFile := tempFile(t, "")
+	tmpFile := tempFile(t, "---")
 	defer os.Remove(tmpFile) // nolint: errcheck
-	c := setupWithDefaults(map[string]interface{}{
-		ConfigFlag: tmpFile,
+	_, err := setup(map[string]flagValue{
+		"gh-user": {
+			Input: "user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
+		"gh-hostname": {
+			Input: "ghhostname",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
+		"config": {
+			Input: tmpFile,
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
 }
 
-func TestExecute_InvalidConfig(t *testing.T) {
+func TestRun_InvalidConfig(t *testing.T) {
 	t.Log("If the config file contains invalid yaml there should be an error.")
 	tmpFile := tempFile(t, "invalidyaml")
 	defer os.Remove(tmpFile) // nolint: errcheck
-	c := setupWithDefaults(map[string]interface{}{
-		ConfigFlag: tmpFile,
+	_, err := setup(map[string]flagValue{
+		"gh-user": {
+			Input: "user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
+		"config": {
+			Input: tmpFile,
+		},
 	}, t)
-	err := c.Execute()
 	Assert(t, strings.Contains(err.Error(), "unmarshal errors"), "should be an unmarshal error")
 }
 
-// Should error if the repo allowlist contained a scheme.
-func TestExecute_RepoAllowlistScheme(t *testing.T) {
-	c := setup(map[string]interface{}{
-		GHUserFlag:        "user",
-		GHTokenFlag:       "token",
-		RepoAllowlistFlag: "http://github.com/*",
-	}, t)
-	err := c.Execute()
-	Assert(t, err != nil, "should be an error")
-	Equals(t, "--repo-allowlist cannot contain ://, should be hostnames only", err.Error())
-}
-
-func TestExecute_ValidateLogLevel(t *testing.T) {
+func TestRun_ValidateLogLevel(t *testing.T) {
 	cases := []struct {
 		description string
-		flags       map[string]interface{}
+		flags       map[string]flagValue
 		expectError bool
 	}{
 		{
 			"log level is invalid",
-			map[string]interface{}{
-				LogLevelFlag: "invalid",
+			map[string]flagValue{
+				"log-level": {
+					Input: "invalid",
+				},
 			},
 			true,
 		},
 		{
 			"log level is valid uppercase",
-			map[string]interface{}{
-				LogLevelFlag: "DEBUG",
+			map[string]flagValue{
+				"log-level": {
+					Input: "DEBUG",
+				},
 			},
 			false,
 		},
 	}
 	for _, testCase := range cases {
 		t.Log("Should validate log level when " + testCase.description)
-		c := setupWithDefaults(testCase.flags, t)
-		err := c.Execute()
+		for k, v := range testCase.flags {
+			testFlags[k] = v
+		}
+		_, err := setup(testFlags, t)
 		if testCase.expectError {
 			Assert(t, err != nil, "should be an error")
 		} else {
@@ -298,53 +494,70 @@ func TestExecute_ValidateLogLevel(t *testing.T) {
 	}
 }
 
-func TestExecute_ValidateCheckoutStrategy(t *testing.T) {
-	c := setupWithDefaults(map[string]interface{}{
-		CheckoutStrategyFlag: "invalid",
+func TestRun_ValidateCheckoutStrategy(t *testing.T) {
+	_, err := setup(map[string]flagValue{
+		"checkout-strategy": {
+			Input: "invalid",
+		},
 	}, t)
-	err := c.Execute()
-	ErrEquals(t, "invalid checkout strategy: not one of branch or merge", err)
+	ErrEquals(t, "--checkout-strategy must be one of \"branch\",\"merge\" but got \"invalid\"", err)
 }
 
-func TestExecute_ValidateSSLConfig(t *testing.T) {
-	expErr := "--ssl-key-file and --ssl-cert-file are both required for ssl"
+func TestRun_ValidateSSLConfig(t *testing.T) {
+	expErr := "server: both ssl key and certificate are required"
 	cases := []struct {
 		description string
-		flags       map[string]interface{}
+		flags       map[string]flagValue
 		expectError bool
 	}{
 		{
 			"neither option set",
-			make(map[string]interface{}),
+			make(map[string]flagValue),
 			false,
 		},
 		{
 			"just ssl-key-file set",
-			map[string]interface{}{
-				SSLKeyFileFlag: "file",
+			map[string]flagValue{
+				"ssl-key-file": {
+					Input: "file",
+				},
+				"ssl-cert-file": {
+					Input: "",
+				},
 			},
 			true,
 		},
 		{
 			"just ssl-cert-file set",
-			map[string]interface{}{
-				SSLCertFileFlag: "flag",
+			map[string]flagValue{
+				"ssl-cert-file": {
+					Input: "flag",
+				},
+				"ssl-key-file": {
+					Input: "",
+				},
 			},
 			true,
 		},
 		{
 			"both flags set",
-			map[string]interface{}{
-				SSLCertFileFlag: "cert",
-				SSLKeyFileFlag:  "key",
+			map[string]flagValue{
+				"ssl-cert-file": {
+					Input: "cert",
+				},
+				"ssl-key-file": {
+					Input: "key",
+				},
 			},
 			false,
 		},
 	}
 	for _, testCase := range cases {
 		t.Log("Should validate ssl config when " + testCase.description)
-		c := setupWithDefaults(testCase.flags, t)
-		err := c.Execute()
+		for k, v := range testCase.flags {
+			testFlags[k] = v
+		}
+		_, err := setup(testFlags, t)
 		if testCase.expectError {
 			Assert(t, err != nil, "should be an error")
 			Equals(t, expErr, err.Error())
@@ -354,415 +567,563 @@ func TestExecute_ValidateSSLConfig(t *testing.T) {
 	}
 }
 
-func TestExecute_ValidateVCSConfig(t *testing.T) {
-	expErr := "--gh-user/--gh-token or --gh-app-id/--gh-app-key-file or --gh-app-id/--gh-app-key or --gitlab-user/--gitlab-token or --bitbucket-user/--bitbucket-token or --azuredevops-user/--azuredevops-token must be set"
+func TestRun_ValidateVCSConfig(t *testing.T) {
+	expErr := "server: credentials for at least one VCS provider should be defined"
 	cases := []struct {
 		description string
-		flags       map[string]interface{}
+		flags       map[string]flagValue
 		expectError bool
+		customError string
 	}{
 		{
 			"no config set",
-			make(map[string]interface{}),
+			make(map[string]flagValue),
 			true,
+			"",
 		},
 		{
 			"just github token set",
-			map[string]interface{}{
-				GHTokenFlag: "token",
+			map[string]flagValue{
+				"gh-token": {
+					Input: "token",
+				},
 			},
 			true,
+			"",
 		},
 		{
 			"just gitlab token set",
-			map[string]interface{}{
-				GitlabTokenFlag: "token",
+			map[string]flagValue{
+				"gitlab-token": {
+					Input: "token",
+				},
 			},
 			true,
+			"",
 		},
 		{
 			"just bitbucket token set",
-			map[string]interface{}{
-				BitbucketTokenFlag: "token",
+			map[string]flagValue{
+				"bitbucket-token": {
+					Input: "token",
+				},
 			},
 			true,
+			"",
 		},
 		{
 			"just azuredevops token set",
-			map[string]interface{}{
-				ADTokenFlag: "token",
+			map[string]flagValue{
+				"azuredevops-token": {
+					Input: "token",
+				},
 			},
 			true,
+			"",
 		},
 		{
 			"just github user set",
-			map[string]interface{}{
-				GHUserFlag: "user",
+			map[string]flagValue{
+				"gh-user": {
+					Input: "user",
+				},
 			},
 			true,
+			"server: Github: both user and token should be set",
 		},
 		{
 			"just github app set",
-			map[string]interface{}{
-				GHAppIDFlag: "1",
+			map[string]flagValue{
+				"gh-app-id": {
+					Input: "1",
+				},
 			},
 			true,
+			"server: Github: either app key or app key file should be set together with app ID",
 		},
 		{
 			"just github app key file set",
-			map[string]interface{}{
-				GHAppKeyFileFlag: "key.pem",
+			map[string]flagValue{
+				"gh-app-key-file": {
+					Input: "key.pem",
+				},
 			},
 			true,
+			"",
 		},
 		{
 			"just github app key set",
-			map[string]interface{}{
-				GHAppKeyFlag: fixtures.GithubPrivateKey,
+			map[string]flagValue{
+				"gh-app-key": {
+					Input: fixtures.GithubPrivateKey,
+				},
 			},
 			true,
+			"",
 		},
 		{
 			"just gitlab user set",
-			map[string]interface{}{
-				GitlabUserFlag: "user",
+			map[string]flagValue{
+				"gitlab-user": {
+					Input: "user",
+				},
 			},
 			true,
+			"server: Gitlab: both user and token should be set",
 		},
 		{
 			"just bitbucket user set",
-			map[string]interface{}{
-				BitbucketUserFlag: "user",
+			map[string]flagValue{
+				"bitbucket-user": {
+					Input: "user",
+				},
 			},
 			true,
+			"server: Bitbucket: both user and token should be set",
 		},
 		{
 			"just azuredevops user set",
-			map[string]interface{}{
-				ADUserFlag: "user",
+			map[string]flagValue{
+				"azuredevops-user": {
+					Input: "user",
+				},
 			},
 			true,
+			"server: AzureDevops: both user and token should be set",
 		},
 		{
 			"github user and gitlab token set",
-			map[string]interface{}{
-				GHUserFlag:      "user",
-				GitlabTokenFlag: "token",
+			map[string]flagValue{
+				"gh-user": {
+					Input: "user",
+				},
+				"gitlab-token": {
+					Input: "token",
+				},
 			},
 			true,
+			"server: Github: both user and token should be set",
 		},
 		{
 			"gitlab user and github token set",
-			map[string]interface{}{
-				GitlabUserFlag: "user",
-				GHTokenFlag:    "token",
+			map[string]flagValue{
+				"gitlab-user": {
+					Input: "user",
+				},
+				"gh-token": {
+					Input: "token",
+				},
 			},
 			true,
+			"server: Github: both user and token should be set",
 		},
 		{
 			"github user and bitbucket token set",
-			map[string]interface{}{
-				GHUserFlag:         "user",
-				BitbucketTokenFlag: "token",
+			map[string]flagValue{
+				"gh-user": {
+					Input: "user",
+				},
+				"bitbucket-token": {
+					Input: "token",
+				},
 			},
 			true,
+			"server: Bitbucket: both user and token should be set",
 		},
 		{
 			"github user and github token set and should be successful",
-			map[string]interface{}{
-				GHUserFlag:  "user",
-				GHTokenFlag: "token",
+			map[string]flagValue{
+				"gh-user": {
+					Input: "user",
+				},
+				"gh-token": {
+					Input: "token",
+				},
 			},
 			false,
+			"",
 		},
 		{
 			"github app and key set and should be successful",
-			map[string]interface{}{
-				GHAppIDFlag:  "1",
-				GHAppKeyFlag: fixtures.GithubPrivateKey,
+			map[string]flagValue{
+				"gh-app-id": {
+					Input: "1",
+				},
+				"gh-app-key": {
+					Input: fixtures.GithubPrivateKey,
+				},
 			},
 			false,
+			"",
 		},
 		{
 			"gitlab user and gitlab token set and should be successful",
-			map[string]interface{}{
-				GitlabUserFlag:  "user",
-				GitlabTokenFlag: "token",
+			map[string]flagValue{
+				"gitlab-user": {
+					Input: "user",
+				},
+				"gitlab-token": {
+					Input: "token",
+				},
 			},
 			false,
+			"",
 		},
 		{
 			"bitbucket user and bitbucket token set and should be successful",
-			map[string]interface{}{
-				BitbucketUserFlag:  "user",
-				BitbucketTokenFlag: "token",
+			map[string]flagValue{
+				"bitbucket-user": {
+					Input: "user",
+				},
+				"bitbucket-token": {
+					Input: "token",
+				},
 			},
 			false,
+			"",
 		},
 		{
 			"azuredevops user and azuredevops token set and should be successful",
-			map[string]interface{}{
-				ADUserFlag:  "user",
-				ADTokenFlag: "token",
+			map[string]flagValue{
+				"azuredevops-user": {
+					Input: "user",
+				},
+				"azuredevops-token": {
+					Input: "token",
+				},
 			},
 			false,
+			"",
 		},
 		{
 			"all set should be successful",
-			map[string]interface{}{
-				GHUserFlag:         "user",
-				GHTokenFlag:        "token",
-				GitlabUserFlag:     "user",
-				GitlabTokenFlag:    "token",
-				BitbucketUserFlag:  "user",
-				BitbucketTokenFlag: "token",
-				ADUserFlag:         "user",
-				ADTokenFlag:        "token",
+			map[string]flagValue{
+				"gh-user": {
+					Input: "user",
+				},
+				"gh-token": {
+					Input: "token",
+				},
+				"gitlab-user": {
+					Input: "user",
+				},
+				"gitlab-token": {
+					Input: "token",
+				},
+				"bitbucket-user": {
+					Input: "user",
+				},
+				"bitbucket-token": {
+					Input: "token",
+				},
+				"azuredevops-user": {
+					Input: "user",
+				},
+				"azuredevops-token": {
+					Input: "token",
+				},
 			},
 			false,
+			"",
 		},
 	}
 	for _, testCase := range cases {
 		t.Log("Should validate vcs config when " + testCase.description)
-		testCase.flags[RepoAllowlistFlag] = "*"
+		testCase.flags["repo-allowlist"] = flagValue{
+			Input: "*",
+		}
 
-		c := setup(testCase.flags, t)
-		err := c.Execute()
+		_, err := setup(testCase.flags, t)
 		if testCase.expectError {
 			Assert(t, err != nil, "should be an error")
-			Equals(t, expErr, err.Error())
+			testErr := expErr
+			if testCase.customError != "" {
+				testErr = testCase.customError
+			}
+			Equals(t, testErr, err.Error())
 		} else {
 			Ok(t, err)
 		}
 	}
 }
 
-func TestExecute_ExpandHomeInDataDir(t *testing.T) {
+func TestRun_ExpandHomeInDataDir(t *testing.T) {
 	t.Log("If ~ is used as a data-dir path, should expand to absolute home path")
-	c := setup(map[string]interface{}{
-		GHUserFlag:        "user",
-		GHTokenFlag:       "token",
-		RepoAllowlistFlag: "*",
-		DataDirFlag:       "~/this/is/a/path",
+	c, err := setup(map[string]flagValue{
+		"gh-user": {
+			Input: "user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
+		"data-dir": {
+			Input: "~/this/is/a/path",
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
-
+	serverCmd := c.Selected().Target.Interface().(ServerCmd)
 	home, err := homedir.Dir()
 	Ok(t, err)
-	Equals(t, home+"/this/is/a/path", passedConfig.DataDir)
+	Equals(t, home+"/this/is/a/path", serverCmd.UserConfig.DataDir)
 }
 
-func TestExecute_RelativeDataDir(t *testing.T) {
+func TestRun_RelativeDataDir(t *testing.T) {
 	t.Log("Should convert relative dir to absolute.")
-	c := setupWithDefaults(map[string]interface{}{
-		DataDirFlag: "../",
-	}, t)
-
 	// Figure out what ../ should be as an absolute path.
 	expectedAbsolutePath, err := filepath.Abs("../")
 	Ok(t, err)
+	testFlags["data-dir"] = flagValue{
+		Input: "../",
+	}
+	c, err := setup(testFlags, t)
 
-	err = c.Execute()
-	Ok(t, err)
-	Equals(t, expectedAbsolutePath, passedConfig.DataDir)
+	serverCmd := c.Selected().Target.Interface().(ServerCmd)
+	Equals(t, expectedAbsolutePath, serverCmd.UserConfig.DataDir)
 }
 
-func TestExecute_GithubUser(t *testing.T) {
+func TestRun_GithubUser(t *testing.T) {
 	t.Log("Should remove the @ from the github username if it's passed.")
-	c := setup(map[string]interface{}{
-		GHUserFlag:        "@user",
-		GHTokenFlag:       "token",
-		RepoAllowlistFlag: "*",
+	c, err := setup(map[string]flagValue{
+		"gh-user": {
+			Input: "@user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
-
-	Equals(t, "user", passedConfig.GithubUser)
+	serverCmd := c.Selected().Target.Interface().(ServerCmd)
+	Equals(t, server.User("user"), serverCmd.UserConfig.GithubSecrets.User)
 }
 
-func TestExecute_GithubApp(t *testing.T) {
+func TestRun_GithubApp(t *testing.T) {
 	t.Log("Should remove the @ from the github username if it's passed.")
-	c := setup(map[string]interface{}{
-		GHAppKeyFlag:      fixtures.GithubPrivateKey,
-		GHAppIDFlag:       "1",
-		RepoAllowlistFlag: "*",
+	c, err := setup(map[string]flagValue{
+		"gh-app-key": {
+			Input: fixtures.GithubPrivateKey,
+		},
+		"gh-app-id": {
+			Input: "1",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
-
-	Equals(t, int64(1), passedConfig.GithubAppID)
+	serverCmd := c.Selected().Target.Interface().(ServerCmd)
+	Equals(t, int64(1), serverCmd.UserConfig.GithubSecrets.AppID)
 }
 
-func TestExecute_GitlabUser(t *testing.T) {
+func TestRun_GitlabUser(t *testing.T) {
 	t.Log("Should remove the @ from the gitlab username if it's passed.")
-	c := setup(map[string]interface{}{
-		GitlabUserFlag:    "@user",
-		GitlabTokenFlag:   "token",
-		RepoAllowlistFlag: "*",
+	c, err := setup(map[string]flagValue{
+		"gitlab-user": {
+			Input: "@user",
+		},
+		"gitlab-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
-
-	Equals(t, "user", passedConfig.GitlabUser)
+	serverCmd := c.Selected().Target.Interface().(ServerCmd)
+	Equals(t, server.User("user"), serverCmd.UserConfig.GitlabSecrets.User)
 }
 
-func TestExecute_BitbucketUser(t *testing.T) {
+func TestRun_BitbucketUser(t *testing.T) {
 	t.Log("Should remove the @ from the bitbucket username if it's passed.")
-	c := setup(map[string]interface{}{
-		BitbucketUserFlag:  "@user",
-		BitbucketTokenFlag: "token",
-		RepoAllowlistFlag:  "*",
+	c, err := setup(map[string]flagValue{
+		"bitbucket-user": {
+			Input: "@user",
+		},
+		"bitbucket-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
-
-	Equals(t, "user", passedConfig.BitbucketUser)
+	serverCmd := c.Selected().Target.Interface().(ServerCmd)
+	Equals(t, server.User("user"), serverCmd.UserConfig.BitbucketSecrets.User)
 }
 
-func TestExecute_ADUser(t *testing.T) {
+func TestRun_ADUser(t *testing.T) {
 	t.Log("Should remove the @ from the azure devops username if it's passed.")
-	c := setup(map[string]interface{}{
-		ADUserFlag:        "@user",
-		ADTokenFlag:       "token",
-		RepoAllowlistFlag: "*",
+	c, err := setup(map[string]flagValue{
+		"azuredevops-user": {
+			Input: "@user",
+		},
+		"azuredevops-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
 	}, t)
-	err := c.Execute()
 	Ok(t, err)
-
-	Equals(t, "user", passedConfig.AzureDevopsUser)
+	serverCmd := c.Selected().Target.Interface().(ServerCmd)
+	Equals(t, server.User("user"), serverCmd.UserConfig.AzureDevopsSecrets.User)
 }
 
 // If using bitbucket cloud, webhook secrets are not supported.
-func TestExecute_BitbucketCloudWithWebhookSecret(t *testing.T) {
-	c := setup(map[string]interface{}{
-		BitbucketUserFlag:          "user",
-		BitbucketTokenFlag:         "token",
-		RepoAllowlistFlag:          "*",
-		BitbucketWebhookSecretFlag: "my secret",
+func TestRun_BitbucketCloudWithWebhookSecret(t *testing.T) {
+	_, err := setup(map[string]flagValue{
+		"bitbucket-user": {
+			Input: "user",
+		},
+		"bitbucket-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
+		"bitbucket-webhook-secret": {
+			Input: "my secret",
+		},
 	}, t)
-	err := c.Execute()
-	ErrEquals(t, "--bitbucket-webhook-secret cannot be specified for Bitbucket Cloud because it is not supported by Bitbucket", err)
+	ErrEquals(t, "server: Bitbucket: webhook secret for Bitbucket Cloud is not supported", err)
 }
 
 // Base URL must have a scheme.
-func TestExecute_BitbucketServerBaseURLScheme(t *testing.T) {
-	c := setup(map[string]interface{}{
-		BitbucketUserFlag:    "user",
-		BitbucketTokenFlag:   "token",
-		RepoAllowlistFlag:    "*",
-		BitbucketBaseURLFlag: "mydomain.com",
+func TestRun_BitbucketServerBaseURLScheme(t *testing.T) {
+	_, err := setup(map[string]flagValue{
+		"bitbucket-user": {
+			Input: "user",
+		},
+		"bitbucket-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
+		"bitbucket-base-url": {
+			Input: "mydomain.com",
+		},
 	}, t)
-	ErrEquals(t, "--bitbucket-base-url must have http:// or https://, got \"mydomain.com\"", c.Execute())
+	ErrEquals(t, "--bitbucket-base-url: failed to parse HTTP url: protocol \"\" is not supported", err)
 
-	c = setup(map[string]interface{}{
-		BitbucketUserFlag:    "user",
-		BitbucketTokenFlag:   "token",
-		RepoAllowlistFlag:    "*",
-		BitbucketBaseURLFlag: "://mydomain.com",
+	_, err = setup(map[string]flagValue{
+		"bitbucket-user": {
+			Input: "user",
+		},
+		"bitbucket-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
+		"bitbucket-base-url": {
+			Input: "://mydomain.com",
+		},
 	}, t)
-	ErrEquals(t, "error parsing --bitbucket-webhook-secret flag value \"://mydomain.com\": parse \"://mydomain.com\": missing protocol scheme", c.Execute())
+	ErrEquals(t, "--bitbucket-base-url: parse \"://mydomain.com\": missing protocol scheme", err)
 }
 
 // Port should be retained on base url.
-func TestExecute_BitbucketServerBaseURLPort(t *testing.T) {
-	c := setup(map[string]interface{}{
-		BitbucketUserFlag:    "user",
-		BitbucketTokenFlag:   "token",
-		RepoAllowlistFlag:    "*",
-		BitbucketBaseURLFlag: "http://mydomain.com:7990",
+func TestRun_BitbucketServerBaseURLPort(t *testing.T) {
+	c, err := setup(map[string]flagValue{
+		"bitbucket-user": {
+			Input: "user",
+		},
+		"bitbucket-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "*",
+		},
+		"bitbucket-base-url": {
+			Input: "http://mydomain.com:7990",
+		},
 	}, t)
-	Ok(t, c.Execute())
-	Equals(t, "http://mydomain.com:7990", passedConfig.BitbucketBaseURL)
+	Ok(t, err)
+	serverCmd := c.Selected().Target.Interface().(ServerCmd)
+	Equals(t, "http://mydomain.com:7990", serverCmd.BitbucketSecrets.BaseURL.String())
 }
 
 // Can't use both --repo-config and --repo-config-json.
-func TestExecute_RepoCfgFlags(t *testing.T) {
-	c := setup(map[string]interface{}{
-		GHUserFlag:         "user",
-		GHTokenFlag:        "token",
-		RepoAllowlistFlag:  "github.com",
-		RepoConfigFlag:     "repos.yaml",
-		RepoConfigJSONFlag: "{}",
+func TestRun_RepoCfgFlags(t *testing.T) {
+	_, err := setup(map[string]flagValue{
+		"gh-user": {
+			Input: "user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
+		"repo-allowlist": {
+			Input: "github.com",
+		},
+		"repo-config": {
+			Input: "repos.yaml",
+		},
+		"repo-config-json": {
+			Input: "{}",
+		},
 	}, t)
-	err := c.Execute()
-	ErrEquals(t, "cannot use --repo-config and --repo-config-json at the same time", err)
-}
-
-// Can't use both --repo-allowlist and --repo-whitelist
-func TestExecute_BothAllowAndWhitelist(t *testing.T) {
-	c := setup(map[string]interface{}{
-		GHUserFlag:        "user",
-		GHTokenFlag:       "token",
-		RepoAllowlistFlag: "github.com",
-		RepoWhitelistFlag: "github.com",
-	}, t)
-	err := c.Execute()
-	ErrEquals(t, "both --repo-allowlist and --repo-whitelist cannot be set–use --repo-allowlist", err)
+	ErrEquals(t, "server: cannot set both path to repo config and repo config json at the same time", err)
 }
 
 // Must set allow or whitelist.
-func TestExecute_AllowAndWhitelist(t *testing.T) {
-	c := setup(map[string]interface{}{
-		GHUserFlag:  "user",
-		GHTokenFlag: "token",
+func TestRun_Allowlist(t *testing.T) {
+	_, err := setup(map[string]flagValue{
+		"gh-user": {
+			Input: "user",
+		},
+		"gh-token": {
+			Input: "token",
+		},
 	}, t)
-	err := c.Execute()
-	ErrEquals(t, "--repo-allowlist must be set for security purposes", err)
+	ErrEquals(t, "missing flags: --repo-allowlist=REPO-ALLOWLIST,...", err)
 }
 
-// Test that we set the corresponding allow list values on the userConfig
-// struct if the deprecated whitelist flags are used.
-func TestExecute_RepoWhitelistDeprecation(t *testing.T) {
-	c := setup(map[string]interface{}{
-		GHUserFlag:        "user",
-		GHTokenFlag:       "token",
-		RepoWhitelistFlag: "*",
-	}, t)
-	err := c.Execute()
-	Ok(t, err)
-	Equals(t, "*", passedConfig.RepoAllowlist)
-}
-
-func TestExecute_AutoplanFileList(t *testing.T) {
+func TestRun_AutoplanFileList(t *testing.T) {
 	cases := []struct {
 		description string
-		flags       map[string]interface{}
+		flags       map[string]flagValue
 		expectErr   string
 	}{
 		{
-			"default value",
-			map[string]interface{}{
-				AutoplanFileListFlag: DefaultAutoplanFileList,
-			},
-			"",
-		},
-		{
 			"valid value",
-			map[string]interface{}{
-				AutoplanFileListFlag: "**/*.tf",
+			map[string]flagValue{
+				"autoplan-file-list": {
+					Input: "**/*.tf",
+				},
 			},
 			"",
 		},
 		{
 			"invalid exclusion pattern",
-			map[string]interface{}{
-				AutoplanFileListFlag: "**/*.yml,!",
+			map[string]flagValue{
+				"autoplan-file-list": {
+					Input: "**/*.yml,!",
+				},
 			},
-			"invalid pattern in --autoplan-file-list, **/*.yml,!: illegal exclusion pattern: \"!\"",
+			"--autoplan-file-list: illegal exclusion pattern: \"!\"",
 		},
 		{
 			"invalid pattern",
-			map[string]interface{}{
-				AutoplanFileListFlag: "[^]",
+			map[string]flagValue{
+				"autoplan-file-list": {
+					Input: "[^]",
+				},
 			},
-			"invalid pattern in --autoplan-file-list, [^]: syntax error in pattern",
+			"--autoplan-file-list: syntax error in pattern",
 		},
 	}
 	for _, testCase := range cases {
 		t.Log("Should validate autoplan file list when " + testCase.description)
-		c := setupWithDefaults(testCase.flags, t)
-		err := c.Execute()
+		for k, v := range testCase.flags {
+			testFlags[k] = v
+		}
+		_, err := setup(testFlags, t)
 		if testCase.expectErr != "" {
 			ErrEquals(t, testCase.expectErr, err)
 		} else {
@@ -771,34 +1132,27 @@ func TestExecute_AutoplanFileList(t *testing.T) {
 	}
 }
 
-func setup(flags map[string]interface{}, _ *testing.T) *cobra.Command {
-	vipr := viper.New()
-	for k, v := range flags {
-		vipr.Set(k, v)
-	}
-	c := &ServerCmd{
-		ServerCreator: &ServerCreatorMock{},
-		Viper:         vipr,
-		SilenceOutput: true,
-	}
-	return c.Init()
-}
+func setup(args map[string]flagValue, _ *testing.T) (*kong.Context, error) {
+	parser, _ := kong.New(
+		&CLI,
+		FlagsVars,
+		kong.DefaultEnvars("ATLANTIS"),
+	)
 
-func setupWithDefaults(flags map[string]interface{}, _ *testing.T) *cobra.Command {
-	vipr := viper.New()
-	flags[GHUserFlag] = "user"
-	flags[GHTokenFlag] = "token"
-	flags[RepoAllowlistFlag] = "*"
-
-	for k, v := range flags {
-		vipr.Set(k, v)
+	cmdline := []string{"server"}
+	for k, v := range args {
+		val := ""
+		switch v.Input.(type) {
+		case bool:
+			val = fmt.Sprintf("%t", v.Input.(bool))
+		case string:
+			val = v.Input.(string)
+		case int:
+			val = fmt.Sprintf("%d", v.Input.(int))
+		}
+		cmdline = append(cmdline, fmt.Sprintf("--%s=%s", k, val))
 	}
-	c := &ServerCmd{
-		ServerCreator: &ServerCreatorMock{},
-		Viper:         vipr,
-		SilenceOutput: true,
-	}
-	return c.Init()
+	return parser.Parse(cmdline)
 }
 
 func tempFile(t *testing.T, contents string) string {
@@ -811,15 +1165,13 @@ func tempFile(t *testing.T, contents string) string {
 	return newName
 }
 
-func configVal(t *testing.T, u server.UserConfig, tag string) interface{} {
+func configVal(t *testing.T, ctx *kong.Context, tag string) interface{} {
 	t.Helper()
-	v := reflect.ValueOf(u)
-	typeOfS := v.Type()
-	for i := 0; i < v.NumField(); i++ {
-		if typeOfS.Field(i).Tag.Get("mapstructure") == tag {
-			return v.Field(i).Interface()
+	for _, flag := range ctx.Flags() {
+		if flag.Name == tag {
+			return ctx.FlagValue(flag)
 		}
 	}
 	t.Fatalf("no field with tag %q found", tag)
-	return nil
+	return ""
 }

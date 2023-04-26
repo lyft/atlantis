@@ -42,7 +42,7 @@ func TestPREventHandler(t *testing.T) {
 		Pull: models.PullRequest{Num: 1},
 	}
 
-	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")
+	repoAllowlistChecker, err := events.NewRepoAllowlistChecker([]string{"*"})
 	assert.NoError(t, err)
 
 	openPREventHandler := &assertingPRHandler{expectedEvent: event, expectedRequest: request, t: t}

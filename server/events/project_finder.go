@@ -35,7 +35,7 @@ type ProjectFinder interface {
 	// DetermineProjects returns the list of projects that were modified based on
 	// the modifiedFiles. The list will be de-duplicated.
 	// absRepoDir is the path to the cloned repo on disk.
-	DetermineProjects(requestCtx context.Context, log logging.Logger, modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList string) []models.Project
+	DetermineProjects(requestCtx context.Context, log logging.Logger, modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList *fileutils.PatternMatcher) []models.Project
 	// DetermineProjectsViaConfig returns the list of projects that were modified
 	// based on modifiedFiles and the repo's config.
 	// absRepoDir is the path to the cloned repo on disk.
@@ -49,7 +49,7 @@ var ignoredFilenameFragments = []string{"terraform.tfstate", "terraform.tfstate.
 type DefaultProjectFinder struct{}
 
 // See ProjectFinder.DetermineProjects.
-func (p *DefaultProjectFinder) DetermineProjects(requestCtx context.Context, log logging.Logger, modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList string) []models.Project {
+func (p *DefaultProjectFinder) DetermineProjects(requestCtx context.Context, log logging.Logger, modifiedFiles []string, repoFullName string, absRepoDir string, autoplanFileList *fileutils.PatternMatcher) []models.Project {
 	var projects []models.Project
 
 	modifiedTerraformFiles := p.filterToFileList(modifiedFiles, autoplanFileList)
@@ -142,11 +142,8 @@ func (p *DefaultProjectFinder) DetermineProjectsViaConfig(log logging.Logger, mo
 }
 
 // filterToFileList filters out files not included in the file list
-func (p *DefaultProjectFinder) filterToFileList(files []string, fileList string) []string {
+func (p *DefaultProjectFinder) filterToFileList(files []string, patternMatcher *fileutils.PatternMatcher) []string {
 	var filtered []string
-	patterns := strings.Split(fileList, ",")
-	// Ignore pattern matcher error here as it was checked for errors in server validation
-	patternMatcher, _ := fileutils.NewPatternMatcher(patterns)
 
 	for _, fileName := range files {
 		if p.shouldIgnore(fileName) {

@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/runatlantis/atlantis/cmd"
 	"github.com/runatlantis/atlantis/server/core/terraform"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
@@ -39,8 +38,8 @@ func TestNewClient_NoTF(t *testing.T) {
 	// Set PATH to only include our empty directory.
 	defer tempSetEnv(t, "PATH", tmp)()
 
-	_, err := terraform.NewClient(binDir, cacheDir, "", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler)
-	ErrEquals(t, "getting default version: terraform not found in $PATH. Set --default-tf-version or download terraform from https://www.terraform.io/downloads.html", err)
+	_, err := terraform.NewClient(binDir, cacheDir, "", "", nil, true, projectCmdOutputHandler)
+	ErrEquals(t, "getting default version: terraform not found in $PATH. Set default TF version flag or download terraform from https://www.terraform.io/downloads.html", err)
 }
 
 // Test that if the default-tf flag is set and that binary is in our PATH
@@ -65,7 +64,7 @@ func TestNewClient_DefaultTFFlagInPath(t *testing.T) {
 	Ok(t, err)
 	defer tempSetEnv(t, "PATH", fmt.Sprintf("%s:%s", tmp, os.Getenv("PATH")))()
 
-	c, err := terraform.NewClient(binDir, cacheDir, "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler)
+	c, err := terraform.NewClient(binDir, cacheDir, "0.11.10", "", nil, true, projectCmdOutputHandler)
 	Ok(t, err)
 
 	Ok(t, err)
@@ -97,7 +96,7 @@ func TestNewClient_DefaultTFFlagInBinDir(t *testing.T) {
 	Ok(t, err)
 	defer tempSetEnv(t, "PATH", fmt.Sprintf("%s:%s", tmp, os.Getenv("PATH")))()
 
-	c, err := terraform.NewClient(binDir, cacheDir, "0.11.10", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler)
+	c, err := terraform.NewClient(binDir, cacheDir, "0.11.10", "", nil, true, projectCmdOutputHandler)
 	Ok(t, err)
 
 	Ok(t, err)
@@ -114,7 +113,7 @@ func TestNewClient_BadVersion(t *testing.T) {
 	projectCmdOutputHandler := jobmocks.NewMockProjectCommandOutputHandler()
 	defer cleanup()
 
-	_, err := terraform.NewClient(binDir, cacheDir, "malformed", cmd.DefaultTFVersionFlag, cmd.DefaultTFDownloadURL, nil, true, projectCmdOutputHandler)
+	_, err := terraform.NewClient(binDir, cacheDir, "malformed", "", nil, true, projectCmdOutputHandler)
 	ErrEquals(t, "getting default version: parsing version malformed: Malformed version: malformed", err)
 }
 

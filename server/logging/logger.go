@@ -18,9 +18,13 @@ package logging
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/alecthomas/kong"
 	"github.com/pkg/errors"
 	ctxInternal "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.uber.org/zap"
@@ -191,6 +195,27 @@ func NewNoopCtxLogger(t *testing.T) Logger {
 type LogLevel struct {
 	zLevel   zapcore.Level
 	shortStr string
+}
+
+func (l *LogLevel) Decode(ctx *kong.DecodeContext) error {
+	var rawLevel string
+	err := ctx.Scan.PopValueInto("string", &rawLevel)
+	if err != nil {
+		return err
+	}
+	switch strings.ToLower(rawLevel) {
+	case "debug":
+		ctx.Value.Target.Set(reflect.ValueOf(Debug))
+	case "info":
+		ctx.Value.Target.Set(reflect.ValueOf(Info))
+	case "warn":
+		ctx.Value.Target.Set(reflect.ValueOf(Warn))
+	case "error":
+		ctx.Value.Target.Set(reflect.ValueOf(Error))
+	default:
+		return fmt.Errorf("log level %q is not supported", rawLevel)
+	}
+	return nil
 }
 
 var (

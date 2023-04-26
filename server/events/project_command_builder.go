@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/docker/docker/pkg/fileutils"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 
@@ -39,7 +40,7 @@ func NewProjectCommandBuilder(
 	globalCfg valid.GlobalCfg,
 	pendingPlanFinder *DefaultPendingPlanFinder,
 	EnableRegExpCmd bool,
-	AutoplanFileList string,
+	AutoplanFileList *fileutils.PatternMatcher,
 	logger logging.Logger,
 	limit int,
 ) ProjectCommandBuilder {
@@ -114,7 +115,7 @@ type DefaultProjectCommandBuilder struct {
 	PendingPlanFinder            *DefaultPendingPlanFinder
 	ProjectCommandContextBuilder ProjectCommandContextBuilder
 	EnableRegExpCmd              bool
-	AutoplanFileList             string
+	AutoplanFileList             *fileutils.PatternMatcher
 	EnableDiffMarkdownFormat     bool
 }
 

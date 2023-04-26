@@ -62,7 +62,7 @@ func TestCommentHandler(t *testing.T) {
 
 	event := event_types.Comment{}
 
-	repoAllowlistChecker, err := events.NewRepoAllowlistChecker("*")
+	repoAllowlistChecker, err := events.NewRepoAllowlistChecker([]string{"*"})
 	assert.NoError(t, err)
 
 	t.Run("success", func(t *testing.T) {

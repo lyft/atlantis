@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/docker/docker/pkg/fileutils"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/controllers"
@@ -52,9 +53,9 @@ import (
 // TODO: let's make this struct nicer using actual OOP instead of just a god type struct
 type Config struct {
 	DataDir                   string
-	AutoplanFileList          string
+	AutoplanFileList          *fileutils.PatternMatcher
 	AppCfg                    githubapp.Config
-	RepoAllowList             string
+	RepoAllowlist             []string
 	MaxProjectsPerPR          int
 	FFOwner                   string
 	FFRepo                    string
@@ -97,7 +98,7 @@ func NewServer(config Config) (*Server, error) {
 		return nil, err
 	}
 
-	repoAllowlist, err := events.NewRepoAllowlistChecker(config.RepoAllowList)
+	repoAllowlist, err := events.NewRepoAllowlistChecker(config.RepoAllowlist)
 	if err != nil {
 		return nil, err
 	}
