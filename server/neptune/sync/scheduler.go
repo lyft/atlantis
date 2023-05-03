@@ -69,8 +69,7 @@ type SynchronousScheduler struct {
 }
 
 func (s *SynchronousScheduler) Schedule(ctx context.Context, f Executor) error {
-
-	if s.PanicRecoveryEnabled == true {
+	if s.PanicRecoveryEnabled {
 		defer func() {
 			if r := recover(); r != nil {
 				stack := recovery.Stack(3)
@@ -78,7 +77,6 @@ func (s *SynchronousScheduler) Schedule(ctx context.Context, f Executor) error {
 			}
 		}()
 	}
-
 	err := f(ctx)
 	if err != nil {
 		s.Logger.ErrorContext(context.WithValue(ctx, contextUtils.ErrKey, err), "error running handle")
