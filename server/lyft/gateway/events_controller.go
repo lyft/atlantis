@@ -18,6 +18,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	deployCfg "github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/requirement"
 	gateway_handlers "github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	converters "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
@@ -53,7 +54,10 @@ func NewVCSEventsController(
 	deploySignaler *deploy.WorkflowSignaler,
 	checkRunFetcher *github.CheckRunsFetcher,
 	vcsStatusUpdater *command.VCSStatusUpdater,
-	globalCfg valid.GlobalCfg) *VCSEventsController {
+	globalCfg valid.GlobalCfg,
+	commentCreator *github.CommentCreator,
+	teamMemberFetcher *github.TeamMemberFetcher,
+) *VCSEventsController {
 	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
 		snsWriter, logger,
 	)
@@ -69,11 +73,26 @@ func NewVCSEventsController(
 		pullEventWorkerProxy,
 	)
 
+	errorHandler := gateway_handlers.NewPREventErrorHandler(
+		commentCreator,
+		globalCfg,
+		logger,
+	)
+
+	requirementChecker := requirement.NewAggregate(globalCfg, teamMemberFetcher)
 	commentHandler := handlers.NewCommentEventWithCommandHandler(
 		commentParser,
 		repoAllowlistChecker,
 		vcsClient,
-		gateway_handlers.NewCommentEventWorkerProxy(logger, scope.SubScope("comment"), snsWriter, featureAllocator, asyncScheduler, deploySignaler, vcsClient, vcsStatusUpdater, globalCfg, rootConfigBuilder),
+		gateway_handlers.NewCommentEventWorkerProxy(
+			logger, scope.SubScope("comment"),
+			snsWriter,
+			featureAllocator, asyncScheduler,
+			deploySignaler, vcsClient,
+			vcsStatusUpdater, globalCfg,
+			rootConfigBuilder, errorHandler,
+			requirementChecker,
+		),
 		logger,
 	)
 

@@ -23,7 +23,7 @@ func TestLoader_TemplateOverride(t *testing.T) {
 			{
 				ID: testRepo.ID(),
 				TemplateOverrides: map[string]string{
-					string(LegacyApplyComment): "testdata/custom.tmpl",
+					string(PRComment): "testdata/custom.tmpl",
 				},
 			},
 		},
@@ -31,10 +31,10 @@ func TestLoader_TemplateOverride(t *testing.T) {
 
 	loader := NewLoader[any](globalCfg)
 
-	output, err := loader.Load(LegacyApplyComment, testRepo, nil)
+	output, err := loader.Load(PRComment, testRepo, nil)
 	assert.NoError(t, err)
 
-	templateContent, err := os.ReadFile(globalCfg.MatchingRepo(testRepo.ID()).TemplateOverrides[string(LegacyApplyComment)])
+	templateContent, err := os.ReadFile(globalCfg.MatchingRepo(testRepo.ID()).TemplateOverrides[string(PRComment)])
 	assert.NoError(t, err)
 
 	assert.Equal(t, output, string(templateContent))
@@ -51,10 +51,10 @@ func TestLoader_NoTemplateOverride(t *testing.T) {
 
 	loader := NewLoader[any](globalCfg)
 
-	output, err := loader.Load(LegacyApplyComment, testRepo, nil)
+	output, err := loader.Load(PRComment, testRepo, nil)
 	assert.NoError(t, err)
 
-	templateContent, err := os.ReadFile(fmt.Sprintf("templates/%s.tmpl", LegacyApplyComment))
+	templateContent, err := os.ReadFile(fmt.Sprintf("templates/%s.tmpl", PRComment))
 	assert.NoError(t, err)
 
 	assert.Equal(t, output, string(templateContent))

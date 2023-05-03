@@ -14,6 +14,7 @@ import (
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/requirement"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
@@ -29,6 +30,20 @@ var testPull = models.PullRequest{
 	HeadBranch: "somebranch",
 	HeadCommit: "1234",
 	Num:        1,
+}
+
+type noopErrorHandler struct{}
+
+func (h noopErrorHandler) WrapWithHandling(ctx context.Context, event event.PREvent, commandName string, executor sync.Executor) sync.Executor {
+	return executor
+}
+
+type requirementsChecker struct {
+	err error
+}
+
+func (a *requirementsChecker) Check(ctx context.Context, criteria requirement.Criteria) error {
+	return a.err
 }
 
 type mockRootConfigBuilder struct {
@@ -119,7 +134,7 @@ func TestCommentEventWorkerProxy_HandleAllocationError(t *testing.T) {
 		expectedToken: 123,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -177,7 +192,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_default(t *testing.T) {
 	}
 
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -270,7 +285,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_BothModes(t *testing.T) {
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 
 	cmd := &command.Comment{
@@ -363,7 +378,7 @@ func TestCommentEventWorkerProxy_HandleForceApply_AllPlatform(t *testing.T) {
 	}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name:       command.Apply,
@@ -375,6 +390,70 @@ func TestCommentEventWorkerProxy_HandleForceApply_AllPlatform(t *testing.T) {
 	assert.True(t, testSignaler.called())
 	assert.False(t, writer.isCalled)
 	assert.False(t, statusUpdater.isCalled)
+}
+
+func TestCommentEventWorkerProxy_HandleApplyComment_AllPlatformMode_RequirementsFailed(t *testing.T) {
+	logger := logging.NewNoopCtxLogger(t)
+	scope, _, err := metrics.NewLoggingScope(logger, "")
+	assert.NoError(t, err)
+	rootConfigBuilder := &mockRootConfigBuilder{
+		expectedT: t,
+		expectedCommit: &config.RepoCommit{
+			Repo:          testRepo,
+			Branch:        testPull.HeadBranch,
+			Sha:           testPull.HeadCommit,
+			OptionalPRNum: testPull.Num,
+		},
+		expectedToken: 123,
+		rootConfigs: []*valid.MergedProjectCfg{
+			{
+				Name:         "root1",
+				WorkflowMode: valid.PlatformWorkflowMode,
+			},
+			{
+				Name:         "root2",
+				WorkflowMode: valid.PlatformWorkflowMode,
+			},
+		},
+	}
+	commentEvent := event.Comment{
+		Pull:     testPull,
+		PullNum:  testPull.Num,
+		BaseRepo: testRepo,
+		HeadRepo: testRepo,
+		User: models.User{
+			Username: "someuser",
+		},
+		InstallationToken: 123,
+	}
+	testSignaler := &testDeploySignaler{}
+
+	writer := &mockSnsWriter{}
+	allocator := &testAllocator{
+		t:                 t,
+		expectedFeatureID: feature.PlatformMode,
+		expectedFeatureCtx: feature.FeatureContext{
+			RepoName: repoFullName,
+		},
+		expectedAllocation: true,
+	}
+	scheduler := &sync.SynchronousScheduler{Logger: logger}
+	commentCreator := &mockCommentCreator{}
+	statusUpdater := &mockStatusUpdater{}
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{
+		err: assert.AnError,
+	})
+	bufReq := buildRequest(t)
+	cmd := &command.Comment{
+		Name: command.Apply,
+	}
+	err = commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
+	assert.Error(t, err)
+	assert.False(t, statusUpdater.isCalled)
+	assert.False(t, commentCreator.isCalled)
+	assert.False(t, testSignaler.called)
+	assert.True(t, writer.isCalled)
 }
 
 func TestCommentEventWorkerProxy_HandleApplyComment_AllPlatformMode(t *testing.T) {
@@ -401,7 +480,6 @@ func TestCommentEventWorkerProxy_HandleApplyComment_AllPlatformMode(t *testing.T
 			},
 		},
 	}
-	testSignaler := &testDeploySignaler{}
 	commentEvent := event.Comment{
 		Pull:     testPull,
 		PullNum:  testPull.Num,
@@ -412,6 +490,32 @@ func TestCommentEventWorkerProxy_HandleApplyComment_AllPlatformMode(t *testing.T
 		},
 		InstallationToken: 123,
 	}
+	expectedOpts := deploy.RootDeployOptions{
+		Repo:              testRepo,
+		Branch:            testPull.HeadBranch,
+		Revision:          testPull.HeadCommit,
+		OptionalPullNum:   testPull.Num,
+		Sender:            commentEvent.User,
+		InstallationToken: commentEvent.InstallationToken,
+		TriggerInfo: workflows.DeployTriggerInfo{
+			Type: workflows.ManualTrigger,
+		},
+	}
+	testSignaler := &testMultiDeploySignaler{
+		signalers: []*testDeploySignaler{
+			{
+				expectedT:   t,
+				expectedCfg: rootConfigBuilder.rootConfigs[0],
+				expOpts:     expectedOpts,
+			},
+			{
+				expectedT:   t,
+				expectedCfg: rootConfigBuilder.rootConfigs[1],
+				expOpts:     expectedOpts,
+			},
+		},
+	}
+
 	writer := &mockSnsWriter{}
 	allocator := &testAllocator{
 		t:                 t,
@@ -425,7 +529,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_AllPlatformMode(t *testing.T
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -434,7 +538,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_AllPlatformMode(t *testing.T
 	assert.NoError(t, err)
 	assert.False(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
-	assert.False(t, testSignaler.called)
+	assert.True(t, testSignaler.called())
 	assert.True(t, writer.isCalled)
 }
 
@@ -495,7 +599,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_PartialMode(t *testing.T) {
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -573,7 +677,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
 		},
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -635,7 +739,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 		},
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -703,7 +807,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment_BothModes(t *testing.T) {
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -753,7 +857,7 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -899,7 +1003,7 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 				expectedBody:      "Request received. Adding to the queue...",
 				expectedT:         t,
 			}
-			commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, c.allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder)
+			commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, scope, writer, c.allocator, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 			err := commentEventWorkerProxy.Handle(context.Background(), bufReq, c.event, c.command)
 			assert.NoError(t, err)
 			assert.False(t, statusUpdater.isCalled)

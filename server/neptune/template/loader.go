@@ -22,15 +22,22 @@ type Input struct {
 
 // list of all valid template ids
 const (
-	LegacyApplyComment = Key("legacyApply")
+	PRComment = Key("pr_comment")
 )
 
 var defaultTemplates = map[Key]string{
-	LegacyApplyComment: legacyApplyTemplate,
+	PRComment: prCommentTemplate,
 }
 
-//go:embed templates/legacyApply.tmpl
-var legacyApplyTemplate string
+type PRCommentData struct {
+	ForbiddenError bool
+	InternalError  bool
+	Command        string
+	ErrorDetails   string
+}
+
+//go:embed templates/pr_comment.tmpl
+var prCommentTemplate string
 
 type Loader[T any] struct {
 	GlobalCfg valid.GlobalCfg
@@ -41,8 +48,6 @@ func NewLoader[T any](globalCfg valid.GlobalCfg) Loader[T] {
 		GlobalCfg: globalCfg,
 	}
 }
-
-type Template struct{}
 
 func (l Loader[T]) Load(id Key, repo models.Repo, data T) (string, error) {
 	tmpl := template.Must(l.getTemplate(id, repo))

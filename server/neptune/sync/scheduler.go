@@ -64,16 +64,21 @@ func (s *AsyncScheduler) Shutdown(t time.Duration) {
 
 // SynchronousScheduler schedules work and handles panics/logging in a consistent manner.
 type SynchronousScheduler struct {
-	Logger logging.Logger
+	Logger               logging.Logger
+	PanicRecoveryEnabled bool
 }
 
 func (s *SynchronousScheduler) Schedule(ctx context.Context, f Executor) error {
-	defer func() {
-		if r := recover(); r != nil {
-			stack := recovery.Stack(3)
-			s.Logger.ErrorContext(ctx, fmt.Sprintf("PANIC: %s\n%s", r, stack))
-		}
-	}()
+
+	if s.PanicRecoveryEnabled == true {
+		defer func() {
+			if r := recover(); r != nil {
+				stack := recovery.Stack(3)
+				s.Logger.ErrorContext(ctx, fmt.Sprintf("PANIC: %s\n%s", r, stack))
+			}
+		}()
+	}
+
 	err := f(ctx)
 	if err != nil {
 		s.Logger.ErrorContext(context.WithValue(ctx, contextUtils.ErrKey, err), "error running handle")
