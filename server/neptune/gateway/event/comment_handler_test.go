@@ -567,8 +567,6 @@ func TestCommentEventWorkerProxy_HandleApplyComment_PartialMode(t *testing.T) {
 			},
 		},
 	}
-	testSignaler := &testDeploySignaler{}
-
 	commentEvent := event.Comment{
 		Pull:     testPull,
 		PullNum:  testPull.Num,
@@ -579,6 +577,23 @@ func TestCommentEventWorkerProxy_HandleApplyComment_PartialMode(t *testing.T) {
 		},
 		InstallationToken: 123,
 	}
+	expectedOpts := deploy.RootDeployOptions{
+		Repo:              testRepo,
+		Branch:            testPull.HeadBranch,
+		Revision:          testPull.HeadCommit,
+		OptionalPullNum:   testPull.Num,
+		Sender:            commentEvent.User,
+		InstallationToken: commentEvent.InstallationToken,
+		TriggerInfo: workflows.DeployTriggerInfo{
+			Type: workflows.ManualTrigger,
+		},
+	}
+	testSignaler := &testDeploySignaler{
+		expectedT:   t,
+		expectedCfg: rootConfigBuilder.rootConfigs[0],
+		expOpts:     expectedOpts,
+	}
+
 	writer := &mockSnsWriter{}
 	allocator := &testAllocator{
 		t:                 t,
@@ -608,7 +623,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_PartialMode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
-	assert.False(t, testSignaler.called)
+	assert.True(t, testSignaler.called)
 	assert.True(t, writer.isCalled)
 }
 
