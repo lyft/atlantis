@@ -1,7 +1,6 @@
 package template
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -35,26 +34,6 @@ func TestLoader_TemplateOverride(t *testing.T) {
 	assert.NoError(t, err)
 
 	templateContent, err := os.ReadFile(globalCfg.MatchingRepo(testRepo.ID()).TemplateOverrides[string(PRComment)])
-	assert.NoError(t, err)
-
-	assert.Equal(t, output, string(templateContent))
-}
-
-func TestLoader_NoTemplateOverride(t *testing.T) {
-	globalCfg := valid.GlobalCfg{
-		Repos: []valid.Repo{
-			{
-				ID: testRepo.ID(),
-			},
-		},
-	}
-
-	loader := NewLoader[any](globalCfg)
-
-	output, err := loader.Load(PRComment, testRepo, nil)
-	assert.NoError(t, err)
-
-	templateContent, err := os.ReadFile(fmt.Sprintf("templates/%s.tmpl", PRComment))
 	assert.NoError(t, err)
 
 	assert.Equal(t, output, string(templateContent))

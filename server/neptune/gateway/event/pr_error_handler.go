@@ -51,7 +51,7 @@ func (p *PREventErrorHandler) WrapWithHandling(ctx context.Context, event PREven
 }
 
 func (p *PREventErrorHandler) handleErr(ctx context.Context, event PREvent, commandName string, err error) error {
-	body, e := p.loadTemplate(ctx, event, commandName, err)
+	body, e := p.loadTemplate(event, commandName, err)
 	if e != nil {
 		return errors.Wrap(e, "loading template")
 	}
@@ -62,7 +62,7 @@ func (p *PREventErrorHandler) handleErr(ctx context.Context, event PREvent, comm
 	return nil
 }
 
-func (p *PREventErrorHandler) loadTemplate(ctx context.Context, event PREvent, commandName string, err error) (string, error) {
+func (p *PREventErrorHandler) loadTemplate(event PREvent, commandName string, err error) (string, error) {
 	data := template.PRCommentData{
 		Command:      commandName,
 		ErrorDetails: err.Error(),
