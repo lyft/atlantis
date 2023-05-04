@@ -2,7 +2,6 @@ package requirement
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
@@ -15,16 +14,9 @@ type Criteria struct {
 	User              models.User
 	Branch            string
 	Repo              models.Repo
+	OptionalPull      *models.PullRequest
 	InstallationToken int64
 	TriggerInfo       workflows.DeployTriggerInfo
-}
-
-type UserForbiddenError struct {
-	User string
-}
-
-func (e UserForbiddenError) Error() string {
-	return fmt.Sprintf("User: %s is forbidden from executing a deploy", e.User)
 }
 
 type team struct {
@@ -50,5 +42,5 @@ func (r *team) Check(ctx context.Context, criteria Criteria) error {
 		}
 	}
 
-	return UserForbiddenError{User: criteria.User.Username}
+	return NewForbiddenError("User: %s is forbidden from executing a deploy", criteria.User.Username)
 }

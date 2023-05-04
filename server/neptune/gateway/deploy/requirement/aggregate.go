@@ -11,32 +11,41 @@ type requirement interface {
 	Check(ctx context.Context, criteria Criteria) error
 }
 type Aggregate struct {
-	delegates []requirement
+	overrideableRequirements    []requirement
+	nonOverrideableRequirements []requirement
 }
 
 func NewAggregate(cfg valid.GlobalCfg, fetcher *github.TeamMemberFetcher) *Aggregate {
-	delegates := []requirement{
-		&team{
-			cfg:     cfg,
-			fetcher: fetcher,
-		},
-		&branchRestriction{
-			cfg: cfg,
-		},
-	}
-
 	return &Aggregate{
-		delegates: delegates,
+		overrideableRequirements: []requirement{
+			&team{
+				cfg:     cfg,
+				fetcher: fetcher,
+			},
+			&branchRestriction{
+				cfg: cfg,
+			},
+		},
+		nonOverrideableRequirements: []requirement{
+			pull{},
+		},
 	}
 }
 
 func (a *Aggregate) Check(ctx context.Context, criteria Criteria) error {
-	// bypass all requirements if we are forcing the deployment to happen
+
+	for _, d := range a.nonOverrideableRequirements {
+		if err := d.Check(ctx, criteria); err != nil {
+			return err
+		}
+	}
+
+	// bypass all overrideable requirements if we are forcing the deployment
 	if criteria.TriggerInfo.Force {
 		return nil
 	}
 
-	for _, d := range a.delegates {
+	for _, d := range a.overrideableRequirements {
 		if err := d.Check(ctx, criteria); err != nil {
 			return err
 		}

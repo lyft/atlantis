@@ -68,7 +68,7 @@ func (p *PREventErrorHandler) loadTemplate(event PREvent, commandName string, er
 		ErrorDetails: err.Error(),
 	}
 	switch err.(type) {
-	case requirement.BranchRestrictedError, requirement.UserForbiddenError:
+	case requirement.ForbiddenError:
 		data.ForbiddenError = true
 	default:
 		data.InternalError = true

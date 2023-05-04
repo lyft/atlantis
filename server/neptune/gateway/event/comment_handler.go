@@ -137,11 +137,12 @@ func (p *NeptuneWorkerProxy) Handle(ctx context.Context, request *http.BufferedR
 	}
 
 	if err := p.requirementChecker.Check(ctx, requirement.Criteria{
-		Repo:              event.HeadRepo,
+		Repo:              event.BaseRepo,
 		Branch:            event.Pull.HeadBranch,
 		User:              event.User,
 		InstallationToken: event.InstallationToken,
 		TriggerInfo:       triggerInfo,
+		OptionalPull:      &event.Pull,
 	}); err != nil {
 		return errors.Wrap(err, "checking deploy requirements")
 	}
@@ -155,7 +156,7 @@ func (p *NeptuneWorkerProxy) Handle(ctx context.Context, request *http.BufferedR
 	}
 
 	opts := deploy.RootDeployOptions{
-		Repo:              event.HeadRepo,
+		Repo:              event.BaseRepo,
 		Branch:            event.Pull.HeadBranch,
 		Revision:          event.Pull.HeadCommit,
 		OptionalPullNum:   event.Pull.Num,

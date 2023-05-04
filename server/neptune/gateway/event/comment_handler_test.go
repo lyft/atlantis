@@ -99,8 +99,8 @@ func (d *testDeploySignaler) SignalWorkflow(_ context.Context, _ string, _ strin
 }
 
 func (d *testDeploySignaler) SignalWithStartWorkflow(ctx context.Context, cfg *valid.MergedProjectCfg, opts deploy.RootDeployOptions) (client.WorkflowRun, error) {
-	assert.Equal(d.expectedT, cfg, d.expectedCfg)
-	assert.Equal(d.expectedT, opts, d.expOpts)
+	assert.Equal(d.expectedT, d.expectedCfg, cfg)
+	assert.Equal(d.expectedT, d.expOpts, opts)
 	d.called = true
 
 	return nil, nil
@@ -1008,7 +1008,22 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.descriptor, func(t *testing.T) {
 			writer := &mockSnsWriter{}
-			testSignaler := &testDeploySignaler{}
+			expectedOpts := deploy.RootDeployOptions{
+				Repo:              c.event.BaseRepo,
+				Branch:            c.event.Pull.HeadBranch,
+				Revision:          c.event.Pull.HeadCommit,
+				OptionalPullNum:   c.event.Pull.Num,
+				Sender:            c.event.User,
+				InstallationToken: c.event.InstallationToken,
+				TriggerInfo: workflows.DeployTriggerInfo{
+					Type: workflows.ManualTrigger,
+				},
+			}
+			testSignaler := &testDeploySignaler{
+				expectedT:   t,
+				expectedCfg: rootConfigBuilder.rootConfigs[1],
+				expOpts:     expectedOpts,
+			}
 			commentCreator := &mockCommentCreator{}
 			statusUpdater := &mockStatusUpdater{
 				expectedRepo:      testRepo,
@@ -1023,7 +1038,12 @@ func TestCommentEventWorkerProxy_HandleNoQueuedStatus(t *testing.T) {
 			assert.NoError(t, err)
 			assert.False(t, statusUpdater.isCalled)
 			assert.False(t, commentCreator.isCalled)
-			assert.False(t, testSignaler.called)
+
+			if c.command.Name == command.Apply {
+				assert.True(t, testSignaler.called)
+			} else {
+				assert.False(t, testSignaler.called)
+			}
 			assert.True(t, writer.isCalled)
 		})
 	}
