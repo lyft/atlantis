@@ -33,9 +33,9 @@ func (n *testNotifier) Notify(ctx workflow.Context, info notifier.Info, s *state
 }
 
 type stateReceiveRequest struct {
-	State      *state.Workflow
-	PRRootInfo pr.PRRootInfo
-	T          *testing.T
+	State    *state.Workflow
+	RootInfo pr.RootInfo
+	T        *testing.T
 }
 
 type stateReceiveResponse struct {
@@ -49,7 +49,7 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 	ch := workflow.NewChannel(ctx)
 
 	notifier := &testNotifier{
-		expectedInfo:  r.PRRootInfo.ToInternalInfo(),
+		expectedInfo:  r.RootInfo.ToInternalInfo(),
 		expectedState: r.State,
 		expectedT:     r.T,
 	}
@@ -64,7 +64,7 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 		ch.Send(ctx, r.State)
 	})
 
-	receiver.Receive(ctx, ch, r.PRRootInfo)
+	receiver.Receive(ctx, ch, r.RootInfo)
 
 	return stateReceiveResponse{
 		NotifierCalled: notifier.called,
@@ -79,7 +79,7 @@ func TestStateReceive(t *testing.T) {
 		URL: outputURL,
 	}
 
-	internalPRRootInfo := pr.PRRootInfo{
+	internalRootInfo := pr.RootInfo{
 		ID:   uuid.New(),
 		Root: terraform.Root{Name: "root"},
 		Repo: github.Repo{Name: "hello"},
@@ -99,8 +99,8 @@ func TestStateReceive(t *testing.T) {
 					Status: state.WaitingJobStatus,
 				},
 			},
-			PRRootInfo: internalPRRootInfo,
-			T:          t,
+			RootInfo: internalRootInfo,
+			T:        t,
 		})
 
 		env.AssertExpectations(t)

@@ -79,22 +79,22 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		r.state = complete
 	})
 
-	inProgressCtx, inProgressCancel := workflow.WithCancel(ctx)
+	_, cancel := workflow.WithCancel(ctx)
 	for {
 		s.Select(ctx)
 		switch action {
 		case onNewRevision:
-			ctx = workflow.WithValue(ctx, internalContext.SHAKey, prRevision.Revision)
-			workflow.GetLogger(ctx).Info("received revision")
+			revisionCtx := workflow.WithValue(ctx, internalContext.SHAKey, prRevision.Revision)
+			workflow.GetLogger(revisionCtx).Info("received revision")
 			if process := r.shouldProcessRevision(prRevision); !process {
 				continue
 			}
 			// cancel in progress workflow (if it exists) and start up a new one
-			inProgressCancel()
-			inProgressCtx, inProgressCancel = workflow.WithCancel(ctx)
+			cancel()
+			revisionCtx, cancel = workflow.WithCancel(revisionCtx)
 			r.state = working
 			r.lastAttemptedRevision = prRevision.Revision
-			workflow.Go(inProgressCtx, func(c workflow.Context) {
+			workflow.Go(revisionCtx, func(c workflow.Context) {
 				r.processRevision(c, prRevision)
 			})
 		case onShutdown:
@@ -121,7 +121,7 @@ func (r *Runner) processRevision(ctx workflow.Context, prRevision receiver.Revis
 	}()
 	failedPolicies := make(map[string]activities.PolicySet)
 	var futures []workflow.ChildWorkflowFuture
-	var prRootInfos []PRRootInfo
+	var rootInfos []RootInfo
 	for _, root := range prRevision.Roots {
 		ctx = workflow.WithValue(ctx, internalContext.ProjectKey, root.Name)
 		future, rootInfo, err := r.processRoot(ctx, root, prRevision)
@@ -129,10 +129,10 @@ func (r *Runner) processRevision(ctx workflow.Context, prRevision receiver.Revis
 			continue
 		}
 		futures = append(futures, future)
-		prRootInfos = append(prRootInfos, rootInfo)
+		rootInfos = append(rootInfos, rootInfo)
 	}
 	for i, future := range futures {
-		failedRootPolicies, err := r.awaitWorkflow(ctx, future, prRootInfos[i])
+		failedRootPolicies, err := r.awaitWorkflow(ctx, future, rootInfos[i])
 		if err != nil {
 			continue
 		}
@@ -145,15 +145,15 @@ func (r *Runner) processRevision(ctx workflow.Context, prRevision receiver.Revis
 	// TODO: check for policy failures
 }
 
-func (r *Runner) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision receiver.Revision) (workflow.ChildWorkflowFuture, PRRootInfo, error) {
+func (r *Runner) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision receiver.Revision) (workflow.ChildWorkflowFuture, RootInfo, error) {
 	id, err := sideeffect.GenerateUUID(ctx)
 	if err != nil {
 		workflow.GetLogger(workflow.WithValue(ctx, internalContext.ErrKey, err)).Error("generating uuid")
 		// choosing to not fail workflow and let it continue to exist
 		// until PR close/timeout
-		return nil, PRRootInfo{}, err
+		return nil, RootInfo{}, err
 	}
-	prRootInfo := PRRootInfo{
+	rootInfo := RootInfo{
 		ID: id,
 		Commit: github.Commit{
 			Revision: prRevision.Revision,
@@ -162,7 +162,7 @@ func (r *Runner) processRoot(ctx workflow.Context, root terraformActivities.Root
 		Repo: prRevision.Repo,
 	}
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-		WorkflowID: prRootInfo.ID.String(),
+		WorkflowID: rootInfo.ID.String(),
 		RetryPolicy: &temporal.RetryPolicy{
 			MaximumAttempts: 3,
 		},
@@ -170,29 +170,29 @@ func (r *Runner) processRoot(ctx workflow.Context, root terraformActivities.Root
 		// allows all signals to be received even in a cancellation state
 		WaitForCancellation: true,
 		SearchAttributes: map[string]interface{}{
-			"atlantis_repository": prRootInfo.Repo.GetFullName(),
-			"atlantis_root":       prRootInfo.Root.Name,
-			"atlantis_trigger":    prRootInfo.Root.Trigger,
-			"atlantis_revision":   prRootInfo.Commit.Revision,
+			"atlantis_repository": rootInfo.Repo.GetFullName(),
+			"atlantis_root":       rootInfo.Root.Name,
+			"atlantis_trigger":    rootInfo.Root.Trigger,
+			"atlantis_revision":   rootInfo.Commit.Revision,
 		},
 	})
 
 	request := terraform.Request{
-		Repo:         prRootInfo.Repo,
-		Root:         prRootInfo.Root,
+		Repo:         rootInfo.Repo,
+		Root:         rootInfo.Root,
 		DeploymentID: id.String(),
-		Revision:     prRootInfo.Commit.Revision,
+		Revision:     rootInfo.Commit.Revision,
 		WorkflowMode: terraformActivities.PR,
 	}
 	future := workflow.ExecuteChildWorkflow(ctx, r.TFWorkflow, request)
-	return future, prRootInfo, nil
+	return future, rootInfo, nil
 }
 
-func (r *Runner) awaitWorkflow(ctx workflow.Context, future workflow.ChildWorkflowFuture, prInfo PRRootInfo) ([]activities.PolicySet, error) {
+func (r *Runner) awaitWorkflow(ctx workflow.Context, future workflow.ChildWorkflowFuture, rootInfo RootInfo) ([]activities.PolicySet, error) {
 	selector := workflow.NewNamedSelector(ctx, "TerraformChildWorkflow")
 	ch := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
 	selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {
-		r.TFStateReceiver.Receive(ctx, c, prInfo)
+		r.TFStateReceiver.Receive(ctx, c, rootInfo)
 	})
 	var workflowComplete bool
 	var err error
