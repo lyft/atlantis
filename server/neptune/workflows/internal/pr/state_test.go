@@ -1,8 +1,8 @@
-package terraform_test
+package pr_test
 
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
-	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr"
 	"net/url"
 	"testing"
 	"time"
@@ -34,7 +34,7 @@ func (n *testNotifier) Notify(ctx workflow.Context, info notifier.Info, s *state
 
 type stateReceiveRequest struct {
 	State      *state.Workflow
-	PRRootInfo internalTerraform.PRRootInfo
+	PRRootInfo pr.PRRootInfo
 	T          *testing.T
 }
 
@@ -54,8 +54,8 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 		expectedT:     r.T,
 	}
 
-	receiver := &internalTerraform.StateReceiver{
-		InternalNotifiers: []internalTerraform.WorkflowNotifier{
+	receiver := &pr.StateReceiver{
+		InternalNotifiers: []pr.WorkflowNotifier{
 			notifier,
 		},
 	}
@@ -79,7 +79,7 @@ func TestStateReceive(t *testing.T) {
 		URL: outputURL,
 	}
 
-	internalPRRootInfo := internalTerraform.PRRootInfo{
+	internalPRRootInfo := pr.PRRootInfo{
 		ID:   uuid.New(),
 		Root: terraform.Root{Name: "root"},
 		Repo: github.Repo{Name: "hello"},

@@ -1,10 +1,9 @@
-package terraform
+package pr
 
 import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
-
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/workflow"
 )

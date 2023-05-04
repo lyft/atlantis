@@ -1,4 +1,4 @@
-package terraform
+package pr
 
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
