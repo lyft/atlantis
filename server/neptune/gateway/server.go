@@ -338,6 +338,7 @@ func NewServer(config Config) (*Server, error) {
 		asyncScheduler,
 		temporalClient,
 		rootDeployer,
+		rootConfigBuilder,
 		deploySignaler,
 		checkRunFetcher,
 		vcsStatusUpdater,

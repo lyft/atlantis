@@ -85,7 +85,9 @@ func (p *PushHandler) handle(ctx context.Context, event Push) error {
 		RepoFetcherOptions: &github.RepoFetcherOptions{
 			CloneDepth: 5,
 		},
-		Trigger: workflows.MergeTrigger,
+		TriggerInfo: workflows.DeployTriggerInfo{
+			Type: workflows.MergeTrigger,
+		},
 	}
 	return p.RootDeployer.Deploy(ctx, rootDeployOptions)
 }

@@ -45,8 +45,10 @@ func (h *CheckSuiteHandler) handle(ctx context.Context, event CheckSuite) error 
 		Revision:          event.HeadSha,
 		Sender:            event.Sender,
 		InstallationToken: event.InstallationToken,
-		Trigger:           workflows.ManualTrigger,
-		Rerun:             true,
+		TriggerInfo: workflows.DeployTriggerInfo{
+			Type:  workflows.ManualTrigger,
+			Rerun: true,
+		},
 	}
 	return h.RootDeployer.Deploy(ctx, rootDeployOptions)
 }

@@ -167,8 +167,10 @@ func (h *CheckRunHandler) buildRoot(ctx context.Context, event CheckRun, rootNam
 		Revision:          event.HeadSha,
 		Sender:            event.User,
 		InstallationToken: event.InstallationToken,
-		Trigger:           workflows.ManualTrigger,
-		Rerun:             true,
+		TriggerInfo: workflows.DeployTriggerInfo{
+			Type:  workflows.ManualTrigger,
+			Rerun: true,
+		},
 	}
 	return errors.Wrap(h.RootDeployer.Deploy(ctx, deployOptions), "deploying workflow")
 }

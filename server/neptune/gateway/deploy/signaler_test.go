@@ -123,6 +123,9 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					TfVersion: version.String(),
 					PlanMode:  workflows.NormalPlanMode,
 					Trigger:   workflows.MergeTrigger,
+					TriggerInfo: workflows.DeployTriggerInfo{
+						Type: workflows.MergeTrigger,
+					},
 				},
 				InitiatingUser: workflows.User{
 					Name: user.Username,
@@ -160,7 +163,9 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			Revision: sha,
 			Branch:   branch,
 			Sender:   user,
-			Trigger:  workflows.MergeTrigger,
+			TriggerInfo: workflows.DeployTriggerInfo{
+				Type: workflows.MergeTrigger,
+			},
 		}
 		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, rootDeployOptions)
 		assert.NoError(t, err)
@@ -198,6 +203,9 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					TfVersion: version.String(),
 					PlanMode:  workflows.DestroyPlanMode,
 					Trigger:   workflows.MergeTrigger,
+					TriggerInfo: workflows.DeployTriggerInfo{
+						Type: workflows.MergeTrigger,
+					},
 				},
 				InitiatingUser: workflows.User{
 					Name: user.Username,
@@ -238,7 +246,9 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 			Revision: sha,
 			Branch:   branch,
 			Sender:   user,
-			Trigger:  workflows.MergeTrigger,
+			TriggerInfo: workflows.DeployTriggerInfo{
+				Type: workflows.MergeTrigger,
+			},
 		}
 		run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, rootDeployOptions)
 		assert.NoError(t, err)
@@ -294,6 +304,9 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				TfVersion: version.String(),
 				PlanMode:  workflows.NormalPlanMode,
 				Trigger:   workflows.MergeTrigger,
+				TriggerInfo: workflows.DeployTriggerInfo{
+					Type: workflows.MergeTrigger,
+				},
 			},
 			InitiatingUser: workflows.User{
 				Name: user.Username,
@@ -332,7 +345,9 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 		Revision: sha,
 		Branch:   branch,
 		Sender:   user,
-		Trigger:  workflows.MergeTrigger,
+		TriggerInfo: workflows.DeployTriggerInfo{
+			Type: workflows.MergeTrigger,
+		},
 	}
 	run, err := deploySignaler.SignalWithStartWorkflow(context.Background(), &rootCfg, rootDeployOptions)
 	assert.Error(t, err)

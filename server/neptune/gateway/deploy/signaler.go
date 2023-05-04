@@ -61,8 +61,11 @@ func (d *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfg 
 				TrackedFiles: rootCfg.WhenModified,
 				TfVersion:    tfVersion,
 				PlanMode:     d.generatePlanMode(rootCfg),
-				Trigger:      rootDeployOptions.Trigger,
-				Rerun:        rootDeployOptions.Rerun,
+				TriggerInfo:  rootDeployOptions.TriggerInfo,
+
+				// todo: remove once we stop using this in our workflows.
+				Trigger: rootDeployOptions.TriggerInfo.Type,
+				Rerun:   rootDeployOptions.TriggerInfo.Rerun,
 			},
 			Repo: workflows.Repo{
 				URL:      repo.CloneURL,
