@@ -67,10 +67,12 @@ func (p *PREventErrorHandler) loadTemplate(event PREvent, commandName string, er
 		Command:      commandName,
 		ErrorDetails: err.Error(),
 	}
-	switch err.(type) {
-	case requirement.ForbiddenError:
+
+	var forbiddenError requirement.ForbiddenError
+	
+	if errors.As(err, &forbiddenError) {
 		data.ForbiddenError = true
-	default:
+	} else {
 		data.InternalError = true
 	}
 
