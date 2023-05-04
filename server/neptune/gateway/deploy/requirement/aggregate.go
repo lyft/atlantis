@@ -33,7 +33,6 @@ func NewAggregate(cfg valid.GlobalCfg, fetcher *github.TeamMemberFetcher) *Aggre
 }
 
 func (a *Aggregate) Check(ctx context.Context, criteria Criteria) error {
-
 	for _, d := range a.nonOverrideableRequirements {
 		if err := d.Check(ctx, criteria); err != nil {
 			return err
