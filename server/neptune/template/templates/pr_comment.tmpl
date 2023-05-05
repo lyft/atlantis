@@ -7,7 +7,7 @@ An `atlantis {{ .Command }}`  has resulted in an error.  This is likely a bug an
 {{ if .ForbiddenError }}
 ## Forbidden Error :see_no_evil:
 
-{{ ErrorTemplate }}
+{{ .ErrorTemplate }}
 
 {{ end }}
 
