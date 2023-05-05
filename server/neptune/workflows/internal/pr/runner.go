@@ -44,6 +44,7 @@ type Runner struct {
 	// mutable state
 	state                 RunnerState
 	lastAttemptedRevision string
+	cancel                workflow.CancelFunc
 }
 
 func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow TFWorkflow, internalNotifiers []WorkflowNotifier) *Runner {
@@ -57,6 +58,8 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow TFW
 		Scope:                 scope,
 		TFWorkflow:            tfWorkflow,
 		TFStateReceiver:       StateReceiver{InternalNotifiers: internalNotifiers},
+
+		cancel: func() {},
 	}
 }
 
@@ -79,30 +82,34 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		r.state = complete
 	})
 
-	_, cancel := workflow.WithCancel(ctx)
 	for {
 		s.Select(ctx)
 		switch action {
 		case onNewRevision:
-			revisionCtx := workflow.WithValue(ctx, internalContext.SHAKey, prRevision.Revision)
-			workflow.GetLogger(revisionCtx).Info("received revision")
-			if process := r.shouldProcessRevision(prRevision); !process {
-				continue
-			}
-			// cancel in progress workflow (if it exists) and start up a new one
-			cancel()
-			revisionCtx, cancel = workflow.WithCancel(revisionCtx)
-			r.state = working
-			r.lastAttemptedRevision = prRevision.Revision
-			workflow.Go(revisionCtx, func(c workflow.Context) {
-				r.processRevision(c, prRevision)
-			})
+			r.onNewRevision(ctx, prRevision)
 		case onShutdown:
 			//todo: maybe optimize by cancelling in progress child workflows
 			workflow.GetLogger(ctx).Info("received shutdown request")
 			return nil
 		}
 	}
+}
+
+func (r *Runner) onNewRevision(ctx workflow.Context, prRevision receiver.Revision) {
+	ctx = workflow.WithValue(ctx, internalContext.SHAKey, prRevision.Revision)
+	workflow.GetLogger(ctx).Info("received revision")
+	if process := r.shouldProcessRevision(prRevision); !process {
+		return
+	}
+	// cancel in progress workflow (if it exists) and start up a new one
+	r.cancel()
+	ctx, cancel := workflow.WithCancel(ctx)
+	r.cancel = cancel
+	r.state = working
+	r.lastAttemptedRevision = prRevision.Revision
+	workflow.Go(ctx, func(c workflow.Context) {
+		r.processRevision(c, prRevision)
+	})
 }
 
 func (r *Runner) shouldProcessRevision(prRevision receiver.Revision) bool {
@@ -124,12 +131,24 @@ func (r *Runner) processRevision(ctx workflow.Context, prRevision receiver.Revis
 	var rootInfos []RootInfo
 	for _, root := range prRevision.Roots {
 		ctx = workflow.WithValue(ctx, internalContext.ProjectKey, root.Name)
-		future, rootInfo, err := r.processRoot(ctx, root, prRevision)
+		id, err := sideeffect.GenerateUUID(ctx)
 		if err != nil {
+			workflow.GetLogger(workflow.WithValue(ctx, internalContext.ErrKey, err)).Error("generating uuid")
+			// choosing to not fail workflow and let it continue to exist
+			// until PR close/timeout
 			continue
 		}
-		futures = append(futures, future)
+		rootInfo := RootInfo{
+			ID: id,
+			Commit: github.Commit{
+				Revision: prRevision.Revision,
+			},
+			Root: root,
+			Repo: prRevision.Repo,
+		}
 		rootInfos = append(rootInfos, rootInfo)
+		future := r.processRoot(ctx, rootInfo)
+		futures = append(futures, future)
 	}
 	for i, future := range futures {
 		failedRootPolicies, err := r.awaitWorkflow(ctx, future, rootInfos[i])
@@ -145,22 +164,7 @@ func (r *Runner) processRevision(ctx workflow.Context, prRevision receiver.Revis
 	// TODO: check for policy failures
 }
 
-func (r *Runner) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision receiver.Revision) (workflow.ChildWorkflowFuture, RootInfo, error) {
-	id, err := sideeffect.GenerateUUID(ctx)
-	if err != nil {
-		workflow.GetLogger(workflow.WithValue(ctx, internalContext.ErrKey, err)).Error("generating uuid")
-		// choosing to not fail workflow and let it continue to exist
-		// until PR close/timeout
-		return nil, RootInfo{}, err
-	}
-	rootInfo := RootInfo{
-		ID: id,
-		Commit: github.Commit{
-			Revision: prRevision.Revision,
-		},
-		Root: root,
-		Repo: prRevision.Repo,
-	}
+func (r *Runner) processRoot(ctx workflow.Context, rootInfo RootInfo) workflow.ChildWorkflowFuture {
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		WorkflowID: rootInfo.ID.String(),
 		RetryPolicy: &temporal.RetryPolicy{
@@ -180,12 +184,12 @@ func (r *Runner) processRoot(ctx workflow.Context, root terraformActivities.Root
 	request := terraform.Request{
 		Repo:         rootInfo.Repo,
 		Root:         rootInfo.Root,
-		DeploymentID: id.String(),
+		DeploymentID: rootInfo.ID.String(),
 		Revision:     rootInfo.Commit.Revision,
 		WorkflowMode: terraformActivities.PR,
 	}
 	future := workflow.ExecuteChildWorkflow(ctx, r.TFWorkflow, request)
-	return future, rootInfo, nil
+	return future
 }
 
 func (r *Runner) awaitWorkflow(ctx workflow.Context, future workflow.ChildWorkflowFuture, rootInfo RootInfo) ([]activities.PolicySet, error) {

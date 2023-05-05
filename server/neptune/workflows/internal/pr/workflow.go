@@ -1,7 +1,6 @@
 package pr
 
 import (
-	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -24,8 +23,6 @@ func Workflow(ctx workflow.Context, request Request, tfWorkflow TFWorkflow) erro
 		StartToCloseTimeout: 5 * time.Second,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
-	ctx = workflow.WithValue(ctx, internalContext.RepositoryKey, request.RepoFullName)
-	ctx = workflow.WithValue(ctx, internalContext.PullNumKey, request.PRNum)
 	scope := workflowMetrics.NewScope(ctx).SubScopeWithTags(map[string]string{
 		"repo":   request.RepoFullName,
 		"pr-num": strconv.Itoa(request.PRNum),
