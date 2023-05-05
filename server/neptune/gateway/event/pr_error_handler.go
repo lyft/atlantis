@@ -42,7 +42,7 @@ func (p *PREventErrorHandler) WrapWithHandling(ctx context.Context, event PREven
 	return func(ctx context.Context) error {
 		if err := executor(ctx); err != nil {
 			if e := p.handleErr(ctx, event, commandName, err); e != nil {
-				p.logger.ErrorContext(context.WithValue(ctx, contextUtils.ErrKey, err), "handling error")
+				p.logger.ErrorContext(context.WithValue(ctx, contextUtils.ErrKey, e), "handling error")
 			}
 			return err
 		}
