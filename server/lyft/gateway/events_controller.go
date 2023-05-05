@@ -79,7 +79,7 @@ func NewVCSEventsController(
 		logger,
 	)
 
-	requirementChecker := requirement.NewAggregate(globalCfg, teamMemberFetcher)
+	requirementChecker := requirement.NewAggregate(globalCfg, teamMemberFetcher, logger)
 	commentHandler := handlers.NewCommentEventWithCommandHandler(
 		commentParser,
 		repoAllowlistChecker,

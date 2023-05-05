@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/neptune/template"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
@@ -20,8 +21,9 @@ type Criteria struct {
 }
 
 type team struct {
-	cfg     valid.GlobalCfg
-	fetcher *github.TeamMemberFetcher
+	cfg            valid.GlobalCfg
+	fetcher        *github.TeamMemberFetcher
+	errorGenerator errorGenerator[template.UserForbiddenData]
 }
 
 func (r *team) Check(ctx context.Context, criteria Criteria) error {
@@ -42,5 +44,13 @@ func (r *team) Check(ctx context.Context, criteria Criteria) error {
 		}
 	}
 
-	return NewForbiddenError("User: %s is forbidden from executing a deploy", criteria.User.Username)
+	return r.errorGenerator.GenerateForbiddenError(
+		ctx,
+		template.UserForbidden, criteria.Repo,
+		template.UserForbiddenData{
+			User: criteria.User.Username,
+			Team: match.ApplySettings.Team,
+		},
+		"User: %s is forbidden from executing a deploy", criteria.User.Username,
+	)
 }

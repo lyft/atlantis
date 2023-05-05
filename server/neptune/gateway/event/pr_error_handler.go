@@ -69,9 +69,10 @@ func (p *PREventErrorHandler) loadTemplate(event PREvent, commandName string, er
 	}
 
 	var forbiddenError requirement.ForbiddenError
-	
+
 	if errors.As(err, &forbiddenError) {
 		data.ForbiddenError = true
+		data.ForbiddenErrorTemplate = forbiddenError.ErrorTemplate()
 	} else {
 		data.InternalError = true
 	}

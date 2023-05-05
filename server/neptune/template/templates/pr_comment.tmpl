@@ -1,27 +1,22 @@
 {{ if .InternalError }}
 ## Internal Error :boom:
 
-An atlantis {{ .Command }}  has resulted in an error.  This is likely a bug and should be reported.
+An `atlantis {{ .Command }}`  has resulted in an error.  This is likely a bug and should be reported.
 {{ end }}
 
 {{ if .ForbiddenError }}
 ## Forbidden Error :see_no_evil:
 
-Atlantis {{ .Command }} is forbidden for one (or more) of the following reasons:
-* User is not authorized to perform this operation
-* This repository's configuration only allows this operation from a specific branch
-* PR approval is required for this operation to execute.
+{{ ErrorTemplate }}
 
-{{ if eq .Command "apply" }}
-:no_entry_sign :raised_hand: Please merge this PR in order to apply your changes.
-{{ end }}
 {{ end }}
 
-<details>
-  <summary> Error Details </summary>
-  ```
+<details><summary> Error Details </summary>
 
-  {{ .ErrorDetails }}
+```
 
-  ```
+{{ .ErrorDetails }}
+
+```
+
 </details>

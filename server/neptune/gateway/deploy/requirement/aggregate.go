@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/neptune/template"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 
@@ -15,15 +17,25 @@ type Aggregate struct {
 	nonOverrideableRequirements []requirement
 }
 
-func NewAggregate(cfg valid.GlobalCfg, fetcher *github.TeamMemberFetcher) *Aggregate {
+func NewAggregate(cfg valid.GlobalCfg, fetcher *github.TeamMemberFetcher, logger logging.Logger) *Aggregate {
 	return &Aggregate{
 		overrideableRequirements: []requirement{
+
+			// order matters here since we fail iteratively
+			&branchRestriction{
+				cfg: cfg,
+				errorGenerator: errorGenerator[template.BranchForbiddenData]{
+					logger: logger,
+					loader: template.Loader[template.BranchForbiddenData]{GlobalCfg: cfg},
+				},
+			},
 			&team{
 				cfg:     cfg,
 				fetcher: fetcher,
-			},
-			&branchRestriction{
-				cfg: cfg,
+				errorGenerator: errorGenerator[template.UserForbiddenData]{
+					logger: logger,
+					loader: template.Loader[template.UserForbiddenData]{GlobalCfg: cfg},
+				},
 			},
 		},
 		nonOverrideableRequirements: []requirement{
