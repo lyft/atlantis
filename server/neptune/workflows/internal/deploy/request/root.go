@@ -43,7 +43,7 @@ type Root struct {
 	TriggerInfo  TriggerInfo
 
 	// todo: keeping for backwards compatibility with existing workflows
-	// remove once we cutover to using TriggerInfo
+	// remove once ALL workers are reading the new field.
 	Trigger Trigger
 	Rerun   bool
 }

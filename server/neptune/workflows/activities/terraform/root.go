@@ -18,9 +18,12 @@ type Root struct {
 	Apply        execute.Job
 	Plan         PlanJob
 	Validate     execute.Job
-	Trigger      Trigger
-	Rerun        bool
 	TrackedFiles []string
+
+	// dont wan't to replace with TriggerInfo for backwards compatibility
+	Trigger Trigger
+	Rerun   bool
+	Force   bool
 }
 
 func (r Root) GetTrackedFilesRelativeToRepo() []string {
@@ -53,6 +56,11 @@ func (r Root) WithPlanApprovalOverride(a PlanApproval) Root {
 }
 
 type Trigger string
+type TriggerInfo struct {
+	Type  Trigger
+	Force bool
+	Rerun bool
+}
 
 const (
 	MergeTrigger  Trigger = "merge"
