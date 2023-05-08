@@ -183,7 +183,7 @@ func TestEnqueue_ManualTrigger(t *testing.T) {
 			Root: request.Root{
 				Name: "root",
 				TriggerInfo: request.TriggerInfo{
-					Type: request.MergeTrigger,
+					Type: request.ManualTrigger,
 				},
 			},
 			Repo: request.Repo{Name: "nish"},
@@ -242,7 +242,7 @@ func TestEnqueue_ManualTrigger_QueueAlreadyLocked(t *testing.T) {
 			Root: request.Root{
 				Name: "root",
 				TriggerInfo: request.TriggerInfo{
-					Type: request.MergeTrigger,
+					Type: request.ManualTrigger,
 				},
 			},
 			Repo: request.Repo{Name: "nish"},
@@ -372,7 +372,7 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInQueue(t *testing.T) {
 			Root: request.Root{
 				Name: "root",
 				TriggerInfo: request.TriggerInfo{
-					Type: request.MergeTrigger,
+					Type: request.ManualTrigger,
 				},
 			},
 			Repo: request.Repo{Name: "nish"},
@@ -419,7 +419,7 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInProgress(t *testing.T) {
 			Root: request.Root{
 				Name: "root",
 				TriggerInfo: request.TriggerInfo{
-					Type: request.MergeTrigger,
+					Type: request.ManualTrigger,
 				},
 			},
 			Repo: request.Repo{Name: "nish"},
