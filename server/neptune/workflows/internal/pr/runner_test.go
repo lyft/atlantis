@@ -1,9 +1,8 @@
 package pr
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/receiver"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
@@ -31,13 +30,11 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		ScheduleToCloseTimeout: time.Minute,
 	})
 	mockRevisionProcessor := &r.mockRevisionProcessor
-	revisionReceiver := receiver.NewRevisionReceiver(ctx, r.scope)
-	shutdownReceiver := receiver.NewShutdownReceiver(ctx, r.scope)
+	revisionReceiver := revision.NewRevisionReceiver(ctx, r.scope)
 	runner := &Runner{
 		RevisionSignalChannel: workflow.GetSignalChannel(ctx, revisionID),
 		RevisionReceiver:      &revisionReceiver,
 		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, shutdownID),
-		ShutdownReceiver:      &shutdownReceiver,
 		RevisionProcessor:     mockRevisionProcessor,
 		cancel:                func() {},
 	}
@@ -54,17 +51,17 @@ func TestWorkflowRunner_Run(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(revisionID, receiver.NewTerraformCommitRequest{
+		env.SignalWorkflow(revisionID, revision.NewTerraformCommitRequest{
 			Revision: "abc",
 		})
 	}, 2*time.Second)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(revisionID, receiver.NewTerraformCommitRequest{
+		env.SignalWorkflow(revisionID, revision.NewTerraformCommitRequest{
 			Revision: "def",
 		})
 	}, 4*time.Second)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(shutdownID, receiver.NewShutdownRequest{})
+		env.SignalWorkflow(shutdownID, NewShutdownRequest{})
 	}, 6*time.Second)
 	env.ExecuteWorkflow(testWorkflow, req)
 	var resp response
@@ -77,7 +74,6 @@ type testRevisionProcessor struct {
 	processCalls int
 }
 
-func (t *testRevisionProcessor) Process(_ workflow.Context, _ receiver.Revision) []activities.PolicySet {
+func (t *testRevisionProcessor) Process(_ workflow.Context, _ revision.Revision) {
 	t.processCalls = t.processCalls + 1
-	return []activities.PolicySet{}
 }

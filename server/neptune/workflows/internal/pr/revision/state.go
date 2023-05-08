@@ -5,6 +5,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -13,8 +14,9 @@ type WorkflowNotifier interface {
 }
 
 type StateReceiver struct {
-	InternalNotifiers []WorkflowNotifier
-	RootCache         map[string]RootInfo
+	InternalNotifiers   []WorkflowNotifier
+	AdditionalNotifiers []plugins.TerraformWorkflowNotifier
+	RootCache           map[string]RootInfo
 }
 
 func (s *StateReceiver) AddRoot(info RootInfo) {
@@ -33,6 +35,13 @@ func (s *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel)
 	for _, notifier := range s.InternalNotifiers {
 		if err := notifier.Notify(ctx, rootInfo.ToInternalInfo(), workflowState); err != nil {
 			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
+			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
+		}
+	}
+
+	for _, notifier := range s.AdditionalNotifiers {
+		if err := notifier.Notify(ctx, rootInfo.ToExternalInfo(), workflowState.ToExternalWorkflowState()); err != nil {
+			workflow.GetMetricsHandler(ctx).Counter("notifier_plugin_failure").Inc(1)
 			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
 		}
 	}

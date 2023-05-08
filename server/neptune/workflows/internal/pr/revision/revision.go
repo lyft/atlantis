@@ -1,4 +1,4 @@
-package receiver
+package revision
 
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -14,7 +14,7 @@ const (
 	TerraformRevisionSignalID = "new-terraform-revision"
 )
 
-type RevisionReceiver struct {
+type Receiver struct {
 	ctx   workflow.Context
 	scope workflowMetrics.Scope
 }
@@ -31,14 +31,14 @@ type Revision struct {
 	Roots    []terraform.Root
 }
 
-func NewRevisionReceiver(ctx workflow.Context, scope workflowMetrics.Scope) RevisionReceiver {
-	return RevisionReceiver{
+func NewRevisionReceiver(ctx workflow.Context, scope workflowMetrics.Scope) Receiver {
+	return Receiver{
 		ctx:   ctx,
 		scope: scope,
 	}
 }
 
-func (r *RevisionReceiver) Receive(c workflow.ReceiveChannel, more bool) Revision {
+func (r *Receiver) Receive(c workflow.ReceiveChannel, more bool) Revision {
 	if !more {
 		return Revision{}
 	}

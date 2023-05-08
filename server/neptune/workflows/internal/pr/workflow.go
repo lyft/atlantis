@@ -17,7 +17,7 @@ type prActivities struct {
 	*activities.Github
 }
 
-func Workflow(ctx workflow.Context, request Request, tfWorkflow revision.Workflow) error {
+func Workflow(ctx workflow.Context, request Request, tfWorkflow revision.TFWorkflow) error {
 	var a *prActivities
 	options := workflow.ActivityOptions{
 		TaskQueue:           TaskQueue,

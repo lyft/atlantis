@@ -2,10 +2,10 @@ package pr
 
 import (
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/receiver"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -24,15 +24,18 @@ const (
 	complete
 )
 
+const ShutdownSignalID = "pr-close"
+
+type NewShutdownRequest struct{}
+
 type RevisionProcessor interface {
-	Process(ctx workflow.Context, prRevision receiver.Revision) []activities.PolicySet
+	Process(ctx workflow.Context, prRevision revision.Revision)
 }
 
 type Runner struct {
 	RevisionSignalChannel workflow.ReceiveChannel
-	RevisionReceiver      *receiver.RevisionReceiver
+	RevisionReceiver      *revision.Receiver
 	ShutdownSignalChannel workflow.ReceiveChannel
-	ShutdownReceiver      *receiver.ShutdownReceiver
 	RevisionProcessor     RevisionProcessor
 	Scope                 workflowMetrics.Scope
 
@@ -42,19 +45,22 @@ type Runner struct {
 	cancel                workflow.CancelFunc
 }
 
-func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow revision.Workflow, internalNotifiers []revision.WorkflowNotifier) *Runner {
-	revisionReceiver := receiver.NewRevisionReceiver(ctx, scope)
-	shutdownReceiver := receiver.NewShutdownReceiver(ctx, scope)
-	stateReceiver := revision.StateReceiver{InternalNotifiers: internalNotifiers}
+func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow revision.TFWorkflow, internalNotifiers []revision.WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *Runner {
+	revisionReceiver := revision.NewRevisionReceiver(ctx, scope)
+	stateReceiver := revision.StateReceiver{
+		InternalNotifiers:   internalNotifiers,
+		AdditionalNotifiers: additionalNotifiers,
+		RootCache:           make(map[string]revision.RootInfo),
+	}
 	revisionProcessor := revision.Processor{
 		TFWorkflow:      tfWorkflow,
 		TFStateReceiver: &stateReceiver,
+		PolicyHandler:   &revision.FailedPolicyHandler{},
 	}
 	return &Runner{
-		RevisionSignalChannel: workflow.GetSignalChannel(ctx, receiver.TerraformRevisionSignalID),
+		RevisionSignalChannel: workflow.GetSignalChannel(ctx, revision.TerraformRevisionSignalID),
 		RevisionReceiver:      &revisionReceiver,
-		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, receiver.ShutdownSignalID),
-		ShutdownReceiver:      &shutdownReceiver,
+		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, ShutdownSignalID),
 		Scope:                 scope,
 		RevisionProcessor:     &revisionProcessor,
 
@@ -66,7 +72,7 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 // change the current PRAction status
 func (r *Runner) Run(ctx workflow.Context) error {
 	var action Action
-	var prRevision receiver.Revision
+	var prRevision revision.Revision
 
 	//TODO: add approve signal, timeout, poll variation of shutdown signal
 	s := workflow.NewSelector(ctx)
@@ -75,9 +81,18 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		action = onNewRevision
 	})
 	s.AddReceive(r.ShutdownSignalChannel, func(c workflow.ReceiveChannel, more bool) {
-		r.ShutdownReceiver.Receive(c, more)
-		action = onShutdown
-		r.state = complete
+		defer func() {
+			action = onShutdown
+			r.state = complete
+		}()
+		if !more {
+			return
+		}
+		ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+			MaximumAttempts: 5,
+		})
+		var request NewShutdownRequest
+		c.Receive(ctx, &request)
 	})
 
 	for {
@@ -93,7 +108,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}
 }
 
-func (r *Runner) onNewRevision(ctx workflow.Context, prRevision receiver.Revision) {
+func (r *Runner) onNewRevision(ctx workflow.Context, prRevision revision.Revision) {
 	ctx = workflow.WithValue(ctx, internalContext.SHAKey, prRevision.Revision)
 	workflow.GetLogger(ctx).Info("received revision signal")
 	if shouldProcess := r.shouldProcessRevision(prRevision); !shouldProcess {
@@ -109,12 +124,11 @@ func (r *Runner) onNewRevision(ctx workflow.Context, prRevision receiver.Revisio
 		defer func() {
 			r.state = waiting
 		}()
-		_ = r.RevisionProcessor.Process(c, prRevision)
-		// TODO: return + filter out duplicate failed polices; check remaining failures for owner approvals
+		r.RevisionProcessor.Process(c, prRevision)
 	})
 }
 
-func (r *Runner) shouldProcessRevision(prRevision receiver.Revision) bool {
+func (r *Runner) shouldProcessRevision(prRevision revision.Revision) bool {
 	// ignore reruns when revision is still in progress
 	if r.lastAttemptedRevision == prRevision.Revision && r.state != waiting {
 		return false

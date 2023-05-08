@@ -4,7 +4,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/receiver"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/stretchr/testify/assert"
@@ -20,14 +19,13 @@ const (
 )
 
 type processRevisionRequest struct {
-	T              *testing.T
-	Revision       receiver.Revision
-	TFWorkflowFail bool
+	T                      *testing.T
+	Revision               revision.Revision
+	TFWorkflowFail         bool
+	ExpectedFailedPolicies []activities.PolicySet
 }
 
-type processRevisionResponse struct {
-	FailedPolicies []activities.PolicySet
-}
+type processRevisionResponse struct{}
 
 // test 3 roots, two successful, one failure
 // have first two roots contain different failing policies
@@ -43,8 +41,9 @@ func TestProcess(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 		env.RegisterWorkflow(testTFWorkflow)
 		env.ExecuteWorkflow(testProcessRevisionWorkflow, processRevisionRequest{
-			T: t,
-			Revision: receiver.Revision{
+			T:                      t,
+			ExpectedFailedPolicies: expectedPolicies,
+			Revision: revision.Revision{
 				Repo: github.Repo{},
 				Roots: []terraformActivities.Root{
 					{Name: "some-root"},
@@ -55,7 +54,6 @@ func TestProcess(t *testing.T) {
 
 		var result processRevisionResponse
 		err := env.GetWorkflowResult(&result)
-		assert.Equal(t, expectedPolicies, result.FailedPolicies)
 		assert.NoError(t, err)
 	})
 	t.Run("failing child workflow", func(t *testing.T) {
@@ -65,7 +63,7 @@ func TestProcess(t *testing.T) {
 		env.ExecuteWorkflow(testProcessRevisionWorkflow, processRevisionRequest{
 			T:              t,
 			TFWorkflowFail: true,
-			Revision: receiver.Revision{
+			Revision: revision.Revision{
 				Repo: github.Repo{},
 				Roots: []terraformActivities.Root{
 					{Name: "some-root"},
@@ -76,7 +74,6 @@ func TestProcess(t *testing.T) {
 
 		var result processRevisionResponse
 		err := env.GetWorkflowResult(&result)
-		assert.Empty(t, result.FailedPolicies)
 		assert.NoError(t, err)
 	})
 }
@@ -91,14 +88,16 @@ func testProcessRevisionWorkflow(ctx workflow.Context, r processRevisionRequest)
 		tfWorkflow = testTFWorkflowFailure
 	}
 	processor := revision.Processor{
-		TFStateReceiver: &revision.StateReceiver{},
+		TFStateReceiver: &revision.StateReceiver{RootCache: make(map[string]revision.RootInfo)},
 		TFWorkflow:      tfWorkflow,
+		PolicyHandler: testPolicyHandler{
+			expectedFailedPolicies: r.ExpectedFailedPolicies,
+			t:                      r.T,
+		},
 	}
-	failedPolicies := processor.Process(ctx, r.Revision)
+	processor.Process(ctx, r.Revision)
 
-	return processRevisionResponse{
-		FailedPolicies: failedPolicies,
-	}, nil
+	return processRevisionResponse{}, nil
 }
 
 func testTFWorkflow(_ workflow.Context, _ terraform.Request) (terraform.Response, error) {
@@ -122,4 +121,13 @@ func testTFWorkflow(_ workflow.Context, _ terraform.Request) (terraform.Response
 
 func testTFWorkflowFailure(_ workflow.Context, _ terraform.Request) (terraform.Response, error) {
 	return terraform.Response{}, assert.AnError
+}
+
+type testPolicyHandler struct {
+	t                      *testing.T
+	expectedFailedPolicies []activities.PolicySet
+}
+
+func (p testPolicyHandler) Process(_ workflow.Context, failedPolicies []activities.PolicySet) {
+	assert.Equal(p.t, p.expectedFailedPolicies, failedPolicies)
 }
