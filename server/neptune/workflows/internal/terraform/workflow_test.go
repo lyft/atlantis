@@ -150,20 +150,14 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 
 	var s []state.Workflow
 
-	store := state.NewWorkflowStoreWithGenerator(
-		// add a notifier which just appends to a list which allows us to
-		// test every state change
-		func(st *state.Workflow) error {
-			if st.Plan.Status == state.InProgressJobStatus && req.ShouldErrorDuringJobUpdate {
-				return fmt.Errorf("some error")
-			}
-			// need to copy since its a pointer and will get mutated
-			s = append(s, copy(st))
-			return nil
-		},
-		&testURLGenerator{},
-		req.WorkflowMode,
-	)
+	store := state.NewWorkflowStoreWithGenerator(func(st *state.Workflow) error {
+		if st.Plan.Status == state.InProgressJobStatus && req.ShouldErrorDuringJobUpdate {
+			return fmt.Errorf("some error")
+		}
+		// need to copy since its a pointer and will get mutated
+		s = append(s, copy(st))
+		return nil
+	}, &testURLGenerator{}, req.WorkflowMode, "")
 
 	runnerReq := terraform.Request{
 		Root:         testLocalRoot.Root,

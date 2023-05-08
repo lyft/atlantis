@@ -58,13 +58,15 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 		InternalNotifiers: []revision.WorkflowNotifier{
 			notifier,
 		},
+		RootCache: make(map[string]revision.RootInfo),
 	}
+	receiver.AddRoot(r.RootInfo)
 
 	workflow.Go(ctx, func(ctx workflow.Context) {
 		ch.Send(ctx, r.State)
 	})
 
-	receiver.Receive(ctx, ch, r.RootInfo)
+	receiver.Receive(ctx, ch)
 
 	return stateReceiveResponse{
 		NotifierCalled: notifier.called,

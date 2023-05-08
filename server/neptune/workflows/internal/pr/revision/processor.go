@@ -16,7 +16,8 @@ import (
 type Workflow func(ctx workflow.Context, request terraform.Request) (terraform.Response, error)
 
 type Receiver interface {
-	Receive(ctx workflow.Context, c workflow.ReceiveChannel, rootInfo RootInfo)
+	Receive(ctx workflow.Context, c workflow.ReceiveChannel)
+	AddRoot(info RootInfo)
 }
 
 type Processor struct {
@@ -46,6 +47,7 @@ func (p *Processor) Process(ctx workflow.Context, prRevision receiver.Revision) 
 			Root: root,
 			Repo: prRevision.Repo,
 		}
+		p.TFStateReceiver.AddRoot(rootInfo)
 		future := p.processRoot(ctx, rootInfo)
 		rootInfos = append(rootInfos, rootInfo)
 		futures = append(futures, future)
@@ -84,14 +86,12 @@ func (p *Processor) processRoot(ctx workflow.Context, rootInfo RootInfo) workflo
 func (p *Processor) awaitWorkflows(ctx workflow.Context, rootInfos []RootInfo, futures []workflow.ChildWorkflowFuture) []activities.PolicySet {
 	selector := workflow.NewNamedSelector(ctx, "TerraformChildWorkflow")
 	ch := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
-	workflowsLeft := len(futures)
-	for _, rootInfo := range rootInfos {
-		selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {
-			p.TFStateReceiver.Receive(ctx, c, rootInfo)
-		})
-	}
+	selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {
+		p.TFStateReceiver.Receive(ctx, c)
+	})
 
 	var failedPolicies []activities.PolicySet
+	workflowsLeft := len(futures)
 	for _, future := range futures {
 		selector.AddFuture(future, func(f workflow.Future) {
 			defer func() {

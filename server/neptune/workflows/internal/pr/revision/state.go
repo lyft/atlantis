@@ -14,9 +14,14 @@ type WorkflowNotifier interface {
 
 type StateReceiver struct {
 	InternalNotifiers []WorkflowNotifier
+	RootCache         map[string]RootInfo
 }
 
-func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, rootInfo RootInfo) {
+func (s *StateReceiver) AddRoot(info RootInfo) {
+	s.RootCache[info.ID.String()] = info
+}
+
+func (s *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel) {
 	var workflowState *state.Workflow
 	c.Receive(ctx, &workflowState)
 
@@ -24,7 +29,8 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		metrics.SignalNameTag: state.WorkflowStateChangeSignal,
 	}).Counter(metrics.SignalReceive).Inc(1)
 
-	for _, notifier := range n.InternalNotifiers {
+	rootInfo := s.RootCache[workflowState.ID]
+	for _, notifier := range s.InternalNotifiers {
 		if err := notifier.Notify(ctx, rootInfo.ToInternalInfo(), workflowState); err != nil {
 			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
 			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
