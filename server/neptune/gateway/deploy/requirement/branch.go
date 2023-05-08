@@ -14,13 +14,8 @@ const (
 	DefaultTemplate = "See error details below:"
 )
 
-type ForbiddenError struct {
-	details  string
-	template string
-}
-
-func NewForbiddenError(msg string, format ...any) ForbiddenError {
-	return ForbiddenError{template: DefaultTemplate, details: fmt.Sprintf(msg, format...)}
+type errGenerator[T any] interface {
+	GenerateForbiddenError(ctx context.Context, key template.Key, repo models.Repo, data T, msg string, format ...any) ForbiddenError
 }
 
 type errorGenerator[T any] struct {
@@ -41,6 +36,15 @@ func (g errorGenerator[T]) GenerateForbiddenError(ctx context.Context, key templ
 	}
 }
 
+type ForbiddenError struct {
+	details  string
+	template string
+}
+
+func NewForbiddenError(msg string, format ...any) ForbiddenError {
+	return ForbiddenError{template: DefaultTemplate, details: fmt.Sprintf(msg, format...)}
+}
+
 // ErrorTemplate returns a human readable formatted error which
 // is appropriate to surface to the client
 func (e ForbiddenError) ErrorTemplate() string {
@@ -53,7 +57,7 @@ func (e ForbiddenError) Error() string {
 
 type branchRestriction struct {
 	cfg            valid.GlobalCfg
-	errorGenerator errorGenerator[template.BranchForbiddenData]
+	errorGenerator errGenerator[template.BranchForbiddenData]
 }
 
 func (r *branchRestriction) Check(ctx context.Context, criteria Criteria) error {

@@ -48,6 +48,7 @@ type BranchForbiddenData struct {
 type UserForbiddenData struct {
 	User string
 	Team string
+	Org  string
 }
 
 //go:embed templates/pr_comment.tmpl

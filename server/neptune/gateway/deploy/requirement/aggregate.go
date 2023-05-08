@@ -9,17 +9,26 @@ import (
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 
-type requirement interface {
+type Requirement interface {
 	Check(ctx context.Context, criteria Criteria) error
 }
 type Aggregate struct {
-	overrideableRequirements    []requirement
-	nonOverrideableRequirements []requirement
+	overrideableRequirements    []Requirement
+	nonOverrideableRequirements []Requirement
+}
+
+func NewAggregateWithRequirements(overrideableRequirements []Requirement, nonOverrideableRequirements []Requirement) *Aggregate {
+	return &Aggregate{
+		overrideableRequirements:    overrideableRequirements,
+		nonOverrideableRequirements: nonOverrideableRequirements,
+	}
 }
 
 func NewAggregate(cfg valid.GlobalCfg, fetcher *github.TeamMemberFetcher, logger logging.Logger) *Aggregate {
-	return &Aggregate{
-		overrideableRequirements: []requirement{
+	return NewAggregateWithRequirements(
+
+		// overrideable
+		[]Requirement{
 
 			// order matters here since we fail iteratively
 			&branchRestriction{
@@ -38,10 +47,12 @@ func NewAggregate(cfg valid.GlobalCfg, fetcher *github.TeamMemberFetcher, logger
 				},
 			},
 		},
-		nonOverrideableRequirements: []requirement{
+
+		// non-overrideable
+		[]Requirement{
 			pull{},
 		},
-	}
+	)
 }
 
 func (a *Aggregate) Check(ctx context.Context, criteria Criteria) error {

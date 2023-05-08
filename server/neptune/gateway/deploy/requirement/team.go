@@ -8,7 +8,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/neptune/template"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 
 type Criteria struct {
@@ -20,10 +19,14 @@ type Criteria struct {
 	TriggerInfo       workflows.DeployTriggerInfo
 }
 
+type fetcher interface {
+	ListTeamMembers(ctx context.Context, installationToken int64, teamSlug string) ([]string, error)
+}
+
 type team struct {
 	cfg            valid.GlobalCfg
-	fetcher        *github.TeamMemberFetcher
-	errorGenerator errorGenerator[template.UserForbiddenData]
+	fetcher        fetcher
+	errorGenerator errGenerator[template.UserForbiddenData]
 }
 
 func (r *team) Check(ctx context.Context, criteria Criteria) error {
@@ -50,6 +53,7 @@ func (r *team) Check(ctx context.Context, criteria Criteria) error {
 		template.UserForbiddenData{
 			User: criteria.User.Username,
 			Team: match.ApplySettings.Team,
+			Org:  r.cfg.PolicySets.Organization,
 		},
 		"User: %s is forbidden from executing a deploy", criteria.User.Username,
 	)
