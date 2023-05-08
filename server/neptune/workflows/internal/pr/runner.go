@@ -50,7 +50,6 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 	stateReceiver := revision.StateReceiver{
 		InternalNotifiers:   internalNotifiers,
 		AdditionalNotifiers: additionalNotifiers,
-		RootCache:           make(map[string]revision.RootInfo),
 	}
 	revisionProcessor := revision.Processor{
 		TFWorkflow:      tfWorkflow,

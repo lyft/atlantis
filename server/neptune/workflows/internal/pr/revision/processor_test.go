@@ -88,7 +88,7 @@ func testProcessRevisionWorkflow(ctx workflow.Context, r processRevisionRequest)
 		tfWorkflow = testTFWorkflowFailure
 	}
 	processor := revision.Processor{
-		TFStateReceiver: &revision.StateReceiver{RootCache: make(map[string]revision.RootInfo)},
+		TFStateReceiver: &revision.StateReceiver{},
 		TFWorkflow:      tfWorkflow,
 		PolicyHandler: testPolicyHandler{
 			expectedFailedPolicies: r.ExpectedFailedPolicies,

@@ -16,14 +16,9 @@ type WorkflowNotifier interface {
 type StateReceiver struct {
 	InternalNotifiers   []WorkflowNotifier
 	AdditionalNotifiers []plugins.TerraformWorkflowNotifier
-	RootCache           map[string]RootInfo
 }
 
-func (s *StateReceiver) AddRoot(info RootInfo) {
-	s.RootCache[info.ID.String()] = info
-}
-
-func (s *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel) {
+func (s *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, rootCache map[string]RootInfo) {
 	var workflowState *state.Workflow
 	c.Receive(ctx, &workflowState)
 
@@ -31,7 +26,7 @@ func (s *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel)
 		metrics.SignalNameTag: state.WorkflowStateChangeSignal,
 	}).Counter(metrics.SignalReceive).Inc(1)
 
-	rootInfo := s.RootCache[workflowState.ID]
+	rootInfo := rootCache[workflowState.ID]
 	for _, notifier := range s.InternalNotifiers {
 		if err := notifier.Notify(ctx, rootInfo.ToInternalInfo(), workflowState); err != nil {
 			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)

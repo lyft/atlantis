@@ -16,8 +16,7 @@ import (
 type TFWorkflow func(ctx workflow.Context, request terraform.Request) (terraform.Response, error)
 
 type TFStateReceiver interface {
-	Receive(ctx workflow.Context, c workflow.ReceiveChannel)
-	AddRoot(info RootInfo)
+	Receive(ctx workflow.Context, c workflow.ReceiveChannel, rootCache map[string]RootInfo)
 }
 
 type PolicyHandler interface {
@@ -28,11 +27,13 @@ type Processor struct {
 	TFStateReceiver TFStateReceiver
 	TFWorkflow      TFWorkflow
 	PolicyHandler   PolicyHandler
+	rootCache       map[string]RootInfo
 }
 
 // Process handles spinning off child Terraform workflows per root and
 // dealing with any failed policies by reviewing set of approvals
 func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
+	p.rootCache = make(map[string]RootInfo)
 	var futures []workflow.ChildWorkflowFuture
 	for _, root := range prRevision.Roots {
 		future, err := p.processRoot(ctx, root, prRevision)
@@ -61,14 +62,14 @@ func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.R
 	if err != nil {
 		return nil, errors.Wrap(err, "generating uuid")
 	}
-	p.TFStateReceiver.AddRoot(RootInfo{
+	p.rootCache[id.String()] = RootInfo{
 		ID: id,
 		Commit: github.Commit{
 			Revision: prRevision.Revision,
 		},
 		Root: root,
 		Repo: prRevision.Repo,
-	})
+	}
 	ctx = workflow.WithValue(ctx, internalContext.ProjectKey, root.Name)
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		WorkflowID: id.String(),
@@ -101,7 +102,7 @@ func (p *Processor) awaitWorkflows(ctx workflow.Context, futures []workflow.Chil
 	selector := workflow.NewNamedSelector(ctx, "TerraformChildWorkflow")
 	ch := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
 	selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {
-		p.TFStateReceiver.Receive(ctx, c)
+		p.TFStateReceiver.Receive(ctx, c, p.rootCache)
 	})
 
 	var results []terraform.Response
