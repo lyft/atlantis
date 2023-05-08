@@ -1,4 +1,4 @@
-package pr
+package revision
 
 import (
 	"github.com/pkg/errors"

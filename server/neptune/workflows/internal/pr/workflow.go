@@ -5,6 +5,7 @@ import (
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"go.temporal.io/sdk/workflow"
 	"strconv"
 	"time"
@@ -16,7 +17,7 @@ type prActivities struct {
 	*activities.Github
 }
 
-func Workflow(ctx workflow.Context, request Request, tfWorkflow TFWorkflow) error {
+func Workflow(ctx workflow.Context, request Request, tfWorkflow revision.Workflow) error {
 	var a *prActivities
 	options := workflow.ActivityOptions{
 		TaskQueue:           TaskQueue,
@@ -28,7 +29,7 @@ func Workflow(ctx workflow.Context, request Request, tfWorkflow TFWorkflow) erro
 		"pr-num": strconv.Itoa(request.PRNum),
 	})
 	checkRunCache := notifier.NewGithubCheckRunCache(a)
-	notifiers := []WorkflowNotifier{
+	notifiers := []revision.WorkflowNotifier{
 		&notifier.CheckRunNotifier{
 			CheckRunSessionCache: checkRunCache,
 			Mode:                 tfModel.PR,

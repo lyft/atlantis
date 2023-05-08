@@ -1,8 +1,8 @@
-package pr_test
+package revision_test
 
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"net/url"
 	"testing"
 	"time"
@@ -34,7 +34,7 @@ func (n *testNotifier) Notify(ctx workflow.Context, info notifier.Info, s *state
 
 type stateReceiveRequest struct {
 	State    *state.Workflow
-	RootInfo pr.RootInfo
+	RootInfo revision.RootInfo
 	T        *testing.T
 }
 
@@ -54,8 +54,8 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 		expectedT:     r.T,
 	}
 
-	receiver := &pr.StateReceiver{
-		InternalNotifiers: []pr.WorkflowNotifier{
+	receiver := &revision.StateReceiver{
+		InternalNotifiers: []revision.WorkflowNotifier{
 			notifier,
 		},
 	}
@@ -79,7 +79,7 @@ func TestStateReceive(t *testing.T) {
 		URL: outputURL,
 	}
 
-	internalRootInfo := pr.RootInfo{
+	internalRootInfo := revision.RootInfo{
 		ID:   uuid.New(),
 		Root: terraform.Root{Name: "root"},
 		Repo: github.Repo{Name: "hello"},
