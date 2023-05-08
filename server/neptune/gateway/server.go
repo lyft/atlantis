@@ -234,7 +234,8 @@ func NewServer(config Config) (*Server, error) {
 	)
 
 	syncScheduler := &sync.SynchronousScheduler{
-		Logger: ctxLogger,
+		Logger:               ctxLogger,
+		PanicRecoveryEnabled: true,
 	}
 	asyncScheduler := sync.NewAsyncScheduler(ctxLogger, syncScheduler)
 
@@ -319,6 +320,17 @@ func NewServer(config Config) (*Server, error) {
 		ClientCreator: clientCreator,
 	}
 
+	commentCreator := &github.CommentCreator{
+		ClientCreator: clientCreator,
+	}
+
+	teamMemberFetcher := &github.TeamMemberFetcher{
+		ClientCreator: clientCreator,
+
+		// Using the policy set org for now, we should probably bundle team and org together in one struct though
+		Org: globalCfg.PolicySets.Organization,
+	}
+
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(
 		statsScope,
 		[]byte(config.GithubWebhookSecret),
@@ -343,6 +355,8 @@ func NewServer(config Config) (*Server, error) {
 		checkRunFetcher,
 		vcsStatusUpdater,
 		globalCfg,
+		commentCreator,
+		teamMemberFetcher,
 	)
 
 	repoRetriever := &github.RepoRetriever{

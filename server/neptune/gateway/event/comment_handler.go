@@ -9,6 +9,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
+	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/uber-go/tally/v4"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/runatlantis/atlantis/server/http"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/requirement"
 )
 
 const warningMessage = "⚠️ WARNING ⚠️\n\n You are force applying changes from your PR instead of merging into your default branch 🚀. This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘.\n\n To confirm behavior, review and confirm the plan within the generated atlantis/deploy GH check below.\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n"
@@ -36,6 +38,14 @@ type rootConfigBuilder interface {
 	Build(ctx context.Context, commit *config.RepoCommit, installationToken int64, opts ...config.BuilderOptions) ([]*valid.MergedProjectCfg, error)
 }
 
+type requirementChecker interface {
+	Check(ctx context.Context, criteria requirement.Criteria) error
+}
+
+type errorHandler interface {
+	WrapWithHandling(ctx context.Context, event PREvent, commandName string, executor sync.Executor) sync.Executor
+}
+
 // Comment is our internal representation of a vcs based comment event.
 type Comment struct {
 	Pull              models.PullRequest
@@ -49,6 +59,18 @@ type Comment struct {
 	InstallationToken int64
 }
 
+func (c Comment) GetPullNum() int {
+	return c.PullNum
+}
+
+func (c Comment) GetInstallationToken() int64 {
+	return c.InstallationToken
+}
+
+func (c Comment) GetRepo() models.Repo {
+	return c.BaseRepo
+}
+
 func NewCommentEventWorkerProxy(
 	logger logging.Logger,
 	scope tally.Scope,
@@ -60,6 +82,8 @@ func NewCommentEventWorkerProxy(
 	vcsStatusUpdater statusUpdater,
 	globalCfg valid.GlobalCfg,
 	rootConfigBuilder rootConfigBuilder,
+	errorHandler errorHandler,
+	requirementChecker requirementChecker,
 ) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
 		logger:    logger,
@@ -72,47 +96,73 @@ func NewCommentEventWorkerProxy(
 			globalCfg:        globalCfg,
 		},
 		neptuneWorkerProxy: &NeptuneWorkerProxy{
-			logger:         logger,
-			signaler:       signaler,
-			commentCreator: commentCreator,
+			logger:             logger,
+			signaler:           signaler,
+			commentCreator:     commentCreator,
+			requirementChecker: requirementChecker,
 		},
 		vcsStatusUpdater:  vcsStatusUpdater,
 		rootConfigBuilder: rootConfigBuilder,
+		errorHandler:      errorHandler,
 	}
 }
 
 type NeptuneWorkerProxy struct {
-	logger         logging.Logger
-	signaler       deploySignaler
-	commentCreator commentCreator
+	logger             logging.Logger
+	signaler           deploySignaler
+	commentCreator     commentCreator
+	requirementChecker requirementChecker
 }
 
 func (p *NeptuneWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
-	// currently the only comments on platform mode are force applies, we can add to this as necessary.
-	if !cmd.ForceApply {
+	// currently the only comments on platform mode are applies, we can add to this as necessary.
+	if cmd.Name != command.Apply {
 		return nil
+	}
+
+	triggerInfo := workflows.DeployTriggerInfo{
+		Type:  workflows.ManualTrigger,
+		Force: cmd.ForceApply,
 	}
 
 	platformModeRoots := partitionRootsByMode(valid.PlatformWorkflowMode, roots)
 
-	// let's only comment on the PR if we're fully on platform mode, otherwise there will be duplicates from the legacy worker and this.
-	if len(platformModeRoots) == len(roots) {
+	if cmd.IsForSpecificProject() {
+		platformModeRoots = partitionRootsByProject(cmd.ProjectName, platformModeRoots)
+	}
+
+	if len(platformModeRoots) == 0 {
+		p.logger.WarnContext(ctx, "no platform mode roots detected")
+		return nil
+	}
+
+	if err := p.requirementChecker.Check(ctx, requirement.Criteria{
+		Repo:              event.BaseRepo,
+		Branch:            event.Pull.HeadBranch,
+		User:              event.User,
+		InstallationToken: event.InstallationToken,
+		TriggerInfo:       triggerInfo,
+		OptionalPull:      &event.Pull,
+	}); err != nil {
+		return errors.Wrap(err, "checking deploy requirements")
+	}
+
+	// let's only post a force apply comment on the PR, if we are only operating on project OR if we are operating on all projects and
+	// if we're fully on platform mode, otherwise there will be duplicates from the legacy worker and this.
+	if cmd.ForceApply && (cmd.IsForSpecificProject() || len(platformModeRoots) == len(roots)) {
 		if err := p.commentCreator.CreateComment(event.BaseRepo, event.PullNum, warningMessage, ""); err != nil {
 			p.logger.ErrorContext(ctx, err.Error())
 		}
 	}
 
 	opts := deploy.RootDeployOptions{
-		Repo:              event.HeadRepo,
+		Repo:              event.BaseRepo,
 		Branch:            event.Pull.HeadBranch,
 		Revision:          event.Pull.HeadCommit,
 		OptionalPullNum:   event.Pull.Num,
 		Sender:            event.User,
 		InstallationToken: event.InstallationToken,
-		TriggerInfo: workflows.DeployTriggerInfo{
-			Type:  workflows.ManualTrigger,
-			Force: cmd.ForceApply,
-		},
+		TriggerInfo:       triggerInfo,
 	}
 
 	for _, r := range platformModeRoots {
@@ -202,6 +252,7 @@ type CommentEventWorkerProxy struct {
 	rootConfigBuilder  rootConfigBuilder
 	snsWorkerProxy     *SNSWorkerProxy
 	neptuneWorkerProxy *NeptuneWorkerProxy
+	errorHandler       errorHandler
 }
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
@@ -221,11 +272,11 @@ func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.Buff
 		return p.handleLegacyComment(ctx, request, event, cmd)
 	}
 
-	err = p.scheduler.Schedule(ctx, func(ctx context.Context) error {
+	executor := p.errorHandler.WrapWithHandling(ctx, event, cmd.CommandName().String(), func(ctx context.Context) error {
 		return p.handle(ctx, request, event, cmd)
 	})
 
-	return errors.Wrap(err, "scheduling handle")
+	return errors.Wrap(p.scheduler.Schedule(ctx, executor), "scheduling handle")
 }
 
 func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
@@ -279,6 +330,17 @@ func partitionRootsByMode(mode valid.WorkflowModeType, cmds []*valid.MergedProje
 	var cfgs []*valid.MergedProjectCfg
 	for _, cmd := range cmds {
 		if cmd.WorkflowMode == mode {
+			cfgs = append(cfgs, cmd)
+		}
+	}
+
+	return cfgs
+}
+
+func partitionRootsByProject(name string, cmds []*valid.MergedProjectCfg) []*valid.MergedProjectCfg {
+	var cfgs []*valid.MergedProjectCfg
+	for _, cmd := range cmds {
+		if cmd.Name == name {
 			cfgs = append(cfgs, cmd)
 		}
 	}

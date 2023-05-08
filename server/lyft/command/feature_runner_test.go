@@ -311,12 +311,7 @@ func TestPlatformModeRunner_success(t *testing.T) {
 		expectedCmd: cmd,
 	}
 
-	commenter := &TestCommenter{
-		expectedT:       t,
-		expectedComment: "Platform mode does not support legacy apply commands. Please merge your PR to apply the changes. ",
-		expectedPullNum: 1,
-		expectedRepo:    ctx.Pull.BaseRepo,
-	}
+	commenter := &TestCommenter{}
 
 	subject := &lyftCommand.PlatformModeRunner{
 		Allocator: &testAllocator{
@@ -338,7 +333,7 @@ func TestPlatformModeRunner_success(t *testing.T) {
 
 	assert.True(t, runner.called)
 	assert.True(t, builder.called)
-	assert.True(t, commenter.called)
+	assert.False(t, commenter.called)
 }
 
 func TestPlatformModeProjectRunner_plan(t *testing.T) {
