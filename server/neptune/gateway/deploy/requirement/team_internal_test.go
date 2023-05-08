@@ -57,7 +57,6 @@ func TestTeam(t *testing.T) {
 
 		err := subject.Check(context.Background(), expectedCriteria)
 		assert.NoError(t, err)
-
 	})
 
 	t.Run("forbidden", func(t *testing.T) {
