@@ -1,0 +1,22 @@
+{{ if .InternalError }}
+## Internal Error :boom:
+
+An `atlantis {{ .Command }}`  has resulted in an error.  This is likely a bug and should be reported.
+{{ end }}
+
+{{ if .ForbiddenError }}
+## Forbidden Error :see_no_evil:
+
+{{ .ForbiddenErrorTemplate }}
+
+{{ end }}
+
+<details><summary> Error Details </summary>
+
+```
+
+{{ .ErrorDetails }}
+
+```
+
+</details>

@@ -59,30 +59,9 @@ func (a *PlatformModeRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	if shouldAllocate && allProjectInPlatformMode(projectCmds) {
-		// return error if loading template fails since we should have default templates configured
-		comment, err := a.TemplateLoader.Load(template.LegacyApplyComment, ctx.Pull.BaseRepo, LegacyApplyCommentInput{})
-		if err != nil {
-			a.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("loading template: %s", template.LegacyApplyComment))
-		}
-
-		if err := a.VCSClient.CreateComment(ctx.Pull.BaseRepo, ctx.Pull.Num, comment, ""); err != nil {
-			a.Logger.ErrorContext(ctx.RequestCtx, err.Error())
-		}
-	}
-
 	// at this point we've either commented about this being a legacy apply or not, so let's just proceed with
 	// the run now.
 	a.Runner.Run(ctx, cmd)
-}
-
-func allProjectInPlatformMode(cmds []command.ProjectContext) bool {
-	for _, cmd := range cmds {
-		if cmd.WorkflowModeType != valid.PlatformWorkflowMode {
-			return false
-		}
-	}
-	return true
 }
 
 // DefaultProjectCommandRunner implements ProjectCommandRunner.
