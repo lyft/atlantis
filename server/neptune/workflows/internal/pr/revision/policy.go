@@ -10,5 +10,4 @@ type FailedPolicyHandler struct {
 
 func (f *FailedPolicyHandler) Process(ctx workflow.Context, failedPolicies []activities.PolicySet) {
 	//TODO implement me
-	return
 }

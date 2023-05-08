@@ -54,7 +54,6 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 		}
 	}
 	p.PolicyHandler.Process(ctx, failedPolicies)
-	return
 }
 
 func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision Revision) (workflow.ChildWorkflowFuture, error) {
