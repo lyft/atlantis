@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const workflowID = "id"
+
 type testNotifier struct {
 	expectedState *state.Workflow
 	t             *testing.T
@@ -43,14 +45,12 @@ func TestUpdateApprovalActions(t *testing.T) {
 				},
 				ID: jobID.String(),
 			},
+			ID: workflowID,
 		},
 		t: t,
 	}
 
-	subject := state.NewWorkflowStore(
-		notifier.notify,
-		terraform.Deploy,
-	)
+	subject := state.NewWorkflowStore(notifier.notify, terraform.Deploy, workflowID)
 
 	baseURL := bytes.NewBufferString("www.test.com")
 
@@ -96,14 +96,12 @@ func TestInitPlanJob(t *testing.T) {
 				},
 				ID: jobID.String(),
 			},
+			ID: workflowID,
 		},
 		t: t,
 	}
 
-	subject := state.NewWorkflowStore(
-		notifier.notify,
-		terraform.Deploy,
-	)
+	subject := state.NewWorkflowStore(notifier.notify, terraform.Deploy, workflowID)
 
 	baseURL := bytes.NewBufferString("www.test.com")
 
@@ -131,14 +129,12 @@ func TestInitApplyJob(t *testing.T) {
 				},
 				ID: jobID.String(),
 			},
+			ID: workflowID,
 		},
 		t: t,
 	}
 
-	subject := state.NewWorkflowStore(
-		notifier.notify,
-		terraform.Deploy,
-	)
+	subject := state.NewWorkflowStore(notifier.notify, terraform.Deploy, workflowID)
 
 	baseURL := bytes.NewBufferString("www.test.com")
 
@@ -168,14 +164,12 @@ func TestUpdateApplyJob(t *testing.T) {
 				},
 				ID: jobID.String(),
 			},
+			ID: workflowID,
 		},
 		t: t,
 	}
 
-	subject := state.NewWorkflowStore(
-		notifier.notify,
-		terraform.Deploy,
-	)
+	subject := state.NewWorkflowStore(notifier.notify, terraform.Deploy, workflowID)
 
 	baseURL := bytes.NewBufferString("www.test.com")
 
@@ -221,14 +215,12 @@ func TestUpdatePlanJob(t *testing.T) {
 				},
 				ID: jobID.String(),
 			},
+			ID: workflowID,
 		},
 		t: t,
 	}
 
-	subject := state.NewWorkflowStore(
-		notifier.notify,
-		terraform.Deploy,
-	)
+	subject := state.NewWorkflowStore(notifier.notify, terraform.Deploy, workflowID)
 
 	baseURL := bytes.NewBufferString("www.test.com")
 
@@ -259,14 +251,12 @@ func TestInitValidateJob(t *testing.T) {
 				},
 				ID: jobID.String(),
 			},
+			ID: workflowID,
 		},
 		t: t,
 	}
 
-	subject := state.NewWorkflowStore(
-		notifier.notify,
-		terraform.PR,
-	)
+	subject := state.NewWorkflowStore(notifier.notify, terraform.PR, workflowID)
 
 	baseURL := bytes.NewBufferString("www.test.com")
 
@@ -294,14 +284,12 @@ func TestUpdateValidateJob(t *testing.T) {
 				},
 				ID: jobID.String(),
 			},
+			ID: workflowID,
 		},
 		t: t,
 	}
 
-	subject := state.NewWorkflowStore(
-		notifier.notify,
-		terraform.PR,
-	)
+	subject := state.NewWorkflowStore(notifier.notify, terraform.PR, workflowID)
 
 	baseURL := bytes.NewBufferString("www.test.com")
 

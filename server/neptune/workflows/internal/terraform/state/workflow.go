@@ -109,6 +109,7 @@ type Workflow struct {
 	Validate *Job
 	Apply    *Job
 	Result   WorkflowResult
+	ID       string
 }
 
 func (w *Workflow) ToExternalWorkflowState() *plugins.TerraformWorkflowState {
