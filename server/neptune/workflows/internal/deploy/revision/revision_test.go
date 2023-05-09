@@ -123,8 +123,10 @@ func TestEnqueue(t *testing.T) {
 			Revision: rev,
 			Branch:   branch,
 			Root: request.Root{
-				Name:    "root",
-				Trigger: request.MergeTrigger,
+				Name: "root",
+				TriggerInfo: request.TriggerInfo{
+					Type: request.MergeTrigger,
+				},
 			},
 			Repo: request.Repo{Name: "nish"},
 		})
@@ -179,8 +181,10 @@ func TestEnqueue_ManualTrigger(t *testing.T) {
 			Revision: rev,
 			Branch:   branch,
 			Root: request.Root{
-				Name:    "root",
-				Trigger: request.ManualTrigger,
+				Name: "root",
+				TriggerInfo: request.TriggerInfo{
+					Type: request.ManualTrigger,
+				},
 			},
 			Repo: request.Repo{Name: "nish"},
 		})
@@ -236,8 +240,10 @@ func TestEnqueue_ManualTrigger_QueueAlreadyLocked(t *testing.T) {
 			Revision: rev,
 			Branch:   branch,
 			Root: request.Root{
-				Name:    "root",
-				Trigger: request.ManualTrigger,
+				Name: "root",
+				TriggerInfo: request.TriggerInfo{
+					Type: request.ManualTrigger,
+				},
 			},
 			Repo: request.Repo{Name: "nish"},
 		})
@@ -298,8 +304,10 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 			Revision: rev,
 			Branch:   branch,
 			Root: request.Root{
-				Name:    "root",
-				Trigger: request.MergeTrigger,
+				Name: "root",
+				TriggerInfo: request.TriggerInfo{
+					Type: request.MergeTrigger,
+				},
 			},
 			Repo: request.Repo{Name: "nish"},
 		})
@@ -362,8 +370,10 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInQueue(t *testing.T) {
 			Revision: rev,
 			Branch:   branch,
 			Root: request.Root{
-				Name:    "root",
-				Trigger: request.ManualTrigger,
+				Name: "root",
+				TriggerInfo: request.TriggerInfo{
+					Type: request.ManualTrigger,
+				},
 			},
 			Repo: request.Repo{Name: "nish"},
 		})
@@ -407,8 +417,10 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInProgress(t *testing.T) {
 			Revision: rev,
 			Branch:   branch,
 			Root: request.Root{
-				Name:    "root",
-				Trigger: request.ManualTrigger,
+				Name: "root",
+				TriggerInfo: request.TriggerInfo{
+					Type: request.ManualTrigger,
+				},
 			},
 			Repo: request.Repo{Name: "nish"},
 		})
