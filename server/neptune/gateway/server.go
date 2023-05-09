@@ -323,14 +323,6 @@ func NewServer(config Config) (*Server, error) {
 	commentCreator := &github.CommentCreator{
 		ClientCreator: clientCreator,
 	}
-
-	teamMemberFetcher := &github.TeamMemberFetcher{
-		ClientCreator: clientCreator,
-
-		// Using the policy set org for now, we should probably bundle team and org together in one struct though
-		Org: globalCfg.PolicySets.Organization,
-	}
-
 	gatewayEventsController := lyft_gateway.NewVCSEventsController(
 		statsScope,
 		[]byte(config.GithubWebhookSecret),
@@ -356,7 +348,7 @@ func NewServer(config Config) (*Server, error) {
 		vcsStatusUpdater,
 		globalCfg,
 		commentCreator,
-		teamMemberFetcher,
+		clientCreator,
 	)
 
 	repoRetriever := &github.RepoRetriever{

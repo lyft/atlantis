@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
 
@@ -56,7 +57,7 @@ func NewVCSEventsController(
 	vcsStatusUpdater *command.VCSStatusUpdater,
 	globalCfg valid.GlobalCfg,
 	commentCreator *github.CommentCreator,
-	teamMemberFetcher *github.TeamMemberFetcher,
+	clientCreator githubapp.ClientCreator,
 ) *VCSEventsController {
 	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
 		snsWriter, logger,
@@ -79,7 +80,18 @@ func NewVCSEventsController(
 		logger,
 	)
 
-	requirementChecker := requirement.NewAggregate(globalCfg, teamMemberFetcher, logger)
+	teamMemberFetcher := &github.TeamMemberFetcher{
+		ClientCreator: clientCreator,
+
+		// Using the policy set org for now, we should probably bundle team and org together in one struct though
+		Org: globalCfg.PolicySets.Organization,
+	}
+
+	reviewFetcher := &github.PRReviewFetcher{
+		ClientCreator: clientCreator,
+	}
+
+	requirementChecker := requirement.NewAggregate(globalCfg, teamMemberFetcher, reviewFetcher, logger)
 	commentHandler := handlers.NewCommentEventWithCommandHandler(
 		commentParser,
 		repoAllowlistChecker,
