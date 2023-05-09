@@ -24,7 +24,7 @@ func NewAggregateWithRequirements(overrideableRequirements []Requirement, nonOve
 	}
 }
 
-func NewAggregate(cfg valid.GlobalCfg, fetcher *github.TeamMemberFetcher, logger logging.Logger) *Aggregate {
+func NewAggregate(cfg valid.GlobalCfg, teamFetcher *github.TeamMemberFetcher, reviewFetcher *github.PRReviewFetcher, logger logging.Logger) *Aggregate {
 	return NewAggregateWithRequirements(
 
 		// overrideable
@@ -40,10 +40,18 @@ func NewAggregate(cfg valid.GlobalCfg, fetcher *github.TeamMemberFetcher, logger
 			},
 			&team{
 				cfg:     cfg,
-				fetcher: fetcher,
+				fetcher: teamFetcher,
 				errorGenerator: errorGenerator[template.UserForbiddenData]{
 					logger: logger,
 					loader: template.Loader[template.UserForbiddenData]{GlobalCfg: cfg},
+				},
+			},
+			&approval{
+				cfg:     cfg,
+				fetcher: reviewFetcher,
+				errorGenerator: errorGenerator[template.Input]{
+					logger: logger,
+					loader: template.Loader[template.Input]{GlobalCfg: cfg},
 				},
 			},
 		},

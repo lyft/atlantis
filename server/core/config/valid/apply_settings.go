@@ -12,3 +12,12 @@ type ApplySettings struct {
 	BranchRestriction BranchRestriction
 	Team              string
 }
+
+func (s ApplySettings) ContainsPRRequirement(req string) bool {
+	for _, r := range s.PRRequirements {
+		if r == req {
+			return true
+		}
+	}
+	return false
+}

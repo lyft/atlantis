@@ -22,15 +22,17 @@ type Input struct {
 
 // list of all valid template ids
 const (
-	PRComment       = Key("pr_comment")
-	BranchForbidden = Key("branch_forbidden")
-	UserForbidden   = Key("user_forbidden")
+	PRComment        = Key("pr_comment")
+	BranchForbidden  = Key("branch_forbidden")
+	UserForbidden    = Key("user_forbidden")
+	ApprovalRequired = Key("approval_required")
 )
 
 var defaultTemplates = map[Key]string{
-	PRComment:       prCommentTemplate,
-	BranchForbidden: branchForbiddenTemplate,
-	UserForbidden:   userForbiddenTemplate,
+	PRComment:        prCommentTemplate,
+	BranchForbidden:  branchForbiddenTemplate,
+	UserForbidden:    userForbiddenTemplate,
+	ApprovalRequired: approvalRequiredTemplate,
 }
 
 type PRCommentData struct {
@@ -59,6 +61,9 @@ var branchForbiddenTemplate string
 
 //go:embed templates/user_forbidden.tmpl
 var userForbiddenTemplate string
+
+//go:embed templates/approval_required.tmpl
+var approvalRequiredTemplate string
 
 type Loader[T any] struct {
 	GlobalCfg valid.GlobalCfg
