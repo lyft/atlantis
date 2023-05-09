@@ -5,7 +5,6 @@ import (
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
-	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -87,9 +86,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		if !more {
 			return
 		}
-		ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
-			MaximumAttempts: 5,
-		})
 		var request NewShutdownRequest
 		c.Receive(ctx, &request)
 	})
@@ -111,6 +107,7 @@ func (r *Runner) onNewRevision(ctx workflow.Context, prRevision revision.Revisio
 	ctx = workflow.WithValue(ctx, internalContext.SHAKey, prRevision.Revision)
 	workflow.GetLogger(ctx).Info("received revision signal")
 	if shouldProcess := r.shouldProcessRevision(prRevision); !shouldProcess {
+		//TODO: consider providing user feedback
 		return
 	}
 	// cancel in progress workflow (if it exists) and start up a new one
