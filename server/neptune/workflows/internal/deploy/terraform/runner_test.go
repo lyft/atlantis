@@ -187,7 +187,7 @@ func TestWorkflowRunner_RunWithManuallyTriggeredRoot(t *testing.T) {
 
 	env.OnWorkflow(testTerraformWorkflow, mock.Anything, terraformWorkflow.Request{
 		Root: terraform.Root{
-			Name:    r.Info.Root.Name,
+			Name:        r.Info.Root.Name,
 			TriggerInfo: r.Info.Root.TriggerInfo,
 			Plan: terraform.PlanJob{
 				Approval: terraform.PlanApproval{

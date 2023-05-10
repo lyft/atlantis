@@ -23,9 +23,9 @@ type Root struct {
 	TriggerInfo TriggerInfo
 
 	// replace with trigger info
-	Trigger     Trigger
-	Rerun       bool
-	Force       bool
+	Trigger Trigger
+	Rerun   bool
+	Force   bool
 }
 
 func (r Root) GetTrackedFilesRelativeToRepo() []string {

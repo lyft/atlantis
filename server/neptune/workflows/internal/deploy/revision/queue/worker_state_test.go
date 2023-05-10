@@ -122,7 +122,7 @@ func TestWorker_StartsWithEmptyQueue(t *testing.T) {
 			},
 			ID: uuid.New(),
 			Root: terraform.Root{
-				Name:    "some-name",
+				Name: "some-name",
 				TriggerInfo: terraform.TriggerInfo{
 					Type: terraform.MergeTrigger,
 				},
