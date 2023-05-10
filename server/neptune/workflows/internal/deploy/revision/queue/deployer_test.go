@@ -277,8 +277,11 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 		Name:  "test",
 	}
 	root := model.Root{
-		Name:  "root_1",
-		Rerun: true,
+		Name: "root_1",
+		TriggerInfo: model.TriggerInfo{
+			Type:  model.ManualTrigger,
+			Rerun: true,
+		},
 	}
 	deploymentInfo := terraform.DeploymentInfo{
 		ID: uuid.UUID{},
@@ -335,7 +338,9 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 		Revision: "3455",
 		Branch:   "default-branch",
 		Root: deployment.Root{
-			Name: deploymentInfo.Root.Name,
+			Name:        deploymentInfo.Root.Name,
+			Trigger:     "manual",
+			ManualRerun: true,
 		},
 		Repo: deployment.Repo{
 			Owner: deploymentInfo.Repo.Owner,
@@ -350,8 +355,11 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 		Name:  "test",
 	}
 	root := model.Root{
-		Name:  "root_1",
-		Rerun: true,
+		Name: "root_1",
+		TriggerInfo: model.TriggerInfo{
+			Type:  model.ManualTrigger,
+			Rerun: true,
+		},
 	}
 	deploymentInfo := terraform.DeploymentInfo{
 		ID: uuid.UUID{},
@@ -838,8 +846,10 @@ func TestDeployer_SetPRRevision_NonDefaultBranchOld_v1(t *testing.T) {
 	}
 
 	root := model.Root{
-		Name:    "root_1",
-		Trigger: model.ManualTrigger,
+		Name: "root_1",
+		TriggerInfo: model.TriggerInfo{
+			Type: model.ManualTrigger,
+		},
 	}
 
 	deploymentInfo := terraform.DeploymentInfo{
@@ -945,8 +955,10 @@ func TestDeployer_SetPRRevision_NonDefaultBranchNew_v2(t *testing.T) {
 	}
 
 	root := model.Root{
-		Name:    "root_1",
-		Trigger: model.ManualTrigger,
+		Name: "root_1",
+		TriggerInfo: model.TriggerInfo{
+			Type: model.ManualTrigger,
+		},
 	}
 
 	deploymentInfo := terraform.DeploymentInfo{

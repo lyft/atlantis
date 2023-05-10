@@ -74,7 +74,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil)
 		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Commit.Revision, latestDeployment.Revision)
 	}
-	if requestedDeployment.Root.Rerun && commitDirection != activities.DirectionIdentical {
+	if requestedDeployment.Root.TriggerInfo.Rerun && commitDirection != activities.DirectionIdentical {
 		scope.Counter("invalid_rerun_err").Inc(1)
 		// always returns error for caller to skip revision
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, RerunNotIdenticalSummary, nil)

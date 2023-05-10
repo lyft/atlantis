@@ -46,7 +46,9 @@ func TestLockStateUpdater_unlocked_new_version(t *testing.T) {
 		},
 		Root: tfActivity.Root{
 			Name:    "root",
-			Trigger: tfActivity.MergeTrigger,
+			TriggerInfo: tfActivity.TriggerInfo{
+				Type: tfActivity.MergeTrigger,
+			},
 		},
 		Repo: github.Repo{
 			Name: "repo",
@@ -95,7 +97,9 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 		},
 		Root: tfActivity.Root{
 			Name:    "root",
-			Trigger: tfActivity.MergeTrigger,
+			TriggerInfo: tfActivity.TriggerInfo{
+				Type: tfActivity.MergeTrigger,
+			},
 		},
 		Repo: github.Repo{
 			Name: "repo",

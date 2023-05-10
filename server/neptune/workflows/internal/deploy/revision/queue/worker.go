@@ -239,8 +239,12 @@ func (w *Worker) Work(ctx workflow.Context) {
 }
 
 func (w *Worker) emitRevisionRequestStats(scope metrics.Scope, request terraform.DeploymentInfo) {
-	if request.Root.Rerun {
+	if request.Root.TriggerInfo.Rerun {
 		scope.Counter("rerun_requested").Inc(1)
+	}
+
+	if request.Root.TriggerInfo.Force {
+		scope.Counter("force_deploy_requested").Inc(1)
 	}
 
 	planMode := request.Root.Plan.GetPlanMode().String()
@@ -280,7 +284,7 @@ func setContextKeys(ctx workflow.Context, requestedDeployment terraform.Deployme
 	ctx = workflow.WithValue(ctx, internalContext.BranchKey, requestedDeployment.Commit.Branch)
 	ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, requestedDeployment.ID)
 	ctx = workflow.WithValue(ctx, internalContext.PlanMode, string(requestedDeployment.Root.Plan.GetPlanMode()))
-	ctx = workflow.WithValue(ctx, internalContext.Trigger, string(requestedDeployment.Root.Trigger))
+	ctx = workflow.WithValue(ctx, internalContext.Trigger, string(requestedDeployment.Root.TriggerInfo.Type))
 
 	return ctx
 }

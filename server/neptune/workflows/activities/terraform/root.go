@@ -20,10 +20,12 @@ type Root struct {
 	Validate     execute.Job
 	TrackedFiles []string
 
-	// dont wan't to replace with TriggerInfo for backwards compatibility
-	Trigger Trigger
-	Rerun   bool
-	Force   bool
+	TriggerInfo TriggerInfo
+
+	// replace with trigger info
+	Trigger     Trigger
+	Rerun       bool
+	Force       bool
 }
 
 func (r Root) GetTrackedFilesRelativeToRepo() []string {
