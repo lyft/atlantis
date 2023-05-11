@@ -52,9 +52,11 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 		validWorkflows[k] = v.ToValid(k)
 	}
 
+	workflowModeType := toWorkflowModeType(r.WorkflowModeType)
+
 	var validProjects []valid.Project
 	for _, p := range r.Projects {
-		validProjects = append(validProjects, p.ToValid())
+		validProjects = append(validProjects, p.ToValid(workflowModeType))
 	}
 
 	parallelApply := DefaultParallelApply
@@ -67,12 +69,6 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 		parallelPlan = *r.ParallelPlan
 	}
 
-	workflowModeType := valid.DefaultWorkflowMode
-	switch r.WorkflowModeType {
-	case "platform":
-		workflowModeType = valid.PlatformWorkflowMode
-	}
-
 	return valid.RepoCfg{
 		Version:             *r.Version,
 		Projects:            validProjects,
@@ -82,4 +78,13 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 		ParallelPolicyCheck: parallelPlan,
 		WorkflowModeType:    workflowModeType,
 	}
+}
+
+func toWorkflowModeType(workflowModeType string) valid.WorkflowModeType {
+	result := valid.DefaultWorkflowMode
+	switch workflowModeType {
+	case "platform":
+		result = valid.PlatformWorkflowMode
+	}
+	return result
 }
