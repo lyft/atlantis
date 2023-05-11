@@ -9,10 +9,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
@@ -30,7 +30,7 @@ func NewValidationError(msg string, format ...interface{}) *ValidationError {
 }
 
 type terraformWorkflowRunner interface {
-	Run(ctx workflow.Context, deploymentInfo terraformWorkflow.DeploymentInfo, diffDirection activities.DiffDirection, scope metrics.Scope) error
+	Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo, planApprovalOverride terraformActivities.PlanApproval, scope metrics.Scope) error
 }
 
 type dbActivities interface {
@@ -63,7 +63,7 @@ const (
 	UpdateCheckRunRetryCount = 5
 )
 
-func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info, scope metrics.Scope) (*deployment.Info, error) {
+func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo, latestDeployment *deployment.Info, scope metrics.Scope) (*deployment.Info, error) {
 	commitDirection, err := p.getDeployRequestCommitDirection(ctx, requestedDeployment, latestDeployment, scope)
 	if err != nil {
 		return nil, err
@@ -82,10 +82,15 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraformWor
 	}
 
 	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
-	err = p.TerraformWorkflowRunner.Run(ctx, requestedDeployment, commitDirection, scope)
+	err = p.TerraformWorkflowRunner.Run(
+		ctx, 
+		requestedDeployment, 
+		terraform.BuildPlanApproval(requestedDeployment, latestDeployment, commitDirection, scope),
+		scope,
+	)
 
 	// No need to persist deployment if it's a PlanRejectionError
-	if _, ok := err.(*terraformWorkflow.PlanRejectionError); ok {
+	if _, ok := err.(*terraform.PlanRejectionError); ok {
 		return nil, err
 	}
 
@@ -154,7 +159,7 @@ func (p *Deployer) FetchLatestDeployment(ctx workflow.Context, repoName, rootNam
 	return resp.DeploymentInfo, nil
 }
 
-func (p *Deployer) getDeployRequestCommitDirection(ctx workflow.Context, deployRequest terraformWorkflow.DeploymentInfo, latestDeployment *deployment.Info, scope metrics.Scope) (activities.DiffDirection, error) {
+func (p *Deployer) getDeployRequestCommitDirection(ctx workflow.Context, deployRequest terraform.DeploymentInfo, latestDeployment *deployment.Info, scope metrics.Scope) (activities.DiffDirection, error) {
 	// this means we are deploying this root for the first time
 	if latestDeployment == nil {
 		scope.Counter("first_deployment").Inc(1)
@@ -173,7 +178,7 @@ func (p *Deployer) getDeployRequestCommitDirection(ctx workflow.Context, deployR
 }
 
 // worker should not block on updating check runs for invalid deploy requests so let's retry for UpdateCheckrunRetryCount only
-func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraformWorkflow.DeploymentInfo, state github.CheckRunState, summary string, actions []github.CheckRunAction) {
+func (p *Deployer) updateCheckRun(ctx workflow.Context, deployRequest terraform.DeploymentInfo, state github.CheckRunState, summary string, actions []github.CheckRunAction) {
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: UpdateCheckRunRetryCount,
 	})

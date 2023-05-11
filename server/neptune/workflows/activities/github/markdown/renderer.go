@@ -10,11 +10,15 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 )
 
+//go:embed templates/planconfirm.tmpl
+var planConfirmStr string
+
 //go:embed templates/checkrun.tmpl
 var checkrunTemplateStr string
 
 // panics if we can't read the template
 var checkrunTemplate = template.Must(template.New("").Parse(checkrunTemplateStr))
+var planConfirmTemplate = template.Must(template.New("").Parse(planConfirmStr))
 
 type checkrunTemplateData struct {
 	ApplyActionsSummary     string
@@ -69,6 +73,10 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 		HeartbeatTimeout:        hearbeatTimeout,
 		ApplyActionsSummary:     applyActionsSummary,
 	})
+}
+
+func RenderPlanConfirm(user string, revision string, maybePR int, trigger terraform.Trigger) string {
+
 }
 
 func getJobStatusAndOutput(jobState *state.Job) (string, string) {

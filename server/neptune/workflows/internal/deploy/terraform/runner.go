@@ -1,11 +1,7 @@
 package terraform
 
 import (
-	"strings"
-
 	"github.com/pkg/errors"
-	constants "github.com/runatlantis/atlantis/server/events/metrics"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -52,7 +48,7 @@ type WorkflowRunner struct {
 	Workflow      Workflow
 }
 
-func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo, diffDirection activities.DiffDirection, scope metrics.Scope) error {
+func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo, planApproval terraformActivities.PlanApproval, scope metrics.Scope) error {
 	id := deploymentInfo.ID
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		WorkflowID: id.String(),
@@ -72,7 +68,7 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 
 	request := terraform.Request{
 		Repo:         deploymentInfo.Repo,
-		Root:         r.buildRequestRoot(deploymentInfo.Root, diffDirection, scope),
+		Root:         deploymentInfo.Root.WithPlanApprovalOverride(planApproval),
 		DeploymentID: id.String(),
 		Revision:     deploymentInfo.Commit.Revision,
 		WorkflowMode: terraformActivities.Deploy,
@@ -80,34 +76,6 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 
 	future := workflow.ExecuteChildWorkflow(ctx, r.Workflow, request)
 	return r.awaitWorkflow(ctx, future, deploymentInfo)
-}
-
-func (r *WorkflowRunner) buildRequestRoot(root terraformActivities.Root, diffDirection activities.DiffDirection, scope metrics.Scope) terraformActivities.Root {
-	var approvalType terraformActivities.PlanApprovalType
-	var reasons []string
-
-	if diffDirection == activities.DirectionDiverged || root.Trigger == terraformActivities.ManualTrigger {
-		approvalType = terraformActivities.ManualApproval
-	}
-
-	if diffDirection == activities.DirectionDiverged {
-		scope.SubScopeWithTags(map[string]string{
-			constants.ManualOverrideReasonTag: DivergedMetric,
-		}).Counter(constants.ManualOverride).Inc(1)
-
-		reasons = append(reasons, ":warning: Requested Revision is not ahead of deployed revision, please confirm the changes described in the plan.")
-	}
-
-	if root.Trigger == terraformActivities.ManualTrigger {
-		reasons = append(reasons, ":warning: Manually Triggered Deploys must be confirmed before proceeding.")
-	}
-
-	return root.WithPlanApprovalOverride(
-		terraformActivities.PlanApproval{
-			Type:   approvalType,
-			Reason: strings.Join(reasons, "\n"),
-		},
-	)
 }
 
 func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.ChildWorkflowFuture, deploymentInfo DeploymentInfo) error {

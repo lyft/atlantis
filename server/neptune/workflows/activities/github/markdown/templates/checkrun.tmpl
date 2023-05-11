@@ -1,10 +1,11 @@
 {{ if .ApplyActionsSummary }}
 ## Required Actions :heavy_exclamation_mark:
 
-Github Actions are blocking this deployment from proceeding.
+:warning: Github Actions are blocking this deployment from proceeding for the following reasons:
 
-### Summary
-{{ .ApplyActionsSummary }} 
+{{ .ApplyActionsSummary }}
+
+Please `confirm` or `reject` the Terraform plan.
 {{end}}
 
 | Operation | **Status** | **Logs** |  
