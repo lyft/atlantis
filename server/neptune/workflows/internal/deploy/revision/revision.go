@@ -102,7 +102,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	}
 
 	// Do not push a duplicate/in-progress manual deployment to the queue
-	if root.Trigger == activity.ManualTrigger && (n.queueContainsRevision(request.Revision) || n.isInProgress(request.Revision)) {
+	if root.TriggerInfo.Type == activity.ManualTrigger && (n.queueContainsRevision(request.Revision) || n.isInProgress(request.Revision)) {
 		//TODO: consider executing a comment activity to notify user
 		workflow.GetLogger(ctx).Warn("attempted to perform duplicate manual deploy", "revision", request.Revision)
 		return
@@ -111,7 +111,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	checkRunID := n.createCheckRun(ctx, id.String(), request.Revision, root, repo)
 
 	// lock the queue on a manual deployment
-	if root.Trigger == activity.ManualTrigger {
+	if root.TriggerInfo.Type == activity.ManualTrigger {
 		// Lock the queue on a manual deployment
 		n.queue.SetLockForMergedItems(ctx, queue.LockState{
 			Status:   queue.LockedStatus,
@@ -138,7 +138,7 @@ func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, roo
 	var summary string
 	state := github.CheckRunQueued
 
-	if lock.Status == queue.LockedStatus && (root.Trigger == activity.MergeTrigger) {
+	if lock.Status == queue.LockedStatus && (root.TriggerInfo.Type == activity.MergeTrigger) {
 		actions = append(actions, github.CreateUnlockAction())
 		state = github.CheckRunActionRequired
 		revisionLink := github.BuildRevisionURLMarkdown(repo.GetFullName(), lock.Revision)
@@ -169,7 +169,7 @@ func (n *Receiver) isInProgress(revision string) bool {
 
 func (n *Receiver) queueContainsRevision(revision string) bool {
 	for _, deployment := range n.queue.Scan() {
-		if deployment.Root.Trigger == activity.ManualTrigger && revision == deployment.Commit.Revision {
+		if deployment.Root.TriggerInfo.Type == activity.ManualTrigger && revision == deployment.Commit.Revision {
 			return true
 		}
 	}

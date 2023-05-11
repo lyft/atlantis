@@ -158,9 +158,11 @@ func TestEnqueue(t *testing.T) {
 				Branch:   branch,
 			},
 			CheckRunID: 1,
-			Root:       terraform.Root{Name: "root", Trigger: terraform.MergeTrigger},
-			ID:         id,
-			Repo:       github.Repo{Name: "nish"},
+			Root: terraform.Root{Name: "root", TriggerInfo: terraform.TriggerInfo{
+				Type: terraform.MergeTrigger,
+			}, Trigger: terraform.MergeTrigger},
+			ID:   id,
+			Repo: github.Repo{Name: "nish"},
 		},
 	}, resp.Queue)
 	assert.Equal(t, queue.LockState{
@@ -216,9 +218,11 @@ func TestEnqueue_ManualTrigger(t *testing.T) {
 				Branch:   branch,
 			},
 			CheckRunID: 1,
-			Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
-			ID:         id,
-			Repo:       github.Repo{Name: "nish"},
+			Root: terraform.Root{Name: "root", TriggerInfo: terraform.TriggerInfo{
+				Type: terraform.ManualTrigger,
+			}, Trigger: terraform.ManualTrigger},
+			ID:   id,
+			Repo: github.Repo{Name: "nish"},
 		},
 	}, resp.Queue)
 	assert.Equal(t, queue.LockState{
@@ -280,9 +284,11 @@ func TestEnqueue_ManualTrigger_QueueAlreadyLocked(t *testing.T) {
 				Branch:   branch,
 			},
 			CheckRunID: 1,
-			Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
-			ID:         id,
-			Repo:       github.Repo{Name: "nish"},
+			Root: terraform.Root{Name: "root", TriggerInfo: terraform.TriggerInfo{
+				Type: terraform.ManualTrigger,
+			}, Trigger: terraform.ManualTrigger},
+			ID:   id,
+			Repo: github.Repo{Name: "nish"},
 		},
 	}, resp.Queue)
 	assert.Equal(t, queue.LockState{
@@ -346,9 +352,11 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 				Branch:   branch,
 			},
 			CheckRunID: 1,
-			Root:       terraform.Root{Name: "root", Trigger: terraform.MergeTrigger},
-			ID:         id,
-			Repo:       github.Repo{Name: "nish"},
+			Root: terraform.Root{Name: "root", TriggerInfo: terraform.TriggerInfo{
+				Type: terraform.MergeTrigger,
+			}, Trigger: terraform.MergeTrigger},
+			ID:   id,
+			Repo: github.Repo{Name: "nish"},
 		},
 	}, resp.Queue)
 	assert.Equal(t, queue.LockState{
@@ -387,9 +395,11 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInQueue(t *testing.T) {
 			Branch:   branch,
 		},
 		CheckRunID: 1,
-		Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
-		ID:         id,
-		Repo:       github.Repo{Name: "nish"},
+		Root: terraform.Root{Name: "root", TriggerInfo: terraform.TriggerInfo{
+			Type: terraform.ManualTrigger,
+		}, Trigger: terraform.ManualTrigger},
+		ID:   id,
+		Repo: github.Repo{Name: "nish"},
 	}
 	env.ExecuteWorkflow(testWorkflow, req{
 		ID:              id,
@@ -434,9 +444,11 @@ func TestEnqueue_ManualTrigger_RequestAlreadyInProgress(t *testing.T) {
 			Branch:   branch,
 		},
 		CheckRunID: 1,
-		Root:       terraform.Root{Name: "root", Trigger: terraform.ManualTrigger},
-		ID:         id,
-		Repo:       github.Repo{Name: "nish"},
+		Root: terraform.Root{Name: "root", TriggerInfo: terraform.TriggerInfo{
+			Type: terraform.ManualTrigger,
+		}, Trigger: terraform.ManualTrigger},
+		ID:   id,
+		Repo: github.Repo{Name: "nish"},
 	}
 	env.ExecuteWorkflow(testWorkflow, req{
 		ID: id,

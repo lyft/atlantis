@@ -93,6 +93,8 @@ func wrap(msg string, trigger activity.Trigger) terraform.DeploymentInfo {
 	return terraform.DeploymentInfo{Commit: github.Commit{
 		Revision: msg,
 	}, Root: activity.Root{
-		Trigger: trigger,
+		TriggerInfo: activity.TriggerInfo{
+			Type: trigger,
+		},
 	}}
 }

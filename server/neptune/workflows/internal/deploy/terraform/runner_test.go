@@ -183,12 +183,12 @@ func TestWorkflowRunner_RunWithManuallyTriggeredRoot(t *testing.T) {
 		DiffDirection: activities.DirectionAhead,
 	}
 
-	r.Info.Root.Trigger = terraform.ManualTrigger
+	r.Info.Root.TriggerInfo.Type = terraform.ManualTrigger
 
 	env.OnWorkflow(testTerraformWorkflow, mock.Anything, terraformWorkflow.Request{
 		Root: terraform.Root{
-			Name:    r.Info.Root.Name,
-			Trigger: terraform.ManualTrigger,
+			Name:        r.Info.Root.Name,
+			TriggerInfo: r.Info.Root.TriggerInfo,
 			Plan: terraform.PlanJob{
 				Approval: terraform.PlanApproval{
 					Type:   terraform.ManualApproval,

@@ -39,8 +39,10 @@ func (i DeploymentInfo) BuildPersistableInfo() *deployment.Info {
 		Revision: i.Commit.Revision,
 		Branch:   i.Commit.Branch,
 		Root: deployment.Root{
-			Name:    i.Root.Name,
-			Trigger: string(i.Root.Trigger),
+			Name:        i.Root.Name,
+			Trigger:     string(i.Root.TriggerInfo.Type),
+			ManualRerun: i.Root.TriggerInfo.Rerun,
+			ManualForce: i.Root.TriggerInfo.Force,
 		},
 		Repo: deployment.Repo{
 			Name:  i.Repo.Name,

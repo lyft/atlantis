@@ -65,7 +65,7 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 		SearchAttributes: map[string]interface{}{
 			"atlantis_repository": deploymentInfo.Repo.GetFullName(),
 			"atlantis_root":       deploymentInfo.Root.Name,
-			"atlantis_trigger":    deploymentInfo.Root.Trigger,
+			"atlantis_trigger":    deploymentInfo.Root.TriggerInfo.Type,
 			"atlantis_revision":   deploymentInfo.Commit.Revision,
 		},
 	})
@@ -86,7 +86,7 @@ func (r *WorkflowRunner) buildRequestRoot(root terraformActivities.Root, diffDir
 	var approvalType terraformActivities.PlanApprovalType
 	var reasons []string
 
-	if diffDirection == activities.DirectionDiverged || root.Trigger == terraformActivities.ManualTrigger {
+	if diffDirection == activities.DirectionDiverged || root.TriggerInfo.Type == terraformActivities.ManualTrigger {
 		approvalType = terraformActivities.ManualApproval
 	}
 
@@ -98,7 +98,7 @@ func (r *WorkflowRunner) buildRequestRoot(root terraformActivities.Root, diffDir
 		reasons = append(reasons, ":warning: Requested Revision is not ahead of deployed revision, please confirm the changes described in the plan.")
 	}
 
-	if root.Trigger == terraformActivities.ManualTrigger {
+	if root.TriggerInfo.Type == terraformActivities.ManualTrigger {
 		reasons = append(reasons, ":warning: Manually Triggered Deploys must be confirmed before proceeding.")
 	}
 

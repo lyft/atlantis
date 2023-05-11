@@ -122,7 +122,6 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					},
 					TfVersion: version.String(),
 					PlanMode:  workflows.NormalPlanMode,
-					Trigger:   workflows.MergeTrigger,
 					TriggerInfo: workflows.DeployTriggerInfo{
 						Type: workflows.MergeTrigger,
 					},
@@ -202,7 +201,6 @@ func TestSignalWithStartWorkflow_Success(t *testing.T) {
 					},
 					TfVersion: version.String(),
 					PlanMode:  workflows.DestroyPlanMode,
-					Trigger:   workflows.MergeTrigger,
 					TriggerInfo: workflows.DeployTriggerInfo{
 						Type: workflows.MergeTrigger,
 					},
@@ -303,7 +301,6 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				},
 				TfVersion: version.String(),
 				PlanMode:  workflows.NormalPlanMode,
-				Trigger:   workflows.MergeTrigger,
 				TriggerInfo: workflows.DeployTriggerInfo{
 					Type: workflows.MergeTrigger,
 				},
