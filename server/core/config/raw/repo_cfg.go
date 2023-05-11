@@ -81,10 +81,10 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 }
 
 func toWorkflowModeType(workflowModeType string) valid.WorkflowModeType {
-	result := valid.DefaultWorkflowMode
+	result := valid.PlatformWorkflowMode
 	switch workflowModeType {
-	case "platform":
-		result = valid.PlatformWorkflowMode
+	case "pr":
+		result = valid.DefaultWorkflowMode
 	}
 	return result
 }

@@ -41,8 +41,8 @@ var NonOverrideableApplyReqs = []string{PoliciesPassedApplyReq}
 type WorkflowModeType int
 
 const (
-	DefaultWorkflowMode WorkflowModeType = iota
-	PlatformWorkflowMode
+	PlatformWorkflowMode WorkflowModeType = iota
+	DefaultWorkflowMode
 )
 
 type BackendType string
