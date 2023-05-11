@@ -314,7 +314,7 @@ func TestProject_ToValid(t *testing.T) {
 					WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 					Enabled:      true,
 				},
-				WorkflowModeType:  valid.DefaultWorkflowMode,
+				WorkflowModeType: valid.DefaultWorkflowMode,
 			},
 		},
 		// Directories.
@@ -330,7 +330,7 @@ func TestProject_ToValid(t *testing.T) {
 					WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 					Enabled:      true,
 				},
-				WorkflowModeType:  valid.DefaultWorkflowMode,
+				WorkflowModeType: valid.DefaultWorkflowMode,
 			},
 		},
 		{
@@ -345,7 +345,7 @@ func TestProject_ToValid(t *testing.T) {
 					WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 					Enabled:      true,
 				},
-				WorkflowModeType:  valid.DefaultWorkflowMode,
+				WorkflowModeType: valid.DefaultWorkflowMode,
 			},
 		},
 		{
@@ -360,7 +360,7 @@ func TestProject_ToValid(t *testing.T) {
 					WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 					Enabled:      true,
 				},
-				WorkflowModeType:  valid.DefaultWorkflowMode,
+				WorkflowModeType: valid.DefaultWorkflowMode,
 			},
 		},
 		{
@@ -376,7 +376,7 @@ func TestProject_ToValid(t *testing.T) {
 					WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 					Enabled:      true,
 				},
-				WorkflowModeType:  valid.DefaultWorkflowMode,
+				WorkflowModeType: valid.DefaultWorkflowMode,
 			},
 		},
 		{
@@ -391,7 +391,7 @@ func TestProject_ToValid(t *testing.T) {
 					WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 					Enabled:      true,
 				},
-				WorkflowModeType:  valid.DefaultWorkflowMode,
+				WorkflowModeType: valid.DefaultWorkflowMode,
 			},
 		},
 		{
@@ -406,7 +406,7 @@ func TestProject_ToValid(t *testing.T) {
 					WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 					Enabled:      true,
 				},
-				WorkflowModeType:  valid.DefaultWorkflowMode,
+				WorkflowModeType: valid.DefaultWorkflowMode,
 			},
 		},
 		{
@@ -421,7 +421,7 @@ func TestProject_ToValid(t *testing.T) {
 					WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 					Enabled:      true,
 				},
-				WorkflowModeType:  valid.DefaultWorkflowMode,
+				WorkflowModeType: valid.DefaultWorkflowMode,
 			},
 		},
 
@@ -438,7 +438,7 @@ func TestProject_ToValid(t *testing.T) {
 					WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 					Enabled:      true,
 				},
-				WorkflowModeType:  valid.DefaultWorkflowMode,
+				WorkflowModeType: valid.DefaultWorkflowMode,
 			},
 		},
 	}
