@@ -73,7 +73,7 @@ func (p Project) Validate() error {
 	)
 }
 
-func (p Project) ToValid() valid.Project {
+func (p Project) ToValid(defaultWorkflowModeType valid.WorkflowModeType) valid.Project {
 	var v valid.Project
 	// Prepend ./ and then run .Clean() so we're guaranteed to have a relative
 	// directory. This is necessary because we use this dir without sanitation
@@ -90,8 +90,9 @@ func (p Project) ToValid() valid.Project {
 	v.WorkflowName = p.Workflow
 	v.PullRequestWorkflowName = p.PullRequestWorkflowName
 	v.DeploymentWorkflowName = p.DeploymentWorkflowName
+	v.WorkflowModeType = defaultWorkflowModeType
 	if p.WorkflowModeType != nil {
-		v.WorkflowModeType = p.WorkflowModeType
+		v.WorkflowModeType = toWorkflowModeType(*p.WorkflowModeType)
 	}
 	if p.TerraformVersion != nil {
 		v.TerraformVersion, _ = version.NewVersion(*p.TerraformVersion)
