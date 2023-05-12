@@ -71,11 +71,14 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 		return ConftestResponse{}, err
 	}
 
-	var policyNames []string
-	var totalCmdOutput []string
-	var validationResults []ValidationResult
+	ch := c.StreamHandler.RegisterJob(request.JobID)
+	defer close(ch)
+
+	title := c.buildTitle()
+	c.writeOutput(ch, title)
 
 	// run each policy separately to track which pass and fail
+	var validationResults []ValidationResult
 	for _, policy := range c.Policies {
 		// add paths as arguments
 		var policyArgs []command.Argument
@@ -85,7 +88,6 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 				Value: path,
 			})
 		}
-		policyNames = append(policyNames, policy.Name)
 		args := append(policyArgs, request.Args...)
 		conftestRequest := &command.RunCommandRequest{
 			RootPath:          request.Path,
@@ -107,11 +109,9 @@ func (c *conftestActivity) Conftest(ctx context.Context, request ConftestRequest
 				PolicySet: policy,
 			})
 		}
-		totalCmdOutput = append(totalCmdOutput, c.processOutput(cmdOutput, policy, cmdErr))
+		processedOutput := c.processOutput(cmdOutput, policy, showFile, cmdErr)
+		c.writeOutput(ch, processedOutput)
 	}
-	title := c.buildTitle(policyNames)
-	output := c.sanitizeOutput(showFile, title+strings.Join(totalCmdOutput, "\n"))
-	c.writeOutput(output, request.JobID)
 	return ConftestResponse{ValidationResults: validationResults}, nil
 }
 
@@ -124,26 +124,23 @@ func (c *conftestActivity) runCommand(ctx context.Context, request *command.RunC
 	return buf.String(), err
 }
 
-// TODO: instead of just writing everything at the end, actually stream results as we run each policy
-// this is a simple MVP test to first see how it looks in the UI
-func (c *conftestActivity) writeOutput(output string, jobID string) {
-	ch := c.StreamHandler.RegisterJob(jobID)
+func (c *conftestActivity) writeOutput(ch chan string, output string) {
 	ch <- output
-	close(ch)
 }
 
-func (c *conftestActivity) buildTitle(policySetNames []string) string {
+func (c *conftestActivity) buildTitle() string {
+	var policySetNames []string
+	for _, policy := range c.Policies {
+		policySetNames = append(policySetNames, policy.Name)
+	}
 	return fmt.Sprintf("Checking plan against the following policies: \n  %s\n\n", strings.Join(policySetNames, "\n  "))
 }
 
-func (c *conftestActivity) sanitizeOutput(inputFile string, output string) string {
-	return strings.Replace(output, inputFile, "<redacted plan file>", -1)
-}
-
-func (c *conftestActivity) processOutput(output string, policySet PolicySet, err error) string {
+func (c *conftestActivity) processOutput(output string, policySet PolicySet, inputFile string, err error) string {
 	// errored results need an extra newline
+	sanitizedOutput := strings.Replace(output, inputFile, "<redacted plan file>", -1)
 	if err != nil {
-		return policySet.Name + ":\n" + output
+		return policySet.Name + ":\n" + sanitizedOutput + "\n"
 	}
-	return policySet.Name + ":" + output
+	return policySet.Name + ":" + sanitizedOutput + "\n"
 }
