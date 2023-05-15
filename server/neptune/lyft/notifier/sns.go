@@ -55,7 +55,7 @@ func (n *SNSNotifier) Notify(ctx workflow.Context, deploymentInfo plugins.Terraf
 		State:          atlantisJobState,
 		StartTime:      startTime,
 		EndTime:        endTime,
-		IsForceApply:   deploymentInfo.Root.Trigger == t.ManualTrigger && deploymentInfo.Root.Force,
+		IsForceApply:   deploymentInfo.Root.TriggerInfo.Type == t.ManualTrigger && deploymentInfo.Root.TriggerInfo.Force,
 	}
 
 	return workflow.ExecuteActivity(ctx, n.Activity.AuditJob, auditJobReq).Get(ctx, nil)

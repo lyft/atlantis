@@ -9,9 +9,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -74,7 +74,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.De
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil)
 		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Commit.Revision, latestDeployment.Revision)
 	}
-	if requestedDeployment.Root.Rerun && commitDirection != activities.DirectionIdentical {
+	if requestedDeployment.Root.TriggerInfo.Rerun && commitDirection != activities.DirectionIdentical {
 		scope.Counter("invalid_rerun_err").Inc(1)
 		// always returns error for caller to skip revision
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, RerunNotIdenticalSummary, nil)
@@ -83,8 +83,8 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.De
 
 	// don't wrap this err as it's not necessary and will mess with any err type assertions we might need to do
 	err = p.TerraformWorkflowRunner.Run(
-		ctx, 
-		requestedDeployment, 
+		ctx,
+		requestedDeployment,
 		terraform.BuildPlanApproval(requestedDeployment, latestDeployment, commitDirection, scope),
 		scope,
 	)

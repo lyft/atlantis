@@ -950,7 +950,7 @@ repos:
 					WhenModified: []string{".tf"},
 					Enabled:      true,
 				},
-				WorkflowModeType: String("platform"),
+				WorkflowModeType: valid.PlatformWorkflowMode,
 			},
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{},

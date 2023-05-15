@@ -16,7 +16,7 @@ func BuildPlanApproval(requestedDeployment DeploymentInfo, latestDeployment *dep
 		}).Counter(constants.ManualOverride).Inc(1)
 
 		rendered := markdown.RenderPlanConfirm(
-			requestedDeployment.InitiatingUser.Username, 
+			requestedDeployment.InitiatingUser.Username,
 			requestedDeployment.Commit,
 			latestDeployment.Branch,
 			requestedDeployment.Repo)
@@ -27,7 +27,7 @@ func BuildPlanApproval(requestedDeployment DeploymentInfo, latestDeployment *dep
 		}
 	}
 
-	if requestedDeployment.Root.Trigger == terraform.ManualTrigger {
+	if requestedDeployment.Root.TriggerInfo.Type == terraform.ManualTrigger {
 		return terraform.PlanApproval{
 			Type:   terraform.ManualApproval,
 			Reason: "Manually Triggered Deploys must be confirmed before proceeding.",

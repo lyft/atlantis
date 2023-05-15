@@ -447,6 +447,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 				IsApproved: false,
 			},
 		},
+		WorkflowModeType: valid.DefaultWorkflowMode,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
@@ -533,6 +534,7 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 			Mergeable: false,
 		},
 		ApplyRequirements: []string{"mergeable"},
+		WorkflowModeType:  valid.DefaultWorkflowMode,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
@@ -556,6 +558,7 @@ func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	}
 	prjCtx := command.ProjectContext{
 		ApplyRequirements: []string{"undiverged"},
+		WorkflowModeType:  valid.DefaultWorkflowMode,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()

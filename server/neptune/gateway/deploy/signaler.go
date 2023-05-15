@@ -62,10 +62,6 @@ func (d *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfg 
 				TfVersion:    tfVersion,
 				PlanMode:     d.generatePlanMode(rootCfg),
 				TriggerInfo:  rootDeployOptions.TriggerInfo,
-
-				// todo: remove once we stop using this in our workflows.
-				Trigger: rootDeployOptions.TriggerInfo.Type,
-				Rerun:   rootDeployOptions.TriggerInfo.Rerun,
 			},
 			Repo: workflows.Repo{
 				URL:      repo.CloneURL,

@@ -61,7 +61,7 @@ func (r *WorkflowRunner) Run(ctx workflow.Context, deploymentInfo DeploymentInfo
 		SearchAttributes: map[string]interface{}{
 			"atlantis_repository": deploymentInfo.Repo.GetFullName(),
 			"atlantis_root":       deploymentInfo.Root.Name,
-			"atlantis_trigger":    deploymentInfo.Root.Trigger,
+			"atlantis_trigger":    deploymentInfo.Root.TriggerInfo.Type,
 			"atlantis_revision":   deploymentInfo.Commit.Revision,
 		},
 	})

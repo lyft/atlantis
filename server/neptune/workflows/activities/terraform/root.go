@@ -20,7 +20,9 @@ type Root struct {
 	Validate     execute.Job
 	TrackedFiles []string
 
-	// dont wan't to replace with TriggerInfo for backwards compatibility
+	TriggerInfo TriggerInfo
+
+	// replace with trigger info
 	Trigger Trigger
 	Rerun   bool
 	Force   bool
