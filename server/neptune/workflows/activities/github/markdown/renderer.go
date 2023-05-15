@@ -97,7 +97,6 @@ func RenderPlanConfirm(user string, commit github.Commit, deployedBranch string,
 	}
 
 	return renderTemplate(planConfirmTemplate, data)
-
 }
 
 func getJobStatusAndOutput(jobState *state.Job) (string, string) {
