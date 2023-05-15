@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
@@ -60,7 +59,7 @@ func testTerraformWorkflow(ctx workflow.Context, request terraformWorkflow.Reque
 
 type request struct {
 	PlanRejectionErr bool
-	DiffDirection    activities.DiffDirection
+	PlanApproval     terraform.PlanApproval
 	Info             internalTerraform.DeploymentInfo
 }
 
@@ -81,7 +80,7 @@ func parentWorkflow(ctx workflow.Context, r request) (response, error) {
 		runner.Workflow = testTerraformWorkflow
 	}
 
-	if err := runner.Run(ctx, r.Info, r.DiffDirection, metrics.NewNullableScope()); err != nil {
+	if err := runner.Run(ctx, r.Info, r.PlanApproval, metrics.NewNullableScope()); err != nil {
 		if _, ok := err.(internalTerraform.PlanRejectionError); ok {
 			return response{
 				PlanRejection: true,
@@ -142,58 +141,18 @@ func TestWorkflowRunner_RunWithDivergedCommit(t *testing.T) {
 	env.RegisterWorkflow(testTerraformWorkflow)
 
 	r := request{
-		Info:          buildDeploymentInfo(),
-		DiffDirection: activities.DirectionDiverged,
+		Info: buildDeploymentInfo(),
+		PlanApproval: terraform.PlanApproval{
+			Type:   terraform.ManualApproval,
+			Reason: ":warning: Requested Revision is not ahead of deployed revision, please confirm the changes described in the plan.",
+		},
 	}
 
 	env.OnWorkflow(testTerraformWorkflow, mock.Anything, terraformWorkflow.Request{
 		Root: terraform.Root{
 			Name: r.Info.Root.Name,
 			Plan: terraform.PlanJob{
-				Approval: terraform.PlanApproval{
-					Type:   terraform.ManualApproval,
-					Reason: ":warning: Requested Revision is not ahead of deployed revision, please confirm the changes described in the plan.",
-				},
-			},
-		},
-		Repo:         r.Info.Repo,
-		DeploymentID: r.Info.ID.String(),
-		Revision:     r.Info.Commit.Revision,
-	}).Return(func(ctx workflow.Context, request terraformWorkflow.Request) (terraformWorkflow.Response, error) {
-		return terraformWorkflow.Response{}, nil
-	})
-
-	env.ExecuteWorkflow(parentWorkflow, r)
-
-	env.AssertExpectations(t)
-
-	var resp response
-	err := env.GetWorkflowResult(&resp)
-	assert.NoError(t, err)
-}
-
-func TestWorkflowRunner_RunWithManuallyTriggeredRoot(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	env.RegisterWorkflow(testTerraformWorkflow)
-
-	r := request{
-		Info:          buildDeploymentInfo(),
-		DiffDirection: activities.DirectionAhead,
-	}
-
-	r.Info.Root.Trigger = terraform.ManualTrigger
-
-	env.OnWorkflow(testTerraformWorkflow, mock.Anything, terraformWorkflow.Request{
-		Root: terraform.Root{
-			Name:    r.Info.Root.Name,
-			Trigger: terraform.ManualTrigger,
-			Plan: terraform.PlanJob{
-				Approval: terraform.PlanApproval{
-					Type:   terraform.ManualApproval,
-					Reason: ":warning: Manually Triggered Deploys must be confirmed before proceeding.",
-				},
+				Approval: r.PlanApproval,
 			},
 		},
 		Repo:         r.Info.Repo,

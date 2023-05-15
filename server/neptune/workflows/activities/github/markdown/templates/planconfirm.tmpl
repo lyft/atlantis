@@ -1,14 +1,6 @@
-{{if .DivergedRevision }}
-Requested Revision has diverged from deployed revision `[{{ .Revision }}]({{ .RevisionURL }}){{ if neq .Pull 0}}([#{{ .Pull }}]({{ .PullURL }}))`{{ end }}{{ if .User }} triggered by @{{ .User }}{{ end }}
-{{ if .NotDefaultBranch }}
-we are on the default branch and latest deployed on the default branch X not possible
-we are not on default branch and latest deployed not on default possible (we need to tell them to check with the owners of the revision before proceeding)
-we are on default and latest deployed not on default (we need to tell them to check with the owners of the revision before proceeding)
-we are not on default and latest deployed on default (we need to tell them to rebase before proceeding)
-
+Requested Revision has diverged from deployed revision `[{{ .Revision }}]({{ .RevisionURL }}){{ if ne .Pull 0}}([#{{ .Pull }}]({{ .PullURL }}))`{{ end }}{{ if .User }} triggered by @{{ .User }}{{ end }}
+{{ if and not .OnDefaultBranch .LatestOnDefaultBranch }}
+:point_right: **Please rebase onto the default branch to pull in the latest changes.**
+{{ else }}
+There are changes that are unmerged.  Deploying this could cause an outage, please confirm with revision owner {{ if .User }} @{{ .User }}{{ end }} whether this is desirable.
 {{ end }}
-
-{{ end }}
-{{if .ManualTrigger }}
-
-{{ end }} 

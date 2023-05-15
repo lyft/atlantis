@@ -4,8 +4,10 @@ import (
 	"bytes"
 	_ "embed" //embedding files
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"html/template"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 )
@@ -19,6 +21,16 @@ var checkrunTemplateStr string
 // panics if we can't read the template
 var checkrunTemplate = template.Must(template.New("").Parse(checkrunTemplateStr))
 var planConfirmTemplate = template.Must(template.New("").Parse(planConfirmStr))
+
+type planconfirmTemplateData struct {
+	Revision              string
+	RevisionURL           string
+	Pull                  int
+	PullURL               string
+	User                  string
+	OnDefaultBranch       bool
+	LatestOnDefaultBranch bool
+}
 
 type checkrunTemplateData struct {
 	ApplyActionsSummary     string
@@ -75,7 +87,16 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	})
 }
 
-func RenderPlanConfirm(user string, revision string, maybePR int, trigger terraform.Trigger) string {
+func RenderPlanConfirm(user string, commit github.Commit, deployedBranch string, repo github.Repo) string {
+	data := planconfirmTemplateData{
+		Revision:              commit.Revision,
+		RevisionURL:           github.BuildRevisionURLMarkdown(repo.GetFullName(), commit.Revision),
+		User:                  user,
+		OnDefaultBranch:       commit.Branch == repo.DefaultBranch,
+		LatestOnDefaultBranch: deployedBranch == repo.DefaultBranch,
+	}
+
+	return renderTemplate(planConfirmTemplate, data)
 
 }
 
