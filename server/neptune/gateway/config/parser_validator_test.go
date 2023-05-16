@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/stretchr/testify/assert"
 )

@@ -2,13 +2,13 @@ package deploy
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"go.temporal.io/sdk/client"

@@ -2,6 +2,7 @@ package deploy_test
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"testing"
 
 	"github.com/hashicorp/go-version"
@@ -9,7 +10,6 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"

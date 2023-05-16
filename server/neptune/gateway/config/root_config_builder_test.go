@@ -3,6 +3,7 @@ package config_test
 import (
 	"context"
 	"errors"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/uber-go/tally/v4"
 	"testing"
@@ -10,7 +11,6 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	"github.com/stretchr/testify/assert"
 )
 
