@@ -203,6 +203,9 @@ func getCheckStateAndConclusion(internalState internal.CheckRunState) (string, s
 	case internal.CheckRunActionRequired:
 		state = "completed"
 		conclusion = "action_required"
+	case internal.CheckRunSkipped:
+		state = "completed"
+		conclusion = "skipped"
 	default:
 		state = string(internalState)
 	}
