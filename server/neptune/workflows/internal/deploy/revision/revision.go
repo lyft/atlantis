@@ -135,7 +135,7 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, root activity.Root, repo github.Repo) int64 {
 	lock := n.queue.GetLockState()
 	var actions []github.CheckRunAction
-	var summary string
+	summary := "This deploy is queued and will be proceesed as soon as possible."
 	state := github.CheckRunQueued
 
 	if lock.Status == queue.LockedStatus && (root.TriggerInfo.Type == activity.MergeTrigger) {
