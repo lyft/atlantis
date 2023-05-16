@@ -3,9 +3,9 @@ package revision
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request/converter"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/request"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/request/converter"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -19,7 +19,7 @@ type Receiver struct {
 	scope workflowMetrics.Scope
 }
 
-type NewTerraformCommitRequest struct {
+type NewTerraformRevisionRequest struct {
 	Repo     request.Repo
 	Revision string
 	Roots    []request.Root
@@ -47,7 +47,7 @@ func (r *Receiver) Receive(c workflow.ReceiveChannel, more bool) Revision {
 		MaximumAttempts: 5,
 	})
 
-	var request NewTerraformCommitRequest
+	var request NewTerraformRevisionRequest
 	c.Receive(ctx, &request)
 
 	repo := converter.Repo(request.Repo)
