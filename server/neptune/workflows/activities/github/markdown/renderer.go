@@ -90,10 +90,10 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	})
 }
 
-func RenderPlanConfirm(user string, commit github.Commit, deployedBranch string, repo github.Repo) string {
+func RenderPlanConfirm(user string, commit github.Commit, deployedBranch string, deployedRevision string, repo github.Repo) string {
 	data := planconfirmTemplateData{
-		Revision:              commit.Revision,
-		RevisionURL:           github.BuildRevisionURLMarkdown(repo.GetFullName(), commit.Revision),
+		Revision:              deployedRevision,
+		RevisionURL:           github.BuildRevisionURLMarkdown(repo.GetFullName(), deployedRevision),
 		User:                  user,
 		OnDefaultBranch:       commit.Branch == repo.DefaultBranch,
 		LatestOnDefaultBranch: deployedBranch == repo.DefaultBranch,

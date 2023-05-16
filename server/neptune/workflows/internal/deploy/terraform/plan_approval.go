@@ -19,6 +19,7 @@ func BuildPlanApproval(requestedDeployment DeploymentInfo, latestDeployment *dep
 			requestedDeployment.InitiatingUser.Username,
 			requestedDeployment.Commit,
 			latestDeployment.Branch,
+			latestDeployment.Revision,
 			requestedDeployment.Repo)
 
 		return terraform.PlanApproval{
