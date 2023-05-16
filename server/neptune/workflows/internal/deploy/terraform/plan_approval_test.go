@@ -18,7 +18,7 @@ func TestPlanAppr_Non_Default(t *testing.T) {
 		Commit:         github.Commit{Branch: "test", Revision: "rev"},
 	}, &deployment.Info{Branch: "main"}, activities.DirectionDiverged, metrics.NewNullableScope())
 
-	assert.Equal(t, "Requested Revision has diverged from deployed revision `[rev](https://github.com/owner/nish/commit/rev)` triggered by @nishkrishnan\n\n:point_right: Please rebase onto the default branch to pull in the latest changes.\n\n", output.Reason)
+	assert.Equal(t, "Requested Revision has diverged from deployed revision [rev](https://github.com/owner/nish/commit/rev) triggered by @nishkrishnan\n\n:point_right: Please rebase onto the default branch to pull in the latest changes.\n\n", output.Reason)
 }
 
 func TestPlanAppr_Default(t *testing.T) {
@@ -28,5 +28,5 @@ func TestPlanAppr_Default(t *testing.T) {
 		Commit:         github.Commit{Branch: "main", Revision: "rev"},
 	}, &deployment.Info{Branch: "main"}, activities.DirectionDiverged, metrics.NewNullableScope())
 
-	assert.Equal(t, "Requested Revision has diverged from deployed revision `[rev](https://github.com/owner/nish/commit/rev)` triggered by @nishkrishnan\n\nDeployed revision contains unmerged changes.  Deploying this revision could cause an outage, please confirm with revision owner @nishkrishnan whether this is desirable.\n\n", output.Reason)
+	assert.Equal(t, "Requested Revision has diverged from deployed revision [rev](https://github.com/owner/nish/commit/rev) triggered by @nishkrishnan\n\n:point_right: Deployed revision contains unmerged changes.  Deploying this revision could cause an outage, please confirm with revision owner @nishkrishnan whether this is desirable.\n\n", output.Reason)
 }

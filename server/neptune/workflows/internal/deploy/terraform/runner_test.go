@@ -81,7 +81,7 @@ func parentWorkflow(ctx workflow.Context, r request) (response, error) {
 	}
 
 	if err := runner.Run(ctx, r.Info, r.PlanApproval, metrics.NewNullableScope()); err != nil {
-		if _, ok := err.(internalTerraform.PlanRejectionError); ok {
+		if _, ok := err.(*internalTerraform.PlanRejectionError); ok {
 			return response{
 				PlanRejection: true,
 			}, nil
@@ -174,6 +174,8 @@ func TestWorkflowRunner_RunWithDivergedCommit(t *testing.T) {
 func TestWorkflowRunner_PlanRejected(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+
+	env.OnGetVersion(internalTerraform.PlanRejected, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.Version(1))
 
 	env.RegisterWorkflow(testTerraformWorklfowWithPlanRejectionError)
 

@@ -938,7 +938,7 @@ func TestPlanRejection(t *testing.T) {
 				},
 			},
 			Result: state.WorkflowResult{
-				Reason: state.InternalServiceError,
+				Reason: state.SkippedCompletionReason,
 				Status: state.CompleteWorkflowStatus,
 			},
 		},

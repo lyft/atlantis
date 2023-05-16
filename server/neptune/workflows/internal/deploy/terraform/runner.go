@@ -12,6 +12,7 @@ import (
 )
 
 const DivergedMetric = "diverged"
+const PlanRejected = "planrejected"
 
 type PlanRejectionError struct {
 	msg string
@@ -119,7 +120,11 @@ func (r *WorkflowRunner) awaitWorkflow(ctx workflow.Context, future workflow.Chi
 			msg = "plan has been rejected"
 		}
 		if appErr.Type() == terraform.PlanRejectedErrorType {
-			return PlanRejectionError{msg: msg}
+			v := workflow.GetVersion(ctx, PlanRejected, workflow.DefaultVersion, workflow.Version(1))
+			if v == workflow.DefaultVersion {
+				return PlanRejectionError{msg: msg}
+			}
+			return NewPlanRejectionError(msg)
 		}
 	}
 

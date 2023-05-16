@@ -46,6 +46,7 @@ type checkrunTemplateData struct {
 	SchedulingTimeout       bool
 	HeartbeatTimeout        bool
 	PRMode                  bool
+	Skipped                 bool
 }
 
 func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
@@ -60,6 +61,7 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	activityDurationTimeout := workflowState.Result.Reason == state.ActivityDurationTimeoutError
 	schedulingTimeout := workflowState.Result.Reason == state.SchedulingTimeoutError
 	hearbeatTimeout := workflowState.Result.Reason == state.HeartbeatTimeoutError
+	skipped := workflowState.Result.Reason == state.SkippedCompletionReason
 	var prMode bool
 	if workflowState.Mode != nil {
 		prMode = *workflowState.Mode == terraform.PR
@@ -84,6 +86,7 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 		SchedulingTimeout:       schedulingTimeout,
 		HeartbeatTimeout:        hearbeatTimeout,
 		ApplyActionsSummary:     applyActionsSummary,
+		Skipped:                 skipped,
 	})
 }
 

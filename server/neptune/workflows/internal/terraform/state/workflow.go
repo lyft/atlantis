@@ -37,6 +37,7 @@ const (
 	SchedulingTimeoutError
 	HeartbeatTimeoutError
 	ActivityDurationTimeoutError
+	SkippedCompletionReason
 )
 
 type JobOutput struct {
