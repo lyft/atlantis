@@ -2,10 +2,14 @@ package workflows
 
 import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"go.temporal.io/sdk/workflow"
 )
 
 var PRTaskQueue = pr.TaskQueue
+var PRTerraformRevisionSignalID = revision.TerraformRevisionSignalID
+
+type PRNewRevisionSignalRequest = revision.NewTerraformRevisionRequest
 
 type PRRequest = pr.Request
 

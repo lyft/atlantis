@@ -51,12 +51,12 @@ func TestWorkflowRunner_Run(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(revisionID, revision.NewTerraformCommitRequest{
+		env.SignalWorkflow(revisionID, revision.NewTerraformRevisionRequest{
 			Revision: "abc",
 		})
 	}, 2*time.Second)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(revisionID, revision.NewTerraformCommitRequest{
+		env.SignalWorkflow(revisionID, revision.NewTerraformRevisionRequest{
 			Revision: "def",
 		})
 	}, 4*time.Second)
