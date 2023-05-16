@@ -17,6 +17,10 @@ Please `confirm` or `reject` the Terraform plan.
 | Apply | {{ if .ApplyStatus }}`{{.ApplyStatus}}`{{else}}N/A{{end}} |{{ if .ApplyLogURL }}[Click Here]({{.ApplyLogURL}}){{else}}N/A{{end}} |
 {{end}}
 
+{{ if .Skipped }} 
+## Skipped :dash:
+Deployment has been skipped due to a plan rejection
+{{ end }} 
 {{if .InternalError }}
 ## Deployment Error :boom:
 :point_right: An error has been encountered from either of the following:
