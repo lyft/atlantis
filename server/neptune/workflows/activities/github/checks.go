@@ -51,6 +51,7 @@ const (
 	CheckRunTimeout        CheckRunState = "timed_out"
 	CheckRunPending        CheckRunState = "in_progress"
 	CheckRunQueued         CheckRunState = "queued"
+	CheckRunSkipped        CheckRunState = "skipped"
 	CheckRunActionRequired CheckRunState = "action_required"
 	CheckRunUnknown        CheckRunState = ""
 

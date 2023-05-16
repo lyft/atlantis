@@ -271,12 +271,20 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 
 func (r *Runner) Run(ctx workflow.Context) (Response, error) {
 	var err error
+	var resp Response
 	// make sure we are updating state on completion.
 	defer func() {
 		reason := state.SuccessfulCompletionReason
 
 		if r := recover(); r != nil || err != nil {
 			reason = state.InternalServiceError
+		}
+
+		var appErr *temporal.ApplicationError
+		if errors.As(err, &appErr) {
+			if appErr.Type() == PlanRejectedErrorType {
+				reason = state.SkippedCompletionReason
+			}
 		}
 
 		// check for any timeouts that percolated up
@@ -302,7 +310,7 @@ func (r *Runner) Run(ctx workflow.Context) (Response, error) {
 			workflow.GetLogger(ctx).Warn("error updating completion status", key.ErrKey, err)
 		}
 	}()
-	resp, err := r.run(ctx)
+	resp, err = r.run(ctx)
 	return resp, err
 }
 

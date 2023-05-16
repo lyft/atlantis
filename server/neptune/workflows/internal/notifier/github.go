@@ -193,6 +193,10 @@ func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState 
 		return github.CheckRunSuccess
 	}
 
+	if workflowState.Result.Reason == state.SkippedCompletionReason {
+		return github.CheckRunSkipped
+	}
+
 	timeouts := []state.WorkflowCompletionReason{
 		state.TimeoutError,
 		state.ActivityDurationTimeoutError,

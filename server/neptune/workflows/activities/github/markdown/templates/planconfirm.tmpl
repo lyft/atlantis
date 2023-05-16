@@ -1,6 +1,6 @@
-Requested Revision has diverged from deployed revision `{{ .RevisionURL }}`{{ if ne .Pull 0}}([#{{ .Pull }}]({{ .PullURL }})){{ end }}{{ if .User }} triggered by @{{ .User }}{{ end }}
+Requested Revision has diverged from deployed revision {{ .RevisionURL }}{{ if ne .Pull 0}}([#{{ .Pull }}]({{ .PullURL }})){{ end }}{{ if .User }} triggered by @{{ .User }}{{ end }}
 {{ if and (not .OnDefaultBranch) .LatestOnDefaultBranch }}
 :point_right: Please rebase onto the default branch to pull in the latest changes.
 {{ else }}
-Deployed revision contains unmerged changes.  Deploying this revision could cause an outage, please confirm with revision owner{{ if .User }} @{{ .User }}{{ end }} whether this is desirable.
+:point_right: Deployed revision contains unmerged changes.  Deploying this revision could cause an outage, please confirm with revision owner{{ if .User }} @{{ .User }}{{ end }} whether this is desirable.
 {{ end }}

@@ -362,6 +362,24 @@ func TestCheckRunNotifier(t *testing.T) {
 			},
 			ExpectedCheckRunState: github.CheckRunSuccess,
 		},
+		{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.SuccessJobStatus,
+				},
+				Apply: &state.Job{
+					Output: jobOutput,
+					Status: state.RejectedJobStatus,
+				},
+				Result: state.WorkflowResult{
+					Status: state.CompleteWorkflowStatus,
+					Reason: state.SkippedCompletionReason,
+				},
+				Mode: &deployMode,
+			},
+			ExpectedCheckRunState: github.CheckRunSkipped,
+		},
 	}
 
 	for _, c := range cases {
