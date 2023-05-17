@@ -42,5 +42,4 @@ func TestBaseBranch(t *testing.T) {
 		err := subject.Check(context.Background(), expectedCriteria)
 		assert.Error(t, err)
 	})
-
 }

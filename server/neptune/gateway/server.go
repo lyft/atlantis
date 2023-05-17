@@ -16,12 +16,10 @@ import (
 	"github.com/runatlantis/atlantis/server/controllers"
 	cfgParser "github.com/runatlantis/atlantis/server/core/config"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/core/runtime"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs"
-	"github.com/runatlantis/atlantis/server/instrumentation"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/aws"
 	"github.com/runatlantis/atlantis/server/lyft/aws/sns"
@@ -153,29 +151,6 @@ func NewServer(config Config) (*Server, error) {
 	}
 
 	vcsClient := vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
-
-	workingDirLocker := events.NewDefaultWorkingDirLocker()
-
-	var workingDir events.WorkingDir = &events.GithubAppWorkingDir{
-		WorkingDir: &events.FileWorkspace{
-			DataDir:   config.DataDir,
-			GlobalCfg: globalCfg,
-		},
-		Credentials: githubCredentials,
-	}
-
-	var preWorkflowHooksCommandRunner events.PreWorkflowHooksCommandRunner
-	preWorkflowHooksCommandRunner = &events.DefaultPreWorkflowHooksCommandRunner{
-		VCSClient:             vcsClient,
-		GlobalCfg:             globalCfg,
-		WorkingDirLocker:      workingDirLocker,
-		WorkingDir:            workingDir,
-		PreWorkflowHookRunner: runtime.DefaultPreWorkflowHookRunner{},
-	}
-	preWorkflowHooksCommandRunner = &instrumentation.PreWorkflowHookRunner{
-		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
-		Logger:                        ctxLogger,
-	}
 
 	session, err := aws.NewSession()
 	if err != nil {
