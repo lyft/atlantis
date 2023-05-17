@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var rcb config.RootConfigBuilder
+var rcb config.Builder
 var globalCfg valid.GlobalCfg
 var expectedErr = errors.New("some error") //nolint:revive // error name is fine for testing purposes
 const testRoot = "testroot"
@@ -22,7 +22,7 @@ const testRoot = "testroot"
 func setupTesting(t *testing.T) {
 	globalCfg = valid.NewGlobalCfg("somedir")
 	// creates a default PCB to used in each test; individual tests mutate a specific field to test certain functionalities
-	rcb = config.RootConfigBuilder{
+	rcb = config.Builder{
 		RepoFetcher:     &mockRepoFetcher{},
 		HooksRunner:     &mockHooksRunner{},
 		ParserValidator: &mockParserValidator{},

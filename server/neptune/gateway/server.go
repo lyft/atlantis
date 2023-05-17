@@ -30,7 +30,7 @@ import (
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/request"
-	gateway_cfg "github.com/runatlantis/atlantis/server/neptune/gateway/config"
+	root_config "github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
@@ -293,11 +293,11 @@ func NewServer(config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "creating github client creator")
 	}
 
-	rootConfigBuilder := &gateway_cfg.RootConfigBuilder{
+	rootConfigBuilder := &root_config.Builder{
 		RepoFetcher:     repoFetcher,
 		HooksRunner:     hooksRunner,
-		ParserValidator: &gateway_cfg.ParserValidator{GlobalCfg: globalCfg},
-		Strategy: &gateway_cfg.ModifiedRootsStrategy{
+		ParserValidator: &root_config.ParserValidator{GlobalCfg: globalCfg},
+		Strategy: &root_config.ModifiedRootsStrategy{
 			RootFinder:  &deploy.RepoRootFinder{Logger: ctxLogger},
 			FileFetcher: &github.RemoteFileFetcher{ClientCreator: clientCreator},
 		},

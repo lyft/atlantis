@@ -51,7 +51,7 @@ func NewVCSEventsController(
 	asyncScheduler scheduler,
 	temporalClient client.Client,
 	rootDeployer *deploy.RootDeployer,
-	rootConfigBuilder *config.RootConfigBuilder,
+	rootConfigBuilder *config.Builder,
 	deploySignaler *deploy.WorkflowSignaler,
 	checkRunFetcher *github.CheckRunsFetcher,
 	vcsStatusUpdater *command.VCSStatusUpdater,

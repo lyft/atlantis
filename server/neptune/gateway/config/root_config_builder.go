@@ -77,7 +77,7 @@ type LocalRepo struct {
 	Dir string
 }
 
-type RootConfigBuilder struct {
+type Builder struct {
 	RepoFetcher     repoFetcher
 	HooksRunner     hooksRunner
 	ParserValidator parserValidator
@@ -92,7 +92,7 @@ type BuilderOptions struct {
 	RootNames          []string
 }
 
-func (b *RootConfigBuilder) Build(ctx context.Context, commit *RepoCommit, installationToken int64, opts ...BuilderOptions) ([]*valid.MergedProjectCfg, error) {
+func (b *Builder) Build(ctx context.Context, commit *RepoCommit, installationToken int64, opts ...BuilderOptions) ([]*valid.MergedProjectCfg, error) {
 	mergedRootCfgs, err := b.build(ctx, commit, installationToken, opts...)
 	if err != nil {
 		b.Scope.Counter(metrics.FilterErrorMetric).Inc(1)
@@ -106,7 +106,7 @@ func (b *RootConfigBuilder) Build(ctx context.Context, commit *RepoCommit, insta
 	return mergedRootCfgs, nil
 }
 
-func (b *RootConfigBuilder) build(ctx context.Context, commit *RepoCommit, installationToken int64, opts ...BuilderOptions) ([]*valid.MergedProjectCfg, error) {
+func (b *Builder) build(ctx context.Context, commit *RepoCommit, installationToken int64, opts ...BuilderOptions) ([]*valid.MergedProjectCfg, error) {
 	var repoOptions github.RepoFetcherOptions
 	var rootNames []string
 	for _, o := range opts {
@@ -159,7 +159,7 @@ func (b *RootConfigBuilder) build(ctx context.Context, commit *RepoCommit, insta
 	return mergedRootCfgs, nil
 }
 
-func (b *RootConfigBuilder) getMatchingRoots(ctx context.Context, config valid.RepoCfg, repo *LocalRepo, installationToken int64, rootNames []string) ([]valid.Project, error) {
+func (b *Builder) getMatchingRoots(ctx context.Context, config valid.RepoCfg, repo *LocalRepo, installationToken int64, rootNames []string) ([]valid.Project, error) {
 	if len(rootNames) > 0 {
 		return b.validateAndGetRoots(config, rootNames)
 	}
@@ -167,7 +167,7 @@ func (b *RootConfigBuilder) getMatchingRoots(ctx context.Context, config valid.R
 	return b.Strategy.FindMatches(ctx, config, repo, installationToken)
 }
 
-func (b *RootConfigBuilder) validateAndGetRoots(config valid.RepoCfg, rootNames []string) ([]valid.Project, error) {
+func (b *Builder) validateAndGetRoots(config valid.RepoCfg, rootNames []string) ([]valid.Project, error) {
 	rootSet := make(map[string]valid.Project)
 
 	for _, p := range config.Projects {
