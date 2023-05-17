@@ -70,5 +70,4 @@ func (a planValidationResult) Check(ctx context.Context, criteria Criteria) erro
 	}
 
 	return nil
-
 }
