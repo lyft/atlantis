@@ -78,9 +78,9 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Success(t *testing.T) {
 	workflowSignaler := pr.WorkflowSignaler{TemporalClient: mockTemporalClient}
 	run, err := workflowSignaler.SignalWithStartWorkflow(context.Background(), rootCfgs, prOptions)
 	assert.NoError(t, err)
+	assert.True(t, mockTemporalClient.called)
 	assert.Equal(t, "123", run.GetID())
 	assert.Equal(t, "456", run.GetRunID())
-
 }
 
 func TestWorkflowSignaler_SignalWithStartWorkflow_Failure(t *testing.T) {
@@ -130,6 +130,7 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Failure(t *testing.T) {
 	workflowSignaler := pr.WorkflowSignaler{TemporalClient: mockTemporalClient}
 	run, err := workflowSignaler.SignalWithStartWorkflow(context.Background(), []*valid.MergedProjectCfg{}, prOptions)
 	assert.Error(t, err)
+	assert.True(t, mockTemporalClient.called)
 	assert.Nil(t, run)
 }
 
@@ -199,7 +200,7 @@ type mockTemporalClient struct {
 	called bool
 }
 
-func (m mockTemporalClient) SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{}, options client.StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (client.WorkflowRun, error) {
+func (m *mockTemporalClient) SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{}, options client.StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (client.WorkflowRun, error) {
 	m.called = true
 	assert.Equal(m.t, m.expectedWorkflowID, workflowID)
 	assert.Equal(m.t, m.expectedSignalName, signalName)

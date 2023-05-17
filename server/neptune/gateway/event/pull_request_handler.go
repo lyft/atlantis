@@ -66,15 +66,13 @@ func (p *ModifiedPullHandler) Handle(ctx context.Context, request *http.Buffered
 }
 
 func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
-	// Legacy
-	if ok := p.autoplanValidator.InstrumentedIsValid(
-		ctx,
-		p.logger,
-		event.Pull.BaseRepo,
-		event.Pull.HeadRepo,
-		event.Pull,
-		event.User); ok {
-		return p.workerProxy.Handle(ctx, request, event)
+	// Run legacy mode first
+	ok := p.autoplanValidator.InstrumentedIsValid(ctx, p.logger, event.Pull.BaseRepo, event.Pull.HeadRepo, event.Pull, event.User)
+	if ok {
+		err := p.workerProxy.Handle(ctx, request, event)
+		if err != nil {
+			return errors.Wrap(err, "handling autoplan")
+		}
 	} else {
 		p.logger.WarnContext(ctx, "request isn't valid and will not be proxied to sns")
 	}
@@ -94,6 +92,7 @@ func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.Buffered
 		InstallationToken: event.InstallationToken,
 		Branch:            event.Pull.HeadBranch,
 	}
+	// Signal temporal worker
 	return p.revisionHandler.Handle(ctx, prOptions)
 }
 
