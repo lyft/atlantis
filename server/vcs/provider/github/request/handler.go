@@ -244,6 +244,7 @@ func (h *Handler) handleCommentEvent(ctx context.Context, e *github.IssueComment
 }
 
 func (h *Handler) handlePullRequestEvent(ctx context.Context, e *github.PullRequestEvent, request *http.BufferedRequest) error {
+	// TODO: fetch the latest pull request state from github and use that instead of the event
 	pullEvent, err := h.pullEventConverter.Convert(e)
 
 	if err != nil {
