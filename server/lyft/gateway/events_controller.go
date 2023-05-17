@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"net/http"
 
 	"github.com/palantir/go-githubapp/githubapp"
@@ -59,19 +60,26 @@ func NewVCSEventsController(
 	commentCreator *github.CommentCreator,
 	clientCreator githubapp.ClientCreator,
 ) *VCSEventsController {
-	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
+	pullEventSNSProxy := gateway_handlers.NewSNSWorkerProxy(
 		snsWriter, logger,
 	)
 
-	asyncAutoplannerWorkerProxy := gateway_handlers.NewAutoplannerValidatorProxy(
-		autoplanValidator, logger, pullEventWorkerProxy, asyncScheduler,
+	prSignaler := &pr.WorkflowSignaler{TemporalClient: temporalClient}
+	revisionHandler := &pr.RevisionHandler{
+		Logger:            logger,
+		GlobalCfg:         globalCfg,
+		RootConfigBuilder: rootConfigBuilder,
+		PRSignaler:        prSignaler,
+	}
+	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(
+		autoplanValidator, logger, pullEventSNSProxy, asyncScheduler, revisionHandler,
 	)
 
 	prHandler := handlers.NewPullRequestEventWithEventTypeHandlers(
 		repoAllowlistChecker,
-		asyncAutoplannerWorkerProxy,
-		asyncAutoplannerWorkerProxy,
-		pullEventWorkerProxy,
+		modifiedPullHandler,
+		modifiedPullHandler,
+		pullEventSNSProxy,
 	)
 
 	errorHandler := gateway_handlers.NewPREventErrorHandler(

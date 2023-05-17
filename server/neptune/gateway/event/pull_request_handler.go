@@ -3,6 +3,8 @@ package event
 import (
 	"bytes"
 	"context"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"time"
 
 	"github.com/pkg/errors"
@@ -11,7 +13,11 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
-// PullRequestEvent is our internal representation of a vcs based pr event
+type revisionHandler interface {
+	Handle(ctx context.Context, options pr.Options) error
+}
+
+// PullRequest is our internal representation of a vcs based pr event
 type PullRequest struct {
 	Pull              models.PullRequest
 	User              models.User
@@ -20,17 +26,19 @@ type PullRequest struct {
 	InstallationToken int64
 }
 
-func NewAutoplannerValidatorProxy(
+func NewModifiedPullHandler(
 	autoplanValidator Validator,
 	logger logging.Logger,
-	workerProxy *PullEventWorkerProxy,
+	workerProxy *PullSNSWorkerProxy,
 	scheduler scheduler,
-) *AutoplannerValidatorProxy {
-	return &AutoplannerValidatorProxy{
+	revisonHandler revisionHandler,
+) *ModifiedPullHandler {
+	return &ModifiedPullHandler{
 		autoplanValidator: autoplanValidator,
 		workerProxy:       workerProxy,
 		logger:            logger,
 		scheduler:         scheduler,
+		revisionHandler:   revisonHandler,
 	}
 }
 
@@ -42,14 +50,23 @@ type Writer interface {
 	WriteWithContext(ctx context.Context, payload []byte) error
 }
 
-type AutoplannerValidatorProxy struct {
+type ModifiedPullHandler struct {
 	autoplanValidator Validator
-	workerProxy       *PullEventWorkerProxy
+	workerProxy       *PullSNSWorkerProxy
 	logger            logging.Logger
 	scheduler         scheduler
+	allocator         feature.Allocator
+	revisionHandler   revisionHandler
 }
 
-func (p *AutoplannerValidatorProxy) handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
+func (p *ModifiedPullHandler) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
+	return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
+		return p.handle(ctx, request, event)
+	})
+}
+
+func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
+	// Legacy
 	if ok := p.autoplanValidator.InstrumentedIsValid(
 		ctx,
 		p.logger,
@@ -58,35 +75,44 @@ func (p *AutoplannerValidatorProxy) handle(ctx context.Context, request *http.Bu
 		event.Pull,
 		event.User); ok {
 		return p.workerProxy.Handle(ctx, request, event)
+	} else {
+		p.logger.WarnContext(ctx, "request isn't valid and will not be proxied to sns")
 	}
 
-	p.logger.WarnContext(ctx, "request isn't valid and will not be proxied to sns")
-
-	return nil
+	// TODO: remove allocator (only used for initial testing of PR workflow, not for rollout)
+	allocate, err := p.allocator.ShouldAllocate(feature.PRMode, feature.FeatureContext{RepoName: event.Pull.HeadRepo.FullName})
+	if err != nil {
+		return errors.Wrap(err, "allocating PR mode")
+	}
+	if !allocate {
+		return nil
+	}
+	prOptions := pr.Options{
+		Number:            event.Pull.Num,
+		Revision:          event.Pull.HeadCommit,
+		Repo:              event.Pull.HeadRepo,
+		InstallationToken: event.InstallationToken,
+		Branch:            event.Pull.HeadBranch,
+	}
+	return p.revisionHandler.Handle(ctx, prOptions)
 }
 
-func (p *AutoplannerValidatorProxy) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
-	return p.scheduler.Schedule(ctx, func(ctx context.Context) error {
-		return p.handle(ctx, request, event)
-	})
-}
-
-func NewPullEventWorkerProxy(
+func NewSNSWorkerProxy(
 	snsWriter Writer,
 	logger logging.Logger,
-) *PullEventWorkerProxy {
-	return &PullEventWorkerProxy{
+) *PullSNSWorkerProxy {
+	return &PullSNSWorkerProxy{
 		snsWriter: snsWriter,
 		logger:    logger,
 	}
 }
 
-type PullEventWorkerProxy struct {
+type PullSNSWorkerProxy struct {
 	snsWriter Writer
 	logger    logging.Logger
 }
 
-func (p *PullEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
+func (p *PullSNSWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
 	buffer := bytes.NewBuffer([]byte{})
 
 	if err := request.GetRequestWithContext(ctx).Write(buffer); err != nil {
