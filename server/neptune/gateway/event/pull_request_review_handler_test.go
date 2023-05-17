@@ -148,7 +148,7 @@ type mockCheckRunFetcher struct {
 	isCalled       bool
 }
 
-func (f *mockCheckRunFetcher) ListFailedPolicyCheckRuns(_ context.Context, _ int64, _ models.Repo, _ string) ([]string, error) {
+func (f *mockCheckRunFetcher) ListFailedPolicyCheckRunNames(_ context.Context, _ int64, _ models.Repo, _ string) ([]string, error) {
 	f.isCalled = true
 	return f.failedPolicies, f.err
 }

@@ -26,7 +26,7 @@ type PullRequestReview struct {
 }
 
 type fetcher interface {
-	ListFailedPolicyCheckRuns(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error)
+	ListFailedPolicyCheckRunNames(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error)
 }
 
 type PullRequestReviewWorkerProxy struct {
@@ -49,7 +49,7 @@ func (p *PullRequestReviewWorkerProxy) handle(ctx context.Context, event PullReq
 	}
 
 	// Ignore PRs without failing policy checks
-	failedPolicyCheckRuns, err := p.CheckRunFetcher.ListFailedPolicyCheckRuns(ctx, event.InstallationToken, event.Repo, event.Ref)
+	failedPolicyCheckRuns, err := p.CheckRunFetcher.ListFailedPolicyCheckRunNames(ctx, event.InstallationToken, event.Repo, event.Ref)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "unable to list failed policy check runs")
 		return err

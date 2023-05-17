@@ -17,6 +17,7 @@ type Criteria struct {
 	OptionalPull      *models.PullRequest
 	InstallationToken int64
 	TriggerInfo       workflows.DeployTriggerInfo
+	Roots             []*valid.MergedProjectCfg
 }
 
 type fetcher interface {
