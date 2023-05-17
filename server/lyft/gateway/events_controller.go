@@ -36,7 +36,6 @@ func NewVCSEventsController(
 	scope tally.Scope,
 	webhookSecret []byte,
 	allowDraftPRs bool,
-	autoplanValidator *gateway_handlers.AutoplanValidator,
 	snsWriter gateway_handlers.Writer,
 	commentParser events.CommentParsing,
 	repoAllowlistChecker *events.RepoAllowlistChecker,
@@ -59,19 +58,17 @@ func NewVCSEventsController(
 	commentCreator *github.CommentCreator,
 	clientCreator githubapp.ClientCreator,
 ) *VCSEventsController {
-	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
+	pullEventSNSProxy := gateway_handlers.NewSNSWorkerProxy(
 		snsWriter, logger,
 	)
-
-	asyncAutoplannerWorkerProxy := gateway_handlers.NewAutoplannerValidatorProxy(
-		autoplanValidator, logger, pullEventWorkerProxy, asyncScheduler,
-	)
+	prRequirementChecker := requirement.NewPRAggregate(globalCfg)
+	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, pullEventSNSProxy, asyncScheduler, rootConfigBuilder, globalCfg, vcsStatusUpdater, prRequirementChecker)
 
 	prHandler := handlers.NewPullRequestEventWithEventTypeHandlers(
 		repoAllowlistChecker,
-		asyncAutoplannerWorkerProxy,
-		asyncAutoplannerWorkerProxy,
-		pullEventWorkerProxy,
+		modifiedPullHandler,
+		modifiedPullHandler,
+		pullEventSNSProxy,
 	)
 
 	errorHandler := gateway_handlers.NewPREventErrorHandler(

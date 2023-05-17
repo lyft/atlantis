@@ -32,7 +32,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/request"
 	root_config "github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	httpInternal "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
@@ -40,10 +39,8 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/vcs/markdown"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
-	"github.com/runatlantis/atlantis/server/wrappers"
 	"github.com/urfave/cli"
 	"go.temporal.io/sdk/client"
 	"golang.org/x/sync/errgroup"
@@ -180,24 +177,6 @@ func NewServer(config Config) (*Server, error) {
 		Logger:                        ctxLogger,
 	}
 
-	templateResolver := markdown.TemplateResolver{
-		DisableMarkdownFolding:   false,
-		GitlabSupportsCommonMark: false,
-		GlobalCfg:                globalCfg,
-	}
-	markdownRenderer := &markdown.Renderer{
-		DisableApplyAll:          false,
-		DisableApply:             false,
-		EnableDiffMarkdownFormat: true,
-		TemplateResolver:         templateResolver,
-	}
-
-	outputUpdater := &events.ChecksOutputUpdater{
-		VCSClient:        vcsClient,
-		MarkdownRenderer: markdownRenderer,
-		TitleBuilder:     vcs.StatusTitleBuilder{TitlePrefix: config.GithubStatusName},
-	}
-
 	session, err := aws.NewSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing new aws session")
@@ -213,26 +192,6 @@ func NewServer(config Config) (*Server, error) {
 		GithubUser: config.GithubAppSlug,
 	}
 
-	projectContextBuilder := wrappers.
-		WrapProjectContext(events.NewProjectCommandContextBuilder(commentParser)).
-		WithInstrumentation(statsScope).
-		EnablePolicyChecks(commentParser)
-
-	projectCommandBuilder := events.NewProjectCommandBuilder(
-		projectContextBuilder,
-		validator,
-		&events.DefaultProjectFinder{},
-		vcsClient,
-		workingDir,
-		workingDirLocker,
-		globalCfg,
-		&events.DefaultPendingPlanFinder{},
-		true,
-		config.AutoplanFileList,
-		ctxLogger,
-		config.MaxProjectsPerPR,
-	)
-
 	syncScheduler := &sync.SynchronousScheduler{
 		Logger:               ctxLogger,
 		PanicRecoveryEnabled: true,
@@ -241,19 +200,6 @@ func NewServer(config Config) (*Server, error) {
 
 	gatewaySnsWriter := sns.NewWriterWithStats(session, config.SNSTopicArn, statsScope.SubScope("aws.sns.gateway"))
 	vcsStatusUpdater := &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: config.GithubStatusName}}
-	autoplanValidator := &event.AutoplanValidator{
-		Scope:                         statsScope.SubScope("validator"),
-		VCSClient:                     vcsClient,
-		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
-		Drainer:                       drainer,
-		GlobalCfg:                     globalCfg,
-		VCSStatusUpdater:              vcsStatusUpdater,
-		PrjCmdBuilder:                 projectCommandBuilder,
-		OutputUpdater:                 outputUpdater,
-		WorkingDir:                    workingDir,
-		WorkingDirLocker:              workingDirLocker,
-		Allocator:                     featureAllocator,
-	}
 
 	repoConverter := github_converter.RepoConverter{}
 
@@ -327,7 +273,6 @@ func NewServer(config Config) (*Server, error) {
 		statsScope,
 		[]byte(config.GithubWebhookSecret),
 		false,
-		autoplanValidator,
 		gatewaySnsWriter,
 		commentParser,
 		repoAllowlist,

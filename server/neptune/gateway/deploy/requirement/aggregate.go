@@ -63,6 +63,20 @@ func NewAggregate(cfg valid.GlobalCfg, teamFetcher *github.TeamMemberFetcher, re
 	)
 }
 
+func NewPRAggregate(globalCfg valid.GlobalCfg) *Aggregate {
+	return NewAggregateWithRequirements(
+		// overrideable
+		[]Requirement{},
+		// non-overrideable
+		[]Requirement{
+			pull{},
+			baseBranch{
+				GlobalCfg: globalCfg,
+			},
+		},
+	)
+}
+
 func (a *Aggregate) Check(ctx context.Context, criteria Criteria) error {
 	for _, d := range a.nonOverrideableRequirements {
 		if err := d.Check(ctx, criteria); err != nil {
