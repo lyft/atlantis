@@ -21,7 +21,21 @@ type CheckRunsFetcher struct {
 	AppID         int64
 }
 
-func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error) {
+func (r *CheckRunsFetcher) ListFailedPolicyCheckRunNames(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error) {
+	runs, err := r.ListFailedPolicyCheckRuns(ctx, installationToken, repo, ref)
+	if err != nil {
+		return []string{}, err
+	}
+
+	var results []string
+	for _, r := range runs {
+		results = append(results, r.GetName())
+	}
+
+	return results, nil
+}
+
+func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]*gh.CheckRun, error) {
 	client, err := r.ClientCreator.NewInstallationClient(installationToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating installation client")
@@ -46,10 +60,10 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, instal
 	if err != nil {
 		return nil, errors.Wrap(err, "iterating through entries")
 	}
-	var failedPolicyCheckRuns []string
+	var failedPolicyCheckRuns []*gh.CheckRun
 	for _, checkRun := range checkRuns {
 		if checkRunRegex.MatchString(checkRun.GetName()) && checkRun.GetConclusion() == FailedConclusion {
-			failedPolicyCheckRuns = append(failedPolicyCheckRuns, checkRun.GetName())
+			failedPolicyCheckRuns = append(failedPolicyCheckRuns, checkRun)
 		}
 	}
 	return failedPolicyCheckRuns, nil

@@ -91,7 +91,7 @@ func NewVCSEventsController(
 		ClientCreator: clientCreator,
 	}
 
-	requirementChecker := requirement.NewAggregate(globalCfg, teamMemberFetcher, reviewFetcher, logger)
+	requirementChecker := requirement.NewAggregate(globalCfg, teamMemberFetcher, reviewFetcher, checkRunFetcher, logger)
 	commentHandler := handlers.NewCommentEventWithCommandHandler(
 		commentParser,
 		repoAllowlistChecker,
