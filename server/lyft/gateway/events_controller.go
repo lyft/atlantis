@@ -17,8 +17,8 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
-	deployCfg "github.com/runatlantis/atlantis/server/neptune/gateway/deploy/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/requirement"
 	gateway_handlers "github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
@@ -51,7 +51,7 @@ func NewVCSEventsController(
 	asyncScheduler scheduler,
 	temporalClient client.Client,
 	rootDeployer *deploy.RootDeployer,
-	rootConfigBuilder *deployCfg.RootConfigBuilder,
+	rootConfigBuilder *config.Builder,
 	deploySignaler *deploy.WorkflowSignaler,
 	checkRunFetcher *github.CheckRunsFetcher,
 	vcsStatusUpdater *command.VCSStatusUpdater,
