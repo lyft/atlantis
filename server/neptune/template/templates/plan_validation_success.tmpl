@@ -1,0 +1,8 @@
+:no_entry_sign: :raised_hand: Applies are only allowed for a set of roots once their policies are all passing
+
+Failing policies:
+  {{ range .CheckRuns}}
+    [{{ .Name }}]({{ .URL }})
+  {{ end }}
+
+:point_right: Please fix these failures and try again.

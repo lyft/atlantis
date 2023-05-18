@@ -143,6 +143,7 @@ func (p *NeptuneWorkerProxy) Handle(ctx context.Context, request *http.BufferedR
 		InstallationToken: event.InstallationToken,
 		TriggerInfo:       triggerInfo,
 		OptionalPull:      &event.Pull,
+		Roots:             platformModeRoots,
 	}); err != nil {
 		return errors.Wrap(err, "checking deploy requirements")
 	}
