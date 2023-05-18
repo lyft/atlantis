@@ -2,7 +2,6 @@ package event_test
 
 import (
 	"context"
-	"fmt"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/http"
@@ -43,80 +42,6 @@ func TestModifiedPullHandler_Handle_RootBuilderFailure(t *testing.T) {
 	assert.ErrorIs(t, err, assert.AnError)
 }
 
-func TestModifiedPullHandler_Handle_NoRoots(t *testing.T) {
-	logger := logging.NewNoopCtxLogger(t)
-	statusUpdater := &mockVCSStatusUpdater{
-		combinedCountCalls: 1,
-	}
-	pullHandler := event.ModifiedPullHandler{
-		Logger:             logger,
-		Scheduler:          &sync.SynchronousScheduler{Logger: logger},
-		GlobalCfg:          valid.GlobalCfg{},
-		RequirementChecker: &requirementsChecker{},
-		VCSStatusUpdater:   statusUpdater,
-		RootConfigBuilder: &mockConfigBuilder{
-			expectedCommit: &config.RepoCommit{},
-			expectedT:      t,
-		},
-	}
-	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{})
-	assert.NoError(t, err)
-}
-
-func TestModifiedPullHandler_Handle_WorkerProxyFailure(t *testing.T) {
-	logger := logging.NewNoopCtxLogger(t)
-	statusUpdater := &mockVCSStatusUpdater{
-		combinedCountCalls: 1,
-	}
-	legacyRoot := &valid.MergedProjectCfg{
-		Name:         "legacy",
-		WorkflowMode: valid.DefaultWorkflowMode,
-	}
-	pullHandler := event.ModifiedPullHandler{
-		Logger:             logger,
-		Scheduler:          &sync.SynchronousScheduler{Logger: logger},
-		GlobalCfg:          valid.GlobalCfg{},
-		RequirementChecker: &requirementsChecker{},
-		VCSStatusUpdater:   statusUpdater,
-		WorkerProxy:        &mockWorkerProxy{err: assert.AnError},
-		RootConfigBuilder: &mockConfigBuilder{
-			expectedCommit: &config.RepoCommit{},
-			expectedT:      t,
-			rootConfigs:    []*valid.MergedProjectCfg{legacyRoot},
-		},
-	}
-	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{})
-	assert.ErrorIs(t, err, assert.AnError)
-}
-
-func TestModifiedPullHandler_Handle_LegacyRoots(t *testing.T) {
-	logger := logging.NewNoopCtxLogger(t)
-	statusUpdater := &mockVCSStatusUpdater{
-		combinedCountCalls: 1,
-	}
-	legacyRoot := &valid.MergedProjectCfg{
-		Name:         "legacy",
-		WorkflowMode: valid.DefaultWorkflowMode,
-	}
-	workerProxy := &mockWorkerProxy{}
-	pullHandler := event.ModifiedPullHandler{
-		Logger:             logger,
-		Scheduler:          &sync.SynchronousScheduler{Logger: logger},
-		GlobalCfg:          valid.GlobalCfg{},
-		RequirementChecker: &requirementsChecker{},
-		VCSStatusUpdater:   statusUpdater,
-		WorkerProxy:        workerProxy,
-		RootConfigBuilder: &mockConfigBuilder{
-			expectedCommit: &config.RepoCommit{},
-			expectedT:      t,
-			rootConfigs:    []*valid.MergedProjectCfg{legacyRoot},
-		},
-	}
-	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{})
-	assert.NoError(t, err)
-	assert.True(t, workerProxy.called)
-}
-
 func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 	testRepo := models.Repo{
 		FullName: "owner/repo",
@@ -132,9 +57,6 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 		HeadRepo:   testRepo,
 	}
 	logger := logging.NewNoopCtxLogger(t)
-	statusUpdater := &mockVCSStatusUpdater{
-		combinedCountCalls: 1,
-	}
 	legacyRoot := &valid.MergedProjectCfg{
 		Name:         "legacy",
 		WorkflowMode: valid.DefaultWorkflowMode,
@@ -147,31 +69,87 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 			},
 		},
 	}
-	workerProxy := &mockWorkerProxy{}
 	expectedCommit := &config.RepoCommit{
 		Repo:   testRepo,
 		Branch: "branch",
 		Sha:    "sha",
+	}
+	pr := event.PullRequest{
+		Pull: pullRequest,
+	}
+	legacyHandler := &mockLegacyHandler{
+		expectedEvent:       pr,
+		expectedAllRoots:    []*valid.MergedProjectCfg{legacyRoot},
+		expectedLegacyRoots: []*valid.MergedProjectCfg{legacyRoot},
+		expectedT:           t,
 	}
 	pullHandler := event.ModifiedPullHandler{
 		Logger:             logger,
 		Scheduler:          &sync.SynchronousScheduler{Logger: logger},
 		GlobalCfg:          globalCfg,
 		RequirementChecker: &requirementsChecker{},
-		VCSStatusUpdater:   statusUpdater,
-		WorkerProxy:        workerProxy,
 		RootConfigBuilder: &mockConfigBuilder{
 			expectedCommit:     expectedCommit,
 			expectedCloneDepth: 1,
 			expectedT:          t,
 			rootConfigs:        []*valid.MergedProjectCfg{legacyRoot},
 		},
+		LegacyHandler: legacyHandler,
 	}
-	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{
-		Pull: pullRequest,
-	})
+	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pr)
 	assert.NoError(t, err)
-	assert.True(t, workerProxy.called)
+	assert.True(t, legacyHandler.called)
+}
+
+func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
+	testRepo := models.Repo{
+		FullName: "owner/repo",
+		VCSHost: models.VCSHost{
+			Hostname: "github.com",
+		},
+	}
+	pullRequest := models.PullRequest{
+		HeadCommit: "sha",
+		HeadBranch: "branch",
+		BaseBranch: "main",
+		BaseRepo:   testRepo,
+		HeadRepo:   testRepo,
+	}
+	logger := logging.NewNoopCtxLogger(t)
+	legacyRoot := &valid.MergedProjectCfg{
+		Name:         "legacy",
+		WorkflowMode: valid.DefaultWorkflowMode,
+	}
+	globalCfg := valid.GlobalCfg{}
+	expectedCommit := &config.RepoCommit{
+		Repo:   testRepo,
+		Branch: "branch",
+		Sha:    "sha",
+	}
+	pr := event.PullRequest{
+		Pull: pullRequest,
+	}
+	legacyHandler := &mockLegacyHandler{
+		expectedEvent:       pr,
+		expectedAllRoots:    []*valid.MergedProjectCfg{legacyRoot},
+		expectedLegacyRoots: []*valid.MergedProjectCfg{legacyRoot},
+		expectedT:           t,
+	}
+	pullHandler := event.ModifiedPullHandler{
+		Logger:             logger,
+		Scheduler:          &sync.SynchronousScheduler{Logger: logger},
+		GlobalCfg:          globalCfg,
+		RequirementChecker: &requirementsChecker{},
+		RootConfigBuilder: &mockConfigBuilder{
+			expectedCommit: expectedCommit,
+			expectedT:      t,
+			rootConfigs:    []*valid.MergedProjectCfg{legacyRoot},
+		},
+		LegacyHandler: legacyHandler,
+	}
+	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pr)
+	assert.NoError(t, err)
+	assert.True(t, legacyHandler.called)
 }
 
 type mockConfigBuilder struct {
@@ -191,30 +169,19 @@ func (r *mockConfigBuilder) Build(_ context.Context, commit *config.RepoCommit, 
 	return r.rootConfigs, r.error
 }
 
-type mockVCSStatusUpdater struct {
-	combinedCalls int
-	combinedError error
-
-	combinedCountError error
-	combinedCountCalls int
+type mockLegacyHandler struct {
+	expectedEvent       event.PullRequest
+	expectedAllRoots    []*valid.MergedProjectCfg
+	expectedLegacyRoots []*valid.MergedProjectCfg
+	expectedT           *testing.T
+	error               error
+	called              bool
 }
 
-func (m *mockVCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, cmdName fmt.Stringer, statusID string, output string) (string, error) {
-	m.combinedCalls++
-	return "", m.combinedError
-}
-
-func (m *mockVCSStatusUpdater) UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, cmdName fmt.Stringer, numSuccess int, numTotal int, statusID string) (string, error) {
-	m.combinedCountCalls++
-	return "", m.combinedCountError
-}
-
-type mockWorkerProxy struct {
-	called bool
-	err    error
-}
-
-func (w *mockWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event event.PullRequest) error {
-	w.called = true
-	return w.err
+func (l *mockLegacyHandler) Handle(ctx context.Context, _ *http.BufferedRequest, event event.PullRequest, allRoots []*valid.MergedProjectCfg, legacyRoots []*valid.MergedProjectCfg) error {
+	l.called = true
+	assert.Equal(l.expectedT, l.expectedEvent, event)
+	assert.Equal(l.expectedT, l.expectedAllRoots, allRoots)
+	assert.Equal(l.expectedT, l.expectedLegacyRoots, legacyRoots)
+	return l.error
 }

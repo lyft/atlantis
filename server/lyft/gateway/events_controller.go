@@ -19,8 +19,8 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/requirement"
 	gateway_handlers "github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/requirement"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	converters "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/request"
@@ -61,8 +61,13 @@ func NewVCSEventsController(
 	pullEventSNSProxy := gateway_handlers.NewSNSWorkerProxy(
 		snsWriter, logger,
 	)
+	legacyHandler := &gateway_handlers.LegacyHandler{
+		Logger:           logger,
+		WorkerProxy:      pullEventSNSProxy,
+		VCSStatusUpdater: vcsStatusUpdater,
+	}
 	prRequirementChecker := requirement.NewPRAggregate(globalCfg)
-	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, pullEventSNSProxy, asyncScheduler, rootConfigBuilder, globalCfg, vcsStatusUpdater, prRequirementChecker)
+	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, legacyHandler)
 
 	prHandler := handlers.NewPullRequestEventWithEventTypeHandlers(
 		repoAllowlistChecker,
