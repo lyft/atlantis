@@ -12,20 +12,20 @@ import (
 type Requirement interface {
 	Check(ctx context.Context, criteria Criteria) error
 }
-type Aggregate struct {
+type DeployAggregate struct {
 	overrideableRequirements    []Requirement
 	nonOverrideableRequirements []Requirement
 }
 
-func NewAggregateWithRequirements(overrideableRequirements []Requirement, nonOverrideableRequirements []Requirement) *Aggregate {
-	return &Aggregate{
+func NewDeployAggregateWithRequirements(overrideableRequirements []Requirement, nonOverrideableRequirements []Requirement) *DeployAggregate {
+	return &DeployAggregate{
 		overrideableRequirements:    overrideableRequirements,
 		nonOverrideableRequirements: nonOverrideableRequirements,
 	}
 }
 
-func NewAggregate(cfg valid.GlobalCfg, teamFetcher *github.TeamMemberFetcher, reviewFetcher *github.PRReviewFetcher, checkRunFetcher *github.CheckRunsFetcher, logger logging.Logger) *Aggregate {
-	return NewAggregateWithRequirements(
+func NewDeployAggregate(cfg valid.GlobalCfg, teamFetcher *github.TeamMemberFetcher, reviewFetcher *github.PRReviewFetcher, checkRunFetcher *github.CheckRunsFetcher, logger logging.Logger) *DeployAggregate {
+	return NewDeployAggregateWithRequirements(
 
 		// overrideable
 		[]Requirement{
@@ -71,21 +71,7 @@ func NewAggregate(cfg valid.GlobalCfg, teamFetcher *github.TeamMemberFetcher, re
 	)
 }
 
-func NewPRAggregate(globalCfg valid.GlobalCfg) *Aggregate {
-	return NewAggregateWithRequirements(
-		// overrideable
-		[]Requirement{},
-		// non-overrideable
-		[]Requirement{
-			pull{},
-			baseBranch{
-				GlobalCfg: globalCfg,
-			},
-		},
-	)
-}
-
-func (a *Aggregate) Check(ctx context.Context, criteria Criteria) error {
+func (a *DeployAggregate) Check(ctx context.Context, criteria Criteria) error {
 	for _, d := range a.nonOverrideableRequirements {
 		if err := d.Check(ctx, criteria); err != nil {
 			return err
@@ -99,6 +85,30 @@ func (a *Aggregate) Check(ctx context.Context, criteria Criteria) error {
 
 	for _, d := range a.overrideableRequirements {
 		if err := d.Check(ctx, criteria); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type PRAggregate struct {
+	requirements []Requirement
+}
+
+func NewPRAggregate(globalCfg valid.GlobalCfg) *PRAggregate {
+	return &PRAggregate{
+		requirements: []Requirement{
+			pull{},
+			baseBranch{
+				GlobalCfg: globalCfg,
+			},
+		},
+	}
+}
+
+func (p *PRAggregate) Check(ctx context.Context, criteria Criteria) error {
+	for _, r := range p.requirements {
+		if err := r.Check(ctx, criteria); err != nil {
 			return err
 		}
 	}
