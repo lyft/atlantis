@@ -4,8 +4,10 @@ import (
 	"context"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/requirement"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
+	"go.temporal.io/sdk/client"
 	"time"
 
 	"github.com/pkg/errors"
@@ -18,6 +20,10 @@ type legacyHandler interface {
 	Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg, legacyRoots []*valid.MergedProjectCfg) error
 }
 
+type prSignaler interface {
+	SignalWithStartWorkflow(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, prOptions pr.Options) (client.WorkflowRun, error)
+}
+
 type ModifiedPullHandler struct {
 	Logger             logging.Logger
 	Scheduler          scheduler
@@ -25,6 +31,7 @@ type ModifiedPullHandler struct {
 	GlobalCfg          valid.GlobalCfg
 	RequirementChecker requirementChecker
 	LegacyHandler      legacyHandler
+	PRSignaler         prSignaler
 }
 
 // PullRequest is our internal representation of a vcs based pr event
@@ -36,7 +43,7 @@ type PullRequest struct {
 	InstallationToken int64
 }
 
-func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConfigBuilder rootConfigBuilder, globalCfg valid.GlobalCfg, requirementChecker requirementChecker, legacyHandler legacyHandler) *ModifiedPullHandler {
+func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConfigBuilder rootConfigBuilder, globalCfg valid.GlobalCfg, requirementChecker requirementChecker, prSignaler prSignaler, legacyHandler legacyHandler) *ModifiedPullHandler {
 	return &ModifiedPullHandler{
 		Logger:             logger,
 		Scheduler:          scheduler,
@@ -44,6 +51,7 @@ func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConf
 		GlobalCfg:          globalCfg,
 		RequirementChecker: requirementChecker,
 		LegacyHandler:      legacyHandler,
+		PRSignaler:         prSignaler,
 	}
 }
 
@@ -105,13 +113,31 @@ func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.Buffered
 	if err := p.LegacyHandler.Handle(ctx, request, event, rootCfgs, legacyModeRoots); err != nil {
 		p.Logger.ErrorContext(ctx, err.Error())
 	}
+
+	// skip signaling workflow if no roots
+	if len(platformModeRoots) == 0 {
+		return nil
+	}
 	if err := p.handlePlatformMode(ctx, event, platformModeRoots); err != nil {
 		return errors.Wrap(err, "handling platform mode")
 	}
 	return nil
 }
 
-func (p *ModifiedPullHandler) handlePlatformMode(_ context.Context, _ PullRequest, _ []*valid.MergedProjectCfg) error {
-	// TODO: handle platform mode
+func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, event PullRequest, roots []*valid.MergedProjectCfg) error {
+	prOptions := pr.Options{
+		Number:            event.Pull.Num,
+		Revision:          event.Pull.HeadCommit,
+		Repo:              event.Pull.HeadRepo,
+		InstallationToken: event.InstallationToken,
+		Branch:            event.Pull.HeadBranch,
+	}
+	run, err := p.PRSignaler.SignalWithStartWorkflow(ctx, roots, prOptions)
+	if err != nil {
+		return errors.Wrap(err, "signaling workflow")
+	}
+	p.Logger.InfoContext(ctx, "Signaled workflow.", map[string]interface{}{
+		"workflow-id": run.GetID(), "run-id": run.GetRunID(),
+	})
 	return nil
 }
