@@ -90,7 +90,9 @@ func buildRoots(rootCfgs []*valid.MergedProjectCfg) []workflows.PRRoot {
 }
 
 func generateSteps(steps []valid.Step) []workflows.PRStep {
-	// NOTE: for deployment workflows, we won't support command level user requests for log level output verbosity
+	// TODO: support command level user requests for log level output verbosity
+	// this will involve appending an TF_LOG env kv pair
+	// for comment events with a log level defined
 	var workflowSteps []workflows.PRStep
 	for _, step := range steps {
 		workflowSteps = append(workflowSteps, workflows.PRStep{
