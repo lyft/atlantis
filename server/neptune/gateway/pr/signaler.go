@@ -23,7 +23,7 @@ type WorkflowSignaler struct {
 	TemporalClient signaler
 }
 
-type Options struct {
+type Request struct {
 	Number            int
 	Revision          string
 	Repo              models.Repo
@@ -31,36 +31,36 @@ type Options struct {
 	Branch            string
 }
 
-func (s *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, prOptions Options) (client.WorkflowRun, error) {
+func (s *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, request Request) (client.WorkflowRun, error) {
 	options := client.StartWorkflowOptions{
 		TaskQueue: workflows.PRTaskQueue,
 		SearchAttributes: map[string]interface{}{
-			"atlantis_repository": prOptions.Repo.FullName,
+			"atlantis_repository": request.Repo.FullName,
 		},
 	}
 	run, err := s.TemporalClient.SignalWithStartWorkflow(
 		ctx,
-		BuildPRWorkflowID(prOptions.Repo.FullName, prOptions.Number),
+		BuildPRWorkflowID(request.Repo.FullName, request.Number),
 		workflows.PRTerraformRevisionSignalID,
 		workflows.PRNewRevisionSignalRequest{
-			Revision: prOptions.Revision,
+			Revision: request.Revision,
 			Roots:    buildRoots(rootCfgs),
 			Repo: workflows.PRRepo{
-				URL:           prOptions.Repo.CloneURL,
-				FullName:      prOptions.Repo.FullName,
-				Name:          prOptions.Repo.Name,
-				Owner:         prOptions.Repo.Owner,
-				DefaultBranch: prOptions.Repo.DefaultBranch,
+				URL:           request.Repo.CloneURL,
+				FullName:      request.Repo.FullName,
+				Name:          request.Repo.Name,
+				Owner:         request.Repo.Owner,
+				DefaultBranch: request.Repo.DefaultBranch,
 				Credentials: workflows.PRAppCredentials{
-					InstallationToken: prOptions.InstallationToken,
+					InstallationToken: request.InstallationToken,
 				},
 			},
 		},
 		options,
 		workflows.PR,
 		workflows.PRRequest{
-			RepoFullName: prOptions.Repo.FullName,
-			PRNum:        prOptions.Number,
+			RepoFullName: request.Repo.FullName,
+			PRNum:        request.Number,
 		},
 	)
 	return run, err

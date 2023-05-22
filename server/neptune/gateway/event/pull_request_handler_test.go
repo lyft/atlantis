@@ -116,7 +116,7 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 		expectedLegacyRoots: []*valid.MergedProjectCfg{legacyRoot},
 		expectedT:           t,
 	}
-	prOptions := pr.Options{
+	prRequest := pr.Request{
 		Revision:          "sha",
 		Repo:              testRepo,
 		InstallationToken: 0,
@@ -124,7 +124,7 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 	}
 	signaler := &mockPRSignaler{
 		expectedRoots:     []*valid.MergedProjectCfg{},
-		expectedPROptions: prOptions,
+		expectedPRRequest: prRequest,
 		expectedT:         t,
 	}
 	pullHandler := event.ModifiedPullHandler{
@@ -159,7 +159,7 @@ func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
 		Name:         "platform",
 		WorkflowMode: valid.PlatformWorkflowMode,
 	}
-	prOptions := pr.Options{
+	prRequest := pr.Request{
 		Revision:          "sha",
 		Repo:              testRepo,
 		InstallationToken: 0,
@@ -167,7 +167,7 @@ func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
 	}
 	signaler := &mockPRSignaler{
 		expectedRoots:     []*valid.MergedProjectCfg{root},
-		expectedPROptions: prOptions,
+		expectedPRRequest: prRequest,
 		expectedT:         t,
 	}
 	pullRequest := models.PullRequest{
@@ -249,14 +249,14 @@ func (l *mockLegacyHandler) Handle(ctx context.Context, _ *http.BufferedRequest,
 type mockPRSignaler struct {
 	called            bool
 	error             error
-	expectedPROptions pr.Options
+	expectedPRRequest pr.Request
 	expectedRoots     []*valid.MergedProjectCfg
 	expectedT         *testing.T
 }
 
-func (s *mockPRSignaler) SignalWithStartWorkflow(_ context.Context, rootCfgs []*valid.MergedProjectCfg, prOptions pr.Options) (client.WorkflowRun, error) {
+func (s *mockPRSignaler) SignalWithStartWorkflow(_ context.Context, rootCfgs []*valid.MergedProjectCfg, prRequest pr.Request) (client.WorkflowRun, error) {
 	s.called = true
-	assert.Equal(s.expectedT, s.expectedPROptions, prOptions)
+	assert.Equal(s.expectedT, s.expectedPRRequest, prRequest)
 	assert.Equal(s.expectedT, s.expectedRoots, rootCfgs)
 	return testRun{}, s.error
 }

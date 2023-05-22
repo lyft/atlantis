@@ -22,7 +22,7 @@ type legacyHandler interface {
 }
 
 type prSignaler interface {
-	SignalWithStartWorkflow(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, prOptions pr.Options) (client.WorkflowRun, error)
+	SignalWithStartWorkflow(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, prRequest pr.Request) (client.WorkflowRun, error)
 }
 
 type ModifiedPullHandler struct {
@@ -129,7 +129,7 @@ func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, event Pull
 	}
 	// TODO: remove when we begin in-depth testing and rollout of pr mode
 	// feature allocator is only temporary while we continue building out implementation
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PRMode, feature.FeatureContext{
+	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
 		RepoName: event.Pull.HeadRepo.FullName,
 	})
 	if err != nil {
@@ -140,14 +140,14 @@ func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, event Pull
 		p.Logger.InfoContext(ctx, "handler not configured for allocation")
 		return nil
 	}
-	prOptions := pr.Options{
+	prRequest := pr.Request{
 		Number:            event.Pull.Num,
 		Revision:          event.Pull.HeadCommit,
 		Repo:              event.Pull.HeadRepo,
 		InstallationToken: event.InstallationToken,
 		Branch:            event.Pull.HeadBranch,
 	}
-	run, err := p.PRSignaler.SignalWithStartWorkflow(ctx, roots, prOptions)
+	run, err := p.PRSignaler.SignalWithStartWorkflow(ctx, roots, prRequest)
 	if err != nil {
 		return errors.Wrap(err, "signaling workflow")
 	}

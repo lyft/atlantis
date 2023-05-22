@@ -36,7 +36,7 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Success(t *testing.T) {
 		Owner:         "owner",
 		DefaultBranch: "main",
 	}
-	prOptions := pr.Options{
+	prRequest := pr.Request{
 		Number:            1,
 		Revision:          "abc",
 		Repo:              testRepo,
@@ -58,14 +58,14 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Success(t *testing.T) {
 				Owner:         testRepo.Owner,
 				DefaultBranch: testRepo.DefaultBranch,
 				Credentials: workflows.PRAppCredentials{
-					InstallationToken: prOptions.InstallationToken,
+					InstallationToken: prRequest.InstallationToken,
 				},
 			},
 		},
 		expectedOptions: client.StartWorkflowOptions{
 			TaskQueue: workflows.PRTaskQueue,
 			SearchAttributes: map[string]interface{}{
-				"atlantis_repository": prOptions.Repo.FullName,
+				"atlantis_repository": prRequest.Repo.FullName,
 			},
 		},
 		expectedWorkflow: workflows.PR,
@@ -76,7 +76,7 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Success(t *testing.T) {
 		expectedErr: nil,
 	}
 	workflowSignaler := pr.WorkflowSignaler{TemporalClient: mockTemporalClient}
-	run, err := workflowSignaler.SignalWithStartWorkflow(context.Background(), rootCfgs, prOptions)
+	run, err := workflowSignaler.SignalWithStartWorkflow(context.Background(), rootCfgs, prRequest)
 	assert.NoError(t, err)
 	assert.True(t, mockTemporalClient.called)
 	assert.Equal(t, "123", run.GetID())
@@ -89,7 +89,7 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Failure(t *testing.T) {
 		Owner:         "owner",
 		DefaultBranch: "main",
 	}
-	prOptions := pr.Options{
+	prRequest := pr.Request{
 		Number:            1,
 		Revision:          "abc",
 		Repo:              testRepo,
@@ -110,14 +110,14 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Failure(t *testing.T) {
 				Owner:         testRepo.Owner,
 				DefaultBranch: testRepo.DefaultBranch,
 				Credentials: workflows.PRAppCredentials{
-					InstallationToken: prOptions.InstallationToken,
+					InstallationToken: prRequest.InstallationToken,
 				},
 			},
 		},
 		expectedOptions: client.StartWorkflowOptions{
 			TaskQueue: workflows.PRTaskQueue,
 			SearchAttributes: map[string]interface{}{
-				"atlantis_repository": prOptions.Repo.FullName,
+				"atlantis_repository": prRequest.Repo.FullName,
 			},
 		},
 		expectedWorkflow: workflows.PR,
@@ -128,7 +128,7 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Failure(t *testing.T) {
 		expectedErr: assert.AnError,
 	}
 	workflowSignaler := pr.WorkflowSignaler{TemporalClient: mockTemporalClient}
-	run, err := workflowSignaler.SignalWithStartWorkflow(context.Background(), []*valid.MergedProjectCfg{}, prOptions)
+	run, err := workflowSignaler.SignalWithStartWorkflow(context.Background(), []*valid.MergedProjectCfg{}, prRequest)
 	assert.Error(t, err)
 	assert.True(t, mockTemporalClient.called)
 	assert.Nil(t, run)
