@@ -19,8 +19,8 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/requirement"
 	gateway_handlers "github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/requirement"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	converters "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/request"
@@ -36,7 +36,6 @@ func NewVCSEventsController(
 	scope tally.Scope,
 	webhookSecret []byte,
 	allowDraftPRs bool,
-	autoplanValidator *gateway_handlers.AutoplanValidator,
 	snsWriter gateway_handlers.Writer,
 	commentParser events.CommentParsing,
 	repoAllowlistChecker *events.RepoAllowlistChecker,
@@ -59,19 +58,22 @@ func NewVCSEventsController(
 	commentCreator *github.CommentCreator,
 	clientCreator githubapp.ClientCreator,
 ) *VCSEventsController {
-	pullEventWorkerProxy := gateway_handlers.NewPullEventWorkerProxy(
+	pullEventSNSProxy := gateway_handlers.NewSNSWorkerProxy(
 		snsWriter, logger,
 	)
-
-	asyncAutoplannerWorkerProxy := gateway_handlers.NewAutoplannerValidatorProxy(
-		autoplanValidator, logger, pullEventWorkerProxy, asyncScheduler,
-	)
+	legacyHandler := &gateway_handlers.LegacyHandler{
+		Logger:           logger,
+		WorkerProxy:      pullEventSNSProxy,
+		VCSStatusUpdater: vcsStatusUpdater,
+	}
+	prRequirementChecker := requirement.NewPRAggregate(globalCfg)
+	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, legacyHandler)
 
 	prHandler := handlers.NewPullRequestEventWithEventTypeHandlers(
 		repoAllowlistChecker,
-		asyncAutoplannerWorkerProxy,
-		asyncAutoplannerWorkerProxy,
-		pullEventWorkerProxy,
+		modifiedPullHandler,
+		modifiedPullHandler,
+		pullEventSNSProxy,
 	)
 
 	errorHandler := gateway_handlers.NewPREventErrorHandler(
@@ -91,7 +93,7 @@ func NewVCSEventsController(
 		ClientCreator: clientCreator,
 	}
 
-	requirementChecker := requirement.NewAggregate(globalCfg, teamMemberFetcher, reviewFetcher, checkRunFetcher, logger)
+	requirementChecker := requirement.NewDeployAggregate(globalCfg, teamMemberFetcher, reviewFetcher, checkRunFetcher, logger)
 	commentHandler := handlers.NewCommentEventWithCommandHandler(
 		commentParser,
 		repoAllowlistChecker,

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy/requirement"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/requirement"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/stretchr/testify/assert"
 )
@@ -41,7 +41,7 @@ func TestAggregate_Success(t *testing.T) {
 		expectedErr:       nil,
 	}
 
-	subject := requirement.NewAggregateWithRequirements([]requirement.Requirement{overrideable}, []requirement.Requirement{nonOverrideable})
+	subject := requirement.NewDeployAggregateWithRequirements([]requirement.Requirement{overrideable}, []requirement.Requirement{nonOverrideable})
 
 	err := subject.Check(context.Background(), expectedCriteria)
 	assert.NoError(t, err)
@@ -68,7 +68,7 @@ func TestAggregate_ForceTrigger(t *testing.T) {
 		expectedErr:       nil,
 	}
 
-	subject := requirement.NewAggregateWithRequirements([]requirement.Requirement{overrideable}, []requirement.Requirement{nonOverrideable})
+	subject := requirement.NewDeployAggregateWithRequirements([]requirement.Requirement{overrideable}, []requirement.Requirement{nonOverrideable})
 
 	err := subject.Check(context.Background(), expectedCriteria)
 	assert.NoError(t, err)
@@ -92,7 +92,7 @@ func TestAggregate_OverrideableError(t *testing.T) {
 		expectedErr:       nil,
 	}
 
-	subject := requirement.NewAggregateWithRequirements([]requirement.Requirement{overrideable}, []requirement.Requirement{nonOverrideable})
+	subject := requirement.NewDeployAggregateWithRequirements([]requirement.Requirement{overrideable}, []requirement.Requirement{nonOverrideable})
 
 	err := subject.Check(context.Background(), expectedCriteria)
 	assert.Error(t, err)
@@ -116,7 +116,7 @@ func TestAggregate_NonOverrideableError(t *testing.T) {
 		expectedErr:       assert.AnError,
 	}
 
-	subject := requirement.NewAggregateWithRequirements([]requirement.Requirement{overrideable}, []requirement.Requirement{nonOverrideable})
+	subject := requirement.NewDeployAggregateWithRequirements([]requirement.Requirement{overrideable}, []requirement.Requirement{nonOverrideable})
 
 	err := subject.Check(context.Background(), expectedCriteria)
 	assert.Error(t, err)
