@@ -128,7 +128,7 @@ func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, event Pull
 		return nil
 	}
 	// TODO: remove when we begin in-depth testing and rollout of pr mode
-	// feature allocator only be temporary while we continue building out implementation
+	// feature allocator is only temporary while we continue building out implementation
 	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PRMode, feature.FeatureContext{
 		RepoName: event.Pull.HeadRepo.FullName,
 	})
