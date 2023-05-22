@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/requirement"
@@ -31,6 +32,7 @@ type ModifiedPullHandler struct {
 	GlobalCfg          valid.GlobalCfg
 	RequirementChecker requirementChecker
 	LegacyHandler      legacyHandler
+	Allocator          feature.Allocator
 	PRSignaler         prSignaler
 }
 
@@ -114,10 +116,6 @@ func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.Buffered
 		p.Logger.ErrorContext(ctx, err.Error())
 	}
 
-	// skip signaling workflow if no roots
-	if len(platformModeRoots) == 0 {
-		return nil
-	}
 	if err := p.handlePlatformMode(ctx, event, platformModeRoots); err != nil {
 		return errors.Wrap(err, "handling platform mode")
 	}
@@ -125,6 +123,23 @@ func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.Buffered
 }
 
 func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, event PullRequest, roots []*valid.MergedProjectCfg) error {
+	// skip signaling workflow if no roots
+	if len(roots) == 0 {
+		return nil
+	}
+	// TODO: remove when we begin in-depth testing and rollout of pr mode
+	// feature allocator only be temporary while we continue building out implementation
+	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PRMode, feature.FeatureContext{
+		RepoName: event.Pull.HeadRepo.FullName,
+	})
+	if err != nil {
+		p.Logger.ErrorContext(ctx, "unable to allocate pr mode")
+		return nil
+	}
+	if !shouldAllocate {
+		p.Logger.InfoContext(ctx, "handler not configured for allocation")
+		return nil
+	}
 	prOptions := pr.Options{
 		Number:            event.Pull.Num,
 		Revision:          event.Pull.HeadCommit,
