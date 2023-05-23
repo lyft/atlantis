@@ -4,6 +4,7 @@ import (
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision/policy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/workflow"
 )
@@ -53,7 +54,7 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 	revisionProcessor := revision.Processor{
 		TFWorkflow:      tfWorkflow,
 		TFStateReceiver: &stateReceiver,
-		PolicyHandler:   &revision.FailedPolicyHandler{},
+		PolicyHandler:   &policy.FailedPolicyHandler{},
 	}
 	return &Runner{
 		RevisionSignalChannel: workflow.GetSignalChannel(ctx, revision.TerraformRevisionSignalID),

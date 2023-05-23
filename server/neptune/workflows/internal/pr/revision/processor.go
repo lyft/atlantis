@@ -20,7 +20,7 @@ type TFStateReceiver interface {
 }
 
 type PolicyHandler interface {
-	Process(ctx workflow.Context, failedPolicies []activities.PolicySet)
+	Handle(ctx workflow.Context, prRevision Revision, failedPolicies []activities.PolicySet)
 }
 
 type Processor struct {
@@ -60,7 +60,9 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 			}
 		}
 	}
-	p.PolicyHandler.Process(ctx, failedPolicies)
+	if len(failedPolicies) > 0 {
+		p.PolicyHandler.Handle(ctx, prRevision, failedPolicies)
+	}
 }
 
 func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision Revision, id uuid.UUID) workflow.ChildWorkflowFuture {
