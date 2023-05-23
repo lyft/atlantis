@@ -45,7 +45,6 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		ShutdownChecker:       mockShutdownChecker,
 		InactivityTimeout:     r.InactivityTimeout,
 		ShutdownPollTick:      r.ShutdownPollTime,
-		cancel:                func() {},
 	}
 	err := runner.Run(ctx)
 	return response{

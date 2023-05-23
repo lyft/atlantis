@@ -54,7 +54,6 @@ type Runner struct {
 	// mutable state
 	state                 RunnerState
 	lastAttemptedRevision string
-	cancel                workflow.CancelFunc
 }
 
 func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow revision.TFWorkflow, internalNotifiers []revision.WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *Runner {
@@ -77,8 +76,6 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 		// TODO: make these configurations
 		InactivityTimeout: time.Hour * 24 * 7,
 		ShutdownPollTick:  time.Hour * 24,
-
-		cancel: func() {},
 	}
 }
 
@@ -121,11 +118,12 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	}
 	shutdownPollCancel, _ := s.AddTimeout(ctx, r.ShutdownPollTick, onShutdownPollTick)
 
+	_, revisionCancel := workflow.WithCancel(ctx)
 	for {
 		s.Select(ctx)
 		switch action {
 		case onNewRevision:
-			r.onNewRevision(ctx, prRevision)
+			revisionCancel = r.onNewRevision(ctx, revisionCancel, prRevision)
 			inactivityTimeoutCancel()
 			inactivityTimeoutCancel, _ = s.AddTimeout(ctx, r.InactivityTimeout, onInactivityTimeout)
 			continue
@@ -133,7 +131,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			continue
 		case onTimeout: // TODO: send message to PR stating atlantis deleted state due to inactivity and to rerun to trigger atlantis workflow
 			workflow.GetLogger(ctx).Info("workflow timed out, shutting down")
-			r.cancel()
+			revisionCancel()
 			return nil
 		case onShutdown:
 			workflow.GetLogger(ctx).Info("received shutdown signal")
@@ -148,22 +146,21 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		}
 		workflow.GetLogger(ctx).Info("pr is closed, shutting down")
 		r.state = complete
-		r.cancel()
+		revisionCancel()
 		return nil
 	}
 }
 
-func (r *Runner) onNewRevision(ctx workflow.Context, prRevision revision.Revision) {
+func (r *Runner) onNewRevision(ctx workflow.Context, cancel workflow.CancelFunc, prRevision revision.Revision) workflow.CancelFunc {
 	ctx = workflow.WithValue(ctx, internalContext.SHAKey, prRevision.Revision)
 	workflow.GetLogger(ctx).Info("received revision signal")
 	if shouldProcess := r.shouldProcessRevision(prRevision); !shouldProcess {
 		//TODO: consider providing user feedback
-		return
+		return cancel
 	}
 	// cancel in progress workflow (if it exists) and start up a new one
-	r.cancel()
-	ctx, cancel := workflow.WithCancel(ctx)
-	r.cancel = cancel
+	cancel()
+	ctx, cancel = workflow.WithCancel(ctx)
 	r.state = working
 	r.lastAttemptedRevision = prRevision.Revision
 	workflow.Go(ctx, func(c workflow.Context) {
@@ -172,6 +169,7 @@ func (r *Runner) onNewRevision(ctx workflow.Context, prRevision revision.Revisio
 		}()
 		r.RevisionProcessor.Process(c, prRevision)
 	})
+	return cancel
 }
 
 func (r *Runner) shouldProcessRevision(prRevision revision.Revision) bool {
