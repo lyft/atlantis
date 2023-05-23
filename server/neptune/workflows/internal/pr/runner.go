@@ -67,12 +67,15 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 		TFStateReceiver: &stateReceiver,
 		PolicyHandler:   &revision.FailedPolicyHandler{},
 	}
+	shutdownChecker := ShutdownStateChecker{}
 	return &Runner{
 		RevisionSignalChannel: workflow.GetSignalChannel(ctx, revision.TerraformRevisionSignalID),
 		RevisionReceiver:      &revisionReceiver,
 		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, ShutdownSignalID),
 		Scope:                 scope,
 		RevisionProcessor:     &revisionProcessor,
+		ShutdownChecker:       &shutdownChecker,
+
 		// TODO: make these configurations
 		InactivityTimeout: time.Hour * 24 * 7,
 		ShutdownPollTick:  time.Hour * 24,
