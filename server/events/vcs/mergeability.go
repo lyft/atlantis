@@ -51,6 +51,24 @@ type ValidChecksFilter interface {
 }
 
 // ApplyChecksFilter filters statuses that correspond to atlantis apply
+type DeployChecksFilter struct {
+	statusTitleMatcher StatusTitleMatcher
+}
+
+func (d DeployChecksFilter) Filter(checks []*github.CheckRun) []*github.CheckRun {
+	var filtered []*github.CheckRun
+	for _, check := range checks {
+		if d.statusTitleMatcher.MatchesCommand(*check.Name, "deploy") {
+			continue
+		}
+
+		filtered = append(filtered, check)
+	}
+
+	return filtered
+}
+
+// ApplyChecksFilter filters statuses that correspond to atlantis apply
 type ApplyChecksFilter struct {
 	statusTitleMatcher StatusTitleMatcher
 }
