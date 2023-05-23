@@ -137,8 +137,5 @@ type testShutdownChecker struct {
 
 func (c *testShutdownChecker) ShouldShutdown(ctx workflow.Context, prRevision revision.Revision) bool {
 	c.calls++
-	if c.calls == c.ShouldShutdownAfterNTicks {
-		return true
-	}
-	return false
+	return c.calls == c.ShouldShutdownAfterNTicks
 }
