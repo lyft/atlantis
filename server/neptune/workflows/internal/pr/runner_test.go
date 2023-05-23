@@ -13,6 +13,7 @@ import (
 type request struct {
 	mockRevisionProcessor testRevisionProcessor
 	scope                 metrics.Scope
+	inactivityTimeout     time.Duration
 	T                     *testing.T
 }
 
@@ -36,6 +37,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		RevisionReceiver:      &revisionReceiver,
 		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, shutdownID),
 		RevisionProcessor:     mockRevisionProcessor,
+		InactivityTimeout:     r.inactivityTimeout,
 		cancel:                func() {},
 	}
 	err := runner.Run(ctx)
@@ -47,6 +49,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 func TestWorkflowRunner_Run(t *testing.T) {
 	req := request{
 		mockRevisionProcessor: testRevisionProcessor{},
+		inactivityTimeout:     time.Minute,
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
@@ -68,6 +71,25 @@ func TestWorkflowRunner_Run(t *testing.T) {
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, resp.ProcessCount)
+}
+
+func TestWorkflowRunner_Run_InactivityTimeout(t *testing.T) {
+	req := request{
+		mockRevisionProcessor: testRevisionProcessor{},
+		inactivityTimeout:     time.Second,
+	}
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(revisionID, revision.NewTerraformRevisionRequest{
+			Revision: "abc",
+		})
+	}, 20*time.Second)
+	env.ExecuteWorkflow(testWorkflow, req)
+	var resp response
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, resp.ProcessCount)
 }
 
 type testRevisionProcessor struct {

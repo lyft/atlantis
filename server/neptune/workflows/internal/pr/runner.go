@@ -4,8 +4,11 @@ import (
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
+	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
+	"time"
 )
 
 type Action int64
@@ -13,6 +16,8 @@ type Action int64
 const (
 	onNewRevision Action = iota
 	onShutdown
+	onCancel
+	onTimeout
 )
 
 type RunnerState int64
@@ -37,6 +42,7 @@ type Runner struct {
 	ShutdownSignalChannel workflow.ReceiveChannel
 	RevisionProcessor     RevisionProcessor
 	Scope                 workflowMetrics.Scope
+	InactivityTimeout     time.Duration
 
 	// mutable state
 	state                 RunnerState
@@ -61,6 +67,8 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, ShutdownSignalID),
 		Scope:                 scope,
 		RevisionProcessor:     &revisionProcessor,
+		// TODO: make this a configuration
+		InactivityTimeout: time.Hour * 24 * 7,
 
 		cancel: func() {},
 	}
@@ -72,8 +80,19 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	var action Action
 	var prRevision revision.Revision
 
-	//TODO: add approve signal, timeout, poll variation of shutdown signal
-	s := workflow.NewSelector(ctx)
+	s := temporalInternal.SelectorWithTimeout{
+		Selector: workflow.NewSelector(ctx),
+	}
+	onInactivityTimeout := func(f workflow.Future) {
+		err := f.Get(ctx, nil)
+		if temporal.IsCanceledError(err) {
+			action = onCancel
+			return
+		}
+		action = onTimeout
+	}
+	inactivityTimeoutCancel, _ := s.AddTimeout(ctx, r.InactivityTimeout, onInactivityTimeout)
+
 	s.AddReceive(r.RevisionSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		prRevision = r.RevisionReceiver.Receive(c, more)
 		action = onNewRevision
@@ -95,6 +114,14 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		switch action {
 		case onNewRevision:
 			r.onNewRevision(ctx, prRevision)
+			inactivityTimeoutCancel()
+			inactivityTimeoutCancel, _ = s.AddTimeout(ctx, r.InactivityTimeout, onInactivityTimeout)
+		case onCancel:
+			continue
+		case onTimeout: // TODO: send message to PR stating atlantis deleted state due to inactivity and to rerun to trigger atlantis workflow
+			workflow.GetLogger(ctx).Info("workflow timed out, shutting down")
+			r.cancel()
+			return nil
 		case onShutdown:
 			workflow.GetLogger(ctx).Info("received shutdown signal")
 			r.cancel()
