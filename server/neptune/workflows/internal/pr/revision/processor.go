@@ -61,7 +61,9 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 		}
 	}
 	if len(failedPolicies) > 0 {
-		p.PolicyHandler.Handle(ctx, prRevision, failedPolicies)
+		workflow.Go(ctx, func(c workflow.Context) {
+			p.PolicyHandler.Handle(ctx, prRevision, failedPolicies)
+		})
 	}
 }
 
