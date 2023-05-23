@@ -147,8 +147,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			shutdownPollCancel, _ = s.AddTimeout(ctx, r.ShutdownPollTick, onShutdownPollTick)
 			continue
 		}
-		workflow.GetLogger(ctx).Info("pr is closed, shutting down")
-		r.state = complete
 		revisionCancel()
 		return nil
 	}
