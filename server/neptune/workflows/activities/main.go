@@ -42,6 +42,7 @@ const (
 // registering multiple workflows to the same worker
 type Deploy struct {
 	*dbActivities
+	*slackActivities
 }
 
 func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
@@ -59,6 +60,7 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
 		dbActivities: &dbActivities{
 			DeploymentInfoStore: deploymentStore,
 		},
+		slackActivities: &slackActivities{},
 	}, nil
 }
 

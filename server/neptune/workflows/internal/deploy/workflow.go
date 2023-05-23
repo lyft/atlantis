@@ -36,6 +36,8 @@ const (
 	OnCancel RunnerAction = iota
 	OnTimeout
 	OnReceive
+	OnNotify
+	OnUnknown
 )
 
 type container interface {
@@ -160,6 +162,16 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	})
 	cancelTimer, _ := s.AddTimeout(ctx, r.Timeout, onTimeout)
 
+	s.AddTimeout(ctx, 24 * time.Hour, func(f workflow.Future) {
+		err := f.Get(ctx, nil)
+
+		if err != nil {
+			// log maybe
+		}
+
+		action = OnNotify
+	})
+
 	// main loop which handles external signals
 	// and in turn signals the queue worker
 	for {
@@ -169,6 +181,9 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		switch action {
 		case OnCancel:
 			continue
+		case OnNotify:
+			// look at the queue status, 
+
 		case OnReceive:
 			cancelTimer()
 			cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, onTimeout)
