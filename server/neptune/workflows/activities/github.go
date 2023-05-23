@@ -3,13 +3,12 @@ package activities
 import (
 	"context"
 	"fmt"
+	key "github.com/runatlantis/atlantis/server/neptune/context"
+	"go.temporal.io/sdk/activity"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-
-	key "github.com/runatlantis/atlantis/server/neptune/context"
-	"go.temporal.io/sdk/activity"
 
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
@@ -38,6 +37,9 @@ type githubClient interface {
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
 	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
 	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error)
+	ListCommits(ctx internal.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error)
+	ListReviews(ctx internal.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error)
+	DismissReview(ctx internal.Context, owner, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error)
 }
 
 type DiffDirection string
@@ -49,7 +51,10 @@ const (
 	DirectionDiverged  DiffDirection = "diverged"
 )
 
-const deploymentsDirName = "deployments"
+const (
+	deploymentsDirName = "deployments"
+	approvalState      = "APPROVED"
+)
 
 type githubActivities struct {
 	Client      githubClient
@@ -367,4 +372,85 @@ func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request 
 	return ListModifiedFilesResponse{
 		FilePaths: filepaths,
 	}, nil
+}
+
+type ListPRCommitsRequest struct {
+	Repo     internal.Repo
+	PRNumber int
+}
+
+type ListPRCommitsResponse struct {
+	Commits []*github.RepositoryCommit
+}
+
+func (a *githubActivities) GithubListPRCommits(ctx context.Context, request ListPRCommitsRequest) (ListPRCommitsResponse, error) {
+	commits, err := a.Client.ListCommits(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+	)
+	if err != nil {
+		return ListPRCommitsResponse{}, errors.Wrap(err, "listing approvals from pr")
+	}
+	return ListPRCommitsResponse{
+		Commits: commits,
+	}, nil
+}
+
+type ListPRApprovalsRequest struct {
+	Repo     internal.Repo
+	PRNumber int
+}
+
+type ListPRApprovalsResponse struct {
+	Approvals []*github.PullRequestReview
+}
+
+func (a *githubActivities) GithubListPRApprovals(ctx context.Context, request ListPRApprovalsRequest) (ListPRApprovalsResponse, error) {
+	reviews, err := a.Client.ListReviews(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+	)
+	if err != nil {
+		return ListPRApprovalsResponse{}, errors.Wrap(err, "listing approvals from pr")
+	}
+	var approvals []*github.PullRequestReview
+	for _, review := range reviews {
+		if review.GetState() == approvalState {
+			approvals = append(approvals, review)
+		}
+	}
+	return ListPRApprovalsResponse{
+		Approvals: approvals,
+	}, nil
+}
+
+type DismissRequest struct {
+	Repo          internal.Repo
+	PRNumber      int
+	ReviewID      int64
+	DismissReason string
+}
+
+type DismissResponse struct{}
+
+func (a *githubActivities) GithubDismiss(ctx context.Context, request DismissRequest) (DismissResponse, error) {
+	dismissRequest := &github.PullRequestReviewDismissalRequest{
+		Message: github.String(request.DismissReason),
+	}
+	_, _, err := a.Client.DismissReview(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+		request.ReviewID,
+		dismissRequest,
+	)
+	if err != nil {
+		return DismissResponse{}, errors.Wrap(err, "dismissing pr review")
+	}
+	return DismissResponse{}, nil
 }
