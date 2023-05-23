@@ -69,7 +69,7 @@ func NewVCSEventsController(
 	}
 	prSignaler := &pr.WorkflowSignaler{TemporalClient: temporalClient}
 	prRequirementChecker := requirement.NewPRAggregate(globalCfg)
-	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler, legacyHandler)
+	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler, legacyHandler, featureAllocator)
 
 	prHandler := handlers.NewPullRequestEventWithEventTypeHandlers(
 		repoAllowlistChecker,

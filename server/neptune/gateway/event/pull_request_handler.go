@@ -45,7 +45,7 @@ type PullRequest struct {
 	InstallationToken int64
 }
 
-func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConfigBuilder rootConfigBuilder, globalCfg valid.GlobalCfg, requirementChecker requirementChecker, prSignaler prSignaler, legacyHandler legacyHandler) *ModifiedPullHandler {
+func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConfigBuilder rootConfigBuilder, globalCfg valid.GlobalCfg, requirementChecker requirementChecker, prSignaler prSignaler, legacyHandler legacyHandler, allocator feature.Allocator) *ModifiedPullHandler {
 	return &ModifiedPullHandler{
 		Logger:             logger,
 		Scheduler:          scheduler,
@@ -54,6 +54,7 @@ func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConf
 		RequirementChecker: requirementChecker,
 		LegacyHandler:      legacyHandler,
 		PRSignaler:         prSignaler,
+		Allocator:          allocator,
 	}
 }
 
