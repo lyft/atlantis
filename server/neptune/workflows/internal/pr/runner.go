@@ -15,6 +15,7 @@ type Action int64
 
 const (
 	onNewRevision Action = iota
+	onShutdownPoll
 	onShutdown
 	onCancel
 	onTimeout
@@ -43,6 +44,7 @@ type Runner struct {
 	RevisionProcessor     RevisionProcessor
 	Scope                 workflowMetrics.Scope
 	InactivityTimeout     time.Duration
+	ShutdownPollTick      time.Duration
 
 	// mutable state
 	state                 RunnerState
@@ -67,8 +69,9 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, ShutdownSignalID),
 		Scope:                 scope,
 		RevisionProcessor:     &revisionProcessor,
-		// TODO: make this a configuration
+		// TODO: make these configurations
 		InactivityTimeout: time.Hour * 24 * 7,
+		ShutdownPollTick:  time.Hour * 24,
 
 		cancel: func() {},
 	}
@@ -109,6 +112,11 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		c.Receive(ctx, &request)
 	})
 
+	onShutdownPollTick := func(f workflow.Future) {
+		action = onShutdownPoll
+	}
+	_, _ = s.AddTimeout(ctx, r.ShutdownPollTick, onShutdownPollTick)
+
 	for {
 		s.Select(ctx)
 		switch action {
@@ -124,6 +132,14 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			return nil
 		case onShutdown:
 			workflow.GetLogger(ctx).Info("received shutdown signal")
+			r.cancel()
+			return nil
+		case onShutdownPoll:
+			if shutdown := r.shouldShutdown(ctx, prRevision); !shutdown {
+				_, _ = s.AddTimeout(ctx, r.ShutdownPollTick, onShutdownPollTick)
+				continue
+			}
+			workflow.GetLogger(ctx).Info("pr is closed, shutting down")
 			r.cancel()
 			return nil
 		}
@@ -157,4 +173,9 @@ func (r *Runner) shouldProcessRevision(prRevision revision.Revision) bool {
 		return false
 	}
 	return true
+}
+
+func (r *Runner) shouldShutdown(ctx workflow.Context, prRevision revision.Revision) bool {
+	// TODO: execute activity to fetch pr state, if pr is closed, shutdown
+	return false
 }

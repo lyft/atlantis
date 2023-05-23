@@ -13,7 +13,8 @@ import (
 type request struct {
 	mockRevisionProcessor testRevisionProcessor
 	scope                 metrics.Scope
-	inactivityTimeout     time.Duration
+	InactivityTimeout     time.Duration
+	ShutdownPollTick      time.Duration
 	T                     *testing.T
 }
 
@@ -37,7 +38,8 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		RevisionReceiver:      &revisionReceiver,
 		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, shutdownID),
 		RevisionProcessor:     mockRevisionProcessor,
-		InactivityTimeout:     r.inactivityTimeout,
+		InactivityTimeout:     r.InactivityTimeout,
+		ShutdownPollTick:      r.ShutdownPollTick,
 		cancel:                func() {},
 	}
 	err := runner.Run(ctx)
@@ -49,7 +51,8 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 func TestWorkflowRunner_Run(t *testing.T) {
 	req := request{
 		mockRevisionProcessor: testRevisionProcessor{},
-		inactivityTimeout:     time.Minute,
+		InactivityTimeout:     time.Minute,
+		ShutdownPollTick:      time.Hour,
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
@@ -76,7 +79,8 @@ func TestWorkflowRunner_Run(t *testing.T) {
 func TestWorkflowRunner_Run_InactivityTimeout(t *testing.T) {
 	req := request{
 		mockRevisionProcessor: testRevisionProcessor{},
-		inactivityTimeout:     time.Second,
+		InactivityTimeout:     time.Second,
+		ShutdownPollTick:      time.Hour,
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
