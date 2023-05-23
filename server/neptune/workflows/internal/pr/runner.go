@@ -37,11 +37,16 @@ type RevisionProcessor interface {
 	Process(ctx workflow.Context, prRevision revision.Revision)
 }
 
+type ShutdownChecker interface {
+	ShouldShutdown(ctx workflow.Context, prRevision revision.Revision) bool
+}
+
 type Runner struct {
 	RevisionSignalChannel workflow.ReceiveChannel
 	RevisionReceiver      *revision.Receiver
 	ShutdownSignalChannel workflow.ReceiveChannel
 	RevisionProcessor     RevisionProcessor
+	ShutdownChecker       ShutdownChecker
 	Scope                 workflowMetrics.Scope
 	InactivityTimeout     time.Duration
 	ShutdownPollTick      time.Duration
@@ -103,7 +108,6 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	s.AddReceive(r.ShutdownSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		defer func() {
 			action = onShutdown
-			r.state = complete
 		}()
 		if !more {
 			return
@@ -115,7 +119,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	onShutdownPollTick := func(f workflow.Future) {
 		action = onShutdownPoll
 	}
-	_, _ = s.AddTimeout(ctx, r.ShutdownPollTick, onShutdownPollTick)
+	shutdownPollCancel, _ := s.AddTimeout(ctx, r.ShutdownPollTick, onShutdownPollTick)
 
 	for {
 		s.Select(ctx)
@@ -124,6 +128,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			r.onNewRevision(ctx, prRevision)
 			inactivityTimeoutCancel()
 			inactivityTimeoutCancel, _ = s.AddTimeout(ctx, r.InactivityTimeout, onInactivityTimeout)
+			continue
 		case onCancel:
 			continue
 		case onTimeout: // TODO: send message to PR stating atlantis deleted state due to inactivity and to rerun to trigger atlantis workflow
@@ -132,17 +137,19 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			return nil
 		case onShutdown:
 			workflow.GetLogger(ctx).Info("received shutdown signal")
-			r.cancel()
-			return nil
 		case onShutdownPoll:
-			if shutdown := r.shouldShutdown(ctx, prRevision); !shutdown {
-				_, _ = s.AddTimeout(ctx, r.ShutdownPollTick, onShutdownPollTick)
-				continue
-			}
-			workflow.GetLogger(ctx).Info("pr is closed, shutting down")
-			r.cancel()
-			return nil
+			workflow.GetLogger(ctx).Info("shutdown check poll tick")
 		}
+		// shutdown check
+		shutdownPollCancel()
+		if shutdown := r.ShutdownChecker.ShouldShutdown(ctx, prRevision); !shutdown {
+			shutdownPollCancel, _ = s.AddTimeout(ctx, r.ShutdownPollTick, onShutdownPollTick)
+			continue
+		}
+		workflow.GetLogger(ctx).Info("pr is closed, shutting down")
+		r.state = complete
+		r.cancel()
+		return nil
 	}
 }
 
@@ -173,9 +180,4 @@ func (r *Runner) shouldProcessRevision(prRevision revision.Revision) bool {
 		return false
 	}
 	return true
-}
-
-func (r *Runner) shouldShutdown(ctx workflow.Context, prRevision revision.Revision) bool {
-	// TODO: execute activity to fetch pr state, if pr is closed, shutdown
-	return false
 }

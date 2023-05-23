@@ -14,7 +14,8 @@ type request struct {
 	mockRevisionProcessor testRevisionProcessor
 	scope                 metrics.Scope
 	InactivityTimeout     time.Duration
-	ShutdownPollTick      time.Duration
+	ShutdownPollTime      time.Duration
+	NumShutdownPollTicks  int
 	T                     *testing.T
 }
 
@@ -32,14 +33,18 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		ScheduleToCloseTimeout: time.Minute,
 	})
 	mockRevisionProcessor := &r.mockRevisionProcessor
+	mockShutdownChecker := &testShutdownChecker{
+		ShouldShutdownAfterNTicks: r.NumShutdownPollTicks,
+	}
 	revisionReceiver := revision.NewRevisionReceiver(ctx, r.scope)
 	runner := &Runner{
 		RevisionSignalChannel: workflow.GetSignalChannel(ctx, revisionID),
 		RevisionReceiver:      &revisionReceiver,
 		ShutdownSignalChannel: workflow.GetSignalChannel(ctx, shutdownID),
 		RevisionProcessor:     mockRevisionProcessor,
+		ShutdownChecker:       mockShutdownChecker,
 		InactivityTimeout:     r.InactivityTimeout,
-		ShutdownPollTick:      r.ShutdownPollTick,
+		ShutdownPollTick:      r.ShutdownPollTime,
 		cancel:                func() {},
 	}
 	err := runner.Run(ctx)
@@ -52,7 +57,8 @@ func TestWorkflowRunner_Run(t *testing.T) {
 	req := request{
 		mockRevisionProcessor: testRevisionProcessor{},
 		InactivityTimeout:     time.Minute,
-		ShutdownPollTick:      time.Hour,
+		ShutdownPollTime:      time.Hour,
+		NumShutdownPollTicks:  1,
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
@@ -80,7 +86,28 @@ func TestWorkflowRunner_Run_InactivityTimeout(t *testing.T) {
 	req := request{
 		mockRevisionProcessor: testRevisionProcessor{},
 		InactivityTimeout:     time.Second,
-		ShutdownPollTick:      time.Hour,
+		ShutdownPollTime:      time.Hour,
+	}
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(revisionID, revision.NewTerraformRevisionRequest{
+			Revision: "abc",
+		})
+	}, 20*time.Second)
+	env.ExecuteWorkflow(testWorkflow, req)
+	var resp response
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, resp.ProcessCount)
+}
+
+func TestWorkflowRunner_Run_ShutdownPoll(t *testing.T) {
+	req := request{
+		mockRevisionProcessor: testRevisionProcessor{},
+		InactivityTimeout:     time.Minute,
+		ShutdownPollTime:      time.Second,
+		NumShutdownPollTicks:  3,
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
@@ -102,4 +129,17 @@ type testRevisionProcessor struct {
 
 func (t *testRevisionProcessor) Process(_ workflow.Context, _ revision.Revision) {
 	t.processCalls = t.processCalls + 1
+}
+
+type testShutdownChecker struct {
+	ShouldShutdownAfterNTicks int
+	calls                     int
+}
+
+func (c *testShutdownChecker) ShouldShutdown(ctx workflow.Context, prRevision revision.Revision) bool {
+	c.calls++
+	if c.calls == c.ShouldShutdownAfterNTicks {
+		return true
+	}
+	return false
 }
