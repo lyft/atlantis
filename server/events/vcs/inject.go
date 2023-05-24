@@ -22,8 +22,11 @@ func newValidChecksFilters(vcsStatusPrefix string) []ValidChecksFilter {
 	applyChecksFilter := &ApplyChecksFilter{
 		statusTitleMatcher: titleMatcher,
 	}
+	deployChecksFilter := &DeployChecksFilter{
+		statusTitleMatcher: titleMatcher,
+	}
 	return []ValidChecksFilter{
-		SuccessConclusionFilter, SkippedConclusionFilter, applyChecksFilter,
+		SuccessConclusionFilter, SkippedConclusionFilter, applyChecksFilter, deployChecksFilter,
 	}
 }
 
