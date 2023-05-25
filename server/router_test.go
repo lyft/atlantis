@@ -3,6 +3,7 @@ package server_test
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/google/uuid"
@@ -16,31 +17,44 @@ import (
 
 func TestRouter_GenerateLockURL(t *testing.T) {
 	cases := []struct {
-		AtlantisURL string
+		AtlantisURL *url.URL
 		ExpURL      string
 	}{
 		{
-			"http://localhost:4141",
+			&url.URL{
+				Scheme: "http",
+				Host:   "localhost:4141",
+			},
 			"http://localhost:4141/lock?id=lkysow%252Fatlantis-example%252F.%252Fdefault",
 		},
 		{
-			"https://localhost:4141",
+			&url.URL{
+				Scheme: "https",
+				Host:   "localhost:4141",
+			},
 			"https://localhost:4141/lock?id=lkysow%252Fatlantis-example%252F.%252Fdefault",
 		},
 		{
-			"https://localhost:4141/",
+			&url.URL{
+				Scheme: "https",
+				Host:   "localhost:4141",
+			},
 			"https://localhost:4141/lock?id=lkysow%252Fatlantis-example%252F.%252Fdefault",
 		},
 		{
-			"https://example.com/basepath",
+			&url.URL{
+				Scheme: "https",
+				Host:   "example.com",
+				Path:   "/basepath",
+			},
 			"https://example.com/basepath/lock?id=lkysow%252Fatlantis-example%252F.%252Fdefault",
 		},
 		{
-			"https://example.com/basepath/",
-			"https://example.com/basepath/lock?id=lkysow%252Fatlantis-example%252F.%252Fdefault",
-		},
-		{
-			"https://example.com/path/1/",
+			&url.URL{
+				Scheme: "https",
+				Host:   "example.com",
+				Path:   "/path/1",
+			},
 			"https://example.com/path/1/lock?id=lkysow%252Fatlantis-example%252F.%252Fdefault",
 		},
 	}
@@ -51,12 +65,9 @@ func TestRouter_GenerateLockURL(t *testing.T) {
 	underlyingRouter.HandleFunc("/lock", func(_ http.ResponseWriter, _ *http.Request) {}).Methods(http.MethodGet).Queries(queryParam, "{id}").Name(routeName)
 
 	for _, c := range cases {
-		t.Run(c.AtlantisURL, func(t *testing.T) {
-			atlantisURL, err := server.ParseAtlantisURL(c.AtlantisURL)
-			Ok(t, err)
-
+		t.Run(c.AtlantisURL.String(), func(t *testing.T) {
 			router := &server.Router{
-				AtlantisURL:               atlantisURL,
+				AtlantisURL:               c.AtlantisURL,
 				LockViewRouteIDQueryParam: queryParam,
 				LockViewRouteName:         routeName,
 				Underlying:                underlyingRouter,
@@ -67,14 +78,14 @@ func TestRouter_GenerateLockURL(t *testing.T) {
 }
 
 func setupJobsRouter(t *testing.T) *server.Router {
-	atlantisURL, err := server.ParseAtlantisURL("http://localhost:4141")
-	Ok(t, err)
-
 	underlyingRouter := mux.NewRouter()
 	underlyingRouter.HandleFunc("/jobs/{job-id}", func(_ http.ResponseWriter, _ *http.Request) {}).Methods(http.MethodGet).Name("project-jobs-detail")
 
 	return &server.Router{
-		AtlantisURL:              atlantisURL,
+		AtlantisURL: &url.URL{
+			Scheme: "http",
+			Host:   "localhost:4141",
+		},
 		Underlying:               underlyingRouter,
 		ProjectJobsViewRouteName: "project-jobs-detail",
 	}

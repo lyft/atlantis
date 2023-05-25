@@ -17,8 +17,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/docker/docker/pkg/fileutils"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -252,7 +254,8 @@ func TestDetermineProjects(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
-			projects := m.DetermineProjects(context.TODO(), noopLogger, c.files, modifiedRepo, c.repoDir, c.autoplanFileList)
+			autoplanFilelist, _ := fileutils.NewPatternMatcher(strings.Split(c.autoplanFileList, ","))
+			projects := m.DetermineProjects(context.TODO(), noopLogger, c.files, modifiedRepo, c.repoDir, autoplanFilelist)
 
 			// Extract the paths from the projects. We use a slice here instead of a
 			// map so we can test whether there are duplicates returned.

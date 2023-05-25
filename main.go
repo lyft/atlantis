@@ -17,22 +17,23 @@
 package main
 
 import (
+	"github.com/alecthomas/kong"
 	"github.com/runatlantis/atlantis/cmd"
-	"github.com/spf13/viper"
 )
 
 const atlantisVersion = "0.17.3"
 
 func main() {
-	v := viper.New()
-
-	// We're creating commands manually here rather than using init() functions
-	// (as recommended by cobra) because it makes testing easier.
-	server := cmd.NewServerCmd(v, atlantisVersion)
-	version := &cmd.VersionCmd{AtlantisVersion: atlantisVersion}
-
-	cmd.RootCmd.AddCommand(server.Init())
-	cmd.RootCmd.AddCommand(version.Init())
-
-	cmd.Execute()
+	ctx := kong.Parse(
+		&cmd.CLI,
+		cmd.FlagsVars,
+		kong.DefaultEnvars("ATLANTIS"),
+		kong.Bind(cmd.Context{
+			Version: atlantisVersion,
+		}),
+	)
+	err := ctx.Run(&cmd.Context{
+		Version: atlantisVersion,
+	})
+	ctx.FatalIfErrorf(err)
 }

@@ -27,7 +27,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sort"
-	"strings"
 	"syscall"
 	"time"
 
@@ -133,15 +132,6 @@ type Server struct {
 	CancelWorker                  context.CancelFunc
 }
 
-// Config holds config for server that isn't passed in by the user.
-type Config struct {
-	AtlantisURLFlag      string
-	AtlantisVersion      string
-	DefaultTFVersionFlag string
-	RepoConfigJSONFlag   string
-	AppCfg               githubapp.Config
-}
-
 // WebhookConfig is nested within UserConfig. It's used to configure webhooks.
 type WebhookConfig struct {
 	// Event is the type of event we should send this webhook for, ex. apply.
@@ -160,8 +150,8 @@ type WebhookConfig struct {
 // NewServer returns a new server. If there are issues starting the server or
 // its dependencies an error will be returned. This is like the main() function
 // for the server CLI command because it injects all the dependencies.
-func NewServer(userConfig UserConfig, config Config) (*Server, error) {
-	ctxLogger, err := logging.NewLoggerFromLevel(userConfig.ToLogLevel())
+func NewServer(userConfig UserConfig, appCfg githubapp.Config) (*Server, error) {
+	ctxLogger, err := logging.NewLoggerFromLevel(userConfig.LogLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +185,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	} else if userConfig.RepoConfigJSON != "" {
 		globalCfg, err = validator.ParseGlobalCfgJSON(userConfig.RepoConfigJSON, globalCfg)
 		if err != nil {
-			return nil, errors.Wrapf(err, "parsing --%s", config.RepoConfigJSONFlag)
+			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfigJSON)
 		}
 	}
 
@@ -212,38 +202,44 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Regexes: globalCfg.TerraformLogFilter.Regexes,
 	}
 
-	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
+	if userConfig.GithubSecrets.User != "" || userConfig.GithubSecrets.AppID != 0 {
 		supportedVCSHosts = append(supportedVCSHosts, models.Github)
-		if userConfig.GithubUser != "" {
+		if userConfig.GithubSecrets.User != "" {
 			githubCredentials = &vcs.GithubUserCredentials{
-				User:  userConfig.GithubUser,
-				Token: userConfig.GithubToken,
+				User:  string(userConfig.GithubSecrets.User),
+				Token: userConfig.GithubSecrets.Token,
 			}
-		} else if userConfig.GithubAppID != 0 && userConfig.GithubAppKeyFile != "" {
-			privateKey, err := os.ReadFile(userConfig.GithubAppKeyFile)
+		} else if userConfig.GithubSecrets.AppID != 0 && userConfig.GithubSecrets.AppKeyFile != "" {
+			privateKey, err := os.ReadFile(userConfig.GithubSecrets.AppKeyFile)
 			if err != nil {
 				return nil, err
 			}
 			githubCredentials = &vcs.GithubAppCredentials{
-				AppID:    userConfig.GithubAppID,
+				AppID:    userConfig.GithubSecrets.AppID,
 				Key:      privateKey,
-				Hostname: userConfig.GithubHostname,
-				AppSlug:  userConfig.GithubAppSlug,
+				Hostname: userConfig.GithubSecrets.Hostname.String(),
+				AppSlug:  userConfig.GithubSecrets.AppSlug,
 			}
 			githubAppEnabled = true
-		} else if userConfig.GithubAppID != 0 && userConfig.GithubAppKey != "" {
+		} else if userConfig.GithubSecrets.AppID != 0 && userConfig.GithubSecrets.AppKey != "" {
 			githubCredentials = &vcs.GithubAppCredentials{
-				AppID:    userConfig.GithubAppID,
-				Key:      []byte(userConfig.GithubAppKey),
-				Hostname: userConfig.GithubHostname,
-				AppSlug:  userConfig.GithubAppSlug,
+				AppID:    userConfig.GithubSecrets.AppID,
+				Key:      []byte(userConfig.GithubSecrets.AppKey),
+				Hostname: userConfig.GithubSecrets.Hostname.String(),
+				AppSlug:  userConfig.GithubSecrets.AppSlug,
 			}
 			githubAppEnabled = true
 		}
 
 		var err error
 
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, ctxLogger, mergeabilityChecker)
+		fmt.Printf("%+v", userConfig.GithubSecrets.Hostname.String())
+
+		rawGithubClient, err = vcs.NewGithubClient(
+			userConfig.GithubSecrets.Hostname.String(),
+			githubCredentials,
+			ctxLogger,
+			mergeabilityChecker)
 		if err != nil {
 			return nil, err
 		}
@@ -262,40 +258,46 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
 	}
-	if userConfig.GitlabUser != "" {
+	if userConfig.GitlabSecrets.User != "" {
 		supportedVCSHosts = append(supportedVCSHosts, models.Gitlab)
 		var err error
-		gitlabClient, err = vcs.NewGitlabClient(userConfig.GitlabHostname, userConfig.GitlabToken, ctxLogger)
+		gitlabClient, err = vcs.NewGitlabClient(userConfig.GitlabSecrets.Hostname.String(), userConfig.GitlabSecrets.Token, ctxLogger)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if userConfig.BitbucketUser != "" {
-		if userConfig.BitbucketBaseURL == bitbucketcloud.BaseURL {
+	if userConfig.BitbucketSecrets.User != "" {
+		if userConfig.BitbucketSecrets.BaseURL.String() == bitbucketcloud.BaseURL {
 			supportedVCSHosts = append(supportedVCSHosts, models.BitbucketCloud)
 			bitbucketCloudClient = bitbucketcloud.NewClient(
 				http.DefaultClient,
-				userConfig.BitbucketUser,
-				userConfig.BitbucketToken,
-				userConfig.AtlantisURL)
+				string(userConfig.BitbucketSecrets.User),
+				userConfig.BitbucketSecrets.Token,
+				userConfig.BitbucketSecrets.BaseURL.String(),
+			)
 		} else {
 			supportedVCSHosts = append(supportedVCSHosts, models.BitbucketServer)
 			var err error
 			bitbucketServerClient, err = bitbucketserver.NewClient(
 				http.DefaultClient,
-				userConfig.BitbucketUser,
-				userConfig.BitbucketToken,
-				userConfig.BitbucketBaseURL,
-				userConfig.AtlantisURL)
+				string(userConfig.BitbucketSecrets.User),
+				userConfig.BitbucketSecrets.Token,
+				userConfig.BitbucketSecrets.BaseURL.String(),
+				userConfig.AtlantisURL.String(),
+			)
 			if err != nil {
 				return nil, errors.Wrapf(err, "setting up Bitbucket Server client")
 			}
 		}
 	}
-	if userConfig.AzureDevopsUser != "" {
+	if userConfig.AzureDevopsSecrets.User != "" {
 		supportedVCSHosts = append(supportedVCSHosts, models.AzureDevops)
 		var err error
-		azuredevopsClient, err = vcs.NewAzureDevopsClient("dev.azure.com", userConfig.AzureDevopsUser, userConfig.AzureDevopsToken)
+		azuredevopsClient, err = vcs.NewAzureDevopsClient(
+			"dev.azure.com",
+			string(userConfig.AzureDevopsSecrets.User),
+			userConfig.AzureDevopsSecrets.Token,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -306,29 +308,53 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "getting home dir to write ~/.git-credentials file")
 		}
-		if userConfig.GithubUser != "" {
-			if err := events.WriteGitCreds(userConfig.GithubUser, userConfig.GithubToken, userConfig.GithubHostname, home, ctxLogger, false); err != nil {
+		if userConfig.GithubSecrets.User != "" {
+			if err := events.WriteGitCreds(
+				string(userConfig.GithubSecrets.User),
+				userConfig.GithubSecrets.Token,
+				userConfig.GithubSecrets.Hostname.String(),
+				home,
+				ctxLogger,
+				false); err != nil {
 				return nil, err
 			}
 		}
-		if userConfig.GitlabUser != "" {
-			if err := events.WriteGitCreds(userConfig.GitlabUser, userConfig.GitlabToken, userConfig.GitlabHostname, home, ctxLogger, false); err != nil {
+		if userConfig.GitlabSecrets.User != "" {
+			if err := events.WriteGitCreds(
+				string(userConfig.GitlabSecrets.User),
+				userConfig.GitlabSecrets.Token,
+				userConfig.GitlabSecrets.Hostname.String(),
+				home,
+				ctxLogger,
+				false); err != nil {
 				return nil, err
 			}
 		}
-		if userConfig.BitbucketUser != "" {
+		if userConfig.BitbucketSecrets.User != "" {
 			// The default BitbucketBaseURL is https://api.bitbucket.org which can't actually be used for git
 			// so we override it here only if it's that to be bitbucket.org
-			bitbucketBaseURL := userConfig.BitbucketBaseURL
+			bitbucketBaseURL := userConfig.BitbucketSecrets.BaseURL.String()
 			if bitbucketBaseURL == "https://api.bitbucket.org" {
 				bitbucketBaseURL = "bitbucket.org"
 			}
-			if err := events.WriteGitCreds(userConfig.BitbucketUser, userConfig.BitbucketToken, bitbucketBaseURL, home, ctxLogger, false); err != nil {
+			if err := events.WriteGitCreds(
+				string(userConfig.BitbucketSecrets.User),
+				userConfig.BitbucketSecrets.Token,
+				bitbucketBaseURL,
+				home,
+				ctxLogger,
+				false); err != nil {
 				return nil, err
 			}
 		}
-		if userConfig.AzureDevopsUser != "" {
-			if err := events.WriteGitCreds(userConfig.AzureDevopsUser, userConfig.AzureDevopsToken, "dev.azure.com", home, ctxLogger, false); err != nil {
+		if userConfig.AzureDevopsSecrets.User != "" {
+			if err := events.WriteGitCreds(
+				string(userConfig.AzureDevopsSecrets.User),
+				userConfig.AzureDevopsSecrets.Token,
+				"dev.azure.com",
+				home,
+				ctxLogger,
+				false); err != nil {
 				return nil, err
 			}
 		}
@@ -354,7 +380,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		TitleBuilder: vcs.StatusTitleBuilder{
 			TitlePrefix: userConfig.VCSStatusName,
 		},
-		DefaultDetailsURL: userConfig.DefaultCheckrunDetailsURL,
+		DefaultDetailsURL: userConfig.DefaultCheckrunDetailsURL.String(),
 	}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
@@ -369,15 +395,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, err
 	}
 
-	parsedURL, err := ParseAtlantisURL(userConfig.AtlantisURL)
-	if err != nil {
-		return nil, errors.Wrapf(err,
-			"parsing --%s flag %q", config.AtlantisURLFlag, userConfig.AtlantisURL)
-	}
-
 	underlyingRouter := mux.NewRouter()
 	router := &Router{
-		AtlantisURL:               parsedURL,
+		AtlantisURL:               userConfig.AtlantisURL.URL,
 		LockViewRouteIDQueryParam: LockViewRouteIDQueryParam,
 		LockViewRouteName:         LockViewRouteName,
 		ProjectJobsViewRouteName:  ProjectJobsViewRouteName,
@@ -413,8 +433,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		binDir,
 		cacheDir,
 		userConfig.DefaultTFVersion,
-		config.DefaultTFVersionFlag,
-		userConfig.TFDownloadURL,
+		userConfig.TFDownloadURL.String(),
 		&terraform.DefaultDownloader{},
 		true,
 		projectCmdOutputHandler)
@@ -459,7 +478,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		workingDir = &events.GithubAppWorkingDir{
 			WorkingDir:     workingDir,
 			Credentials:    githubCredentials,
-			GithubHostname: userConfig.GithubHostname,
+			GithubHostname: userConfig.GithubSecrets.Hostname.String(),
 		}
 	}
 
@@ -491,22 +510,22 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	)
 
 	eventParser := &events.EventParser{
-		GithubUser:         userConfig.GithubUser,
-		GithubToken:        userConfig.GithubToken,
-		GitlabUser:         userConfig.GitlabUser,
-		GitlabToken:        userConfig.GitlabToken,
-		AllowDraftPRs:      userConfig.PlanDrafts,
-		BitbucketUser:      userConfig.BitbucketUser,
-		BitbucketToken:     userConfig.BitbucketToken,
-		BitbucketServerURL: userConfig.BitbucketBaseURL,
-		AzureDevopsUser:    userConfig.AzureDevopsUser,
-		AzureDevopsToken:   userConfig.AzureDevopsToken,
+		GithubUser:         string(userConfig.GithubSecrets.User),
+		GithubToken:        userConfig.GithubSecrets.Token,
+		GitlabUser:         string(userConfig.GitlabSecrets.User),
+		GitlabToken:        userConfig.GitlabSecrets.Token,
+		AllowDraftPRs:      userConfig.AllowDraftPrs,
+		BitbucketUser:      string(userConfig.BitbucketSecrets.User),
+		BitbucketToken:     userConfig.BitbucketSecrets.Token,
+		BitbucketServerURL: userConfig.BitbucketSecrets.BaseURL.String(),
+		AzureDevopsUser:    string(userConfig.AzureDevopsSecrets.User),
+		AzureDevopsToken:   userConfig.AzureDevopsSecrets.Token,
 	}
 	commentParser := &events.CommentParser{
-		GithubUser:      userConfig.GithubUser,
-		GitlabUser:      userConfig.GitlabUser,
-		BitbucketUser:   userConfig.BitbucketUser,
-		AzureDevopsUser: userConfig.AzureDevopsUser,
+		GithubUser:      string(userConfig.GithubSecrets.User),
+		GitlabUser:      string(userConfig.GitlabSecrets.User),
+		BitbucketUser:   string(userConfig.BitbucketSecrets.User),
+		AzureDevopsUser: string(userConfig.AzureDevopsSecrets.User),
 		ApplyDisabled:   userConfig.DisableApply,
 	}
 	defaultTfVersion := terraformClient.DefaultVersion()
@@ -552,8 +571,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		workingDirLocker,
 		globalCfg,
 		pendingPlanFinder,
-		userConfig.EnableRegExpCmd,
-		userConfig.AutoplanFileList,
+		userConfig.EnableRegexpCmd,
+		userConfig.AutoplanFileList.PatternMatcher,
 		ctxLogger,
 		userConfig.MaxProjectsPerPR,
 	)
@@ -580,7 +599,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
-		config.AppCfg,
+		appCfg,
 		githubapp.WithClientMiddleware(
 			middleware.ClientMetrics(statsScope.SubScope("github")),
 		))
@@ -815,13 +834,19 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Logger:        ctxLogger,
 	}
 
-	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
+	allowList := []string{}
+
+	for _, repoAllowStmt := range userConfig.RepoAllowlist {
+		allowList = append(allowList, repoAllowStmt.String())
+	}
+
+	repoAllowlist, err := events.NewRepoAllowlistChecker(allowList)
 	if err != nil {
 		return nil, err
 	}
 	locksController := &controllers.LocksController{
-		AtlantisVersion:    config.AtlantisVersion,
-		AtlantisURL:        parsedURL,
+		AtlantisVersion:    userConfig.AtlantisVersion,
+		AtlantisURL:        userConfig.AtlantisURL.URL,
 		Locker:             lockingClient,
 		ApplyLocker:        applyLockingClient,
 		Logger:             ctxLogger,
@@ -843,8 +868,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	)
 
 	jobsController := &controllers.JobsController{
-		AtlantisVersion:          config.AtlantisVersion,
-		AtlantisURL:              parsedURL,
+		AtlantisVersion:          userConfig.AtlantisVersion,
+		AtlantisURL:              userConfig.AtlantisURL.URL,
 		Logger:                   ctxLogger,
 		ProjectJobsTemplate:      templates.ProjectJobsTemplate,
 		ProjectJobsErrorTemplate: templates.ProjectJobsErrorTemplate,
@@ -854,11 +879,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		KeyGenerator:             controllers.JobIDKeyGenerator{},
 	}
 	githubAppController := &controllers.GithubAppController{
-		AtlantisURL:         parsedURL,
+		AtlantisURL:         userConfig.AtlantisURL.URL,
 		Logger:              ctxLogger,
 		GithubSetupComplete: githubAppEnabled,
-		GithubHostname:      userConfig.GithubHostname,
-		GithubOrg:           userConfig.GithubOrg,
+		GithubHostname:      userConfig.GithubSecrets.Hostname.String(),
+		GithubOrg:           userConfig.GithubSecrets.Org,
 		GithubStatusName:    userConfig.VCSStatusName,
 	}
 
@@ -902,8 +927,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	repoConverter := github_converter.RepoConverter{
-		GithubUser:  userConfig.GithubUser,
-		GithubToken: userConfig.GithubToken,
+		GithubUser:  string(userConfig.GithubSecrets.User),
+		GithubToken: userConfig.GithubSecrets.Token,
 	}
 
 	pullConverter := github_converter.PullConverter{
@@ -912,8 +937,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	defaultEventsController := events_controllers.NewVCSEventsController(
 		statsScope,
-		[]byte(userConfig.GithubWebhookSecret),
-		userConfig.PlanDrafts,
+		[]byte(userConfig.GithubSecrets.WebhookSecret),
+		userConfig.AllowDraftPrs,
 		forceApplyCommandRunner,
 		commentParser,
 		eventParser,
@@ -922,11 +947,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 		ctxLogger,
 		userConfig.DisableApply,
-		[]byte(userConfig.GitlabWebhookSecret),
+		[]byte(userConfig.GitlabSecrets.WebhookSecret),
 		supportedVCSHosts,
-		[]byte(userConfig.BitbucketWebhookSecret),
-		[]byte(userConfig.AzureDevopsWebhookUser),
-		[]byte(userConfig.AzureDevopsWebhookPassword),
+		[]byte(userConfig.BitbucketSecrets.WebhookSecret),
+		[]byte(userConfig.AzureDevopsSecrets.WebhookUser),
+		[]byte(userConfig.AzureDevopsSecrets.WebhookPassword),
 		repoConverter,
 		pullConverter,
 		githubClient,
@@ -935,13 +960,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	)
 
 	var vcsPostHandler sqs.VCSPostHandler
-	lyftMode := userConfig.ToLyftMode()
-	switch lyftMode {
+	switch userConfig.LyftMode {
 	case Default: // default eventsController handles POST
 		vcsPostHandler = defaultEventsController
 		ctxLogger.Info("running Atlantis in default mode")
 	case Worker: // an SQS worker is set up to handle messages via default eventsController
-		worker, err := sqs.NewGatewaySQSWorker(ctx, statsScope, ctxLogger, userConfig.LyftWorkerQueueURL, defaultEventsController)
+		worker, err := sqs.NewGatewaySQSWorker(ctx, statsScope, ctxLogger, userConfig.LyftWorkerQueueURL.String(), defaultEventsController)
 		if err != nil {
 			ctxLogger.Error("unable to set up worker", map[string]interface{}{
 				"err": err,
@@ -956,8 +980,8 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	return &Server{
-		AtlantisVersion:               config.AtlantisVersion,
-		AtlantisURL:                   parsedURL,
+		AtlantisVersion:               userConfig.AtlantisVersion,
+		AtlantisURL:                   userConfig.AtlantisURL.URL,
 		Router:                        underlyingRouter,
 		Port:                          userConfig.Port,
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
@@ -976,12 +1000,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		LockDetailTemplate:            templates.LockTemplate,
 		ProjectJobsTemplate:           templates.ProjectJobsTemplate,
 		ProjectJobsErrorTemplate:      templates.ProjectJobsErrorTemplate,
-		SSLKeyFile:                    userConfig.SSLKeyFile,
-		SSLCertFile:                   userConfig.SSLCertFile,
+		SSLKeyFile:                    userConfig.SSLSecrets.KeyFile,
+		SSLCertFile:                   userConfig.SSLSecrets.CertFile,
 		Drainer:                       drainer,
 		ScheduledExecutorService:      scheduledExecutorService,
 		ProjectCmdOutputHandler:       projectCmdOutputHandler,
-		LyftMode:                      lyftMode,
+		LyftMode:                      userConfig.LyftMode,
 		CancelWorker:                  cancel,
 	}, nil
 }
@@ -1161,22 +1185,4 @@ func (s *Server) Healthz(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data) // nolint: errcheck
-}
-
-// ParseAtlantisURL parses the user-passed atlantis URL to ensure it is valid
-// and we can use it in our templates.
-// It removes any trailing slashes from the path so we can concatenate it
-// with other paths without checking.
-func ParseAtlantisURL(u string) (*url.URL, error) {
-	parsed, err := url.Parse(u)
-	if err != nil {
-		return nil, err
-	}
-	if !(parsed.Scheme == "http" || parsed.Scheme == "https") {
-		return nil, errors.New("http or https must be specified")
-	}
-	// We want the path to end without a trailing slash so we know how to
-	// use it in the rest of the program.
-	parsed.Path = strings.TrimSuffix(parsed.Path, "/")
-	return parsed, nil
 }

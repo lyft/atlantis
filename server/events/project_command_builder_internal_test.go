@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/docker/docker/pkg/fileutils"
 	version "github.com/hashicorp/go-version"
 	. "github.com/petergtz/pegomock"
 	"github.com/runatlantis/atlantis/server/core/config"
@@ -580,6 +581,8 @@ projects:
 				Ok(t, os.WriteFile(filepath.Join(tmp, "atlantis.yaml"), []byte(c.repoCfg), 0600))
 			}
 
+			autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 			builder := &DefaultProjectCommandBuilder{
 				ParserValidator:   &config.ParserValidator{},
 				ProjectFinder:     &DefaultProjectFinder{},
@@ -591,7 +594,7 @@ projects:
 				ProjectCommandContextBuilder: &projectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
 				},
-				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+				AutoplanFileList: autoplanFilelist,
 				EnableRegExpCmd:  false,
 			}
 
@@ -749,6 +752,8 @@ workflows:
 				Ok(t, os.WriteFile(filepath.Join(tmp, "atlantis.yaml"), []byte(c.repoCfg), 0600))
 			}
 
+			autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 			builder := &DefaultProjectCommandBuilder{
 				ParserValidator:   &config.ParserValidator{},
 				ProjectFinder:     &DefaultProjectFinder{},
@@ -760,7 +765,7 @@ workflows:
 				ProjectCommandContextBuilder: &projectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
 				},
-				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+				AutoplanFileList: autoplanFilelist,
 				EnableRegExpCmd:  false,
 			}
 
@@ -950,6 +955,8 @@ projects:
 				Ok(t, os.WriteFile(filepath.Join(tmp, "atlantis.yaml"), []byte(c.repoCfg), 0600))
 			}
 
+			autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
+
 			builder := &DefaultProjectCommandBuilder{
 				ParserValidator:   &config.ParserValidator{},
 				ProjectFinder:     &DefaultProjectFinder{},
@@ -961,7 +968,7 @@ projects:
 				ProjectCommandContextBuilder: &projectCommandContextBuilder{
 					CommentBuilder: &CommentParser{},
 				},
-				AutoplanFileList: "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+				AutoplanFileList: autoplanFilelist,
 				EnableRegExpCmd:  true,
 			}
 
@@ -1168,6 +1175,7 @@ workflows:
 				contextBuilder,
 				&CommentParser{},
 			}
+			autoplanFilelist, _ := fileutils.NewPatternMatcher([]string{"**/*.tf", "**/*.tfvars", "**/*.tfvars.json", "**/terragrunt.hcl"})
 			builder := &DefaultProjectCommandBuilder{
 				ParserValidator:              &config.ParserValidator{},
 				ProjectFinder:                &DefaultProjectFinder{},
@@ -1177,7 +1185,7 @@ workflows:
 				GlobalCfg:                    globalCfg,
 				PendingPlanFinder:            &DefaultPendingPlanFinder{},
 				ProjectCommandContextBuilder: contextBuilder,
-				AutoplanFileList:             "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl",
+				AutoplanFileList:             autoplanFilelist,
 			}
 
 			cmd := command.PolicyCheck

@@ -14,6 +14,7 @@
 package events_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/runatlantis/atlantis/server/events"
@@ -179,33 +180,9 @@ func TestRepoAllowlistChecker_IsAllowlisted(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
-			w, err := events.NewRepoAllowlistChecker(c.Allowlist)
+			w, err := events.NewRepoAllowlistChecker(strings.Split(c.Allowlist, ","))
 			Ok(t, err)
 			Equals(t, c.Exp, w.IsAllowlisted(c.RepoFullName, c.Hostname))
-		})
-	}
-}
-
-// If the allowlist contains a schema then we should get an error.
-func TestRepoAllowlistChecker_ContainsSchema(t *testing.T) {
-	cases := []struct {
-		allowlist string
-		expErr    string
-	}{
-		{
-			"://",
-			`allowlist "://" contained ://`,
-		},
-		{
-			"valid/*,https://bitbucket.org/*",
-			`allowlist "https://bitbucket.org/*" contained ://`,
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.allowlist, func(t *testing.T) {
-			_, err := events.NewRepoAllowlistChecker(c.allowlist)
-			ErrEquals(t, c.expErr, err)
 		})
 	}
 }

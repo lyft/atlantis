@@ -29,13 +29,7 @@ type RepoAllowlistChecker struct {
 
 // NewRepoAllowlistChecker constructs a new checker and validates that the
 // allowlist isn't malformed.
-func NewRepoAllowlistChecker(allowlist string) (*RepoAllowlistChecker, error) {
-	rules := strings.Split(allowlist, ",")
-	for _, rule := range rules {
-		if strings.Contains(rule, "://") {
-			return nil, fmt.Errorf("allowlist %q contained ://", rule)
-		}
-	}
+func NewRepoAllowlistChecker(rules []string) (*RepoAllowlistChecker, error) {
 	return &RepoAllowlistChecker{
 		rules: rules,
 	}, nil
