@@ -112,3 +112,19 @@ func (c *Client) ListPullRequests(ctx Context, owner, repo, base, state, sortBy,
 
 	return gh_helper.Iterate(ctx, run)
 }
+
+func (c *Client) ListReviews(ctx Context, owner string, repo string, number int) ([]*github.PullRequestReview, error) {
+	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+	if err != nil {
+		return nil, errors.Wrap(err, "creating client from installation")
+	}
+
+	run := func(ctx context.Context, nextPage int) ([]*github.PullRequestReview, *github.Response, error) {
+		listOptions := github.ListOptions{
+			PerPage: 100,
+		}
+		listOptions.Page = nextPage
+		return client.PullRequests.ListReviews(ctx, owner, repo, number, &listOptions)
+	}
+	return gh_helper.Iterate(ctx, run)
+}

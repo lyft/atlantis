@@ -66,7 +66,10 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 	revisionProcessor := revision.Processor{
 		TFWorkflow:      tfWorkflow,
 		TFStateReceiver: &stateReceiver,
-		PolicyHandler:   &policy.FailedPolicyHandler{},
+		PolicyHandler: &policy.FailedPolicyHandler{
+			ApprovalSignalChannel: workflow.GetSignalChannel(ctx, revision.ApprovalSignalID),
+			// TODO: populate other fields, will do so once another pr (640) is merged
+		},
 	}
 	shutdownChecker := ShutdownStateChecker{}
 	return &Runner{

@@ -31,13 +31,14 @@ var HashiGetter = func(ctx context.Context, dst, src string) error {
 // wraps hashicorp's go getter to allow for testing
 type gogetter func(ctx context.Context, dst, src string) error
 
-type githubClient interface {
+type githubClient interface { //nolint:interfacebloat
 	CreateCheckRun(ctx internal.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error)
 	UpdateCheckRun(ctx internal.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error)
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
 	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
 	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error)
+	ListReviews(ctx internal.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error)
 }
 
 type DiffDirection string
@@ -49,7 +50,10 @@ const (
 	DirectionDiverged  DiffDirection = "diverged"
 )
 
-const deploymentsDirName = "deployments"
+const (
+	deploymentsDirName = "deployments"
+	approvalState      = "APPROVED"
+)
 
 type githubActivities struct {
 	Client      githubClient
@@ -366,5 +370,35 @@ func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request 
 	// upper limit of 2Mb can accomodate (2*1024*1024)/400 = 524k filepaths which is >> max number of results supported by the GH API 3000.
 	return ListModifiedFilesResponse{
 		FilePaths: filepaths,
+	}, nil
+}
+
+type ListPRApprovalsRequest struct {
+	Repo     internal.Repo
+	PRNumber int
+}
+
+type ListPRApprovalsResponse struct {
+	Approvals []*github.PullRequestReview
+}
+
+func (a *githubActivities) GithubListPRApprovals(ctx context.Context, request ListPRApprovalsRequest) (ListPRApprovalsResponse, error) {
+	reviews, err := a.Client.ListReviews(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+	)
+	if err != nil {
+		return ListPRApprovalsResponse{}, errors.Wrap(err, "listing approvals from pr")
+	}
+	var approvals []*github.PullRequestReview
+	for _, review := range reviews {
+		if review.GetState() == approvalState {
+			approvals = append(approvals, review)
+		}
+	}
+	return ListPRApprovalsResponse{
+		Approvals: approvals,
 	}, nil
 }

@@ -130,7 +130,7 @@ type testPolicyHandler struct {
 	expectedRevision       revision.Revision
 }
 
-func (p testPolicyHandler) Handle(_ workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) {
+func (p testPolicyHandler) Handle(_ workflow.Context, revision revision.Revision, failedPolicies []terraform.Response) {
 	assert.Equal(p.t, p.expectedRevision, revision)
 	assert.Equal(p.t, p.expectedFailedPolicies, failedPolicies)
 }
