@@ -42,6 +42,15 @@ func (t *testStringContainer) IsEmpty() bool {
 	return t.item == ""
 }
 
+type notifier struct {
+	called bool
+}
+
+func (n *notifier) Notify(ctx workflow.Context) error {
+	n.called = true
+	return nil
+}
+
 type receiver struct {
 	receiveCalled bool
 	ctx           workflow.Context
@@ -56,6 +65,7 @@ func (n *receiver) Receive(c workflow.ReceiveChannel, more bool) {
 type response struct {
 	WorkerCtxCancelled bool
 	ReceiverCalled     bool
+	NotifierCalled     bool
 }
 
 type request struct {
@@ -65,6 +75,7 @@ type request struct {
 
 func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	receiver := &receiver{ctx: ctx}
+	notifier := &notifier{}
 
 	worker := &queueWorker{state: r.WorkerState}
 
@@ -72,6 +83,8 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 
 	runner := &deploy.Runner{
 		Timeout:                  10 * time.Second,
+		NotifierPeriod:           5 * time.Second,
+		Notifier:                 notifier,
 		Queue:                    q,
 		QueueWorker:              worker,
 		RevisionReceiver:         receiver,
@@ -91,6 +104,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	return response{
 		WorkerCtxCancelled: worker.ctx.Err() == workflow.ErrCanceled,
 		ReceiverCalled:     receiver.receiveCalled,
+		NotifierCalled:     notifier.called,
 	}, err
 }
 
@@ -98,6 +112,7 @@ func TestRunner(t *testing.T) {
 	t.Run("cancels waiting worker", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
+		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
 
 		// should timeout since we're not sending any signal
 		env.ExecuteWorkflow(testWorkflow, request{})
@@ -105,12 +120,13 @@ func TestRunner(t *testing.T) {
 		var resp response
 		err := env.GetWorkflowResult(&resp)
 		assert.NoError(t, err)
-		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: false}, resp)
+		assert.Equal(t, response{WorkerCtxCancelled: true}, resp)
 	})
 
 	t.Run("doesn't cancel if queue has items", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
+		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
 
 		// should timeout since we're not sending any signal
 		env.ExecuteWorkflow(testWorkflow, request{
@@ -120,12 +136,13 @@ func TestRunner(t *testing.T) {
 		var resp response
 		err := env.GetWorkflowResult(&resp)
 		assert.NoError(t, err)
-		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: false}, resp)
+		assert.Equal(t, response{WorkerCtxCancelled: true}, resp)
 	})
 
 	t.Run("receives signal and then times out", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
+		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
 
 		env.RegisterDelayedCallback(func() {
 			env.SignalWorkflow(testSignalID, "")
@@ -138,5 +155,23 @@ func TestRunner(t *testing.T) {
 		err := env.GetWorkflowResult(&resp)
 		assert.NoError(t, err)
 		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: true}, resp)
+	})
+
+	t.Run("receives signal and then times out new version", func(t *testing.T) {
+		ts := testsuite.WorkflowTestSuite{}
+		env := ts.NewTestWorkflowEnvironment()
+		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.Version(1))
+
+		env.RegisterDelayedCallback(func() {
+			env.SignalWorkflow(testSignalID, "")
+		}, 11*time.Second)
+
+		// should timeout after sending the first signal
+		env.ExecuteWorkflow(testWorkflow, request{})
+
+		var resp response
+		err := env.GetWorkflowResult(&resp)
+		assert.NoError(t, err)
+		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: true, NotifierCalled: true}, resp)
 	})
 }

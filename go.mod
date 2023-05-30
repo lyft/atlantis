@@ -176,6 +176,7 @@ require (
 	github.com/palantir/go-githubapp v0.13.1
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
+	github.com/slack-go/slack v0.12.2
 	github.com/stretchr/objx v0.5.0 // indirect
 	go.temporal.io/api v1.8.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4

@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision"
+	revisionNotifier "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -18,9 +20,11 @@ import (
 )
 
 const (
-	TaskQueue = "deploy"
+	TaskQueue          = "deploy"
+	AddNotifierVersion = "add-notifier"
 
 	RevisionReceiveTimeout    = 60 * time.Minute
+	QueueStatusNotifierPeriod = 24 * time.Hour
 	ActiveDeployWorkflowStat  = "active"
 	SuccessDeployWorkflowStat = "success"
 )
@@ -42,6 +46,10 @@ const (
 
 type container interface {
 	IsEmpty() bool
+}
+
+type QueueStatusNotifier interface {
+	Notify(ctx workflow.Context) error
 }
 
 type SignalReceiver interface {
@@ -82,6 +90,8 @@ type Runner struct {
 	RevisionReceiver         SignalReceiver
 	NewRevisionSignalChannel workflow.ReceiveChannel
 	Scope                    workflowMetrics.Scope
+	Notifier                 QueueStatusNotifier
+	NotifierPeriod           time.Duration
 }
 
 func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) (*Runner, error) {
@@ -116,6 +126,11 @@ func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, p
 		RevisionReceiver:         revisionReceiver,
 		NewRevisionSignalChannel: workflow.GetSignalChannel(ctx, revision.NewRevisionSignalID),
 		Scope:                    scope,
+		NotifierPeriod:           QueueStatusNotifierPeriod,
+		Notifier: &revisionNotifier.Slack{
+			DeployQueue: revisionQueue,
+			Activities:  a,
+		},
 	}, nil
 }
 
@@ -142,7 +157,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		r.QueueWorker.Work(ctx)
 	})
 
-	onTimeout := func(f workflow.Future) {
+	newRevisionTimerFunc := func(f workflow.Future) {
 		err := f.Get(ctx, nil)
 
 		if temporal.IsCanceledError(err) {
@@ -160,51 +175,60 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		r.RevisionReceiver.Receive(c, more)
 		action = OnReceive
 	})
-	cancelTimer, _ := s.AddTimeout(ctx, r.Timeout, onTimeout)
+	cancelTimer, _ := s.AddTimeout(ctx, r.Timeout, newRevisionTimerFunc)
 
-	s.AddTimeout(ctx, 24 * time.Hour, func(f workflow.Future) {
+	notifyTimerFunc := func(f workflow.Future) {
 		err := f.Get(ctx, nil)
 
 		if err != nil {
-			// log maybe
+			// this should really only happen on shutdown
+			action = OnCancel
 		}
 
 		action = OnNotify
-	})
+	}
+
+	v := workflow.GetVersion(ctx, AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1))
+	if v > workflow.DefaultVersion {
+		s.AddTimeout(ctx, r.NotifierPeriod, notifyTimerFunc)
+	}
 
 	// main loop which handles external signals
 	// and in turn signals the queue worker
+OUT:
 	for {
 		// blocks until a configured callback fires
 		s.Select(ctx)
 
 		switch action {
 		case OnCancel:
-			continue
 		case OnNotify:
-			// look at the queue status, 
-
+			err := r.Notifier.Notify(ctx)
+			if err != nil {
+				workflow.GetLogger(ctx).Warn("Error notifying on queue status", key.ErrKey, err)
+			}
+			s.AddTimeout(ctx, r.NotifierPeriod, notifyTimerFunc)
 		case OnReceive:
 			cancelTimer()
-			cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, onTimeout)
-			continue
+			cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, newRevisionTimerFunc)
+		case OnTimeout:
+			workflow.GetLogger(ctx).Info("revision receiver timeout")
+
+			// Since we timed out, let's determine whether we can shutdown our worker.
+			// If we have no incoming revisions and the worker is just waiting, thats the first sign.
+			// We also need to ensure that we're also checking whether the queue is empty since the worker can be in a waiting state
+			// if the queue is locked (ie. if the workflow has just started up with prior deploy state)
+			if !s.HasPending() && r.QueueWorker.GetState() != queue.WorkingWorkerState && r.Queue.IsEmpty() {
+				workflow.GetLogger(ctx).Info("initiating worker shutdown")
+				shutdownWorker()
+				break OUT
+			}
+
+			// basically keep on adding timeouts until we can either break this loop or get another signal
+			// we need to use the timeoutCtx to ensure that this gets cancelled when the receive is ready
+			cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, newRevisionTimerFunc)
 		}
 
-		workflow.GetLogger(ctx).Info("revision receiver timeout")
-
-		// Since we timed out, let's determine whether we can shutdown our worker.
-		// If we have no incoming revisions and the worker is just waiting, thats the first sign.
-		// We also need to ensure that we're also checking whether the queue is empty since the worker can be in a waiting state
-		// if the queue is locked (ie. if the workflow has just started up with prior deploy state)
-		if !s.HasPending() && r.QueueWorker.GetState() != queue.WorkingWorkerState && r.Queue.IsEmpty() {
-			workflow.GetLogger(ctx).Info("initiating worker shutdown")
-			shutdownWorker()
-			break
-		}
-
-		// basically keep on adding timeouts until we can either break this loop or get another signal
-		// we need to use the timeoutCtx to ensure that this gets cancelled when the receive is ready
-		cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, onTimeout)
 	}
 	// wait on cancellation so we can gracefully terminate, unsure if temporal handles this for us,
 	// but just being safe.
