@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"net/http"
 
 	"github.com/palantir/go-githubapp/githubapp"
@@ -66,8 +67,9 @@ func NewVCSEventsController(
 		WorkerProxy:      pullEventSNSProxy,
 		VCSStatusUpdater: vcsStatusUpdater,
 	}
+	prSignaler := &pr.WorkflowSignaler{TemporalClient: temporalClient}
 	prRequirementChecker := requirement.NewPRAggregate(globalCfg)
-	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, legacyHandler)
+	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler, legacyHandler, featureAllocator)
 
 	prHandler := handlers.NewPullRequestEventWithEventTypeHandlers(
 		repoAllowlistChecker,
