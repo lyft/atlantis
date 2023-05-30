@@ -228,7 +228,6 @@ OUT:
 			// we need to use the timeoutCtx to ensure that this gets cancelled when the receive is ready
 			cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, newRevisionTimerFunc)
 		}
-
 	}
 	// wait on cancellation so we can gracefully terminate, unsure if temporal handles this for us,
 	// but just being safe.

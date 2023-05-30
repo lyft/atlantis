@@ -50,7 +50,6 @@ func testWorkflow(ctx workflow.Context, request request) error {
 }
 
 func TestNotifier(t *testing.T) {
-
 	t.Run("empty queue", func(t *testing.T) {
 		state := queue.LockState{Status: queue.UnlockedStatus}
 		ts := testsuite.WorkflowTestSuite{}
@@ -178,5 +177,4 @@ func TestNotifier(t *testing.T) {
 
 		assert.True(t, env.AssertExpectations(t))
 	})
-
 }
