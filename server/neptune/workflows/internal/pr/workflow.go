@@ -35,6 +35,6 @@ func Workflow(ctx workflow.Context, request Request, tfWorkflow revision.TFWorkf
 			Mode:                 tfModel.PR,
 		},
 	}
-	runner := newRunner(ctx, scope, tfWorkflow, notifiers)
+	runner := newRunner(ctx, scope, tfWorkflow, request.PRNum, notifiers)
 	return runner.Run(ctx)
 }
