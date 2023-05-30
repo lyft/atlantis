@@ -13,7 +13,6 @@ const dismissReason = "**New plans have triggered policy failures that must be a
 
 type githubActivities interface {
 	GithubListPRCommits(ctx context.Context, request activities.ListPRCommitsRequest) (activities.ListPRCommitsResponse, error)
-	GithubListPRApprovals(ctx context.Context, request activities.ListPRApprovalsRequest) (activities.ListPRApprovalsResponse, error)
 	GithubDismiss(ctx context.Context, request activities.DismissRequest) (activities.DismissResponse, error)
 }
 
@@ -22,7 +21,7 @@ type StaleReviewDismisser struct {
 	PRNumber         int
 }
 
-func (d *StaleReviewDismisser) Dismiss(ctx workflow.Context, revision revision.Revision) error {
+func (d *StaleReviewDismisser) Dismiss(ctx workflow.Context, revision revision.Revision, currentApprovals []*github.PullRequestReview) ([]*github.PullRequestReview, error) {
 	// Fetch current commits on PR
 	var listCommitsResponse activities.ListPRCommitsResponse
 	err := workflow.ExecuteActivity(ctx, d.githubActivities.GithubListPRCommits, activities.ListPRCommitsRequest{
@@ -30,28 +29,24 @@ func (d *StaleReviewDismisser) Dismiss(ctx workflow.Context, revision revision.R
 		PRNumber: d.PRNumber,
 	}).Get(ctx, &listCommitsResponse)
 	if err != nil {
-		return err
-	}
-
-	// Fetch current approvals in activity
-	var listPRApprovalsResponse activities.ListPRApprovalsResponse
-	err = workflow.ExecuteActivity(ctx, d.githubActivities.GithubListPRApprovals, activities.ListPRApprovalsRequest{
-		Repo:     revision.Repo,
-		PRNumber: d.PRNumber,
-	}).Get(ctx, &listPRApprovalsResponse)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Filter for approvals on stale commits
 	var staleApprovals []int64
+	var validApprovals []*github.PullRequestReview
 	staleCommits := findStaleCommits(listCommitsResponse.Commits, revision.Revision)
-	for _, approval := range listPRApprovalsResponse.Approvals {
+	for _, approval := range currentApprovals {
+		isValid := true
 		for _, staleCommit := range staleCommits {
 			if approval.GetCommitID() == staleCommit.GetSHA() {
 				staleApprovals = append(staleApprovals, approval.GetID())
+				isValid = false
 				break
 			}
+		}
+		if isValid {
+			validApprovals = append(validApprovals, approval)
 		}
 	}
 
@@ -64,10 +59,10 @@ func (d *StaleReviewDismisser) Dismiss(ctx workflow.Context, revision revision.R
 			DismissReason: dismissReason,
 		}).Get(ctx, nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return validApprovals, nil
 }
 
 func findStaleCommits(commits []*github.RepositoryCommit, currentRevision string) []*github.RepositoryCommit {
