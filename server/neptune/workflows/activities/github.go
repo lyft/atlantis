@@ -40,6 +40,8 @@ type githubClient interface { //nolint:interfacebloat
 	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error)
 	ListReviews(ctx internal.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error)
 	GetPullRequest(ctx internal.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error)
+	ListCommits(ctx internal.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error)
+	DismissReview(ctx internal.Context, owner, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error)
 }
 
 type DiffDirection string
@@ -426,4 +428,55 @@ func (a *githubActivities) GithubListPRApprovals(ctx context.Context, request Li
 	return ListPRApprovalsResponse{
 		Approvals: approvals,
 	}, nil
+}
+
+type ListPRCommitsRequest struct {
+	Repo     internal.Repo
+	PRNumber int
+}
+
+type ListPRCommitsResponse struct {
+	Commits []*github.RepositoryCommit
+}
+
+func (a *githubActivities) GithubListPRCommits(ctx context.Context, request ListPRCommitsRequest) (ListPRCommitsResponse, error) {
+	commits, err := a.Client.ListCommits(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+	)
+	if err != nil {
+		return ListPRCommitsResponse{}, errors.Wrap(err, "listing approvals from pr")
+	}
+	return ListPRCommitsResponse{
+		Commits: commits,
+	}, nil
+}
+
+type DismissRequest struct {
+	Repo          internal.Repo
+	PRNumber      int
+	ReviewID      int64
+	DismissReason string
+}
+
+type DismissResponse struct{}
+
+func (a *githubActivities) GithubDismiss(ctx context.Context, request DismissRequest) (DismissResponse, error) {
+	dismissRequest := &github.PullRequestReviewDismissalRequest{
+		Message: github.String(request.DismissReason),
+	}
+	_, _, err := a.Client.DismissReview(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+		request.ReviewID,
+		dismissRequest,
+	)
+	if err != nil {
+		return DismissResponse{}, errors.Wrap(err, "dismissing pr review")
+	}
+	return DismissResponse{}, nil
 }
