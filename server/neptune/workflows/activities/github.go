@@ -39,6 +39,7 @@ type githubClient interface { //nolint:interfacebloat
 	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
 	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error)
 	ListReviews(ctx internal.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error)
+	GetPullRequest(ctx internal.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error)
 }
 
 type DiffDirection string
@@ -370,6 +371,30 @@ func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request 
 	// upper limit of 2Mb can accomodate (2*1024*1024)/400 = 524k filepaths which is >> max number of results supported by the GH API 3000.
 	return ListModifiedFilesResponse{
 		FilePaths: filepaths,
+	}, nil
+}
+
+type GetPullRequestStateRequest struct {
+	Repo     internal.Repo
+	PRNumber int
+}
+
+type GetPullRequestStateResponse struct {
+	State string
+}
+
+func (a *githubActivities) GithubGetPullRequestState(ctx context.Context, request GetPullRequestStateRequest) (GetPullRequestStateResponse, error) {
+	resp, _, err := a.Client.GetPullRequest(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+	)
+	if err != nil {
+		return GetPullRequestStateResponse{}, errors.Wrap(err, "fetching PR status")
+	}
+	return GetPullRequestStateResponse{
+		State: resp.GetState(),
 	}, nil
 }
 

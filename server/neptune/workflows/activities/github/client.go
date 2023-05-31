@@ -128,3 +128,11 @@ func (c *Client) ListReviews(ctx Context, owner string, repo string, number int)
 	}
 	return gh_helper.Iterate(ctx, run)
 }
+
+func (c *Client) GetPullRequest(ctx Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "creating client from installation")
+	}
+	return client.PullRequests.Get(ctx, owner, repo, number)
+}

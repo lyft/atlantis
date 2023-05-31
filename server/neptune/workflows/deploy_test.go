@@ -293,6 +293,10 @@ func (c *testGithubClient) ListReviews(ctx internalGithub.Context, owner string,
 	}, nil
 }
 
+func (c *testGithubClient) GetPullRequest(ctx internalGithub.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error) {
+	return &github.PullRequest{}, &github.Response{}, nil
+}
+
 func (c *testGithubClient) CreateCheckRun(ctx internalGithub.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
 	c.DeploymentID = opts.GetExternalID()
 	return &github.CheckRun{
