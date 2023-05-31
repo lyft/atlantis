@@ -285,6 +285,14 @@ type testGithubClient struct {
 	DeploymentID string
 }
 
+func (c *testGithubClient) ListReviews(ctx internalGithub.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error) {
+	return []*github.PullRequestReview{
+		{
+			State: github.String("APPROVED"),
+		},
+	}, nil
+}
+
 func (c *testGithubClient) GetPullRequest(ctx internalGithub.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error) {
 	return &github.PullRequest{}, &github.Response{}, nil
 }

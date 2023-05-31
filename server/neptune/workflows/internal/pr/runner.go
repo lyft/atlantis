@@ -5,6 +5,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision/policy"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/temporal"
@@ -63,12 +64,17 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 		InternalNotifiers:   internalNotifiers,
 		AdditionalNotifiers: additionalNotifiers,
 	}
+	var ga *activities.Github
 	revisionProcessor := revision.Processor{
 		TFWorkflow:      tfWorkflow,
 		TFStateReceiver: &stateReceiver,
-		PolicyHandler:   &revision.FailedPolicyHandler{},
+		PolicyHandler: &policy.FailedPolicyHandler{
+			ApprovalSignalChannel: workflow.GetSignalChannel(ctx, revision.ApprovalSignalID),
+			GithubActivities:      ga,
+			PRNumber:              prNum,
+			// TODO: fill remaining fields when we create the dismisser and filter
+		},
 	}
-	var ga *activities.Github
 	shutdownChecker := ShutdownStateChecker{
 		GithubActivities: ga,
 		PRNumber:         prNum,

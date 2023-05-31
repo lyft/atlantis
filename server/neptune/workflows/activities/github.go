@@ -38,6 +38,7 @@ type githubClient interface { //nolint:interfacebloat
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
 	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
 	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error)
+	ListReviews(ctx internal.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error)
 	GetPullRequest(ctx internal.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error)
 }
 
@@ -50,7 +51,10 @@ const (
 	DirectionDiverged  DiffDirection = "diverged"
 )
 
-const deploymentsDirName = "deployments"
+const (
+	deploymentsDirName = "deployments"
+	approvalState      = "APPROVED"
+)
 
 type githubActivities struct {
 	Client      githubClient
@@ -391,5 +395,35 @@ func (a *githubActivities) GithubGetPullRequestState(ctx context.Context, reques
 	}
 	return GetPullRequestStateResponse{
 		State: resp.GetState(),
+	}, nil
+}
+
+type ListPRApprovalsRequest struct {
+	Repo     internal.Repo
+	PRNumber int
+}
+
+type ListPRApprovalsResponse struct {
+	Approvals []*github.PullRequestReview
+}
+
+func (a *githubActivities) GithubListPRApprovals(ctx context.Context, request ListPRApprovalsRequest) (ListPRApprovalsResponse, error) {
+	reviews, err := a.Client.ListReviews(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+	)
+	if err != nil {
+		return ListPRApprovalsResponse{}, errors.Wrap(err, "listing approvals from pr")
+	}
+	var approvals []*github.PullRequestReview
+	for _, review := range reviews {
+		if review.GetState() == approvalState {
+			approvals = append(approvals, review)
+		}
+	}
+	return ListPRApprovalsResponse{
+		Approvals: approvals,
 	}, nil
 }

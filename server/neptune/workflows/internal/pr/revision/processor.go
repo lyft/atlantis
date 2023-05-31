@@ -3,7 +3,6 @@ package revision
 import (
 	"github.com/google/uuid"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
@@ -13,6 +12,10 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+const (
+	ApprovalSignalID = "pr-approval"
+)
+
 type TFWorkflow func(ctx workflow.Context, request terraform.Request) (terraform.Response, error)
 
 type TFStateReceiver interface {
@@ -20,7 +23,7 @@ type TFStateReceiver interface {
 }
 
 type PolicyHandler interface {
-	Process(ctx workflow.Context, failedPolicies []activities.PolicySet)
+	Handle(ctx workflow.Context, prRevision Revision, failedPolicies []terraform.Response)
 }
 
 type Processor struct {
@@ -52,15 +55,7 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 		futures = append(futures, future)
 	}
 	workflowResponses := p.awaitWorkflows(ctx, futures, roots)
-	var failedPolicies []activities.PolicySet
-	for _, response := range workflowResponses {
-		for _, validationResult := range response.ValidationResults {
-			if validationResult.Status == activities.Fail {
-				failedPolicies = append(failedPolicies, validationResult.PolicySet)
-			}
-		}
-	}
-	p.PolicyHandler.Process(ctx, failedPolicies)
+	p.PolicyHandler.Handle(ctx, prRevision, workflowResponses)
 }
 
 func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision Revision, id uuid.UUID) workflow.ChildWorkflowFuture {
