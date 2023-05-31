@@ -2,6 +2,7 @@ package pr
 
 import (
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
@@ -56,7 +57,7 @@ type Runner struct {
 	lastAttemptedRevision string
 }
 
-func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow revision.TFWorkflow, internalNotifiers []revision.WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *Runner {
+func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow revision.TFWorkflow, prNum int, internalNotifiers []revision.WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *Runner {
 	revisionReceiver := revision.NewRevisionReceiver(ctx, scope)
 	stateReceiver := revision.StateReceiver{
 		InternalNotifiers:   internalNotifiers,
@@ -67,7 +68,11 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 		TFStateReceiver: &stateReceiver,
 		PolicyHandler:   &revision.FailedPolicyHandler{},
 	}
-	shutdownChecker := ShutdownStateChecker{}
+	var ga *activities.Github
+	shutdownChecker := ShutdownStateChecker{
+		GithubActivities: ga,
+		PRNumber:         prNum,
+	}
 	return &Runner{
 		RevisionSignalChannel: workflow.GetSignalChannel(ctx, revision.TerraformRevisionSignalID),
 		RevisionReceiver:      &revisionReceiver,

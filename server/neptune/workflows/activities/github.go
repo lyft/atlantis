@@ -31,13 +31,14 @@ var HashiGetter = func(ctx context.Context, dst, src string) error {
 // wraps hashicorp's go getter to allow for testing
 type gogetter func(ctx context.Context, dst, src string) error
 
-type githubClient interface {
+type githubClient interface { //nolint:interfacebloat
 	CreateCheckRun(ctx internal.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error)
 	UpdateCheckRun(ctx internal.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error)
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
 	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
 	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error)
+	GetPullRequest(ctx internal.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error)
 }
 
 type DiffDirection string
@@ -366,5 +367,29 @@ func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request 
 	// upper limit of 2Mb can accomodate (2*1024*1024)/400 = 524k filepaths which is >> max number of results supported by the GH API 3000.
 	return ListModifiedFilesResponse{
 		FilePaths: filepaths,
+	}, nil
+}
+
+type GetPullRequestStateRequest struct {
+	Repo     internal.Repo
+	PRNumber int
+}
+
+type GetPullRequestStateResponse struct {
+	State string
+}
+
+func (a *githubActivities) GithubGetPullRequestState(ctx context.Context, request GetPullRequestStateRequest) (GetPullRequestStateResponse, error) {
+	resp, _, err := a.Client.GetPullRequest(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+	)
+	if err != nil {
+		return GetPullRequestStateResponse{}, errors.Wrap(err, "fetching PR status")
+	}
+	return GetPullRequestStateResponse{
+		State: resp.GetState(),
 	}, nil
 }
