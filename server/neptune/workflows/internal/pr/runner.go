@@ -64,15 +64,17 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 		InternalNotifiers:   internalNotifiers,
 		AdditionalNotifiers: additionalNotifiers,
 	}
+	var ga *activities.Github
 	revisionProcessor := revision.Processor{
 		TFWorkflow:      tfWorkflow,
 		TFStateReceiver: &stateReceiver,
 		PolicyHandler: &policy.FailedPolicyHandler{
 			ApprovalSignalChannel: workflow.GetSignalChannel(ctx, revision.ApprovalSignalID),
-			// TODO: populate other fields, will do so once another pr (640) is merged
+			GithubActivities:      ga,
+			PRNumber:              prNum,
+			// TODO: fill remaining fields when we create the dismisser and filter
 		},
 	}
-	var ga *activities.Github
 	shutdownChecker := ShutdownStateChecker{
 		GithubActivities: ga,
 		PRNumber:         prNum,
