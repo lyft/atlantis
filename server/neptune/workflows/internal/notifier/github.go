@@ -151,7 +151,7 @@ func (n *CheckRunNotifier) updateCheckRun(ctx workflow.Context, workflowState *s
 	if n.Mode == terraform.Deploy {
 		title = BuildDeployCheckRunTitle(info.RootName)
 	} else {
-		title = BuildPlanCheckRunTitle(info.RootName)
+		title = BuildPRCheckRunTitle(info.RootName)
 	}
 
 	request := GithubCheckRunRequest{
@@ -221,6 +221,6 @@ func BuildDeployCheckRunTitle(rootName string) string {
 	return fmt.Sprintf("atlantis/deploy: %s", rootName)
 }
 
-func BuildPlanCheckRunTitle(rootName string) string {
-	return fmt.Sprintf("atlantis/plan: %s", rootName)
+func BuildPRCheckRunTitle(rootName string) string {
+	return fmt.Sprintf("atlantis/pr: %s", rootName)
 }
