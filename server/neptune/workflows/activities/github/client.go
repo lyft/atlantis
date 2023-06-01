@@ -136,3 +136,27 @@ func (c *Client) GetPullRequest(ctx Context, owner, repo string, number int) (*g
 	}
 	return client.PullRequests.Get(ctx, owner, repo, number)
 }
+
+func (c *Client) ListCommits(ctx Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error) {
+	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+	if err != nil {
+		return nil, errors.Wrap(err, "creating client from installation")
+	}
+
+	run := func(ctx context.Context, nextPage int) ([]*github.RepositoryCommit, *github.Response, error) {
+		listOptions := github.ListOptions{
+			PerPage: 100,
+		}
+		listOptions.Page = nextPage
+		return client.PullRequests.ListCommits(ctx, owner, repo, number, &listOptions)
+	}
+	return gh_helper.Iterate(ctx, run)
+}
+
+func (c *Client) DismissReview(ctx Context, owner string, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "creating client from installation")
+	}
+	return client.PullRequests.DismissReview(ctx, owner, repo, number, reviewID, review)
+}

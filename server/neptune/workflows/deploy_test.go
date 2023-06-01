@@ -285,6 +285,14 @@ type testGithubClient struct {
 	DeploymentID string
 }
 
+func (c *testGithubClient) ListCommits(ctx internalGithub.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error) {
+	return []*github.RepositoryCommit{}, nil
+}
+
+func (c *testGithubClient) DismissReview(ctx internalGithub.Context, owner, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error) {
+	return &github.PullRequestReview{}, &github.Response{}, nil
+}
+
 func (c *testGithubClient) ListReviews(ctx internalGithub.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error) {
 	return []*github.PullRequestReview{
 		{

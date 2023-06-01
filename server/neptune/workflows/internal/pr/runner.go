@@ -65,6 +65,10 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 		AdditionalNotifiers: additionalNotifiers,
 	}
 	var ga *activities.Github
+	dismisser := policy.StaleReviewDismisser{
+		GithubActivities: ga,
+		PRNumber:         prNum,
+	}
 	revisionProcessor := revision.Processor{
 		TFWorkflow:      tfWorkflow,
 		TFStateReceiver: &stateReceiver,
@@ -72,7 +76,8 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 			ApprovalSignalChannel: workflow.GetSignalChannel(ctx, revision.ApprovalSignalID),
 			GithubActivities:      ga,
 			PRNumber:              prNum,
-			// TODO: fill remaining fields when we create the dismisser and filter
+			Dismisser:             &dismisser,
+			// TODO: fill remaining fields when we create the filter
 		},
 	}
 	shutdownChecker := ShutdownStateChecker{
