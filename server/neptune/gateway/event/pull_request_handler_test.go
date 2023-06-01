@@ -50,6 +50,7 @@ func TestModifiedPullHandler_Handle_SignalerFailure(t *testing.T) {
 		Name:         "platform",
 		WorkflowMode: valid.PlatformWorkflowMode,
 	}
+	prRequest := pr.Request{ValidateEnvs: []pr.ValidateEnvs{{}}}
 	pullHandler := event.ModifiedPullHandler{
 		Logger:             logger,
 		Scheduler:          &sync.SynchronousScheduler{Logger: logger},
@@ -65,9 +66,10 @@ func TestModifiedPullHandler_Handle_SignalerFailure(t *testing.T) {
 			expectedT:        t,
 		},
 		PRSignaler: &mockPRSignaler{
-			error:         assert.AnError,
-			expectedRoots: []*valid.MergedProjectCfg{root},
-			expectedT:     t,
+			error:             assert.AnError,
+			expectedRoots:     []*valid.MergedProjectCfg{root},
+			expectedT:         t,
+			expectedPRRequest: prRequest,
 		},
 		Allocator: &testFeatureAllocator{Enabled: true},
 	}
@@ -121,6 +123,12 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 		Repo:              testRepo,
 		InstallationToken: 0,
 		Branch:            "branch",
+		ValidateEnvs: []pr.ValidateEnvs{
+			{
+				HeadCommit:     "sha",
+				BaseBranchName: testRepo.DefaultBranch,
+			},
+		},
 	}
 	signaler := &mockPRSignaler{
 		expectedRoots:     []*valid.MergedProjectCfg{},
@@ -164,6 +172,12 @@ func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
 		Repo:              testRepo,
 		InstallationToken: 0,
 		Branch:            "branch",
+		ValidateEnvs: []pr.ValidateEnvs{
+			{
+				HeadCommit:     "sha",
+				BaseBranchName: testRepo.DefaultBranch,
+			},
+		},
 	}
 	signaler := &mockPRSignaler{
 		expectedRoots:     []*valid.MergedProjectCfg{root},
