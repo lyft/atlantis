@@ -42,6 +42,7 @@ type githubClient interface { //nolint:interfacebloat
 	GetPullRequest(ctx internal.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error)
 	ListCommits(ctx internal.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error)
 	DismissReview(ctx internal.Context, owner, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error)
+	ListTeamMembers(ctx internal.Context, org string, teamSlug string) ([]*github.User, error)
 }
 
 type DiffDirection string
@@ -447,7 +448,7 @@ func (a *githubActivities) GithubListPRCommits(ctx context.Context, request List
 		request.PRNumber,
 	)
 	if err != nil {
-		return ListPRCommitsResponse{}, errors.Wrap(err, "listing approvals from pr")
+		return ListPRCommitsResponse{}, errors.Wrap(err, "listing commits from pr")
 	}
 	return ListPRCommitsResponse{
 		Commits: commits,
@@ -479,4 +480,32 @@ func (a *githubActivities) GithubDismiss(ctx context.Context, request DismissReq
 		return DismissResponse{}, errors.Wrap(err, "dismissing pr review")
 	}
 	return DismissResponse{}, nil
+}
+
+type ListTeamMembersRequest struct {
+	Repo     internal.Repo
+	Org      string
+	TeamSlug string
+}
+
+type ListTeamMembersResponse struct {
+	Members []string
+}
+
+func (a *githubActivities) GithubListTeamMembers(ctx context.Context, request ListTeamMembersRequest) (ListTeamMembersResponse, error) {
+	users, err := a.Client.ListTeamMembers(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Org,
+		request.TeamSlug,
+	)
+	if err != nil {
+		return ListTeamMembersResponse{}, errors.Wrap(err, "listing team members")
+	}
+	var members []string
+	for _, user := range users {
+		members = append(members, user.GetLogin())
+	}
+	return ListTeamMembersResponse{
+		Members: members,
+	}, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	gh "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -13,6 +14,7 @@ import (
 
 type githubActivities interface {
 	GithubListPRApprovals(ctx context.Context, request activities.ListPRApprovalsRequest) (activities.ListPRApprovalsResponse, error)
+	GithubListTeamMembers(ctx context.Context, request activities.ListTeamMembersRequest) (activities.ListTeamMembersResponse, error)
 }
 
 type dismisser interface {
@@ -20,7 +22,7 @@ type dismisser interface {
 }
 
 type policyFilter interface {
-	Filter(ctx workflow.Context, revision revision.Revision, currentApprovals []*github.PullRequestReview, failedPolicies []activities.PolicySet) ([]activities.PolicySet, error)
+	Filter(teams map[string][]string, currentApprovals []*github.PullRequestReview, failedPolicies []activities.PolicySet) []activities.PolicySet
 }
 
 type NewApproveSignalRequest struct{}
@@ -31,6 +33,7 @@ type FailedPolicyHandler struct {
 	PolicyFilter          policyFilter
 	GithubActivities      githubActivities
 	PRNumber              int
+	Org                   string
 }
 
 type Action int64
@@ -92,7 +95,19 @@ func (f *FailedPolicyHandler) handle(ctx workflow.Context, revision revision.Rev
 		return failedPolicies
 	}
 
+	// Fetch current policy team memberships
+	teams := make(map[string][]string)
+	for _, policy := range failedPolicies {
+		members, err := f.fetchTeamMembers(ctx, revision.Repo, policy.Owner)
+		if err != nil {
+			workflow.GetLogger(ctx).Error(err.Error())
+			return failedPolicies
+		}
+		teams[policy.Name] = members
+	}
+
 	// Dismiss stale approvals
+	// TODO: pass teams to dismisser to only dismiss approvals from members of a failing policy team
 	currentApprovals := listPRApprovalsResponse.Approvals
 	currentApprovals, err = f.Dismisser.Dismiss(ctx, revision, currentApprovals)
 	if err != nil {
@@ -101,12 +116,18 @@ func (f *FailedPolicyHandler) handle(ctx workflow.Context, revision revision.Rev
 	}
 
 	// Filter out failed policies from policy approvals
-	filteredPolicies, err := f.PolicyFilter.Filter(ctx, revision, currentApprovals, failedPolicies)
-	if err != nil {
-		workflow.GetLogger(ctx).Error("failed to dismiss stale reviews")
-		return failedPolicies
-	}
+	filteredPolicies := f.PolicyFilter.Filter(teams, currentApprovals, failedPolicies)
 	return filteredPolicies
+}
+
+func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Repo, slug string) ([]string, error) {
+	var listTeamMembersResponse activities.ListTeamMembersResponse
+	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListTeamMembers, activities.ListTeamMembersRequest{
+		Repo:     repo,
+		Org:      f.Org,
+		TeamSlug: slug,
+	}).Get(ctx, &listTeamMembersResponse)
+	return listTeamMembersResponse.Members, err
 }
 
 func dedup(workflowResponses []terraform.Response) []activities.PolicySet {
