@@ -147,6 +147,8 @@ func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, event Pull
 		Repo:              event.Pull.HeadRepo,
 		InstallationToken: event.InstallationToken,
 		Branch:            event.Pull.HeadBranch,
+		// TODO: gate populating field with a config since this is Lyft specific
+		ValidateEnvs: buildValidateEnvs(event),
 	}
 	run, err := p.PRSignaler.SignalWithStartWorkflow(ctx, roots, prRequest)
 	if err != nil {
@@ -156,4 +158,16 @@ func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, event Pull
 		"workflow-id": run.GetID(), "run-id": run.GetRunID(),
 	})
 	return nil
+}
+
+func buildValidateEnvs(event PullRequest) []pr.ValidateEnvs {
+	return []pr.ValidateEnvs{
+		{
+			Username:       event.User.Username,
+			PullNum:        event.Pull.Num,
+			PullAuthor:     event.Pull.Author,
+			HeadCommit:     event.Pull.HeadCommit,
+			BaseBranchName: event.Pull.HeadRepo.DefaultBranch,
+		},
+	}
 }

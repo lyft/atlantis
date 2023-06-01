@@ -7,6 +7,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"go.temporal.io/sdk/client"
+	"strconv"
 )
 
 type signaler interface {
@@ -17,7 +18,17 @@ type signaler interface {
 const (
 	Deprecated = "deprecated"
 	Destroy    = "-destroy"
+	EnvStep    = "env"
 )
+
+type ValidateEnvs struct {
+	Workspace      string // TODO: remove when we deprecate legacy mode
+	Username       string
+	PullNum        int
+	PullAuthor     string
+	HeadCommit     string
+	BaseBranchName string
+}
 
 type WorkflowSignaler struct {
 	TemporalClient signaler
@@ -29,6 +40,7 @@ type Request struct {
 	Repo              models.Repo
 	InstallationToken int64
 	Branch            string
+	ValidateEnvs      []ValidateEnvs
 }
 
 func (s *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, request Request) (client.WorkflowRun, error) {
@@ -44,7 +56,7 @@ func (s *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfgs
 		workflows.PRTerraformRevisionSignalID,
 		workflows.PRNewRevisionSignalRequest{
 			Revision: request.Revision,
-			Roots:    buildRoots(rootCfgs),
+			Roots:    buildRoots(rootCfgs, request.ValidateEnvs...),
 			Repo: workflows.PRRepo{
 				URL:           request.Repo.CloneURL,
 				FullName:      request.Repo.FullName,
@@ -70,7 +82,7 @@ func BuildPRWorkflowID(repoName string, prNum int) string {
 	return fmt.Sprintf("%s||%d", repoName, prNum)
 }
 
-func buildRoots(rootCfgs []*valid.MergedProjectCfg) []workflows.PRRoot {
+func buildRoots(rootCfgs []*valid.MergedProjectCfg, validateEnvOpts ...ValidateEnvs) []workflows.PRRoot {
 	var roots []workflows.PRRoot
 	for _, rootCfg := range rootCfgs {
 		var tfVersion string
@@ -83,10 +95,18 @@ func buildRoots(rootCfgs []*valid.MergedProjectCfg) []workflows.PRRoot {
 			TfVersion:   tfVersion,
 			PlanMode:    generatePlanMode(rootCfg),
 			Plan:        workflows.PRJob{Steps: generateSteps(rootCfg.PullRequestWorkflow.Plan.Steps)},
-			Validate:    workflows.PRJob{Steps: generateSteps(rootCfg.PullRequestWorkflow.PolicyCheck.Steps)},
+			Validate:    workflows.PRJob{Steps: prependValidateEnvSteps(rootCfg.PullRequestWorkflow.PolicyCheck.Steps, validateEnvOpts...)},
 		})
 	}
 	return roots
+}
+
+func prependValidateEnvSteps(validateSteps []valid.Step, opts ...ValidateEnvs) []workflows.PRStep {
+	for _, o := range opts {
+		initialEnvSteps := generatePRModeEnvSteps(o)
+		return append(initialEnvSteps, generateSteps(validateSteps)...)
+	}
+	return generateSteps(validateSteps)
 }
 
 func generateSteps(steps []valid.Step) []workflows.PRStep {
@@ -112,4 +132,39 @@ func generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PRPlanMode {
 		return workflows.PRDestroyPlanMode
 	}
 	return workflows.PRNormalPlanMode
+}
+
+func generatePRModeEnvSteps(validateEnvs ValidateEnvs) []workflows.PRStep {
+	return []workflows.PRStep{
+		{
+			StepName:    EnvStep,
+			EnvVarName:  "WORKSPACE",
+			EnvVarValue: validateEnvs.Workspace,
+		},
+		{
+			StepName:    EnvStep,
+			EnvVarName:  "USER_NAME",
+			EnvVarValue: validateEnvs.Username,
+		},
+		{
+			StepName:    EnvStep,
+			EnvVarName:  "PULL_NUM",
+			EnvVarValue: strconv.Itoa(validateEnvs.PullNum),
+		},
+		{
+			StepName:    EnvStep,
+			EnvVarName:  "PULL_AUTHOR",
+			EnvVarValue: validateEnvs.PullAuthor,
+		},
+		{
+			StepName:    EnvStep,
+			EnvVarName:  "HEAD_COMMIT",
+			EnvVarValue: validateEnvs.HeadCommit,
+		},
+		{
+			StepName:    EnvStep,
+			EnvVarName:  "BASE_BRANCH_NAME",
+			EnvVarValue: validateEnvs.BaseBranchName,
+		},
+	}
 }
