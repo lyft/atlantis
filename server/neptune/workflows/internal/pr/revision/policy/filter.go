@@ -46,7 +46,7 @@ func findLatestApprovalUsernames(reviews []*github.PullRequestReview) []string {
 			continue
 		}
 		// add reviewer if an approval + we have not already processed their most recent review
-		if !reviewers[reviewer.GetLogin()] {
+		if review.GetState() == ApprovalState && !reviewers[reviewer.GetLogin()] {
 			approvalReviewers = append(approvalReviewers, reviewer.GetLogin())
 		}
 		reviewers[reviewer.GetLogin()] = true

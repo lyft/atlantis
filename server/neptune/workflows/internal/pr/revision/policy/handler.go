@@ -13,12 +13,12 @@ import (
 )
 
 type githubActivities interface {
-	GithubListPRApprovals(ctx context.Context, request activities.ListPRApprovalsRequest) (activities.ListPRApprovalsResponse, error)
+	GithubListPRReviews(ctx context.Context, request activities.ListPRReviewsRequest) (activities.ListPRReviewsResponse, error)
 	GithubListTeamMembers(ctx context.Context, request activities.ListTeamMembersRequest) (activities.ListTeamMembersResponse, error)
 }
 
 type dismisser interface {
-	Dismiss(ctx workflow.Context, revision revision.Revision, currentApprovals []*github.PullRequestReview) ([]*github.PullRequestReview, error)
+	Dismiss(ctx workflow.Context, revision revision.Revision, teams map[string][]string, currentApprovals []*github.PullRequestReview) ([]*github.PullRequestReview, error)
 }
 
 type policyFilter interface {
@@ -85,11 +85,11 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 
 func (f *FailedPolicyHandler) handle(ctx workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) []activities.PolicySet {
 	// Fetch current approvals in activity
-	var listPRApprovalsResponse activities.ListPRApprovalsResponse
-	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListPRApprovals, activities.ListPRApprovalsRequest{
+	var listPRReviewsResponse activities.ListPRReviewsResponse
+	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListPRReviews, activities.ListPRReviewsRequest{
 		Repo:     revision.Repo,
 		PRNumber: f.PRNumber,
-	}).Get(ctx, &listPRApprovalsResponse)
+	}).Get(ctx, &listPRReviewsResponse)
 	if err != nil {
 		workflow.GetLogger(ctx).Error(err.Error())
 		return failedPolicies
@@ -107,16 +107,15 @@ func (f *FailedPolicyHandler) handle(ctx workflow.Context, revision revision.Rev
 	}
 
 	// Dismiss stale approvals
-	// TODO: pass teams to dismisser to only dismiss approvals from members of a failing policy team
-	currentApprovals := listPRApprovalsResponse.Approvals
-	currentApprovals, err = f.Dismisser.Dismiss(ctx, revision, currentApprovals)
+	currentReviews := listPRReviewsResponse.Reviews
+	currentReviews, err = f.Dismisser.Dismiss(ctx, revision, teams, currentReviews)
 	if err != nil {
 		workflow.GetLogger(ctx).Error("failed to dismiss stale reviews")
 		return failedPolicies
 	}
 
 	// Filter out failed policies from policy approvals
-	filteredPolicies := f.PolicyFilter.Filter(teams, currentApprovals, failedPolicies)
+	filteredPolicies := f.PolicyFilter.Filter(teams, currentReviews, failedPolicies)
 	return filteredPolicies
 }
 

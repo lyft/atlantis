@@ -16,16 +16,16 @@ import (
 )
 
 type request struct {
-	T                     *testing.T
-	Revision              revision.Revision
-	WorkflowResponses     []terraform.Response
-	ListApprovalsResponse activities.ListPRApprovalsResponse
-	ListApprovalsErr      error
-	DismissResponse       []*github.PullRequestReview
-	DismissErr            error
-	FilterResponse        []activities.PolicySet
-	FilterErr             error
-	GithubActivities      *mockGithubActivities
+	T                   *testing.T
+	Revision            revision.Revision
+	WorkflowResponses   []terraform.Response
+	ListReviewsResponse activities.ListPRReviewsResponse
+	ListReviewsErr      error
+	DismissResponse     []*github.PullRequestReview
+	DismissErr          error
+	FilterResponse      []activities.PolicySet
+	FilterErr           error
+	GithubActivities    *mockGithubActivities
 }
 
 type response struct {
@@ -101,10 +101,10 @@ func TestFailedPolicyHandlerRunner_NoRoots(t *testing.T) {
 func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
 	// only testing success case because handler relies on parent context cancellation to terminate
 	testApproval := &github.PullRequestReview{
-		State: github.String("APPROVED"),
+		State: github.String(policy.ApprovalState),
 	}
 	ga := &mockGithubActivities{
-		approvals: activities.ListPRApprovalsResponse{Approvals: []*github.PullRequestReview{testApproval}},
+		reviews: activities.ListPRReviewsResponse{Reviews: []*github.PullRequestReview{testApproval}},
 	}
 	req := request{
 		T:        t,
@@ -145,7 +145,7 @@ type mockDismisser struct {
 	err             error
 }
 
-func (d *mockDismisser) Dismiss(ctx workflow.Context, revision revision.Revision, currentApprovals []*github.PullRequestReview) ([]*github.PullRequestReview, error) {
+func (d *mockDismisser) Dismiss(ctx workflow.Context, revision revision.Revision, teams map[string][]string, currentApprovals []*github.PullRequestReview) ([]*github.PullRequestReview, error) {
 	d.called = true
 	return d.expectedReviews, d.err
 }
@@ -164,16 +164,16 @@ func (m *mockFilter) Filter(teams map[string][]string, currentApprovals []*githu
 }
 
 type mockGithubActivities struct {
-	called    bool
-	approvals activities.ListPRApprovalsResponse
-	err       error
+	called  bool
+	reviews activities.ListPRReviewsResponse
+	err     error
 }
 
 func (g *mockGithubActivities) GithubListTeamMembers(ctx context.Context, request activities.ListTeamMembersRequest) (activities.ListTeamMembersResponse, error) {
 	return activities.ListTeamMembersResponse{}, nil
 }
 
-func (g *mockGithubActivities) GithubListPRApprovals(ctx context.Context, request activities.ListPRApprovalsRequest) (activities.ListPRApprovalsResponse, error) {
+func (g *mockGithubActivities) GithubListPRReviews(ctx context.Context, request activities.ListPRReviewsRequest) (activities.ListPRReviewsResponse, error) {
 	g.called = true
-	return g.approvals, g.err
+	return g.reviews, g.err
 }

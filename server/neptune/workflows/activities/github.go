@@ -56,7 +56,6 @@ const (
 
 const (
 	deploymentsDirName = "deployments"
-	approvalState      = "APPROVED"
 )
 
 type githubActivities struct {
@@ -401,16 +400,16 @@ func (a *githubActivities) GithubGetPullRequestState(ctx context.Context, reques
 	}, nil
 }
 
-type ListPRApprovalsRequest struct {
+type ListPRReviewsRequest struct {
 	Repo     internal.Repo
 	PRNumber int
 }
 
-type ListPRApprovalsResponse struct {
-	Approvals []*github.PullRequestReview
+type ListPRReviewsResponse struct {
+	Reviews []*github.PullRequestReview
 }
 
-func (a *githubActivities) GithubListPRApprovals(ctx context.Context, request ListPRApprovalsRequest) (ListPRApprovalsResponse, error) {
+func (a *githubActivities) GithubListPRReviews(ctx context.Context, request ListPRReviewsRequest) (ListPRReviewsResponse, error) {
 	reviews, err := a.Client.ListReviews(
 		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
 		request.Repo.Owner,
@@ -418,16 +417,10 @@ func (a *githubActivities) GithubListPRApprovals(ctx context.Context, request Li
 		request.PRNumber,
 	)
 	if err != nil {
-		return ListPRApprovalsResponse{}, errors.Wrap(err, "listing approvals from pr")
+		return ListPRReviewsResponse{}, errors.Wrap(err, "listing approvals from pr")
 	}
-	var approvals []*github.PullRequestReview
-	for _, review := range reviews {
-		if review.GetState() == approvalState {
-			approvals = append(approvals, review)
-		}
-	}
-	return ListPRApprovalsResponse{
-		Approvals: approvals,
+	return ListPRReviewsResponse{
+		Reviews: reviews,
 	}, nil
 }
 
