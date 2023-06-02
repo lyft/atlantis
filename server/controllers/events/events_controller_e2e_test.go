@@ -406,6 +406,12 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
   true: true
   false: false
   default: false
+  trackEvents: false
+legacy-deprecation:
+  percentage: 100
+  true: true
+  false: false
+  default: false
   trackEvents: false`)
 	if testing.Short() {
 		t.SkipNow()
@@ -562,6 +568,12 @@ func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 
 func TestGitHubWorkflowPullRequestsWorkflows(t *testing.T) {
 	featureConfig := feature.StringRetriever(`platform-mode:
+  percentage: 100
+  true: true
+  false: false
+  default: false
+  trackEvents: false
+legacy-deprecation:
   percentage: 100
   true: true
   false: false
