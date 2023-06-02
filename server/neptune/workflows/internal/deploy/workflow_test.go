@@ -177,3 +177,13 @@ func TestRunner(t *testing.T) {
 		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: true, NotifierCalled: true}, resp)
 	})
 }
+
+
+func testDurationTillHourWorkflow() {
+	
+}
+
+func TestDurationTillHour(t *testing.T) {
+
+
+}

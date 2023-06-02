@@ -25,9 +25,7 @@ const (
 
 	RevisionReceiveTimeout = 60 * time.Minute
 
-	// combination of these two ensure we ping every 24 hours at 10 am
-	QueueStatusNotifierPeriod = 24 * time.Hour
-	QueueStatusNotifierHour   = 10
+	QueueStatusNotifierHour = 10
 
 	ActiveDeployWorkflowStat  = "active"
 	SuccessDeployWorkflowStat = "success"
@@ -131,8 +129,8 @@ func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, p
 		RevisionReceiver:         revisionReceiver,
 		NewRevisionSignalChannel: workflow.GetSignalChannel(ctx, revision.NewRevisionSignalID),
 		Scope:                    scope,
-		NotifierPeriod:           func(ctx workflow.Context) time.Duration {
-			return durationTillHour(ctx, QueueStatusNotifierHour, QueueStatusNotifierPeriod)
+		NotifierPeriod: func(ctx workflow.Context) time.Duration {
+			return temporalInternal.UntilHour(ctx, QueueStatusNotifierHour, temporalInternal.NextBusinessDay)
 		},
 		Notifier: &revisionNotifier.Slack{
 			DeployQueue: revisionQueue,
@@ -243,25 +241,4 @@ OUT:
 	wg.Wait(ctx)
 
 	return nil
-}
-
-func durationTillHour(ctx workflow.Context, hour int, period time.Duration) time.Duration {
-	t := workflow.Now(ctx)
-	d := time.Date(t.Year(), t.Month(), t.Day(), hour, 0, 0, 0, t.Location())
-
-	duration := d.Sub(t)
-
-	// if duration is zero or negative, we know our current time is later so let's just
-	// wait for the defined period to elapse
-	if duration <= 0 {
-		d = d.Add(period)
-
-		// finally let's wait till a business day as well
-		for d.Weekday() == time.Saturday || d.Weekday() == time.Sunday {
-			d = d.Add(24 * time.Hour)
-		}
-		return d.Sub(t)
-	}
-
-	return duration
 }
