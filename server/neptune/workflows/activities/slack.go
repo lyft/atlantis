@@ -7,7 +7,7 @@ import (
 )
 
 type slackActivities struct {
-	Client slack.Client
+	Client *slack.Client
 }
 
 type MessageChannelRequest struct {

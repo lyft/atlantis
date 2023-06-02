@@ -82,8 +82,8 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	q := &testStringContainer{item: r.QueueItem}
 
 	runner := &deploy.Runner{
-		Timeout:                  10 * time.Second,
-		NotifierPeriod:           func(ctx workflow.Context) time.Duration {
+		Timeout: 10 * time.Second,
+		NotifierPeriod: func(ctx workflow.Context) time.Duration {
 			return 5 * time.Second
 		},
 		Notifier:                 notifier,
@@ -176,14 +176,4 @@ func TestRunner(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: true, NotifierCalled: true}, resp)
 	})
-}
-
-
-func testDurationTillHourWorkflow() {
-	
-}
-
-func TestDurationTillHour(t *testing.T) {
-
-
 }
