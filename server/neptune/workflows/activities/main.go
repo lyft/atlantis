@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
