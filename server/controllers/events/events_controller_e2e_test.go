@@ -825,7 +825,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		members: []string{},
 	}
 	reviewDismisser := &mockReviewDismisser{}
-	policyFilter := events.NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, globalCfg.PolicySets.PolicySets)
+	policyFilter := events.NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, featureAllocator, globalCfg.PolicySets.PolicySets)
 	conftestExecutor := &policy.ConfTestExecutor{
 		Exec:         runtime_models.LocalExec{},
 		PolicyFilter: policyFilter,

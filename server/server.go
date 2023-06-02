@@ -349,12 +349,15 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing webhooks")
 	}
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
-	vcsStatusUpdater := &command.VCSStatusUpdater{
-		Client: vcsClient,
-		TitleBuilder: vcs.StatusTitleBuilder{
-			TitlePrefix: userConfig.VCSStatusName,
+	vcsStatusUpdaterWrapper := &command.LegacyDeprecationVCSStatusUpdater{
+		Allocator: featureAllocator,
+		Delegate: &command.VCSStatusUpdater{
+			Client: vcsClient,
+			TitleBuilder: vcs.StatusTitleBuilder{
+				TitlePrefix: userConfig.VCSStatusName,
+			},
+			DefaultDetailsURL: userConfig.DefaultCheckrunDetailsURL,
 		},
-		DefaultDetailsURL: userConfig.DefaultCheckrunDetailsURL,
 	}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
@@ -566,7 +569,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	planStepRunner := &runtime.PlanStepRunner{
 		TerraformExecutor: terraformClient,
 		DefaultTFVersion:  defaultTfVersion,
-		VCSStatusUpdater:  vcsStatusUpdater,
+		VCSStatusUpdater:  vcsStatusUpdaterWrapper,
 		AsyncTFExec:       terraformClient,
 	}
 
@@ -589,7 +592,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	conftestEnsurer := policy.NewConfTestVersionEnsurer(ctxLogger, binDir, &terraform.DefaultDownloader{})
-	conftestExecutor := policy.NewConfTestExecutor(clientCreator, globalCfg.PolicySets)
+	conftestExecutor := policy.NewConfTestExecutor(clientCreator, globalCfg.PolicySets, featureAllocator)
 	policyCheckStepRunner, err := runtime.NewPolicyCheckStepRunner(
 		defaultTfVersion,
 		conftestEnsurer,
@@ -601,7 +604,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	applyStepRunner := &runtime.ApplyStepRunner{
 		TerraformExecutor: terraformClient,
-		VCSStatusUpdater:  vcsStatusUpdater,
+		VCSStatusUpdater:  vcsStatusUpdaterWrapper,
 		AsyncTFExec:       terraformClient,
 	}
 
@@ -674,7 +677,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	statusUpdater := command.ProjectStatusUpdater{
 		ProjectJobURLGenerator:  router,
 		JobCloser:               projectCmdOutputHandler,
-		ProjectVCSStatusUpdater: vcsStatusUpdater,
+		ProjectVCSStatusUpdater: vcsStatusUpdaterWrapper,
 	}
 
 	legacyPrjCmdRunner := wrappers.
@@ -720,7 +723,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
 		checksOutputUpdater,
-		vcsStatusUpdater,
+		vcsStatusUpdaterWrapper,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
 	)
@@ -729,7 +732,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 		pendingPlanFinder,
 		workingDir,
-		vcsStatusUpdater,
+		vcsStatusUpdaterWrapper,
 		projectCommandBuilder,
 		prjCmdRunner,
 		dbUpdater,
@@ -742,7 +745,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 		userConfig.DisableApplyAll,
 		applyLockingClient,
-		vcsStatusUpdater,
+		vcsStatusUpdaterWrapper,
 		projectCommandBuilder,
 		prjCmdRunner,
 		checksOutputUpdater,
@@ -804,7 +807,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
 		StaleCommandChecker:           staleCommandChecker,
-		VCSStatusUpdater:              vcsStatusUpdater,
+		VCSStatusUpdater:              vcsStatusUpdaterWrapper,
 		Logger:                        ctxLogger,
 		PolicyCommandRunner:           prrPolicyCommandRunner,
 	}
