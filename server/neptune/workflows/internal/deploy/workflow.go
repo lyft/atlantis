@@ -23,8 +23,12 @@ const (
 	TaskQueue          = "deploy"
 	AddNotifierVersion = "add-notifier"
 
-	RevisionReceiveTimeout    = 60 * time.Minute
+	RevisionReceiveTimeout = 60 * time.Minute
+
+	// combination of these two ensure we ping every 24 hours at 10 am
 	QueueStatusNotifierPeriod = 24 * time.Hour
+	QueueStatusNotifierHour   = 10
+
 	ActiveDeployWorkflowStat  = "active"
 	SuccessDeployWorkflowStat = "success"
 )
@@ -91,7 +95,8 @@ type Runner struct {
 	NewRevisionSignalChannel workflow.ReceiveChannel
 	Scope                    workflowMetrics.Scope
 	Notifier                 QueueStatusNotifier
-	NotifierPeriod           time.Duration
+	NotifierPeriod           DurationGenerator
+	NotifierHour             int
 }
 
 func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) (*Runner, error) {
@@ -126,13 +131,17 @@ func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, p
 		RevisionReceiver:         revisionReceiver,
 		NewRevisionSignalChannel: workflow.GetSignalChannel(ctx, revision.NewRevisionSignalID),
 		Scope:                    scope,
-		NotifierPeriod:           QueueStatusNotifierPeriod,
+		NotifierPeriod:           func(ctx workflow.Context) time.Duration {
+			return durationTillHour(ctx, QueueStatusNotifierHour, QueueStatusNotifierPeriod)
+		},
 		Notifier: &revisionNotifier.Slack{
 			DeployQueue: revisionQueue,
 			Activities:  a,
 		},
 	}, nil
 }
+
+type DurationGenerator func(ctx workflow.Context) time.Duration
 
 func (r *Runner) shutdown() {
 	r.Scope.Gauge(ActiveDeployWorkflowStat).Update(0)
@@ -190,7 +199,7 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 	v := workflow.GetVersion(ctx, AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1))
 	if v > workflow.DefaultVersion {
-		s.AddTimeout(ctx, r.NotifierPeriod, notifyTimerFunc)
+		s.AddTimeout(ctx, r.NotifierPeriod(ctx), notifyTimerFunc)
 	}
 
 	// main loop which handles external signals
@@ -207,7 +216,7 @@ OUT:
 			if err != nil {
 				workflow.GetLogger(ctx).Warn("Error notifying on queue status", key.ErrKey, err)
 			}
-			s.AddTimeout(ctx, r.NotifierPeriod, notifyTimerFunc)
+			s.AddTimeout(ctx, r.NotifierPeriod(ctx), notifyTimerFunc)
 		case OnReceive:
 			cancelTimer()
 			cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, newRevisionTimerFunc)
@@ -234,4 +243,25 @@ OUT:
 	wg.Wait(ctx)
 
 	return nil
+}
+
+func durationTillHour(ctx workflow.Context, hour int, period time.Duration) time.Duration {
+	t := workflow.Now(ctx)
+	d := time.Date(t.Year(), t.Month(), t.Day(), hour, 0, 0, 0, t.Location())
+
+	duration := d.Sub(t)
+
+	// if duration is zero or negative, we know our current time is later so let's just
+	// wait for the defined period to elapse
+	if duration <= 0 {
+		d = d.Add(period)
+
+		// finally let's wait till a business day as well
+		for d.Weekday() == time.Saturday || d.Weekday() == time.Sunday {
+			d = d.Add(24 * time.Hour)
+		}
+		return d.Sub(t)
+	}
+
+	return duration
 }

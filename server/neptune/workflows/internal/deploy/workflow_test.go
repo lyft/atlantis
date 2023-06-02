@@ -83,7 +83,9 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 
 	runner := &deploy.Runner{
 		Timeout:                  10 * time.Second,
-		NotifierPeriod:           5 * time.Second,
+		NotifierPeriod:           func(ctx workflow.Context) time.Duration {
+			return 5 * time.Second
+		},
 		Notifier:                 notifier,
 		Queue:                    q,
 		QueueWorker:              worker,
