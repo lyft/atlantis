@@ -58,7 +58,7 @@ type Runner struct {
 	lastAttemptedRevision string
 }
 
-func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow revision.TFWorkflow, prNum int, internalNotifiers []revision.WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *Runner {
+func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, org string, tfWorkflow revision.TFWorkflow, prNum int, internalNotifiers []revision.WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *Runner {
 	revisionReceiver := revision.NewRevisionReceiver(ctx, scope)
 	stateReceiver := revision.StateReceiver{
 		InternalNotifiers:   internalNotifiers,
@@ -77,7 +77,8 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, tfWorkflow rev
 			GithubActivities:      ga,
 			PRNumber:              prNum,
 			Dismisser:             &dismisser,
-			// TODO: fill remaining fields when we create the filter
+			PolicyFilter:          &policy.Filter{},
+			Org:                   org,
 		},
 	}
 	shutdownChecker := ShutdownStateChecker{

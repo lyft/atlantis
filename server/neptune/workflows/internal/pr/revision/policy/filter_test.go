@@ -28,7 +28,7 @@ func TestFilter_FilterOutTeamA(t *testing.T) {
 			Owner: "team-c",
 		},
 	}
-	currentApprovals := []*github.PullRequestReview{
+	currentReviews := []*github.PullRequestReview{
 		{
 			User: &github.User{
 				Login: github.String("owner-a1"),
@@ -42,7 +42,7 @@ func TestFilter_FilterOutTeamA(t *testing.T) {
 			State: github.String(policy.ApprovalState),
 		},
 	}
-	filteredPolicies := filter.Filter(teams, currentApprovals, failedPolicies)
+	filteredPolicies := filter.Filter(teams, currentReviews, failedPolicies)
 	assert.Equal(t, expectedFilteredPolicies, filteredPolicies)
 }
 
@@ -61,7 +61,7 @@ func TestFilter_IgnoreOldApprovalWhenChangesRequested(t *testing.T) {
 			Owner: "team-c",
 		},
 	}
-	currentApprovals := []*github.PullRequestReview{
+	currentReviews := []*github.PullRequestReview{
 		{
 			User: &github.User{
 				Login: github.String("owner-a1"),
@@ -75,6 +75,6 @@ func TestFilter_IgnoreOldApprovalWhenChangesRequested(t *testing.T) {
 			State: github.String("CHANGES_REQUESTED"),
 		},
 	}
-	filteredPolicies := filter.Filter(teams, currentApprovals, failedPolicies)
+	filteredPolicies := filter.Filter(teams, currentReviews, failedPolicies)
 	assert.Equal(t, failedPolicies, filteredPolicies)
 }
