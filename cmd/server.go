@@ -520,6 +520,14 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 			Version: config.AtlantisVersion,
 			Port:    userConfig.Port,
 		},
+		FeatureConfig: neptune.FeatureConfig{
+			FFOwner:  userConfig.FFOwner,
+			FFRepo:   userConfig.FFRepo,
+			FFPath:   userConfig.FFPath,
+			FFBranch: userConfig.FFBranch,
+			AppSlug:  userConfig.GithubAppSlug,
+			Hostname: userConfig.GithubHostname,
+		},
 		TerraformCfg: neptune.TerraformConfig{
 			DefaultVersion: userConfig.DefaultTFVersion,
 			DownloadURL:    userConfig.TFDownloadURL,

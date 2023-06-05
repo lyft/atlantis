@@ -1,6 +1,7 @@
 package activities
 
 import (
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"net/http"
 	"net/url"
 	"os"
@@ -202,18 +203,19 @@ type LinkBuilder interface {
 	BuildDownloadLinkFromArchive(archiveURL *url.URL, root terraform.Root, repo internal.Repo, revision string) string
 }
 
-func NewGithubWithClient(client githubClient, dataDir string, getter gogetter) (*Github, error) {
+func NewGithubWithClient(client githubClient, dataDir string, getter gogetter, allocator feature.Allocator) (*Github, error) {
 	return &Github{
 		githubActivities: &githubActivities{
 			Client:      client,
 			DataDir:     dataDir,
 			LinkBuilder: link.Builder{},
 			Getter:      getter,
+			Allocator:   allocator,
 		},
 	}, nil
 }
 
-func NewGithub(appConfig githubapp.Config, scope tally.Scope, dataDir string) (*Github, error) {
+func NewGithub(appConfig githubapp.Config, scope tally.Scope, dataDir string, allocator feature.Allocator) (*Github, error) {
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		appConfig,
 		githubapp.WithClientMiddleware(
@@ -228,7 +230,7 @@ func NewGithub(appConfig githubapp.Config, scope tally.Scope, dataDir string) (*
 		ClientCreator: clientCreator,
 	}
 
-	return NewGithubWithClient(client, dataDir, HashiGetter)
+	return NewGithubWithClient(client, dataDir, HashiGetter, allocator)
 }
 
 func mkSubDir(parentDir string, subDir string) (string, error) {

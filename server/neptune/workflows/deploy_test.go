@@ -3,6 +3,7 @@ package workflows_test
 import (
 	"context"
 	"github.com/hashicorp/go-version"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"net/http"
 	"net/url"
 	"os"
@@ -197,6 +198,7 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 		githubClient,
 		cfg.DataDir,
 		GetLocalTestRoot,
+		&testAllocator{},
 	)
 	assert.NoError(t, err)
 
@@ -376,4 +378,11 @@ func (t *testRevSetterClient) Do(req *http.Request) (*http.Response, error) {
 		Body:       http.NoBody,
 		StatusCode: http.StatusOK,
 	}, nil
+}
+
+type testAllocator struct {
+}
+
+func (a *testAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
+	return false, nil
 }

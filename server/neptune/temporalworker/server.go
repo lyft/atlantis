@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/events/vcs"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"io"
 	"log"
 	"net/http"
@@ -159,10 +161,37 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}
 
+	privateKey, err := os.ReadFile(config.App.App.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	githubCredentials := &vcs.GithubAppCredentials{
+		AppID:    config.App.App.IntegrationID,
+		Key:      privateKey,
+		Hostname: config.FeatureConfig.Hostname,
+		AppSlug:  config.FeatureConfig.AppSlug,
+	}
+	rawGithubClient, err := vcs.NewGithubClient(config.FeatureConfig.Hostname, githubCredentials, config.CtxLogger, &vcs.NoopMergeabilityChecker{})
+	if err != nil {
+		return nil, err
+	}
+
+	featureAllocator, err := feature.NewGHSourcedAllocator(
+		feature.RepoConfig{
+			Owner:  config.FeatureConfig.FFOwner,
+			Repo:   config.FeatureConfig.FFRepo,
+			Branch: config.FeatureConfig.FFBranch,
+			Path:   config.FeatureConfig.FFPath,
+		}, rawGithubClient, config.CtxLogger)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing feature allocator")
+	}
+
 	githubActivities, err := activities.NewGithub(
 		config.App,
 		scope.SubScope("app"),
 		config.DataDir,
+		featureAllocator,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing github activities")
