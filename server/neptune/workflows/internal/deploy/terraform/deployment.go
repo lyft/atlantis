@@ -11,6 +11,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type NotificationConfig struct {
+	Slack SlackConfig
+}
+
+type SlackConfig struct {
+	ChannelID string
+}
+
 type DeploymentInfo struct {
 	ID             uuid.UUID
 	CheckRunID     int64
@@ -19,6 +27,7 @@ type DeploymentInfo struct {
 	Root           terraform.Root
 	Repo           github.Repo
 	Tags           map[string]string
+	Notifications  NotificationConfig
 }
 
 func (i DeploymentInfo) ToExternalInfo() plugins.TerraformDeploymentInfo {

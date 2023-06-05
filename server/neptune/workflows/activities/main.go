@@ -21,6 +21,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/cli"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/link"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/slack-go/slack"
 	"github.com/uber-go/tally/v4"
 )
 
@@ -42,6 +43,7 @@ const (
 // registering multiple workflows to the same worker
 type Deploy struct {
 	*dbActivities
+	*slackActivities
 }
 
 func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
@@ -59,6 +61,9 @@ func NewDeploy(deploymentStoreCfg valid.StoreConfig) (*Deploy, error) {
 		dbActivities: &dbActivities{
 			DeploymentInfoStore: deploymentStore,
 		},
+		// TODO: Add token once bot is created
+		slackActivities: &slackActivities{Client: slack.New("",
+			slack.OptionHTTPClient(http.DefaultClient))},
 	}, nil
 }
 
