@@ -161,13 +161,9 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}
 
-	privateKey, err := os.ReadFile(config.App.App.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
 	githubCredentials := &vcs.GithubAppCredentials{
 		AppID:    config.App.App.IntegrationID,
-		Key:      privateKey,
+		Key:      []byte(config.App.App.PrivateKey),
 		Hostname: config.FeatureConfig.Hostname,
 		AppSlug:  config.FeatureConfig.AppSlug,
 	}
