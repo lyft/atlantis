@@ -9,7 +9,6 @@ import (
 )
 
 func TestNextBusinessDay(t *testing.T) {
-
 	cases := []struct {
 		date            time.Time
 		nextBusinessDay time.Time
@@ -46,5 +45,4 @@ func TestNextBusinessDay(t *testing.T) {
 			assert.Equal(t, ca.nextBusinessDay, result)
 		})
 	}
-
 }
