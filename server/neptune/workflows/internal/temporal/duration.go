@@ -11,10 +11,7 @@ type NextDay func(time.Time) time.Time
 func NextBusinessDay(d time.Time) time.Time {
 	d = d.Add(24 * time.Hour)
 
-	for d.Weekday() == time.Saturday || d.Weekday() == time.Sunday {
-		d = d.Add(24 * time.Hour)
-	}
-
+	for ; d.Weekday() == time.Saturday || d.Weekday() == time.Sunday; d = d.Add(24 * time.Hour) {}
 	return d
 }
 
