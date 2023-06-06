@@ -8,7 +8,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -51,7 +50,7 @@ func (g *RepoFetcher) Fetch(ctx context.Context, repo models.Repo, branch string
 	}
 
 	// https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#http-based-git-access-by-an-installation
-	if err := events.WriteGitCreds("x-access-token", ghToken, g.GithubHostname, home, g.Logger, true); err != nil {
+	if err := WriteGitCreds("x-access-token", ghToken, g.GithubHostname, home, g.Logger, true); err != nil {
 		return "", nil, err
 	}
 	// Realistically, this is a super brittle way of supporting clones using gh app installation tokens

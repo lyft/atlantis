@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
+	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
 	"log"
 	"net/http"
@@ -158,11 +162,41 @@ func NewServer(config *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}
+	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
+		config.App,
+		githubapp.WithClientMiddleware(
+			ghClient.ClientMetrics(scope.SubScope("app")),
+		))
+	if err != nil {
+		return nil, errors.Wrap(err, "client creator")
+	}
+	repoConfig := feature.RepoConfig{
+		Owner:  config.FeatureConfig.FFOwner,
+		Repo:   config.FeatureConfig.FFRepo,
+		Branch: config.FeatureConfig.FFBranch,
+		Path:   config.FeatureConfig.FFPath,
+	}
+	installationFetcher := &github.InstallationRetriever{
+		ClientCreator: clientCreator,
+	}
+	fileFetcher := &github.SingleFileContentsFetcher{
+		ClientCreator: clientCreator,
+	}
+	retriever := &feature.CustomGithubInstallationRetriever{
+		InstallationFetcher: installationFetcher,
+		FileContentsFetcher: fileFetcher,
+		Cfg:                 repoConfig,
+	}
+	featureAllocator, err := feature.NewGHSourcedAllocator(retriever, config.CtxLogger)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing feature allocator")
+	}
 
 	githubActivities, err := activities.NewGithub(
 		config.App,
 		scope.SubScope("app"),
 		config.DataDir,
+		featureAllocator,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing github activities")

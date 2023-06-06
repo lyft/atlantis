@@ -171,6 +171,7 @@ func generatePRModeEnvSteps(cfg *valid.MergedProjectCfg, validateEnvs ValidateEn
 		},
 	}
 	if t, ok := cfg.Tags[Manifest]; ok {
+		//this is a Lyft specific env var
 		steps = append(steps, workflows.PRStep{
 			StepName:    EnvStep,
 			EnvVarName:  "MANIFEST_FILEPATH",

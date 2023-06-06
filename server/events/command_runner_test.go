@@ -54,6 +54,7 @@ var drainer *events.Drainer
 var deleteLockCommand *mocks.MockDeleteLockCommand
 var vcsUpdater *mocks.MockVCSStatusUpdater
 var staleCommandChecker *mocks.MockStaleCommandChecker
+var logger logging.Logger
 
 // TODO: refactor these into their own unit tests.
 // these were all split out from default command runner in an effort to improve

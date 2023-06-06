@@ -2,10 +2,13 @@ package github
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	gh "github.com/google/go-github/v45/github"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"net/http"
 )
 
 type RemoteFileFetcher struct {
@@ -74,4 +77,31 @@ func ListFiles(client *gh.Client, repo models.Repo, fileFetcherOptions FileFetch
 		listOptions.Page = nextPage
 		return client.PullRequests.ListFiles(ctx, repo.Owner, repo.Name, fileFetcherOptions.PRNum, &listOptions)
 	}
+}
+
+type SingleFileContentsFetcher struct {
+	ClientCreator githubapp.ClientCreator
+}
+
+func (f *SingleFileContentsFetcher) FetchFileContents(ctx context.Context, installationToken int64, owner, repo, branch, path string) ([]byte, error) {
+	installationClient, err := f.ClientCreator.NewInstallationClient(installationToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating installation client")
+	}
+	opt := &gh.RepositoryContentGetOptions{Ref: branch}
+	fileContent, _, resp, err := installationClient.Repositories.GetContents(ctx, owner, repo, path, opt)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting repository")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got status code %d", resp.StatusCode)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(*fileContent.Content)
+	if err != nil {
+		return nil, errors.Wrapf(err, "decoding file content")
+	}
+
+	return decoded, nil
 }
