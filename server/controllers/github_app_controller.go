@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"net/http"
 	"net/url"
 
@@ -19,6 +20,7 @@ type GithubAppController struct {
 	GithubHostname      string
 	GithubOrg           string
 	GithubStatusName    string
+	Allocator           feature.Allocator
 }
 
 type githubWebhook struct {
@@ -57,7 +59,7 @@ func (g *GithubAppController) ExchangeCode(w http.ResponseWriter, r *http.Reques
 
 	// TODO: unify this in a single inject.go file
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(g.GithubStatusName)
-	client, err := vcs.NewGithubClient(g.GithubHostname, creds, g.Logger, mergeabilityChecker)
+	client, err := vcs.NewGithubClient(g.GithubHostname, creds, g.Logger, g.Allocator, mergeabilityChecker)
 
 	if err != nil {
 		g.respond(w, http.StatusInternalServerError, "Failed to exchange code for github app: %s", err)

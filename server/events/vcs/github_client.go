@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"net/http"
 	"strconv"
 	"strings"
@@ -139,6 +140,7 @@ type GithubClient struct {
 	ctx                 context.Context
 	logger              logging.Logger
 	mergeabilityChecker MergeabilityChecker
+	allocator           feature.Allocator
 }
 
 // GithubAppTemporarySecrets holds app credentials obtained from github after creation.
@@ -156,7 +158,7 @@ type GithubAppTemporarySecrets struct {
 }
 
 // NewGithubClient returns a valid GitHub client.
-func NewGithubClient(hostname string, credentials GithubCredentials, logger logging.Logger, mergeabilityChecker MergeabilityChecker) (*GithubClient, error) {
+func NewGithubClient(hostname string, credentials GithubCredentials, logger logging.Logger, allocator feature.Allocator, mergeabilityChecker MergeabilityChecker) (*GithubClient, error) {
 	transport, err := credentials.Client()
 	if err != nil {
 		return nil, errors.Wrap(err, "error initializing github authentication transport")
@@ -201,6 +203,7 @@ func NewGithubClient(hostname string, credentials GithubCredentials, logger logg
 		ctx:                 context.Background(),
 		logger:              logger,
 		mergeabilityChecker: mergeabilityChecker,
+		allocator:           allocator,
 	}, nil
 }
 
@@ -493,6 +496,18 @@ func (g *GithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest
 // UpdateStatus updates the status badge on the pull request.
 // See https://github.com/blog/1227-commit-status-api.
 func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
+	shouldAllocate, err := g.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: request.Repo.FullName,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "unable to allocate legacy deprecation feature flag")
+	}
+	// if legacy deprecation is enabled, don't mutate check runs in legacy workflow
+	if shouldAllocate {
+		g.logger.InfoContext(ctx, "legacy deprecation feature flag enabled, not updating check runs")
+		return "", nil
+	}
+
 	// Empty status ID means we create a new check run
 	if request.StatusID == "" {
 		return g.createCheckRun(ctx, request)

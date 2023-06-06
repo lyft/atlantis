@@ -2,6 +2,7 @@ package vcs_test
 
 import (
 	"fmt"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -185,7 +186,7 @@ func TestLyftGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 			testServerURL, err := url.Parse(testServer.URL)
 			assert.NoError(t, err)
 			mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker("atlantis")
-			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 			assert.NoError(t, err)
 			defer disableSSLVerification()()
 
@@ -207,4 +208,11 @@ func TestLyftGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 			assert.Equal(t, c.expMergeable, actMergeable)
 		})
 	}
+}
+
+type testAllocator struct {
+}
+
+func (t testAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
+	return false, nil
 }
