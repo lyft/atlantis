@@ -1,18 +1,16 @@
-package events_test
+package github_test
 
 import (
 	"fmt"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"
 )
-
-var logger logging.Logger
 
 // Test that we write the file as expected
 func TestWriteGitCreds_WriteFile(t *testing.T) {
@@ -20,7 +18,7 @@ func TestWriteGitCreds_WriteFile(t *testing.T) {
 	defer cleanup()
 
 	logger := logging.NewNoopCtxLogger(t)
-	err := events.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
+	err := github.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
 	Ok(t, err)
 
 	expContents := `https://user:token@hostname`
@@ -41,7 +39,7 @@ func TestWriteGitCreds_Appends(t *testing.T) {
 	Ok(t, err)
 
 	logger := logging.NewNoopCtxLogger(t)
-	err = events.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
+	err = github.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
 	Ok(t, err)
 
 	expContents := "contents\nhttps://user:token@hostname"
@@ -62,7 +60,7 @@ func TestWriteGitCreds_NoModification(t *testing.T) {
 	Ok(t, err)
 
 	logger := logging.NewNoopCtxLogger(t)
-	err = events.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
+	err = github.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
 	Ok(t, err)
 	actContents, err := os.ReadFile(filepath.Join(tmp, ".git-credentials"))
 	Ok(t, err)
@@ -80,7 +78,7 @@ func TestWriteGitCreds_ReplaceApp(t *testing.T) {
 	Ok(t, err)
 
 	logger := logging.NewNoopCtxLogger(t)
-	err = events.WriteGitCreds("x-access-token", "token", "github.com", tmp, logger, true)
+	err = github.WriteGitCreds("x-access-token", "token", "github.com", tmp, logger, true)
 	Ok(t, err)
 	expContets := "line1\nhttps://x-access-token:token@github.com\nline2"
 	actContents, err := os.ReadFile(filepath.Join(tmp, ".git-credentials"))
@@ -99,7 +97,7 @@ func TestWriteGitCreds_AppendApp(t *testing.T) {
 	Ok(t, err)
 
 	logger := logging.NewNoopCtxLogger(t)
-	err = events.WriteGitCreds("x-access-token", "token", "github.com", tmp, logger, true)
+	err = github.WriteGitCreds("x-access-token", "token", "github.com", tmp, logger, true)
 	Ok(t, err)
 	expContets := "https://x-access-token:token@github.com"
 	actContents, err := os.ReadFile(filepath.Join(tmp, ".git-credentials"))
@@ -119,15 +117,16 @@ func TestWriteGitCreds_ErrIfCannotRead(t *testing.T) {
 
 	logger := logging.NewNoopCtxLogger(t)
 	expErr := fmt.Sprintf("open %s: permission denied", file)
-	actErr := events.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
+	actErr := github.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
 	ErrContains(t, expErr, actErr)
 }
 
 // Test that if we can't write, we error out.
 func TestWriteGitCreds_ErrIfCannotWrite(t *testing.T) {
+	logger := logging.NewNoopCtxLogger(t)
 	file := "/this/dir/does/not/exist/.git-credentials"
 	expErr := fmt.Sprintf("writing generated .git-credentials file with user, token and hostname to %s: open %s: no such file or directory", file, file)
-	actErr := events.WriteGitCreds("user", "token", "hostname", "/this/dir/does/not/exist", logger, false)
+	actErr := github.WriteGitCreds("user", "token", "hostname", "/this/dir/does/not/exist", logger, false)
 	ErrEquals(t, expErr, actErr)
 }
 
@@ -137,7 +136,7 @@ func TestWriteGitCreds_ConfigureGitCredentialHelper(t *testing.T) {
 	defer cleanup()
 
 	logger := logging.NewNoopCtxLogger(t)
-	err := events.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
+	err := github.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
 	Ok(t, err)
 
 	expOutput := `store`
@@ -152,7 +151,7 @@ func TestWriteGitCreds_ConfigureGitUrlOverride(t *testing.T) {
 	defer cleanup()
 
 	logger := logging.NewNoopCtxLogger(t)
-	err := events.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
+	err := github.WriteGitCreds("user", "token", "hostname", tmp, logger, false)
 	Ok(t, err)
 
 	expOutput := `ssh://git@hostname`

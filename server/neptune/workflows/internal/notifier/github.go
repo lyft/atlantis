@@ -47,6 +47,7 @@ type GithubCheckRunRequest struct {
 	State   github.CheckRunState
 	Actions []github.CheckRunAction
 	Summary string
+	Mode    terraform.WorkflowMode
 }
 
 func (c *GithubCheckRunCache) CreateOrUpdate(ctx workflow.Context, deploymentID string, request GithubCheckRunRequest) (int64, error) {
@@ -92,6 +93,7 @@ func (c *GithubCheckRunCache) update(ctx workflow.Context, externalID string, re
 		Summary:    request.Summary,
 		ID:         checkRunID,
 		ExternalID: externalID,
+		Mode:       request.Mode,
 	}
 
 	var resp activities.UpdateCheckRunResponse
@@ -111,6 +113,7 @@ func (c *GithubCheckRunCache) load(ctx workflow.Context, externalID string, requ
 		Actions:    request.Actions,
 		Summary:    request.Summary,
 		ExternalID: externalID,
+		Mode:       request.Mode,
 	}
 
 	var resp activities.CreateCheckRunResponse
@@ -160,6 +163,7 @@ func (n *CheckRunNotifier) updateCheckRun(ctx workflow.Context, workflowState *s
 		State:   checkRunState,
 		Repo:    info.Repo,
 		Summary: summary,
+		Mode:    n.Mode,
 	}
 
 	if workflowState.Apply != nil {

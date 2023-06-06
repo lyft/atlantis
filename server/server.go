@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
 	"log"
 	"net/http"
@@ -212,6 +213,15 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Regexes: globalCfg.TerraformLogFilter.Regexes,
 	}
 
+	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
+		config.AppCfg,
+		githubapp.WithClientMiddleware(
+			middleware.ClientMetrics(statsScope.SubScope("github")),
+		))
+	if err != nil {
+		return nil, errors.Wrap(err, "creating github client creator")
+	}
+
 	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
 		supportedVCSHosts = append(supportedVCSHosts, models.Github)
 		if userConfig.GithubUser != "" {
@@ -248,14 +258,24 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			return nil, err
 		}
 
-		featureAllocator, err = feature.NewGHSourcedAllocator(
-			feature.RepoConfig{
-				Owner:  userConfig.FFOwner,
-				Repo:   userConfig.FFRepo,
-				Branch: userConfig.FFBranch,
-				Path:   userConfig.FFPath,
-			}, rawGithubClient, ctxLogger)
-
+		repoConfig := feature.RepoConfig{
+			Owner:  userConfig.FFOwner,
+			Repo:   userConfig.FFRepo,
+			Branch: userConfig.FFBranch,
+			Path:   userConfig.FFPath,
+		}
+		installationFetcher := &github.InstallationRetriever{
+			ClientCreator: clientCreator,
+		}
+		fileFetcher := &github.SingleFileContentsFetcher{
+			ClientCreator: clientCreator,
+		}
+		retriever := &feature.CustomGithubInstallationRetriever{
+			InstallationFetcher: installationFetcher,
+			FileContentsFetcher: fileFetcher,
+			Cfg:                 repoConfig,
+		}
+		featureAllocator, err = feature.NewGHSourcedAllocator(retriever, ctxLogger)
 		if err != nil {
 			return nil, errors.Wrap(err, "initializing feature allocator")
 		}
@@ -307,12 +327,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			return nil, errors.Wrap(err, "getting home dir to write ~/.git-credentials file")
 		}
 		if userConfig.GithubUser != "" {
-			if err := events.WriteGitCreds(userConfig.GithubUser, userConfig.GithubToken, userConfig.GithubHostname, home, ctxLogger, false); err != nil {
+			if err := github.WriteGitCreds(userConfig.GithubUser, userConfig.GithubToken, userConfig.GithubHostname, home, ctxLogger, false); err != nil {
 				return nil, err
 			}
 		}
 		if userConfig.GitlabUser != "" {
-			if err := events.WriteGitCreds(userConfig.GitlabUser, userConfig.GitlabToken, userConfig.GitlabHostname, home, ctxLogger, false); err != nil {
+			if err := github.WriteGitCreds(userConfig.GitlabUser, userConfig.GitlabToken, userConfig.GitlabHostname, home, ctxLogger, false); err != nil {
 				return nil, err
 			}
 		}
@@ -323,12 +343,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			if bitbucketBaseURL == "https://api.bitbucket.org" {
 				bitbucketBaseURL = "bitbucket.org"
 			}
-			if err := events.WriteGitCreds(userConfig.BitbucketUser, userConfig.BitbucketToken, bitbucketBaseURL, home, ctxLogger, false); err != nil {
+			if err := github.WriteGitCreds(userConfig.BitbucketUser, userConfig.BitbucketToken, bitbucketBaseURL, home, ctxLogger, false); err != nil {
 				return nil, err
 			}
 		}
 		if userConfig.AzureDevopsUser != "" {
-			if err := events.WriteGitCreds(userConfig.AzureDevopsUser, userConfig.AzureDevopsToken, "dev.azure.com", home, ctxLogger, false); err != nil {
+			if err := github.WriteGitCreds(userConfig.AzureDevopsUser, userConfig.AzureDevopsToken, "dev.azure.com", home, ctxLogger, false); err != nil {
 				return nil, err
 			}
 		}
@@ -581,15 +601,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTfVersion)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing show step runner")
-	}
-
-	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
-		config.AppCfg,
-		githubapp.WithClientMiddleware(
-			middleware.ClientMetrics(statsScope.SubScope("github")),
-		))
-	if err != nil {
-		return nil, errors.Wrap(err, "creating github client creator")
 	}
 
 	conftestEnsurer := policy.NewConfTestVersionEnsurer(ctxLogger, binDir, &terraform.DefaultDownloader{})
