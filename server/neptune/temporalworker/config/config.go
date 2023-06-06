@@ -36,8 +36,6 @@ type FeatureConfig struct {
 	FFRepo   string
 	FFPath   string
 	FFBranch string
-	AppSlug  string
-	Hostname string
 }
 
 // Config is TemporalWorker specific user config

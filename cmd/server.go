@@ -525,8 +525,6 @@ func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.C
 			FFRepo:   userConfig.FFRepo,
 			FFPath:   userConfig.FFPath,
 			FFBranch: userConfig.FFBranch,
-			AppSlug:  userConfig.GithubAppSlug,
-			Hostname: userConfig.GithubHostname,
 		},
 		TerraformCfg: neptune.TerraformConfig{
 			DefaultVersion: userConfig.DefaultTFVersion,

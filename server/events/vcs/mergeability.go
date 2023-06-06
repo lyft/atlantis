@@ -163,9 +163,3 @@ func (c *PullMergeabilityChecker) Check(pull *github.PullRequest, statuses []*gi
 	}
 	return true
 }
-
-type NoopMergeabilityChecker struct{}
-
-func (n *NoopMergeabilityChecker) Check(_ *github.PullRequest, _ []*github.RepoStatus, _ []*github.CheckRun) bool {
-	return false
-}

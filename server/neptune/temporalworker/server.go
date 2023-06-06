@@ -166,6 +166,9 @@ func NewServer(config *config.Config) (*Server, error) {
 		githubapp.WithClientMiddleware(
 			ghClient.ClientMetrics(scope.SubScope("app")),
 		))
+	if err != nil {
+		return nil, errors.Wrap(err, "client creator")
+	}
 	repoConfig := feature.RepoConfig{
 		Owner:  config.FeatureConfig.FFOwner,
 		Repo:   config.FeatureConfig.FFRepo,
