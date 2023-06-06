@@ -469,6 +469,7 @@ func (c *GatewayCreator) NewServer(userConfig server.UserConfig, config server.C
 		SSLKeyFile:                userConfig.SSLKeyFile,
 		SSLCertFile:               userConfig.SSLCertFile,
 		DefaultCheckrunDetailsURL: userConfig.DefaultCheckrunDetailsURL,
+		DefaultTFVersion:          userConfig.DefaultTFVersion,
 	}
 	return gateway.NewServer(cfg)
 }

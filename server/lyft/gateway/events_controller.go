@@ -58,6 +58,7 @@ func NewVCSEventsController(
 	globalCfg valid.GlobalCfg,
 	commentCreator *github.CommentCreator,
 	clientCreator githubapp.ClientCreator,
+	defaultTFVersion string,
 ) *VCSEventsController {
 	pullEventSNSProxy := gateway_handlers.NewSNSWorkerProxy(
 		snsWriter, logger,
@@ -67,7 +68,7 @@ func NewVCSEventsController(
 		WorkerProxy:      pullEventSNSProxy,
 		VCSStatusUpdater: vcsStatusUpdater,
 	}
-	prSignaler := &pr.WorkflowSignaler{TemporalClient: temporalClient}
+	prSignaler := &pr.WorkflowSignaler{TemporalClient: temporalClient, DefaultTFVersion: defaultTFVersion}
 	prRequirementChecker := requirement.NewPRAggregate(globalCfg)
 	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler, legacyHandler, featureAllocator)
 
