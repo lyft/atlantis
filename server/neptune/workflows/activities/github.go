@@ -104,7 +104,7 @@ func (a *githubActivities) GithubUpdateCheckRun(ctx context.Context, request Upd
 		RepoName: request.Repo.GetFullName(),
 	})
 	if err != nil {
-		return UpdateCheckRunResponse{}, errors.Wrap(err, "unable to allocate legacy deprecation feature flag")
+		activity.GetLogger(ctx).Error("unable to allocate legacy deprecation feature flag", key.ErrKey, err)
 	}
 	// skip check run mutation if we're in PR mode and legacy deprecation is not enabled
 	if request.Mode == terraform.PR && !shouldAllocate {
@@ -161,7 +161,7 @@ func (a *githubActivities) GithubCreateCheckRun(ctx context.Context, request Cre
 		RepoName: request.Repo.GetFullName(),
 	})
 	if err != nil {
-		return CreateCheckRunResponse{}, errors.Wrap(err, "unable to allocate legacy deprecation feature flag")
+		activity.GetLogger(ctx).Error("unable to allocate legacy deprecation feature flag", key.ErrKey, err)
 	}
 	// skip check run mutation if we're in PR mode and legacy deprecation is not enabled
 	if request.Mode == terraform.PR && !shouldAllocate {
