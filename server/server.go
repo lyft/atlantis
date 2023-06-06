@@ -358,6 +358,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			},
 			DefaultDetailsURL: userConfig.DefaultCheckrunDetailsURL,
 		},
+		Logger: ctxLogger,
 	}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
@@ -592,7 +593,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	conftestEnsurer := policy.NewConfTestVersionEnsurer(ctxLogger, binDir, &terraform.DefaultDownloader{})
-	conftestExecutor := policy.NewConfTestExecutor(clientCreator, globalCfg.PolicySets, featureAllocator)
+	conftestExecutor := policy.NewConfTestExecutor(clientCreator, globalCfg.PolicySets, featureAllocator, ctxLogger)
 	policyCheckStepRunner, err := runtime.NewPolicyCheckStepRunner(
 		defaultTfVersion,
 		conftestEnsurer,

@@ -7,6 +7,7 @@ import (
 	runtime_models "github.com/runatlantis/atlantis/server/core/runtime/models"
 	"github.com/runatlantis/atlantis/server/events"
 	"github.com/runatlantis/atlantis/server/events/metrics"
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"path/filepath"
@@ -39,7 +40,7 @@ type ConfTestExecutor struct {
 	PolicyFilter policyFilter
 }
 
-func NewConfTestExecutor(creator githubapp.ClientCreator, policySets valid.PolicySets, allocator feature.Allocator) *ConfTestExecutor {
+func NewConfTestExecutor(creator githubapp.ClientCreator, policySets valid.PolicySets, allocator feature.Allocator, logger logging.Logger) *ConfTestExecutor {
 	reviewFetcher := &github.PRReviewFetcher{
 		ClientCreator: creator,
 	}
@@ -52,7 +53,7 @@ func NewConfTestExecutor(creator githubapp.ClientCreator, policySets valid.Polic
 	}
 	return &ConfTestExecutor{
 		Exec:         runtime_models.LocalExec{},
-		PolicyFilter: events.NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamMemberFetcher, allocator, policySets.PolicySets),
+		PolicyFilter: events.NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamMemberFetcher, allocator, policySets.PolicySets, logger),
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -16,6 +17,7 @@ func TestLegacyDeprecationVCSStatusUpdater_NotAllocated(t *testing.T) {
 	subject := command.LegacyDeprecationVCSStatusUpdater{
 		Allocator: &testFeatureAllocator{},
 		Delegate:  delegate,
+		Logger:    logging.NewNoopCtxLogger(t),
 	}
 	id, err := subject.UpdateCombinedCount(context.Background(), models.Repo{}, models.PullRequest{}, models.QueuedVCSStatus, command.Plan, 0, 0, "")
 	assert.NoError(t, err)
@@ -38,6 +40,7 @@ func TestLegacyDeprecationVCSStatusUpdater_Allocated(t *testing.T) {
 	subject := command.LegacyDeprecationVCSStatusUpdater{
 		Allocator: &testFeatureAllocator{Enabled: true},
 		Delegate:  delegate,
+		Logger:    logging.NewNoopCtxLogger(t),
 	}
 	id, err := subject.UpdateCombinedCount(context.Background(), models.Repo{}, models.PullRequest{}, models.QueuedVCSStatus, command.Plan, 0, 0, "")
 	assert.NoError(t, err)
@@ -60,6 +63,7 @@ func TestLegacyDeprecationVCSStatusUpdater_AllocatorError(t *testing.T) {
 	subject := command.LegacyDeprecationVCSStatusUpdater{
 		Allocator: &testFeatureAllocator{Err: assert.AnError},
 		Delegate:  delegate,
+		Logger:    logging.NewNoopCtxLogger(t),
 	}
 	id, err := subject.UpdateCombinedCount(context.Background(), models.Repo{}, models.PullRequest{}, models.QueuedVCSStatus, command.Plan, 0, 0, "")
 	assert.Error(t, err)

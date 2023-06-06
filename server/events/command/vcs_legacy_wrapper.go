@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
@@ -16,6 +17,7 @@ type delegate interface {
 type LegacyDeprecationVCSStatusUpdater struct {
 	Delegate  delegate
 	Allocator feature.Allocator
+	Logger    logging.Logger
 }
 
 func (l *LegacyDeprecationVCSStatusUpdater) UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, cmdName fmt.Stringer, statusID string, output string) (string, error) {
@@ -27,6 +29,7 @@ func (l *LegacyDeprecationVCSStatusUpdater) UpdateCombined(ctx context.Context, 
 	}
 	// if legacy deprecation is enabled, don't mutate check runs in legacy workflow
 	if shouldAllocate {
+		l.Logger.InfoContext(ctx, "legacy deprecation feature flag enabled, not updating check runs")
 		return "", nil
 	}
 	return l.Delegate.UpdateCombined(ctx, repo, pull, status, cmdName, statusID, output)
@@ -41,6 +44,7 @@ func (l *LegacyDeprecationVCSStatusUpdater) UpdateCombinedCount(ctx context.Cont
 	}
 	// if legacy deprecation is enabled, don't mutate check runs in legacy workflow
 	if shouldAllocate {
+		l.Logger.InfoContext(ctx, "legacy deprecation feature flag enabled, not updating check runs")
 		return "", nil
 	}
 	return l.Delegate.UpdateCombinedCount(ctx, repo, pull, status, cmdName, numSuccess, numTotal, statusID)
@@ -55,6 +59,7 @@ func (l *LegacyDeprecationVCSStatusUpdater) UpdateProject(ctx context.Context, p
 	}
 	// if legacy deprecation is enabled, don't mutate check runs in legacy workflow
 	if shouldAllocate {
+		l.Logger.InfoContext(ctx, "legacy deprecation feature flag enabled, not updating project check run")
 		return "", nil
 	}
 	return l.Delegate.UpdateProject(ctx, projectCtx, cmdName, status, url, statusID)

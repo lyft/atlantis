@@ -7,6 +7,7 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
@@ -29,6 +30,7 @@ type ApprovedPolicyFilter struct {
 	teamMemberFetcher teamMemberFetcher
 	allocator         feature.Allocator
 	policies          []valid.PolicySet
+	logger            logging.Logger
 }
 
 func NewApprovedPolicyFilter(
@@ -36,13 +38,15 @@ func NewApprovedPolicyFilter(
 	prReviewDismisser prReviewDismisser,
 	teamMemberFetcher teamMemberFetcher,
 	allocator feature.Allocator,
-	policySets []valid.PolicySet) *ApprovedPolicyFilter {
+	policySets []valid.PolicySet,
+	logger logging.Logger) *ApprovedPolicyFilter {
 	return &ApprovedPolicyFilter{
 		prReviewFetcher:   prReviewFetcher,
 		prReviewDismisser: prReviewDismisser,
 		teamMemberFetcher: teamMemberFetcher,
 		policies:          policySets,
 		allocator:         allocator,
+		logger:            logger,
 	}
 }
 
@@ -91,6 +95,7 @@ func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, instal
 	}
 	// if legacy deprecation is enabled, don't dismiss stale PR reviews in legacy workflow
 	if shouldAllocate {
+		p.logger.InfoContext(ctx, "legacy deprecation feature flag enabled, not dismissing stale PR reviews")
 		return nil
 	}
 
