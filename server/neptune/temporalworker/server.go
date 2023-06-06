@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/events/vcs"
+	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"io"
 	"log"
 	"net/http"
@@ -160,25 +161,30 @@ func NewServer(config *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
 	}
-
-	githubCredentials := &vcs.GithubAppCredentials{
-		AppID:    config.App.App.IntegrationID,
-		Key:      []byte(config.App.App.PrivateKey),
-		Hostname: config.FeatureConfig.Hostname,
-		AppSlug:  config.FeatureConfig.AppSlug,
+	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
+		config.App,
+		githubapp.WithClientMiddleware(
+			ghClient.ClientMetrics(scope.SubScope("app")),
+		))
+	repoConfig := feature.RepoConfig{
+		Owner:  config.FeatureConfig.FFOwner,
+		Repo:   config.FeatureConfig.FFRepo,
+		Branch: config.FeatureConfig.FFBranch,
+		Path:   config.FeatureConfig.FFPath,
 	}
-	rawGithubClient, err := vcs.NewGithubClient(config.FeatureConfig.Hostname, githubCredentials, config.CtxLogger, &vcs.NoopMergeabilityChecker{})
-	if err != nil {
-		return nil, err
+	installationFetcher := &feature.InstallationFetcher{
+		ClientCreator: clientCreator,
+		Org:           config.FeatureConfig.FFOwner,
 	}
-
-	featureAllocator, err := feature.NewGHSourcedAllocator(
-		feature.RepoConfig{
-			Owner:  config.FeatureConfig.FFOwner,
-			Repo:   config.FeatureConfig.FFRepo,
-			Branch: config.FeatureConfig.FFBranch,
-			Path:   config.FeatureConfig.FFPath,
-		}, rawGithubClient, config.CtxLogger)
+	fileFetcher := &feature.FileContentsFetcher{
+		ClientCreator: clientCreator,
+	}
+	retriever := &feature.CustomGithubInstallationRetriever{
+		InstallationFetcher: installationFetcher,
+		FileContentsFetcher: fileFetcher,
+		Cfg:                 repoConfig,
+	}
+	featureAllocator, err := feature.NewGHSourcedAllocator(retriever, config.CtxLogger)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing feature allocator")
 	}

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/events/vcs"
 	"github.com/runatlantis/atlantis/server/logging"
 	ffclient "github.com/thomaspoignant/go-feature-flag"
 	"github.com/thomaspoignant/go-feature-flag/ffuser"
@@ -32,29 +31,6 @@ func (s StringRetriever) Retrieve(ctx context.Context) ([]byte, error) {
 	return []byte(s), nil
 }
 
-type RepoConfig struct {
-	Owner  string
-	Repo   string
-	Branch string
-	Path   string
-}
-
-type retriever interface {
-	GetContents(owner, repo, branch, path string) ([]byte, error)
-}
-
-// CustomGithubRetriever uses Atlantis' internal client to retrieve the contents
-// of the feature file.  This allows us to re-use GH credentials easily as opposed
-// to the default ffclient.GithubRetriever.
-type CustomGithubRetriever struct {
-	client retriever
-	cfg    RepoConfig
-}
-
-func (c *CustomGithubRetriever) Retrieve(ctx context.Context) ([]byte, error) {
-	return c.client.GetContents(c.cfg.Owner, c.cfg.Repo, c.cfg.Branch, c.cfg.Path)
-}
-
 // Allocator allocates features given a feature id and full repo name.
 // Note: This means that if a feature is enabled for a repository, it will be enabled
 // for all operations on that given repository regardless of the PR/Operation
@@ -66,16 +42,15 @@ type Allocator interface {
 	ShouldAllocate(featureID Name, featureCtx FeatureContext) (bool, error)
 }
 
-func NewGHSourcedAllocator(repoConfig RepoConfig, githubClient vcs.IGithubClient, logger logging.Logger) (Allocator, error) {
-	// fail if no github client is provided
-	if githubClient == nil {
-		return nil, errors.New("no github client provided")
-	}
+type retriever interface {
+	Retrieve(ctx context.Context) ([]byte, error)
+}
 
+func NewGHSourcedAllocator(retriever retriever, logger logging.Logger) (Allocator, error) {
 	ff, err := ffclient.New(
 		ffclient.Config{
 			Context:   context.Background(),
-			Retriever: &CustomGithubRetriever{client: githubClient, cfg: repoConfig},
+			Retriever: retriever,
 		},
 	)
 

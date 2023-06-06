@@ -248,14 +248,17 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			return nil, err
 		}
 
-		featureAllocator, err = feature.NewGHSourcedAllocator(
-			feature.RepoConfig{
-				Owner:  userConfig.FFOwner,
-				Repo:   userConfig.FFRepo,
-				Branch: userConfig.FFBranch,
-				Path:   userConfig.FFPath,
-			}, rawGithubClient, ctxLogger)
-
+		repoConfig := feature.RepoConfig{
+			Owner:  userConfig.FFOwner,
+			Repo:   userConfig.FFRepo,
+			Branch: userConfig.FFBranch,
+			Path:   userConfig.FFPath,
+		}
+		retriever := &feature.CustomGithubRetriever{
+			Client: rawGithubClient,
+			Cfg:    repoConfig,
+		}
+		featureAllocator, err = feature.NewGHSourcedAllocator(retriever, ctxLogger)
 		if err != nil {
 			return nil, errors.Wrap(err, "initializing feature allocator")
 		}
