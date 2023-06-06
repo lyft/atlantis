@@ -2,6 +2,7 @@ package events
 
 import (
 	"fmt"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
@@ -39,7 +40,7 @@ func (g *GithubAppWorkingDir) Clone(log logging.Logger, headRepo models.Repo, p 
 	}
 
 	// https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#http-based-git-access-by-an-installation
-	if err := WriteGitCreds("x-access-token", token, g.GithubHostname, home, log, true); err != nil {
+	if err := github.WriteGitCreds("x-access-token", token, g.GithubHostname, home, log, true); err != nil {
 		return "", false, err
 	}
 

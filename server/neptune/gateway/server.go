@@ -153,11 +153,10 @@ func NewServer(config Config) (*Server, error) {
 		Branch: config.FFBranch,
 		Path:   config.FFPath,
 	}
-	installationFetcher := &feature.InstallationFetcher{
+	installationFetcher := &github.InstallationRetriever{
 		ClientCreator: clientCreator,
-		Org:           config.FFOwner,
 	}
-	fileFetcher := &feature.FileContentsFetcher{
+	fileFetcher := &github.SingleFileContentsFetcher{
 		ClientCreator: clientCreator,
 	}
 	retriever := &feature.CustomGithubInstallationRetriever{

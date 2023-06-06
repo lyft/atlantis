@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
 	"log"
 	"net/http"
@@ -263,11 +264,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			Branch: userConfig.FFBranch,
 			Path:   userConfig.FFPath,
 		}
-		installationFetcher := &feature.InstallationFetcher{
+		installationFetcher := &github.InstallationRetriever{
 			ClientCreator: clientCreator,
-			Org:           userConfig.FFOwner,
 		}
-		fileFetcher := &feature.FileContentsFetcher{
+		fileFetcher := &github.SingleFileContentsFetcher{
 			ClientCreator: clientCreator,
 		}
 		retriever := &feature.CustomGithubInstallationRetriever{
@@ -327,12 +327,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			return nil, errors.Wrap(err, "getting home dir to write ~/.git-credentials file")
 		}
 		if userConfig.GithubUser != "" {
-			if err := events.WriteGitCreds(userConfig.GithubUser, userConfig.GithubToken, userConfig.GithubHostname, home, ctxLogger, false); err != nil {
+			if err := github.WriteGitCreds(userConfig.GithubUser, userConfig.GithubToken, userConfig.GithubHostname, home, ctxLogger, false); err != nil {
 				return nil, err
 			}
 		}
 		if userConfig.GitlabUser != "" {
-			if err := events.WriteGitCreds(userConfig.GitlabUser, userConfig.GitlabToken, userConfig.GitlabHostname, home, ctxLogger, false); err != nil {
+			if err := github.WriteGitCreds(userConfig.GitlabUser, userConfig.GitlabToken, userConfig.GitlabHostname, home, ctxLogger, false); err != nil {
 				return nil, err
 			}
 		}
@@ -343,12 +343,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			if bitbucketBaseURL == "https://api.bitbucket.org" {
 				bitbucketBaseURL = "bitbucket.org"
 			}
-			if err := events.WriteGitCreds(userConfig.BitbucketUser, userConfig.BitbucketToken, bitbucketBaseURL, home, ctxLogger, false); err != nil {
+			if err := github.WriteGitCreds(userConfig.BitbucketUser, userConfig.BitbucketToken, bitbucketBaseURL, home, ctxLogger, false); err != nil {
 				return nil, err
 			}
 		}
 		if userConfig.AzureDevopsUser != "" {
-			if err := events.WriteGitCreds(userConfig.AzureDevopsUser, userConfig.AzureDevopsToken, "dev.azure.com", home, ctxLogger, false); err != nil {
+			if err := github.WriteGitCreds(userConfig.AzureDevopsUser, userConfig.AzureDevopsToken, "dev.azure.com", home, ctxLogger, false); err != nil {
 				return nil, err
 			}
 		}

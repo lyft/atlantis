@@ -3,6 +3,7 @@ package feature_test
 import (
 	"context"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
+	gh "github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -105,8 +106,10 @@ type testInstallationFetcher struct {
 	error error
 }
 
-func (t testInstallationFetcher) FetchInstallationToken(ctx context.Context) (int64, error) {
-	return t.token, t.error
+func (t testInstallationFetcher) FindOrganizationInstallation(ctx context.Context, org string) (gh.Installation, error) {
+	return gh.Installation{
+		Token: t.token,
+	}, t.error
 }
 
 type testFileFetcher struct {

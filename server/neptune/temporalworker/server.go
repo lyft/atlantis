@@ -7,6 +7,7 @@ import (
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
 	"log"
 	"net/http"
@@ -175,11 +176,10 @@ func NewServer(config *config.Config) (*Server, error) {
 		Branch: config.FeatureConfig.FFBranch,
 		Path:   config.FeatureConfig.FFPath,
 	}
-	installationFetcher := &feature.InstallationFetcher{
+	installationFetcher := &github.InstallationRetriever{
 		ClientCreator: clientCreator,
-		Org:           config.FeatureConfig.FFOwner,
 	}
-	fileFetcher := &feature.FileContentsFetcher{
+	fileFetcher := &github.SingleFileContentsFetcher{
 		ClientCreator: clientCreator,
 	}
 	retriever := &feature.CustomGithubInstallationRetriever{
