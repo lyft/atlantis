@@ -64,7 +64,7 @@ func TestGithubClient_GetModifiedFiles(t *testing.T) {
 	testServerURL, err := url.Parse(testServer.URL)
 	Ok(t, err)
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logger, mergeabilityChecker)
+	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logger, &testAllocator{}, mergeabilityChecker)
 	Ok(t, err)
 	defer disableSSLVerification()()
 
@@ -120,7 +120,7 @@ func TestGithubClient_GetModifiedFilesMovedFile(t *testing.T) {
 	testServerURL, err := url.Parse(testServer.URL)
 	Ok(t, err)
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 	Ok(t, err)
 	defer disableSSLVerification()()
 
@@ -215,7 +215,7 @@ func TestGithubClient_PaginatesComments(t *testing.T) {
 	Ok(t, err)
 
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 	Ok(t, err)
 	defer disableSSLVerification()()
 
@@ -305,7 +305,7 @@ func TestGithubClient_HideOldComments(t *testing.T) {
 	Ok(t, err)
 
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 	Ok(t, err)
 	defer disableSSLVerification()()
 
@@ -397,7 +397,7 @@ func TestGithubClient_PullIsApproved(t *testing.T) {
 	testServerURL, err := url.Parse(testServer.URL)
 	Ok(t, err)
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 	Ok(t, err)
 	defer disableSSLVerification()()
 
@@ -531,7 +531,7 @@ func TestGithubClient_PullIsMergeable(t *testing.T) {
 			testServerURL, err := url.Parse(testServer.URL)
 			Ok(t, err)
 			mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 			Ok(t, err)
 			defer disableSSLVerification()()
 
@@ -686,7 +686,7 @@ func TestGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 			testServerURL, err := url.Parse(testServer.URL)
 			Ok(t, err)
 			mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+			client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 			Ok(t, err)
 			defer disableSSLVerification()()
 
@@ -712,7 +712,7 @@ func TestGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 
 func TestGithubClient_MarkdownPullLink(t *testing.T) {
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-	client, err := vcs.NewGithubClient("hostname", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+	client, err := vcs.NewGithubClient("hostname", &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 	Ok(t, err)
 	pull := models.PullRequest{Num: 1}
 	s, _ := client.MarkdownPullLink(pull)
@@ -767,7 +767,7 @@ func TestGithubClient_SplitComments(t *testing.T) {
 	testServerURL, err := url.Parse(testServer.URL)
 	Ok(t, err)
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 	Ok(t, err)
 	defer disableSSLVerification()()
 	pull := models.PullRequest{Num: 1}
@@ -825,7 +825,7 @@ func TestGithubClient_Retry404(t *testing.T) {
 	testServerURL, err := url.Parse(testServer.URL)
 	Ok(t, err)
 	mergeabilityChecker := vcs.NewPullMergeabilityChecker("atlantis")
-	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), mergeabilityChecker)
+	client, err := vcs.NewGithubClient(testServerURL.Host, &vcs.GithubUserCredentials{"user", "pass"}, logging.NewNoopCtxLogger(t), &testAllocator{}, mergeabilityChecker)
 	Ok(t, err)
 	defer disableSSLVerification()()
 	repo := models.Repo{
