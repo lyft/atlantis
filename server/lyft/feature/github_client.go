@@ -10,10 +10,6 @@ import (
 	"net/http"
 )
 
-type githubClient interface {
-	GetContents(owner, repo, branch, path string) ([]byte, error)
-}
-
 type RepoConfig struct {
 	Owner  string
 	Repo   string
