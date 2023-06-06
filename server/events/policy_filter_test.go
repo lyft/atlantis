@@ -8,6 +8,8 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -32,7 +34,7 @@ func TestFilter_Approved(t *testing.T) {
 		{Name: policyName, Owner: policyOwner},
 	}
 
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, failedPolicies)
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.PRReviewTrigger, failedPolicies)
 	assert.NoError(t, err)
 	assert.True(t, reviewFetcher.listUsernamesIsCalled)
@@ -61,12 +63,38 @@ func TestFilter_NotApproved(t *testing.T) {
 		{Name: policyName, Owner: policyOwner},
 	}
 
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, failedPolicies)
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.AutoTrigger, failedPolicies)
 	assert.NoError(t, err)
 	assert.False(t, reviewFetcher.listUsernamesIsCalled)
 	assert.True(t, reviewFetcher.listApprovalsIsCalled)
 	assert.True(t, teamFetcher.isCalled)
+	assert.False(t, reviewDismisser.isCalled)
+	assert.Equal(t, failedPolicies, filteredPolicies)
+}
+
+func TestFilter_DismissalBlockedByFeatureAllocator(t *testing.T) {
+	reviewFetcher := &mockReviewFetcher{
+		reviews: []*github.PullRequestReview{
+			{
+				User: &github.User{Login: github.String(ownerA)},
+			},
+		},
+	}
+	teamFetcher := &mockTeamMemberFetcher{
+		members: []string{ownerA},
+	}
+	reviewDismisser := &mockReviewDismisser{}
+	failedPolicies := []valid.PolicySet{
+		{Name: policyName, Owner: policyOwner},
+	}
+
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{Enabled: true}, failedPolicies, logging.NewNoopCtxLogger(t))
+	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.AutoTrigger, failedPolicies)
+	assert.NoError(t, err)
+	assert.False(t, reviewFetcher.listUsernamesIsCalled)
+	assert.False(t, reviewFetcher.listApprovalsIsCalled)
+	assert.False(t, teamFetcher.isCalled)
 	assert.False(t, reviewDismisser.isCalled)
 	assert.Equal(t, failedPolicies, filteredPolicies)
 }
@@ -87,7 +115,7 @@ func TestFilter_NotApproved_Dismissal(t *testing.T) {
 		{Name: policyName, Owner: policyOwner},
 	}
 
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, failedPolicies)
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.AutoTrigger, failedPolicies)
 	assert.NoError(t, err)
 	assert.False(t, reviewFetcher.listUsernamesIsCalled)
@@ -107,7 +135,7 @@ func TestFilter_NoFailedPolicies(t *testing.T) {
 	reviewDismisser := &mockReviewDismisser{}
 
 	var failedPolicies []valid.PolicySet
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, failedPolicies)
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.PRReviewTrigger, failedPolicies)
 	assert.NoError(t, err)
 	assert.False(t, reviewFetcher.listUsernamesIsCalled)
@@ -127,7 +155,7 @@ func TestFilter_FailedListLatestApprovalUsernames(t *testing.T) {
 		{Name: policyName, Owner: policyOwner},
 	}
 
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, failedPolicies)
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.PRReviewTrigger, failedPolicies)
 	assert.Error(t, err)
 	assert.True(t, reviewFetcher.listUsernamesIsCalled)
@@ -147,7 +175,7 @@ func TestFilter_FailedListApprovalReviews(t *testing.T) {
 		{Name: policyName, Owner: policyOwner},
 	}
 
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, failedPolicies)
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.CommentTrigger, failedPolicies)
 	assert.Error(t, err)
 	assert.False(t, reviewFetcher.listUsernamesIsCalled)
@@ -169,7 +197,7 @@ func TestFilter_FailedTeamMemberFetch(t *testing.T) {
 		{Name: policyName, Owner: policyOwner},
 	}
 
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, failedPolicies)
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.PRReviewTrigger, failedPolicies)
 	assert.Error(t, err)
 	assert.True(t, reviewFetcher.listUsernamesIsCalled)
@@ -197,7 +225,7 @@ func TestFilter_FailedDismiss(t *testing.T) {
 		{Name: policyName, Owner: policyOwner},
 	}
 
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, failedPolicies)
+	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
 	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.AutoTrigger, failedPolicies)
 	assert.Error(t, err)
 	assert.False(t, reviewFetcher.listUsernamesIsCalled)
@@ -245,4 +273,13 @@ type mockTeamMemberFetcher struct {
 func (m *mockTeamMemberFetcher) ListTeamMembers(_ context.Context, _ int64, _ string) ([]string, error) {
 	m.isCalled = true
 	return m.members, m.error
+}
+
+type testFeatureAllocator struct {
+	Enabled bool
+	Err     error
+}
+
+func (t *testFeatureAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
+	return t.Enabled, t.Err
 }

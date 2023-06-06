@@ -7,6 +7,8 @@ import (
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/command"
 	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 )
 
 type prReviewFetcher interface {
@@ -26,19 +28,25 @@ type ApprovedPolicyFilter struct {
 	prReviewDismisser prReviewDismisser
 	prReviewFetcher   prReviewFetcher
 	teamMemberFetcher teamMemberFetcher
+	allocator         feature.Allocator
 	policies          []valid.PolicySet
+	logger            logging.Logger
 }
 
 func NewApprovedPolicyFilter(
 	prReviewFetcher prReviewFetcher,
 	prReviewDismisser prReviewDismisser,
 	teamMemberFetcher teamMemberFetcher,
-	policySets []valid.PolicySet) *ApprovedPolicyFilter {
+	allocator feature.Allocator,
+	policySets []valid.PolicySet,
+	logger logging.Logger) *ApprovedPolicyFilter {
 	return &ApprovedPolicyFilter{
 		prReviewFetcher:   prReviewFetcher,
 		prReviewDismisser: prReviewDismisser,
 		teamMemberFetcher: teamMemberFetcher,
 		policies:          policySets,
+		allocator:         allocator,
+		logger:            logger,
 	}
 }
 
@@ -79,6 +87,18 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 }
 
 func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) error {
+	shouldAllocate, err := p.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: repo.FullName,
+	})
+	if err != nil {
+		return errors.Wrap(err, "unable to allocate legacy deprecation feature flag")
+	}
+	// if legacy deprecation is enabled, don't dismiss stale PR reviews in legacy workflow
+	if shouldAllocate {
+		p.logger.InfoContext(ctx, "legacy deprecation feature flag enabled, not dismissing stale PR reviews")
+		return nil
+	}
+
 	approvalReviews, err := p.prReviewFetcher.ListApprovalReviews(ctx, installationToken, repo, prNum)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch GH PR reviews")
