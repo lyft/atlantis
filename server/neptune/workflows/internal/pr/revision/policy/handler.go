@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	gh "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -12,15 +13,16 @@ import (
 )
 
 type githubActivities interface {
-	GithubListPRApprovals(ctx context.Context, request activities.ListPRApprovalsRequest) (activities.ListPRApprovalsResponse, error)
+	GithubListPRReviews(ctx context.Context, request activities.ListPRReviewsRequest) (activities.ListPRReviewsResponse, error)
+	GithubListTeamMembers(ctx context.Context, request activities.ListTeamMembersRequest) (activities.ListTeamMembersResponse, error)
 }
 
 type dismisser interface {
-	Dismiss(ctx workflow.Context, revision revision.Revision, currentApprovals []*github.PullRequestReview) ([]*github.PullRequestReview, error)
+	Dismiss(ctx workflow.Context, revision revision.Revision, teams map[string][]string, currentApprovals []*github.PullRequestReview) ([]*github.PullRequestReview, error)
 }
 
 type policyFilter interface {
-	Filter(ctx workflow.Context, revision revision.Revision, currentApprovals []*github.PullRequestReview, failedPolicies []activities.PolicySet) ([]activities.PolicySet, error)
+	Filter(teams map[string][]string, currentApprovals []*github.PullRequestReview, failedPolicies []activities.PolicySet) []activities.PolicySet
 }
 
 type NewApproveSignalRequest struct{}
@@ -31,6 +33,7 @@ type FailedPolicyHandler struct {
 	PolicyFilter          policyFilter
 	GithubActivities      githubActivities
 	PRNumber              int
+	Org                   string
 }
 
 type Action int64
@@ -82,31 +85,48 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 
 func (f *FailedPolicyHandler) handle(ctx workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) []activities.PolicySet {
 	// Fetch current approvals in activity
-	var listPRApprovalsResponse activities.ListPRApprovalsResponse
-	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListPRApprovals, activities.ListPRApprovalsRequest{
+	var listPRReviewsResponse activities.ListPRReviewsResponse
+	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListPRReviews, activities.ListPRReviewsRequest{
 		Repo:     revision.Repo,
 		PRNumber: f.PRNumber,
-	}).Get(ctx, &listPRApprovalsResponse)
+	}).Get(ctx, &listPRReviewsResponse)
 	if err != nil {
 		workflow.GetLogger(ctx).Error(err.Error())
 		return failedPolicies
 	}
 
+	// Fetch current policy team memberships
+	teams := make(map[string][]string)
+	for _, policy := range failedPolicies {
+		members, err := f.fetchTeamMembers(ctx, revision.Repo, policy.Owner)
+		if err != nil {
+			workflow.GetLogger(ctx).Error(err.Error())
+			return failedPolicies
+		}
+		teams[policy.Name] = members
+	}
+
 	// Dismiss stale approvals
-	currentApprovals := listPRApprovalsResponse.Approvals
-	currentApprovals, err = f.Dismisser.Dismiss(ctx, revision, currentApprovals)
+	currentReviews := listPRReviewsResponse.Reviews
+	currentReviews, err = f.Dismisser.Dismiss(ctx, revision, teams, currentReviews)
 	if err != nil {
 		workflow.GetLogger(ctx).Error("failed to dismiss stale reviews")
 		return failedPolicies
 	}
 
 	// Filter out failed policies from policy approvals
-	filteredPolicies, err := f.PolicyFilter.Filter(ctx, revision, currentApprovals, failedPolicies)
-	if err != nil {
-		workflow.GetLogger(ctx).Error("failed to dismiss stale reviews")
-		return failedPolicies
-	}
+	filteredPolicies := f.PolicyFilter.Filter(teams, currentReviews, failedPolicies)
 	return filteredPolicies
+}
+
+func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Repo, slug string) ([]string, error) {
+	var listTeamMembersResponse activities.ListTeamMembersResponse
+	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListTeamMembers, activities.ListTeamMembersRequest{
+		Repo:     repo,
+		Org:      f.Org,
+		TeamSlug: slug,
+	}).Get(ctx, &listTeamMembersResponse)
+	return listTeamMembersResponse.Members, err
 }
 
 func dedup(workflowResponses []terraform.Response) []activities.PolicySet {

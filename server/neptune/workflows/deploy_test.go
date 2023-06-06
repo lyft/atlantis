@@ -285,6 +285,10 @@ type testGithubClient struct {
 	DeploymentID string
 }
 
+func (c *testGithubClient) ListTeamMembers(ctx internalGithub.Context, org string, teamSlug string) ([]*github.User, error) {
+	return []*github.User{}, nil
+}
+
 func (c *testGithubClient) ListCommits(ctx internalGithub.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error) {
 	return []*github.RepositoryCommit{}, nil
 }

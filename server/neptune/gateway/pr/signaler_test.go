@@ -96,6 +96,7 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Failure(t *testing.T) {
 		InstallationToken: 100,
 		Branch:            "test",
 	}
+	emptyRoot := []*valid.MergedProjectCfg{{}}
 	mockTemporalClient := &mockTemporalClient{
 		t:                  t,
 		expectedWorkflowID: "some/test||1",
@@ -103,6 +104,7 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Failure(t *testing.T) {
 		expectedSignalName: workflows.PRTerraformRevisionSignalID,
 		expectedSignalArg: workflows.PRNewRevisionSignalRequest{
 			Revision: "abc",
+			Roots:    buildRoots(emptyRoot),
 			Repo: workflows.PRRepo{
 				URL:           testRepo.CloneURL,
 				FullName:      testRepo.FullName,
@@ -128,7 +130,7 @@ func TestWorkflowSignaler_SignalWithStartWorkflow_Failure(t *testing.T) {
 		expectedErr: assert.AnError,
 	}
 	workflowSignaler := pr.WorkflowSignaler{TemporalClient: mockTemporalClient}
-	run, err := workflowSignaler.SignalWithStartWorkflow(context.Background(), []*valid.MergedProjectCfg{}, prRequest)
+	run, err := workflowSignaler.SignalWithStartWorkflow(context.Background(), emptyRoot, prRequest)
 	assert.Error(t, err)
 	assert.True(t, mockTemporalClient.called)
 	assert.Nil(t, run)

@@ -160,3 +160,21 @@ func (c *Client) DismissReview(ctx Context, owner string, repo string, number in
 	}
 	return client.PullRequests.DismissReview(ctx, owner, repo, number, reviewID, review)
 }
+
+func (c *Client) ListTeamMembers(ctx Context, org string, teamSlug string) ([]*github.User, error) {
+	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+	if err != nil {
+		return nil, errors.Wrap(err, "creating client from installation")
+	}
+
+	run := func(ctx context.Context, nextPage int) ([]*github.User, *github.Response, error) {
+		listOptions := &github.TeamListTeamMembersOptions{
+			ListOptions: github.ListOptions{
+				PerPage: 100,
+			},
+		}
+		listOptions.Page = nextPage
+		return client.Teams.ListTeamMembersBySlug(ctx, org, teamSlug, listOptions)
+	}
+	return gh_helper.Iterate(ctx, run)
+}

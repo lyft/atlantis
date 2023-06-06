@@ -74,6 +74,7 @@ func (s *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfgs
 		workflows.PRRequest{
 			RepoFullName: request.Repo.FullName,
 			PRNum:        request.Number,
+			Organization: rootCfgs[0].PolicySets.Organization,
 		},
 	)
 	return run, err
