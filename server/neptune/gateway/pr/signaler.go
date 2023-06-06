@@ -18,6 +18,7 @@ type signaler interface {
 const (
 	Deprecated = "deprecated"
 	Destroy    = "-destroy"
+	Manifest   = "manifest_path"
 	EnvStep    = "env"
 )
 
@@ -95,18 +96,18 @@ func buildRoots(rootCfgs []*valid.MergedProjectCfg, validateEnvOpts ...ValidateE
 			TfVersion:   tfVersion,
 			PlanMode:    generatePlanMode(rootCfg),
 			Plan:        workflows.PRJob{Steps: generateSteps(rootCfg.PullRequestWorkflow.Plan.Steps)},
-			Validate:    workflows.PRJob{Steps: prependValidateEnvSteps(rootCfg.PullRequestWorkflow.PolicyCheck.Steps, validateEnvOpts...)},
+			Validate:    workflows.PRJob{Steps: prependValidateEnvSteps(rootCfg, validateEnvOpts...)},
 		})
 	}
 	return roots
 }
 
-func prependValidateEnvSteps(validateSteps []valid.Step, opts ...ValidateEnvs) []workflows.PRStep {
+func prependValidateEnvSteps(rootCfg *valid.MergedProjectCfg, opts ...ValidateEnvs) []workflows.PRStep {
 	for _, o := range opts {
-		initialEnvSteps := generatePRModeEnvSteps(o)
-		return append(initialEnvSteps, generateSteps(validateSteps)...)
+		initialEnvSteps := generatePRModeEnvSteps(rootCfg, o)
+		return append(initialEnvSteps, generateSteps(rootCfg.PullRequestWorkflow.PolicyCheck.Steps)...)
 	}
-	return generateSteps(validateSteps)
+	return generateSteps(rootCfg.PullRequestWorkflow.PolicyCheck.Steps)
 }
 
 func generateSteps(steps []valid.Step) []workflows.PRStep {
@@ -134,8 +135,8 @@ func generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PRPlanMode {
 	return workflows.PRNormalPlanMode
 }
 
-func generatePRModeEnvSteps(validateEnvs ValidateEnvs) []workflows.PRStep {
-	return []workflows.PRStep{
+func generatePRModeEnvSteps(cfg *valid.MergedProjectCfg, validateEnvs ValidateEnvs) []workflows.PRStep {
+	steps := []workflows.PRStep{
 		{
 			StepName:    EnvStep,
 			EnvVarName:  "WORKSPACE",
@@ -167,4 +168,20 @@ func generatePRModeEnvSteps(validateEnvs ValidateEnvs) []workflows.PRStep {
 			EnvVarValue: validateEnvs.BaseBranchName,
 		},
 	}
+	if t, ok := cfg.Tags[Manifest]; ok {
+		steps = append(steps, workflows.PRStep{
+			StepName:    EnvStep,
+			EnvVarName:  "MANIFEST_FILEPATH",
+			EnvVarValue: t,
+		})
+	}
+	if cfg.TerraformVersion != nil {
+		tfVersion := cfg.TerraformVersion.String()
+		steps = append(steps, workflows.PRStep{
+			StepName:    EnvStep,
+			EnvVarName:  "ATLANTIS_TERRAFORM_VERSION",
+			EnvVarValue: tfVersion,
+		})
+	}
+	return steps
 }
