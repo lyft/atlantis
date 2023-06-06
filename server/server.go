@@ -212,6 +212,15 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		Regexes: globalCfg.TerraformLogFilter.Regexes,
 	}
 
+	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
+		config.AppCfg,
+		githubapp.WithClientMiddleware(
+			middleware.ClientMetrics(statsScope.SubScope("github")),
+		))
+	if err != nil {
+		return nil, errors.Wrap(err, "creating github client creator")
+	}
+
 	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
 		supportedVCSHosts = append(supportedVCSHosts, models.Github)
 		if userConfig.GithubUser != "" {
@@ -254,9 +263,17 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			Branch: userConfig.FFBranch,
 			Path:   userConfig.FFPath,
 		}
-		retriever := &feature.CustomGithubRetriever{
-			Client: rawGithubClient,
-			Cfg:    repoConfig,
+		installationFetcher := &feature.InstallationFetcher{
+			ClientCreator: clientCreator,
+			Org:           userConfig.FFOwner,
+		}
+		fileFetcher := &feature.FileContentsFetcher{
+			ClientCreator: clientCreator,
+		}
+		retriever := &feature.CustomGithubInstallationRetriever{
+			InstallationFetcher: installationFetcher,
+			FileContentsFetcher: fileFetcher,
+			Cfg:                 repoConfig,
 		}
 		featureAllocator, err = feature.NewGHSourcedAllocator(retriever, ctxLogger)
 		if err != nil {
@@ -580,15 +597,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	showStepRunner, err := runtime.NewShowStepRunner(terraformClient, defaultTfVersion)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing show step runner")
-	}
-
-	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
-		config.AppCfg,
-		githubapp.WithClientMiddleware(
-			middleware.ClientMetrics(statsScope.SubScope("github")),
-		))
-	if err != nil {
-		return nil, errors.Wrap(err, "creating github client creator")
 	}
 
 	conftestEnsurer := policy.NewConfTestVersionEnsurer(ctxLogger, binDir, &terraform.DefaultDownloader{})

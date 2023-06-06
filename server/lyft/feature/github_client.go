@@ -21,18 +21,6 @@ type RepoConfig struct {
 	Path   string
 }
 
-// CustomGithubRetriever uses Atlantis' internal client to retrieve the contents
-// of the feature file.  This allows us to re-use GH credentials easily as opposed
-// to the default ffclient.GithubRetriever.
-type CustomGithubRetriever struct {
-	Client githubClient
-	Cfg    RepoConfig
-}
-
-func (c *CustomGithubRetriever) Retrieve(ctx context.Context) ([]byte, error) {
-	return c.Client.GetContents(c.Cfg.Owner, c.Cfg.Repo, c.Cfg.Branch, c.Cfg.Path)
-}
-
 type installationFetcher interface {
 	FetchInstallationToken(ctx context.Context) (int64, error)
 }

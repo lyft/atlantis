@@ -138,15 +138,32 @@ func NewServer(config Config) (*Server, error) {
 		return nil, err
 	}
 
+	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
+		config.AppCfg,
+		githubapp.WithClientMiddleware(
+			ghClient.ClientMetrics(statsScope.SubScope("github")),
+		))
+	if err != nil {
+		return nil, errors.Wrap(err, "creating github client creator")
+	}
+
 	repoConfig := feature.RepoConfig{
 		Owner:  config.FFOwner,
 		Repo:   config.FFRepo,
 		Branch: config.FFBranch,
 		Path:   config.FFPath,
 	}
-	retriever := &feature.CustomGithubRetriever{
-		Client: rawGithubClient,
-		Cfg:    repoConfig,
+	installationFetcher := &feature.InstallationFetcher{
+		ClientCreator: clientCreator,
+		Org:           config.FFOwner,
+	}
+	fileFetcher := &feature.FileContentsFetcher{
+		ClientCreator: clientCreator,
+	}
+	retriever := &feature.CustomGithubInstallationRetriever{
+		InstallationFetcher: installationFetcher,
+		FileContentsFetcher: fileFetcher,
+		Cfg:                 repoConfig,
 	}
 	featureAllocator, err := feature.NewGHSourcedAllocator(retriever, ctxLogger)
 	if err != nil {
@@ -207,14 +224,6 @@ func NewServer(config Config) (*Server, error) {
 		HookExecutor: &preworkflow.HookExecutor{
 			Logger: ctxLogger,
 		},
-	}
-	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
-		config.AppCfg,
-		githubapp.WithClientMiddleware(
-			ghClient.ClientMetrics(statsScope.SubScope("github")),
-		))
-	if err != nil {
-		return nil, errors.Wrap(err, "creating github client creator")
 	}
 
 	rootConfigBuilder := &root_config.Builder{
