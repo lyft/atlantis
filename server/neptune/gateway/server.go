@@ -70,6 +70,7 @@ type Config struct {
 	SSLKeyFile                string
 	SSLCertFile               string
 	DefaultCheckrunDetailsURL string
+	DefaultTFVersion          string
 }
 
 type Server struct {
@@ -279,6 +280,7 @@ func NewServer(config Config) (*Server, error) {
 		globalCfg,
 		commentCreator,
 		clientCreator,
+		config.DefaultTFVersion,
 	)
 
 	repoRetriever := &github.RepoRetriever{
