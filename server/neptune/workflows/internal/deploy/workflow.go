@@ -205,6 +205,10 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		notifierPeriod = r.NotifierPeriod(ctx, QueueStatusNotifierHourUTC)
 	}
 
+	if v > workflow.DefaultVersion {
+		s.AddTimeout(ctx, notifierPeriod, notifyTimerFunc)
+	}
+
 	// main loop which handles external signals
 	// and in turn signals the queue worker
 OUT:
