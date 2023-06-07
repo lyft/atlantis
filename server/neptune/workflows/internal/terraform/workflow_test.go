@@ -132,6 +132,7 @@ type response struct {
 	PlanRejected     bool
 	UpdateJobErrored bool
 	ClientErrored    bool
+	ValidateErr      bool
 }
 
 func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error) {
@@ -187,6 +188,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 
 	var planRejected bool
 	var updateJobErr bool
+	var validateErr bool
 	if _, err := subject.Run(ctx); err != nil {
 		var appErr *temporal.ApplicationError
 		if errors.As(err, &appErr) {
@@ -195,6 +197,8 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 				planRejected = true
 			case terraform.UpdateJobErrorType:
 				updateJobErr = true
+			case terraform.ValidationErrorType:
+				validateErr = true
 			default:
 				return nil, err
 			}
@@ -207,6 +211,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		// doing this so that we can still check states when we get this type of error
 		PlanRejected:     planRejected,
 		UpdateJobErrored: updateJobErr,
+		ValidateErr:      validateErr,
 	}, nil
 }
 
@@ -476,13 +481,6 @@ func TestSuccess_PRMode(t *testing.T) {
 		DeployDirectory: DeployDir,
 	}).Return(activities.CleanupResponse{}, nil)
 
-	// send approval of plan
-	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("planreview", gate.PlanReviewSignalRequest{
-			Status: gate.Approved,
-		})
-	}, 5*time.Second)
-
 	// execute workflow
 	env.ExecuteWorkflow(testTerraformWorkflow, request{
 		WorkflowMode: terraformModel.PR,
@@ -620,13 +618,6 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 		DeployDirectory: DeployDir,
 	}).Return(activities.CleanupResponse{}, nil)
 
-	// send approval of plan
-	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("planreview", gate.PlanReviewSignalRequest{
-			Status: gate.Approved,
-		})
-	}, 5*time.Second)
-
 	// execute workflow
 	env.ExecuteWorkflow(testTerraformWorkflow, request{
 		WorkflowMode: terraformModel.PR,
@@ -642,6 +633,7 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 	var resp response
 	err = env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
+	assert.True(t, resp.ValidateErr)
 
 	// assert results are expected
 	env.AssertExpectations(t)
@@ -726,7 +718,7 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 				},
 			},
 			Result: state.WorkflowResult{
-				Reason: state.SuccessfulCompletionReason,
+				Reason: state.InternalServiceError,
 				Status: state.CompleteWorkflowStatus,
 			},
 		},

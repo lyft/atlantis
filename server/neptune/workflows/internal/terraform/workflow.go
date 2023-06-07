@@ -344,7 +344,7 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 	if r.Request.WorkflowMode == terraform.PR {
 		validationResults, err := r.Validate(ctx, root, response.ServerURL, planResponse.PlanJSONFile)
 		if err != nil {
-			return Response{}, r.toExternalError(err, "running validate job")
+			return Response{ValidationResults: validationResults}, r.toExternalError(err, "running validate job")
 		}
 		return Response{ValidationResults: validationResults}, nil
 	}
@@ -416,6 +416,15 @@ func (r *Runner) toExternalError(err error, msg string) error {
 			Msg: errors.Wrap(err, msg).Error(),
 		}
 
+		return e.ToTemporalApplicationError()
+	}
+
+	var validationErr ValidationError
+	if errors.As(err, &validationErr) {
+		e := ApplicationError{
+			ErrType: validationErr.GetExternalType(),
+			Msg:     errors.Wrap(err, msg).Error(),
+		}
 		return e.ToTemporalApplicationError()
 	}
 
