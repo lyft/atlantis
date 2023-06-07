@@ -45,6 +45,7 @@ There is some setup that is required in order to have your containers running an
 4. Create the following files:
 
 `~/atlantis-gateway.env`
+```
 ATLANTIS_GH_APP_ID=<FILL THIS IN>
 ATLANTIS_GH_APP_KEY_FILE=/.ssh/your-key-file.pem
 ATLANTIS_GH_WEBHOOK_SECRET=<FILL THIS IN>
@@ -61,8 +62,10 @@ ATLANTIS_ENABLE_POLICY_CHECKS=true
 ATLANTIS_ENABLE_DIFF_MARKDOWN_FORMAT=true
 ATLANTIS_PORT=4143
 ALLOWED_REPOS=<FILL THIS IN>
+```
 
 `~/atlantis-temporalworker.env`
+```
 ATLANTIS_GH_APP_ID=<FILL THIS IN>
 ATLANTIS_GH_APP_KEY_FILE=/.ssh/your-key-file.pem
 ATLANTIS_GH_WEBHOOK_SECRET=<FILL THIS IN>
@@ -79,6 +82,7 @@ ATLANTIS_ENABLE_POLICY_CHECKS=true
 ATLANTIS_ENABLE_DIFF_MARKDOWN_FORMAT=true
 ATLANTIS_PORT=4142
 ALLOWED_REPOS=<FILL THIS IN>
+```
 
 Once these steps are complete, everything should startup as normal. You just need to run:
 
