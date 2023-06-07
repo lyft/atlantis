@@ -138,9 +138,9 @@ func generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PRPlanMode {
 }
 
 func (s *WorkflowSignaler) generatePRModeEnvSteps(cfg *valid.MergedProjectCfg, validateEnvs ValidateEnvs) []workflows.PRStep {
-	tfVersion := cfg.TerraformVersion.String()
-	if tfVersion == "" {
-		tfVersion = s.DefaultTFVersion
+	tfVersion := s.DefaultTFVersion
+	if cfg.TerraformVersion != nil {
+		tfVersion = cfg.TerraformVersion.String()
 	}
 	steps := []workflows.PRStep{
 		{
