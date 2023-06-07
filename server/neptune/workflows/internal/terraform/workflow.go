@@ -197,7 +197,7 @@ func (r *Runner) Validate(ctx workflow.Context, root *terraform.LocalRoot, serve
 		}); e != nil {
 			return nil, newUpdateJobError(e, "unable to update job with failed status")
 		}
-		return validateResults, nil
+		return validateResults, newValidationError()
 	}
 
 	if err := r.Store.UpdateValidateJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
