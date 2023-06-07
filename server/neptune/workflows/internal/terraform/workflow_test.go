@@ -718,7 +718,7 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 				},
 			},
 			Result: state.WorkflowResult{
-				Reason: state.InternalServiceError,
+				Reason: state.ValidationFailedReason,
 				Status: state.CompleteWorkflowStatus,
 			},
 		},

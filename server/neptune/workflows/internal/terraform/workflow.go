@@ -285,6 +285,9 @@ func (r *Runner) Run(ctx workflow.Context) (Response, error) {
 			if appErr.Type() == PlanRejectedErrorType {
 				reason = state.SkippedCompletionReason
 			}
+			if appErr.Type() == ValidationErrorType {
+				reason = state.ValidationFailedReason
+			}
 		}
 
 		// check for any timeouts that percolated up
