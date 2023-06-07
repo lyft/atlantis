@@ -1,7 +1,7 @@
 BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo no-commit-id)
 WORKSPACE := $(shell pwd)
-PKG := $(shell go list ./... | grep -v e2e | grep -v static | grep -v mocks | grep -v testing)
-PKG_COMMAS := $(shell go list ./... | grep -v e2e | grep -v static | grep -v mocks | grep -v testing | tr '\n' ',')
+PKG := $(shell go list ./... | grep -v static | grep -v mocks | grep -v testing)
+PKG_COMMAS := $(shell go list ./... | grep -v static | grep -v mocks | grep -v testing | tr '\n' ',')
 IMAGE_NAME := runatlantis/atlantis
 
 .PHONY: test
@@ -54,9 +54,6 @@ dev-docker:
 dist: ## Package up everything in static/ using go-bindata-assetfs so it can be served by a single binary
 	rm -f server/static/bindata_assetfs.go && go-bindata-assetfs -pkg static -prefix server server/static/... && mv bindata_assetfs.go server/static
 
-release: ## Create packages for a release
-	docker run -v $$(pwd):/go/src/github.com/runatlantis/atlantis circleci/golang:1.17 sh -c 'cd /go/src/github.com/runatlantis/atlantis && scripts/binary-release.sh'
-
 fmt: ## Run goimports (which also formats)
 	goimports -w $$(find . -type f -name '*.go' ! -path "./vendor/*" ! -path "./server/static/bindata_assetfs.go" ! -path "**/mocks/*")
 
@@ -69,12 +66,6 @@ check-lint: ## Run linter in CI/CD. If running locally use 'lint'
 
 check-fmt: ## Fail if not formatted
 	if [[ $$(goimports -l $$(find . -type f -name '*.go' ! -path "./vendor/*" ! -path "./server/static/bindata_assetfs.go" ! -path "**/mocks/*")) ]]; then exit 1; fi
-
-end-to-end-deps: ## Install e2e dependencies
-	./scripts/e2e-deps.sh
-
-end-to-end-tests: ## Run e2e tests
-	./scripts/e2e.sh
 
 website-dev:
 	yarn website:dev
