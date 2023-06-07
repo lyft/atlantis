@@ -70,6 +70,7 @@ type Config struct {
 	SSLKeyFile                string
 	SSLCertFile               string
 	DefaultCheckrunDetailsURL string
+	DefaultTFVersion          string
 }
 
 type Server struct {
@@ -131,13 +132,6 @@ func NewServer(config Config) (*Server, error) {
 		AppSlug:  config.GithubAppSlug,
 	}
 
-	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(config.GithubStatusName)
-
-	rawGithubClient, err := vcs.NewGithubClient(config.GithubHostname, githubCredentials, ctxLogger, mergeabilityChecker)
-	if err != nil {
-		return nil, err
-	}
-
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		config.AppCfg,
 		githubapp.WithClientMiddleware(
@@ -167,6 +161,12 @@ func NewServer(config Config) (*Server, error) {
 	featureAllocator, err := feature.NewGHSourcedAllocator(retriever, ctxLogger)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing feature allocator")
+	}
+
+	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(config.GithubStatusName)
+	rawGithubClient, err := vcs.NewGithubClient(config.GithubHostname, githubCredentials, ctxLogger, featureAllocator, mergeabilityChecker)
+	if err != nil {
+		return nil, err
 	}
 
 	vcsClient := vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
@@ -280,6 +280,7 @@ func NewServer(config Config) (*Server, error) {
 		globalCfg,
 		commentCreator,
 		clientCreator,
+		config.DefaultTFVersion,
 	)
 
 	repoRetriever := &github.RepoRetriever{

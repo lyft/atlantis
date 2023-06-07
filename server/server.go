@@ -253,11 +253,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 		var err error
 
-		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, ctxLogger, mergeabilityChecker)
-		if err != nil {
-			return nil, err
-		}
-
 		repoConfig := feature.RepoConfig{
 			Owner:  userConfig.FFOwner,
 			Repo:   userConfig.FFRepo,
@@ -278,6 +273,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		featureAllocator, err = feature.NewGHSourcedAllocator(retriever, ctxLogger)
 		if err != nil {
 			return nil, errors.Wrap(err, "initializing feature allocator")
+		}
+
+		rawGithubClient, err = vcs.NewGithubClient(userConfig.GithubHostname, githubCredentials, ctxLogger, featureAllocator, mergeabilityChecker)
+		if err != nil {
+			return nil, err
 		}
 
 		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
@@ -369,16 +369,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing webhooks")
 	}
 	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
-	vcsStatusUpdaterWrapper := &command.LegacyDeprecationVCSStatusUpdater{
-		Allocator: featureAllocator,
-		Delegate: &command.VCSStatusUpdater{
-			Client: vcsClient,
-			TitleBuilder: vcs.StatusTitleBuilder{
-				TitlePrefix: userConfig.VCSStatusName,
-			},
-			DefaultDetailsURL: userConfig.DefaultCheckrunDetailsURL,
+	vcsStatusUpdater := &command.VCSStatusUpdater{
+		Client: vcsClient,
+		TitleBuilder: vcs.StatusTitleBuilder{
+			TitlePrefix: userConfig.VCSStatusName,
 		},
-		Logger: ctxLogger,
+		DefaultDetailsURL: userConfig.DefaultCheckrunDetailsURL,
 	}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
@@ -590,7 +586,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	planStepRunner := &runtime.PlanStepRunner{
 		TerraformExecutor: terraformClient,
 		DefaultTFVersion:  defaultTfVersion,
-		VCSStatusUpdater:  vcsStatusUpdaterWrapper,
+		VCSStatusUpdater:  vcsStatusUpdater,
 		AsyncTFExec:       terraformClient,
 	}
 
@@ -616,7 +612,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 	applyStepRunner := &runtime.ApplyStepRunner{
 		TerraformExecutor: terraformClient,
-		VCSStatusUpdater:  vcsStatusUpdaterWrapper,
+		VCSStatusUpdater:  vcsStatusUpdater,
 		AsyncTFExec:       terraformClient,
 	}
 
@@ -689,7 +685,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	statusUpdater := command.ProjectStatusUpdater{
 		ProjectJobURLGenerator:  router,
 		JobCloser:               projectCmdOutputHandler,
-		ProjectVCSStatusUpdater: vcsStatusUpdaterWrapper,
+		ProjectVCSStatusUpdater: vcsStatusUpdater,
 	}
 
 	legacyPrjCmdRunner := wrappers.
@@ -735,7 +731,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	policyCheckCommandRunner := events.NewPolicyCheckCommandRunner(
 		dbUpdater,
 		checksOutputUpdater,
-		vcsStatusUpdaterWrapper,
+		vcsStatusUpdater,
 		prjCmdRunner,
 		userConfig.ParallelPoolSize,
 	)
@@ -744,7 +740,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 		pendingPlanFinder,
 		workingDir,
-		vcsStatusUpdaterWrapper,
+		vcsStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		dbUpdater,
@@ -757,7 +753,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 		userConfig.DisableApplyAll,
 		applyLockingClient,
-		vcsStatusUpdaterWrapper,
+		vcsStatusUpdater,
 		projectCommandBuilder,
 		prjCmdRunner,
 		checksOutputUpdater,
@@ -819,7 +815,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PreWorkflowHooksCommandRunner: preWorkflowHooksCommandRunner,
 		PullStatusFetcher:             boltdb,
 		StaleCommandChecker:           staleCommandChecker,
-		VCSStatusUpdater:              vcsStatusUpdaterWrapper,
+		VCSStatusUpdater:              vcsStatusUpdater,
 		Logger:                        ctxLogger,
 		PolicyCommandRunner:           prrPolicyCommandRunner,
 	}
@@ -875,6 +871,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		GithubHostname:      userConfig.GithubHostname,
 		GithubOrg:           userConfig.GithubOrg,
 		GithubStatusName:    userConfig.VCSStatusName,
+		Allocator:           featureAllocator,
 	}
 
 	scheduledExecutorService := scheduled.NewExecutorService(

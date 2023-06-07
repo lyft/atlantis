@@ -33,7 +33,8 @@ type ValidateEnvs struct {
 }
 
 type WorkflowSignaler struct {
-	TemporalClient signaler
+	TemporalClient   signaler
+	DefaultTFVersion string
 }
 
 type Request struct {
@@ -58,7 +59,7 @@ func (s *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfgs
 		workflows.PRTerraformRevisionSignalID,
 		workflows.PRNewRevisionSignalRequest{
 			Revision: request.Revision,
-			Roots:    buildRoots(rootCfgs, request.ValidateEnvs...),
+			Roots:    s.buildRoots(rootCfgs, request.ValidateEnvs...),
 			Repo: workflows.PRRepo{
 				URL:           request.Repo.CloneURL,
 				FullName:      request.Repo.FullName,
@@ -85,7 +86,7 @@ func BuildPRWorkflowID(repoName string, prNum int) string {
 	return fmt.Sprintf("%s||%d", repoName, prNum)
 }
 
-func buildRoots(rootCfgs []*valid.MergedProjectCfg, validateEnvOpts ...ValidateEnvs) []workflows.PRRoot {
+func (s *WorkflowSignaler) buildRoots(rootCfgs []*valid.MergedProjectCfg, validateEnvOpts ...ValidateEnvs) []workflows.PRRoot {
 	var roots []workflows.PRRoot
 	for _, rootCfg := range rootCfgs {
 		var tfVersion string
@@ -98,15 +99,15 @@ func buildRoots(rootCfgs []*valid.MergedProjectCfg, validateEnvOpts ...ValidateE
 			TfVersion:   tfVersion,
 			PlanMode:    generatePlanMode(rootCfg),
 			Plan:        workflows.PRJob{Steps: generateSteps(rootCfg.PullRequestWorkflow.Plan.Steps)},
-			Validate:    workflows.PRJob{Steps: prependValidateEnvSteps(rootCfg, validateEnvOpts...)},
+			Validate:    workflows.PRJob{Steps: s.prependValidateEnvSteps(rootCfg, validateEnvOpts...)},
 		})
 	}
 	return roots
 }
 
-func prependValidateEnvSteps(rootCfg *valid.MergedProjectCfg, opts ...ValidateEnvs) []workflows.PRStep {
+func (s *WorkflowSignaler) prependValidateEnvSteps(rootCfg *valid.MergedProjectCfg, opts ...ValidateEnvs) []workflows.PRStep {
 	for _, o := range opts {
-		initialEnvSteps := generatePRModeEnvSteps(rootCfg, o)
+		initialEnvSteps := s.generatePRModeEnvSteps(rootCfg, o)
 		return append(initialEnvSteps, generateSteps(rootCfg.PullRequestWorkflow.PolicyCheck.Steps)...)
 	}
 	return generateSteps(rootCfg.PullRequestWorkflow.PolicyCheck.Steps)
@@ -137,7 +138,11 @@ func generatePlanMode(cfg *valid.MergedProjectCfg) workflows.PRPlanMode {
 	return workflows.PRNormalPlanMode
 }
 
-func generatePRModeEnvSteps(cfg *valid.MergedProjectCfg, validateEnvs ValidateEnvs) []workflows.PRStep {
+func (s *WorkflowSignaler) generatePRModeEnvSteps(cfg *valid.MergedProjectCfg, validateEnvs ValidateEnvs) []workflows.PRStep {
+	tfVersion := s.DefaultTFVersion
+	if cfg.TerraformVersion != nil {
+		tfVersion = cfg.TerraformVersion.String()
+	}
 	steps := []workflows.PRStep{
 		{
 			StepName:    EnvStep,
@@ -169,6 +174,11 @@ func generatePRModeEnvSteps(cfg *valid.MergedProjectCfg, validateEnvs ValidateEn
 			EnvVarName:  "BASE_BRANCH_NAME",
 			EnvVarValue: validateEnvs.BaseBranchName,
 		},
+		{
+			StepName:    EnvStep,
+			EnvVarName:  "ATLANTIS_TERRAFORM_VERSION",
+			EnvVarValue: tfVersion,
+		},
 	}
 	if t, ok := cfg.Tags[Manifest]; ok {
 		//this is a Lyft specific env var
@@ -176,14 +186,6 @@ func generatePRModeEnvSteps(cfg *valid.MergedProjectCfg, validateEnvs ValidateEn
 			StepName:    EnvStep,
 			EnvVarName:  "MANIFEST_FILEPATH",
 			EnvVarValue: t,
-		})
-	}
-	if cfg.TerraformVersion != nil {
-		tfVersion := cfg.TerraformVersion.String()
-		steps = append(steps, workflows.PRStep{
-			StepName:    EnvStep,
-			EnvVarName:  "ATLANTIS_TERRAFORM_VERSION",
-			EnvVarValue: tfVersion,
 		})
 	}
 	return steps
