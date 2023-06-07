@@ -1,5 +1,9 @@
-name: tester
-on: [push]
+name: test
+on: 
+  push:
+    branches:
+      - release-v0.17.3-lyft.1
+  pull_request:
 jobs:
   test:
     name: runner / gotest
