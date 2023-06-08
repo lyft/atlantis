@@ -197,7 +197,7 @@ func (r *Runner) Validate(ctx workflow.Context, root *terraform.LocalRoot, serve
 		}); e != nil {
 			return nil, newUpdateJobError(e, "unable to update job with failed status")
 		}
-		return validateResults, nil
+		return validateResults, newValidationError()
 	}
 
 	if err := r.Store.UpdateValidateJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
@@ -285,6 +285,9 @@ func (r *Runner) Run(ctx workflow.Context) (Response, error) {
 			if appErr.Type() == PlanRejectedErrorType {
 				reason = state.SkippedCompletionReason
 			}
+			if appErr.Type() == ValidationErrorType {
+				reason = state.ValidationFailedReason
+			}
 		}
 
 		// check for any timeouts that percolated up
@@ -344,7 +347,7 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 	if r.Request.WorkflowMode == terraform.PR {
 		validationResults, err := r.Validate(ctx, root, response.ServerURL, planResponse.PlanJSONFile)
 		if err != nil {
-			return Response{}, r.toExternalError(err, "running validate job")
+			return Response{ValidationResults: validationResults}, r.toExternalError(err, "running validate job")
 		}
 		return Response{ValidationResults: validationResults}, nil
 	}
@@ -416,6 +419,15 @@ func (r *Runner) toExternalError(err error, msg string) error {
 			Msg: errors.Wrap(err, msg).Error(),
 		}
 
+		return e.ToTemporalApplicationError()
+	}
+
+	var validationErr ValidationError
+	if errors.As(err, &validationErr) {
+		e := ApplicationError{
+			ErrType: validationErr.GetExternalType(),
+			Msg:     errors.Wrap(err, msg).Error(),
+		}
 		return e.ToTemporalApplicationError()
 	}
 
