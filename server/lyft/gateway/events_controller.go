@@ -76,6 +76,7 @@ func NewVCSEventsController(
 		Allocator:       featureAllocator,
 		Logger:          logger,
 		PRCloseSignaler: temporalClient,
+		Scope:           scope.SubScope("closed.pull"),
 	}
 
 	prHandler := handlers.NewPullRequestEventWithEventTypeHandlers(

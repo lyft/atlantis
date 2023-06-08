@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/stretchr/testify/assert"
+	"github.com/uber-go/tally/v4"
 	"go.temporal.io/api/serviceerror"
 	"go.temporal.io/sdk/client"
 	"testing"
@@ -181,6 +182,7 @@ func TestClosedPullHandler_Handle_SignalNotFoundError(t *testing.T) {
 		Logger:          logging.NewNoopCtxLogger(t),
 		WorkerProxy:     workerProxy,
 		PRCloseSignaler: signaler,
+		Scope:           tally.NewTestScope("", map[string]string{}),
 	}
 	pr := event.PullRequest{
 		Pull: models.PullRequest{
