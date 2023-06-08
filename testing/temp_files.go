@@ -59,12 +59,12 @@ func dirStructureGo(t *testing.T, parentDir string, structure map[string]interfa
 		// If val is another map then key is a dir
 		if dirContents, ok := val.(map[string]interface{}); ok {
 			subDir := filepath.Join(parentDir, key)
-			Ok(t, os.Mkdir(subDir, 0700))
+			Ok(t, os.Mkdir(subDir, 0o700))
 			// Recurse and create contents.
 			dirStructureGo(t, subDir, dirContents)
 		} else if fileContent, ok := val.(string); ok {
 			// If val is a string then key is a file name and val is the file's content
-			err := os.WriteFile(filepath.Join(parentDir, key), []byte(fileContent), 0600)
+			err := os.WriteFile(filepath.Join(parentDir, key), []byte(fileContent), 0o600)
 			Ok(t, err)
 		}
 	}
