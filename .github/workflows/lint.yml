@@ -2,7 +2,7 @@ name: linter
 on: 
   push:
     branches:
-      - release-v0.17.3-lyft.1
+      - main
   pull_request:
 jobs:
   lint:
