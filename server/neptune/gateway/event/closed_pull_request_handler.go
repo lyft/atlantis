@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
+	"go.temporal.io/api/serviceerror"
 )
 
 type prCloseSignaler interface {
@@ -44,11 +45,18 @@ func (c *ClosedPullRequestHandler) handlePlatformMode(ctx context.Context, event
 		c.Logger.InfoContext(ctx, "handler not configured for allocation")
 		return nil
 	}
-	return c.PRCloseSignaler.SignalWorkflow(
+	err = c.PRCloseSignaler.SignalWorkflow(
 		ctx,
 		pr.BuildPRWorkflowID(event.Pull.BaseRepo.FullName, event.Pull.Num),
 		// keeping this empty is fine since temporal will find the currently running workflow
 		"",
 		workflows.PRShutdownSignalName,
 		workflows.PRShutdownRequest{})
+
+	var workflowNotFoundErr *serviceerror.NotFound
+	if errors.As(err, &workflowNotFoundErr) {
+		// we shouldn't care about closing workflows that don't exist
+		return nil
+	}
+	return err
 }
