@@ -189,13 +189,30 @@ Terraform operation logs are streamed to the local server process using go chann
 
 ### Running Atlantis With Local Changes
 
-The atlantis worker can't technically be run yet locally given it's dependency on sqs.  However, Docker compose is set up 
-to run a gateway, a temporal worker, temporalite and ngrok all in the same network.  ngrok allows us to expose localhost to the public internet in order to test github app integrations.
+The atlantis worker can't technically be run yet locally given it's dependency on sqs.
+However, Docker compose is set up to run a gateway, a temporal worker,
+temporalite and ngrok all in the same network.
+Ngrok allows us to expose localhost to the public internet in order to test github app integrations.
 
 There is some setup that is required in order to have your containers running and receiving webhooks.
 
 1. Setup your own personal github organization and test github app.
-2. Install this app to a test repo within your organization with all the correct atlantis permissions as our real app.
+2. Install this app to a test repo within your organization with the following configuration.
+    * Repository permissions
+      * Checks - Read and Write
+      * Commit statuses - Read and Write
+      * Contents - Read and Write
+      * Issues - Read and Write
+      * Pull requests - Read and Write
+    * Organization permissions
+      * Members - Read-only
+    * Subscribe to events
+      * Create
+      * Issue comment
+      * Pull request
+      * Pull request review
+      * Push
+    * Webhook - This will be setup later when you start ngrok and get the webhook URL, until then fill out any value to get past the app create validation.
 3. Download the key file and save it to ~/.ssh directory. Note: `~/.ssh` is mounted to allow for referencing any local ssh keys.
 4. Create the following files:
 
