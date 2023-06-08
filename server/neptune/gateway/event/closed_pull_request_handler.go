@@ -8,6 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
+	"github.com/uber-go/tally/v4"
 	"go.temporal.io/api/serviceerror"
 )
 
@@ -20,6 +21,7 @@ type ClosedPullRequestHandler struct {
 	Allocator       feature.Allocator
 	Logger          logging.Logger
 	PRCloseSignaler prCloseSignaler
+	Scope           tally.Scope
 }
 
 func (c *ClosedPullRequestHandler) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
@@ -47,7 +49,7 @@ func (c *ClosedPullRequestHandler) handlePlatformMode(ctx context.Context, event
 	}
 	err = c.PRCloseSignaler.SignalWorkflow(
 		ctx,
-		pr.BuildPRWorkflowID(event.Pull.BaseRepo.FullName, event.Pull.Num),
+		pr.BuildPRWorkflowID(event.Pull.HeadRepo.FullName, event.Pull.Num),
 		// keeping this empty is fine since temporal will find the currently running workflow
 		"",
 		workflows.PRShutdownSignalName,
@@ -56,6 +58,8 @@ func (c *ClosedPullRequestHandler) handlePlatformMode(ctx context.Context, event
 	var workflowNotFoundErr *serviceerror.NotFound
 	if errors.As(err, &workflowNotFoundErr) {
 		// we shouldn't care about closing workflows that don't exist
+		tags := map[string]string{"repo": event.Pull.HeadRepo.FullName}
+		c.Scope.Tagged(tags).Counter("workflow_not_found").Inc(1)
 		return nil
 	}
 	return err
