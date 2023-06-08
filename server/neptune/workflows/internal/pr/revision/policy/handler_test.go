@@ -88,7 +88,7 @@ func TestFailedPolicyHandlerRunner_NoRoots(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(approveID, policy.NewApproveSignalRequest{})
+		env.SignalWorkflow(approveID, policy.NewApprovalRequest{})
 	}, 2*time.Second)
 	env.ExecuteWorkflow(testWorkflow, req)
 	var resp response
@@ -126,7 +126,7 @@ func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterActivity(ga)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(approveID, policy.NewApproveSignalRequest{})
+		env.SignalWorkflow(approveID, policy.NewApprovalRequest{})
 	}, 2*time.Second)
 	env.ExecuteWorkflow(testWorkflow, req)
 	var resp response

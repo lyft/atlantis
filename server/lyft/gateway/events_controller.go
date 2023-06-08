@@ -141,10 +141,12 @@ func NewVCSEventsController(
 	}
 
 	pullRequestReviewHandler := &gateway_handlers.PullRequestReviewWorkerProxy{
-		Scheduler:       asyncScheduler,
-		SnsWriter:       snsWriter,
-		Logger:          logger,
-		CheckRunFetcher: checkRunFetcher,
+		Scheduler:          asyncScheduler,
+		SnsWriter:          snsWriter,
+		Logger:             logger,
+		CheckRunFetcher:    checkRunFetcher,
+		Allocator:          featureAllocator,
+		PRApprovalSignaler: temporalClient,
 	}
 
 	// lazy map of resolver providers to their resolver
