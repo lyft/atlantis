@@ -113,3 +113,10 @@ func (r *PercentageBasedAllocator) ShouldAllocate(featureID Name, featureContext
 func (r *PercentageBasedAllocator) Close() {
 	r.featureFlag.Close()
 }
+
+type AlwaysFalseAllocator struct {
+}
+
+func (a *AlwaysFalseAllocator) ShouldAllocate(featureID Name, featureContext FeatureContext) (bool, error) {
+	return false, nil
+}
