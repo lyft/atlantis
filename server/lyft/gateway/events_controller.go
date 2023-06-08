@@ -148,6 +148,7 @@ func NewVCSEventsController(
 		CheckRunFetcher:    checkRunFetcher,
 		Allocator:          featureAllocator,
 		PRApprovalSignaler: temporalClient,
+		Scope:              scope.SubScope("pull.review"),
 	}
 
 	// lazy map of resolver providers to their resolver

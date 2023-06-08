@@ -11,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/stretchr/testify/assert"
+	"github.com/uber-go/tally/v4"
 	"go.temporal.io/api/serviceerror"
 	"go.temporal.io/sdk/client"
 	"io"
@@ -59,6 +60,7 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessWithFailedPolicies(t *testing
 		CheckRunFetcher:    mockFetcher,
 		Allocator:          allocator,
 		PRApprovalSignaler: signaler,
+		Scope:              tally.NewTestScope("", map[string]string{}),
 	}
 	prrEvent := event.PullRequestReview{
 		State: event.Approved,
@@ -98,6 +100,7 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessNoFailedPolicies(t *testing.T
 		CheckRunFetcher:    mockFetcher,
 		Allocator:          allocator,
 		PRApprovalSignaler: signaler,
+		Scope:              tally.NewTestScope("", map[string]string{}),
 	}
 	prrEvent := event.PullRequestReview{
 		State: event.Approved,
@@ -122,6 +125,7 @@ func TestPullRequestReviewWorkerProxy_NotApprovalEvent(t *testing.T) {
 		Logger:             logger,
 		CheckRunFetcher:    mockFetcher,
 		PRApprovalSignaler: signaler,
+		Scope:              tally.NewTestScope("", map[string]string{}),
 	}
 	prrEvent := event.PullRequestReview{
 		State: "something else",
@@ -161,6 +165,7 @@ func TestPullRequestReviewWorkerProxy_FetcherError(t *testing.T) {
 		CheckRunFetcher:    mockFetcher,
 		Allocator:          allocator,
 		PRApprovalSignaler: signaler,
+		Scope:              tally.NewTestScope("", map[string]string{}),
 	}
 	prrEvent := event.PullRequestReview{
 		State: event.Approved,
@@ -201,6 +206,7 @@ func TestPullRequestReviewWorkerProxy_SNSError(t *testing.T) {
 		CheckRunFetcher:    mockFetcher,
 		Allocator:          allocator,
 		PRApprovalSignaler: signaler,
+		Scope:              tally.NewTestScope("", map[string]string{}),
 	}
 	prrEvent := event.PullRequestReview{
 		State: event.Approved,
@@ -243,6 +249,7 @@ func TestPullRequestReviewWorkerProxy_SignalerError(t *testing.T) {
 		CheckRunFetcher:    mockFetcher,
 		Allocator:          allocator,
 		PRApprovalSignaler: signaler,
+		Scope:              tally.NewTestScope("", map[string]string{}),
 	}
 	prrEvent := event.PullRequestReview{
 		State: event.Approved,
