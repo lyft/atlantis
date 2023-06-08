@@ -202,6 +202,15 @@ type mockTemporalClient struct {
 	called bool
 }
 
+func (m *mockTemporalClient) SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error {
+	m.called = true
+	assert.Equal(m.t, m.expectedWorkflowID, workflowID)
+	assert.Equal(m.t, m.expectedSignalName, signalName)
+	assert.Equal(m.t, m.expectedRunID, runID)
+	assert.Equal(m.t, []interface{}{m.expectedWorkflowArgs}, arg)
+	return m.expectedErr
+}
+
 func (m *mockTemporalClient) SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{}, options client.StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (client.WorkflowRun, error) {
 	m.called = true
 	assert.Equal(m.t, m.expectedWorkflowID, workflowID)
