@@ -3,7 +3,7 @@ name: parent-updater
 on:
   push:
     branches:
-      - release-v0.17.3-lyft.1
+      - main
 
 jobs:
   update:

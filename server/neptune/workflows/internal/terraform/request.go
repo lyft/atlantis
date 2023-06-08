@@ -18,6 +18,7 @@ type Request struct {
 
 const (
 	PlanRejectedErrorType = "PlanRejectedError"
+	ValidationErrorType   = "ValidationErrorType"
 	UpdateJobErrorType    = "UpdateJobError"
 	UnknownErrorType      = "UnknownError"
 	SchedulingError       = "SchedulingError"
@@ -61,5 +62,21 @@ func newUpdateJobError(err error, msg string) UpdateJobError {
 	return UpdateJobError{
 		err:           errors.Wrap(err, msg),
 		ExternalError: ExternalError{ErrType: UpdateJobErrorType},
+	}
+}
+
+type ValidationError struct {
+	Err error
+	ExternalError
+}
+
+func (e ValidationError) Error() string {
+	return e.Err.Error()
+}
+
+func newValidationError() ValidationError {
+	return ValidationError{
+		Err:           fmt.Errorf("plan failed validation checks"),
+		ExternalError: ExternalError{ErrType: ValidationErrorType},
 	}
 }
