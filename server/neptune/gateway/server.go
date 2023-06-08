@@ -164,7 +164,11 @@ func NewServer(config Config) (*Server, error) {
 	}
 
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(config.GithubStatusName)
-	rawGithubClient, err := vcs.NewGithubClient(config.GithubHostname, githubCredentials, ctxLogger, featureAllocator, mergeabilityChecker)
+	// Defaults to false, a bit hacky but a quick way to continue supporting updating check runs
+	// in gateway mode without having to refactor the legacy code too much.
+	// All of this will be removed once we deprecate legacy mode.
+	falseAllocator := &feature.AlwaysFalseAllocator{}
+	rawGithubClient, err := vcs.NewGithubClient(config.GithubHostname, githubCredentials, ctxLogger, falseAllocator, mergeabilityChecker)
 	if err != nil {
 		return nil, err
 	}
