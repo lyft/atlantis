@@ -83,7 +83,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 
 	runner := &deploy.Runner{
 		Timeout: 10 * time.Second,
-		NotifierPeriod: func(ctx workflow.Context) time.Duration {
+		NotifierPeriod: func(ctx workflow.Context, _ int) time.Duration {
 			return 5 * time.Second
 		},
 		Notifier:                 notifier,
@@ -114,7 +114,7 @@ func TestRunner(t *testing.T) {
 	t.Run("cancels waiting worker", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
-		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
+		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(2)).Return(workflow.DefaultVersion)
 
 		// should timeout since we're not sending any signal
 		env.ExecuteWorkflow(testWorkflow, request{})
@@ -128,7 +128,7 @@ func TestRunner(t *testing.T) {
 	t.Run("doesn't cancel if queue has items", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
-		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
+		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(2)).Return(workflow.DefaultVersion)
 
 		// should timeout since we're not sending any signal
 		env.ExecuteWorkflow(testWorkflow, request{
@@ -144,7 +144,7 @@ func TestRunner(t *testing.T) {
 	t.Run("receives signal and then times out", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
-		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
+		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(2)).Return(workflow.DefaultVersion)
 
 		env.RegisterDelayedCallback(func() {
 			env.SignalWorkflow(testSignalID, "")
@@ -162,7 +162,7 @@ func TestRunner(t *testing.T) {
 	t.Run("receives signal and then times out new version", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
-		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.Version(1))
+		env.OnGetVersion(deploy.AddNotifierVersion, workflow.DefaultVersion, workflow.Version(2)).Return(workflow.Version(1))
 
 		env.RegisterDelayedCallback(func() {
 			env.SignalWorkflow(testSignalID, "")

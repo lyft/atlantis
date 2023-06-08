@@ -25,7 +25,8 @@ const (
 
 	RevisionReceiveTimeout = 60 * time.Minute
 
-	QueueStatusNotifierHour = 10
+	QueueStatusNotifierHourPST = 10
+	QueueStatusNotifierHourUTC = 17
 
 	ActiveDeployWorkflowStat  = "active"
 	SuccessDeployWorkflowStat = "success"
@@ -129,8 +130,8 @@ func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, p
 		RevisionReceiver:         revisionReceiver,
 		NewRevisionSignalChannel: workflow.GetSignalChannel(ctx, revision.NewRevisionSignalID),
 		Scope:                    scope,
-		NotifierPeriod: func(ctx workflow.Context) time.Duration {
-			return temporalInternal.UntilHour(ctx, QueueStatusNotifierHour, temporalInternal.NextBusinessDay)
+		NotifierPeriod: func(ctx workflow.Context, hour int) time.Duration {
+			return temporalInternal.UntilHour(ctx, hour, temporalInternal.NextBusinessDay)
 		},
 		Notifier: &revisionNotifier.Slack{
 			DeployQueue: revisionQueue,
@@ -139,7 +140,7 @@ func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, p
 	}, nil
 }
 
-type DurationGenerator func(ctx workflow.Context) time.Duration
+type DurationGenerator func(ctx workflow.Context, hour int) time.Duration
 
 func (r *Runner) shutdown() {
 	r.Scope.Gauge(ActiveDeployWorkflowStat).Update(0)
@@ -195,9 +196,17 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		action = OnNotify
 	}
 
-	v := workflow.GetVersion(ctx, AddNotifierVersion, workflow.DefaultVersion, workflow.Version(1))
+	v := workflow.GetVersion(ctx, AddNotifierVersion, workflow.DefaultVersion, workflow.Version(2))
+
+	var notifierPeriod time.Duration
+	if v == workflow.Version(1) {
+		notifierPeriod = r.NotifierPeriod(ctx, QueueStatusNotifierHourPST)
+	} else if v == workflow.Version(2) {
+		notifierPeriod = r.NotifierPeriod(ctx, QueueStatusNotifierHourUTC)
+	}
+
 	if v > workflow.DefaultVersion {
-		s.AddTimeout(ctx, r.NotifierPeriod(ctx), notifyTimerFunc)
+		s.AddTimeout(ctx, notifierPeriod, notifyTimerFunc)
 	}
 
 	// main loop which handles external signals
@@ -214,7 +223,7 @@ OUT:
 			if err != nil {
 				workflow.GetLogger(ctx).Warn("Error notifying on queue status", key.ErrKey, err)
 			}
-			s.AddTimeout(ctx, r.NotifierPeriod(ctx), notifyTimerFunc)
+			s.AddTimeout(ctx, notifierPeriod, notifyTimerFunc)
 		case OnReceive:
 			cancelTimer()
 			cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, newRevisionTimerFunc)
