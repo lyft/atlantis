@@ -29,10 +29,10 @@ type request struct {
 }
 
 type response struct {
-	DismisserCalled  bool
+	DismisserCalls   int
 	DismisserReviews []*github.PullRequestReview
 	DismisserErr     error
-	FilterCalled     bool
+	FilterCalls      int
 	FilterPolicies   []activities.PolicySet
 }
 
@@ -62,10 +62,10 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	}
 	handler.Handle(ctx, r.Revision, r.WorkflowResponses)
 	return response{
-		DismisserCalled:  dismisser.called,
+		DismisserCalls:   dismisser.calls,
 		DismisserReviews: dismisser.expectedReviews,
 		DismisserErr:     dismisser.err,
-		FilterCalled:     filter.called,
+		FilterCalls:      filter.calls,
 		FilterPolicies:   filter.filteredPolicies,
 	}, nil
 }
@@ -94,8 +94,8 @@ func TestFailedPolicyHandlerRunner_NoRoots(t *testing.T) {
 	var resp response
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
-	assert.False(t, resp.DismisserCalled)
-	assert.False(t, resp.FilterCalled)
+	assert.Equal(t, resp.DismisserCalls, 0)
+	assert.Equal(t, resp.FilterCalls, 0)
 }
 
 func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
@@ -108,7 +108,7 @@ func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
 	}
 	req := request{
 		T:        t,
-		Revision: revision.Revision{Repo: gh.Repo{Name: "repo"}},
+		Revision: revision.Revision{Repo: gh.Repo{Name: "repo"}, Revision: "sha"},
 		WorkflowResponses: []terraform.Response{
 			{
 				ValidationResults: []activities.ValidationResult{
@@ -126,39 +126,42 @@ func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterActivity(ga)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(approveID, policy.NewApprovalRequest{})
+		env.SignalWorkflow(approveID, policy.NewApprovalRequest{Revision: "stale"})
+	}, 2*time.Second)
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(approveID, policy.NewApprovalRequest{Revision: "sha"})
 	}, 2*time.Second)
 	env.ExecuteWorkflow(testWorkflow, req)
 	var resp response
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
-	assert.True(t, resp.DismisserCalled)
-	assert.True(t, resp.FilterCalled)
+	assert.Equal(t, resp.DismisserCalls, 1)
+	assert.Equal(t, resp.FilterCalls, 1)
 	assert.NoError(t, resp.DismisserErr)
 	assert.Empty(t, resp.FilterPolicies)
 	assert.Equal(t, resp.DismisserReviews[0], testApproval)
 }
 
 type mockDismisser struct {
-	called          bool
+	calls           int
 	expectedReviews []*github.PullRequestReview
 	err             error
 }
 
 func (d *mockDismisser) Dismiss(ctx workflow.Context, revision revision.Revision, teams map[string][]string, currentApprovals []*github.PullRequestReview) ([]*github.PullRequestReview, error) {
-	d.called = true
+	d.calls++
 	return d.expectedReviews, d.err
 }
 
 type mockFilter struct {
-	called            bool
+	calls             int
 	expectedApprovals []*github.PullRequestReview
 	filteredPolicies  []activities.PolicySet
 	t                 *testing.T
 }
 
 func (m *mockFilter) Filter(teams map[string][]string, currentApprovals []*github.PullRequestReview, failedPolicies []activities.PolicySet) []activities.PolicySet {
-	m.called = true
+	m.calls++
 	assert.Equal(m.t, m.expectedApprovals, currentApprovals)
 	return m.filteredPolicies
 }
