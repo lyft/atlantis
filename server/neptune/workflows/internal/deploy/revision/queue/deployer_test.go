@@ -729,8 +729,8 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 	env.RegisterActivity(da)
 
 	repo := github.Repo{
-		Owner: "owner",
-		Name:  "test",
+		Owner:         "owner",
+		Name:          "test",
 		DefaultBranch: "default-branch",
 	}
 
