@@ -118,7 +118,7 @@ func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, e
 
 	var workflowNotFoundErr *serviceerror.NotFound
 	if errors.As(err, &workflowNotFoundErr) {
-		// we shouldn't care about closing workflows that don't exist
+		// we shouldn't care about approvals for workflows that don't exist
 		tags := map[string]string{"repo": event.Pull.HeadRepo.FullName}
 		p.Scope.Tagged(tags).Counter("workflow_not_found").Inc(1)
 		return nil
