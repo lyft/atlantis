@@ -49,23 +49,23 @@ type PullRequestReviewWorkerProxy struct {
 }
 
 func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullRequestReview, request *http.BufferedRequest) error {
-	return p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
-		return p.handle(ctx, event, request)
-	})
-}
-
-func (p *PullRequestReviewWorkerProxy) handle(ctx context.Context, event PullRequestReview, request *http.BufferedRequest) error {
 	// Ignore non-approval events
 	if event.State != Approved {
 		return nil
 	}
-	if err := p.handleLegacyMode(ctx, request, event); err != nil {
-		p.Logger.ErrorContext(ctx, err.Error())
+	err := p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
+		if legacyErr := p.handleLegacyMode(ctx, request, event); legacyErr != nil {
+			p.Logger.ErrorContext(ctx, legacyErr.Error())
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-	if err := p.handlePlatformMode(ctx, event); err != nil {
-		return errors.Wrap(err, "handling platform mode")
-	}
-	return nil
+
+	return p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
+		return p.handlePlatformMode(ctx, event)
+	})
 }
 
 func (p *PullRequestReviewWorkerProxy) handleLegacyMode(ctx context.Context, request *http.BufferedRequest, event PullRequestReview) error {
