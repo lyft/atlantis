@@ -213,31 +213,38 @@ There is some setup that is required in order to have your containers running an
       * Pull request review
       * Push
     * Webhook - This will be setup later when you start ngrok and get the webhook URL, until then fill out any value to get past the app create validation.
-3. Download the key file and save it to ~/.ssh directory. Note: `~/.ssh` is mounted to allow for referencing any local ssh keys.
-4. Create the following files:
+3. Download the key file and save it to `~/.ssh` directory. Note: `~/.ssh` is mounted to allow for referencing any local ssh keys.
 
+4. Create the following files:
 `~/atlantis-gateway.env`
-```
+```sh
+ATLANTIS_PORT=4143
 ATLANTIS_GH_APP_ID=<FILL THIS IN>
 ATLANTIS_GH_APP_KEY_FILE=/.ssh/your-key-file.pem
 ATLANTIS_GH_WEBHOOK_SECRET=<FILL THIS IN>
 ATLANTIS_GH_APP_SLUG=<FILL THIS IN>
+
+# The github organization the feature flag repo resides
 ATLANTIS_FF_OWNER=<FILL THIS IN>
+# Name of the feature flag repo
 ATLANTIS_FF_REPO=<FILL THIS IN>
+# The path to the flags.yaml file
 ATLANTIS_FF_PATH=<FILL THIS IN>
+
 ATLANTIS_DATA_DIR=/tmp/
 ATLANTIS_LYFT_MODE=gateway
 ATLANTIS_REPO_CONFIG=/generated/repo-config.yaml
 ATLANTIS_WRITE_GIT_CREDS=true
-ATLANTIS_REPO_ALLOWLIST=<FILL THIS IN>
 ATLANTIS_ENABLE_POLICY_CHECKS=true
 ATLANTIS_ENABLE_DIFF_MARKDOWN_FORMAT=true
-ATLANTIS_PORT=4143
+
+ATLANTIS_REPO_ALLOWLIST=<FILL THIS IN>
 ALLOWED_REPOS=<FILL THIS IN>
 ```
 
 `~/atlantis-temporalworker.env`
-```
+```sh
+ATLANTIS_PORT=4142
 ATLANTIS_GH_APP_ID=<FILL THIS IN>
 ATLANTIS_GH_APP_KEY_FILE=/.ssh/your-key-file.pem
 ATLANTIS_GH_WEBHOOK_SECRET=<FILL THIS IN>
@@ -249,11 +256,11 @@ ATLANTIS_DATA_DIR=/tmp/
 ATLANTIS_LYFT_MODE=temporalworker
 ATLANTIS_REPO_CONFIG=/generated/repo-config.yaml
 ATLANTIS_WRITE_GIT_CREDS=true
-ATLANTIS_REPO_ALLOWLIST=<FILL THIS IN>
 ATLANTIS_ENABLE_POLICY_CHECKS=true
 ATLANTIS_ENABLE_DIFF_MARKDOWN_FORMAT=true
-ATLANTIS_PORT=4142
+ATLANTIS_REPO_ALLOWLIST=<FILL THIS IN>
 ALLOWED_REPOS=<FILL THIS IN>
+ATLANTIS_DEFAULT_TF_VERSION=1.2.5
 ```
 
 Once these steps are complete, everything should startup as normal. You just need to run:
