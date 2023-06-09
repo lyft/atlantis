@@ -52,7 +52,7 @@ type pullRequestReviewEventHandler interface {
 
 // converter interfaces
 type pullEventConverter interface {
-	Convert(event *github.PullRequestEvent) (event.PullRequest, error)
+	Convert(ctx context.Context, e *github.PullRequestEvent) (event.PullRequest, error)
 }
 
 type commentEventConverter interface {
@@ -244,7 +244,7 @@ func (h *Handler) handleCommentEvent(ctx context.Context, e *github.IssueComment
 }
 
 func (h *Handler) handlePullRequestEvent(ctx context.Context, e *github.PullRequestEvent, request *http.BufferedRequest) error {
-	pullEvent, err := h.pullEventConverter.Convert(e)
+	pullEvent, err := h.pullEventConverter.Convert(ctx, e)
 
 	if err != nil {
 		return &errors.EventParsingError{Err: err}

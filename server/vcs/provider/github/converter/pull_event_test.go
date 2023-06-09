@@ -1,7 +1,9 @@
 package converter_test
 
 import (
+	"context"
 	"github.com/runatlantis/atlantis/server/vcs"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/google/go-github/v45/github"
@@ -30,26 +32,19 @@ func TestConvert_PullRequestEvent(t *testing.T) {
 	}
 	subject := converter.PullEventConverter{
 		PullConverter: converter.PullConverter{RepoConverter: repoConverter},
+		PullStateFetcher: &testPullStateFetcher{
+			pull: PullEvent.PullRequest,
+		},
 	}
-	_, err := subject.Convert(&github.PullRequestEvent{})
+	_, err := subject.Convert(context.Background(), &github.PullRequestEvent{})
 	ErrEquals(t, "pull_request is null", err)
 
 	testEvent := deepcopy.Copy(PullEvent).(github.PullRequestEvent)
 	testEvent.PullRequest.HTMLURL = nil
-	_, err = subject.Convert(&testEvent)
+	_, err = subject.Convert(context.Background(), &testEvent)
 	ErrEquals(t, "html_url is null", err)
 
-	testEvent = deepcopy.Copy(PullEvent).(github.PullRequestEvent)
-	testEvent.Sender = nil
-	_, err = subject.Convert(&testEvent)
-	ErrEquals(t, "sender is null", err)
-
-	testEvent = deepcopy.Copy(PullEvent).(github.PullRequestEvent)
-	testEvent.Sender.Login = nil
-	_, err = subject.Convert(&testEvent)
-	ErrEquals(t, "sender.login is null", err)
-
-	actPull, err := subject.Convert(&PullEvent)
+	actPull, err := subject.Convert(context.Background(), &PullEvent)
 	Ok(t, err)
 	expBaseRepo := models.Repo{
 		Owner:             "owner",
@@ -89,120 +84,48 @@ func TestConvert_PullRequestEvent_Draft(t *testing.T) {
 		GithubUser:  "github-user",
 		GithubToken: "github-token",
 	}
-	subject := converter.PullEventConverter{
-		PullConverter: converter.PullConverter{RepoConverter: repoConverter},
-	}
-
 	// verify that draft PRs are treated as 'other' events by default
 	testEvent := deepcopy.Copy(PullEvent).(github.PullRequestEvent)
 	draftPR := true
 	testEvent.PullRequest.Draft = &draftPR
-	pull, err := subject.Convert(&testEvent)
+	subject := converter.PullEventConverter{
+		PullConverter: converter.PullConverter{RepoConverter: repoConverter},
+		PullStateFetcher: &testPullStateFetcher{
+			pull: testEvent.PullRequest,
+		},
+	}
+	pull, err := subject.Convert(context.Background(), &testEvent)
 	Ok(t, err)
 	Equals(t, models.OtherPullEvent, pull.EventType)
 	// verify that drafts are planned if requested
 	subject.AllowDraftPRs = true
 	defer func() { subject.AllowDraftPRs = false }()
-	pull, err = subject.Convert(&testEvent)
+	pull, err = subject.Convert(context.Background(), &testEvent)
 	Ok(t, err)
 	Equals(t, models.OpenedPullEvent, pull.EventType)
 	Equals(t, int64(1), pull.InstallationToken)
 }
 
-func TestConvert_PullRequestEvent_EventType(t *testing.T) {
+func TestConvert_PullRequestEvent_FetchError(t *testing.T) {
 	repoConverter := converter.RepoConverter{
 		GithubUser:  "github-user",
 		GithubToken: "github-token",
 	}
 	subject := converter.PullEventConverter{
 		PullConverter: converter.PullConverter{RepoConverter: repoConverter},
-	}
-	cases := []struct {
-		action   string
-		exp      models.PullRequestEventType
-		draftExp models.PullRequestEventType
-	}{
-		{
-			action:   "synchronize",
-			exp:      models.UpdatedPullEvent,
-			draftExp: models.OtherPullEvent,
-		},
-		{
-			action:   "unassigned",
-			exp:      models.OtherPullEvent,
-			draftExp: models.OtherPullEvent,
-		},
-		{
-			action:   "review_requested",
-			exp:      models.OtherPullEvent,
-			draftExp: models.OtherPullEvent,
-		},
-		{
-			action:   "review_request_removed",
-			exp:      models.OtherPullEvent,
-			draftExp: models.OtherPullEvent,
-		},
-		{
-			action:   "labeled",
-			exp:      models.OtherPullEvent,
-			draftExp: models.OtherPullEvent,
-		},
-		{
-			action:   "unlabeled",
-			exp:      models.OtherPullEvent,
-			draftExp: models.OtherPullEvent,
-		},
-		{
-			action:   "opened",
-			exp:      models.OpenedPullEvent,
-			draftExp: models.OtherPullEvent,
-		},
-		{
-			action:   "edited",
-			exp:      models.OtherPullEvent,
-			draftExp: models.OtherPullEvent,
-		},
-		{
-			action:   "closed",
-			exp:      models.ClosedPullEvent,
-			draftExp: models.ClosedPullEvent,
-		},
-		{
-			action:   "reopened",
-			exp:      models.OtherPullEvent,
-			draftExp: models.OtherPullEvent,
-		},
-		{
-			action:   "ready_for_review",
-			exp:      models.OpenedPullEvent,
-			draftExp: models.OtherPullEvent,
+		PullStateFetcher: &testPullStateFetcher{
+			err: assert.AnError,
 		},
 	}
+	_, err := subject.Convert(context.Background(), &PullEvent)
+	assert.Error(t, err)
+}
 
-	for _, c := range cases {
-		t.Run(c.action, func(t *testing.T) {
-			// Test normal parsing
-			event := deepcopy.Copy(PullEvent).(github.PullRequestEvent)
-			event.Action = &c.action
-			pull, err := subject.Convert(&event)
-			Ok(t, err)
-			Equals(t, c.exp, pull.EventType)
-			// Test draft parsing when draft PRs disabled
-			draftPR := true
-			event.PullRequest.Draft = &draftPR
-			pull, err = subject.Convert(&event)
-			Ok(t, err)
-			Equals(t, c.draftExp, pull.EventType)
+type testPullStateFetcher struct {
+	err  error
+	pull *github.PullRequest
+}
 
-			subjectDraft := converter.PullEventConverter{
-				PullConverter: converter.PullConverter{RepoConverter: repoConverter},
-			}
-			// Test draft parsing when draft PRs are enabled.
-			subjectDraft.AllowDraftPRs = true
-			pull, err = subjectDraft.Convert(&event)
-			Ok(t, err)
-			Equals(t, int64(1), pull.InstallationToken)
-			Equals(t, c.exp, pull.EventType)
-		})
-	}
+func (t testPullStateFetcher) FetchLatestPRState(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
+	return t.pull, t.err
 }
