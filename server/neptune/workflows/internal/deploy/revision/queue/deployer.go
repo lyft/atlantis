@@ -13,7 +13,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
 	"go.temporal.io/api/enums/v1"
@@ -119,16 +118,8 @@ func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform
 }
 
 func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
-	version := workflow.GetVersion(ctx, version.SetPRRevision, workflow.DefaultVersion, 2)
-	switch version {
-	case workflow.DefaultVersion:
+	if deployment.Commit.Branch != deployment.Repo.DefaultBranch {
 		return nil
-
-	// Skip rebasing open PRs for deploys not from the default branch
-	case 2:
-		if deployment.Commit.Branch != deployment.Repo.DefaultBranch {
-			return nil
-		}
 	}
 
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
