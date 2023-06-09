@@ -63,7 +63,7 @@ func NewVCSEventsController(
 	pullEventSNSProxy := gateway_handlers.NewSNSWorkerProxy(
 		snsWriter, logger,
 	)
-	legacyHandler := &gateway_handlers.LegacyHandler{
+	legacyHandler := &gateway_handlers.LegacyPullHandler{
 		Logger:           logger,
 		WorkerProxy:      pullEventSNSProxy,
 		VCSStatusUpdater: vcsStatusUpdater,
@@ -109,14 +109,13 @@ func NewVCSEventsController(
 		repoAllowlistChecker,
 		vcsClient,
 		gateway_handlers.NewCommentEventWorkerProxy(
-			logger, scope.SubScope("comment"),
+			logger,
 			snsWriter,
-			featureAllocator, asyncScheduler,
+			asyncScheduler,
 			deploySignaler, vcsClient,
-			vcsStatusUpdater, globalCfg,
+			vcsStatusUpdater,
 			rootConfigBuilder, errorHandler,
-			requirementChecker,
-		),
+			requirementChecker),
 		logger,
 	)
 
