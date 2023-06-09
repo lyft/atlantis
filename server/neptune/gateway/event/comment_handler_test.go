@@ -170,7 +170,8 @@ func TestCommentEventWorkerProxy_HandleForceApply(t *testing.T) {
 		expectedMessage: "⚠️ WARNING ⚠️\n\n You are force applying changes from your PR instead of merging into your default branch 🚀. This can have unpredictable consequences 🙏🏽 and should only be used in an emergency 🆘.\n\n To confirm behavior, review and confirm the plan within the generated atlantis/deploy GH check below.\n\n 𝐓𝐡𝐢𝐬 𝐚𝐜𝐭𝐢𝐨𝐧 𝐰𝐢𝐥𝐥 𝐛𝐞 𝐚𝐮𝐝𝐢𝐭𝐞𝐝.\n",
 	}
 	statusUpdater := &mockStatusUpdater{}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name:       command.Apply,
@@ -222,7 +223,8 @@ func TestCommentEventWorkerProxy_HandleApplyComment_RequirementsFailed(t *testin
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{
 		err: assert.AnError,
 	})
 	bufReq := buildRequest(t)
@@ -299,7 +301,8 @@ func TestCommentEventWorkerProxy_HandleApplyComment(t *testing.T) {
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -366,7 +369,8 @@ func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
 			},
 		},
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -417,7 +421,8 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 			},
 		},
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -463,16 +468,22 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{
-		expectedT: t,
+		expectedRepo:      testRepo,
+		expectedPull:      testPull,
+		expectedVCSStatus: models.QueuedVCSStatus,
+		expectedCmd:       command.Plan.String(),
+		expectedBody:      "Request received. Adding to the queue...",
+		expectedT:         t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
 	}
 	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
-	assert.False(t, statusUpdater.isCalled)
+	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
 	assert.False(t, testSignaler.called)
 	assert.True(t, writer.isCalled)
@@ -504,9 +515,15 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 	rootDeployer := &mockRootDeployer{}
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{
-		expectedT: t,
+		expectedRepo:      testRepo,
+		expectedPull:      testPull,
+		expectedVCSStatus: models.QueuedVCSStatus,
+		expectedCmd:       command.Plan.String(),
+		expectedBody:      "Request received. Adding to the queue...",
+		expectedT:         t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	cfg := valid.NewGlobalCfg("somedir")
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
@@ -523,7 +540,7 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 	}
 	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.Error(t, err)
-	assert.False(t, statusUpdater.isCalled)
+	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
 	assert.False(t, rootDeployer.isCalled)
 	assert.True(t, writer.isCalled)

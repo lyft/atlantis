@@ -65,13 +65,15 @@ func (c Comment) GetRepo() models.Repo {
 	return c.BaseRepo
 }
 
-func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, rootConfigBuilder rootConfigBuilder, errorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
+func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, errorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
 		logger:    logger,
 		scheduler: scheduler,
 		legacyHandler: &LegacyCommentHandler{
-			logger:    logger,
-			snsWriter: snsWriter,
+			logger:           logger,
+			snsWriter:        snsWriter,
+			vcsStatusUpdater: vcsStatusUpdater,
+			globalCfg:        globalCfg,
 		},
 		neptuneWorkerProxy: &NeptuneWorkerProxy{
 			logger:             logger,
@@ -188,7 +190,7 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 		return nil
 	}
 
-	if err := p.legacyHandler.Handle(ctx, request, cmd); err != nil {
+	if err := p.legacyHandler.Handle(ctx, request, event, cmd); err != nil {
 		return errors.Wrap(err, "handling event in legacy sns worker handler")
 	}
 	if err := p.neptuneWorkerProxy.Handle(ctx, event, cmd, roots); err != nil {

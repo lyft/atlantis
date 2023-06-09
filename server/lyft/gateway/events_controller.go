@@ -113,7 +113,7 @@ func NewVCSEventsController(
 			snsWriter,
 			asyncScheduler,
 			deploySignaler, vcsClient,
-			vcsStatusUpdater,
+			vcsStatusUpdater, globalCfg,
 			rootConfigBuilder, errorHandler,
 			requirementChecker),
 		logger,
