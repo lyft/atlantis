@@ -41,8 +41,8 @@ func (p *LegacyCommentHandler) SetQueuedStatus(ctx context.Context, event Commen
 }
 
 func (p *LegacyCommentHandler) shouldMarkEventQueued(event Comment, cmd *command.Comment) bool {
-	// pending status should only be for plan and apply step
-	if cmd.Name != command.Plan && cmd.Name != command.Apply {
+	// pending status should only be for plan step
+	if cmd.Name != command.Plan {
 		return false
 	}
 	// pull event should not be from a fork
