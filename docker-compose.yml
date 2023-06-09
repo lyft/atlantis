@@ -2,12 +2,10 @@
 version: "3.8"
 services:
     ngrok:
-        image: wernight/ngrok:latest
+        image: ngrok/ngrok:latest
+        command: "http atlantis-gateway:4143"
         ports:
         - 4040:4040
-        environment:
-            NGROK_PROTOCOL: http
-            NGROK_PORT: atlantis-gateway:4143
         depends_on:
         - atlantis-gateway
     atlantis-gateway:
