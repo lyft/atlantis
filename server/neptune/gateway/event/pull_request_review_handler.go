@@ -10,6 +10,7 @@ import (
 	"go.temporal.io/api/serviceerror"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/http"
@@ -53,12 +54,21 @@ func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullReq
 	if event.State != Approved {
 		return nil
 	}
-	_ = p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
+	var combinedErrors error
+	err := p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
 		return p.handleLegacyMode(ctx, request, event)
 	})
-	return p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
+	if err != nil {
+		combinedErrors = multierror.Append(combinedErrors, err)
+	}
+
+	err = p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
 		return p.handlePlatformMode(ctx, event)
 	})
+	if err != nil {
+		combinedErrors = multierror.Append(combinedErrors, err)
+	}
+	return combinedErrors
 }
 
 func (p *PullRequestReviewWorkerProxy) handleLegacyMode(ctx context.Context, request *http.BufferedRequest, event PullRequestReview) error {

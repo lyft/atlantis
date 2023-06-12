@@ -173,7 +173,7 @@ func TestPullRequestReviewWorkerProxy_FetcherError(t *testing.T) {
 		Ref:   ref,
 	}
 	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.False(t, writer.isCalled)
 	assert.True(t, mockFetcher.isCalled)
 	assert.True(t, signaler.called)
