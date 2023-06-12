@@ -54,15 +54,17 @@ func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullReq
 	if event.State != Approved {
 		return nil
 	}
+	fxns := []func(ctx context.Context, request *http.BufferedRequest, event PullRequestReview) error{
+		p.handleLegacyMode,
+		p.handlePlatformMode,
+	}
 	var combinedErrors *multierror.Error
-	err := p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
-		return p.handleLegacyMode(ctx, request, event)
-	})
-	combinedErrors = multierror.Append(combinedErrors, err)
-	err = p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
-		return p.handlePlatformMode(ctx, event)
-	})
-	combinedErrors = multierror.Append(combinedErrors, err)
+	for _, f := range fxns {
+		err := p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
+			return f(ctx, request, event)
+		})
+		combinedErrors = multierror.Append(combinedErrors, err)
+	}
 	return combinedErrors.ErrorOrNil()
 }
 
@@ -93,7 +95,7 @@ func (p *PullRequestReviewWorkerProxy) forwardToSns(ctx context.Context, request
 	return nil
 }
 
-func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, event PullRequestReview) error {
+func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, request *http.BufferedRequest, event PullRequestReview) error {
 	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
 		RepoName: event.Repo.FullName,
 	})
