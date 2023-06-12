@@ -921,6 +921,9 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	pullConverter := github_converter.PullConverter{
 		RepoConverter: repoConverter,
 	}
+	pullFetcher := &github.PRFetcher{
+		ClientCreator: clientCreator,
+	}
 
 	defaultEventsController := events_controllers.NewVCSEventsController(
 		statsScope,
@@ -942,6 +945,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		repoConverter,
 		pullConverter,
 		githubClient,
+		pullFetcher,
 		azuredevopsClient,
 		gitlabClient,
 	)

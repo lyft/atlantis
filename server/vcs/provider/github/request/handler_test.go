@@ -107,7 +107,7 @@ type testPullEventConverter struct {
 	returnedParsePullEventError error
 }
 
-func (c testPullEventConverter) Convert(_ *github.PullRequestEvent) (event.PullRequest, error) {
+func (c testPullEventConverter) Convert(_ context.Context, _ *github.PullRequestEvent) (event.PullRequest, error) {
 	return c.returnedPullEvent, c.returnedParsePullEventError
 }
 

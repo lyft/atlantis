@@ -1060,6 +1060,13 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	pullConverter := github_converter.PullConverter{
 		RepoConverter: repoConverter,
 	}
+	opened := GitHubPullRequestParsed(headSHA)
+	closed := GitHubPullRequestParsed(headSHA)
+	closed.State = github.String("closed")
+	pullFetcher := &testPullFetcher{
+		opened: opened,
+		closed: closed,
+	}
 
 	requestRouter := &events_controllers.RequestRouter{
 		Resolvers: []events_controllers.RequestResolver{
@@ -1067,6 +1074,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 				ctxLogger,
 				statsScope,
 				nil,
+				pullFetcher,
 				commentHandler,
 				prHandler,
 				noopPushEventHandler{},
@@ -1495,4 +1503,18 @@ func (t *testGithubClient) GetPullRequest(repo models.Repo, pullNum int) (*githu
 }
 func (t *testGithubClient) GetPullRequestFromName(repoName string, repoOwner string, pullNum int) (*github.PullRequest, error) {
 	return t.ExpectedPull, nil
+}
+
+type testPullFetcher struct {
+	opened        *github.PullRequest
+	closed        *github.PullRequest
+	sentOpenEvent bool
+}
+
+func (t *testPullFetcher) Fetch(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
+	if t.sentOpenEvent {
+		return t.closed, nil
+	}
+	t.sentOpenEvent = true
+	return t.opened, nil
 }

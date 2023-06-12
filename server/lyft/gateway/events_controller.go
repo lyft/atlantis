@@ -150,6 +150,9 @@ func NewVCSEventsController(
 		PRApprovalSignaler: temporalClient,
 		Scope:              scope.SubScope("pull.review"),
 	}
+	pullFetcher := &github.PRFetcher{
+		ClientCreator: clientCreator,
+	}
 
 	// lazy map of resolver providers to their resolver
 	// laziness ensures we only instantiate the providers we support.
@@ -159,6 +162,7 @@ func NewVCSEventsController(
 				logger,
 				scope,
 				webhookSecret,
+				pullFetcher,
 				commentHandler,
 				prHandler,
 				pushHandler,
