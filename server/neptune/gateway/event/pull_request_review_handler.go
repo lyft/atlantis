@@ -54,16 +54,16 @@ func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullReq
 	if event.State != Approved {
 		return nil
 	}
-	var combinedErrors error
+	var combinedErrors *multierror.Error
 	err := p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
 		return p.handleLegacyMode(ctx, request, event)
 	})
-	combinedErrors = multierror.Append(combinedErrors, err).ErrorOrNil()
+	combinedErrors = multierror.Append(combinedErrors, err)
 	err = p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
 		return p.handlePlatformMode(ctx, event)
 	})
-	combinedErrors = multierror.Append(combinedErrors, err).ErrorOrNil()
-	return combinedErrors
+	combinedErrors = multierror.Append(combinedErrors, err)
+	return combinedErrors.ErrorOrNil()
 }
 
 func (p *PullRequestReviewWorkerProxy) handleLegacyMode(ctx context.Context, request *http.BufferedRequest, event PullRequestReview) error {
