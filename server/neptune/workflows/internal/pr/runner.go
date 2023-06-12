@@ -124,7 +124,11 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	s.AddReceive(r.RevisionSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		prRevision = r.RevisionReceiver.Receive(c, more)
 		action = onNewRevision
-		r.Scope.SubScopeWithTags(map[string]string{metricNames.SignalNameTag: revision.TerraformRevisionSignalID}).
+		tags := map[string]string{
+			metricNames.SignalNameTag: revision.TerraformRevisionSignalID,
+			metricNames.RevisionTag:   prRevision.Revision,
+		}
+		r.Scope.SubScopeWithTags(tags).
 			Counter(metricNames.SignalReceive).
 			Inc(1)
 	})
