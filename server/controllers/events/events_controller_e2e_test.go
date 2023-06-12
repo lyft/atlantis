@@ -1511,7 +1511,7 @@ type testPullStateFetcher struct {
 	sentOpenEvent bool
 }
 
-func (t *testPullStateFetcher) FetchLatestState(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
+func (t *testPullStateFetcher) Fetch(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
 	if t.sentOpenEvent {
 		return t.closed, nil
 	}

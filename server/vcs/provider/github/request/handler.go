@@ -85,7 +85,7 @@ func NewHandler(
 	logger logging.Logger,
 	scope tally.Scope,
 	webhookSecret []byte,
-	pullStateFetcher converter.PullStateFetcher,
+	pullStateFetcher converter.PullFetcher,
 	commentHandler *handlers.CommentEvent,
 	prHandler *handlers.PullRequestEvent,
 	pushHandler pushEventHandler,
@@ -104,9 +104,9 @@ func NewHandler(
 		prHandler:      prHandler,
 		parser:         &parser{},
 		pullEventConverter: converter.PullEventConverter{
-			PullConverter:    pullConverter,
-			AllowDraftPRs:    allowDraftPRs,
-			PullStateFetcher: pullStateFetcher,
+			PullConverter: pullConverter,
+			AllowDraftPRs: allowDraftPRs,
+			PullFetcher:   pullStateFetcher,
 		},
 		commentEventConverter: converter.CommentEventConverter{
 			PullConverter: converter.PullConverter{

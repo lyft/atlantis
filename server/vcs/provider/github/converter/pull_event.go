@@ -12,14 +12,14 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 )
 
-type PullStateFetcher interface {
-	FetchLatestState(ctx context.Context, installationToken int64, repoOwner string, repoName string, prNum int) (*github.PullRequest, error)
+type PullFetcher interface {
+	Fetch(ctx context.Context, installationToken int64, repoOwner string, repoName string, prNum int) (*github.PullRequest, error)
 }
 
 type PullEventConverter struct {
-	PullConverter    PullConverter
-	AllowDraftPRs    bool
-	PullStateFetcher PullStateFetcher
+	PullConverter PullConverter
+	AllowDraftPRs bool
+	PullFetcher   PullFetcher
 }
 
 // Converts a github pull request event to our internal representation
@@ -33,7 +33,7 @@ func (e PullEventConverter) Convert(ctx context.Context, pullEvent *github.PullR
 	}
 	installationToken := githubapp.GetInstallationIDFromEvent(pullEvent)
 	// fetch the latest pull request state in case of out of order events
-	latestPRState, err := e.PullStateFetcher.FetchLatestState(ctx, installationToken, pullFromEvent.HeadRepo.Owner, pullFromEvent.HeadRepo.Name, pullFromEvent.Num)
+	latestPRState, err := e.PullFetcher.Fetch(ctx, installationToken, pullFromEvent.HeadRepo.Owner, pullFromEvent.HeadRepo.Name, pullFromEvent.Num)
 	if err != nil {
 		return event.PullRequest{}, errors.Wrap(err, "fetching latest pull request state")
 	}

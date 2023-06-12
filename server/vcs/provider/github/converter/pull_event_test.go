@@ -32,7 +32,7 @@ func TestConvert_PullRequestEvent(t *testing.T) {
 	}
 	subject := converter.PullEventConverter{
 		PullConverter: converter.PullConverter{RepoConverter: repoConverter},
-		PullStateFetcher: &testPullStateFetcher{
+		PullFetcher: &testPullFetcher{
 			pull: PullEvent.PullRequest,
 		},
 	}
@@ -90,7 +90,7 @@ func TestConvert_PullRequestEvent_Draft(t *testing.T) {
 	testEvent.PullRequest.Draft = &draftPR
 	subject := converter.PullEventConverter{
 		PullConverter: converter.PullConverter{RepoConverter: repoConverter},
-		PullStateFetcher: &testPullStateFetcher{
+		PullFetcher: &testPullFetcher{
 			pull: testEvent.PullRequest,
 		},
 	}
@@ -113,7 +113,7 @@ func TestConvert_PullRequestEvent_FetchError(t *testing.T) {
 	}
 	subject := converter.PullEventConverter{
 		PullConverter: converter.PullConverter{RepoConverter: repoConverter},
-		PullStateFetcher: &testPullStateFetcher{
+		PullFetcher: &testPullFetcher{
 			err: assert.AnError,
 		},
 	}
@@ -121,11 +121,11 @@ func TestConvert_PullRequestEvent_FetchError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-type testPullStateFetcher struct {
+type testPullFetcher struct {
 	err  error
 	pull *github.PullRequest
 }
 
-func (t testPullStateFetcher) FetchLatestState(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
+func (t testPullFetcher) Fetch(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
 	return t.pull, t.err
 }

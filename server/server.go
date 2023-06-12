@@ -921,7 +921,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	pullConverter := github_converter.PullConverter{
 		RepoConverter: repoConverter,
 	}
-	pullStateFetcher := &github.PRStateFetcher{
+	pullStateFetcher := &github.PRFetcher{
 		ClientCreator: clientCreator,
 	}
 
