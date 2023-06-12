@@ -27,7 +27,9 @@ type policyFilter interface {
 	Filter(teams map[string][]string, currentApprovals []*github.PullRequestReview, failedPolicies []activities.PolicySet) []activities.PolicySet
 }
 
-type NewApproveSignalRequest struct{}
+type NewApprovalRequest struct {
+	Revision string
+}
 
 type FailedPolicyHandler struct {
 	ApprovalSignalChannel workflow.ReceiveChannel
@@ -44,6 +46,7 @@ type Action int64
 const (
 	onApprovalSignal Action = iota
 	onPollTick
+	onSkip
 )
 
 func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, workflowResponses []terraform.Response) {
@@ -58,14 +61,16 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 		Selector: workflow.NewSelector(ctx),
 	}
 	s.AddReceive(f.ApprovalSignalChannel, func(c workflow.ReceiveChannel, more bool) {
-		defer func() {
-			action = onApprovalSignal
-		}()
+		action = onApprovalSignal
 		if !more {
 			return
 		}
-		var request NewApproveSignalRequest
-		c.Receive(ctx, &request)
+		var approvalRequest NewApprovalRequest
+		c.Receive(ctx, &approvalRequest)
+		// skip signal if it's not for the current revision
+		if approvalRequest.Revision != revision.Revision {
+			action = onSkip
+		}
 		scope.SubScopeWithTags(map[string]string{metricNames.SignalNameTag: "pr-approval"}).
 			Counter(metricNames.SignalReceive).
 			Inc(1)
@@ -84,12 +89,17 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 			break
 		}
 		s.Select(ctx)
-		if action == onPollTick {
-			cancelTimer()
+		switch action {
+		case onSkip:
+			continue
+		case onApprovalSignal:
+			failedPolicies = f.handle(ctx, revision, failedPolicies)
+		case onPollTick:
 			// TODO: evaluate a better polling rate for approvals, or remove all together
+			cancelTimer()
 			cancelTimer, _ = s.AddTimeout(ctx, 10*time.Minute, onTimeout)
+			failedPolicies = f.handle(ctx, revision, failedPolicies)
 		}
-		failedPolicies = f.handle(ctx, revision, failedPolicies)
 	}
 }
 
