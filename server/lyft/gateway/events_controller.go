@@ -147,7 +147,7 @@ func NewVCSEventsController(
 		Logger:          logger,
 		CheckRunFetcher: checkRunFetcher,
 	}
-	pullStateFetcher := &github.PRFetcher{
+	pullFetcher := &github.PRFetcher{
 		ClientCreator: clientCreator,
 	}
 
@@ -159,7 +159,7 @@ func NewVCSEventsController(
 				logger,
 				scope,
 				webhookSecret,
-				pullStateFetcher,
+				pullFetcher,
 				commentHandler,
 				prHandler,
 				pushHandler,

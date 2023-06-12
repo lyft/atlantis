@@ -132,7 +132,7 @@ func NewVCSEventsController(
 	repoConverter github_converter.RepoConverter,
 	pullConverter github_converter.PullConverter,
 	githubPullGetter github_converter.PullGetter,
-	pullStateFetcher github_converter.PullFetcher,
+	pullFetcher github_converter.PullFetcher,
 	azureDevopsPullGetter AzureDevopsPullGetter,
 	gitlabMergeRequestGetter GitlabMergeRequestGetter,
 ) *VCSEventsController {
@@ -162,7 +162,7 @@ func NewVCSEventsController(
 				logger,
 				scope,
 				githubWebhookSecret,
-				pullStateFetcher,
+				pullFetcher,
 				commentHandler,
 				prHandler,
 				pushHandler,

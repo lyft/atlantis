@@ -1063,7 +1063,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	opened := GitHubPullRequestParsed(headSHA)
 	closed := GitHubPullRequestParsed(headSHA)
 	closed.State = github.String("closed")
-	pullStateFetcher := &testPullStateFetcher{
+	pullFetcher := &testPullFetcher{
 		opened: opened,
 		closed: closed,
 	}
@@ -1074,7 +1074,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 				ctxLogger,
 				statsScope,
 				nil,
-				pullStateFetcher,
+				pullFetcher,
 				commentHandler,
 				prHandler,
 				noopPushEventHandler{},
@@ -1505,13 +1505,13 @@ func (t *testGithubClient) GetPullRequestFromName(repoName string, repoOwner str
 	return t.ExpectedPull, nil
 }
 
-type testPullStateFetcher struct {
+type testPullFetcher struct {
 	opened        *github.PullRequest
 	closed        *github.PullRequest
 	sentOpenEvent bool
 }
 
-func (t *testPullStateFetcher) Fetch(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
+func (t *testPullFetcher) Fetch(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
 	if t.sentOpenEvent {
 		return t.closed, nil
 	}
