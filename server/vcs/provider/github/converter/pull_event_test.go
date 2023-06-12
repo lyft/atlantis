@@ -126,6 +126,6 @@ type testPullStateFetcher struct {
 	pull *github.PullRequest
 }
 
-func (t testPullStateFetcher) FetchLatestPRState(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
+func (t testPullStateFetcher) FetchLatestState(_ context.Context, _ int64, _ string, _ string, _ int) (*github.PullRequest, error) {
 	return t.pull, t.err
 }

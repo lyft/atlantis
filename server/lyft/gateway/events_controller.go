@@ -147,6 +147,9 @@ func NewVCSEventsController(
 		Logger:          logger,
 		CheckRunFetcher: checkRunFetcher,
 	}
+	pullStateFetcher := &github.PRStateFetcher{
+		ClientCreator: clientCreator,
+	}
 
 	// lazy map of resolver providers to their resolver
 	// laziness ensures we only instantiate the providers we support.
@@ -156,6 +159,7 @@ func NewVCSEventsController(
 				logger,
 				scope,
 				webhookSecret,
+				pullStateFetcher,
 				commentHandler,
 				prHandler,
 				pushHandler,

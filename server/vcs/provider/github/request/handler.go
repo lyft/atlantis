@@ -3,7 +3,6 @@ package request
 import (
 	"context"
 	"fmt"
-
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/http"
 
@@ -86,6 +85,7 @@ func NewHandler(
 	logger logging.Logger,
 	scope tally.Scope,
 	webhookSecret []byte,
+	pullStateFetcher converter.PullStateFetcher,
 	commentHandler *handlers.CommentEvent,
 	prHandler *handlers.PullRequestEvent,
 	pushHandler pushEventHandler,
@@ -104,8 +104,9 @@ func NewHandler(
 		prHandler:      prHandler,
 		parser:         &parser{},
 		pullEventConverter: converter.PullEventConverter{
-			PullConverter: pullConverter,
-			AllowDraftPRs: allowDraftPRs,
+			PullConverter:    pullConverter,
+			AllowDraftPRs:    allowDraftPRs,
+			PullStateFetcher: pullStateFetcher,
 		},
 		commentEventConverter: converter.CommentEventConverter{
 			PullConverter: converter.PullConverter{

@@ -13,7 +13,7 @@ import (
 )
 
 type PullStateFetcher interface {
-	FetchLatestPRState(ctx context.Context, installationToken int64, repoOwner string, repoName string, prNum int) (*github.PullRequest, error)
+	FetchLatestState(ctx context.Context, installationToken int64, repoOwner string, repoName string, prNum int) (*github.PullRequest, error)
 }
 
 type PullEventConverter struct {
@@ -33,7 +33,7 @@ func (e PullEventConverter) Convert(ctx context.Context, pullEvent *github.PullR
 	}
 	installationToken := githubapp.GetInstallationIDFromEvent(pullEvent)
 	// fetch the latest pull request state in case of out of order events
-	latestPRState, err := e.PullStateFetcher.FetchLatestPRState(ctx, installationToken, pullFromEvent.HeadRepo.Owner, pullFromEvent.HeadRepo.Name, pullFromEvent.Num)
+	latestPRState, err := e.PullStateFetcher.FetchLatestState(ctx, installationToken, pullFromEvent.HeadRepo.Owner, pullFromEvent.HeadRepo.Name, pullFromEvent.Num)
 	if err != nil {
 		return event.PullRequest{}, errors.Wrap(err, "fetching latest pull request state")
 	}

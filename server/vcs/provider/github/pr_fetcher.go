@@ -9,11 +9,11 @@ import (
 	"net/http"
 )
 
-type PRFetcher struct {
+type PRStateFetcher struct {
 	ClientCreator githubapp.ClientCreator
 }
 
-func (c *PRFetcher) FetchLatestPRState(ctx context.Context, installationToken int64, repoOwner string, repoName string, prNum int) (*gh.PullRequest, error) {
+func (c *PRStateFetcher) FetchLatestState(ctx context.Context, installationToken int64, repoOwner string, repoName string, prNum int) (*gh.PullRequest, error) {
 	client, err := c.ClientCreator.NewInstallationClient(installationToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating installation client")
