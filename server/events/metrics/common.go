@@ -10,8 +10,9 @@ const (
 	FilterAbsentMetric  = "absent"
 	FilterErrorMetric   = "error"
 
-	RootTag = "root"
-	RepoTag = "repo"
+	RootTag     = "root"
+	RepoTag     = "repo"
+	RevisionTag = "revision"
 
 	ActivityExecutionSuccess = "activity_execution_success"
 	ActivityExecutionFailure = "activity_execution_failure"
@@ -20,6 +21,7 @@ const (
 	ActivityExecutionLatency = "activity_execution_latency"
 
 	SignalNameTag = "signal_name"
+	PollNameTag   = "poll_name"
 
 	// Signal handling metrics before it is added to a buffered channel
 	SignalHandleSuccess = "signal_handle_success"
@@ -28,6 +30,10 @@ const (
 
 	// Signal receive is when we receive it off the channel
 	SignalReceive = "signal_receive"
+	PollTick      = "poll_tick"
+
+	// Forced shutdown timeout when a workflow is suspected to be abandoned
+	ShutdownTimeout = "shutdown_timeout"
 
 	// Metrics are scoped to workflow namespaces anyways so let's
 	// keep these metrics simple.
