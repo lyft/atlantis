@@ -6,3 +6,8 @@ repos:
 temporal:
   host: temporalite
   port: 7233
+
+policies:
+  # change this to the name of your github organization
+  organization: <FILL THIS IN>
+  conftest_version: "0.25.0"

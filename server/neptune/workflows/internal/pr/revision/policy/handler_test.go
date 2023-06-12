@@ -5,6 +5,7 @@ import (
 	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	gh "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision/policy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -59,6 +60,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		PolicyFilter:          filter,
 		GithubActivities:      r.GithubActivities,
 		PRNumber:              1,
+		Scope:                 metrics.NewNullableScope(),
 	}
 	handler.Handle(ctx, r.Revision, r.WorkflowResponses)
 	return response{

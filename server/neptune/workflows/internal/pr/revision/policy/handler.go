@@ -3,8 +3,10 @@ package policy
 import (
 	"context"
 	"github.com/google/go-github/v45/github"
+	metricNames "github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	gh "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -34,6 +36,7 @@ type FailedPolicyHandler struct {
 	GithubActivities      githubActivities
 	PRNumber              int
 	Org                   string
+	Scope                 metrics.Scope
 }
 
 type Action int64
@@ -44,7 +47,8 @@ const (
 )
 
 func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, workflowResponses []terraform.Response) {
-	failedPolicies := dedup(workflowResponses)
+	scope := f.Scope.SubScopeWithTags(map[string]string{metricNames.RevisionTag: revision.Revision})
+	failedPolicies := dedup(workflowResponses, scope)
 	if len(failedPolicies) == 0 {
 		return
 	}
@@ -62,10 +66,16 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 		}
 		var request NewApproveSignalRequest
 		c.Receive(ctx, &request)
+		scope.SubScopeWithTags(map[string]string{metricNames.SignalNameTag: "pr-approval"}).
+			Counter(metricNames.SignalReceive).
+			Inc(1)
 	})
 	onTimeout := func(f workflow.Future) {
 		_ = f.Get(ctx, nil)
 		action = onPollTick
+		scope.SubScopeWithTags(map[string]string{metricNames.PollNameTag: "pr-approval"}).
+			Counter(metricNames.PollTick).
+			Inc(1)
 	}
 	cancelTimer, _ := s.AddTimeout(ctx, 5*time.Minute, onTimeout)
 
@@ -129,12 +139,16 @@ func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Rep
 	return listTeamMembersResponse.Members, err
 }
 
-func dedup(workflowResponses []terraform.Response) []activities.PolicySet {
+func dedup(workflowResponses []terraform.Response, scope metrics.Scope) []activities.PolicySet {
 	var failedPolicies []activities.PolicySet
 	for _, response := range workflowResponses {
 		for _, validationResult := range response.ValidationResults {
-			if validationResult.Status == activities.Fail {
+			switch validationResult.Status {
+			case activities.Fail:
 				failedPolicies = append(failedPolicies, validationResult.PolicySet)
+				scope.SubScope(validationResult.PolicySet.Name).Counter(metricNames.ExecutionFailureMetric).Inc(1)
+			case activities.Success:
+				scope.SubScope(validationResult.PolicySet.Name).Counter(metricNames.ExecutionSuccessMetric).Inc(1)
 			}
 		}
 	}

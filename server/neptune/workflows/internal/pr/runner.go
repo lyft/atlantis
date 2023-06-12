@@ -1,6 +1,7 @@
 package pr
 
 import (
+	metricNames "github.com/runatlantis/atlantis/server/events/metrics"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -79,6 +80,7 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, org string, tf
 			Dismisser:             &dismisser,
 			PolicyFilter:          &policy.Filter{},
 			Org:                   org,
+			Scope:                 scope.SubScope("policies"),
 		},
 	}
 	shutdownChecker := ShutdownStateChecker{
@@ -115,12 +117,20 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			return
 		}
 		action = onTimeout
+		r.Scope.Counter(metricNames.ShutdownTimeout).Inc(1)
 	}
 	inactivityTimeoutCancel, _ := s.AddTimeout(ctx, r.InactivityTimeout, onInactivityTimeout)
 
 	s.AddReceive(r.RevisionSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		prRevision = r.RevisionReceiver.Receive(c, more)
 		action = onNewRevision
+		tags := map[string]string{
+			metricNames.SignalNameTag: revision.TerraformRevisionSignalID,
+			metricNames.RevisionTag:   prRevision.Revision,
+		}
+		r.Scope.SubScopeWithTags(tags).
+			Counter(metricNames.SignalReceive).
+			Inc(1)
 	})
 	s.AddReceive(r.ShutdownSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		defer func() {
@@ -131,10 +141,16 @@ func (r *Runner) Run(ctx workflow.Context) error {
 		}
 		var request NewShutdownRequest
 		c.Receive(ctx, &request)
+		r.Scope.SubScopeWithTags(map[string]string{metricNames.SignalNameTag: ShutdownSignalID}).
+			Counter(metricNames.SignalReceive).
+			Inc(1)
 	})
 
 	onShutdownPollTick := func(f workflow.Future) {
 		action = onShutdownPoll
+		r.Scope.SubScopeWithTags(map[string]string{metricNames.PollNameTag: ShutdownSignalID}).
+			Counter(metricNames.PollTick).
+			Inc(1)
 	}
 	shutdownPollCancel, _ := s.AddTimeout(ctx, r.ShutdownPollTick, onShutdownPollTick)
 
