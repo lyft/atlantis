@@ -58,16 +58,11 @@ func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullReq
 	err := p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
 		return p.handleLegacyMode(ctx, request, event)
 	})
-	if err != nil {
-		combinedErrors = multierror.Append(combinedErrors, err)
-	}
-
+	combinedErrors = multierror.Append(combinedErrors, err).ErrorOrNil()
 	err = p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
 		return p.handlePlatformMode(ctx, event)
 	})
-	if err != nil {
-		combinedErrors = multierror.Append(combinedErrors, err)
-	}
+	combinedErrors = multierror.Append(combinedErrors, err).ErrorOrNil()
 	return combinedErrors
 }
 
