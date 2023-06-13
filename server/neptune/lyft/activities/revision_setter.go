@@ -16,6 +16,33 @@ const (
 	SetRevisionEndpoint = "set_minimum_service_pr_revision"
 )
 
+type RevisionSetter struct {
+	client revisionSetterClient
+
+	url       string
+	basicAuth valid.BasicAuth
+}
+
+func NewRevisionSetter(cfg valid.RevisionSetter) (*RevisionSetter, error) {
+	// Use a NoopClient if revision setter is not configured
+	var client revisionSetterClient
+	if cfg.URL == "" {
+		client = &NoopClient{}
+	} else {
+		client = &http.Client{}
+	}
+
+	return NewRevisionSetterWithClient(client, cfg)
+}
+
+func NewRevisionSetterWithClient(client revisionSetterClient, cfg valid.RevisionSetter) (*RevisionSetter, error) {
+	return &RevisionSetter{
+		client:    client,
+		url:       cfg.URL,
+		basicAuth: cfg.BasicAuth,
+	}, nil
+}
+
 type revisionSetterClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -27,13 +54,6 @@ func (n *NoopClient) Do(req *http.Request) (*http.Response, error) {
 		Body:       http.NoBody,
 		StatusCode: http.StatusOK,
 	}, nil
-}
-
-type prRevisionSetterActivities struct {
-	client revisionSetterClient
-
-	url       string
-	basicAuth valid.BasicAuth
 }
 
 type SetPRRevisionRequest struct {
@@ -54,7 +74,7 @@ func generateURL(url string, request SetPRRevisionRequest) string {
 	)
 }
 
-func (b *prRevisionSetterActivities) SetPRRevision(ctx context.Context, request SetPRRevisionRequest) error {
+func (b *RevisionSetter) SetPRRevision(ctx context.Context, request SetPRRevisionRequest) error {
 	url := generateURL(b.url, request)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {

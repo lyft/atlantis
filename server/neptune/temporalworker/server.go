@@ -4,10 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/palantir/go-githubapp/githubapp"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
-	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
 	"log"
 	"net/http"
@@ -17,6 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
+	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
+
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -25,7 +26,9 @@ import (
 	"github.com/runatlantis/atlantis/server/metrics"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	lyftActivities "github.com/runatlantis/atlantis/server/neptune/lyft/activities"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/executor"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/notifier"
+	lyftWorkflows "github.com/runatlantis/atlantis/server/neptune/lyft/workflows"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -76,12 +79,13 @@ type Server struct {
 	DeployActivities         *activities.Deploy
 	TerraformActivities      *activities.Terraform
 	GithubActivities         *activities.Github
-	RevisionSetterActivities *activities.RevsionSetter
+	RevisionSetterActivities *lyftActivities.RevisionSetter
 	// Temporary until we move this into our private code
-	LyftActivities       *lyftActivities.Activities
-	TerraformTaskQueue   string
-	RevisionSetterConfig valid.RevisionSetter
-	AdditionalNotifiers  []plugins.TerraformWorkflowNotifier
+	AuditActivity              *lyftActivities.Audit
+	PRRevisionGithubActivities *lyftActivities.Github
+	TerraformTaskQueue         string
+	RevisionSetterConfig       valid.RevisionSetter
+	AdditionalNotifiers        []plugins.TerraformWorkflowNotifier
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -141,7 +145,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	lyftActivities, err := lyftActivities.NewActivities(config.LyftAuditJobsSnsTopicArn)
+	auditActivity, err := lyftActivities.NewAuditActivity(config.LyftAuditJobsSnsTopicArn)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing lyft activities")
 	}
@@ -202,9 +206,13 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing github activities")
 	}
 
-	revisionSetterActivities, err := activities.NewRevisionSetter(config.RevisionSetter)
+	revisionSetterActivities, err := lyftActivities.NewRevisionSetter(config.RevisionSetter)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing revision setter activities")
+	}
+
+	prRevisionGithubActivities := &lyftActivities.Github{
+		ClientCreator: clientCreator,
 	}
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
@@ -218,19 +226,20 @@ func NewServer(config *config.Config) (*Server, error) {
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:          httpServerProxy,
-		Port:                     config.ServerCfg.Port,
-		StatsScope:               scope,
-		StatsCloser:              statsCloser,
-		TemporalClient:           temporalClient,
-		JobStreamHandler:         jobStreamHandler,
-		DeployActivities:         deployActivities,
-		TerraformActivities:      terraformActivities,
-		GithubActivities:         githubActivities,
-		RevisionSetterActivities: revisionSetterActivities,
-		TerraformTaskQueue:       config.TemporalCfg.TerraformTaskQueue,
-		RevisionSetterConfig:     config.RevisionSetter,
-		LyftActivities:           lyftActivities,
+		HTTPServerProxy:            httpServerProxy,
+		Port:                       config.ServerCfg.Port,
+		StatsScope:                 scope,
+		StatsCloser:                statsCloser,
+		TemporalClient:             temporalClient,
+		JobStreamHandler:           jobStreamHandler,
+		DeployActivities:           deployActivities,
+		TerraformActivities:        terraformActivities,
+		GithubActivities:           githubActivities,
+		RevisionSetterActivities:   revisionSetterActivities,
+		TerraformTaskQueue:         config.TemporalCfg.TerraformTaskQueue,
+		RevisionSetterConfig:       config.RevisionSetter,
+		AuditActivity:              auditActivity,
+		PRRevisionGithubActivities: prRevisionGithubActivities,
 	}
 	return &server, nil
 }
@@ -291,15 +300,15 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		prRevisionWorker := worker.New(s.TemporalClient.Client, workflows.PRRevisionTaskQueue, worker.Options{
+		prRevisionWorker := worker.New(s.TemporalClient.Client, lyftWorkflows.PRRevisionTaskQueue, worker.Options{
 			WorkerStopTimeout: PRRevisionWorkerTimeout,
 			Interceptors: []interceptor.WorkerInterceptor{
 				temporal.NewWorkerInterceptor(),
 			},
 			TaskQueueActivitiesPerSecond: s.RevisionSetterConfig.DefaultTaskQueue.ActivitiesPerSecond,
 		})
-		prRevisionWorker.RegisterWorkflow(workflows.PRRevision)
-		prRevisionWorker.RegisterActivity(s.GithubActivities)
+		prRevisionWorker.RegisterWorkflow(lyftWorkflows.PRRevision)
+		prRevisionWorker.RegisterActivity(s.PRRevisionGithubActivities)
 		prRevisionWorker.RegisterActivity(s.RevisionSetterActivities)
 
 		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
@@ -313,14 +322,14 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		prRevisionWorker := worker.New(s.TemporalClient.Client, workflows.PRRevisionSlowTaskQueue, worker.Options{
+		prRevisionWorker := worker.New(s.TemporalClient.Client, lyftWorkflows.PRRevisionSlowTaskQueue, worker.Options{
 			WorkerStopTimeout: PRRevisionWorkerTimeout,
 			Interceptors: []interceptor.WorkerInterceptor{
 				temporal.NewWorkerInterceptor(),
 			},
 			TaskQueueActivitiesPerSecond: s.RevisionSetterConfig.SlowTaskQueue.ActivitiesPerSecond,
 		})
-		prRevisionWorker.RegisterActivity(s.GithubActivities)
+		prRevisionWorker.RegisterActivity(s.PRRevisionGithubActivities)
 
 		if err := prRevisionWorker.Run(worker.InterruptCh()); err != nil {
 			log.Fatalln("unable to start pr revision slow worker", err)
@@ -392,17 +401,20 @@ func (s Server) buildDeployWorker() worker.Worker {
 	})
 	deployWorker.RegisterActivity(s.DeployActivities)
 	deployWorker.RegisterActivity(s.GithubActivities)
-	deployWorker.RegisterActivity(s.LyftActivities)
+	deployWorker.RegisterActivity(s.AuditActivity)
 	deployWorker.RegisterActivity(s.TerraformActivities)
 	deployWorker.RegisterWorkflowWithOptions(workflows.GetDeployWithPlugins(
 		func(ctx workflow.Context, dr workflows.DeployRequest) (plugins.Deploy, error) {
-			var a *lyftActivities.Activities
+			var a *lyftActivities.Audit
 
 			return plugins.Deploy{
 				Notifiers: []plugins.TerraformWorkflowNotifier{
 					&notifier.SNSNotifier{
 						Activity: a,
 					},
+				},
+				PostDeployExecutors: []plugins.PostDeployExecutor{
+					&executor.PRRevisionWorkflowExecutor{TaskQueue: lyftWorkflows.PRRevisionTaskQueue},
 				},
 			}, nil
 		},

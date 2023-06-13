@@ -15,8 +15,8 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
@@ -387,10 +387,6 @@ func TestNewWorker(t *testing.T) {
 		return terraformWorkflow.Response{}, nil
 	}
 
-	emptyPRRevWorkflow := func(ctx workflow.Context, request prrevision.Request) error {
-		return nil
-	}
-
 	type res struct {
 		Lock queue.LockState
 	}
@@ -400,7 +396,7 @@ func TestNewWorker(t *testing.T) {
 			ScheduleToCloseTimeout: 5 * time.Second,
 		})
 		q := queue.NewQueue(noopCallback, metrics.NewNullableScope())
-		_, err := queue.NewWorker(ctx, q, &testDeployActivity{}, emptyWorkflow, emptyPRRevWorkflow, "nish/repo", "root", &testCheckRunClient{})
+		_, err := queue.NewWorker(ctx, q, &testDeployActivity{}, emptyWorkflow, []plugins.PostDeployExecutor{}, "nish/repo", "root", &testCheckRunClient{})
 		return res{
 			Lock: q.GetLockState(),
 		}, err

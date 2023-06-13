@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"testing"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -17,7 +19,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/temporal"
@@ -32,7 +33,12 @@ const (
 	TerraformClientError ErrorType = "TerraformClientError"
 )
 
-func testPRRevWorkflow(ctx workflow.Context, request prrevision.Request) error {
+type testExecutor struct {
+	called bool
+}
+
+func (e *testExecutor) Execute(ctx workflow.Context, info plugins.TerraformDeploymentInfo) error {
+	e.called = true
 	return nil
 }
 
@@ -76,13 +82,20 @@ type deployerRequest struct {
 	ExpectedT         *testing.T
 }
 
-func testDeployerWorkflow(ctx workflow.Context, r deployerRequest) (*deployment.Info, error) {
+type deployResponse struct {
+	*deployment.Info
+	ExecutorCalled bool
+}
+
+func testDeployerWorkflow(ctx workflow.Context, r deployerRequest) (*deployResponse, error) {
 	options := workflow.ActivityOptions{
 		ScheduleToCloseTimeout: 5 * time.Second,
 	}
 
 	ctx = workflow.WithActivityOptions(ctx, options)
 	var a *testDeployActivity
+
+	e := &testExecutor{}
 
 	deployer := &queue.Deployer{
 		Activities: a,
@@ -95,10 +108,15 @@ func testDeployerWorkflow(ctx workflow.Context, r deployerRequest) (*deployment.
 			expectedT:            r.ExpectedT,
 			expectedDeploymentID: r.Info.ID.String(),
 		},
-		PRRevisionWorkflow: testPRRevWorkflow,
+		Executors: []plugins.PostDeployExecutor{e},
 	}
 
-	return deployer.Deploy(ctx, r.Info, r.LatestDeploy, metrics.NewNullableScope())
+	info, err := deployer.Deploy(ctx, r.Info, r.LatestDeploy, metrics.NewNullableScope())
+	if err != nil {
+		return nil, err
+	}
+
+	return &deployResponse{Info: info, ExecutorCalled: e.called}, nil
 }
 
 func TestDeployer_FirstDeploy(t *testing.T) {
@@ -167,11 +185,11 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 
 	env.AssertExpectations(t)
 
-	var resp *deployment.Info
+	var resp *deployResponse
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 
-	assert.Equal(t, latestDeployedRevision, resp)
+	assert.Equal(t, latestDeployedRevision, resp.Info)
 }
 
 func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
@@ -252,7 +270,7 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 
 	env.AssertExpectations(t)
 
-	var resp *deployment.Info
+	var resp *deployResponse
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 
@@ -268,7 +286,7 @@ func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 			Owner: deploymentInfo.Repo.Owner,
 			Name:  deploymentInfo.Repo.Name,
 		},
-	}, resp)
+	}, resp.Info)
 }
 
 func TestDeployer_CompareCommit_Identical(t *testing.T) {
@@ -329,7 +347,7 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 		LatestDeploy: latestDeployedRevision,
 	})
 	env.AssertExpectations(t)
-	var resp *deployment.Info
+	var resp *deployResponse
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 	assert.Equal(t, &deployment.Info{
@@ -346,7 +364,7 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 			Owner: deploymentInfo.Repo.Owner,
 			Name:  deploymentInfo.Repo.Name,
 		},
-	}, resp)
+	}, resp.Info)
 }
 
 func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
@@ -417,10 +435,8 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 			ExpectedT: t,
 		})
 		env.AssertExpectations(t)
-		var resp *deployment.Info
-		err := env.GetWorkflowResult(&resp)
+		err := env.GetWorkflowError()
 		assert.Error(t, err)
-		assert.Nil(t, resp)
 	})
 
 	cases := []activities.DiffDirection{activities.DirectionAhead, activities.DirectionDiverged}
@@ -456,10 +472,8 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 				ExpectedT: t,
 			})
 			env.AssertExpectations(t)
-			var resp *deployment.Info
-			err := env.GetWorkflowResult(&resp)
+			err := env.GetWorkflowError()
 			assert.Error(t, err)
-			assert.Nil(t, resp)
 		})
 	}
 }
@@ -542,7 +556,7 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 
 	env.AssertExpectations(t)
 
-	var resp *deployment.Info
+	var resp *deployResponse
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 
@@ -558,7 +572,7 @@ func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 			Owner: deploymentInfo.Repo.Owner,
 			Name:  deploymentInfo.Repo.Name,
 		},
-	}, resp)
+	}, resp.Info)
 }
 
 func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *testing.T) {
@@ -622,8 +636,7 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 
 	env.AssertExpectations(t)
 
-	var resp *deployment.Info
-	err := env.GetWorkflowResult(&resp)
+	err := env.GetWorkflowError()
 
 	wfErr, ok := err.(*temporal.WorkflowExecutionError)
 	assert.True(t, ok)
@@ -715,8 +728,7 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 
 	env.AssertExpectations(t)
 
-	var resp *deployment.Info
-	err := env.GetWorkflowResult(&resp)
+	err := env.GetWorkflowError()
 
 	wfErr, ok := err.(*temporal.WorkflowExecutionError)
 	assert.True(t, ok)
@@ -727,7 +739,7 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 	assert.Equal(t, "TerraformClientError", appErr.Type())
 }
 
-func TestDeployer_SetPRRevision(t *testing.T) {
+func TestDeployer_Executor(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.Version(1))
@@ -754,13 +766,6 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 		Root:       root,
 		Repo:       repo,
 	}
-
-	env.RegisterWorkflow(testPRRevWorkflow)
-	env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
-		Repo:     repo,
-		Root:     root,
-		Revision: deploymentInfo.Commit.Revision,
-	}).Return(nil)
 
 	latestDeployedRevision := &deployment.Info{
 		ID:       deploymentInfo.ID.String(),
@@ -812,7 +817,7 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 
 	env.AssertExpectations(t)
 
-	var resp *deployment.Info
+	var resp *deployResponse
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 
@@ -828,7 +833,8 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 			Owner: deploymentInfo.Repo.Owner,
 			Name:  deploymentInfo.Repo.Name,
 		},
-	}, resp)
+	}, resp.Info)
+	assert.True(t, resp.ExecutorCalled)
 }
 
 func TestDeployer_SetPRRevision_NonDefaultBranchOld_v1(t *testing.T) {
@@ -1023,7 +1029,7 @@ func TestDeployer_SetPRRevision_NonDefaultBranchNew_v2(t *testing.T) {
 
 	env.AssertExpectations(t)
 
-	var resp *deployment.Info
+	var resp *deployResponse
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 
@@ -1040,5 +1046,5 @@ func TestDeployer_SetPRRevision_NonDefaultBranchNew_v2(t *testing.T) {
 			Owner: deploymentInfo.Repo.Owner,
 			Name:  deploymentInfo.Repo.Name,
 		},
-	}, resp)
+	}, resp.Info)
 }

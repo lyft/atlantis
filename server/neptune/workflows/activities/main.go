@@ -247,32 +247,6 @@ func mkSubDir(parentDir string, subDir string) (string, error) {
 	return fullDir, nil
 }
 
-type RevsionSetter struct {
-	*prRevisionSetterActivities
-}
-
-func NewRevisionSetter(cfg valid.RevisionSetter) (*RevsionSetter, error) {
-	// Use a NoopClient if revision setter is not configured
-	var client revisionSetterClient
-	if cfg.URL == "" {
-		client = &NoopClient{}
-	} else {
-		client = &http.Client{}
-	}
-
-	return NewRevisionSetterWithClient(client, cfg)
-}
-
-func NewRevisionSetterWithClient(client revisionSetterClient, cfg valid.RevisionSetter) (*RevsionSetter, error) {
-	return &RevsionSetter{
-		prRevisionSetterActivities: &prRevisionSetterActivities{
-			client:    client,
-			url:       cfg.URL,
-			basicAuth: cfg.BasicAuth,
-		},
-	}, nil
-}
-
 func convertPolicies(policies []valid.PolicySet) []PolicySet {
 	var convertedPolicies []PolicySet
 	for _, policy := range policies {
