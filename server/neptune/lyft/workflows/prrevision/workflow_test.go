@@ -147,8 +147,10 @@ func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 	}
 
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:    req.Repo,
+		State:   github.OpenPullRequest,
+		SortKey: github.Updated,
+		Order:   github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: []github.PullRequest{},
 	}, nil)
@@ -264,8 +266,10 @@ func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 	}
 
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:    req.Repo,
+		State:   github.OpenPullRequest,
+		SortKey: github.Updated,
+		Order:   github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)
@@ -313,8 +317,10 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	}
 
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:    req.Repo,
+		State:   github.OpenPullRequest,
+		SortKey: github.Updated,
+		Order:   github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)
