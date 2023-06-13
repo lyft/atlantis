@@ -16,7 +16,7 @@ func TestLegacyHandler_Handle_NoRoots(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	statusUpdater := &mockVCSStatusUpdater{}
 	workerProxy := &mockWorkerProxy{}
-	legacyHandler := event.LegacyHandler{
+	legacyHandler := event.LegacyPullHandler{
 		Logger:           logger,
 		VCSStatusUpdater: statusUpdater,
 		WorkerProxy:      workerProxy,
@@ -35,7 +35,7 @@ func TestLegacyHandler_Handle_WorkerProxyFailure(t *testing.T) {
 		Name:         "legacy",
 		WorkflowMode: valid.DefaultWorkflowMode,
 	}
-	legacyHandler := event.LegacyHandler{
+	legacyHandler := event.LegacyPullHandler{
 		Logger:           logger,
 		VCSStatusUpdater: statusUpdater,
 		WorkerProxy:      &mockWorkerProxy{err: assert.AnError},
@@ -54,7 +54,7 @@ func TestLegacyHandler_Handle_WorkerProxySuccess(t *testing.T) {
 		Name:         "legacy",
 		WorkflowMode: valid.DefaultWorkflowMode,
 	}
-	legacyHandler := event.LegacyHandler{
+	legacyHandler := event.LegacyPullHandler{
 		Logger:           logger,
 		VCSStatusUpdater: statusUpdater,
 		WorkerProxy:      workerProxy,
@@ -74,7 +74,7 @@ func TestLegacyHandler_Handle_WorkerProxySuccess_Platform(t *testing.T) {
 		Name:         "platform",
 		WorkflowMode: valid.PlatformWorkflowMode,
 	}
-	legacyHandler := event.LegacyHandler{
+	legacyHandler := event.LegacyPullHandler{
 		Logger:           logger,
 		VCSStatusUpdater: statusUpdater,
 		WorkerProxy:      workerProxy,
