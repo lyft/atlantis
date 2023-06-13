@@ -18,12 +18,11 @@ const DefaultParallelPolicyCheck = false
 
 // RepoCfg is the raw schema for repo-level atlantis.yaml config.
 type RepoCfg struct {
-	Version       *int                `yaml:"version,omitempty"`
-	Projects      []Project           `yaml:"projects,omitempty"`
-	Workflows     map[string]Workflow `yaml:"workflows,omitempty"`
-	PolicySets    PolicySets          `yaml:"policies,omitempty"`
-	ParallelApply *bool               `yaml:"parallel_apply,omitempty"`
-	ParallelPlan  *bool               `yaml:"parallel_plan,omitempty"`
+	Version       *int       `yaml:"version,omitempty"`
+	Projects      []Project  `yaml:"projects,omitempty"`
+	PolicySets    PolicySets `yaml:"policies,omitempty"`
+	ParallelApply *bool      `yaml:"parallel_apply,omitempty"`
+	ParallelPlan  *bool      `yaml:"parallel_plan,omitempty"`
 	// Deprecated
 	WorkflowModeType string `yaml:"workflow_mode_type,omitempty"`
 }
@@ -42,17 +41,11 @@ func (r RepoCfg) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Version, validation.By(equals2)),
 		validation.Field(&r.Projects),
-		validation.Field(&r.Workflows),
 		validation.Field(&r.WorkflowModeType, validation.In("pr", "platform")),
 	)
 }
 
 func (r RepoCfg) ToValid() valid.RepoCfg {
-	validWorkflows := make(map[string]valid.Workflow)
-	for k, v := range r.Workflows {
-		validWorkflows[k] = v.ToValid(k)
-	}
-
 	workflowModeType := toWorkflowModeType(r.WorkflowModeType)
 
 	var validProjects []valid.Project
@@ -73,7 +66,6 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 	return valid.RepoCfg{
 		Version:             *r.Version,
 		Projects:            validProjects,
-		Workflows:           validWorkflows,
 		ParallelApply:       parallelApply,
 		ParallelPlan:        parallelPlan,
 		ParallelPolicyCheck: parallelPlan,

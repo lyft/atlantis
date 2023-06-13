@@ -13,14 +13,12 @@ type Repo struct {
 	BranchRegex                 *regexp.Regexp
 	ApplyRequirements           []string
 	PreWorkflowHooks            []*PreWorkflowHook
-	Workflow                    *Workflow
 	PullRequestWorkflow         *Workflow
 	DeploymentWorkflow          *Workflow
 	AllowedWorkflows            []string
 	AllowedPullRequestWorkflows []string
 	AllowedDeploymentWorkflows  []string
 	AllowedOverrides            []string
-	AllowCustomWorkflows        *bool
 	TemplateOverrides           map[string]string
 	CheckoutStrategy            string
 	ApplySettings               ApplySettings

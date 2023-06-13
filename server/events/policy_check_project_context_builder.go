@@ -24,7 +24,7 @@ func (p *PolicyCheckProjectContextBuilder) BuildProjectContext(
 			buildContext(
 				ctx,
 				command.PolicyCheck,
-				getSteps(command.PolicyCheck, prjCfg.Workflow, contextFlags.LogLevel),
+				getSteps(command.PolicyCheck, prjCfg.PullRequestWorkflow, contextFlags.LogLevel),
 				p.CommentBuilder,
 				prjCfg,
 				commentArgs,

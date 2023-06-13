@@ -73,10 +73,6 @@ func (p Project) getWorkflowName(workflowType workflowType) *string {
 	return name
 }
 
-func (p Project) ValidateWorkflow(repoWorkflows map[string]Workflow, globalWorkflows map[string]Workflow) error {
-	return p.validateWorkflowForType(DefaultWorkflowType, repoWorkflows, globalWorkflows)
-}
-
 func (p Project) ValidatePRWorkflow(globalWorkflows map[string]Workflow) error {
 	return p.validateWorkflowForType(PullRequestWorkflowType, map[string]Workflow{}, globalWorkflows)
 }

@@ -46,7 +46,7 @@ func (cb *projectCommandContextBuilder) BuildProjectContext(
 	return buildContext(
 		ctx,
 		cmdName,
-		getSteps(cmdName, prjCfg.Workflow, contextFlags.LogLevel),
+		getSteps(cmdName, prjCfg.PullRequestWorkflow, contextFlags.LogLevel),
 		cb.CommentBuilder,
 		prjCfg,
 		commentArgs,
