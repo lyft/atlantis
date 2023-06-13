@@ -126,13 +126,9 @@ legacy-deprecation:
 			Description:   "1 failing project and 1 passing project ",
 			RepoDir:       "policy-checks-multi-projects",
 			ModifiedFiles: []string{"dir1/main.tf,", "dir2/main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply.txt"},
 				{"exp-output-merge.txt"},
 			},
 		},
@@ -140,14 +136,10 @@ legacy-deprecation:
 			Description:   "failing policy without policies passing using extra args",
 			RepoDir:       "policy-checks-extra-args",
 			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-failed.txt"},
 				{"exp-output-merge.txt"},
 			},
 		},
@@ -155,14 +147,10 @@ legacy-deprecation:
 			Description:   "failing policy without policies passing",
 			RepoDir:       "policy-checks",
 			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-failed.txt"},
 				{"exp-output-merge.txt"},
 			},
 		},
@@ -170,14 +158,10 @@ legacy-deprecation:
 			Description:   "failing policy additional apply requirements specified",
 			RepoDir:       "policy-checks-apply-reqs",
 			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-failed.txt"},
 				{"exp-output-merge.txt"},
 			},
 		},
@@ -185,14 +169,10 @@ legacy-deprecation:
 			Description:   "failing policy approved by non owner",
 			RepoDir:       "policy-checks-diff-owner",
 			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-failed.txt"},
 				{"exp-output-merge.txt"},
 			},
 		},
@@ -206,7 +186,7 @@ legacy-deprecation:
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
-			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient, e2eOptions{
+			headSHA, ctrl := setupE2E(t, c.RepoDir, userConfig, ghClient, e2eOptions{
 				featureConfig: featureConfig,
 			})
 
@@ -327,7 +307,7 @@ legacy-deprecation:
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
-			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient, e2eOptions{
+			headSHA, ctrl := setupE2E(t, c.RepoDir, userConfig, ghClient, e2eOptions{
 				featureConfig: featureConfig,
 			})
 
@@ -368,7 +348,7 @@ type e2eOptions struct {
 	featureConfig ffclient.Retriever
 }
 
-func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig, ghClient vcs.IGithubClient, options ...e2eOptions) (string, events_controllers.VCSEventsController, locking.ApplyLocker) {
+func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig, ghClient vcs.IGithubClient, options ...e2eOptions) (string, events_controllers.VCSEventsController) {
 	var featureConfig ffclient.Retriever
 	for _, o := range options {
 		if o.featureConfig != nil {
@@ -789,7 +769,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		SupportedVCSHosts:            []models.VCSHostType{models.Gitlab, models.Github, models.BitbucketCloud},
 		VCSClient:                    vcsClient,
 	}
-	return headSHA, ctrl, applyLocker
+	return headSHA, ctrl
 }
 
 var (
