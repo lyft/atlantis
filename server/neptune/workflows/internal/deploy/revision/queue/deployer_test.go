@@ -15,7 +15,6 @@ import (
 	model "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
 	"github.com/stretchr/testify/assert"
@@ -104,7 +103,6 @@ func testDeployerWorkflow(ctx workflow.Context, r deployerRequest) (*deployment.
 func TestDeployer_FirstDeploy(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -177,7 +175,6 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -309,7 +306,6 @@ func TestDeployer_CompareCommit_Identical(t *testing.T) {
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -467,7 +463,6 @@ func TestDeployer_CompareCommit_SkipDeploy(t *testing.T) {
 func TestDeployer_CompareCommit_DeployDiverged(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -639,7 +634,6 @@ func TestDeployer_WorkflowFailure_PlanRejection_SkipUpdateLatestDeployment(t *te
 func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.DefaultVersion)
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
@@ -730,14 +724,14 @@ func TestDeployer_TerraformClientError_UpdateLatestDeployment(t *testing.T) {
 func TestDeployer_SetPRRevision(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.Version(1))
 
 	da := &testDeployActivity{}
 	env.RegisterActivity(da)
 
 	repo := github.Repo{
-		Owner: "owner",
-		Name:  "test",
+		Owner:         "owner",
+		Name:          "test",
+		DefaultBranch: "default-branch",
 	}
 
 	root := model.Root{
@@ -831,117 +825,7 @@ func TestDeployer_SetPRRevision(t *testing.T) {
 	}, resp)
 }
 
-func TestDeployer_SetPRRevision_NonDefaultBranchOld_v1(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.SetPRRevision, workflow.DefaultVersion, 2).Return(workflow.Version(1))
-
-	da := &testDeployActivity{}
-	env.RegisterActivity(da)
-
-	repo := github.Repo{
-		Owner:         "owner",
-		Name:          "test",
-		DefaultBranch: "main",
-	}
-
-	root := model.Root{
-		Name: "root_1",
-		TriggerInfo: model.TriggerInfo{
-			Type: model.ManualTrigger,
-		},
-	}
-
-	deploymentInfo := terraform.DeploymentInfo{
-		ID: uuid.UUID{},
-		Commit: github.Commit{
-			Revision: "3455",
-			Branch:   "test-branch",
-		},
-		CheckRunID: 1234,
-		Root:       root,
-		Repo:       repo,
-	}
-
-	latestDeployedRevision := &deployment.Info{
-		ID:       deploymentInfo.ID.String(),
-		Version:  1.0,
-		Revision: "3255",
-		Branch:   "main",
-		Root: deployment.Root{
-			Name: deploymentInfo.Root.Name,
-		},
-		Repo: deployment.Repo{
-			Owner: deploymentInfo.Repo.Owner,
-			Name:  deploymentInfo.Repo.Name,
-		},
-	}
-
-	storeDeploymentRequest := activities.StoreLatestDeploymentRequest{
-		DeploymentInfo: &deployment.Info{
-			Version:  deployment.InfoSchemaVersion,
-			ID:       deploymentInfo.ID.String(),
-			Revision: deploymentInfo.Commit.Revision,
-			Branch:   "test-branch",
-			Root: deployment.Root{
-				Name:    deploymentInfo.Root.Name,
-				Trigger: "manual",
-			},
-			Repo: deployment.Repo{
-				Owner: deploymentInfo.Repo.Owner,
-				Name:  deploymentInfo.Repo.Name,
-			},
-		},
-	}
-
-	compareCommitRequest := activities.CompareCommitRequest{
-		Repo:                   repo,
-		DeployRequestRevision:  deploymentInfo.Commit.Revision,
-		LatestDeployedRevision: latestDeployedRevision.Revision,
-	}
-
-	compareCommitResponse := activities.CompareCommitResponse{
-		CommitComparison: activities.DirectionAhead,
-	}
-
-	env.RegisterWorkflow(testPRRevWorkflow)
-	env.OnWorkflow(testPRRevWorkflow, mock.Anything, prrevision.Request{
-		Repo:     repo,
-		Root:     root,
-		Revision: deploymentInfo.Commit.Revision,
-	}).Return(nil)
-
-	env.OnActivity(da.GithubCompareCommit, mock.Anything, compareCommitRequest).Return(compareCommitResponse, nil)
-	env.OnActivity(da.StoreLatestDeployment, mock.Anything, storeDeploymentRequest).Return(nil)
-
-	env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
-		Info:         deploymentInfo,
-		LatestDeploy: latestDeployedRevision,
-	})
-
-	env.AssertExpectations(t)
-
-	var resp *deployment.Info
-	err := env.GetWorkflowResult(&resp)
-	assert.NoError(t, err)
-
-	assert.Equal(t, &deployment.Info{
-		ID:       deploymentInfo.ID.String(),
-		Version:  1.0,
-		Revision: "3455",
-		Branch:   "test-branch",
-		Root: deployment.Root{
-			Name:    deploymentInfo.Root.Name,
-			Trigger: "manual",
-		},
-		Repo: deployment.Repo{
-			Owner: deploymentInfo.Repo.Owner,
-			Name:  deploymentInfo.Repo.Name,
-		},
-	}, resp)
-}
-
-func TestDeployer_SetPRRevision_NonDefaultBranchNew_v2(t *testing.T) {
+func TestDeployer_SetPRRevision_NonDefaultBranchNew(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 
