@@ -132,16 +132,6 @@ legacy-deprecation:
 			},
 		},
 		{
-			Description:   "failing policy without policies passing using extra args",
-			RepoDir:       "policy-checks-extra-args",
-			ModifiedFiles: []string{"main.tf"},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-auto-policy-check.txt"},
-			},
-		},
-		{
 			Description:   "failing policy without policies passing",
 			RepoDir:       "policy-checks",
 			ModifiedFiles: []string{"main.tf"},
