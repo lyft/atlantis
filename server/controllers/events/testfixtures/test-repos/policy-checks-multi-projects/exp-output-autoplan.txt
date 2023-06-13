@@ -28,7 +28,7 @@ Changes to Outputs:
 
 * :arrow_forward: To **apply** this plan, comment:
     * `atlantis apply -p dir1`
-* :put_litter_in_its_place: To **delete** this plan click [here](lock-url)
+* :put_litter_in_its_place: To **delete** this plan click [here]()
 * :repeat: To **plan** this project again, comment:
     * `atlantis plan -p dir1`
 </details>
