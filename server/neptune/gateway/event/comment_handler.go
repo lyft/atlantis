@@ -111,7 +111,7 @@ func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *com
 	}
 
 	if len(roots) == 0 {
-		p.logger.WarnContext(ctx, "no platform mode roots detected")
+		p.logger.WarnContext(ctx, "no roots detected")
 		return nil
 	}
 

@@ -72,10 +72,6 @@ func (d *RootDeployer) Deploy(ctx context.Context, deployOptions RootDeployOptio
 	}
 	for _, rootCfg := range rootCfgs {
 		c := context.WithValue(ctx, contextInternal.ProjectKey, rootCfg.Name)
-		if rootCfg.WorkflowMode != valid.PlatformWorkflowMode {
-			d.Logger.WarnContext(c, "root is not configured for platform mode, skipping...")
-			continue
-		}
 		run, err := d.DeploySignaler.SignalWithStartWorkflow(c, rootCfg, deployOptions)
 		if err != nil {
 			return errors.Wrap(err, "signalling workflow")

@@ -138,12 +138,10 @@ func TestCommentEventWorkerProxy_HandleForceApply(t *testing.T) {
 		expectedToken: 123,
 		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				Name:         "root1",
-				WorkflowMode: valid.PlatformWorkflowMode,
+				Name: "root1",
 			},
 			{
-				Name:         "root2",
-				WorkflowMode: valid.PlatformWorkflowMode,
+				Name: "root2",
 			},
 		},
 	}
@@ -198,12 +196,10 @@ func TestCommentEventWorkerProxy_HandleApplyComment_RequirementsFailed(t *testin
 		expectedToken: 123,
 		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				Name:         "root1",
-				WorkflowMode: valid.PlatformWorkflowMode,
+				Name: "root1",
 			},
 			{
-				Name:         "root2",
-				WorkflowMode: valid.PlatformWorkflowMode,
+				Name: "root2",
 			},
 		},
 	}
@@ -252,12 +248,10 @@ func TestCommentEventWorkerProxy_HandleApplyComment(t *testing.T) {
 		expectedToken: 123,
 		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				Name:         "root1",
-				WorkflowMode: valid.PlatformWorkflowMode,
+				Name: "root1",
 			},
 			{
-				Name:         "root2",
-				WorkflowMode: valid.PlatformWorkflowMode,
+				Name: "root2",
 			},
 		},
 	}
@@ -448,8 +442,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 		expectedToken: 123,
 		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				Name:         "root2",
-				WorkflowMode: valid.PlatformWorkflowMode,
+				Name: "root2",
 			},
 		},
 	}
@@ -502,8 +495,7 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 		expectedToken: 123,
 		rootConfigs: []*valid.MergedProjectCfg{
 			{
-				Name:         "root2",
-				WorkflowMode: valid.PlatformWorkflowMode,
+				Name: "root2",
 			},
 		},
 	}

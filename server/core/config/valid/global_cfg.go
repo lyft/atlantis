@@ -183,7 +183,6 @@ type MergedProjectCfg struct {
 	RepoCfgVersion      int
 	PolicySets          PolicySets
 	Tags                map[string]string
-	WorkflowMode        WorkflowModeType
 }
 
 // PreWorkflowHook is a map of custom run commands to run before workflows.
@@ -386,7 +385,6 @@ func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) Me
 		RepoCfgVersion:      rCfg.Version,
 		PolicySets:          g.PolicySets,
 		Tags:                proj.Tags,
-		WorkflowMode:        proj.WorkflowModeType,
 	}
 }
 

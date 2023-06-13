@@ -11,6 +11,8 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
+const PlatformModeApplyStatusMessage = "Bypassed for platform mode"
+
 type vcsStatusUpdater interface {
 	UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, cmdName fmt.Stringer, statusID string, output string) (string, error)
 	UpdateCombinedCount(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, cmdName fmt.Stringer, numSuccess int, numTotal int, statusID string) (string, error)
@@ -26,7 +28,7 @@ type LegacyPullHandler struct {
 	Logger           logging.Logger
 }
 
-func (l *LegacyPullHandler) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg, legacyRoots []*valid.MergedProjectCfg) error {
+func (l *LegacyPullHandler) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg) error {
 	// mark legacy statuses as successful if there are no roots in general
 	// this is processed here to make it easy to clean up when we deprecate legacy mode
 	if len(allRoots) == 0 {
@@ -38,14 +40,12 @@ func (l *LegacyPullHandler) Handle(ctx context.Context, request *http.BufferedRe
 		return nil
 	}
 
-	// mark apply status as successful if there are no legacy roots
-	if len(legacyRoots) == 0 {
-		if _, statusErr := l.VCSStatusUpdater.UpdateCombined(ctx, event.Pull.HeadRepo, event.Pull, models.SuccessVCSStatus, command.Apply, "", PlatformModeApplyStatusMessage); statusErr != nil {
-			l.Logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", statusErr))
-		}
+	// mark apply status as successful until we're able to remove this as a required check from our github org.
+	if _, statusErr := l.VCSStatusUpdater.UpdateCombined(ctx, event.Pull.HeadRepo, event.Pull, models.SuccessVCSStatus, command.Apply, "", PlatformModeApplyStatusMessage); statusErr != nil {
+		l.Logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 	}
 
-	// mark plan status as queued
+	// mark plan status as queued. since this is the pull handler, we know that we're only executing plans
 	if _, err := l.VCSStatusUpdater.UpdateCombined(ctx, event.Pull.HeadRepo, event.Pull, models.QueuedVCSStatus, command.Plan, "", "Request received. Adding to the queue..."); err != nil {
 		l.Logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", err))
 	}

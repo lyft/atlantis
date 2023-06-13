@@ -976,7 +976,6 @@ repos:
 				AutoplanEnabled: true,
 				WhenModified:    []string{".tf"},
 				PolicySets:      emptyPolicySets,
-				WorkflowMode:    valid.PlatformWorkflowMode,
 			},
 		},
 	}

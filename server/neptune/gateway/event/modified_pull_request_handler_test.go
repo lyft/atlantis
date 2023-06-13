@@ -2,18 +2,29 @@ package event_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/runatlantis/atlantis/server/core/config/valid"
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/http"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
-	"testing"
 )
+
+type testFeatureAllocator struct {
+	Enabled bool
+	Err     error
+}
+
+func (t *testFeatureAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
+	return t.Enabled, t.Err
+}
 
 func TestModifiedPullHandler_Handle_CriteriaFailure(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
@@ -47,8 +58,7 @@ func TestModifiedPullHandler_Handle_RootBuilderFailure(t *testing.T) {
 func TestModifiedPullHandler_Handle_SignalerFailure(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	root := &valid.MergedProjectCfg{
-		Name:         "platform",
-		WorkflowMode: valid.PlatformWorkflowMode,
+		Name: "platform",
 	}
 	prRequest := pr.Request{ValidateEnvs: []pr.ValidateEnvs{{}}}
 	pullHandler := event.ModifiedPullHandler{
@@ -93,8 +103,7 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 	}
 	logger := logging.NewNoopCtxLogger(t)
 	legacyRoot := &valid.MergedProjectCfg{
-		Name:         "legacy",
-		WorkflowMode: valid.DefaultWorkflowMode,
+		Name: "legacy",
 	}
 	globalCfg := valid.GlobalCfg{
 		Repos: []valid.Repo{
@@ -113,10 +122,9 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 		Pull: pullRequest,
 	}
 	legacyHandler := &mockLegacyHandler{
-		expectedEvent:       pull,
-		expectedAllRoots:    []*valid.MergedProjectCfg{legacyRoot},
-		expectedLegacyRoots: []*valid.MergedProjectCfg{legacyRoot},
-		expectedT:           t,
+		expectedEvent:    pull,
+		expectedAllRoots: []*valid.MergedProjectCfg{legacyRoot},
+		expectedT:        t,
 	}
 	prRequest := pr.Request{
 		Revision:          "sha",
@@ -131,7 +139,7 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 		},
 	}
 	signaler := &mockPRSignaler{
-		expectedRoots:     []*valid.MergedProjectCfg{},
+		expectedRoots:     []*valid.MergedProjectCfg{legacyRoot},
 		expectedPRRequest: prRequest,
 		expectedT:         t,
 	}
@@ -153,7 +161,7 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pull)
 	assert.NoError(t, err)
 	assert.True(t, legacyHandler.called)
-	assert.False(t, signaler.called)
+	assert.True(t, signaler.called)
 }
 
 func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
@@ -164,8 +172,7 @@ func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
 		},
 	}
 	root := &valid.MergedProjectCfg{
-		Name:         "platform",
-		WorkflowMode: valid.PlatformWorkflowMode,
+		Name: "platform",
 	}
 	prRequest := pr.Request{
 		Revision:          "sha",
@@ -244,19 +251,17 @@ func (r *mockConfigBuilder) Build(_ context.Context, commit *config.RepoCommit, 
 }
 
 type mockLegacyHandler struct {
-	expectedEvent       event.PullRequest
-	expectedAllRoots    []*valid.MergedProjectCfg
-	expectedLegacyRoots []*valid.MergedProjectCfg
-	expectedT           *testing.T
-	error               error
-	called              bool
+	expectedEvent    event.PullRequest
+	expectedAllRoots []*valid.MergedProjectCfg
+	expectedT        *testing.T
+	error            error
+	called           bool
 }
 
-func (l *mockLegacyHandler) Handle(ctx context.Context, _ *http.BufferedRequest, event event.PullRequest, allRoots []*valid.MergedProjectCfg, legacyRoots []*valid.MergedProjectCfg) error {
+func (l *mockLegacyHandler) Handle(ctx context.Context, _ *http.BufferedRequest, event event.PullRequest, allRoots []*valid.MergedProjectCfg) error {
 	l.called = true
 	assert.Equal(l.expectedT, l.expectedEvent, event)
 	assert.Equal(l.expectedT, l.expectedAllRoots, allRoots)
-	assert.Equal(l.expectedT, l.expectedLegacyRoots, legacyRoots)
 	return l.error
 }
 

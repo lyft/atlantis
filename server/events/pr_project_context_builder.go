@@ -43,7 +43,7 @@ func (p *PlatformModeProjectContextBuilder) BuildProjectContext(
 		p.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err))
 	}
 
-	if shouldAllocate && prjCfg.WorkflowMode == valid.PlatformWorkflowMode {
+	if shouldAllocate {
 		return buildContext(
 			ctx,
 			cmdName,

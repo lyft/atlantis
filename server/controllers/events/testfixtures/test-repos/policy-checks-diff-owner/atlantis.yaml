@@ -1,5 +1,4 @@
 version: 3
-workflow_mode_type: pr
 projects:
 - dir: .
   workspace: default

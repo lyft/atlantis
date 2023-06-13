@@ -87,319 +87,6 @@ func (m *LocalConftestCache) Get(key *version.Version) (string, error) {
 	return exec.LookPath(fmt.Sprintf("conftest%s", ConftestVersion))
 }
 
-func TestGitHubWorkflow(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	// Ensure we have >= TF 0.14 locally.
-	ensureRunning014(t)
-
-	cases := []struct {
-		Description string
-		// RepoDir is relative to testfixtures/test-repos.
-		RepoDir string
-		// ModifiedFiles are the list of files that have been modified in this
-		// pull request.
-		ModifiedFiles []string
-		// Comments are what our mock user writes to the pull request.
-		Comments []string
-		// DisableApply flag used by userConfig object when initializing atlantis server.
-		DisableApply bool
-		// ApplyLock creates an apply lock that temporarily disables apply command
-		ApplyLock bool
-		// ExpParallel is true if we expect Atlantis to run parallel plans or applies.
-		ExpParallel bool
-		// ExpMergeable is true if we expect Atlantis to be able to merge.
-		// If for instance policy check is failing and there are no approvals
-		// ExpMergeable should be false
-		ExpMergeable bool
-		// ExpReplies is a list of files containing the expected replies that
-		// Atlantis writes to the pull request in order. A reply from a parallel operation
-		// will be matched using a substring check.
-		ExpReplies [][]string
-	}{
-		{
-			Description:   "simple",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "simple with plan comment",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis plan",
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "simple with comment -var",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis plan -- -var var=overridden",
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-atlantis-plan-var-overridden.txt"},
-				{"exp-output-apply-var.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "simple with workspaces",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis plan -- -var var=default_workspace",
-				"atlantis plan -w new_workspace -- -var var=new_workspace",
-				"atlantis apply -w default",
-				"atlantis apply -w new_workspace",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-atlantis-plan.txt"},
-				{"exp-output-atlantis-plan-new-workspace.txt"},
-				{"exp-output-apply-var-default-workspace.txt"},
-				{"exp-output-apply-var-new-workspace.txt"},
-				{"exp-output-merge-workspaces.txt"},
-			},
-		},
-		{
-			Description:   "simple with workspaces and apply all",
-			RepoDir:       "simple",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis plan -- -var var=default_workspace",
-				"atlantis plan -w new_workspace -- -var var=new_workspace",
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-atlantis-plan.txt"},
-				{"exp-output-atlantis-plan-new-workspace.txt"},
-				{"exp-output-apply-var-all.txt"},
-				{"exp-output-merge-workspaces.txt"},
-			},
-		},
-		{
-			Description:   "simple with atlantis.yaml",
-			RepoDir:       "simple-yaml",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply -w staging",
-				"atlantis apply -w default",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-apply-default.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "simple with atlantis.yaml and apply all",
-			RepoDir:       "simple-yaml",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply-all.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "modules staging only",
-			RepoDir:       "modules",
-			ModifiedFiles: []string{"staging/main.tf"},
-			Comments: []string{
-				"atlantis apply -d staging",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan-only-staging.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-merge-only-staging.txt"},
-			},
-		},
-		{
-			Description:   "modules only",
-			RepoDir:       "modules",
-			ModifiedFiles: []string{"modules/null/main.tf", "staging/main.tf"},
-			Comments: []string{
-				"atlantis plan -d production",
-				"atlantis apply -d staging",
-				"atlantis apply -d production",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan-only-staging.txt"},
-				{"exp-output-plan-production.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-apply-production.txt"},
-				{"exp-output-merge-all-dirs.txt"},
-			},
-		},
-		{
-			Description:   "modules-yaml",
-			RepoDir:       "modules-yaml",
-			ModifiedFiles: []string{"modules/null/main.tf"},
-			Comments: []string{
-				"atlantis apply -d staging",
-				"atlantis apply -d production",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-apply-production.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "tfvars-yaml",
-			RepoDir:       "tfvars-yaml",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply -p staging",
-				"atlantis apply -p default",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply-staging.txt"},
-				{"exp-output-apply-default.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "server-side cfg",
-			RepoDir:       "server-side-cfg",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply -w staging",
-				"atlantis apply -w default",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply-staging-workspace.txt"},
-				{"exp-output-apply-default-workspace.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "workspaces parallel with atlantis.yaml",
-			RepoDir:       "workspace-parallel-yaml",
-			ModifiedFiles: []string{"production/main.tf", "staging/main.tf"},
-			ExpParallel:   true,
-			Comments: []string{
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan-staging.txt", "exp-output-autoplan-production.txt"},
-				{"exp-output-apply-all-staging.txt", "exp-output-apply-all-production.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "global apply lock disables apply commands",
-			RepoDir:       "simple-yaml",
-			ModifiedFiles: []string{"main.tf"},
-			DisableApply:  false,
-			ApplyLock:     true,
-			Comments: []string{
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply-locked.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "disable apply flag always takes presedence",
-			RepoDir:       "simple-yaml",
-			ModifiedFiles: []string{"main.tf"},
-			DisableApply:  true,
-			ApplyLock:     false,
-			Comments: []string{
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-apply-locked.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-	}
-	for _, ca := range cases {
-		c := ca
-
-		t.Run(c.Description, func(t *testing.T) {
-			t.Parallel()
-
-			// reset userConfig
-			userConfig := &server.UserConfig{}
-			userConfig.DisableApply = c.DisableApply
-
-			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
-
-			headSHA, ctrl, applyLocker := setupE2E(t, c.RepoDir, userConfig, ghClient)
-
-			// Set expected pull from github
-			ghClient.ExpectedPull = GitHubPullRequestParsed(headSHA)
-
-			// Create global apply lock if required
-			if c.ApplyLock {
-				_, _ = applyLocker.LockApply()
-			}
-
-			// Setup test dependencies.
-			w := httptest.NewRecorder()
-
-			// First, send the open pull request event which triggers autoplan.
-			pullOpenedReq := GitHubPullRequestOpenedEvent(t, headSHA)
-			ctrl.Post(w, pullOpenedReq)
-			ResponseContains(t, w, http.StatusOK, "Processing...")
-
-			// Now send any other comments.
-			for _, comment := range c.Comments {
-				commentReq := GitHubCommentEvent(t, comment)
-				w = httptest.NewRecorder()
-				ctrl.Post(w, commentReq)
-				ResponseContains(t, w, http.StatusOK, "Processing...")
-			}
-
-			// Send the "pull closed" event which would be triggered by the
-			// manual merge.
-			pullClosedReq := GitHubPullRequestClosedEvent(t)
-			w = httptest.NewRecorder()
-			ctrl.Post(w, pullClosedReq)
-			ResponseContains(t, w, http.StatusOK, "Processing...")
-
-			// Verify
-			actReplies := ghClient.CapturedComments
-			Assert(t, len(c.ExpReplies) == len(actReplies), "missing expected replies, got %d but expected %d", len(actReplies), len(c.ExpReplies))
-			for i, expReply := range c.ExpReplies {
-				assertCommentEquals(t, expReply, actReplies[i], c.RepoDir, c.ExpParallel)
-			}
-		})
-	}
-}
-
 func TestGitHubWorkflowWithPolicyCheck(t *testing.T) {
 	featureConfig := feature.StringRetriever(`platform-mode:
   percentage: 100
@@ -439,74 +126,39 @@ legacy-deprecation:
 			Description:   "1 failing project and 1 passing project ",
 			RepoDir:       "policy-checks-multi-projects",
 			ModifiedFiles: []string{"dir1/main.tf,", "dir2/main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply.txt"},
-				{"exp-output-merge.txt"},
-			},
-		},
-		{
-			Description:   "failing policy without policies passing using extra args",
-			RepoDir:       "policy-checks-extra-args",
-			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
-			ExpReplies: [][]string{
-				{"exp-output-autoplan.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-failed.txt"},
-				{"exp-output-merge.txt"},
 			},
 		},
 		{
 			Description:   "failing policy without policies passing",
 			RepoDir:       "policy-checks",
 			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-failed.txt"},
-				{"exp-output-merge.txt"},
 			},
 		},
 		{
 			Description:   "failing policy additional apply requirements specified",
 			RepoDir:       "policy-checks-apply-reqs",
 			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-failed.txt"},
-				{"exp-output-merge.txt"},
 			},
 		},
 		{
 			Description:   "failing policy approved by non owner",
 			RepoDir:       "policy-checks-diff-owner",
 			ModifiedFiles: []string{"main.tf"},
-			Comments: []string{
-				"atlantis apply",
-			},
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-apply-failed.txt"},
-				{"exp-output-merge.txt"},
 			},
 		},
 	}
@@ -519,7 +171,7 @@ legacy-deprecation:
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
-			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient, e2eOptions{
+			headSHA, ctrl := setupE2E(t, c.RepoDir, userConfig, ghClient, e2eOptions{
 				featureConfig: featureConfig,
 			})
 
@@ -640,7 +292,7 @@ legacy-deprecation:
 
 			ghClient := &testGithubClient{ExpectedModifiedFiles: c.ModifiedFiles}
 
-			headSHA, ctrl, _ := setupE2E(t, c.RepoDir, userConfig, ghClient, e2eOptions{
+			headSHA, ctrl := setupE2E(t, c.RepoDir, userConfig, ghClient, e2eOptions{
 				featureConfig: featureConfig,
 			})
 
@@ -681,7 +333,7 @@ type e2eOptions struct {
 	featureConfig ffclient.Retriever
 }
 
-func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig, ghClient vcs.IGithubClient, options ...e2eOptions) (string, events_controllers.VCSEventsController, locking.ApplyLocker) {
+func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig, ghClient vcs.IGithubClient, options ...e2eOptions) (string, events_controllers.VCSEventsController) {
 	var featureConfig ffclient.Retriever
 	for _, o := range options {
 		if o.featureConfig != nil {
@@ -1102,7 +754,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		SupportedVCSHosts:            []models.VCSHostType{models.Gitlab, models.Github, models.BitbucketCloud},
 		VCSClient:                    vcsClient,
 	}
-	return headSHA, ctrl, applyLocker
+	return headSHA, ctrl
 }
 
 var (
