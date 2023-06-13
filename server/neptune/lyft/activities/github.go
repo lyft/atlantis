@@ -91,8 +91,8 @@ func (a *Github) GithubListModifiedFiles(ctx context.Context, request ListModifi
 	}, nil
 }
 
-func (c *Github) listModifiedFiles(ctx context.Context, installationToken int64, owner, repo string, pullNumber int) ([]*github.CommitFile, error) {
-	client, err := c.ClientCreator.NewInstallationClient(installationToken)
+func (a *Github) listModifiedFiles(ctx context.Context, installationToken int64, owner, repo string, pullNumber int) ([]*github.CommitFile, error) {
+	client, err := a.ClientCreator.NewInstallationClient(installationToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating client from installation")
 	}
@@ -108,8 +108,8 @@ func (c *Github) listModifiedFiles(ctx context.Context, installationToken int64,
 	return iterate(ctx, run)
 }
 
-func (c *Github) listPullRequests(ctx context.Context, installationToken int64, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error) {
-	client, err := c.ClientCreator.NewInstallationClient(installationToken)
+func (a *Github) listPullRequests(ctx context.Context, installationToken int64, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error) {
+	client, err := a.ClientCreator.NewInstallationClient(installationToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating client from installation")
 	}

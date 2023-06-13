@@ -86,7 +86,7 @@ func TestDeployWorkflow(t *testing.T) {
 		Repo:     repo,
 	}
 
-	s := initAndRegisterActivities(t, env, revRequest)
+	s := initAndRegisterActivities(t, env)
 
 	env.RegisterDelayedCallback(func() {
 		signalWorkflow(env, revRequest)
@@ -160,7 +160,7 @@ func buildConfig(t *testing.T) config.Config {
 	}
 }
 
-func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment, revReq workflows.DeployNewRevisionSignalRequest) *testSingletons {
+func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment) *testSingletons {
 	cfg := buildConfig(t)
 
 	deployActivities, err := activities.NewDeploy(cfg.DeploymentConfig)

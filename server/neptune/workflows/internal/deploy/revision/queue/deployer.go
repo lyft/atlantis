@@ -92,7 +92,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.De
 	}
 
 	// log error and continue deploys if any of the post deploy task fails
-	if err := p.runPostDeployTasks(ctx, requestedDeployment, scope); err != nil {
+	if err := p.runPostDeployTasks(ctx, requestedDeployment); err != nil {
 		workflow.GetLogger(ctx).Error("error running post deploy tasks", key.ErrKey, err)
 	}
 
@@ -102,7 +102,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.De
 	return requestedDeployment.BuildPersistableInfo(), err
 }
 
-func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform.DeploymentInfo, scope metrics.Scope) error {
+func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
 	if err := p.persistLatestDeployment(ctx, deployment.BuildPersistableInfo()); err != nil {
 		return errors.Wrap(err, "persisting deployment")
 	}
