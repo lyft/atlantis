@@ -20,13 +20,13 @@ type workerProxy interface {
 	Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error
 }
 
-type LegacyHandler struct {
+type LegacyPullHandler struct {
 	VCSStatusUpdater vcsStatusUpdater
 	WorkerProxy      workerProxy
 	Logger           logging.Logger
 }
 
-func (l *LegacyHandler) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg, legacyRoots []*valid.MergedProjectCfg) error {
+func (l *LegacyPullHandler) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg, legacyRoots []*valid.MergedProjectCfg) error {
 	// mark legacy statuses as successful if there are no roots in general
 	// this is processed here to make it easy to clean up when we deprecate legacy mode
 	if len(allRoots) == 0 {
