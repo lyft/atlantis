@@ -129,7 +129,6 @@ legacy-deprecation:
 			ExpReplies: [][]string{
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-merge.txt"},
 			},
 		},
 		{
@@ -140,7 +139,6 @@ legacy-deprecation:
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-merge.txt"},
 			},
 		},
 		{
@@ -151,7 +149,6 @@ legacy-deprecation:
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-merge.txt"},
 			},
 		},
 		{
@@ -162,7 +159,6 @@ legacy-deprecation:
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-merge.txt"},
 			},
 		},
 		{
@@ -173,7 +169,6 @@ legacy-deprecation:
 				{"exp-output-autoplan.txt"},
 				{"exp-output-auto-policy-check.txt"},
 				{"exp-output-auto-policy-check.txt"},
-				{"exp-output-merge.txt"},
 			},
 		},
 	}
