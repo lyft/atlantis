@@ -85,7 +85,7 @@ type AuditJobRequest struct {
 	Tags           map[string]string
 }
 
-func NewActivities(snsTopicArn string) (*Activities, error) {
+func NewAuditActivity(snsTopicArn string) (*Audit, error) {
 	var snsWriter io.Writer
 	if snsTopicArn != "" {
 		session, err := session.NewSession()
@@ -100,22 +100,16 @@ func NewActivities(snsTopicArn string) (*Activities, error) {
 		snsWriter = io.Discard
 	}
 
-	return &Activities{
-		auditActivities: &auditActivities{
-			SnsWriter: snsWriter,
-		},
+	return &Audit{
+		SnsWriter: snsWriter,
 	}, nil
 }
 
-type Activities struct {
-	*auditActivities
-}
-
-type auditActivities struct {
+type Audit struct {
 	SnsWriter io.Writer
 }
 
-func (a *auditActivities) AuditJob(ctx context.Context, req AuditJobRequest) error {
+func (a *Audit) AuditJob(ctx context.Context, req AuditJobRequest) error {
 	atlantisJobEvent := &AtlantisJobEvent{
 		Version:        1,
 		ID:             req.JobID,

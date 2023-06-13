@@ -3,7 +3,9 @@ package queue
 import (
 	"context"
 	"fmt"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
@@ -14,8 +16,6 @@ import (
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision"
-	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -51,10 +51,8 @@ type Deployer struct {
 	Activities              deployerActivities
 	TerraformWorkflowRunner terraformWorkflowRunner
 	GithubCheckRunCache     CheckRunClient
-	PRRevisionWorkflow      Workflow
+	Executors               []plugins.PostDeployExecutor
 }
-
-type Workflow func(ctx workflow.Context, request prrevision.Request) error
 
 const (
 	DirectionBehindSummary   = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
@@ -94,7 +92,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.De
 	}
 
 	// log error and continue deploys if any of the post deploy task fails
-	if err := p.runPostDeployTasks(ctx, requestedDeployment, scope); err != nil {
+	if err := p.runPostDeployTasks(ctx, requestedDeployment); err != nil {
 		workflow.GetLogger(ctx).Error("error running post deploy tasks", key.ErrKey, err)
 	}
 
@@ -104,38 +102,18 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.De
 	return requestedDeployment.BuildPersistableInfo(), err
 }
 
-func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform.DeploymentInfo, scope metrics.Scope) error {
+func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
 	if err := p.persistLatestDeployment(ctx, deployment.BuildPersistableInfo()); err != nil {
 		return errors.Wrap(err, "persisting deployment")
 	}
 
-	if err := p.startPRRevisionWorkflow(ctx, deployment); err != nil {
-		scope.Counter("prrevision_start_error").Inc(1)
-		return errors.Wrap(err, "starting PR Revision workflow")
+	for _, e := range p.Executors {
+		if err := e.Execute(ctx, deployment.ToExternalInfo()); err != nil {
+			return errors.Wrap(err, "executing post deploy executor")
+		}
 	}
 
 	return nil
-}
-
-func (p *Deployer) startPRRevisionWorkflow(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
-	if deployment.Commit.Branch != deployment.Repo.DefaultBranch {
-		return nil
-	}
-
-	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-		TaskQueue: prrevision.TaskQueue,
-
-		// configuring this ensures the child workflow will continue execution when the parent workflow terminates
-		ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
-	})
-
-	future := workflow.ExecuteChildWorkflow(ctx, p.PRRevisionWorkflow, prrevision.Request{
-		Repo:     deployment.Repo,
-		Root:     deployment.Root,
-		Revision: deployment.Commit.Revision,
-	})
-
-	return future.GetChildWorkflowExecution().Get(ctx, nil)
 }
 
 func (p *Deployer) FetchLatestDeployment(ctx workflow.Context, repoName, rootName string) (*deployment.Info, error) {

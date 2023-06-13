@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -33,7 +31,6 @@ type a struct {
 	*activities.Github
 	*activities.Terraform
 	*activities.Deploy
-	*activities.RevsionSetter
 }
 
 // we don't want to mess up all our gitconfig for testing purposes
@@ -51,7 +48,6 @@ func TestDeployWorkflow(t *testing.T) {
 
 	env.RegisterWorkflow(deployWorkflow)
 	env.RegisterWorkflow(workflows.Terraform)
-	env.RegisterWorkflow(workflows.PRRevision)
 
 	repo := workflows.Repo{
 		FullName: "nish/repo",
@@ -90,7 +86,7 @@ func TestDeployWorkflow(t *testing.T) {
 		Repo:     repo,
 	}
 
-	s := initAndRegisterActivities(t, env, revRequest)
+	s := initAndRegisterActivities(t, env)
 
 	env.RegisterDelayedCallback(func() {
 		signalWorkflow(env, revRequest)
@@ -121,10 +117,9 @@ func signalWorkflow(env *testsuite.TestWorkflowEnvironment, revRequest workflows
 }
 
 type testSingletons struct {
-	a                    *a
-	githubClient         *testGithubClient
-	revisionSetterClient *testRevSetterClient
-	streamCloser         *testStreamCloser
+	a            *a
+	githubClient *testGithubClient
+	streamCloser *testStreamCloser
 }
 
 func buildConfig(t *testing.T) config.Config {
@@ -165,7 +160,7 @@ func buildConfig(t *testing.T) config.Config {
 	}
 }
 
-func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment, revReq workflows.DeployNewRevisionSignalRequest) *testSingletons {
+func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironment) *testSingletons {
 	cfg := buildConfig(t)
 
 	deployActivities, err := activities.NewDeploy(cfg.DeploymentConfig)
@@ -202,38 +197,17 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 	)
 	assert.NoError(t, err)
 
-	revSetterClient := &testRevSetterClient{
-		ExpectedCalls: []SetRevisionCall{
-			{
-				RepoName: revReq.Repo.Name,
-				PullNum:  1,
-				Revision: revReq.Revision,
-			},
-		},
-	}
-	revisionSetterActivities, err := activities.NewRevisionSetterWithClient(
-		revSetterClient,
-		valid.RevisionSetter{},
-	)
-	assert.NoError(t, err)
-
-	assert.NoError(t, err)
-
 	env.RegisterActivity(terraformActivities)
 	env.RegisterActivity(deployActivities)
 	env.RegisterActivity(githubActivities)
-	env.RegisterActivity(revisionSetterActivities)
-
 	return &testSingletons{
 		a: &a{
-			Github:        githubActivities,
-			Terraform:     terraformActivities,
-			Deploy:        deployActivities,
-			RevsionSetter: revisionSetterActivities,
+			Github:    githubActivities,
+			Terraform: terraformActivities,
+			Deploy:    deployActivities,
 		},
-		githubClient:         githubClient,
-		streamCloser:         streamCloser,
-		revisionSetterClient: revSetterClient,
+		githubClient: githubClient,
+		streamCloser: streamCloser,
 	}
 }
 
@@ -338,50 +312,6 @@ func (c *testGithubClient) CompareCommits(ctx internalGithub.Context, owner, rep
 	return &github.CommitsComparison{
 		Status: github.String("ahead"),
 	}, &github.Response{}, nil
-}
-
-func (c *testGithubClient) ListModifiedFiles(ctx internalGithub.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error) {
-	return []*github.CommitFile{
-		{
-			Filename: github.String("terraform/mytestroot/a.tf"),
-		},
-	}, nil
-}
-
-func (c *testGithubClient) ListPullRequests(ctx internalGithub.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error) {
-	return []*github.PullRequest{
-		{
-			Number: github.Int(1),
-		},
-	}, nil
-}
-
-type SetRevisionCall struct {
-	RepoName string
-	PullNum  int
-	Revision string
-}
-
-type testRevSetterClient struct {
-	t             *testing.T
-	ExpectedCalls []SetRevisionCall
-}
-
-func (t *testRevSetterClient) Do(req *http.Request) (*http.Response, error) {
-	parts := strings.Split(req.URL.Path, "/")
-	num, err := strconv.Atoi(parts[2])
-	assert.NoError(t.t, err)
-
-	assert.Equal(t.t, t.ExpectedCalls[0], SetRevisionCall{
-		RepoName: parts[1],
-		PullNum:  num,
-		Revision: parts[3],
-	})
-
-	return &http.Response{
-		Body:       http.NoBody,
-		StatusCode: http.StatusOK,
-	}, nil
 }
 
 type testAllocator struct {

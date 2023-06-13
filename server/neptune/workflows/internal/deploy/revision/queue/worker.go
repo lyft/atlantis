@@ -83,7 +83,7 @@ func NewWorker(
 	q queue,
 	a workerActivities,
 	tfWorkflow terraform.Workflow,
-	prRevWorkflow Workflow,
+	postDeployExecutors []plugins.PostDeployExecutor,
 	repoName, rootName string,
 	githubCheckRunCache CheckRunClient,
 	additionalNotifiers ...plugins.TerraformWorkflowNotifier,
@@ -100,7 +100,7 @@ func NewWorker(
 		Activities:              a,
 		TerraformWorkflowRunner: tfWorkflowRunner,
 		GithubCheckRunCache:     githubCheckRunCache,
-		PRRevisionWorkflow:      prRevWorkflow,
+		Executors:               postDeployExecutors,
 	}
 
 	latestDeployment, err := deployer.FetchLatestDeployment(ctx, repoName, rootName)

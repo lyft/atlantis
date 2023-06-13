@@ -9,11 +9,10 @@ import (
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/pkg/errors"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/activities"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/workflows/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision/version"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -54,7 +53,7 @@ func Workflow(ctx workflow.Context, request Request, slowProcessingCutOffDays in
 	})
 
 	var ga *activities.Github
-	var ra *activities.RevsionSetter
+	var ra *activities.RevisionSetter
 	runner := &Runner{
 		GithubActivities:         ga,
 		RevisionSetterActivities: ra,
@@ -92,13 +91,10 @@ func (r *Runner) Run(ctx workflow.Context, request Request) error {
 
 func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.PullRequest, error) {
 	req := activities.ListPRsRequest{
-		Repo:  repo,
-		State: github.OpenPullRequest,
-	}
-
-	if version := workflow.GetVersion(ctx, version.MultiQueue, workflow.DefaultVersion, 1); version != workflow.DefaultVersion {
-		req.SortKey = github.Updated
-		req.Order = github.Descending
+		Repo:    repo,
+		State:   github.OpenPullRequest,
+		SortKey: github.Updated,
+		Order:   github.Descending,
 	}
 
 	var resp activities.ListPRsResponse

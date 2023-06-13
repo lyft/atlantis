@@ -37,8 +37,6 @@ type githubClient interface { //nolint:interfacebloat
 	UpdateCheckRun(ctx internal.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error)
 	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
 	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
-	ListModifiedFiles(ctx internal.Context, owner, repo string, pullNumber int) ([]*github.CommitFile, error)
-	ListPullRequests(ctx internal.Context, owner, repo, base, state, sortBy, order string) ([]*github.PullRequest, error)
 	ListReviews(ctx internal.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error)
 	GetPullRequest(ctx internal.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error)
 	ListCommits(ctx internal.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error)
@@ -324,81 +322,6 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 
 	return CompareCommitResponse{
 		CommitComparison: DiffDirection(comparison.GetStatus()),
-	}, nil
-}
-
-type ListPRsRequest struct {
-	Repo    internal.Repo
-	State   internal.PullRequestState
-	SortKey internal.SortKey
-	Order   internal.Order
-}
-
-type ListPRsResponse struct {
-	PullRequests []internal.PullRequest
-}
-
-func (a *githubActivities) GithubListPRs(ctx context.Context, request ListPRsRequest) (ListPRsResponse, error) {
-	prs, err := a.Client.ListPullRequests(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
-		request.Repo.Owner,
-		request.Repo.Name,
-		request.Repo.DefaultBranch,
-		string(request.State),
-		string(request.SortKey),
-		string(request.Order),
-	)
-	if err != nil {
-		return ListPRsResponse{}, errors.Wrap(err, "listing open pull requests")
-	}
-
-	pullRequests := []internal.PullRequest{}
-	for _, pullRequest := range prs {
-		pullRequests = append(pullRequests, internal.PullRequest{
-			Number:    pullRequest.GetNumber(),
-			UpdatedAt: pullRequest.GetUpdatedAt(),
-		})
-	}
-
-	return ListPRsResponse{
-		PullRequests: pullRequests,
-	}, nil
-}
-
-type ListModifiedFilesRequest struct {
-	Repo        internal.Repo
-	PullRequest internal.PullRequest
-}
-
-type ListModifiedFilesResponse struct {
-	FilePaths []string
-}
-
-func (a *githubActivities) GithubListModifiedFiles(ctx context.Context, request ListModifiedFilesRequest) (ListModifiedFilesResponse, error) {
-	files, err := a.Client.ListModifiedFiles(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
-		request.Repo.Owner,
-		request.Repo.Name,
-		request.PullRequest.Number,
-	)
-	if err != nil {
-		return ListModifiedFilesResponse{}, errors.Wrap(err, "listing modified files in pr")
-	}
-
-	filepaths := []string{}
-	for _, file := range files {
-		filepaths = append(filepaths, file.GetFilename())
-
-		// account for previous file name as well if the file has moved across roots
-		if file.GetStatus() == "renamed" {
-			filepaths = append(filepaths, file.GetPreviousFilename())
-		}
-	}
-
-	// strings are utf-8 encoded of size 1 to 4 bytes, assuming each file path is of length 100, max size of a filepath = 4 * 100 = 400 bytes
-	// upper limit of 2Mb can accomodate (2*1024*1024)/400 = 524k filepaths which is >> max number of results supported by the GH API 3000.
-	return ListModifiedFilesResponse{
-		FilePaths: filepaths,
 	}, nil
 }
 

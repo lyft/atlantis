@@ -65,8 +65,7 @@ type QueueWorker interface {
 }
 
 type ChildWorkflows struct {
-	Terraform     terraform.Workflow
-	SetPRRevision queue.Workflow
+	Terraform terraform.Workflow
 }
 
 func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) error {
@@ -116,7 +115,13 @@ func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, p
 		lockStateUpdater.UpdateQueuedRevisions(ctx, d, request.Repo.FullName)
 	}, scope)
 
-	worker, err := queue.NewWorker(ctx, revisionQueue, a, children.Terraform, children.SetPRRevision, request.Repo.FullName, request.Root.Name, checkRunCache, plugins.Notifiers...)
+	worker, err := queue.NewWorker(
+		ctx,
+		revisionQueue,
+		a, children.Terraform, plugins.PostDeployExecutors,
+		request.Repo.FullName,
+		request.Root.Name,
+		checkRunCache, plugins.Notifiers...)
 	if err != nil {
 		return nil, err
 	}

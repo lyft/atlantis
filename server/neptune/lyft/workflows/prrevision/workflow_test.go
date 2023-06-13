@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/runatlantis/atlantis/server/core/config/raw"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/activities"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/workflows/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/prrevision/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/activity"
@@ -133,7 +132,6 @@ func testSetMiminumValidRevisionForRootWorkflow(ctx workflow.Context, r Request,
 func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	ga := &testGithubActivities{}
 	env.RegisterActivity(ga)
@@ -149,77 +147,13 @@ func TestMinRevisionSetter_NoOpenPR(t *testing.T) {
 	}
 
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:    req.Repo,
+		State:   github.OpenPullRequest,
+		SortKey: github.Updated,
+		Order:   github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: []github.PullRequest{},
 	}, nil)
-
-	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req, 10)
-	env.AssertExpectations(t)
-
-	err := env.GetWorkflowResult(nil)
-	assert.Nil(t, err)
-}
-
-func TestMinRevisionSetter_OpenPR_SetMinRevision_Default(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
-
-	ga := &testGithubActivities{}
-	ra := &testRevisionSetterActivities{}
-	env.RegisterActivity(ra)
-	env.RegisterActivity(ga)
-
-	req := Request{
-		Repo: github.Repo{
-			Owner: "owner",
-			Name:  "test",
-		},
-		Root: terraform.Root{
-			Path:         "test/dir2",
-			TrackedFiles: raw.DefaultAutoPlanWhenModified,
-		},
-	}
-
-	pullRequests := []github.PullRequest{
-		{
-			Number: 1,
-		},
-		{
-			Number: 2,
-		},
-	}
-
-	filesModifiedPr1 := []string{"test/dir2/rebase.tf"}
-	filesModifiedPr2 := []string{"test/dir1/no-rebase.tf"}
-
-	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
-	}).Return(activities.ListPRsResponse{
-		PullRequests: pullRequests,
-	}, nil)
-
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        req.Repo,
-		PullRequest: pullRequests[0],
-	}).Return(activities.ListModifiedFilesResponse{
-		FilePaths: filesModifiedPr1,
-	}, nil)
-
-	env.OnActivity(ga.GithubListModifiedFiles, mock.Anything, activities.ListModifiedFilesRequest{
-		Repo:        req.Repo,
-		PullRequest: pullRequests[1],
-	}).Return(activities.ListModifiedFilesResponse{
-		FilePaths: filesModifiedPr2,
-	}, nil)
-
-	env.OnActivity(ra.SetPRRevision, mock.Anything, activities.SetPRRevisionRequest{
-		Repository:  req.Repo,
-		PullRequest: pullRequests[0],
-	}).Return(nil)
 
 	env.ExecuteWorkflow(testSetMiminumValidRevisionForRootWorkflow, req, 10)
 	env.AssertExpectations(t)
@@ -308,7 +242,6 @@ func TestMinRevisionSetter_OpenPR_SetMinRevision_v1(t *testing.T) {
 func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	ga := &testGithubActivities{}
 	ra := &testRevisionSetterActivities{}
@@ -333,8 +266,10 @@ func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 	}
 
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:    req.Repo,
+		State:   github.OpenPullRequest,
+		SortKey: github.Updated,
+		Order:   github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)
@@ -359,7 +294,6 @@ func TestMinRevisionSetter_ListModifiedFilesErr(t *testing.T) {
 func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-	env.OnGetVersion(version.MultiQueue, workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
 
 	ga := &testGithubActivities{}
 	ra := &testRevisionSetterActivities{}
@@ -383,8 +317,10 @@ func TestMinRevisionSetter_OpenPR_PatternMatchErr(t *testing.T) {
 	}
 
 	env.OnActivity(ga.GithubListPRs, mock.Anything, activities.ListPRsRequest{
-		Repo:  req.Repo,
-		State: github.OpenPullRequest,
+		Repo:    req.Repo,
+		State:   github.OpenPullRequest,
+		SortKey: github.Updated,
+		Order:   github.Descending,
 	}).Return(activities.ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil)

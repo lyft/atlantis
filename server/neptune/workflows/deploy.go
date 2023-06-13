@@ -67,8 +67,7 @@ func GetDeployWithPlugins(InitPlugins InitDeployPlugins) DeployFunc {
 			ctx,
 			req,
 			deploy.ChildWorkflows{
-				Terraform:     Terraform,
-				SetPRRevision: PRRevision,
+				Terraform: Terraform,
 			},
 			plugins,
 		)
