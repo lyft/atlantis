@@ -68,43 +68,6 @@ func TestDeploy(t *testing.T) {
 		assert.False(t, signaler.called)
 	})
 
-	t.Run("not platform mode", func(t *testing.T) {
-		ctx := context.Background()
-		signaler := &mockDeploySignaler{}
-		rootCfg := valid.MergedProjectCfg{
-			Name: testRoot,
-			DeploymentWorkflow: valid.Workflow{
-				Plan:  valid.DefaultPlanStage,
-				Apply: valid.DefaultApplyStage,
-			},
-			TerraformVersion: version,
-			WorkflowMode:     valid.DefaultWorkflowMode,
-		}
-		rootCfgs := []*valid.MergedProjectCfg{
-			&rootCfg,
-		}
-		deployer := deploy.RootDeployer{
-			DeploySignaler: signaler,
-			Logger:         logger,
-			RootConfigBuilder: &mockRootConfigBuilder{
-				expectedT:      t,
-				expectedCommit: commit,
-				expectedToken:  deployOptions.InstallationToken,
-				expectedOptions: []config.BuilderOptions{
-					{
-						RootNames:          deployOptions.RootNames,
-						RepoFetcherOptions: deployOptions.RepoFetcherOptions,
-					},
-				},
-				rootConfigs: rootCfgs,
-			},
-		}
-
-		err := deployer.Deploy(ctx, deployOptions)
-		assert.NoError(t, err)
-		assert.False(t, signaler.called)
-	})
-
 	t.Run("success", func(t *testing.T) {
 		ctx := context.Background()
 		signaler := &mockDeploySignaler{run: testRun{}}
@@ -115,7 +78,6 @@ func TestDeploy(t *testing.T) {
 				Apply: valid.DefaultApplyStage,
 			},
 			TerraformVersion: version,
-			WorkflowMode:     valid.PlatformWorkflowMode,
 		}
 		rootCfgs := []*valid.MergedProjectCfg{
 			&rootCfg,

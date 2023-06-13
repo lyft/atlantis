@@ -21,7 +21,7 @@ func TestLegacyHandler_Handle_NoRoots(t *testing.T) {
 		VCSStatusUpdater: statusUpdater,
 		WorkerProxy:      workerProxy,
 	}
-	err := legacyHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{}, []*valid.MergedProjectCfg{}, []*valid.MergedProjectCfg{})
+	err := legacyHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{}, []*valid.MergedProjectCfg{})
 	assert.NoError(t, err)
 	assert.False(t, workerProxy.called)
 	assert.Equal(t, statusUpdater.combinedCountCalls, 3)
@@ -32,18 +32,17 @@ func TestLegacyHandler_Handle_WorkerProxyFailure(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
 	statusUpdater := &mockVCSStatusUpdater{}
 	legacyRoot := &valid.MergedProjectCfg{
-		Name:         "legacy",
-		WorkflowMode: valid.DefaultWorkflowMode,
+		Name: "legacy",
 	}
 	legacyHandler := event.LegacyPullHandler{
 		Logger:           logger,
 		VCSStatusUpdater: statusUpdater,
 		WorkerProxy:      &mockWorkerProxy{err: assert.AnError},
 	}
-	err := legacyHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{}, []*valid.MergedProjectCfg{legacyRoot}, []*valid.MergedProjectCfg{legacyRoot})
+	err := legacyHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{}, []*valid.MergedProjectCfg{legacyRoot})
 	assert.ErrorIs(t, err, assert.AnError)
-	assert.Equal(t, statusUpdater.combinedCountCalls, 0)
-	assert.Equal(t, statusUpdater.combinedCalls, 1)
+	assert.Equal(t, 0, statusUpdater.combinedCountCalls)
+	assert.Equal(t, 2, statusUpdater.combinedCalls)
 }
 
 func TestLegacyHandler_Handle_WorkerProxySuccess(t *testing.T) {
@@ -51,39 +50,18 @@ func TestLegacyHandler_Handle_WorkerProxySuccess(t *testing.T) {
 	statusUpdater := &mockVCSStatusUpdater{}
 	workerProxy := &mockWorkerProxy{}
 	legacyRoot := &valid.MergedProjectCfg{
-		Name:         "legacy",
-		WorkflowMode: valid.DefaultWorkflowMode,
+		Name: "legacy",
 	}
 	legacyHandler := event.LegacyPullHandler{
 		Logger:           logger,
 		VCSStatusUpdater: statusUpdater,
 		WorkerProxy:      workerProxy,
 	}
-	err := legacyHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{}, []*valid.MergedProjectCfg{legacyRoot}, []*valid.MergedProjectCfg{legacyRoot})
+	err := legacyHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{}, []*valid.MergedProjectCfg{legacyRoot})
 	assert.NoError(t, err)
 	assert.True(t, workerProxy.called)
-	assert.Equal(t, statusUpdater.combinedCountCalls, 0)
-	assert.Equal(t, statusUpdater.combinedCalls, 1)
-}
-
-func TestLegacyHandler_Handle_WorkerProxySuccess_Platform(t *testing.T) {
-	logger := logging.NewNoopCtxLogger(t)
-	statusUpdater := &mockVCSStatusUpdater{}
-	workerProxy := &mockWorkerProxy{}
-	platformRoot := &valid.MergedProjectCfg{
-		Name:         "platform",
-		WorkflowMode: valid.PlatformWorkflowMode,
-	}
-	legacyHandler := event.LegacyPullHandler{
-		Logger:           logger,
-		VCSStatusUpdater: statusUpdater,
-		WorkerProxy:      workerProxy,
-	}
-	err := legacyHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{}, []*valid.MergedProjectCfg{platformRoot}, []*valid.MergedProjectCfg{})
-	assert.NoError(t, err)
-	assert.True(t, workerProxy.called)
-	assert.Equal(t, statusUpdater.combinedCountCalls, 0)
-	assert.Equal(t, statusUpdater.combinedCalls, 2)
+	assert.Equal(t, 0, statusUpdater.combinedCountCalls)
+	assert.Equal(t, 2, statusUpdater.combinedCalls)
 }
 
 type mockVCSStatusUpdater struct {

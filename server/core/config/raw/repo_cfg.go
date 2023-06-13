@@ -18,13 +18,14 @@ const DefaultParallelPolicyCheck = false
 
 // RepoCfg is the raw schema for repo-level atlantis.yaml config.
 type RepoCfg struct {
-	Version          *int                `yaml:"version,omitempty"`
-	Projects         []Project           `yaml:"projects,omitempty"`
-	Workflows        map[string]Workflow `yaml:"workflows,omitempty"`
-	PolicySets       PolicySets          `yaml:"policies,omitempty"`
-	ParallelApply    *bool               `yaml:"parallel_apply,omitempty"`
-	ParallelPlan     *bool               `yaml:"parallel_plan,omitempty"`
-	WorkflowModeType string              `yaml:"workflow_mode_type,omitempty"`
+	Version       *int                `yaml:"version,omitempty"`
+	Projects      []Project           `yaml:"projects,omitempty"`
+	Workflows     map[string]Workflow `yaml:"workflows,omitempty"`
+	PolicySets    PolicySets          `yaml:"policies,omitempty"`
+	ParallelApply *bool               `yaml:"parallel_apply,omitempty"`
+	ParallelPlan  *bool               `yaml:"parallel_plan,omitempty"`
+	// Deprecated
+	WorkflowModeType string `yaml:"workflow_mode_type,omitempty"`
 }
 
 func (r RepoCfg) Validate() error {
@@ -76,7 +77,6 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 		ParallelApply:       parallelApply,
 		ParallelPlan:        parallelPlan,
 		ParallelPolicyCheck: parallelPlan,
-		WorkflowModeType:    workflowModeType,
 	}
 }
 

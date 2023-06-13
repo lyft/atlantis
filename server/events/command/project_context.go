@@ -77,7 +77,7 @@ func NewProjectContext(
 		PullReqStatus:        pullStatus,
 		JobID:                uuid.New().String(),
 		RequestCtx:           ctx.RequestCtx,
-		WorkflowModeType:     projCfg.WorkflowMode,
+		WorkflowModeType:     valid.PlatformWorkflowMode,
 		InstallationToken:    ctx.InstallationToken,
 		Trigger:              ctx.Trigger,
 	}

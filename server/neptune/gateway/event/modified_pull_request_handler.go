@@ -18,7 +18,7 @@ import (
 )
 
 type legacyHandler interface {
-	Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg, legacyRoots []*valid.MergedProjectCfg) error
+	Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg) error
 }
 
 type prSignaler interface {
@@ -102,22 +102,13 @@ func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.Buffered
 		return errors.Wrap(err, "generating roots")
 	}
 
-	var legacyModeRoots []*valid.MergedProjectCfg
-	var platformModeRoots []*valid.MergedProjectCfg
-	for _, rootCfg := range rootCfgs {
-		if rootCfg.WorkflowMode == valid.PlatformWorkflowMode {
-			platformModeRoots = append(platformModeRoots, rootCfg)
-		} else {
-			legacyModeRoots = append(legacyModeRoots, rootCfg)
-		}
-	}
-
 	// TODO: remove when we deprecate legacy mode
-	if err := p.LegacyHandler.Handle(ctx, request, event, rootCfgs, legacyModeRoots); err != nil {
+	// TODO: call this async
+	if err := p.LegacyHandler.Handle(ctx, request, event, rootCfgs); err != nil {
 		p.Logger.ErrorContext(ctx, err.Error())
 	}
 
-	if err := p.handlePlatformMode(ctx, event, platformModeRoots); err != nil {
+	if err := p.handlePlatformMode(ctx, event, rootCfgs); err != nil {
 		return errors.Wrap(err, "handling platform mode")
 	}
 	return nil

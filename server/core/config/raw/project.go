@@ -41,7 +41,8 @@ type Project struct {
 	Autoplan                *Autoplan         `yaml:"autoplan,omitempty"`
 	ApplyRequirements       []string          `yaml:"apply_requirements,omitempty"`
 	Tags                    map[string]string `yaml:"tags,omitempty"`
-	WorkflowModeType        *string           `yaml:"workflow_mode_type,omitempty"`
+	// Deprecated
+	WorkflowModeType *string `yaml:"workflow_mode_type,omitempty"`
 }
 
 func (p Project) Validate() error {
