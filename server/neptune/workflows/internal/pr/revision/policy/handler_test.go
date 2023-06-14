@@ -29,6 +29,7 @@ type request struct {
 	FilterErr           error
 	GithubActivities    *mockGithubActivities
 	Roots               map[string]revision.RootInfo
+	State               *state.Workflow
 }
 
 type response struct {
@@ -58,8 +59,9 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		t:                 r.T,
 	}
 	notifier := &mockNotifier{
-		t:             r.T,
-		expectedRoots: r.Roots,
+		t:                     r.T,
+		expectedRoots:         r.Roots,
+		expectedWorkflowState: r.State,
 	}
 	handler := &policy.FailedPolicyHandler{
 		ApprovalSignalChannel: workflow.GetSignalChannel(ctx, approveID),
@@ -136,6 +138,10 @@ func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
 		GithubActivities: ga,
 		DismissResponse:  []*github.PullRequestReview{testApproval},
 		Roots:            roots,
+		State: &state.Workflow{Result: state.WorkflowResult{
+			Status: state.CompleteWorkflowStatus,
+			Reason: state.ValidationFailedReason,
+		}},
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
