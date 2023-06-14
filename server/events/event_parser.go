@@ -27,11 +27,9 @@ import (
 	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketserver"
-	"github.com/xanzy/go-gitlab"
 	"gopkg.in/go-playground/validator.v9"
 )
 
-const gitlabPullOpened = "opened"
 const usagesCols = 90
 
 // PullCommand is a command to run on a pull request.
@@ -80,7 +78,7 @@ type CommentCommand struct {
 	Flags []string
 	// Name is the name of the command the comment specified.
 	Name command.Name
-	//ForceApply is true of the command should ignore apply_requirments.
+	// ForceApply is true of the command should ignore apply_requirments.
 	ForceApply bool
 	// Workspace is the name of the Terraform workspace to run the command in.
 	// If empty then the comment specified no workspace.
@@ -174,28 +172,6 @@ type EventParsing interface {
 	// Deprecated: see converters/github.go
 	ParseGithubRepo(ghRepo *github.Repository) (models.Repo, error)
 
-	// ParseGitlabMergeRequestEvent parses GitLab merge request events.
-	// pull is the parsed merge request.
-	// pullEventType is the type of event, for example opened/closed.
-	// baseRepo is the repo the merge request will be merged into.
-	// headRepo is the repo the merge request branch is from.
-	// user is the pull request author.
-	ParseGitlabMergeRequestEvent(event gitlab.MergeEvent) (
-		pull models.PullRequest, pullEventType models.PullRequestEventType,
-		baseRepo models.Repo, headRepo models.Repo, user models.User, err error)
-
-	// ParseGitlabMergeRequestCommentEvent parses GitLab merge request comment
-	// events.
-	// baseRepo is the repo the merge request will be merged into.
-	// headRepo is the repo the merge request branch is from.
-	// user is the pull request author.
-	ParseGitlabMergeRequestCommentEvent(event gitlab.MergeCommentEvent) (
-		baseRepo models.Repo, headRepo models.Repo, user models.User, err error)
-
-	// ParseGitlabMergeRequest parses the response from the GitLab API endpoint
-	// that returns a merge request.
-	ParseGitlabMergeRequest(mr *gitlab.MergeRequest, baseRepo models.Repo) models.PullRequest
-
 	// ParseBitbucketCloudPullEvent parses a pull request event from Bitbucket
 	// Cloud (bitbucket.org).
 	// pull is the parsed pull request.
@@ -273,8 +249,6 @@ type EventParsing interface {
 type EventParser struct {
 	GithubUser         string
 	GithubToken        string
-	GitlabUser         string
-	GitlabToken        string
 	AllowDraftPRs      bool
 	BitbucketUser      string
 	BitbucketToken     string
@@ -527,102 +501,6 @@ func (e *EventParser) ParseGithubPull(pull *github.PullRequest) (pullModel model
 // See EventParsing for return value docs.
 func (e *EventParser) ParseGithubRepo(ghRepo *github.Repository) (models.Repo, error) {
 	return models.NewRepo(models.Github, ghRepo.GetFullName(), ghRepo.GetCloneURL(), e.GithubUser, e.GithubToken)
-}
-
-// ParseGitlabMergeRequestEvent parses GitLab merge request events.
-// pull is the parsed merge request.
-// See EventParsing for return value docs.
-func (e *EventParser) ParseGitlabMergeRequestEvent(event gitlab.MergeEvent) (pull models.PullRequest, eventType models.PullRequestEventType, baseRepo models.Repo, headRepo models.Repo, user models.User, err error) {
-	modelState := models.ClosedPullState
-	if event.ObjectAttributes.State == gitlabPullOpened {
-		modelState = models.OpenPullState
-	}
-	// GitLab also has a "merged" state, but we map that to Closed so we don't
-	// need to check for it.
-
-	baseRepo, err = models.NewRepo(models.Gitlab, event.Project.PathWithNamespace, event.Project.GitHTTPURL, e.GitlabUser, e.GitlabToken)
-	if err != nil {
-		return
-	}
-	headRepo, err = models.NewRepo(models.Gitlab, event.ObjectAttributes.Source.PathWithNamespace, event.ObjectAttributes.Source.GitHTTPURL, e.GitlabUser, e.GitlabToken)
-	if err != nil {
-		return
-	}
-
-	pull = models.PullRequest{
-		URL:        event.ObjectAttributes.URL,
-		Author:     event.User.Username,
-		Num:        event.ObjectAttributes.IID,
-		HeadCommit: event.ObjectAttributes.LastCommit.ID,
-		HeadBranch: event.ObjectAttributes.SourceBranch,
-		BaseBranch: event.ObjectAttributes.TargetBranch,
-		State:      modelState,
-		BaseRepo:   baseRepo,
-		HeadRepo:   headRepo,
-	}
-
-	switch event.ObjectAttributes.Action {
-	case "open":
-		eventType = models.OpenedPullEvent
-	case "update":
-		eventType = models.UpdatedPullEvent
-	case "merge", "close":
-		eventType = models.ClosedPullEvent
-	default:
-		eventType = models.OtherPullEvent
-	}
-
-	user = models.User{
-		Username: event.User.Username,
-	}
-
-	return
-}
-
-// ParseGitlabMergeRequestCommentEvent parses GitLab merge request comment
-// events.
-// See EventParsing for return value docs.
-func (e *EventParser) ParseGitlabMergeRequestCommentEvent(event gitlab.MergeCommentEvent) (baseRepo models.Repo, headRepo models.Repo, user models.User, err error) {
-	// Parse the base repo first.
-	repoFullName := event.Project.PathWithNamespace
-	cloneURL := event.Project.GitHTTPURL
-	baseRepo, err = models.NewRepo(models.Gitlab, repoFullName, cloneURL, e.GitlabUser, e.GitlabToken)
-	if err != nil {
-		return
-	}
-	user = models.User{
-		Username: event.User.Username,
-	}
-
-	// Now parse the head repo.
-	headRepoFullName := event.MergeRequest.Source.PathWithNamespace
-	headCloneURL := event.MergeRequest.Source.GitHTTPURL
-	headRepo, err = models.NewRepo(models.Gitlab, headRepoFullName, headCloneURL, e.GitlabUser, e.GitlabToken)
-	return
-}
-
-// ParseGitlabMergeRequest parses the merge requests and returns a pull request
-// model. We require passing in baseRepo because we can't get this information
-// from the merge request. The only caller of this function already has that
-// data so we can construct the pull request object correctly.
-func (e *EventParser) ParseGitlabMergeRequest(mr *gitlab.MergeRequest, baseRepo models.Repo) models.PullRequest {
-	pullState := models.ClosedPullState
-	if mr.State == gitlabPullOpened {
-		pullState = models.OpenPullState
-	}
-	// GitLab also has a "merged" state, but we map that to Closed so we don't
-	// need to check for it.
-
-	return models.PullRequest{
-		URL:        mr.WebURL,
-		Author:     mr.Author.Username,
-		Num:        mr.IID,
-		HeadCommit: mr.SHA,
-		HeadBranch: mr.SourceBranch,
-		BaseBranch: mr.TargetBranch,
-		State:      pullState,
-		BaseRepo:   baseRepo,
-	}
 }
 
 // GetBitbucketServerPullEventType returns the type of the pull request

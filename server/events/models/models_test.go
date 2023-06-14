@@ -203,10 +203,6 @@ func TestVCSHostType_ToString(t *testing.T) {
 			"Github",
 		},
 		{
-			models.Gitlab,
-			"Gitlab",
-		},
-		{
 			models.BitbucketCloud,
 			"BitbucketCloud",
 		},
@@ -354,6 +350,7 @@ func TestAzureDevopsSplitRepoFullName(t *testing.T) {
 		})
 	}
 }
+
 func TestPullStatus_StatusCount(t *testing.T) {
 	ps := models.PullStatus{
 		Projects: []models.ProjectStatus{

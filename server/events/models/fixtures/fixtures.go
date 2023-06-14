@@ -41,18 +41,6 @@ var GithubRepo = models.Repo{
 	},
 }
 
-var GitlabRepo = models.Repo{
-	CloneURL:          "https://user:password@github.com/runatlantis/atlantis.git",
-	FullName:          "runatlantis/atlantis",
-	Owner:             "runatlantis",
-	SanitizedCloneURL: "https://gitlab.com/runatlantis/atlantis.git",
-	Name:              "atlantis",
-	VCSHost: models.VCSHost{
-		Hostname: "gitlab.com",
-		Type:     models.Gitlab,
-	},
-}
-
 var User = models.User{
 	Username: "lkysow",
 }

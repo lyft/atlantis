@@ -4,6 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"sync"
+	"testing"
+
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-version"
@@ -22,15 +32,6 @@ import (
 	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/request"
 	ffclient "github.com/thomaspoignant/go-feature-flag"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"sync"
-	"testing"
 
 	"github.com/runatlantis/atlantis/server/core/runtime/policy"
 	"github.com/runatlantis/atlantis/server/core/terraform"
@@ -50,8 +51,10 @@ import (
 	. "github.com/runatlantis/atlantis/testing"
 )
 
-const ConftestVersion = "0.25.0"
-const githubHeader = "X-Github-Event"
+const (
+	ConftestVersion = "0.25.0"
+	githubHeader    = "X-Github-Event"
+)
 
 type noopPushEventHandler struct{}
 
@@ -385,18 +388,15 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	// Set real dependencies here.
 	// TODO: aggregate some of this with that of server.go to minimize duplication
-	vcsClient := vcs.NewClientProxy(ghClient, nil, nil, nil, nil)
+	vcsClient := vcs.NewClientProxy(ghClient, nil, nil, nil)
 	e2eStatusUpdater := &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: "atlantis"}}
 
 	eventParser := &events.EventParser{
 		GithubUser:  "github-user",
 		GithubToken: "github-token",
-		GitlabUser:  "gitlab-user",
-		GitlabToken: "gitlab-token",
 	}
 	commentParser := &events.CommentParser{
 		GithubUser: "github-user",
-		GitlabUser: "gitlab-user",
 	}
 
 	boltdb, err := db.New(dataDir)
@@ -743,16 +743,14 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 	}
 
 	ctrl := events_controllers.VCSEventsController{
-		RequestRouter:                requestRouter,
-		Logger:                       ctxLogger,
-		Scope:                        statsScope,
-		Parser:                       eventParser,
-		CommentParser:                commentParser,
-		GitlabRequestParserValidator: &events_controllers.DefaultGitlabRequestParserValidator{},
-		GitlabWebhookSecret:          nil,
-		RepoAllowlistChecker:         repoAllowlistChecker,
-		SupportedVCSHosts:            []models.VCSHostType{models.Gitlab, models.Github, models.BitbucketCloud},
-		VCSClient:                    vcsClient,
+		RequestRouter:        requestRouter,
+		Logger:               ctxLogger,
+		Scope:                statsScope,
+		Parser:               eventParser,
+		CommentParser:        commentParser,
+		RepoAllowlistChecker: repoAllowlistChecker,
+		SupportedVCSHosts:    []models.VCSHostType{models.Github, models.BitbucketCloud},
+		VCSClient:            vcsClient,
 	}
 	return headSHA, ctrl
 }
@@ -964,11 +962,11 @@ func assertCommentEquals(t *testing.T, expReplies []string, act string, repoDir 
 func mkSubDirs(t *testing.T) (string, string, string) {
 	tmp := t.TempDir()
 	binDir := filepath.Join(tmp, "bin")
-	err := os.MkdirAll(binDir, 0700)
+	err := os.MkdirAll(binDir, 0o700)
 	Ok(t, err)
 
 	cachedir := filepath.Join(tmp, "plugin-cache")
-	err = os.MkdirAll(cachedir, 0700)
+	err = os.MkdirAll(cachedir, 0o700)
 	Ok(t, err)
 
 	return tmp, binDir, cachedir
@@ -1114,28 +1112,36 @@ type testGithubClient struct {
 func (t *testGithubClient) GetModifiedFiles(repo models.Repo, pull models.PullRequest) ([]string, error) {
 	return t.ExpectedModifiedFiles, nil
 }
+
 func (t *testGithubClient) CreateComment(repo models.Repo, pullNum int, comment string, command string) error {
 	t.CapturedComments = append(t.CapturedComments, comment)
 	return nil
 }
+
 func (t *testGithubClient) HidePrevCommandComments(repo models.Repo, pullNum int, command string) error {
 	return nil
 }
+
 func (t *testGithubClient) PullIsApproved(repo models.Repo, pull models.PullRequest) (models.ApprovalStatus, error) {
 	return t.ExpectedApprovalStatus, nil
 }
+
 func (t *testGithubClient) PullIsMergeable(repo models.Repo, pull models.PullRequest) (bool, error) {
 	return false, nil
 }
+
 func (t *testGithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	return "", nil
 }
+
 func (t *testGithubClient) MarkdownPullLink(pull models.PullRequest) (string, error) {
 	return "", nil
 }
+
 func (t *testGithubClient) DownloadRepoConfigFile(pull models.PullRequest) (bool, []byte, error) {
 	return false, []byte{}, nil
 }
+
 func (t *testGithubClient) SupportsSingleFileDownload(repo models.Repo) bool {
 	return false
 }
@@ -1143,9 +1149,11 @@ func (t *testGithubClient) SupportsSingleFileDownload(repo models.Repo) bool {
 func (t *testGithubClient) GetContents(owner, repo, branch, path string) ([]byte, error) {
 	return []byte{}, nil
 }
+
 func (t *testGithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest) ([]*github.RepoStatus, error) {
 	return []*github.RepoStatus{}, nil
 }
+
 func (t *testGithubClient) GetRepoChecks(repo models.Repo, commitSHA string) ([]*github.CheckRun, error) {
 	return []*github.CheckRun{}, nil
 }
@@ -1153,6 +1161,7 @@ func (t *testGithubClient) GetRepoChecks(repo models.Repo, commitSHA string) ([]
 func (t *testGithubClient) GetPullRequest(repo models.Repo, pullNum int) (*github.PullRequest, error) {
 	return t.ExpectedPull, nil
 }
+
 func (t *testGithubClient) GetPullRequestFromName(repoName string, repoOwner string, pullNum int) (*github.PullRequest, error) {
 	return t.ExpectedPull, nil
 }

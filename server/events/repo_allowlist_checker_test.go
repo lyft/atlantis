@@ -57,13 +57,6 @@ func TestRepoAllowlistChecker_IsAllowlisted(t *testing.T) {
 			true,
 		},
 		{
-			"github.com* should not match gitlab",
-			"github.com*",
-			"owner/repo",
-			"gitlab.com",
-			false,
-		},
-		{
 			"github.com/o* should match",
 			"github.com/o*",
 			"owner/repo",

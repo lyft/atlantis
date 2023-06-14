@@ -26,7 +26,6 @@ import (
 
 var commentParser = events.CommentParser{
 	GithubUser: "github-user",
-	GitlabUser: "gitlab-user",
 }
 
 func TestParse_Ignored(t *testing.T) {
@@ -747,7 +746,6 @@ Use "atlantis [command] --help" for more information about a command.` +
 func TestParse_VCSUsername(t *testing.T) {
 	cp := events.CommentParser{
 		GithubUser:      "gh",
-		GitlabUser:      "gl",
 		BitbucketUser:   "bb",
 		AzureDevopsUser: "ad",
 	}
@@ -758,10 +756,6 @@ func TestParse_VCSUsername(t *testing.T) {
 		{
 			vcs:  models.Github,
 			user: "gh",
-		},
-		{
-			vcs:  models.Gitlab,
-			user: "gl",
 		},
 		{
 			vcs:  models.BitbucketServer,
