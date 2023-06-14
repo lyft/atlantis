@@ -193,7 +193,7 @@ func determineCheckRunState(workflowState *state.Workflow) github.CheckRunState 
 		return github.CheckRunPending
 	}
 
-	if workflowState.Result.Reason == state.SuccessfulCompletionReason {
+	if workflowState.Result.Reason == state.SuccessfulCompletionReason || workflowState.Result.Reason == state.BypassedFailedValidationReason {
 		return github.CheckRunSuccess
 	}
 

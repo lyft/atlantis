@@ -100,12 +100,13 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 			cancelTimer()
 			cancelTimer, _ = s.AddTimeout(ctx, 10*time.Minute, onTimeout)
 		}
-		failedPolicies = f.handleApprovals(ctx, revision, failedPolicies)
+		// filter out approved policies and update check status onPollTick and onApprovalSignal actions
+		failedPolicies = f.filterApprovedPolicies(ctx, revision, failedPolicies)
 		f.updateCheckStatus(ctx, roots, workflowResponses, failedPolicies)
 	}
 }
 
-func (f *FailedPolicyHandler) handleApprovals(ctx workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) []activities.PolicySet {
+func (f *FailedPolicyHandler) filterApprovedPolicies(ctx workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) []activities.PolicySet {
 	// Fetch current approvals in activity
 	var listPRReviewsResponse activities.ListPRReviewsResponse
 	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListPRReviews, activities.ListPRReviewsRequest{
@@ -158,7 +159,7 @@ func (f *FailedPolicyHandler) updateCheckStatus(ctx workflow.Context, roots map[
 		}
 		workflowState := response.WorkflowState
 		workflowState.Result.Status = state.CompleteWorkflowStatus
-		workflowState.Result.Reason = state.SuccessfulCompletionReason
+		workflowState.Result.Reason = state.BypassedFailedValidationReason
 		rootInfo := roots[workflowState.ID]
 		for _, notifier := range f.InternalNotifiers {
 			if err := notifier.Notify(ctx, rootInfo.ToInternalInfo(), &workflowState); err != nil {

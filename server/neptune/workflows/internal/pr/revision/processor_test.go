@@ -19,10 +19,10 @@ const (
 )
 
 type processRevisionRequest struct {
-	T                      *testing.T
-	Revision               revision.Revision
-	TFWorkflowFail         bool
-	ExpectedFailedPolicies []activities.PolicySet
+	T              *testing.T
+	Revision       revision.Revision
+	TFWorkflowFail bool
+	Responses      []terraform.Response
 }
 
 type processRevisionResponse struct{}
@@ -30,19 +30,28 @@ type processRevisionResponse struct{}
 // test 3 roots, two successful, one failure
 // have first two roots contain different failing policies
 // confirm policies returned are what we expect
-
 func TestProcess(t *testing.T) {
 	t.Run("returns expected policy failures", func(t *testing.T) {
-		expectedPolicies := []activities.PolicySet{
-			{Name: badPolicy},
-			{Name: badPolicy2},
+		result1 := activities.ValidationResult{
+			PolicySet: activities.PolicySet{Name: badPolicy},
+		}
+		result2 := activities.ValidationResult{
+			PolicySet: activities.PolicySet{Name: badPolicy2},
+		}
+		responses := []terraform.Response{
+			{
+				ValidationResults: []activities.ValidationResult{result1},
+			},
+			{
+				ValidationResults: []activities.ValidationResult{result1, result2},
+			},
 		}
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 		env.RegisterWorkflow(testTFWorkflow)
 		env.ExecuteWorkflow(testProcessRevisionWorkflow, processRevisionRequest{
-			T:                      t,
-			ExpectedFailedPolicies: expectedPolicies,
+			T:         t,
+			Responses: responses,
 			Revision: revision.Revision{
 				Repo: github.Repo{},
 				Roots: []terraformActivities.Root{
@@ -91,8 +100,9 @@ func testProcessRevisionWorkflow(ctx workflow.Context, r processRevisionRequest)
 		TFStateReceiver: &revision.StateReceiver{},
 		TFWorkflow:      tfWorkflow,
 		PolicyHandler: testPolicyHandler{
-			expectedRevision: r.Revision,
-			t:                r.T,
+			expectedRevision:  r.Revision,
+			expectedResponses: r.Responses,
+			t:                 r.T,
 		},
 	}
 	processor.Process(ctx, r.Revision)
@@ -124,11 +134,13 @@ func testTFWorkflowFailure(_ workflow.Context, _ terraform.Request) (terraform.R
 }
 
 type testPolicyHandler struct {
-	t                      *testing.T
-	expectedFailedPolicies []activities.PolicySet
-	expectedRevision       revision.Revision
+	t                 *testing.T
+	expectedResponses []terraform.Response
+	expectedRevision  revision.Revision
 }
 
-func (p testPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, roots map[string]revision.RootInfo, failedPolicies []terraform.Response) {
+func (p testPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, roots map[string]revision.RootInfo, responses []terraform.Response) {
 	assert.Equal(p.t, p.expectedRevision, revision)
+	assert.Equal(p.t, len(p.expectedResponses), len(responses))
+	assert.Equal(p.t, p.expectedResponses, responses)
 }
