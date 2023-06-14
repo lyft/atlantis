@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/stretchr/testify/assert"
 )
 

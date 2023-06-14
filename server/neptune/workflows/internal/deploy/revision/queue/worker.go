@@ -2,11 +2,12 @@ package queue
 
 import (
 	"fmt"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
-	metricNames "github.com/runatlantis/atlantis/server/events/metrics"
+	metricNames "github.com/runatlantis/atlantis/server/metrics"
 
 	"github.com/pkg/errors"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"

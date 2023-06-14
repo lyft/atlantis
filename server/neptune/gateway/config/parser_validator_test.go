@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/stretchr/testify/assert"

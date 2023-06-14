@@ -24,8 +24,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	homedir "github.com/mitchellh/go-homedir"
-	"github.com/runatlantis/atlantis/server"
-	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
+	server "github.com/runatlantis/atlantis/server/legacy"
+	"github.com/runatlantis/atlantis/server/legacy/events/vcs/fixtures"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

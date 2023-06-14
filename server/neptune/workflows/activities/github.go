@@ -3,11 +3,12 @@ package activities
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/sdk/activity"

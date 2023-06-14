@@ -7,9 +7,9 @@ import (
 	"net/url"
 
 	"github.com/gorilla/mux"
-	"github.com/runatlantis/atlantis/server/controllers/templates"
-	"github.com/runatlantis/atlantis/server/events/metrics"
+	"github.com/runatlantis/atlantis/server/legacy/controllers/templates"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/metrics"
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/controllers/websocket"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"

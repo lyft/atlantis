@@ -3,7 +3,7 @@ package requirement
 import (
 	"context"
 
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/models"
 )
 
 type pull struct{}

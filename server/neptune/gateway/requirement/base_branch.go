@@ -2,8 +2,9 @@ package requirement
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/valid"
 )
 
 type baseBranch struct {

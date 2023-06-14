@@ -6,13 +6,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/valid"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/sdk/client"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 )

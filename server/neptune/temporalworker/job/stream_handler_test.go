@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/legacy/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/stretchr/testify/assert"

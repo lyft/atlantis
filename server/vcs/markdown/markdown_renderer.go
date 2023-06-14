@@ -21,8 +21,8 @@ import (
 
 	_ "embed" // embedding files
 
-	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/legacy/events/command"
+	"github.com/runatlantis/atlantis/server/models"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )

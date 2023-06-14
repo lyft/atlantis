@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-github/v45/github"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/models"
 )
 
 type CommentCreator struct {

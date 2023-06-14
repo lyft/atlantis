@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/runatlantis/atlantis/server/http"
+	"github.com/runatlantis/atlantis/server/legacy/http"
 
 	"github.com/google/go-github/v45/github"
 )

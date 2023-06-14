@@ -1,7 +1,7 @@
 package terraform
 
 import (
-	constants "github.com/runatlantis/atlantis/server/events/metrics"
+	constants "github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/markdown"

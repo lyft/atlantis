@@ -2,12 +2,13 @@ package event
 
 import (
 	"context"
+
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
-	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"

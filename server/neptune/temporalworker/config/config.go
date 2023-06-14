@@ -1,11 +1,12 @@
 package config
 
 import (
-	"github.com/hashicorp/go-version"
 	"net/url"
 
+	"github.com/hashicorp/go-version"
+
 	"github.com/palantir/go-githubapp/githubapp"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
