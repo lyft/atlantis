@@ -3,7 +3,6 @@ package policy
 import (
 	"context"
 	"github.com/google/go-github/v45/github"
-	"github.com/pkg/errors"
 	metricNames "github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	gh "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -29,6 +28,10 @@ type policyFilter interface {
 	Filter(teams map[string][]string, currentApprovals []*github.PullRequestReview, failedPolicies []activities.PolicySet) []activities.PolicySet
 }
 
+type notifier interface {
+	Notify(ctx workflow.Context, workflowState *state.Workflow, roots map[string]revision.RootInfo)
+}
+
 type NewApprovalRequest struct {
 	Revision string
 }
@@ -41,7 +44,7 @@ type FailedPolicyHandler struct {
 	PRNumber              int
 	Org                   string
 	Scope                 metrics.Scope
-	InternalNotifiers     []revision.WorkflowNotifier
+	Notifier              notifier
 }
 
 type Action int64
@@ -160,13 +163,7 @@ func (f *FailedPolicyHandler) updateCheckStatus(ctx workflow.Context, roots map[
 		workflowState := response.WorkflowState
 		workflowState.Result.Status = state.CompleteWorkflowStatus
 		workflowState.Result.Reason = state.BypassedFailedValidationReason
-		rootInfo := roots[workflowState.ID]
-		for _, notifier := range f.InternalNotifiers {
-			if err := notifier.Notify(ctx, rootInfo.ToInternalInfo(), &workflowState); err != nil {
-				workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
-				workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
-			}
-		}
+		f.Notifier.Notify(ctx, &workflowState, roots)
 	}
 }
 
