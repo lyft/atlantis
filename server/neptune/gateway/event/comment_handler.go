@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"time"
@@ -100,7 +101,7 @@ type NeptuneWorkerProxy struct {
 	prSignaler         prSignaler
 }
 
-func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
+func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg, request *http.BufferedRequest) error {
 	if cmd.Name == command.Apply {
 		return p.handleForceApplies(ctx, event, cmd, roots)
 	}
@@ -225,14 +226,18 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 		return nil
 	}
 
-	if err := p.legacyHandler.Handle(ctx, request, event, cmd); err != nil {
-		return errors.Wrap(err, "handling event in legacy sns worker handler")
+	fxns := []func(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg, request *http.BufferedRequest) error{
+		p.legacyHandler.Handle,
+		p.neptuneWorkerProxy.Handle,
 	}
-	if err := p.neptuneWorkerProxy.Handle(ctx, event, cmd, roots); err != nil {
-		return errors.Wrap(err, "handling event in signal temporal worker handler")
+	var combinedErrors *multierror.Error
+	for _, f := range fxns {
+		err := p.scheduler.Schedule(ctx, func(ctx context.Context) error {
+			return f(ctx, event, cmd, roots, request)
+		})
+		combinedErrors = multierror.Append(combinedErrors, err)
 	}
-
-	return nil
+	return combinedErrors.ErrorOrNil()
 }
 
 // TODO: do we need to keep marking plan as successful after legacy deprecation?
