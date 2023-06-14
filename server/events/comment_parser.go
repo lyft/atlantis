@@ -49,8 +49,10 @@ const (
 // through because when you double click on a comment in GitHub and then you
 // paste it again, GitHub adds two newlines and so we wanted to allow copying
 // and pasting GitHub comments.
-var multiLineRegex = regexp.MustCompile(`.*\r?\n[^\r\n]+`)
-var ValidLogLevels = []string{"trace", "debug", "info", "warn", "error"}
+var (
+	multiLineRegex = regexp.MustCompile(`.*\r?\n[^\r\n]+`)
+	ValidLogLevels = []string{"trace", "debug", "info", "warn", "error"}
+)
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_comment_parsing.go CommentParsing
 
@@ -76,7 +78,6 @@ type CommentBuilder interface {
 // CommentParser implements CommentParsing
 type CommentParser struct {
 	GithubUser      string
-	GitlabUser      string
 	BitbucketUser   string
 	AzureDevopsUser string
 	ApplyDisabled   bool
@@ -132,8 +133,6 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	switch vcsHost {
 	case models.Github:
 		vcsUser = e.GithubUser
-	case models.Gitlab:
-		vcsUser = e.GitlabUser
 	case models.BitbucketCloud, models.BitbucketServer:
 		vcsUser = e.BitbucketUser
 	case models.AzureDevops:
@@ -369,7 +368,7 @@ func (e *CommentParser) errMarkdown(errMsg string, cmd string, flagSet *pflag.Fl
 
 func (e *CommentParser) HelpComment(applyDisabled bool) string {
 	buf := &bytes.Buffer{}
-	var tmpl = template.Must(template.New("").Parse(helpCommentTemplate))
+	tmpl := template.Must(template.New("").Parse(helpCommentTemplate))
 	if err := tmpl.Execute(buf, struct {
 		ApplyDisabled bool
 	}{

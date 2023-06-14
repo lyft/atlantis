@@ -41,12 +41,12 @@ type PullReqStatus struct {
 // Repo is a VCS repository.
 type Repo struct {
 	// FullName is the owner and repo name separated
-	// by a "/", ex. "runatlantis/atlantis", "gitlab/subgroup/atlantis",
+	// by a "/", ex. "runatlantis/atlantis", "subgroup/atlantis",
 	// "Bitbucket Server/atlantis", "azuredevops/project/atlantis".
 	FullName string
-	// Owner is just the repo owner, ex. "runatlantis" or "gitlab/subgroup"
-	// or azuredevops/project. This may contain /'s in the case of GitLab
-	// subgroups or Azure DevOps Team Projects. This may contain spaces in
+	// Owner is just the repo owner, ex. "runatlantis"
+	// or azuredevops/project. This may contain /'s in the case of
+	// Azure DevOps Team Projects. This may contain spaces in
 	// the case of Bitbucket Server.
 	Owner string
 	// Name is just the repo name, ex. "atlantis". This will never have
@@ -127,9 +127,9 @@ func NewRepo(vcsHostType VCSHostType, repoFullName string, cloneURL string, vcsU
 	if owner == "" || repo == "" {
 		return Repo{}, fmt.Errorf("invalid repo format %q, owner %q or repo %q was empty", repoFullName, owner, repo)
 	}
-	// Only GitLab and AzureDevops repos can have /'s in their owners.
-	// This is for GitLab subgroups and Azure DevOps Team Projects.
-	if strings.Contains(owner, "/") && vcsHostType != Gitlab && vcsHostType != AzureDevops {
+	// Only AzureDevops repos can have /'s in their owners.
+	// This is for Azure DevOps Team Projects.
+	if strings.Contains(owner, "/") && vcsHostType != AzureDevops {
 		return Repo{}, fmt.Errorf("invalid repo format %q, owner %q should not contain any /'s", repoFullName, owner)
 	}
 	if strings.Contains(repo, "/") {
@@ -156,7 +156,6 @@ type ApprovalStatus struct {
 }
 
 // PullRequest is a VCS pull request.
-// GitLab calls these Merge Requests.
 type PullRequest struct {
 	// Num is the pull request number or ID.
 	Num int
@@ -177,8 +176,6 @@ type PullRequest struct {
 	// Author is the username of the pull request author.
 	Author string
 	// State will be one of Open or Closed.
-	// Gitlab supports an additional "merged" state but Github doesn't so we map
-	// merged to Closed.
 	State PullRequestState
 	// BaseRepo is the repository that the pull request will be merged into.
 	BaseRepo Repo
@@ -294,7 +291,7 @@ type VCSHost struct {
 	// "github-enterprise.example.com".
 	Hostname string
 
-	// Type is which type of VCS host this is, ex. GitHub or GitLab.
+	// Type is which type of VCS host this is, ex. GitHub.
 	Type VCSHostType
 }
 
@@ -302,7 +299,6 @@ type VCSHostType int
 
 const (
 	Github VCSHostType = iota
-	Gitlab
 	BitbucketCloud
 	BitbucketServer
 	AzureDevops
@@ -312,8 +308,6 @@ func (h VCSHostType) String() string {
 	switch h {
 	case Github:
 		return "Github"
-	case Gitlab:
-		return "Gitlab"
 	case BitbucketCloud:
 		return "BitbucketCloud"
 	case BitbucketServer:
@@ -329,7 +323,6 @@ func (h VCSHostType) String() string {
 // strings for owner or repo.
 // Ex. runatlantis/atlantis => (runatlantis, atlantis)
 //
-//	gitlab/subgroup/runatlantis/atlantis => (gitlab/subgroup/runatlantis, atlantis)
 //	azuredevops/project/atlantis => (azuredevops/project, atlantis)
 func SplitRepoFullName(repoFullName string) (owner string, repo string) {
 	lastSlashIdx := strings.LastIndex(repoFullName, "/")

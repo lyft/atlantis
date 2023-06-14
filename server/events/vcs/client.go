@@ -20,7 +20,7 @@ import (
 	"github.com/runatlantis/atlantis/server/events/vcs/types"
 )
 
-// Client is used to make API calls to a VCS host like GitHub or GitLab.
+// Client is used to make API calls to a VCS host like GitHub.
 //
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_client.go Client
 //nolint:interfacebloat
