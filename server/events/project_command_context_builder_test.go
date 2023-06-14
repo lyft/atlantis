@@ -28,9 +28,9 @@ func TestProjectCommandContextBuilder_PullStatus(t *testing.T) {
 		RepoRelDir: projRepoRelDir,
 		Workspace:  projWorkspace,
 		Name:       projName,
-		Workflow: valid.Workflow{
-			Name:  valid.DefaultWorkflowName,
-			Apply: valid.DefaultApplyStage,
+		PullRequestWorkflow: valid.Workflow{
+			Name: valid.DefaultWorkflowName,
+			Plan: valid.DefaultLocklessPlanStage,
 		},
 	}
 

@@ -15,7 +15,6 @@ type RepoCfg struct {
 	// Version is the version of the atlantis YAML file.
 	Version              int
 	Projects             []Project
-	Workflows            map[string]Workflow
 	PullRequestWorkflows map[string]Workflow
 	DeploymentWorkflows  map[string]Workflow
 	PolicySets           PolicySets
@@ -109,41 +108,6 @@ func (r RepoCfg) ValidateWorkspaceAllowed(repoRelDir string, workspace string) e
 		workspace,
 		strings.Join(configuredSpaces, ", "),
 	)
-}
-
-// ValidateWorkflows ensures that all projects with custom workflow
-// names exists either on repo level config or server level config
-// Additionally it validates that workflow is allowed to be defined
-func (r RepoCfg) ValidateWorkflows(
-	globalWorkflows map[string]Workflow,
-	allowedWorkflows []string,
-	allowCustomWorkflows bool,
-) error {
-	// Check if the repo has set a workflow name that doesn't exist.
-	for _, p := range r.Projects {
-		if err := p.ValidateWorkflow(r.Workflows, globalWorkflows); err != nil {
-			return err
-		}
-	}
-
-	if len(allowedWorkflows) == 0 {
-		return nil
-	}
-
-	// Check workflow is allowed
-	for _, p := range r.Projects {
-		if allowCustomWorkflows {
-			if err := p.ValidateWorkflow(r.Workflows, map[string]Workflow{}); err == nil {
-				break
-			}
-		}
-
-		if err := p.ValidateWorkflowAllowed(allowedWorkflows); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // ValidatePRWorkflows ensures that all projects with custom

@@ -1,7 +1,6 @@
 package valid
 
 import (
-	"fmt"
 	"regexp"
 
 	"github.com/graymeta/stow"
@@ -55,7 +54,6 @@ const (
 // GlobalCfg is the final parsed version of server-side repo config.
 type GlobalCfg struct {
 	Repos                []Repo
-	Workflows            map[string]Workflow
 	PullRequestWorkflows map[string]Workflow
 	DeploymentWorkflows  map[string]Workflow
 	PolicySets           PolicySets
@@ -170,7 +168,6 @@ type RevisionSetter struct {
 // TODO: rename project to roots
 type MergedProjectCfg struct {
 	ApplyRequirements   []string
-	Workflow            Workflow
 	PullRequestWorkflow Workflow
 	DeploymentWorkflow  Workflow
 	AllowedWorkflows    []string
@@ -239,13 +236,6 @@ var DefaultLocklessPlanStage = Stage{
 }
 
 func NewGlobalCfg(dataDir string) GlobalCfg {
-	defaultWorkflow := Workflow{
-		Name:        DefaultWorkflowName,
-		Apply:       DefaultApplyStage,
-		Plan:        DefaultPlanStage,
-		PolicyCheck: DefaultPolicyCheckStage,
-	}
-
 	// defaultPullRequstWorkflow is only used in platform mode. By default it does not
 	// support apply stage, and plan stage run with -lock=false flag
 	pullRequestWorkflow := Workflow{
@@ -260,27 +250,21 @@ func NewGlobalCfg(dataDir string) GlobalCfg {
 		Plan:  DefaultPlanStage,
 	}
 
-	var allowCustomWorkflows bool
 	repo := Repo{
-		IDRegex:              regexp.MustCompile(".*"),
-		BranchRegex:          regexp.MustCompile(".*"),
-		Workflow:             &defaultWorkflow,
-		DeploymentWorkflow:   &deploymentWorkflow,
-		PullRequestWorkflow:  &pullRequestWorkflow,
-		AllowedWorkflows:     []string{},
-		ApplyRequirements:    []string{},
-		AllowCustomWorkflows: &allowCustomWorkflows,
-		AllowedOverrides:     []string{},
-		CheckoutStrategy:     "branch",
+		IDRegex:             regexp.MustCompile(".*"),
+		BranchRegex:         regexp.MustCompile(".*"),
+		DeploymentWorkflow:  &deploymentWorkflow,
+		PullRequestWorkflow: &pullRequestWorkflow,
+		AllowedWorkflows:    []string{},
+		ApplyRequirements:   []string{},
+		AllowedOverrides:    []string{},
+		CheckoutStrategy:    "branch",
 		ApplySettings: ApplySettings{
 			BranchRestriction: DefaultBranchRestriction,
 		},
 	}
 
 	globalCfg := GlobalCfg{
-		Workflows: map[string]Workflow{
-			DefaultWorkflowName: defaultWorkflow,
-		},
 		DeploymentWorkflows: map[string]Workflow{
 			DefaultWorkflowName: deploymentWorkflow,
 		},
@@ -317,16 +301,12 @@ func NewGlobalCfg(dataDir string) GlobalCfg {
 // final config. It assumes that all configs have been validated.
 func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) MergedProjectCfg {
 	var applyReqs []string
-	var workflow Workflow
 	var pullRequestWorkflow Workflow
 	var deploymentWorkflow Workflow
-	var allowCustomWorkflows bool
 
 	repo := g.foldMatchingRepos(repoID)
 
 	applyReqs = repo.ApplyRequirements
-	allowCustomWorkflows = *repo.AllowCustomWorkflows
-	workflow = *repo.Workflow
 
 	pullRequestWorkflow = *repo.PullRequestWorkflow
 	deploymentWorkflow = *repo.DeploymentWorkflow
@@ -338,25 +318,14 @@ func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) Me
 			if proj.ApplyRequirements != nil {
 				applyReqs = proj.ApplyRequirements
 			}
-		case WorkflowKey:
-			if proj.WorkflowName != nil {
+		case PullRequestWorkflowKey:
+			if proj.PullRequestWorkflowName != nil {
+				name := *proj.PullRequestWorkflowName
 				// We iterate over the global workflows first and the repo
 				// workflows second so that repo workflows override. This is
 				// safe because at this point we know if a repo is allowed to
 				// define its own workflow. We also know that a workflow will
 				// exist with this name due to earlier validation.
-				name := *proj.WorkflowName
-				if w, ok := g.Workflows[name]; ok {
-					workflow = w
-				}
-
-				if w, ok := rCfg.Workflows[name]; allowCustomWorkflows && ok {
-					workflow = w
-				}
-			}
-		case PullRequestWorkflowKey:
-			if proj.PullRequestWorkflowName != nil {
-				name := *proj.PullRequestWorkflowName
 				if w, ok := g.PullRequestWorkflows[name]; ok {
 					pullRequestWorkflow = w
 				}
@@ -373,7 +342,6 @@ func (g GlobalCfg) MergeProjectCfg(repoID string, proj Project, rCfg RepoCfg) Me
 
 	return MergedProjectCfg{
 		ApplyRequirements:   applyReqs,
-		Workflow:            workflow,
 		PullRequestWorkflow: pullRequestWorkflow,
 		DeploymentWorkflow:  deploymentWorkflow,
 		RepoRelDir:          proj.Dir,
@@ -394,14 +362,15 @@ func (g GlobalCfg) DefaultProjCfg(log logging.Logger, repoID string, repoRelDir 
 	repo := g.foldMatchingRepos(repoID)
 
 	mrgPrj := MergedProjectCfg{
-		ApplyRequirements: repo.ApplyRequirements,
-		Workflow:          *repo.Workflow,
-		RepoRelDir:        repoRelDir,
-		Workspace:         workspace,
-		Name:              "",
-		AutoplanEnabled:   DefaultAutoPlanEnabled,
-		TerraformVersion:  nil,
-		PolicySets:        g.PolicySets,
+		ApplyRequirements:   repo.ApplyRequirements,
+		PullRequestWorkflow: *repo.PullRequestWorkflow,
+		DeploymentWorkflow:  *repo.DeploymentWorkflow,
+		RepoRelDir:          repoRelDir,
+		Workspace:           workspace,
+		Name:                "",
+		AutoplanEnabled:     DefaultAutoPlanEnabled,
+		TerraformVersion:    nil,
+		PolicySets:          g.PolicySets,
 	}
 
 	return mrgPrj
@@ -422,9 +391,6 @@ func (g GlobalCfg) foldMatchingRepos(repoID string) Repo {
 			if repo.ApplyRequirements != nil {
 				foldedRepo.ApplyRequirements = repo.ApplyRequirements
 			}
-			if repo.Workflow != nil {
-				foldedRepo.Workflow = repo.Workflow
-			}
 			if repo.PullRequestWorkflow != nil {
 				foldedRepo.PullRequestWorkflow = repo.PullRequestWorkflow
 			}
@@ -436,9 +402,6 @@ func (g GlobalCfg) foldMatchingRepos(repoID string) Repo {
 			}
 			if repo.AllowedOverrides != nil {
 				foldedRepo.AllowedOverrides = repo.AllowedOverrides
-			}
-			if repo.AllowCustomWorkflows != nil {
-				foldedRepo.AllowCustomWorkflows = repo.AllowCustomWorkflows
 			}
 		}
 	}
@@ -458,14 +421,11 @@ func (g GlobalCfg) ValidateRepoCfg(rCfg RepoCfg, repoID string) error {
 		return err
 	}
 
-	allowCustomWorkflows := *repo.AllowCustomWorkflows
-	// Check custom workflows.
-	if len(rCfg.Workflows) > 0 && !allowCustomWorkflows {
-		return fmt.Errorf("repo config not allowed to define custom workflows: server-side config needs '%s: true'", AllowCustomWorkflowsKey)
-	}
-
 	// Check if the repo has set a workflow name that doesn't exist and if workflow is allowed
-	if err := rCfg.ValidateWorkflows(g.Workflows, repo.AllowedWorkflows, allowCustomWorkflows); err != nil {
+	if err := rCfg.ValidatePRWorkflows(g.PullRequestWorkflows, repo.AllowedWorkflows); err != nil {
+		return err
+	}
+	if err := rCfg.ValidateDeploymentWorkflows(g.DeploymentWorkflows, repo.AllowedWorkflows); err != nil {
 		return err
 	}
 

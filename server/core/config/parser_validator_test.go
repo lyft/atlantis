@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -19,14 +18,16 @@ import (
 var globalCfg = valid.GlobalCfg{
 	Repos: []valid.Repo{
 		{
-			IDRegex:              regexp.MustCompile(".*"),
-			AllowCustomWorkflows: Bool(true),
-			AllowedOverrides:     []string{"apply_requirements", "workflow"},
-			CheckoutStrategy:     "branch",
+			IDRegex:          regexp.MustCompile(".*"),
+			AllowedOverrides: []string{"apply_requirements", "pull_request_workflow"},
+			CheckoutStrategy: "branch",
 			ApplySettings: valid.ApplySettings{
 				BranchRestriction: valid.DefaultBranchRestriction,
 			},
 		},
+	},
+	PullRequestWorkflows: map[string]valid.Workflow{
+		"myworkflow": {},
 	},
 }
 
@@ -155,35 +156,6 @@ projects:
 `,
 			expErr: "version: is required. If you've just upgraded Atlantis you need to rewrite your atlantis.yaml for version 3. See www.runatlantis.io/docs/upgrading-atlantis-yaml.html.",
 		},
-		{
-			description: "version 2",
-			input: `
-version: 2
-workflows:
-  custom:
-    plan:
-      steps:
-      - run: old 'shell parsing'
-`,
-			exp: valid.RepoCfg{
-				Version: 2,
-				Workflows: map[string]valid.Workflow{
-					"custom": {
-						Name:        "custom",
-						Apply:       valid.DefaultApplyStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
-						Plan: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:   "run",
-									RunCommand: "old shell parsing",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
 
 		// Projects key.
 		{
@@ -192,9 +164,8 @@ workflows:
 version: 3
 projects:`,
 			exp: valid.RepoCfg{
-				Version:   3,
-				Projects:  nil,
-				Workflows: map[string]valid.Workflow{},
+				Version:  3,
+				Projects: nil,
 			},
 		},
 		{
@@ -215,10 +186,10 @@ projects:
 				Version: 3,
 				Projects: []valid.Project{
 					{
-						Dir:              ".",
-						Workspace:        "default",
-						WorkflowName:     nil,
-						TerraformVersion: nil,
+						Dir:                     ".",
+						Workspace:               "default",
+						PullRequestWorkflowName: nil,
+						TerraformVersion:        nil,
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      true,
@@ -226,7 +197,6 @@ projects:
 						ApplyRequirements: nil,
 					},
 				},
-				Workflows: map[string]valid.Workflow{},
 			},
 		},
 		{
@@ -248,7 +218,6 @@ projects:
 						},
 					},
 				},
-				Workflows: make(map[string]valid.Workflow),
 			},
 		},
 		{
@@ -272,7 +241,6 @@ projects:
 						},
 					},
 				},
-				Workflows: make(map[string]valid.Workflow),
 			},
 		},
 		{
@@ -294,7 +262,6 @@ projects:
 						},
 					},
 				},
-				Workflows: make(map[string]valid.Workflow),
 			},
 		},
 		{
@@ -302,9 +269,7 @@ projects:
 			input: `
 version: 3
 projects:
-- dir: "."
-workflows: ~
-`,
+- dir: "."`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
@@ -317,7 +282,6 @@ workflows: ~
 						},
 					},
 				},
-				Workflows: make(map[string]valid.Workflow),
 			},
 		},
 		{
@@ -325,14 +289,7 @@ workflows: ~
 			input: `
 version: 3
 projects:
-- dir: "."
-workflows:
-  default:
-    plan:
-      steps:
-    apply:
-      steps:
-`,
+- dir: "."`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
@@ -343,14 +300,6 @@ workflows:
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      true,
 						},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"default": {
-						Name:        "default",
-						Plan:        valid.DefaultPlanStage,
-						Apply:       valid.DefaultApplyStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
 				},
 			},
@@ -364,30 +313,20 @@ projects:
   workspace: myworkspace
   terraform_version: v0.11.0
   apply_requirements: [approved]
-  workflow: myworkflow
-workflows:
-  myworkflow: ~`,
+  pull_request_workflow: myworkflow`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
 					{
-						Dir:              ".",
-						Workspace:        "myworkspace",
-						WorkflowName:     String("myworkflow"),
-						TerraformVersion: tfVersion,
+						Dir:                     ".",
+						Workspace:               "myworkspace",
+						PullRequestWorkflowName: String("myworkflow"),
+						TerraformVersion:        tfVersion,
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      true,
 						},
 						ApplyRequirements: []string{"approved"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"myworkflow": {
-						Name:        "myworkflow",
-						Apply:       valid.DefaultApplyStage,
-						Plan:        valid.DefaultPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
 				},
 			},
@@ -401,32 +340,22 @@ projects:
   workspace: myworkspace
   terraform_version: v0.11.0
   apply_requirements: [approved]
-  workflow: myworkflow
+  pull_request_workflow: myworkflow
   autoplan:
-    enabled: false
-workflows:
-  myworkflow: ~`,
+    enabled: false`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
 					{
-						Dir:              ".",
-						Workspace:        "myworkspace",
-						WorkflowName:     String("myworkflow"),
-						TerraformVersion: tfVersion,
+						Dir:                     ".",
+						Workspace:               "myworkspace",
+						PullRequestWorkflowName: String("myworkflow"),
+						TerraformVersion:        tfVersion,
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      false,
 						},
 						ApplyRequirements: []string{"approved"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"myworkflow": {
-						Name:        "myworkflow",
-						Apply:       valid.DefaultApplyStage,
-						Plan:        valid.DefaultPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
 				},
 			},
@@ -440,32 +369,22 @@ projects:
   workspace: myworkspace
   terraform_version: v0.11.0
   apply_requirements: [mergeable]
-  workflow: myworkflow
+  pull_request_workflow: myworkflow
   autoplan:
-    enabled: false
-workflows:
-  myworkflow: ~`,
+    enabled: false`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
 					{
-						Dir:              ".",
-						Workspace:        "myworkspace",
-						WorkflowName:     String("myworkflow"),
-						TerraformVersion: tfVersion,
+						Dir:                     ".",
+						Workspace:               "myworkspace",
+						PullRequestWorkflowName: String("myworkflow"),
+						TerraformVersion:        tfVersion,
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      false,
 						},
 						ApplyRequirements: []string{"mergeable"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"myworkflow": {
-						Name:        "myworkflow",
-						Apply:       valid.DefaultApplyStage,
-						Plan:        valid.DefaultPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
 				},
 			},
@@ -479,32 +398,22 @@ projects:
   workspace: myworkspace
   terraform_version: v0.11.0
   apply_requirements: [undiverged]
-  workflow: myworkflow
+  pull_request_workflow: myworkflow
   autoplan:
-    enabled: false
-workflows:
-  myworkflow: ~`,
+    enabled: false`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
 					{
-						Dir:              ".",
-						Workspace:        "myworkspace",
-						WorkflowName:     String("myworkflow"),
-						TerraformVersion: tfVersion,
+						Dir:                     ".",
+						Workspace:               "myworkspace",
+						PullRequestWorkflowName: String("myworkflow"),
+						TerraformVersion:        tfVersion,
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      false,
 						},
 						ApplyRequirements: []string{"undiverged"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"myworkflow": {
-						Name:        "myworkflow",
-						Apply:       valid.DefaultApplyStage,
-						Plan:        valid.DefaultPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
 				},
 			},
@@ -518,32 +427,22 @@ projects:
   workspace: myworkspace
   terraform_version: v0.11.0
   apply_requirements: [mergeable, approved]
-  workflow: myworkflow
+  pull_request_workflow: myworkflow
   autoplan:
-    enabled: false
-workflows:
-  myworkflow: ~`,
+    enabled: false`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
 					{
-						Dir:              ".",
-						Workspace:        "myworkspace",
-						WorkflowName:     String("myworkflow"),
-						TerraformVersion: tfVersion,
+						Dir:                     ".",
+						Workspace:               "myworkspace",
+						PullRequestWorkflowName: String("myworkflow"),
+						TerraformVersion:        tfVersion,
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      false,
 						},
 						ApplyRequirements: []string{"mergeable", "approved"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"myworkflow": {
-						Name:        "myworkflow",
-						Apply:       valid.DefaultApplyStage,
-						Plan:        valid.DefaultPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
 				},
 			},
@@ -557,32 +456,22 @@ projects:
   workspace: myworkspace
   terraform_version: v0.11.0
   apply_requirements: [undiverged, approved]
-  workflow: myworkflow
+  pull_request_workflow: myworkflow
   autoplan:
-    enabled: false
-workflows:
-  myworkflow: ~`,
+    enabled: false`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
 					{
-						Dir:              ".",
-						Workspace:        "myworkspace",
-						WorkflowName:     String("myworkflow"),
-						TerraformVersion: tfVersion,
+						Dir:                     ".",
+						Workspace:               "myworkspace",
+						PullRequestWorkflowName: String("myworkflow"),
+						TerraformVersion:        tfVersion,
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      false,
 						},
 						ApplyRequirements: []string{"undiverged", "approved"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"myworkflow": {
-						Name:        "myworkflow",
-						Apply:       valid.DefaultApplyStage,
-						Plan:        valid.DefaultPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
 				},
 			},
@@ -596,32 +485,22 @@ projects:
   workspace: myworkspace
   terraform_version: v0.11.0
   apply_requirements: [undiverged, mergeable]
-  workflow: myworkflow
+  pull_request_workflow: myworkflow
   autoplan:
-    enabled: false
-workflows:
-  myworkflow: ~`,
+    enabled: false`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
 					{
-						Dir:              ".",
-						Workspace:        "myworkspace",
-						WorkflowName:     String("myworkflow"),
-						TerraformVersion: tfVersion,
+						Dir:                     ".",
+						Workspace:               "myworkspace",
+						PullRequestWorkflowName: String("myworkflow"),
+						TerraformVersion:        tfVersion,
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      false,
 						},
 						ApplyRequirements: []string{"undiverged", "mergeable"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"myworkflow": {
-						Name:        "myworkflow",
-						Apply:       valid.DefaultApplyStage,
-						Plan:        valid.DefaultPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
 				},
 			},
@@ -635,32 +514,22 @@ projects:
   workspace: myworkspace
   terraform_version: v0.11.0
   apply_requirements: [undiverged, mergeable, approved]
-  workflow: myworkflow
+  pull_request_workflow: myworkflow
   autoplan:
-    enabled: false
-workflows:
-  myworkflow: ~`,
+    enabled: false`,
 			exp: valid.RepoCfg{
 				Version: 3,
 				Projects: []valid.Project{
 					{
-						Dir:              ".",
-						Workspace:        "myworkspace",
-						WorkflowName:     String("myworkflow"),
-						TerraformVersion: tfVersion,
+						Dir:                     ".",
+						Workspace:               "myworkspace",
+						PullRequestWorkflowName: String("myworkflow"),
+						TerraformVersion:        tfVersion,
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      false,
 						},
 						ApplyRequirements: []string{"undiverged", "mergeable", "approved"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"myworkflow": {
-						Name:        "myworkflow",
-						Apply:       valid.DefaultApplyStage,
-						Plan:        valid.DefaultPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
 				},
 			},
@@ -706,8 +575,8 @@ projects:
 version: 3
 projects:
 - dir: .
-  workflow: undefined`,
-			expErr: "workflow \"undefined\" is not defined anywhere",
+  pull_request_workflow: undefined`,
+			expErr: "pull_request_workflow \"undefined\" is not defined anywhere",
 		},
 		{
 			description: "two projects with same dir/workspace without names",
@@ -778,7 +647,6 @@ projects:
 						},
 					},
 				},
-				Workflows: map[string]valid.Workflow{},
 			},
 		},
 		{
@@ -787,20 +655,6 @@ projects:
 version: 3
 projects:
 - dir: "."
-workflows:
-  default:
-    plan:
-      steps:
-      - init
-      - plan
-    policy_check:
-      steps:
-      - init
-      - policy_check
-    apply:
-      steps:
-      - plan # NOTE: we don't validate if they make sense
-      - apply
 `,
 			exp: valid.RepoCfg{
 				Version: 3,
@@ -811,41 +665,6 @@ workflows:
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      true,
-						},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"default": {
-						Name: "default",
-						Plan: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName: "init",
-								},
-								{
-									StepName: "plan",
-								},
-							},
-						},
-						PolicyCheck: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName: "init",
-								},
-								{
-									StepName: "policy_check",
-								},
-							},
-						},
-						Apply: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName: "plan",
-								},
-								{
-									StepName: "apply",
-								},
-							},
 						},
 					},
 				},
@@ -857,27 +676,6 @@ workflows:
 version: 3
 projects:
 - dir: "."
-workflows:
-  default:
-    plan:
-      steps:
-      - init:
-          extra_args: []
-      - plan:
-          extra_args:
-          - arg1
-          - arg2
-    policy_check:
-      steps:
-      - policy_check:
-          extra_args:
-          - arg1
-    apply:
-      steps:
-      - plan:
-          extra_args: [a, b]
-      - apply:
-          extra_args: ["a", "b"]
 `,
 			exp: valid.RepoCfg{
 				Version: 3,
@@ -888,43 +686,6 @@ workflows:
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      true,
-						},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"default": {
-						Name: "default",
-						Plan: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:  "init",
-									ExtraArgs: []string{},
-								},
-								{
-									StepName:  "plan",
-									ExtraArgs: []string{"arg1", "arg2"},
-								},
-							},
-						},
-						PolicyCheck: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:  "policy_check",
-									ExtraArgs: []string{"arg1"},
-								},
-							},
-						},
-						Apply: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:  "plan",
-									ExtraArgs: []string{"a", "b"},
-								},
-								{
-									StepName:  "apply",
-									ExtraArgs: []string{"a", "b"},
-								},
-							},
 						},
 					},
 				},
@@ -936,17 +697,6 @@ workflows:
 version: 3
 projects:
 - dir: "."
-workflows:
-  default:
-    plan:
-      steps:
-      - run: "echo \"plan hi\""
-    policy_check:
-      steps:
-      - run: "echo \"opa hi\""
-    apply:
-      steps:
-      - run: echo apply "arg 2"
 `,
 			exp: valid.RepoCfg{
 				Version: 3,
@@ -957,35 +707,6 @@ workflows:
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      true,
-						},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"default": {
-						Name: "default",
-						Plan: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:   "run",
-									RunCommand: "echo \"plan hi\"",
-								},
-							},
-						},
-						PolicyCheck: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:   "run",
-									RunCommand: "echo \"opa hi\"",
-								},
-							},
-						},
-						Apply: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:   "run",
-									RunCommand: "echo apply \"arg 2\"",
-								},
-							},
 						},
 					},
 				},
@@ -997,23 +718,6 @@ workflows:
 version: 3
 projects:
 - dir: "."
-workflows:
-  default:
-    plan:
-      steps:
-      - env:
-          name: env_name
-          value: env_value
-    policy_check:
-      steps:
-      - env:
-          name: env_name
-          value: env_value
-    apply:
-      steps:
-      - env:
-          name: env_name
-          command: command and args
 `,
 			exp: valid.RepoCfg{
 				Version: 3,
@@ -1024,38 +728,6 @@ workflows:
 						Autoplan: valid.Autoplan{
 							WhenModified: []string{"**/*.tf*", "**/terragrunt.hcl"},
 							Enabled:      true,
-						},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"default": {
-						Name: "default",
-						Plan: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:    "env",
-									EnvVarName:  "env_name",
-									EnvVarValue: "env_value",
-								},
-							},
-						},
-						PolicyCheck: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:    "env",
-									EnvVarName:  "env_name",
-									EnvVarValue: "env_value",
-								},
-							},
-						},
-						Apply: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:   "env",
-									EnvVarName: "env_name",
-									RunCommand: "command and args",
-								},
-							},
 						},
 					},
 				},
@@ -1093,16 +765,14 @@ func TestParseRepoCfg_GlobalValidation(t *testing.T) {
 version: 3
 projects:
 - dir: .
-  workflow: custom
-workflows:
-  custom: ~`
+  pull_request_workflow: custom`
 	err := os.WriteFile(filepath.Join(tmpDir, "atlantis.yaml"), []byte(repoCfg), 0600)
 	Ok(t, err)
 
 	r := config.ParserValidator{}
 
 	_, err = r.ParseRepoCfg(tmpDir, valid.NewGlobalCfg("somedir"), "repo_id")
-	ErrEquals(t, "repo config not allowed to set 'workflow' key: server-side config needs 'allowed_overrides: [workflow]'", err)
+	ErrEquals(t, "repo config not allowed to set 'pull_request_workflow' key: server-side config needs 'allowed_overrides: [pull_request_workflow]'", err)
 }
 
 func TestParseGlobalCfg_NotExist(t *testing.T) {
@@ -1152,17 +822,6 @@ func TestParseGlobalCfg(t *testing.T) {
 				},
 			},
 		},
-		Apply: valid.Stage{
-			Steps: []valid.Step{
-				{
-					StepName:   "run",
-					RunCommand: "custom command",
-				},
-				{
-					StepName: "apply",
-				},
-			},
-		},
 	}
 
 	conftestVersion, _ := version.NewVersion("v1.0.0")
@@ -1199,7 +858,7 @@ func TestParseGlobalCfg(t *testing.T) {
 		"workflow doesn't exist": {
 			input: `repos:
 - id: /.*/
-  workflow: notdefined`,
+  pull_request_workflow: notdefined`,
 			expErr: "workflow \"notdefined\" is not defined",
 		},
 		"invalid allowed_override": {
@@ -1219,7 +878,7 @@ func TestParseGlobalCfg(t *testing.T) {
 			exp:   defaultCfg,
 		},
 		"workflows empty": {
-			input: `workflows:`,
+			input: `pull_request_workflows:`,
 			exp:   defaultCfg,
 		},
 		"apply settings": {
@@ -1242,7 +901,6 @@ func TestParseGlobalCfg(t *testing.T) {
 						},
 					},
 				},
-				Workflows:            defaultCfg.Workflows,
 				DeploymentWorkflows:  defaultCfg.DeploymentWorkflows,
 				PullRequestWorkflows: defaultCfg.PullRequestWorkflows,
 				Temporal:             valid.Temporal{TerraformTaskQueue: raw.DefaultTaskqueue},
@@ -1251,21 +909,17 @@ func TestParseGlobalCfg(t *testing.T) {
 		},
 		"workflow name but the rest is empty": {
 			input: `
-workflows:
+pull_request_workflows:
   name:`,
 			exp: valid.GlobalCfg{
 				Repos: defaultCfg.Repos,
-				Workflows: map[string]valid.Workflow{
-					"default": defaultCfg.Workflows["default"],
+				PullRequestWorkflows: map[string]valid.Workflow{
+					"default": defaultCfg.PullRequestWorkflows["default"],
 					"name": {
 						Name:        "name",
-						Apply:       valid.DefaultApplyStage,
 						Plan:        valid.DefaultPlanStage,
 						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
-				},
-				PullRequestWorkflows: map[string]valid.Workflow{
-					"default": defaultCfg.PullRequestWorkflows["default"],
 				},
 				DeploymentWorkflows: map[string]valid.Workflow{
 					"default": defaultCfg.DeploymentWorkflows["default"],
@@ -1276,24 +930,19 @@ workflows:
 		},
 		"workflow stages empty": {
 			input: `
-workflows:
+pull_request_workflows:
   name:
-    apply:
     plan:
 `,
 			exp: valid.GlobalCfg{
 				Repos: defaultCfg.Repos,
-				Workflows: map[string]valid.Workflow{
-					"default": defaultCfg.Workflows["default"],
+				PullRequestWorkflows: map[string]valid.Workflow{
+					"default": defaultCfg.PullRequestWorkflows["default"],
 					"name": {
 						Name:        "name",
-						Apply:       valid.DefaultApplyStage,
 						Plan:        valid.DefaultPlanStage,
 						PolicyCheck: valid.DefaultPolicyCheckStage,
 					},
-				},
-				PullRequestWorkflows: map[string]valid.Workflow{
-					"default": defaultCfg.PullRequestWorkflows["default"],
 				},
 				DeploymentWorkflows: map[string]valid.Workflow{
 					"default": defaultCfg.DeploymentWorkflows["default"],
@@ -1304,25 +953,19 @@ workflows:
 		},
 		"workflow steps empty": {
 			input: `
-workflows:
+pull_request_workflows:
   name:
-    apply:
-      steps:
     plan:
       steps:`,
 			exp: valid.GlobalCfg{
 				Repos: defaultCfg.Repos,
-				Workflows: map[string]valid.Workflow{
-					"default": defaultCfg.Workflows["default"],
+				PullRequestWorkflows: map[string]valid.Workflow{
+					"default": defaultCfg.PullRequestWorkflows["default"],
 					"name": {
 						Name:        "name",
 						Plan:        valid.DefaultPlanStage,
 						PolicyCheck: valid.DefaultPolicyCheckStage,
-						Apply:       valid.DefaultApplyStage,
 					},
-				},
-				PullRequestWorkflows: map[string]valid.Workflow{
-					"default": defaultCfg.PullRequestWorkflows["default"],
 				},
 				DeploymentWorkflows: map[string]valid.Workflow{
 					"default": defaultCfg.DeploymentWorkflows["default"],
@@ -1335,19 +978,16 @@ workflows:
 			input: `
 repos:
 - id: github.com/owner/repo
-
   apply_requirements: [approved, mergeable]
   pre_workflow_hooks:
     - run: custom workflow command
-  workflow: custom1
   allowed_overrides: [apply_requirements, workflow]
-  allow_custom_workflows: true
   checkout_strategy: merge
 - id: /.*/
   branch: /(master|main)/
   pre_workflow_hooks:
     - run: custom workflow command
-workflows:
+pull_request_workflows:
   custom1:
     plan:
       steps:
@@ -1361,10 +1001,6 @@ workflows:
       - plan:
           extra_args: [extra, args]
       - policy_check
-    apply:
-      steps:
-      - run: custom command
-      - apply
 policies:
   conftest_version: v1.0.0
   policy_sets:
@@ -1375,13 +1011,11 @@ policies:
 				Repos: []valid.Repo{
 					defaultCfg.Repos[0],
 					{
-						ID:                   "github.com/owner/repo",
-						ApplyRequirements:    []string{"approved", "mergeable", "policies_passed"},
-						PreWorkflowHooks:     preWorkflowHooks,
-						Workflow:             &customWorkflow1,
-						AllowedOverrides:     []string{"apply_requirements", "workflow"},
-						AllowCustomWorkflows: Bool(true),
-						CheckoutStrategy:     "merge",
+						ID:                "github.com/owner/repo",
+						ApplyRequirements: []string{"approved", "mergeable", "policies_passed"},
+						PreWorkflowHooks:  preWorkflowHooks,
+						AllowedOverrides:  []string{"apply_requirements", "workflow"},
+						CheckoutStrategy:  "merge",
 						ApplySettings: valid.ApplySettings{
 							BranchRestriction: valid.DefaultBranchRestriction,
 						},
@@ -1397,8 +1031,8 @@ policies:
 						},
 					},
 				},
-				Workflows: map[string]valid.Workflow{
-					"default": defaultCfg.Workflows["default"],
+				PullRequestWorkflows: map[string]valid.Workflow{
+					"default": defaultCfg.PullRequestWorkflows["default"],
 					"custom1": customWorkflow1,
 				},
 				PolicySets: valid.PolicySets{
@@ -1409,9 +1043,6 @@ policies:
 							Paths: []string{"rel/path/to/policy"},
 						},
 					},
-				},
-				PullRequestWorkflows: map[string]valid.Workflow{
-					"default": defaultCfg.PullRequestWorkflows["default"],
 				},
 				DeploymentWorkflows: map[string]valid.Workflow{
 					"default": defaultCfg.DeploymentWorkflows["default"],
@@ -1436,133 +1067,11 @@ repos:
 						},
 					},
 				},
-				Workflows: map[string]valid.Workflow{
-					"default": defaultCfg.Workflows["default"],
-				},
 				PullRequestWorkflows: map[string]valid.Workflow{
 					"default": defaultCfg.PullRequestWorkflows["default"],
 				},
 				DeploymentWorkflows: map[string]valid.Workflow{
 					"default": defaultCfg.DeploymentWorkflows["default"],
-				},
-				Temporal:          valid.Temporal{TerraformTaskQueue: raw.DefaultTaskqueue},
-				PersistenceConfig: defaultCfg.PersistenceConfig,
-			},
-		},
-		"referencing default workflow": {
-			input: `
-repos:
-- id: github.com/owner/repo
-  workflow: default
-`,
-			exp: valid.GlobalCfg{
-				Repos: []valid.Repo{
-					defaultCfg.Repos[0],
-					{
-						ID:               "github.com/owner/repo",
-						Workflow:         defaultCfg.Repos[0].Workflow,
-						CheckoutStrategy: "branch",
-						ApplySettings: valid.ApplySettings{
-							BranchRestriction: valid.DefaultBranchRestriction,
-						},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"default": defaultCfg.Workflows["default"],
-				},
-				PullRequestWorkflows: map[string]valid.Workflow{
-					"default": defaultCfg.PullRequestWorkflows["default"],
-				},
-				DeploymentWorkflows: map[string]valid.Workflow{
-					"default": defaultCfg.DeploymentWorkflows["default"],
-				},
-				Temporal:          valid.Temporal{TerraformTaskQueue: raw.DefaultTaskqueue},
-				PersistenceConfig: defaultCfg.PersistenceConfig,
-			},
-		},
-		"redefine default workflow": {
-			input: `
-workflows:
-  default:
-    plan:
-      steps:
-      - run: custom
-    policy_check:
-      steps: []
-    apply:
-     steps: []
-`,
-			exp: valid.GlobalCfg{
-				Repos: []valid.Repo{
-					{
-						IDRegex:           regexp.MustCompile(".*"),
-						BranchRegex:       regexp.MustCompile(".*"),
-						ApplyRequirements: []string{},
-						Workflow: &valid.Workflow{
-							Name: "default",
-							Apply: valid.Stage{
-								Steps: nil,
-							},
-							PolicyCheck: valid.Stage{
-								Steps: nil,
-							},
-							Plan: valid.Stage{
-								Steps: []valid.Step{
-									{
-										StepName:   "run",
-										RunCommand: "custom",
-									},
-								},
-							},
-						},
-						PullRequestWorkflow: &valid.Workflow{
-							Name:        "default",
-							Plan:        valid.DefaultLocklessPlanStage,
-							PolicyCheck: valid.DefaultPolicyCheckStage,
-						},
-						DeploymentWorkflow: &valid.Workflow{
-							Name:  "default",
-							Plan:  valid.DefaultPlanStage,
-							Apply: valid.DefaultApplyStage,
-						},
-						AllowedWorkflows:     []string{},
-						AllowedOverrides:     []string{},
-						AllowCustomWorkflows: Bool(false),
-						CheckoutStrategy:     "branch",
-						ApplySettings: valid.ApplySettings{
-							BranchRestriction: valid.DefaultBranchRestriction,
-						},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"default": {
-						Name: "default",
-						Apply: valid.Stage{
-							Steps: nil,
-						},
-						Plan: valid.Stage{
-							Steps: []valid.Step{
-								{
-									StepName:   "run",
-									RunCommand: "custom",
-								},
-							},
-						},
-					},
-				},
-				PullRequestWorkflows: map[string]valid.Workflow{
-					"default": {
-						Name:        "default",
-						Plan:        valid.DefaultLocklessPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
-					},
-				},
-				DeploymentWorkflows: map[string]valid.Workflow{
-					"default": {
-						Name:  "default",
-						Plan:  valid.DefaultPlanStage,
-						Apply: valid.DefaultApplyStage,
-					},
 				},
 				Temporal:          valid.Temporal{TerraformTaskQueue: raw.DefaultTaskqueue},
 				PersistenceConfig: defaultCfg.PersistenceConfig,
@@ -1671,7 +1180,6 @@ func TestParseGlobalCfg_PlatformMode(t *testing.T) {
 	}
 
 	conftestVersion, _ := version.NewVersion("v1.0.0")
-	defaultWorkflow := defaultCfg.Workflows["default"]
 
 	cases := map[string]struct {
 		input  string
@@ -1707,7 +1215,6 @@ repos:
   pull_request_workflow: custom1
   deployment_workflow: custom1
   allowed_overrides: [apply_requirements, pull_request_workflow, deployment_workflow, workflow]
-  allow_custom_workflows: true
 - id: /.*/
   branch: /(master|main)/
   pre_workflow_hooks:
@@ -1748,14 +1255,13 @@ policies:
 				Repos: []valid.Repo{
 					defaultCfg.Repos[0],
 					{
-						ID:                   "github.com/owner/repo",
-						PreWorkflowHooks:     preWorkflowHooks,
-						PullRequestWorkflow:  &customPulRequestWorkflow1,
-						DeploymentWorkflow:   &customDeploymentWorkflow1,
-						ApplyRequirements:    []string{"policies_passed"},
-						AllowedOverrides:     []string{"apply_requirements", "pull_request_workflow", "deployment_workflow", "workflow"},
-						AllowCustomWorkflows: Bool(true),
-						CheckoutStrategy:     "branch",
+						ID:                  "github.com/owner/repo",
+						PreWorkflowHooks:    preWorkflowHooks,
+						PullRequestWorkflow: &customPulRequestWorkflow1,
+						DeploymentWorkflow:  &customDeploymentWorkflow1,
+						ApplyRequirements:   []string{"policies_passed"},
+						AllowedOverrides:    []string{"apply_requirements", "pull_request_workflow", "deployment_workflow", "workflow"},
+						CheckoutStrategy:    "branch",
 						ApplySettings: valid.ApplySettings{
 							BranchRestriction: valid.DefaultBranchRestriction,
 						},
@@ -1771,7 +1277,6 @@ policies:
 						},
 					},
 				},
-				Workflows: defaultCfg.Workflows,
 				PullRequestWorkflows: map[string]valid.Workflow{
 					"default": defaultCfg.PullRequestWorkflows["default"],
 					"custom1": customPulRequestWorkflow1,
@@ -1816,7 +1321,6 @@ deployment_workflows:
 						IDRegex:           regexp.MustCompile(".*"),
 						BranchRegex:       regexp.MustCompile(".*"),
 						ApplyRequirements: []string{},
-						Workflow:          &defaultWorkflow,
 						PullRequestWorkflow: &valid.Workflow{
 							Name: "default",
 							Apply: valid.Stage{
@@ -1851,16 +1355,14 @@ deployment_workflows:
 								Steps: nil,
 							},
 						},
-						AllowedWorkflows:     []string{},
-						AllowedOverrides:     []string{},
-						AllowCustomWorkflows: Bool(false),
-						CheckoutStrategy:     "branch",
+						AllowedWorkflows: []string{},
+						AllowedOverrides: []string{},
+						CheckoutStrategy: "branch",
 						ApplySettings: valid.ApplySettings{
 							BranchRestriction: valid.DefaultBranchRestriction,
 						},
 					},
 				},
-				Workflows: defaultCfg.Workflows,
 				PullRequestWorkflows: map[string]valid.Workflow{
 					"default": {
 						Name: "default",
@@ -1960,14 +1462,6 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 				},
 			},
 		},
-		Apply: valid.Stage{
-			Steps: []valid.Step{
-				{
-					StepName:   "run",
-					RunCommand: "my custom command",
-				},
-			},
-		},
 	}
 
 	conftestVersion, _ := version.NewVersion("v1.0.0")
@@ -1993,17 +1487,15 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
   "repos": [
     {
       "id": "/.*/",
-      "workflow": "custom",
-      "allowed_workflows": ["custom"],
       "apply_requirements": ["mergeable", "approved"],
-      "allowed_overrides": ["workflow", "apply_requirements"],
+      "allowed_overrides": ["pull_request_workflow", "apply_requirements"],
       "allow_custom_workflows": true
     },
     {
       "id": "github.com/owner/repo"
     }
   ],
-  "workflows": {
+  "pull_request_workflows": {
     "custom": {
       "plan": {
         "steps": [
@@ -2016,11 +1508,6 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
         "steps": [
           "plan",
           {"run": "custom policy_check"}
-        ]
-      },
-      "apply": {
-        "steps": [
-          {"run": "my custom command"}
         ]
       }
     }
@@ -2040,35 +1527,28 @@ func TestParserValidator_ParseGlobalCfgJSON(t *testing.T) {
 				Repos: []valid.Repo{
 					valid.NewGlobalCfg("somedir").Repos[0],
 					{
-						IDRegex:              regexp.MustCompile(".*"),
-						ApplyRequirements:    []string{"mergeable", "approved", "policies_passed"},
-						Workflow:             &customWorkflow,
-						AllowedWorkflows:     []string{"custom"},
-						AllowedOverrides:     []string{"workflow", "apply_requirements"},
-						AllowCustomWorkflows: Bool(true),
-						CheckoutStrategy:     "branch",
+						IDRegex:           regexp.MustCompile(".*"),
+						ApplyRequirements: []string{"mergeable", "approved", "policies_passed"},
+						AllowedOverrides:  []string{"pull_request_workflow", "apply_requirements"},
+						CheckoutStrategy:  "branch",
 						ApplySettings: valid.ApplySettings{
 							BranchRestriction: valid.DefaultBranchRestriction,
 						},
 					},
 					{
-						ID:                   "github.com/owner/repo",
-						IDRegex:              nil,
-						ApplyRequirements:    []string{"policies_passed"},
-						AllowedOverrides:     nil,
-						AllowCustomWorkflows: nil,
-						CheckoutStrategy:     "branch",
+						ID:                "github.com/owner/repo",
+						IDRegex:           nil,
+						ApplyRequirements: []string{"policies_passed"},
+						AllowedOverrides:  nil,
+						CheckoutStrategy:  "branch",
 						ApplySettings: valid.ApplySettings{
 							BranchRestriction: valid.DefaultBranchRestriction,
 						},
 					},
 				},
-				Workflows: map[string]valid.Workflow{
-					"default": valid.NewGlobalCfg("somedir").Workflows["default"],
-					"custom":  customWorkflow,
-				},
 				PullRequestWorkflows: map[string]valid.Workflow{
 					"default": valid.NewGlobalCfg("somedir").PullRequestWorkflows["default"],
+					"custom":  customWorkflow,
 				},
 				DeploymentWorkflows: map[string]valid.Workflow{
 					"default": valid.NewGlobalCfg("somedir").DeploymentWorkflows["default"],
@@ -2254,7 +1734,6 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 						AllowedPullRequestWorkflows: []string{"custom"},
 						AllowedDeploymentWorkflows:  []string{"custom"},
 						AllowedOverrides:            []string{"pull_request_workflow", "deployment_workflow"},
-						AllowCustomWorkflows:        Bool(true),
 						CheckoutStrategy:            "branch",
 						ApplySettings: valid.ApplySettings{
 							BranchRestriction: valid.DefaultBranchRestriction,
@@ -2267,15 +1746,11 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 						AllowedOverrides:            nil,
 						AllowedPullRequestWorkflows: nil,
 						AllowedDeploymentWorkflows:  nil,
-						AllowCustomWorkflows:        nil,
 						CheckoutStrategy:            "branch",
 						ApplySettings: valid.ApplySettings{
 							BranchRestriction: valid.DefaultBranchRestriction,
 						},
 					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"default": globalCfg.Workflows["default"],
 				},
 				PullRequestWorkflows: map[string]valid.Workflow{
 					"default": globalCfg.PullRequestWorkflows["default"],
@@ -2315,68 +1790,6 @@ func TestParserValidator_ParseGlobalCfgV2JSON(t *testing.T) {
 			}
 
 			Equals(t, c.exp, cfg)
-		})
-	}
-}
-
-// Test legacy shell parsing vs v3 parsing.
-func TestParseRepoCfg_V2ShellParsing(t *testing.T) {
-	cases := []struct {
-		in       string
-		expV2    string
-		expV2Err string
-	}{
-		{
-			in:    "echo a b",
-			expV2: "echo a b",
-		},
-		{
-			in:    "echo 'a b'",
-			expV2: "echo a b",
-		},
-		{
-			in:       "echo 'a b",
-			expV2Err: "unable to parse \"echo 'a b\": EOF found when expecting closing quote.",
-		},
-		{
-			in:    `mkdir a/b/c || printf \'your main.tf file does not provide default region.\\ncheck\'`,
-			expV2: `mkdir a/b/c || printf 'your main.tf file does not provide default region.\ncheck'`,
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.in, func(t *testing.T) {
-			v2Dir, cleanup2 := TempDir(t)
-			defer cleanup2()
-			v3Dir, cleanup3 := TempDir(t)
-			defer cleanup3()
-			v2Path := filepath.Join(v2Dir, "atlantis.yaml")
-			v3Path := filepath.Join(v3Dir, "atlantis.yaml")
-			cfg := fmt.Sprintf(`workflows:
-  custom:
-    plan:
-      steps:
-      - run: %s
-    apply:
-      steps:
-      - run: %s`, c.in, c.in)
-			Ok(t, os.WriteFile(v2Path, []byte("version: 2\n"+cfg), 0600))
-			Ok(t, os.WriteFile(v3Path, []byte("version: 3\n"+cfg), 0600))
-
-			p := &config.ParserValidator{}
-
-			v2Cfg, err := p.ParseRepoCfg(v2Dir, globalCfg, "")
-			if c.expV2Err != "" {
-				ErrEquals(t, c.expV2Err, err)
-			} else {
-				Ok(t, err)
-				Equals(t, c.expV2, v2Cfg.Workflows["custom"].Plan.Steps[0].RunCommand)
-				Equals(t, c.expV2, v2Cfg.Workflows["custom"].Apply.Steps[0].RunCommand)
-			}
-			v3Cfg, err := p.ParseRepoCfg(v3Dir, globalCfg, "")
-			Ok(t, err)
-			Equals(t, c.in, v3Cfg.Workflows["custom"].Plan.Steps[0].RunCommand)
-			Equals(t, c.in, v3Cfg.Workflows["custom"].Apply.Steps[0].RunCommand)
 		})
 	}
 }

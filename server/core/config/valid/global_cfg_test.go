@@ -16,36 +16,6 @@ import (
 )
 
 func TestNewGlobalCfg(t *testing.T) {
-	expDefaultWorkflow := valid.Workflow{
-		Name: "default",
-		Apply: valid.Stage{
-			Steps: []valid.Step{
-				{
-					StepName: "apply",
-				},
-			},
-		},
-		PolicyCheck: valid.Stage{
-			Steps: []valid.Step{
-				{
-					StepName: "show",
-				},
-				{
-					StepName: "policy_check",
-				},
-			},
-		},
-		Plan: valid.Stage{
-			Steps: []valid.Step{
-				{
-					StepName: "init",
-				},
-				{
-					StepName: "plan",
-				},
-			},
-		},
-	}
 	expDefaultPRWorkflow := valid.Workflow{
 		Name: "default",
 		PolicyCheck: valid.Stage{
@@ -95,23 +65,18 @@ func TestNewGlobalCfg(t *testing.T) {
 	baseCfg := valid.GlobalCfg{
 		Repos: []valid.Repo{
 			{
-				IDRegex:              regexp.MustCompile(".*"),
-				BranchRegex:          regexp.MustCompile(".*"),
-				ApplyRequirements:    []string{},
-				Workflow:             &expDefaultWorkflow,
-				PullRequestWorkflow:  &expDefaultPRWorkflow,
-				DeploymentWorkflow:   &expDefaultDeploymentWorkflow,
-				AllowedWorkflows:     []string{},
-				AllowedOverrides:     []string{},
-				AllowCustomWorkflows: Bool(false),
-				CheckoutStrategy:     "branch",
+				IDRegex:             regexp.MustCompile(".*"),
+				BranchRegex:         regexp.MustCompile(".*"),
+				ApplyRequirements:   []string{},
+				PullRequestWorkflow: &expDefaultPRWorkflow,
+				DeploymentWorkflow:  &expDefaultDeploymentWorkflow,
+				AllowedWorkflows:    []string{},
+				AllowedOverrides:    []string{},
+				CheckoutStrategy:    "branch",
 				ApplySettings: valid.ApplySettings{
 					BranchRestriction: valid.DefaultBranchRestriction,
 				},
 			},
-		},
-		Workflows: map[string]valid.Workflow{
-			"default": expDefaultWorkflow,
 		},
 		PullRequestWorkflows: map[string]valid.Workflow{
 			"default": expDefaultPRWorkflow,
@@ -170,18 +135,17 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 		repoID string
 		expErr string
 	}{
-		"repo uses workflow that is defined server side but not allowed (with custom workflows)": {
+		"repo uses workflow that is defined server side but not allowed": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
 					valid.NewGlobalCfg("somedir").Repos[0],
 					{
-						ID:                   "github.com/owner/repo",
-						AllowCustomWorkflows: Bool(true),
-						AllowedOverrides:     []string{"workflow"},
-						AllowedWorkflows:     []string{"allowed"},
+						ID:               "github.com/owner/repo",
+						AllowedOverrides: []string{"pull_request_workflow"},
+						AllowedWorkflows: []string{"allowed"},
 					},
 				},
-				Workflows: map[string]valid.Workflow{
+				PullRequestWorkflows: map[string]valid.Workflow{
 					"allowed":   {},
 					"forbidden": {},
 				},
@@ -189,27 +153,26 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
-						Dir:          ".",
-						Workspace:    "default",
-						WorkflowName: String("forbidden"),
+						Dir:                     ".",
+						Workspace:               "default",
+						PullRequestWorkflowName: String("forbidden"),
 					},
 				},
 			},
 			repoID: "github.com/owner/repo",
-			expErr: "workflow \"forbidden\" is not allowed for this repo",
+			expErr: "pull_request_workflow \"forbidden\" is not allowed for this repo",
 		},
-		"repo uses workflow that is defined server side but not allowed (without custom workflows)": {
+		"repo uses workflow that is defined server side and allowed": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
 					valid.NewGlobalCfg("somedir").Repos[0],
 					{
-						ID:                   "github.com/owner/repo",
-						AllowCustomWorkflows: Bool(false),
-						AllowedOverrides:     []string{"workflow"},
-						AllowedWorkflows:     []string{"allowed"},
+						ID:               "github.com/owner/repo",
+						AllowedOverrides: []string{"pull_request_workflow"},
+						AllowedWorkflows: []string{"allowed"},
 					},
 				},
-				Workflows: map[string]valid.Workflow{
+				PullRequestWorkflows: map[string]valid.Workflow{
 					"allowed":   {},
 					"forbidden": {},
 				},
@@ -217,125 +180,9 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
-						Dir:          ".",
-						Workspace:    "default",
-						WorkflowName: String("forbidden"),
-					},
-				},
-			},
-			repoID: "github.com/owner/repo",
-			expErr: "workflow \"forbidden\" is not allowed for this repo",
-		},
-		"repo uses workflow that is defined in both places with same name (without custom workflows)": {
-			gCfg: valid.GlobalCfg{
-				Repos: []valid.Repo{
-					valid.NewGlobalCfg("somedir").Repos[0],
-					{
-						ID:                   "github.com/owner/repo",
-						AllowCustomWorkflows: Bool(false),
-						AllowedOverrides:     []string{"workflow"},
-						AllowedWorkflows:     []string{"duplicated"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"duplicated": {},
-				},
-			},
-			rCfg: valid.RepoCfg{
-				Projects: []valid.Project{
-					{
-						Dir:          ".",
-						Workspace:    "default",
-						WorkflowName: String("duplicated"),
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"duplicated": {},
-				},
-			},
-			repoID: "github.com/owner/repo",
-			expErr: "repo config not allowed to define custom workflows: server-side config needs 'allow_custom_workflows: true'",
-		},
-		"repo uses workflow that is defined repo side, but not allowed (with custom workflows)": {
-			gCfg: valid.GlobalCfg{
-				Repos: []valid.Repo{
-					valid.NewGlobalCfg("somedir").Repos[0],
-					{
-						ID:                   "github.com/owner/repo",
-						AllowCustomWorkflows: Bool(true),
-						AllowedOverrides:     []string{"workflow"},
-						AllowedWorkflows:     []string{"none"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"forbidden": {},
-				},
-			},
-			rCfg: valid.RepoCfg{
-				Projects: []valid.Project{
-					{
-						Dir:          ".",
-						Workspace:    "default",
-						WorkflowName: String("repodefined"),
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"repodefined": {},
-				},
-			},
-			repoID: "github.com/owner/repo",
-			expErr: "",
-		},
-		"repo uses workflow that is defined server side and allowed (without custom workflows)": {
-			gCfg: valid.GlobalCfg{
-				Repos: []valid.Repo{
-					valid.NewGlobalCfg("somedir").Repos[0],
-					{
-						ID:                   "github.com/owner/repo",
-						AllowCustomWorkflows: Bool(false),
-						AllowedOverrides:     []string{"workflow"},
-						AllowedWorkflows:     []string{"allowed"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"allowed":   {},
-					"forbidden": {},
-				},
-			},
-			rCfg: valid.RepoCfg{
-				Projects: []valid.Project{
-					{
-						Dir:          ".",
-						Workspace:    "default",
-						WorkflowName: String("allowed"),
-					},
-				},
-			},
-			repoID: "github.com/owner/repo",
-			expErr: "",
-		},
-		"repo uses workflow that is defined server side and allowed (with custom workflows)": {
-			gCfg: valid.GlobalCfg{
-				Repos: []valid.Repo{
-					valid.NewGlobalCfg("somedir").Repos[0],
-					{
-						ID:                   "github.com/owner/repo",
-						AllowCustomWorkflows: Bool(true),
-						AllowedOverrides:     []string{"workflow"},
-						AllowedWorkflows:     []string{"allowed"},
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"allowed":   {},
-					"forbidden": {},
-				},
-			},
-			rCfg: valid.RepoCfg{
-				Projects: []valid.Project{
-					{
-						Dir:          ".",
-						Workspace:    "default",
-						WorkflowName: String("allowed"),
+						Dir:                     ".",
+						Workspace:               "default",
+						PullRequestWorkflowName: String("allowed"),
 					},
 				},
 			},
@@ -347,107 +194,20 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
-						WorkflowName: String("invalid"),
+						PullRequestWorkflowName: String("invalid"),
 					},
 				},
 			},
 			repoID: "github.com/owner/repo",
-			expErr: "repo config not allowed to set 'workflow' key: server-side config needs 'allowed_overrides: [workflow]'",
-		},
-		"custom workflows not allowed": {
-			gCfg: valid.NewGlobalCfg("somedir"),
-			rCfg: valid.RepoCfg{
-				Workflows: map[string]valid.Workflow{
-					"custom": {},
-				},
-			},
-			repoID: "github.com/owner/repo",
-			expErr: "repo config not allowed to define custom workflows: server-side config needs 'allow_custom_workflows: true'",
-		},
-		"custom workflows allowed": {
-			gCfg: valid.GlobalCfg{
-				Repos: []valid.Repo{
-					{
-						IDRegex:              regexp.MustCompile(".*"),
-						BranchRegex:          regexp.MustCompile(".*"),
-						AllowCustomWorkflows: Bool(true),
-					},
-				},
-			},
-			rCfg: valid.RepoCfg{
-				Workflows: map[string]valid.Workflow{
-					"custom": {},
-				},
-			},
-			repoID: "github.com/owner/repo",
-			expErr: "",
-		},
-		"repo uses custom workflow defined on repo": {
-			gCfg: valid.GlobalCfg{
-				Repos: []valid.Repo{
-					{
-						IDRegex:              regexp.MustCompile(".*"),
-						AllowCustomWorkflows: Bool(true),
-						AllowedOverrides:     []string{"workflow", "pull_request_workflow", "deployment_workflow"},
-					},
-				},
-			},
-
-			rCfg: valid.RepoCfg{
-				Projects: []valid.Project{
-					{
-						Dir:          ".",
-						Workspace:    "default",
-						WorkflowName: String("repodefined"),
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"repodefined": {},
-				},
-				PullRequestWorkflows: map[string]valid.Workflow{
-					"repodefined": {},
-				},
-				DeploymentWorkflows: map[string]valid.Workflow{
-					"repodefined": {},
-				},
-			},
-			repoID: "github.com/owner/repo",
-			expErr: "",
-		},
-		"custom workflows allowed for this repo only": {
-			gCfg: valid.GlobalCfg{
-				Repos: []valid.Repo{
-					valid.NewGlobalCfg("somedir").Repos[0],
-					{
-						ID:                   "github.com/owner/repo",
-						AllowCustomWorkflows: Bool(true),
-					},
-				},
-			},
-			rCfg: valid.RepoCfg{
-				Workflows: map[string]valid.Workflow{
-					"custom": {},
-				},
-			},
-			repoID: "github.com/owner/repo",
-			expErr: "",
+			expErr: "repo config not allowed to set 'pull_request_workflow' key: server-side config needs 'allowed_overrides: [pull_request_workflow]'",
 		},
 		"repo uses global workflow": {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
 					{
-						IDRegex:              regexp.MustCompile(".*"),
-						BranchRegex:          regexp.MustCompile(".*"),
-						AllowedOverrides:     []string{"workflow", "pull_request_workflow", "deployment_workflow"},
-						AllowCustomWorkflows: Bool(false),
-					},
-				},
-				Workflows: map[string]valid.Workflow{
-					"default": {
-						Name:        valid.DefaultWorkflowName,
-						Apply:       valid.DefaultApplyStage,
-						Plan:        valid.DefaultPlanStage,
-						PolicyCheck: valid.DefaultPolicyCheckStage,
+						IDRegex:          regexp.MustCompile(".*"),
+						BranchRegex:      regexp.MustCompile(".*"),
+						AllowedOverrides: []string{"workflow", "pull_request_workflow", "deployment_workflow"},
 					},
 				},
 				PullRequestWorkflows: map[string]valid.Workflow{
@@ -505,23 +265,22 @@ func TestGlobalCfg_ValidateRepoCfg(t *testing.T) {
 			gCfg: valid.GlobalCfg{
 				Repos: []valid.Repo{
 					{
-						IDRegex:              regexp.MustCompile(".*"),
-						AllowCustomWorkflows: Bool(true),
-						AllowedOverrides:     []string{"workflow"},
+						IDRegex:          regexp.MustCompile(".*"),
+						AllowedOverrides: []string{"pull_request_workflow"},
 					},
 				},
 			},
 			rCfg: valid.RepoCfg{
 				Projects: []valid.Project{
 					{
-						Dir:          ".",
-						Workspace:    "default",
-						WorkflowName: String("doesntexist"),
+						Dir:                     ".",
+						Workspace:               "default",
+						PullRequestWorkflowName: String("doesntexist"),
 					},
 				},
 			},
 			repoID: "github.com/owner/repo",
-			expErr: "workflow \"doesntexist\" is not defined anywhere",
+			expErr: "pull_request_workflow \"doesntexist\" is not defined anywhere",
 		},
 	}
 	for name, c := range cases {
@@ -561,12 +320,6 @@ policies:
 			},
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{"policies_passed"},
-				Workflow: valid.Workflow{
-					Name:        "default",
-					Apply:       valid.DefaultApplyStage,
-					Plan:        valid.DefaultPlanStage,
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-				},
 				PullRequestWorkflow: valid.Workflow{
 					Name:        "default",
 					PolicyCheck: valid.DefaultPolicyCheckStage,
@@ -610,12 +363,6 @@ policies:
 			},
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{"policies_passed"},
-				Workflow: valid.Workflow{
-					Name:        "default",
-					Apply:       valid.DefaultApplyStage,
-					Plan:        valid.DefaultPlanStage,
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-				},
 				PullRequestWorkflow: valid.Workflow{
 					Name:        "default",
 					PolicyCheck: valid.DefaultPolicyCheckStage,
@@ -668,59 +415,11 @@ func TestGlobalCfg_MergeProjectCfg(t *testing.T) {
 	var emptyPolicySets valid.PolicySets
 
 	cases := map[string]struct {
-		gCfg          string
-		repoID        string
-		proj          valid.Project
-		repoWorkflows map[string]valid.Workflow
-		exp           valid.MergedProjectCfg
+		gCfg   string
+		repoID string
+		proj   valid.Project
+		exp    valid.MergedProjectCfg
 	}{
-		"repos can use server-side defined workflow if allowed": {
-			gCfg: `
-repos:
-- id: /.*/
-  allowed_overrides: [workflow]
-workflows:
-  custom:
-    plan:
-      steps: [plan]`,
-			repoID: "github.com/owner/repo",
-			proj: valid.Project{
-				Dir:          ".",
-				Workspace:    "default",
-				WorkflowName: String("custom"),
-			},
-			repoWorkflows: nil,
-			exp: valid.MergedProjectCfg{
-				ApplyRequirements: []string{},
-				Workflow: valid.Workflow{
-					Name:        "custom",
-					Apply:       valid.DefaultApplyStage,
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-					Plan: valid.Stage{
-						Steps: []valid.Step{
-							{
-								StepName: "plan",
-							},
-						},
-					},
-				},
-				PullRequestWorkflow: valid.Workflow{
-					Name:        "default",
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-					Plan:        valid.DefaultLocklessPlanStage,
-				},
-				DeploymentWorkflow: valid.Workflow{
-					Name:  "default",
-					Apply: valid.DefaultApplyStage,
-					Plan:  valid.DefaultPlanStage,
-				},
-				RepoRelDir:      ".",
-				Workspace:       "default",
-				Name:            "",
-				AutoplanEnabled: false,
-				PolicySets:      emptyPolicySets,
-			},
-		},
 		"repos can use server-side defined pr and deployment workflow if allowed": {
 			gCfg: `
 repos:
@@ -743,15 +442,8 @@ deployment_workflows:
 				PullRequestWorkflowName: String("custom"),
 				DeploymentWorkflowName:  String("custom"),
 			},
-			repoWorkflows: nil,
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{},
-				Workflow: valid.Workflow{
-					Name:        "default",
-					Apply:       valid.DefaultApplyStage,
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-					Plan:        valid.DefaultPlanStage,
-				},
 				PullRequestWorkflow: valid.Workflow{
 					Name:        "custom",
 					PolicyCheck: valid.DefaultPolicyCheckStage,
@@ -794,15 +486,8 @@ repos:
 				Workspace:         "default",
 				ApplyRequirements: []string{"mergeable"},
 			},
-			repoWorkflows: nil,
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{"mergeable"},
-				Workflow: valid.Workflow{
-					Name:        "default",
-					Apply:       valid.DefaultApplyStage,
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-					Plan:        valid.DefaultPlanStage,
-				},
 				PullRequestWorkflow: valid.Workflow{
 					Name:        "default",
 					PolicyCheck: valid.DefaultPolicyCheckStage,
@@ -836,15 +521,8 @@ repos:
 				Workspace: "myworkspace",
 				Name:      String("myname"),
 			},
-			repoWorkflows: nil,
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{"approved", "mergeable"},
-				Workflow: valid.Workflow{
-					Name:        "default",
-					Apply:       valid.DefaultApplyStage,
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-					Plan:        valid.DefaultPlanStage,
-				},
 				PullRequestWorkflow: valid.Workflow{
 					Name:        "default",
 					PolicyCheck: valid.DefaultPolicyCheckStage,
@@ -874,15 +552,8 @@ repos:
 					Enabled:      true,
 				},
 			},
-			repoWorkflows: nil,
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{},
-				Workflow: valid.Workflow{
-					Name:        "default",
-					Apply:       valid.DefaultApplyStage,
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-					Plan:        valid.DefaultPlanStage,
-				},
 				PullRequestWorkflow: valid.Workflow{
 					Name:        "default",
 					PolicyCheck: valid.DefaultPolicyCheckStage,
@@ -915,12 +586,6 @@ repos:
 			},
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{},
-				Workflow: valid.Workflow{
-					Name:        "default",
-					Apply:       valid.DefaultApplyStage,
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-					Plan:        valid.DefaultPlanStage,
-				},
 				PullRequestWorkflow: valid.Workflow{
 					Name:        "default",
 					PolicyCheck: valid.DefaultPolicyCheckStage,
@@ -954,12 +619,6 @@ repos:
 			},
 			exp: valid.MergedProjectCfg{
 				ApplyRequirements: []string{},
-				Workflow: valid.Workflow{
-					Name:        "default",
-					Apply:       valid.DefaultApplyStage,
-					PolicyCheck: valid.DefaultPolicyCheckStage,
-					Plan:        valid.DefaultPlanStage,
-				},
 				PullRequestWorkflow: valid.Workflow{
 					Name:        "default",
 					PolicyCheck: valid.DefaultPolicyCheckStage,
@@ -994,7 +653,7 @@ repos:
 			}
 
 			global.PolicySets = emptyPolicySets
-			Equals(t, c.exp, global.MergeProjectCfg(c.repoID, c.proj, valid.RepoCfg{Workflows: c.repoWorkflows}))
+			Equals(t, c.exp, global.MergeProjectCfg(c.repoID, c.proj, valid.RepoCfg{}))
 		})
 	}
 }

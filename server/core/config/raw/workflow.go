@@ -7,22 +7,6 @@ import (
 
 type Workflows map[string]Workflow
 
-func (w Workflows) ToValid(defaultCfg valid.GlobalCfg) map[string]valid.Workflow {
-	validWorkflows := make(map[string]valid.Workflow)
-	for k, v := range w {
-		validWorkflows[k] = v.ToValid(k)
-	}
-
-	// Merge in defaults without overriding.
-	for k, v := range defaultCfg.Workflows {
-		if _, ok := validWorkflows[k]; !ok {
-			validWorkflows[k] = v
-		}
-	}
-
-	return validWorkflows
-}
-
 type Workflow struct {
 	Apply       *Stage `yaml:"apply,omitempty" json:"apply,omitempty"`
 	Plan        *Stage `yaml:"plan,omitempty" json:"plan,omitempty"`

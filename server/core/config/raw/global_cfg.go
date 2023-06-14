@@ -157,16 +157,12 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 	}
 
 	defaultRepo := &defaultCfg.Repos[0]
-	validWorkflows := g.Workflows.ToValid(defaultCfg)
 	validPullRequestWorkflows := g.PullRequestWorkflows.ToValid(defaultCfg)
 	validDeploymentWorkflows := g.DeploymentWorkflows.ToValid(defaultCfg)
 
 	// Handle the special case where they're redefining the default
 	// workflow. In this case, our default repo config references
 	// the "old" default workflow and so needs to be redefined.
-	if w, ok := validWorkflows[valid.DefaultWorkflowName]; ok {
-		defaultRepo.Workflow = &w
-	}
 	if w, ok := validPullRequestWorkflows[valid.DefaultWorkflowName]; ok {
 		defaultRepo.PullRequestWorkflow = &w
 	}
@@ -177,7 +173,6 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 	var repos []valid.Repo
 	for _, r := range g.Repos {
 		validRepo := r.ToValid(
-			validWorkflows,
 			validPullRequestWorkflows,
 			validDeploymentWorkflows,
 			globalApplyReqs,
@@ -189,7 +184,6 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 
 	return valid.GlobalCfg{
 		Repos:                repos,
-		Workflows:            validWorkflows,
 		PullRequestWorkflows: validPullRequestWorkflows,
 		DeploymentWorkflows:  validDeploymentWorkflows,
 		PolicySets:           policySets,
@@ -265,7 +259,6 @@ func (r Repo) Validate() error {
 }
 
 func (r Repo) ToValid(
-	workflows map[string]valid.Workflow,
 	pullRequestWorkflows map[string]valid.Workflow,
 	deploymentWorkflows map[string]valid.Workflow,
 	globalApplyReqs []string,
@@ -285,14 +278,6 @@ func (r Repo) ToValid(
 		withoutSlashes := r.Branch[1 : len(r.Branch)-1]
 		// Safe to use MustCompile because we test it in Validate().
 		branchRegex = regexp.MustCompile(withoutSlashes)
-	}
-
-	var workflow *valid.Workflow
-	if r.Workflow != nil {
-		// This key is guaranteed to exist because we test for it in
-		// ParserValidator.validateRepoWorkflows.
-		ptr := workflows[*r.Workflow]
-		workflow = &ptr
 	}
 
 	var pullRequestWorkflow *valid.Workflow
@@ -346,14 +331,12 @@ OUTER:
 		BranchRegex:                 branchRegex,
 		ApplyRequirements:           mergedApplyReqs,
 		PreWorkflowHooks:            preWorkflowHooks,
-		Workflow:                    workflow,
 		PullRequestWorkflow:         pullRequestWorkflow,
 		DeploymentWorkflow:          deploymentWorkflow,
 		AllowedWorkflows:            r.AllowedWorkflows,
 		AllowedPullRequestWorkflows: r.AllowedPullRequestWorkflows,
 		AllowedDeploymentWorkflows:  r.AllowedDeploymentWorkflows,
 		AllowedOverrides:            r.AllowedOverrides,
-		AllowCustomWorkflows:        r.AllowCustomWorkflows,
 		TemplateOverrides:           r.TemplateOverrides,
 		CheckoutStrategy:            checkoutStrategy,
 		ApplySettings:               r.ApplySettings.ToValid(),
