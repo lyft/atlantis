@@ -3,6 +3,8 @@ package event
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"time"
 
 	"github.com/pkg/errors"
@@ -65,7 +67,7 @@ func (c Comment) GetRepo() models.Repo {
 	return c.BaseRepo
 }
 
-func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, errorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
+func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, allocator feature.Allocator, prSignaler prSignaler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, errorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
 		logger:    logger,
 		scheduler: scheduler,
@@ -80,6 +82,8 @@ func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, schedul
 			deploySignaler:     deploySignaler,
 			commentCreator:     commentCreator,
 			requirementChecker: requirementChecker,
+			allocator:          allocator,
+			prSignaler:         prSignaler,
 		},
 		vcsStatusUpdater:  vcsStatusUpdater,
 		rootConfigBuilder: rootConfigBuilder,
@@ -92,15 +96,46 @@ type NeptuneWorkerProxy struct {
 	deploySignaler     deploySignaler
 	commentCreator     commentCreator
 	requirementChecker requirementChecker
+	allocator          feature.Allocator
+	prSignaler         prSignaler
 }
 
 func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
-	// currently the only comments on platform mode are applies, we can add to this as necessary.
-	// TODO: in followup PR, we will modify this to support both plan and applies
-	if cmd.Name != command.Apply {
+	if cmd.Name == command.Apply {
+		return p.handleForceApplies(ctx, event, cmd, roots)
+	}
+	// TODO: remove when we begin in-depth testing and rollout of pr mode
+	// feature allocator is only temporary while we continue building out implementation
+	shouldAllocate, err := p.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: event.Pull.HeadRepo.FullName,
+	})
+	if err != nil {
+		p.logger.ErrorContext(ctx, "unable to allocate pr mode")
 		return nil
 	}
+	if !shouldAllocate {
+		p.logger.InfoContext(ctx, "handler not configured for allocation")
+		return nil
+	}
+	prRequest := pr.Request{
+		Number:            event.Pull.Num,
+		Revision:          event.Pull.HeadCommit,
+		Repo:              event.Pull.HeadRepo,
+		InstallationToken: event.InstallationToken,
+		Branch:            event.Pull.HeadBranch,
+		ValidateEnvs:      buildValidateEnvsFromComment(event),
+	}
+	run, err := p.prSignaler.SignalWithStartWorkflow(ctx, roots, prRequest)
+	if err != nil {
+		return errors.Wrap(err, "signaling workflow")
+	}
+	p.logger.InfoContext(ctx, "Signaled workflow.", map[string]interface{}{
+		"workflow-id": run.GetID(), "run-id": run.GetRunID(),
+	})
+	return nil
+}
 
+func (p *NeptuneWorkerProxy) handleForceApplies(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
 	triggerInfo := workflows.DeployTriggerInfo{
 		Type:  workflows.ManualTrigger,
 		Force: cmd.ForceApply,
@@ -225,4 +260,16 @@ func partitionRootsByProject(name string, cmds []*valid.MergedProjectCfg) []*val
 		}
 	}
 	return cfgs
+}
+
+func buildValidateEnvsFromComment(event Comment) []pr.ValidateEnvs {
+	return []pr.ValidateEnvs{
+		{
+			Username:       event.User.Username,
+			PullNum:        event.Pull.Num,
+			PullAuthor:     event.Pull.Author,
+			HeadCommit:     event.Pull.HeadCommit,
+			BaseBranchName: event.Pull.HeadRepo.DefaultBranch,
+		},
+	}
 }
