@@ -3,6 +3,7 @@ package policy
 import (
 	"context"
 	"github.com/google/go-github/v45/github"
+	"github.com/pkg/errors"
 	metricNames "github.com/runatlantis/atlantis/server/events/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	gh "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -10,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/workflow"
 	"time"
 )
@@ -39,6 +41,7 @@ type FailedPolicyHandler struct {
 	PRNumber              int
 	Org                   string
 	Scope                 metrics.Scope
+	InternalNotifiers     []revision.WorkflowNotifier
 }
 
 type Action int64
@@ -49,7 +52,7 @@ const (
 	onSkip
 )
 
-func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, workflowResponses []terraform.Response) {
+func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, roots map[string]revision.RootInfo, workflowResponses []terraform.Response) {
 	scope := f.Scope.SubScopeWithTags(map[string]string{metricNames.RevisionTag: revision.Revision})
 	failedPolicies := dedup(workflowResponses, scope)
 	if len(failedPolicies) == 0 {
@@ -92,18 +95,17 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 		switch action {
 		case onSkip:
 			continue
-		case onApprovalSignal:
-			failedPolicies = f.handle(ctx, revision, failedPolicies)
 		case onPollTick:
 			// TODO: evaluate a better polling rate for approvals, or remove all together
 			cancelTimer()
 			cancelTimer, _ = s.AddTimeout(ctx, 10*time.Minute, onTimeout)
-			failedPolicies = f.handle(ctx, revision, failedPolicies)
 		}
+		failedPolicies = f.handleApprovals(ctx, revision, failedPolicies)
+		f.updateCheckStatus(ctx, roots, workflowResponses, failedPolicies)
 	}
 }
 
-func (f *FailedPolicyHandler) handle(ctx workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) []activities.PolicySet {
+func (f *FailedPolicyHandler) handleApprovals(ctx workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) []activities.PolicySet {
 	// Fetch current approvals in activity
 	var listPRReviewsResponse activities.ListPRReviewsResponse
 	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListPRReviews, activities.ListPRReviewsRequest{
@@ -147,6 +149,35 @@ func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Rep
 		TeamSlug: slug,
 	}).Get(ctx, &listTeamMembersResponse)
 	return listTeamMembersResponse.Members, err
+}
+
+func (f *FailedPolicyHandler) updateCheckStatus(ctx workflow.Context, roots map[string]revision.RootInfo, responses []terraform.Response, policies []activities.PolicySet) {
+	for _, response := range responses {
+		if containsFailingPolicy(response.ValidationResults, policies) {
+			continue
+		}
+		workflowState := response.WorkflowState
+		workflowState.Result.Status = state.CompleteWorkflowStatus
+		workflowState.Result.Reason = state.SuccessfulCompletionReason
+		rootInfo := roots[workflowState.ID]
+		for _, notifier := range f.InternalNotifiers {
+			if err := notifier.Notify(ctx, rootInfo.ToInternalInfo(), &workflowState); err != nil {
+				workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
+				workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
+			}
+		}
+	}
+}
+
+func containsFailingPolicy(results []activities.ValidationResult, failingPolicies []activities.PolicySet) bool {
+	for _, result := range results {
+		for _, policy := range failingPolicies {
+			if result.PolicySet.Name == policy.Name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func dedup(workflowResponses []terraform.Response, scope metrics.Scope) []activities.PolicySet {

@@ -62,7 +62,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		PRNumber:              1,
 		Scope:                 metrics.NewNullableScope(),
 	}
-	handler.Handle(ctx, r.Revision, r.WorkflowResponses)
+	handler.Handle(ctx, r.Revision, nil, r.WorkflowResponses)
 	return response{
 		DismisserCalls:   dismisser.calls,
 		DismisserReviews: dismisser.expectedReviews,

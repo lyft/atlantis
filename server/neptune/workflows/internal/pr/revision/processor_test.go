@@ -91,9 +91,8 @@ func testProcessRevisionWorkflow(ctx workflow.Context, r processRevisionRequest)
 		TFStateReceiver: &revision.StateReceiver{},
 		TFWorkflow:      tfWorkflow,
 		PolicyHandler: testPolicyHandler{
-			expectedFailedPolicies: r.ExpectedFailedPolicies,
-			expectedRevision:       r.Revision,
-			t:                      r.T,
+			expectedRevision: r.Revision,
+			t:                r.T,
 		},
 	}
 	processor.Process(ctx, r.Revision)
@@ -130,7 +129,6 @@ type testPolicyHandler struct {
 	expectedRevision       revision.Revision
 }
 
-func (p testPolicyHandler) Handle(_ workflow.Context, revision revision.Revision, failedPolicies []terraform.Response) {
+func (p testPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, roots map[string]revision.RootInfo, failedPolicies []terraform.Response) {
 	assert.Equal(p.t, p.expectedRevision, revision)
-	assert.Equal(p.t, p.expectedFailedPolicies, failedPolicies)
 }
