@@ -34,13 +34,16 @@ type processRevisionResponse struct{}
 func TestProcess(t *testing.T) {
 	t.Run("returns expected policy failures", func(t *testing.T) {
 		result1 := activities.ValidationResult{
-			PolicySet: activities.PolicySet{Name: badPolicy},
+			PolicySet: activities.PolicySet{Name: goodPolicy},
+			Status:    activities.Success,
 		}
 		result2 := activities.ValidationResult{
 			PolicySet: activities.PolicySet{Name: badPolicy2},
+			Status:    activities.Fail,
 		}
 		result3 := activities.ValidationResult{
-			PolicySet: activities.PolicySet{Name: goodPolicy},
+			PolicySet: activities.PolicySet{Name: badPolicy},
+			Status:    activities.Fail,
 		}
 		responses := []terraform.Response{
 			{

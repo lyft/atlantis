@@ -73,6 +73,7 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		Notifier:              notifier,
 	}
 	handler.Handle(ctx, r.Revision, r.Roots, r.WorkflowResponses)
+	workflow.Sleep(ctx, 5*time.Second) //sleep to test notifier called
 	return response{
 		DismisserCalls:   dismisser.calls,
 		DismisserReviews: dismisser.expectedReviews,

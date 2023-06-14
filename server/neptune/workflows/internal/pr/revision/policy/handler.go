@@ -155,9 +155,8 @@ func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Rep
 	return listTeamMembersResponse.Members, err
 }
 
-// updateCheckStatuses checks to see if each root's workflow has any remaining failing policies,
-//
-//	if it doesn't then the workflow's check status reason is updated to be bypassed (i.e. passing)
+// updateCheckStatuses checks to see if each root's workflow has any remaining failing policies.
+// If it doesn't then the workflow's check status reason is updated to be bypassed (i.e. passing)
 func (f *FailedPolicyHandler) updateCheckStatuses(ctx workflow.Context, roots map[string]revision.RootInfo, workflowResponses []terraform.Response, remainingFailedPolicies []activities.PolicySet) {
 	for _, workflowResponse := range workflowResponses {
 		// if this workflow's failing policies have been bypassed
