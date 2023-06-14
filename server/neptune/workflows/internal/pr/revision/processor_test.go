@@ -16,6 +16,7 @@ import (
 const (
 	badPolicy  = "bad-policy"
 	badPolicy2 = "bad-policy-2"
+	goodPolicy = "good-policy"
 )
 
 type processRevisionRequest struct {
@@ -38,12 +39,12 @@ func TestProcess(t *testing.T) {
 		result2 := activities.ValidationResult{
 			PolicySet: activities.PolicySet{Name: badPolicy2},
 		}
+		result3 := activities.ValidationResult{
+			PolicySet: activities.PolicySet{Name: goodPolicy},
+		}
 		responses := []terraform.Response{
 			{
-				ValidationResults: []activities.ValidationResult{result1},
-			},
-			{
-				ValidationResults: []activities.ValidationResult{result1, result2},
+				ValidationResults: []activities.ValidationResult{result1, result2, result3},
 			},
 		}
 		ts := testsuite.WorkflowTestSuite{}
@@ -115,7 +116,7 @@ func testTFWorkflow(_ workflow.Context, _ terraform.Request) (terraform.Response
 		ValidationResults: []activities.ValidationResult{
 			{
 				Status:    activities.Success,
-				PolicySet: activities.PolicySet{Name: "good-policy"},
+				PolicySet: activities.PolicySet{Name: goodPolicy},
 			},
 			{
 				Status:    activities.Fail,
@@ -141,6 +142,5 @@ type testPolicyHandler struct {
 
 func (p testPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, roots map[string]revision.RootInfo, responses []terraform.Response) {
 	assert.Equal(p.t, p.expectedRevision, revision)
-	assert.Equal(p.t, len(p.expectedResponses), len(responses))
 	assert.Equal(p.t, p.expectedResponses, responses)
 }
