@@ -59,7 +59,8 @@ func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullReq
 		p.handlePlatformMode,
 	}
 	var combinedErrors *multierror.Error
-	for _, f := range fxns {
+	for _, fxn := range fxns {
+		f := fxn
 		err := p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
 			return f(ctx, request, event)
 		})
