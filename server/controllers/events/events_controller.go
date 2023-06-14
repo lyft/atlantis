@@ -39,18 +39,20 @@ import (
 	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	github_request "github.com/runatlantis/atlantis/server/vcs/provider/github/request"
 	"github.com/uber-go/tally/v4"
-	gitlab "github.com/xanzy/go-gitlab"
 )
 
-const githubHeader = "X-Github-Event"
-const gitlabHeader = "X-Gitlab-Event"
-const azuredevopsHeader = "Request-Id"
+const (
+	githubHeader      = "X-Github-Event"
+	azuredevopsHeader = "Request-Id"
+)
 
 // bitbucketEventTypeHeader is the same in both cloud and server.
-const bitbucketEventTypeHeader = "X-Event-Key"
-const bitbucketCloudRequestIDHeader = "X-Request-UUID"
-const bitbucketServerRequestIDHeader = "X-Request-ID"
-const bitbucketServerSignatureHeader = "X-Hub-Signature"
+const (
+	bitbucketEventTypeHeader       = "X-Event-Key"
+	bitbucketCloudRequestIDHeader  = "X-Request-UUID"
+	bitbucketServerRequestIDHeader = "X-Request-ID"
+	bitbucketServerSignatureHeader = "X-Hub-Signature"
+)
 
 //go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_azuredevops_pull_getter.go AzureDevopsPullGetter
 
@@ -58,14 +60,6 @@ const bitbucketServerSignatureHeader = "X-Hub-Signature"
 type AzureDevopsPullGetter interface {
 	// GetPullRequest gets the pull request with id pullNum for the repo.
 	GetPullRequest(repo models.Repo, pullNum int) (*azuredevops.GitPullRequest, error)
-}
-
-//go:generate pegomock generate -m --use-experimental-model-gen --package mocks -o mocks/mock_gitlab_merge_request_getter.go GitlabMergeRequestGetter
-
-// GitlabMergeRequestGetter makes API calls to get merge requests.
-type GitlabMergeRequestGetter interface {
-	// GetMergeRequest gets the pull request with the id pullNum for the repo.
-	GetMergeRequest(repoFullName string, pullNum int) (*gitlab.MergeRequest, error)
 }
 
 type commentEventHandler interface {
@@ -124,7 +118,6 @@ func NewVCSEventsController(
 	vcsClient vcs.Client,
 	logger logging.Logger,
 	applyDisabled bool,
-	gitlabWebhookSecret []byte,
 	supportedVCSProviders []models.VCSHostType,
 	bitbucketWebhookSecret []byte,
 	azureDevopsWebhookBasicUser []byte,
@@ -134,7 +127,6 @@ func NewVCSEventsController(
 	githubPullGetter github_converter.PullGetter,
 	pullFetcher github_converter.PullFetcher,
 	azureDevopsPullGetter AzureDevopsPullGetter,
-	gitlabMergeRequestGetter GitlabMergeRequestGetter,
 ) *VCSEventsController {
 	prHandler := handlers.NewPullRequestEvent(
 		repoAllowlistChecker, pullCleaner, logger, commandRunner,
@@ -191,8 +183,6 @@ func NewVCSEventsController(
 		PREventHandler:                  prHandler,
 		CommentEventHandler:             commentHandler,
 		ApplyDisabled:                   applyDisabled,
-		GitlabRequestParserValidator:    &DefaultGitlabRequestParserValidator{},
-		GitlabWebhookSecret:             gitlabWebhookSecret,
 		RepoAllowlistChecker:            repoAllowlistChecker,
 		SupportedVCSHosts:               supportedVCSProviders,
 		VCSClient:                       vcsClient,
@@ -201,7 +191,6 @@ func NewVCSEventsController(
 		AzureDevopsWebhookBasicPassword: azureDevopsWebhookBasicPassword,
 		AzureDevopsRequestValidator:     &DefaultAzureDevopsRequestValidator{},
 		AzureDevopsPullGetter:           azureDevopsPullGetter,
-		GitlabMergeRequestGetter:        gitlabMergeRequestGetter,
 	}
 }
 
@@ -228,7 +217,6 @@ func (p *RequestRouter) Route(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	// we do this to allow for multiple reads to the request body
 	request, err := httputils.NewBufferedRequest(r)
-
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		p.logAndWriteBody(ctx, w, err.Error(), map[string]interface{}{key.ErrKey.String(): err})
@@ -291,19 +279,14 @@ func (p *RequestRouter) logAndWriteBody(ctx context.Context, w http.ResponseWrit
 // VCS host, ex. GitHub.
 // TODO: migrate all provider specific request handling into packaged resolver similar to github
 type VCSEventsController struct {
-	Logger                       logging.Logger
-	Scope                        tally.Scope
-	CommentParser                events.CommentParsing
-	Parser                       events.EventParsing
-	PREventHandler               prEventHandler
-	CommentEventHandler          commentEventHandler
-	RequestRouter                *RequestRouter
-	ApplyDisabled                bool
-	GitlabRequestParserValidator GitlabRequestParserValidator
-	// GitlabWebhookSecret is the secret added to this webhook via the GitLab
-	// UI that identifies this call as coming from GitLab. If empty, no
-	// request validation is done.
-	GitlabWebhookSecret  []byte
+	Logger               logging.Logger
+	Scope                tally.Scope
+	CommentParser        events.CommentParsing
+	Parser               events.EventParsing
+	PREventHandler       prEventHandler
+	CommentEventHandler  commentEventHandler
+	RequestRouter        *RequestRouter
+	ApplyDisabled        bool
 	RepoAllowlistChecker *events.RepoAllowlistChecker
 	// SupportedVCSHosts is which VCS hosts Atlantis was configured upon
 	// startup to support.
@@ -324,21 +307,13 @@ type VCSEventsController struct {
 	AzureDevopsWebhookBasicPassword []byte
 	AzureDevopsRequestValidator     AzureDevopsRequestValidator
 
-	GitlabMergeRequestGetter GitlabMergeRequestGetter
-	AzureDevopsPullGetter    AzureDevopsPullGetter
+	AzureDevopsPullGetter AzureDevopsPullGetter
 }
 
 // Post handles POST webhook requests.
 func (e *VCSEventsController) Post(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get(githubHeader) != "" {
 		e.RequestRouter.Route(w, r)
-		return
-	} else if r.Header.Get(gitlabHeader) != "" {
-		if !e.supportsHost(models.Gitlab) {
-			e.respond(w, logging.Debug, http.StatusBadRequest, "Ignoring request since not configured to support GitLab")
-			return
-		}
-		e.handleGitlabPost(w, r)
 		return
 	} else if r.Header.Get(bitbucketEventTypeHeader) != "" {
 		// Bitbucket Cloud and Server use the same event type header but they
@@ -523,7 +498,7 @@ func (e *VCSEventsController) handleBitbucketCloudPullRequestEvent(w http.Respon
 	pullEventType := e.Parser.GetBitbucketCloudPullEventType(eventType)
 	e.Logger.Info(fmt.Sprintf("identified event as type %q", pullEventType.String()))
 	eventTimestamp := time.Now()
-	//TODO: move this to the outer most function similar to github
+	// TODO: move this to the outer most function similar to github
 	lvl := logging.Debug
 
 	cloneableRequest, err := httputils.NewBufferedRequest(request)
@@ -532,7 +507,6 @@ func (e *VCSEventsController) handleBitbucketCloudPullRequestEvent(w http.Respon
 		return
 	}
 	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, event_types.PullRequest{
-
 		Pull:      pull,
 		User:      user,
 		EventType: pullEventType,
@@ -555,98 +529,6 @@ func (e *VCSEventsController) handleBitbucketServerPullRequestEvent(w http.Respo
 	pullEventType := e.Parser.GetBitbucketServerPullEventType(eventType)
 	e.Logger.Info(fmt.Sprintf("identified event as type %q", pullEventType.String()))
 	eventTimestamp := time.Now()
-	lvl := logging.Debug
-	cloneableRequest, err := httputils.NewBufferedRequest(request)
-	if err != nil {
-		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
-		return
-	}
-	err = e.PREventHandler.Handle(context.TODO(), cloneableRequest, event_types.PullRequest{
-		Pull:      pull,
-		User:      user,
-		EventType: pullEventType,
-		Timestamp: eventTimestamp,
-	})
-
-	if err != nil {
-		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
-		return
-	}
-	e.respond(w, lvl, http.StatusOK, "Processing...")
-}
-
-func (e *VCSEventsController) handleGitlabPost(w http.ResponseWriter, r *http.Request) {
-	event, err := e.GitlabRequestParserValidator.ParseAndValidate(r, e.GitlabWebhookSecret)
-	if err != nil {
-		e.respond(w, logging.Warn, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	switch event := event.(type) {
-	case gitlab.MergeCommentEvent:
-		e.HandleGitlabCommentEvent(w, event, r)
-	case gitlab.MergeEvent:
-		e.HandleGitlabMergeRequestEvent(w, event, r)
-	case gitlab.CommitCommentEvent:
-		e.respond(w, logging.Debug, http.StatusOK, "Ignoring comment on commit event")
-	default:
-		e.respond(w, logging.Debug, http.StatusOK, "Ignoring unsupported event")
-	}
-}
-
-// HandleGitlabCommentEvent handles comment events from GitLab where Atlantis
-// commands can come from. It's exported to make testing easier.
-func (e *VCSEventsController) HandleGitlabCommentEvent(w http.ResponseWriter, event gitlab.MergeCommentEvent, request *http.Request) {
-	// todo: can gitlab return the pull request here too?
-	baseRepo, headRepo, user, err := e.Parser.ParseGitlabMergeRequestCommentEvent(event)
-	if err != nil {
-		e.respond(w, logging.Error, http.StatusBadRequest, "Error parsing webhook: %s", err)
-		return
-	}
-
-	pull, err := e.getGitlabData(baseRepo, event.MergeRequest.ID)
-	if err != nil {
-		e.respond(w, logging.Error, http.StatusBadRequest, "Error getting merge request: %s", err)
-		return
-	}
-	eventTimestamp := time.Now()
-	lvl := logging.Debug
-	cloneableRequest, err := httputils.NewBufferedRequest(request)
-	if err != nil {
-		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
-		return
-	}
-	err = e.CommentEventHandler.Handle(context.TODO(), cloneableRequest, event_types.Comment{
-		BaseRepo:  baseRepo,
-		HeadRepo:  headRepo,
-		Pull:      pull,
-		User:      user,
-		PullNum:   event.MergeRequest.IID,
-		Comment:   event.ObjectAttributes.Note,
-		VCSHost:   models.Gitlab,
-		Timestamp: eventTimestamp,
-	})
-
-	if err != nil {
-		e.respond(w, lvl, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	e.respond(w, lvl, http.StatusOK, "Processing...")
-}
-
-// HandleGitlabMergeRequestEvent will delete any locks associated with the pull
-// request if the event is a merge request closed event. It's exported to make
-// testing easier.
-func (e *VCSEventsController) HandleGitlabMergeRequestEvent(w http.ResponseWriter, event gitlab.MergeEvent, request *http.Request) {
-	pull, pullEventType, _, _, user, err := e.Parser.ParseGitlabMergeRequestEvent(event)
-	if err != nil {
-		e.respond(w, logging.Error, http.StatusBadRequest, "Error parsing webhook: %s", err)
-		return
-	}
-	e.Logger.Info(fmt.Sprintf("identified event as type %q", pullEventType.String()))
-	eventTimestamp := time.Now()
-
 	lvl := logging.Debug
 	cloneableRequest, err := httputils.NewBufferedRequest(request)
 	if err != nil {
@@ -802,18 +684,6 @@ func (e *VCSEventsController) respond(w http.ResponseWriter, lvl logging.LogLeve
 	}
 	w.WriteHeader(code)
 	fmt.Fprintln(w, response)
-}
-
-func (e *VCSEventsController) getGitlabData(baseRepo models.Repo, pullNum int) (models.PullRequest, error) {
-	if e.GitlabMergeRequestGetter == nil {
-		return models.PullRequest{}, errors.New("Atlantis not configured to support GitLab")
-	}
-	mr, err := e.GitlabMergeRequestGetter.GetMergeRequest(baseRepo.FullName, pullNum)
-	if err != nil {
-		return models.PullRequest{}, errors.Wrap(err, "making merge request API call to GitLab")
-	}
-	pull := e.Parser.ParseGitlabMergeRequest(mr, baseRepo)
-	return pull, nil
 }
 
 func (e *VCSEventsController) getAzureDevopsData(baseRepo models.Repo, pullNum int) (models.PullRequest, models.Repo, error) {

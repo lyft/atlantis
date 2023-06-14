@@ -49,10 +49,6 @@ type UserConfig struct {
 	GithubAppKey               string `mapstructure:"gh-app-key"`
 	GithubAppKeyFile           string `mapstructure:"gh-app-key-file"`
 	GithubAppSlug              string `mapstructure:"gh-app-slug"`
-	GitlabHostname             string `mapstructure:"gitlab-hostname"`
-	GitlabToken                string `mapstructure:"gitlab-token"`
-	GitlabUser                 string `mapstructure:"gitlab-user"`
-	GitlabWebhookSecret        string `mapstructure:"gitlab-webhook-secret"`
 	HidePrevPlanComments       bool   `mapstructure:"hide-prev-plan-comments"`
 	LogLevel                   string `mapstructure:"log-level"`
 	ParallelPoolSize           int    `mapstructure:"parallel-pool-size"`

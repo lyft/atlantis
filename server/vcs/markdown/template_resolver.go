@@ -68,13 +68,9 @@ func (p ProjectOutputType) String() string {
 
 // Uses template overrides and server configs to resolve template
 type TemplateResolver struct {
-	// GitlabSupportsCommonMark is true if the version of GitLab we're
-	// using supports the CommonMark markdown format.
-	// If we're not configured with a GitLab client, this will be false.
-	GitlabSupportsCommonMark bool
-	DisableMarkdownFolding   bool
-	GlobalCfg                valid.GlobalCfg
-	LogFilter                filter.LogFilter
+	DisableMarkdownFolding bool
+	GlobalCfg              valid.GlobalCfg
+	LogFilter              filter.LogFilter
 }
 
 // Resolves templates for commands
@@ -205,10 +201,6 @@ func (t *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, outp
 
 	// Bitbucket Cloud and Server don't support the folding markdown syntax.
 	if vcsHost == models.BitbucketServer || vcsHost == models.BitbucketCloud {
-		return false
-	}
-
-	if vcsHost == models.Gitlab && !t.GitlabSupportsCommonMark {
 		return false
 	}
 

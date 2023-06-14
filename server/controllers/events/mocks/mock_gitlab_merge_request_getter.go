@@ -5,8 +5,6 @@ package mocks
 
 import (
 	pegomock "github.com/petergtz/pegomock"
-	go_gitlab "github.com/xanzy/go-gitlab"
-	"reflect"
 	"time"
 )
 
@@ -24,25 +22,6 @@ func NewMockGitlabMergeRequestGetter(options ...pegomock.Option) *MockGitlabMerg
 
 func (mock *MockGitlabMergeRequestGetter) SetFailHandler(fh pegomock.FailHandler) { mock.fail = fh }
 func (mock *MockGitlabMergeRequestGetter) FailHandler() pegomock.FailHandler      { return mock.fail }
-
-func (mock *MockGitlabMergeRequestGetter) GetMergeRequest(_param0 string, _param1 int) (*go_gitlab.MergeRequest, error) {
-	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockGitlabMergeRequestGetter().")
-	}
-	params := []pegomock.Param{_param0, _param1}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("GetMergeRequest", params, []reflect.Type{reflect.TypeOf((**go_gitlab.MergeRequest)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 *go_gitlab.MergeRequest
-	var ret1 error
-	if len(result) != 0 {
-		if result[0] != nil {
-			ret0 = result[0].(*go_gitlab.MergeRequest)
-		}
-		if result[1] != nil {
-			ret1 = result[1].(error)
-		}
-	}
-	return ret0, ret1
-}
 
 func (mock *MockGitlabMergeRequestGetter) VerifyWasCalledOnce() *VerifierMockGitlabMergeRequestGetter {
 	return &VerifierMockGitlabMergeRequestGetter{

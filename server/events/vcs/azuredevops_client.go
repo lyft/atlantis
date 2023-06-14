@@ -31,7 +31,7 @@ func NewAzureDevopsClient(hostname string, userName string, token string) (*Azur
 	}
 	httpClient := tp.Client()
 	httpClient.Timeout = time.Second * 10
-	var adClient, err = azuredevops.NewClient(httpClient)
+	adClient, err := azuredevops.NewClient(httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,6 @@ func (g *AzureDevopsClient) MarkdownPullLink(pull models.PullRequest) (string, e
 //
 // Ex. runatlantis/atlantis => (runatlantis, atlantis)
 //
-//	gitlab/subgroup/runatlantis/atlantis => (gitlab/subgroup/runatlantis, atlantis)
 //	azuredevops/project/atlantis => (azuredevops, project, atlantis)
 func SplitAzureDevopsRepoFullName(repoFullName string) (owner string, project string, repo string) {
 	firstSlashIdx := strings.Index(repoFullName, "/")

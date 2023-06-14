@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"io"
 	"log"
 	"net/http"
@@ -31,6 +30,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/neptune/template"
@@ -176,7 +177,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var githubClient vcs.IGithubClient
 	var githubAppEnabled bool
 	var githubCredentials vcs.GithubCredentials
-	var gitlabClient *vcs.GitlabClient
 	var bitbucketCloudClient *bitbucketcloud.Client
 	var bitbucketServerClient *bitbucketserver.Client
 	var azuredevopsClient *vcs.AzureDevopsClient
@@ -282,14 +282,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
 	}
-	if userConfig.GitlabUser != "" {
-		supportedVCSHosts = append(supportedVCSHosts, models.Gitlab)
-		var err error
-		gitlabClient, err = vcs.NewGitlabClient(userConfig.GitlabHostname, userConfig.GitlabToken, ctxLogger)
-		if err != nil {
-			return nil, err
-		}
-	}
 	if userConfig.BitbucketUser != "" {
 		if userConfig.BitbucketBaseURL == bitbucketcloud.BaseURL {
 			supportedVCSHosts = append(supportedVCSHosts, models.BitbucketCloud)
@@ -331,11 +323,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 				return nil, err
 			}
 		}
-		if userConfig.GitlabUser != "" {
-			if err := github.WriteGitCreds(userConfig.GitlabUser, userConfig.GitlabToken, userConfig.GitlabHostname, home, ctxLogger, false); err != nil {
-				return nil, err
-			}
-		}
 		if userConfig.BitbucketUser != "" {
 			// The default BitbucketBaseURL is https://api.bitbucket.org which can't actually be used for git
 			// so we override it here only if it's that to be bitbucket.org
@@ -368,7 +355,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing webhooks")
 	}
-	vcsClient := vcs.NewClientProxy(githubClient, gitlabClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
+	vcsClient := vcs.NewClientProxy(githubClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
 	vcsStatusUpdater := &command.VCSStatusUpdater{
 		Client: vcsClient,
 		TitleBuilder: vcs.StatusTitleBuilder{
@@ -378,13 +365,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	binDir, err := mkSubDir(userConfig.DataDir, BinDirName)
-
 	if err != nil {
 		return nil, err
 	}
 
 	cacheDir, err := mkSubDir(userConfig.DataDir, TerraformPluginCacheDirName)
-
 	if err != nil {
 		return nil, err
 	}
@@ -438,16 +423,14 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		&terraform.DefaultDownloader{},
 		true,
 		projectCmdOutputHandler)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform")
 	}
 
 	templateResolver := markdown.TemplateResolver{
-		DisableMarkdownFolding:   userConfig.DisableMarkdownFolding,
-		GitlabSupportsCommonMark: gitlabClient.SupportsCommonMark(),
-		GlobalCfg:                globalCfg,
-		LogFilter:                logFilter,
+		DisableMarkdownFolding: userConfig.DisableMarkdownFolding,
+		GlobalCfg:              globalCfg,
+		LogFilter:              logFilter,
 	}
 	markdownRenderer := &markdown.Renderer{
 		DisableApplyAll:          userConfig.DisableApplyAll,
@@ -513,8 +496,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	eventParser := &events.EventParser{
 		GithubUser:         userConfig.GithubUser,
 		GithubToken:        userConfig.GithubToken,
-		GitlabUser:         userConfig.GitlabUser,
-		GitlabToken:        userConfig.GitlabToken,
 		AllowDraftPRs:      userConfig.PlanDrafts,
 		BitbucketUser:      userConfig.BitbucketUser,
 		BitbucketToken:     userConfig.BitbucketToken,
@@ -524,7 +505,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 	commentParser := &events.CommentParser{
 		GithubUser:      userConfig.GithubUser,
-		GitlabUser:      userConfig.GitlabUser,
 		BitbucketUser:   userConfig.BitbucketUser,
 		AzureDevopsUser: userConfig.AzureDevopsUser,
 		ApplyDisabled:   userConfig.DisableApply,
@@ -937,7 +917,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		vcsClient,
 		ctxLogger,
 		userConfig.DisableApply,
-		[]byte(userConfig.GitlabWebhookSecret),
 		supportedVCSHosts,
 		[]byte(userConfig.BitbucketWebhookSecret),
 		[]byte(userConfig.AzureDevopsWebhookUser),
@@ -947,7 +926,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		githubClient,
 		pullFetcher,
 		azuredevopsClient,
-		gitlabClient,
 	)
 
 	var vcsPostHandler sqs.VCSPostHandler
@@ -1140,7 +1118,7 @@ func (s *Server) Index(w http.ResponseWriter, _ *http.Request) {
 		Locked:        applyCmdLock.Locked,
 		TimeFormatted: applyCmdLock.Time.Format("02-01-2006 15:04:05"),
 	}
-	//Sort by date - newest to oldest.
+	// Sort by date - newest to oldest.
 	sort.SliceStable(lockResults, func(i, j int) bool { return lockResults[i].Time.After(lockResults[j].Time) })
 
 	err = s.IndexTemplate.Execute(w, templates.IndexData{
@@ -1156,7 +1134,7 @@ func (s *Server) Index(w http.ResponseWriter, _ *http.Request) {
 
 func mkSubDir(parentDir string, subDir string) (string, error) {
 	fullDir := filepath.Join(parentDir, subDir)
-	if err := os.MkdirAll(fullDir, 0700); err != nil {
+	if err := os.MkdirAll(fullDir, 0o700); err != nil {
 		return "", errors.Wrapf(err, "unable to creare dir %q", fullDir)
 	}
 
