@@ -30,7 +30,6 @@ regen-mocks: ## Delete all mocks and matchers and then run go generate to regen 
 	find . -type f | grep mocks/matchers | xargs rm
 	@# not using $(PKG) here because that includes directories that have now
 	@# been made empty, causing go generate to fail.
-	./scripts/go-generate.sh
 
 test: ## Run tests
 	@go test -short $(PKG)
