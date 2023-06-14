@@ -24,15 +24,10 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server"
-	cfgParser "github.com/runatlantis/atlantis/server/core/config"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events"
-	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
+	server "github.com/runatlantis/atlantis/server/legacy"
+	"github.com/runatlantis/atlantis/server/legacy/events"
+	"github.com/runatlantis/atlantis/server/legacy/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/gateway"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker"
-	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -415,119 +410,11 @@ type ServerCreator interface {
 	NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error)
 }
 
-type GatewayCreator struct{}
-
-func (c *GatewayCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
-	// For now we just plumb this data through, ideally though we'd have gateway config pretty isolated
-	// from worker config however this requires more refactoring and can be done later.
-	appConfig, err := createGHAppConfig(userConfig)
-	if err != nil {
-		return nil, err
-	}
-	cfg := gateway.Config{
-		DataDir:                   userConfig.DataDir,
-		AutoplanFileList:          userConfig.AutoplanFileList,
-		AppCfg:                    appConfig,
-		RepoAllowList:             userConfig.RepoAllowlist,
-		MaxProjectsPerPR:          userConfig.MaxProjectsPerPR,
-		FFOwner:                   userConfig.FFOwner,
-		FFRepo:                    userConfig.FFRepo,
-		FFBranch:                  userConfig.FFBranch,
-		FFPath:                    userConfig.FFPath,
-		GithubHostname:            userConfig.GithubHostname,
-		GithubWebhookSecret:       userConfig.GithubWebhookSecret,
-		GithubAppID:               userConfig.GithubAppID,
-		GithubAppKeyFile:          userConfig.GithubAppKeyFile,
-		GithubAppSlug:             userConfig.GithubAppSlug,
-		GithubStatusName:          userConfig.VCSStatusName,
-		LogLevel:                  userConfig.ToLogLevel(),
-		StatsNamespace:            userConfig.StatsNamespace,
-		Port:                      userConfig.Port,
-		RepoConfig:                userConfig.RepoConfig,
-		TFDownloadURL:             userConfig.TFDownloadURL,
-		SNSTopicArn:               userConfig.LyftGatewaySnsTopicArn,
-		SSLKeyFile:                userConfig.SSLKeyFile,
-		SSLCertFile:               userConfig.SSLCertFile,
-		DefaultCheckrunDetailsURL: userConfig.DefaultCheckrunDetailsURL,
-		DefaultTFVersion:          userConfig.DefaultTFVersion,
-	}
-	return gateway.NewServer(cfg)
-}
-
 type WorkerCreator struct{}
 
 // NewServer returns the real Atlantis server object.
 func (d *WorkerCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
 	return server.NewServer(userConfig, config)
-}
-
-type TemporalWorker struct{}
-
-// NewServer returns the real Atlantis server object.
-func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
-	ctxLogger, err := logging.NewLoggerFromLevel(userConfig.ToLogLevel())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build context logger")
-	}
-
-	globalCfg := valid.NewGlobalCfg(userConfig.DataDir)
-	validator := &cfgParser.ParserValidator{}
-	if userConfig.RepoConfig != "" {
-		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
-		if err != nil {
-			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
-		}
-	}
-	parsedURL, err := server.ParseAtlantisURL(userConfig.AtlantisURL)
-	if err != nil {
-		return nil, errors.Wrapf(err,
-			"parsing atlantis url %q", userConfig.AtlantisURL)
-	}
-
-	// TODO: we should just supply a yaml file with this info and load it directly into the
-	// app config struct
-	appConfig, err := createGHAppConfig(userConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := &neptune.Config{
-		AuthCfg: neptune.AuthConfig{
-			SslCertFile: userConfig.SSLCertFile,
-			SslKeyFile:  userConfig.SSLKeyFile,
-		},
-		ServerCfg: neptune.ServerConfig{
-			URL:     parsedURL,
-			Version: config.AtlantisVersion,
-			Port:    userConfig.Port,
-		},
-		FeatureConfig: neptune.FeatureConfig{
-			FFOwner:  userConfig.FFOwner,
-			FFRepo:   userConfig.FFRepo,
-			FFPath:   userConfig.FFPath,
-			FFBranch: userConfig.FFBranch,
-		},
-		TerraformCfg: neptune.TerraformConfig{
-			DefaultVersion: userConfig.DefaultTFVersion,
-			DownloadURL:    userConfig.TFDownloadURL,
-			LogFilters:     globalCfg.TerraformLogFilter,
-		},
-		ValidationConfig: neptune.ValidationConfig{
-			DefaultVersion: globalCfg.PolicySets.Version,
-			Policies:       globalCfg.PolicySets,
-		},
-		JobConfig:                globalCfg.PersistenceConfig.Jobs,
-		DeploymentConfig:         globalCfg.PersistenceConfig.Deployments,
-		DataDir:                  userConfig.DataDir,
-		TemporalCfg:              globalCfg.Temporal,
-		App:                      appConfig,
-		CtxLogger:                ctxLogger,
-		StatsNamespace:           userConfig.StatsNamespace,
-		Metrics:                  globalCfg.Metrics,
-		LyftAuditJobsSnsTopicArn: userConfig.LyftAuditJobsSnsTopicArn,
-		RevisionSetter:           globalCfg.RevisionSetter,
-	}
-	return temporalworker.NewServer(cfg)
 }
 
 // ServerCreatorProxy creates the correct server based on the mode passed in through user config

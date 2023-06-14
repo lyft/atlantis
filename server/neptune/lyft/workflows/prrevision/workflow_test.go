@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/runatlantis/atlantis/server/core/config/raw"
+	"github.com/runatlantis/atlantis/server/config/raw"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/activities"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/workflows/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"

@@ -5,10 +5,10 @@ import (
 	"net/http/pprof"
 
 	"github.com/gorilla/mux"
-	"github.com/runatlantis/atlantis/server/controllers"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/legacy/controllers"
+	lyft_gateway "github.com/runatlantis/atlantis/server/legacy/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/logging"
-	lyft_gateway "github.com/runatlantis/atlantis/server/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api"
 	apiMiddleware "github.com/runatlantis/atlantis/server/neptune/gateway/api/middleware"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/request"

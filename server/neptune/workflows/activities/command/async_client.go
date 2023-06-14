@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/runtime/cache"
+	"github.com/runatlantis/atlantis/server/legacy/core/runtime/cache"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/sdk/activity"
 )

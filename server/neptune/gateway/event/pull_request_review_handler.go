@@ -3,18 +3,19 @@ package event
 import (
 	"bytes"
 	"context"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"time"
+
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/uber-go/tally/v4"
 	"go.temporal.io/api/serviceerror"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/http"
+	"github.com/runatlantis/atlantis/server/legacy/http"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/models"
 )
 
 const (

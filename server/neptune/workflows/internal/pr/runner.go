@@ -1,7 +1,9 @@
 package pr
 
 import (
-	metricNames "github.com/runatlantis/atlantis/server/events/metrics"
+	"time"
+
+	metricNames "github.com/runatlantis/atlantis/server/metrics"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -11,7 +13,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
-	"time"
 )
 
 type Action int64

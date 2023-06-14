@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v45/github"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/template"
 	"github.com/stretchr/testify/assert"
 )

@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/events/models"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/vcs"
 	"github.com/stretchr/testify/assert"
