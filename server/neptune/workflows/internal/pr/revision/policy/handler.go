@@ -57,8 +57,8 @@ const (
 
 func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, roots map[string]revision.RootInfo, workflowResponses []terraform.Response) {
 	scope := f.Scope.SubScopeWithTags(map[string]string{metricNames.RevisionTag: revision.Revision})
-	failedPolicies := dedup(workflowResponses, scope)
-	if len(failedPolicies) == 0 {
+	remainingFailedPolicies := dedup(workflowResponses, scope)
+	if len(remainingFailedPolicies) == 0 {
 		return
 	}
 
@@ -91,7 +91,7 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 	cancelTimer, _ := s.AddTimeout(ctx, 5*time.Minute, onTimeout)
 
 	for {
-		if len(failedPolicies) == 0 {
+		if len(remainingFailedPolicies) == 0 {
 			break
 		}
 		s.Select(ctx)
@@ -104,12 +104,12 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 			cancelTimer, _ = s.AddTimeout(ctx, 10*time.Minute, onTimeout)
 		}
 		// filter out approved policies and update check status onPollTick and onApprovalSignal actions
-		failedPolicies = f.filterApprovedPolicies(ctx, revision, failedPolicies)
-		f.updateCheckStatus(ctx, roots, workflowResponses, failedPolicies)
+		remainingFailedPolicies = f.filterOutApprovedPolicies(ctx, revision, remainingFailedPolicies)
+		f.updateCheckStatuses(ctx, roots, workflowResponses, remainingFailedPolicies)
 	}
 }
 
-func (f *FailedPolicyHandler) filterApprovedPolicies(ctx workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) []activities.PolicySet {
+func (f *FailedPolicyHandler) filterOutApprovedPolicies(ctx workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) []activities.PolicySet {
 	// Fetch current approvals in activity
 	var listPRReviewsResponse activities.ListPRReviewsResponse
 	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListPRReviews, activities.ListPRReviewsRequest{
@@ -155,15 +155,21 @@ func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Rep
 	return listTeamMembersResponse.Members, err
 }
 
-func (f *FailedPolicyHandler) updateCheckStatus(ctx workflow.Context, roots map[string]revision.RootInfo, responses []terraform.Response, policies []activities.PolicySet) {
-	for _, response := range responses {
-		if containsFailingPolicy(response.ValidationResults, policies) {
+// updateCheckStatuses checks to see if each root's workflow has any remaining failing policies,
+//
+//	if it doesn't then the workflow's check status reason is updated to be bypassed (i.e. passing)
+func (f *FailedPolicyHandler) updateCheckStatuses(ctx workflow.Context, roots map[string]revision.RootInfo, workflowResponses []terraform.Response, remainingFailedPolicies []activities.PolicySet) {
+	for _, workflowResponse := range workflowResponses {
+		// if this workflow's failing policies have been bypassed
+		if containsFailingPolicy(workflowResponse.ValidationResults, remainingFailedPolicies) {
 			continue
 		}
-		workflowState := response.WorkflowState
+		workflowState := workflowResponse.WorkflowState
 		workflowState.Result.Status = state.CompleteWorkflowStatus
 		workflowState.Result.Reason = state.BypassedFailedValidationReason
-		f.Notifier.Notify(ctx, &workflowState, roots)
+		workflow.Go(ctx, func(c workflow.Context) {
+			f.Notifier.Notify(c, &workflowState, roots)
+		})
 	}
 }
 
