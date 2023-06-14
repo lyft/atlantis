@@ -231,7 +231,8 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 		p.neptuneWorkerProxy.Handle,
 	}
 	var combinedErrors *multierror.Error
-	for _, f := range fxns {
+	for _, fxn := range fxns {
+		f := fxn
 		err := p.scheduler.Schedule(ctx, func(ctx context.Context) error {
 			return f(ctx, event, cmd, roots, request)
 		})
