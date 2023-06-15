@@ -110,7 +110,7 @@ func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo
 	switch {
 	case result.Error != nil:
 		filteredOutput := t.filterOutput(result.Error.Error())
-		tmpl = t.buildTemplate(Error, baseRepo.VCSHost.Type, wrappedErrTmpl, unwrappedErrTmpl, filteredOutput, templateOverrides)
+		tmpl = t.buildTemplate(Error, wrappedErrTmpl, unwrappedErrTmpl, filteredOutput, templateOverrides)
 		templateData = struct {
 			Command string
 			Error   string
@@ -135,7 +135,7 @@ func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo
 		}
 	case result.PlanSuccess != nil:
 		filteredOutput := t.filterOutput(result.PlanSuccess.TerraformOutput)
-		tmpl = t.buildTemplate(PlanSuccess, baseRepo.VCSHost.Type, planSuccessWrappedTmpl, planSuccessUnwrappedTmpl, filteredOutput, templateOverrides)
+		tmpl = t.buildTemplate(PlanSuccess, planSuccessWrappedTmpl, planSuccessUnwrappedTmpl, filteredOutput, templateOverrides)
 		result.PlanSuccess.TerraformOutput = filteredOutput
 		templateData = planSuccessData{
 			PlanSuccess:              *result.PlanSuccess,
@@ -144,20 +144,20 @@ func (t *TemplateResolver) ResolveProject(result command.ProjectResult, baseRepo
 			EnableDiffMarkdownFormat: common.EnableDiffMarkdownFormat,
 		}
 	case result.PolicyCheckSuccess != nil:
-		tmpl = t.buildTemplate(PolicyCheckSuccess, baseRepo.VCSHost.Type, policyCheckSuccessWrappedTmpl, policyCheckSuccessUnwrappedTmpl, result.PolicyCheckSuccess.PolicyCheckOutput, templateOverrides)
+		tmpl = t.buildTemplate(PolicyCheckSuccess, policyCheckSuccessWrappedTmpl, policyCheckSuccessUnwrappedTmpl, result.PolicyCheckSuccess.PolicyCheckOutput, templateOverrides)
 		templateData = policyCheckSuccessData{
 			PolicyCheckSuccess: *result.PolicyCheckSuccess,
 		}
 	case result.ApplySuccess != "":
 		filteredOutput := t.filterOutput(result.ApplySuccess)
-		tmpl = t.buildTemplate(ApplySuccess, baseRepo.VCSHost.Type, applyWrappedSuccessTmpl, applyUnwrappedSuccessTmpl, filteredOutput, templateOverrides)
+		tmpl = t.buildTemplate(ApplySuccess, applyWrappedSuccessTmpl, applyUnwrappedSuccessTmpl, filteredOutput, templateOverrides)
 		templateData = struct {
 			Output string
 		}{
 			Output: filteredOutput,
 		}
 	case result.VersionSuccess != "":
-		tmpl = t.buildTemplate(VersionSuccess, baseRepo.VCSHost.Type, versionWrappedSuccessTmpl, versionUnwrappedSuccessTmpl, result.VersionSuccess, templateOverrides)
+		tmpl = t.buildTemplate(VersionSuccess, versionWrappedSuccessTmpl, versionUnwrappedSuccessTmpl, result.VersionSuccess, templateOverrides)
 		templateData = struct {
 			Output string
 		}{
@@ -179,11 +179,11 @@ func (t *TemplateResolver) filterOutput(s string) string {
 	return strings.Join(filteredLines, "\n")
 }
 
-func (t *TemplateResolver) buildTemplate(projectOutputType ProjectOutputType, vcsHost models.VCSHostType, wrappedTmpl string, unwrappedTmpl string, output string, templateOverrides map[string]string) *template.Template {
+func (t *TemplateResolver) buildTemplate(projectOutputType ProjectOutputType, wrappedTmpl string, unwrappedTmpl string, output string, templateOverrides map[string]string) *template.Template {
 	// use template override is specified
 	if val, ok := templateOverrides[projectOutputType.String()]; ok {
 		return template.Must(template.ParseFiles(val))
-	} else if t.shouldUseWrappedTmpl(vcsHost, output) {
+	} else if t.shouldUseWrappedTmpl(output) {
 		return template.Must(template.New("").Parse(wrappedTmpl))
 	} else {
 		return template.Must(template.New("").Parse(unwrappedTmpl))
@@ -194,13 +194,8 @@ func (t *TemplateResolver) buildTemplate(projectOutputType ProjectOutputType, vc
 // templates that collapse the output to make the comment smaller on initial
 // load. Some VCS providers or versions of VCS providers don't support this
 // syntax.
-func (t *TemplateResolver) shouldUseWrappedTmpl(vcsHost models.VCSHostType, output string) bool {
+func (t *TemplateResolver) shouldUseWrappedTmpl(output string) bool {
 	if t.DisableMarkdownFolding {
-		return false
-	}
-
-	// Bitbucket Cloud and Server don't support the folding markdown syntax.
-	if vcsHost == models.BitbucketServer || vcsHost == models.BitbucketCloud {
 		return false
 	}
 

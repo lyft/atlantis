@@ -1227,26 +1227,6 @@ func TestRenderProjectResults_WrappedErrorf(t *testing.T) {
 			Output:     strings.Repeat("line\n", 13),
 			ShouldWrap: true,
 		},
-		{
-			VCSHost:    models.BitbucketCloud,
-			Output:     strings.Repeat("line\n", 1),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketCloud,
-			Output:     strings.Repeat("line\n", 13),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketServer,
-			Output:     strings.Repeat("line\n", 1),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketServer,
-			Output:     strings.Repeat("line\n", 13),
-			ShouldWrap: false,
-		},
 	}
 
 	for _, c := range cases {
@@ -1314,26 +1294,6 @@ func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 			VCSHost:    models.Github,
 			Output:     strings.Repeat("line\n", 13) + "No changes. Infrastructure is up-to-date.",
 			ShouldWrap: true,
-		},
-		{
-			VCSHost:    models.BitbucketCloud,
-			Output:     strings.Repeat("line\n", 1),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketCloud,
-			Output:     strings.Repeat("line\n", 13),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketServer,
-			Output:     strings.Repeat("line\n", 1),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketServer,
-			Output:     strings.Repeat("line\n", 13),
-			ShouldWrap: false,
 		},
 	}
 

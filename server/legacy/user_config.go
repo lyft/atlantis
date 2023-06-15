@@ -19,10 +19,6 @@ const (
 type UserConfig struct {
 	AtlantisURL              string `mapstructure:"atlantis-url"`
 	AutoplanFileList         string `mapstructure:"autoplan-file-list"`
-	BitbucketBaseURL         string `mapstructure:"bitbucket-base-url"`
-	BitbucketToken           string `mapstructure:"bitbucket-token"`
-	BitbucketUser            string `mapstructure:"bitbucket-user"`
-	BitbucketWebhookSecret   string `mapstructure:"bitbucket-webhook-secret"`
 	CheckoutStrategy         string `mapstructure:"checkout-strategy"`
 	DataDir                  string `mapstructure:"data-dir"`
 	DisableApplyAll          bool   `mapstructure:"disable-apply-all"`

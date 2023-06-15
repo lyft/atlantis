@@ -16,13 +16,9 @@ package events_test
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/google/go-github/v45/github"
@@ -56,65 +52,6 @@ func TestPost_NotGitlab(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "", bytes.NewBuffer(nil))
 	e.Post(w, req)
 	ResponseContains(t, w, http.StatusBadRequest, "Ignoring request")
-}
-
-// Test Bitbucket server pull closed events.
-func TestPost_BBServerPullClosed(t *testing.T) {
-	cases := []struct {
-		header string
-	}{
-		{
-			"pr:deleted",
-		},
-		{
-			"pr:merged",
-		},
-		{
-			"pr:declined",
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.header, func(t *testing.T) {
-			RegisterMockTestingT(t)
-			allowlist, err := events.NewRepoAllowlistChecker("*")
-			Ok(t, err)
-			ctxLogger := logging.NewNoopCtxLogger(t)
-			scope, _, _ := metrics.NewLoggingScope(ctxLogger, "null")
-			ec := &events_controllers.VCSEventsController{
-				Parser: &events.EventParser{
-					BitbucketUser:      "bb-user",
-					BitbucketToken:     "bb-token",
-					BitbucketServerURL: "https://bbserver.com",
-				},
-				CommentEventHandler:  noopCommentHandler{},
-				PREventHandler:       noopPRHandler{},
-				RepoAllowlistChecker: allowlist,
-				SupportedVCSHosts:    []models.VCSHostType{models.BitbucketServer},
-				VCSClient:            nil,
-				Logger:               ctxLogger,
-				Scope:                scope,
-			}
-
-			// Build HTTP request.
-			requestBytes, err := os.ReadFile(filepath.Join("testfixtures", "bb-server-pull-deleted-event.json"))
-			// Replace the eventKey field with our event type.
-			requestJSON := strings.Replace(string(requestBytes), `"eventKey":"pr:deleted",`, fmt.Sprintf(`"eventKey":"%s",`, c.header), -1)
-			Ok(t, err)
-			req, err := http.NewRequest(http.MethodPost, "/events", bytes.NewBuffer([]byte(requestJSON)))
-			Ok(t, err)
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("X-Event-Key", c.header)
-			req.Header.Set("X-Request-ID", "request-id")
-
-			// Send the request.
-			w := httptest.NewRecorder()
-			ec.Post(w, req)
-
-			// Make our assertions.
-			ResponseContains(t, w, 200, "Processing...")
-		})
-	}
 }
 
 //nolint:unparam

@@ -388,7 +388,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 
 	// Set real dependencies here.
 	// TODO: aggregate some of this with that of server.go to minimize duplication
-	vcsClient := vcs.NewClientProxy(ghClient, nil, nil)
+	vcsClient := vcs.NewClientProxy(ghClient)
 	e2eStatusUpdater := &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: "atlantis"}}
 
 	eventParser := &events.EventParser{
@@ -749,7 +749,7 @@ func setupE2E(t *testing.T, repoFixtureDir string, userConfig *server.UserConfig
 		Parser:               eventParser,
 		CommentParser:        commentParser,
 		RepoAllowlistChecker: repoAllowlistChecker,
-		SupportedVCSHosts:    []models.VCSHostType{models.Github, models.BitbucketCloud},
+		SupportedVCSHosts:    []models.VCSHostType{models.Github},
 		VCSClient:            vcsClient,
 	}
 	return headSHA, ctrl

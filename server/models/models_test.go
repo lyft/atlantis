@@ -41,32 +41,6 @@ func TestNewRepo_CloneURLWrongRepo(t *testing.T) {
 	ErrEquals(t, `expected clone url to have path "/owner/repo.git" but had "/notowner/repo.git"`, err)
 }
 
-// For bitbucket server we don't validate the clone URL because the callers
-// are actually constructing it.
-func TestNewRepo_CloneURLBitbucketServer(t *testing.T) {
-	repo, err := models.NewRepo(models.BitbucketServer, "owner/repo", "http://mycorp.com:7990/scm/at/atlantis-example.git", "u", "p")
-	Ok(t, err)
-	Equals(t, models.Repo{
-		FullName:          "owner/repo",
-		Owner:             "owner",
-		Name:              "repo",
-		CloneURL:          "http://u:p@mycorp.com:7990/scm/at/atlantis-example.git",
-		SanitizedCloneURL: "http://u:<redacted>@mycorp.com:7990/scm/at/atlantis-example.git",
-		VCSHost: models.VCSHost{
-			Hostname: "mycorp.com",
-			Type:     models.BitbucketServer,
-		},
-	}, repo)
-}
-
-// If the clone URL contains a space, NewRepo() should encode it
-func TestNewRepo_CloneURLContainsSpace(t *testing.T) {
-	repo, err := models.NewRepo(models.BitbucketCloud, "owner/repo space", "https://bitbucket.org/owner/repo space", "u", "p")
-	Ok(t, err)
-	Equals(t, repo.CloneURL, "https://u:p@bitbucket.org/owner/repo%20space.git")
-	Equals(t, repo.SanitizedCloneURL, "https://u:<redacted>@bitbucket.org/owner/repo%20space.git")
-}
-
 func TestNewRepo_FullNameWrongFormat(t *testing.T) {
 	cases := []struct {
 		repoFullName string
@@ -178,14 +152,6 @@ func TestVCSHostType_ToString(t *testing.T) {
 		{
 			models.Github,
 			"Github",
-		},
-		{
-			models.BitbucketCloud,
-			"BitbucketCloud",
-		},
-		{
-			models.BitbucketServer,
-			"BitbucketServer",
 		},
 	}
 

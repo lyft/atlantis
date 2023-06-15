@@ -15,7 +15,6 @@ package cmd
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +25,6 @@ import (
 	"github.com/pkg/errors"
 	server "github.com/runatlantis/atlantis/server/legacy"
 	"github.com/runatlantis/atlantis/server/legacy/events"
-	"github.com/runatlantis/atlantis/server/legacy/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -40,10 +38,6 @@ const (
 	// Flag names.
 	AtlantisURLFlag            = "atlantis-url"
 	AutoplanFileListFlag       = "autoplan-file-list"
-	BitbucketBaseURLFlag       = "bitbucket-base-url"
-	BitbucketTokenFlag         = "bitbucket-token"
-	BitbucketUserFlag          = "bitbucket-user"
-	BitbucketWebhookSecretFlag = "bitbucket-webhook-secret"
 	ConfigFlag                 = "config"
 	CheckoutStrategyFlag       = "checkout-strategy"
 	DataDirFlag                = "data-dir"
@@ -96,7 +90,6 @@ const (
 	DefaultAutoplanFileList       = "**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl"
 	DefaultCheckoutStrategy       = "branch"
 	DefaultCheckrunDetailsURLFlag = "default-checkrun-details-url"
-	DefaultBitbucketBaseURL       = bitbucketcloud.BaseURL
 	DefaultDataDir                = "~/.atlantis"
 	DefaultGHHostname             = "github.com"
 	DefaultLogLevel               = "info"
@@ -117,24 +110,6 @@ var stringFlags = map[string]stringFlag{
 			" Use single quotes to avoid shell expansion of '*'. Defaults to '" + DefaultAutoplanFileList + "'." +
 			" A custom Workflow that uses autoplan 'when_modified' will ignore this value.",
 		defaultValue: DefaultAutoplanFileList,
-	},
-	BitbucketUserFlag: {
-		description: "Bitbucket username of API user.",
-	},
-	BitbucketTokenFlag: {
-		description: "Bitbucket app password of API user. Can also be specified via the ATLANTIS_BITBUCKET_TOKEN environment variable.",
-	},
-	BitbucketBaseURLFlag: {
-		description: "Base URL of Bitbucket Server (aka Stash) installation." +
-			" Must include 'http://' or 'https://'." +
-			" If using Bitbucket Cloud (bitbucket.org), do not set.",
-		defaultValue: DefaultBitbucketBaseURL,
-	},
-	BitbucketWebhookSecretFlag: {
-		description: "Secret used to validate Bitbucket webhooks. Only Bitbucket Server supports webhook secrets." +
-			" SECURITY WARNING: If not specified, Atlantis won't be able to validate that the incoming webhook call came from Bitbucket. " +
-			"This means that an attacker could spoof calls to Atlantis and cause it to perform malicious actions. " +
-			"Should be specified via the ATLANTIS_BITBUCKET_WEBHOOK_SECRET environment variable.",
 	},
 	CheckoutStrategyFlag: {
 		description: "How to check out pull requests. Accepts either 'branch' (default) or 'merge'." +
@@ -216,8 +191,7 @@ var stringFlags = map[string]stringFlag{
 	RepoAllowlistFlag: {
 		description: "Comma separated list of repositories that Atlantis will operate on. " +
 			"The format is {hostname}/{owner}/{repo}, ex. github.com/runatlantis/atlantis. '*' matches any characters until the next comma. Examples: " +
-			"all repos: '*' (not secure), an entire hostname: 'internalgithub.com/*' or an organization: 'github.com/runatlantis/*'." +
-			" For Bitbucket Server, {owner} is the name of the project (not the key).",
+			"all repos: '*' (not secure), an entire hostname: 'internalgithub.com/*' or an organization: 'github.com/runatlantis/*'.",
 	},
 	RepoWhitelistFlag: {
 		description: "[Deprecated for --repo-allowlist].",
@@ -575,9 +549,6 @@ func (s *ServerCmd) setDefaults(c *server.UserConfig) {
 	if c.GithubHostname == "" {
 		c.GithubHostname = DefaultGHHostname
 	}
-	if c.BitbucketBaseURL == "" {
-		c.BitbucketBaseURL = DefaultBitbucketBaseURL
-	}
 	if c.LogLevel == "" {
 		c.LogLevel = DefaultLogLevel
 	}
@@ -619,10 +590,9 @@ func (s *ServerCmd) validate(userConfig server.UserConfig, logger logging.Logger
 	// The following combinations are valid.
 	// 1. github user and token set
 	// 2. github app ID and (key file set or key set)
-	// 3. bitbucket user and token set
-	// 4. any combination of the above
-	vcsErr := fmt.Errorf("--%s/--%s or --%s/--%s or --%s/--%s or --%s/--%s must be set", GHUserFlag, GHTokenFlag, GHAppIDFlag, GHAppKeyFileFlag, GHAppIDFlag, GHAppKeyFlag, BitbucketUserFlag, BitbucketTokenFlag)
-	if ((userConfig.GithubUser == "") != (userConfig.GithubToken == "")) || ((userConfig.BitbucketUser == "") != (userConfig.BitbucketToken == "")) {
+	// 3. any combination of the above
+	vcsErr := fmt.Errorf("--%s/--%s or --%s/--%s or --%s/--%s must be set", GHUserFlag, GHTokenFlag, GHAppIDFlag, GHAppKeyFileFlag, GHAppIDFlag, GHAppKeyFlag)
+	if (userConfig.GithubUser == "") != (userConfig.GithubToken == "") {
 		return vcsErr
 	}
 	if (userConfig.GithubAppID != 0) && ((userConfig.GithubAppKey == "") && (userConfig.GithubAppKeyFile == "")) {
@@ -633,7 +603,7 @@ func (s *ServerCmd) validate(userConfig server.UserConfig, logger logging.Logger
 	}
 	// At this point, we know that there can't be a single user/token without
 	// its partner, but we haven't checked if any user/token is set at all.
-	if userConfig.GithubAppID == 0 && userConfig.GithubUser == "" && userConfig.BitbucketUser == "" {
+	if userConfig.GithubAppID == 0 && userConfig.GithubUser == "" {
 		return vcsErr
 	}
 
@@ -650,29 +620,14 @@ func (s *ServerCmd) validate(userConfig server.UserConfig, logger logging.Logger
 	if strings.Contains(userConfig.RepoAllowlist, "://") {
 		return fmt.Errorf("--%s cannot contain ://, should be hostnames only", RepoAllowlistFlag)
 	}
-
-	if userConfig.BitbucketBaseURL == DefaultBitbucketBaseURL && userConfig.BitbucketWebhookSecret != "" {
-		return fmt.Errorf("--%s cannot be specified for Bitbucket Cloud because it is not supported by Bitbucket", BitbucketWebhookSecretFlag)
-	}
-
-	parsed, err := url.Parse(userConfig.BitbucketBaseURL)
-	if err != nil {
-		return fmt.Errorf("error parsing --%s flag value %q: %s", BitbucketWebhookSecretFlag, userConfig.BitbucketBaseURL, err)
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return fmt.Errorf("--%s must have http:// or https://, got %q", BitbucketBaseURLFlag, userConfig.BitbucketBaseURL)
-	}
-
 	if userConfig.RepoConfig != "" && userConfig.RepoConfigJSON != "" {
 		return fmt.Errorf("cannot use --%s and --%s at the same time", RepoConfigFlag, RepoConfigJSONFlag)
 	}
 
 	// Warn if any tokens have newlines.
 	for name, token := range map[string]string{
-		GHTokenFlag:                userConfig.GithubToken,
-		GHWebhookSecretFlag:        userConfig.GithubWebhookSecret,
-		BitbucketTokenFlag:         userConfig.BitbucketToken,
-		BitbucketWebhookSecretFlag: userConfig.BitbucketWebhookSecret,
+		GHTokenFlag:         userConfig.GithubToken,
+		GHWebhookSecretFlag: userConfig.GithubWebhookSecret,
 	} {
 		if strings.Contains(token, "\n") {
 			logger.Warn(fmt.Sprintf("--%s contains a newline which is usually unintentional", name))
@@ -726,18 +681,11 @@ func (s *ServerCmd) setDataDir(userConfig *server.UserConfig) error {
 // trimAtSymbolFromUsers trims @ from the front of the github
 func (s *ServerCmd) trimAtSymbolFromUsers(userConfig *server.UserConfig) {
 	userConfig.GithubUser = strings.TrimPrefix(userConfig.GithubUser, "@")
-	userConfig.BitbucketUser = strings.TrimPrefix(userConfig.BitbucketUser, "@")
 }
 
 func (s *ServerCmd) securityWarnings(userConfig *server.UserConfig, logger logging.Logger) {
 	if userConfig.GithubUser != "" && userConfig.GithubWebhookSecret == "" && !s.SilenceOutput {
 		logger.Warn("no GitHub webhook secret set. This could allow attackers to spoof requests from GitHub")
-	}
-	if userConfig.BitbucketUser != "" && userConfig.BitbucketBaseURL != DefaultBitbucketBaseURL && userConfig.BitbucketWebhookSecret == "" && !s.SilenceOutput {
-		logger.Warn("no Bitbucket webhook secret set. This could allow attackers to spoof requests from Bitbucket")
-	}
-	if userConfig.BitbucketUser != "" && userConfig.BitbucketBaseURL == DefaultBitbucketBaseURL && !s.SilenceOutput {
-		logger.Warn("Bitbucket Cloud does not support webhook secrets. This could allow attackers to spoof requests from Bitbucket. Ensure you are allowing only Bitbucket IPs")
 	}
 }
 

@@ -78,7 +78,6 @@ type CommentBuilder interface {
 // CommentParser implements CommentParsing
 type CommentParser struct {
 	GithubUser    string
-	BitbucketUser string
 	ApplyDisabled bool
 }
 
@@ -132,8 +131,6 @@ func (e *CommentParser) Parse(comment string, vcsHost models.VCSHostType) Commen
 	switch vcsHost {
 	case models.Github:
 		vcsUser = e.GithubUser
-	case models.BitbucketCloud, models.BitbucketServer:
-		vcsUser = e.BitbucketUser
 	}
 	executableNames := []string{"run", atlantisExecutable, "@" + vcsUser}
 	if !e.stringInSlice(args[0], executableNames) {
