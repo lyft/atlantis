@@ -1,15 +1,16 @@
 package markdown_test
 
 import (
-	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
-	"github.com/runatlantis/atlantis/server/vcs/markdown"
-	"github.com/stretchr/testify/assert"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/legacy/events/command"
+	"github.com/runatlantis/atlantis/server/legacy/events/terraform/filter"
+	"github.com/runatlantis/atlantis/server/models"
+	"github.com/runatlantis/atlantis/server/vcs/markdown"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRenderer_RenderProject_Filter(t *testing.T) {

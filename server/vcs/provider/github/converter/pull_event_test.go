@@ -2,13 +2,14 @@ package converter_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/runatlantis/atlantis/server/vcs"
 	"github.com/stretchr/testify/assert"
-	"testing"
 
 	"github.com/google/go-github/v45/github"
 	"github.com/mohae/deepcopy"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	. "github.com/runatlantis/atlantis/testing"
 )

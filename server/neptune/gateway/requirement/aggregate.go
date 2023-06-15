@@ -3,7 +3,7 @@ package requirement
 import (
 	"context"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/template"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"

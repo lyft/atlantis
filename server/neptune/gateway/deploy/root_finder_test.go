@@ -15,13 +15,14 @@ package deploy_test
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	. "github.com/runatlantis/atlantis/testing"
 )

@@ -2,12 +2,13 @@ package deploy
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/logging"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/logging"
+
+	"github.com/runatlantis/atlantis/server/config/valid"
 
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/pkg/errors"

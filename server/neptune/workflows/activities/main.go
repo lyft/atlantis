@@ -1,17 +1,18 @@
 package activities
 
 import (
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
+
 	"github.com/hashicorp/go-version"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/core/runtime/cache"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/legacy/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/neptune/storage"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"

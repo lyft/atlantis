@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-github/v45/github"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/valid"
 	"golang.org/x/oauth2"
 )
 

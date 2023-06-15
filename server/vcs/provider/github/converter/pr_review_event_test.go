@@ -1,12 +1,13 @@
 package converter_test
 
 import (
-	"github.com/runatlantis/atlantis/server/vcs"
 	"testing"
 	"time"
 
+	"github.com/runatlantis/atlantis/server/vcs"
+
 	"github.com/google/go-github/v45/github"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/stretchr/testify/assert"

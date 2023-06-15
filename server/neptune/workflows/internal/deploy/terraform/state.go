@@ -2,7 +2,7 @@ package terraform
 
 import (
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/events/metrics"
+	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"

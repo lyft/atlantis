@@ -9,8 +9,8 @@ import (
 	_ "embed" // embedding files
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/models"
 )
 
 type Key string

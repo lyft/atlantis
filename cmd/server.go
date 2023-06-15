@@ -24,15 +24,10 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server"
-	cfgParser "github.com/runatlantis/atlantis/server/core/config"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events"
-	"github.com/runatlantis/atlantis/server/events/vcs/bitbucketcloud"
+	server "github.com/runatlantis/atlantis/server/legacy"
+	"github.com/runatlantis/atlantis/server/legacy/events"
+	"github.com/runatlantis/atlantis/server/legacy/events/vcs/bitbucketcloud"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/gateway"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker"
-	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -76,10 +71,6 @@ const (
 	GHAppSlugFlag              = "gh-app-slug"
 	GHOrganizationFlag         = "gh-org"
 	GHWebhookSecretFlag        = "gh-webhook-secret" // nolint: gosec
-	GitlabHostnameFlag         = "gitlab-hostname"
-	GitlabTokenFlag            = "gitlab-token"
-	GitlabUserFlag             = "gitlab-user"
-	GitlabWebhookSecretFlag    = "gitlab-webhook-secret" // nolint: gosec
 	HidePrevPlanComments       = "hide-prev-plan-comments"
 	LogLevelFlag               = "log-level"
 	ParallelPoolSize           = "parallel-pool-size"
@@ -112,7 +103,6 @@ const (
 	DefaultBitbucketBaseURL       = bitbucketcloud.BaseURL
 	DefaultDataDir                = "~/.atlantis"
 	DefaultGHHostname             = "github.com"
-	DefaultGitlabHostname         = "gitlab.com"
 	DefaultLogLevel               = "info"
 	DefaultParallelPoolSize       = 15
 	DefaultStatsNamespace         = "atlantis"
@@ -231,22 +221,6 @@ var stringFlags = map[string]stringFlag{
 			"This means that an attacker could spoof calls to Atlantis and cause it to perform malicious actions. " +
 			"Should be specified via the ATLANTIS_GH_WEBHOOK_SECRET environment variable.",
 	},
-	GitlabHostnameFlag: {
-		description:  "Hostname of your GitLab Enterprise installation. If using gitlab.com, no need to set.",
-		defaultValue: DefaultGitlabHostname,
-	},
-	GitlabUserFlag: {
-		description: "GitLab username of API user.",
-	},
-	GitlabTokenFlag: {
-		description: "GitLab token of API user. Can also be specified via the ATLANTIS_GITLAB_TOKEN environment variable.",
-	},
-	GitlabWebhookSecretFlag: {
-		description: "Optional secret used to validate GitLab webhooks." +
-			" SECURITY WARNING: If not specified, Atlantis won't be able to validate that the incoming webhook call came from GitLab. " +
-			"This means that an attacker could spoof calls to Atlantis and cause it to perform malicious actions. " +
-			"Should be specified via the ATLANTIS_GITLAB_WEBHOOK_SECRET environment variable.",
-	},
 	LogLevelFlag: {
 		description:  "Log level. Either debug, info, warn, or error.",
 		defaultValue: DefaultLogLevel,
@@ -354,6 +328,7 @@ var boolFlags = map[string]boolFlag{
 		defaultValue: false,
 	},
 }
+
 var intFlags = map[string]intFlag{
 	ParallelPoolSize: {
 		description:  "Max size of the wait group that runs parallel plans and applies (if enabled).",
@@ -435,119 +410,11 @@ type ServerCreator interface {
 	NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error)
 }
 
-type GatewayCreator struct{}
-
-func (c *GatewayCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
-	// For now we just plumb this data through, ideally though we'd have gateway config pretty isolated
-	// from worker config however this requires more refactoring and can be done later.
-	appConfig, err := createGHAppConfig(userConfig)
-	if err != nil {
-		return nil, err
-	}
-	cfg := gateway.Config{
-		DataDir:                   userConfig.DataDir,
-		AutoplanFileList:          userConfig.AutoplanFileList,
-		AppCfg:                    appConfig,
-		RepoAllowList:             userConfig.RepoAllowlist,
-		MaxProjectsPerPR:          userConfig.MaxProjectsPerPR,
-		FFOwner:                   userConfig.FFOwner,
-		FFRepo:                    userConfig.FFRepo,
-		FFBranch:                  userConfig.FFBranch,
-		FFPath:                    userConfig.FFPath,
-		GithubHostname:            userConfig.GithubHostname,
-		GithubWebhookSecret:       userConfig.GithubWebhookSecret,
-		GithubAppID:               userConfig.GithubAppID,
-		GithubAppKeyFile:          userConfig.GithubAppKeyFile,
-		GithubAppSlug:             userConfig.GithubAppSlug,
-		GithubStatusName:          userConfig.VCSStatusName,
-		LogLevel:                  userConfig.ToLogLevel(),
-		StatsNamespace:            userConfig.StatsNamespace,
-		Port:                      userConfig.Port,
-		RepoConfig:                userConfig.RepoConfig,
-		TFDownloadURL:             userConfig.TFDownloadURL,
-		SNSTopicArn:               userConfig.LyftGatewaySnsTopicArn,
-		SSLKeyFile:                userConfig.SSLKeyFile,
-		SSLCertFile:               userConfig.SSLCertFile,
-		DefaultCheckrunDetailsURL: userConfig.DefaultCheckrunDetailsURL,
-		DefaultTFVersion:          userConfig.DefaultTFVersion,
-	}
-	return gateway.NewServer(cfg)
-}
-
 type WorkerCreator struct{}
 
 // NewServer returns the real Atlantis server object.
 func (d *WorkerCreator) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
 	return server.NewServer(userConfig, config)
-}
-
-type TemporalWorker struct{}
-
-// NewServer returns the real Atlantis server object.
-func (t *TemporalWorker) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
-	ctxLogger, err := logging.NewLoggerFromLevel(userConfig.ToLogLevel())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build context logger")
-	}
-
-	globalCfg := valid.NewGlobalCfg(userConfig.DataDir)
-	validator := &cfgParser.ParserValidator{}
-	if userConfig.RepoConfig != "" {
-		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
-		if err != nil {
-			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
-		}
-	}
-	parsedURL, err := server.ParseAtlantisURL(userConfig.AtlantisURL)
-	if err != nil {
-		return nil, errors.Wrapf(err,
-			"parsing atlantis url %q", userConfig.AtlantisURL)
-	}
-
-	// TODO: we should just supply a yaml file with this info and load it directly into the
-	// app config struct
-	appConfig, err := createGHAppConfig(userConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := &neptune.Config{
-		AuthCfg: neptune.AuthConfig{
-			SslCertFile: userConfig.SSLCertFile,
-			SslKeyFile:  userConfig.SSLKeyFile,
-		},
-		ServerCfg: neptune.ServerConfig{
-			URL:     parsedURL,
-			Version: config.AtlantisVersion,
-			Port:    userConfig.Port,
-		},
-		FeatureConfig: neptune.FeatureConfig{
-			FFOwner:  userConfig.FFOwner,
-			FFRepo:   userConfig.FFRepo,
-			FFPath:   userConfig.FFPath,
-			FFBranch: userConfig.FFBranch,
-		},
-		TerraformCfg: neptune.TerraformConfig{
-			DefaultVersion: userConfig.DefaultTFVersion,
-			DownloadURL:    userConfig.TFDownloadURL,
-			LogFilters:     globalCfg.TerraformLogFilter,
-		},
-		ValidationConfig: neptune.ValidationConfig{
-			DefaultVersion: globalCfg.PolicySets.Version,
-			Policies:       globalCfg.PolicySets,
-		},
-		JobConfig:                globalCfg.PersistenceConfig.Jobs,
-		DeploymentConfig:         globalCfg.PersistenceConfig.Deployments,
-		DataDir:                  userConfig.DataDir,
-		TemporalCfg:              globalCfg.Temporal,
-		App:                      appConfig,
-		CtxLogger:                ctxLogger,
-		StatsNamespace:           userConfig.StatsNamespace,
-		Metrics:                  globalCfg.Metrics,
-		LyftAuditJobsSnsTopicArn: userConfig.LyftAuditJobsSnsTopicArn,
-		RevisionSetter:           globalCfg.RevisionSetter,
-	}
-	return temporalworker.NewServer(cfg)
 }
 
 // ServerCreatorProxy creates the correct server based on the mode passed in through user config
@@ -559,7 +426,7 @@ type ServerCreatorProxy struct {
 
 func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
 	// maybe there's somewhere better to do this
-	if err := os.MkdirAll(userConfig.DataDir, 0700); err != nil {
+	if err := os.MkdirAll(userConfig.DataDir, 0o700); err != nil {
 		return nil, err
 	}
 	if userConfig.ToLyftMode() == server.Gateway {
@@ -674,7 +541,6 @@ func (s *ServerCmd) run() error {
 	s.setDefaults(&userConfig)
 
 	logger, err := logging.NewLoggerFromLevel(userConfig.ToLogLevel())
-
 	if err != nil {
 		return errors.Wrap(err, "initializing logger")
 	}
@@ -731,9 +597,6 @@ func (s *ServerCmd) setDefaults(c *server.UserConfig) {
 	if c.GithubHostname == "" {
 		c.GithubHostname = DefaultGHHostname
 	}
-	if c.GitlabHostname == "" {
-		c.GitlabHostname = DefaultGitlabHostname
-	}
 	if c.BitbucketBaseURL == "" {
 		c.BitbucketBaseURL = DefaultBitbucketBaseURL
 	}
@@ -778,12 +641,11 @@ func (s *ServerCmd) validate(userConfig server.UserConfig, logger logging.Logger
 	// The following combinations are valid.
 	// 1. github user and token set
 	// 2. github app ID and (key file set or key set)
-	// 3. gitlab user and token set
-	// 4. bitbucket user and token set
-	// 5. azuredevops user and token set
-	// 6. any combination of the above
-	vcsErr := fmt.Errorf("--%s/--%s or --%s/--%s or --%s/--%s or --%s/--%s or --%s/--%s or --%s/--%s must be set", GHUserFlag, GHTokenFlag, GHAppIDFlag, GHAppKeyFileFlag, GHAppIDFlag, GHAppKeyFlag, GitlabUserFlag, GitlabTokenFlag, BitbucketUserFlag, BitbucketTokenFlag, ADUserFlag, ADTokenFlag)
-	if ((userConfig.GithubUser == "") != (userConfig.GithubToken == "")) || ((userConfig.GitlabUser == "") != (userConfig.GitlabToken == "")) || ((userConfig.BitbucketUser == "") != (userConfig.BitbucketToken == "")) || ((userConfig.AzureDevopsUser == "") != (userConfig.AzureDevopsToken == "")) {
+	// 3. bitbucket user and token set
+	// 4. azuredevops user and token set
+	// 5. any combination of the above
+	vcsErr := fmt.Errorf("--%s/--%s or --%s/--%s or --%s/--%s or --%s/--%s or --%s/--%s must be set", GHUserFlag, GHTokenFlag, GHAppIDFlag, GHAppKeyFileFlag, GHAppIDFlag, GHAppKeyFlag, BitbucketUserFlag, BitbucketTokenFlag, ADUserFlag, ADTokenFlag)
+	if ((userConfig.GithubUser == "") != (userConfig.GithubToken == "")) || ((userConfig.BitbucketUser == "") != (userConfig.BitbucketToken == "")) || ((userConfig.AzureDevopsUser == "") != (userConfig.AzureDevopsToken == "")) {
 		return vcsErr
 	}
 	if (userConfig.GithubAppID != 0) && ((userConfig.GithubAppKey == "") && (userConfig.GithubAppKeyFile == "")) {
@@ -794,7 +656,7 @@ func (s *ServerCmd) validate(userConfig server.UserConfig, logger logging.Logger
 	}
 	// At this point, we know that there can't be a single user/token without
 	// its partner, but we haven't checked if any user/token is set at all.
-	if userConfig.GithubAppID == 0 && userConfig.GithubUser == "" && userConfig.GitlabUser == "" && userConfig.BitbucketUser == "" && userConfig.AzureDevopsUser == "" {
+	if userConfig.GithubAppID == 0 && userConfig.GithubUser == "" && userConfig.BitbucketUser == "" && userConfig.AzureDevopsUser == "" {
 		return vcsErr
 	}
 
@@ -832,8 +694,6 @@ func (s *ServerCmd) validate(userConfig server.UserConfig, logger logging.Logger
 	for name, token := range map[string]string{
 		GHTokenFlag:                userConfig.GithubToken,
 		GHWebhookSecretFlag:        userConfig.GithubWebhookSecret,
-		GitlabTokenFlag:            userConfig.GitlabToken,
-		GitlabWebhookSecretFlag:    userConfig.GitlabWebhookSecret,
 		BitbucketTokenFlag:         userConfig.BitbucketToken,
 		BitbucketWebhookSecretFlag: userConfig.BitbucketWebhookSecret,
 	} {
@@ -886,10 +746,9 @@ func (s *ServerCmd) setDataDir(userConfig *server.UserConfig) error {
 	return nil
 }
 
-// trimAtSymbolFromUsers trims @ from the front of the github and gitlab usernames
+// trimAtSymbolFromUsers trims @ from the front of the github
 func (s *ServerCmd) trimAtSymbolFromUsers(userConfig *server.UserConfig) {
 	userConfig.GithubUser = strings.TrimPrefix(userConfig.GithubUser, "@")
-	userConfig.GitlabUser = strings.TrimPrefix(userConfig.GitlabUser, "@")
 	userConfig.BitbucketUser = strings.TrimPrefix(userConfig.BitbucketUser, "@")
 	userConfig.AzureDevopsUser = strings.TrimPrefix(userConfig.AzureDevopsUser, "@")
 }
@@ -897,9 +756,6 @@ func (s *ServerCmd) trimAtSymbolFromUsers(userConfig *server.UserConfig) {
 func (s *ServerCmd) securityWarnings(userConfig *server.UserConfig, logger logging.Logger) {
 	if userConfig.GithubUser != "" && userConfig.GithubWebhookSecret == "" && !s.SilenceOutput {
 		logger.Warn("no GitHub webhook secret set. This could allow attackers to spoof requests from GitHub")
-	}
-	if userConfig.GitlabUser != "" && userConfig.GitlabWebhookSecret == "" && !s.SilenceOutput {
-		logger.Warn("no GitLab webhook secret set. This could allow attackers to spoof requests from GitLab")
 	}
 	if userConfig.BitbucketUser != "" && userConfig.BitbucketBaseURL != DefaultBitbucketBaseURL && userConfig.BitbucketWebhookSecret == "" && !s.SilenceOutput {
 		logger.Warn("no Bitbucket webhook secret set. This could allow attackers to spoof requests from Bitbucket")
@@ -994,7 +850,7 @@ func createGHAppConfig(userConfig server.UserConfig) (githubapp.Config, error) {
 			PrivateKey:    string(privateKey),
 		},
 
-		//TODO: parameterize this
+		// TODO: parameterize this
 		WebURL:   "https://github.com",
 		V3APIURL: "https://api.github.com",
 		V4APIURL: "https://api.github.com/graphql",
