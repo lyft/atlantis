@@ -52,10 +52,6 @@ func (s *ServerStarterMock) Start() error {
 // Adding a new flag? Add it to this slice for testing in alphabetical
 // order.
 var testFlags = map[string]interface{}{
-	ADTokenFlag:                  "ad-token",
-	ADUserFlag:                   "ad-user",
-	ADWebhookPasswordFlag:        "ad-wh-pass",
-	ADWebhookUserFlag:            "ad-wh-user",
 	AtlantisURLFlag:              "url",
 	AutoplanFileListFlag:         "**/*.tf,**/*.yml",
 	BitbucketBaseURLFlag:         "https://bitbucket-base-url.com",
@@ -352,7 +348,7 @@ func TestExecute_ValidateSSLConfig(t *testing.T) {
 }
 
 func TestExecute_ValidateVCSConfig(t *testing.T) {
-	expErr := "--gh-user/--gh-token or --gh-app-id/--gh-app-key-file or --gh-app-id/--gh-app-key or --bitbucket-user/--bitbucket-token or --azuredevops-user/--azuredevops-token must be set"
+	expErr := "--gh-user/--gh-token or --gh-app-id/--gh-app-key-file or --gh-app-id/--gh-app-key or --bitbucket-user/--bitbucket-token must be set"
 	cases := []struct {
 		description string
 		flags       map[string]interface{}
@@ -374,13 +370,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			"just bitbucket token set",
 			map[string]interface{}{
 				BitbucketTokenFlag: "token",
-			},
-			true,
-		},
-		{
-			"just azuredevops token set",
-			map[string]interface{}{
-				ADTokenFlag: "token",
 			},
 			true,
 		},
@@ -420,13 +409,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			true,
 		},
 		{
-			"just azuredevops user set",
-			map[string]interface{}{
-				ADUserFlag: "user",
-			},
-			true,
-		},
-		{
 			"github user and bitbucket token set",
 			map[string]interface{}{
 				GHUserFlag:         "user",
@@ -459,22 +441,12 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			false,
 		},
 		{
-			"azuredevops user and azuredevops token set and should be successful",
-			map[string]interface{}{
-				ADUserFlag:  "user",
-				ADTokenFlag: "token",
-			},
-			false,
-		},
-		{
 			"all set should be successful",
 			map[string]interface{}{
 				GHUserFlag:         "user",
 				GHTokenFlag:        "token",
 				BitbucketUserFlag:  "user",
 				BitbucketTokenFlag: "token",
-				ADUserFlag:         "user",
-				ADTokenFlag:        "token",
 			},
 			false,
 		},
@@ -562,19 +534,6 @@ func TestExecute_BitbucketUser(t *testing.T) {
 	Ok(t, err)
 
 	Equals(t, "user", passedConfig.BitbucketUser)
-}
-
-func TestExecute_ADUser(t *testing.T) {
-	t.Log("Should remove the @ from the azure devops username if it's passed.")
-	c := setup(map[string]interface{}{
-		ADUserFlag:        "@user",
-		ADTokenFlag:       "token",
-		RepoAllowlistFlag: "*",
-	}, t)
-	err := c.Execute()
-	Ok(t, err)
-
-	Equals(t, "user", passedConfig.AzureDevopsUser)
 }
 
 // If using bitbucket cloud, webhook secrets are not supported.

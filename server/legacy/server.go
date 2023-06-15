@@ -179,7 +179,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var githubCredentials vcs.GithubCredentials
 	var bitbucketCloudClient *bitbucketcloud.Client
 	var bitbucketServerClient *bitbucketserver.Client
-	var azuredevopsClient *vcs.AzureDevopsClient
 	var featureAllocator feature.Allocator
 
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(userConfig.VCSStatusName)
@@ -304,14 +303,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 			}
 		}
 	}
-	if userConfig.AzureDevopsUser != "" {
-		supportedVCSHosts = append(supportedVCSHosts, models.AzureDevops)
-		var err error
-		azuredevopsClient, err = vcs.NewAzureDevopsClient("dev.azure.com", userConfig.AzureDevopsUser, userConfig.AzureDevopsToken)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	if userConfig.WriteGitCreds {
 		home, err := homedir.Dir()
@@ -334,11 +325,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 				return nil, err
 			}
 		}
-		if userConfig.AzureDevopsUser != "" {
-			if err := github.WriteGitCreds(userConfig.AzureDevopsUser, userConfig.AzureDevopsToken, "dev.azure.com", home, ctxLogger, false); err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	var webhooksConfig []webhooks.Config
@@ -355,7 +341,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing webhooks")
 	}
-	vcsClient := vcs.NewClientProxy(githubClient, bitbucketCloudClient, bitbucketServerClient, azuredevopsClient)
+	vcsClient := vcs.NewClientProxy(githubClient, bitbucketCloudClient, bitbucketServerClient)
 	vcsStatusUpdater := &command.VCSStatusUpdater{
 		Client: vcsClient,
 		TitleBuilder: vcs.StatusTitleBuilder{
@@ -500,14 +486,11 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		BitbucketUser:      userConfig.BitbucketUser,
 		BitbucketToken:     userConfig.BitbucketToken,
 		BitbucketServerURL: userConfig.BitbucketBaseURL,
-		AzureDevopsUser:    userConfig.AzureDevopsUser,
-		AzureDevopsToken:   userConfig.AzureDevopsToken,
 	}
 	commentParser := &events.CommentParser{
-		GithubUser:      userConfig.GithubUser,
-		BitbucketUser:   userConfig.BitbucketUser,
-		AzureDevopsUser: userConfig.AzureDevopsUser,
-		ApplyDisabled:   userConfig.DisableApply,
+		GithubUser:    userConfig.GithubUser,
+		BitbucketUser: userConfig.BitbucketUser,
+		ApplyDisabled: userConfig.DisableApply,
 	}
 	defaultTfVersion := terraformClient.DefaultVersion()
 	pendingPlanFinder := &events.DefaultPendingPlanFinder{}
@@ -919,13 +902,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		userConfig.DisableApply,
 		supportedVCSHosts,
 		[]byte(userConfig.BitbucketWebhookSecret),
-		[]byte(userConfig.AzureDevopsWebhookUser),
-		[]byte(userConfig.AzureDevopsWebhookPassword),
 		repoConverter,
 		pullConverter,
 		githubClient,
 		pullFetcher,
-		azuredevopsClient,
 	)
 
 	var vcsPostHandler sqs.VCSPostHandler

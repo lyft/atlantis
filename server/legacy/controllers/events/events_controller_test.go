@@ -28,7 +28,6 @@ import (
 	"github.com/google/go-github/v45/github"
 	. "github.com/petergtz/pegomock"
 	events_controllers "github.com/runatlantis/atlantis/server/legacy/controllers/events"
-	"github.com/runatlantis/atlantis/server/legacy/controllers/events/mocks"
 	"github.com/runatlantis/atlantis/server/legacy/events"
 	emocks "github.com/runatlantis/atlantis/server/legacy/events/mocks"
 	vcsmocks "github.com/runatlantis/atlantis/server/legacy/events/vcs/mocks"
@@ -121,7 +120,6 @@ func TestPost_BBServerPullClosed(t *testing.T) {
 //nolint:unparam
 func setup(t *testing.T) (events_controllers.VCSEventsController, *emocks.MockEventParsing, *emocks.MockPullCleaner, *vcsmocks.MockClient, *emocks.MockCommentParsing) {
 	RegisterMockTestingT(t)
-	azureDevopsMock := mocks.NewMockAzureDevopsPullGetter()
 	p := emocks.NewMockEventParsing()
 	cp := emocks.NewMockCommentParsing()
 	c := emocks.NewMockPullCleaner()
@@ -140,8 +138,6 @@ func setup(t *testing.T) (events_controllers.VCSEventsController, *emocks.MockEv
 		SupportedVCSHosts:    []models.VCSHostType{},
 		RepoAllowlistChecker: repoAllowlistChecker,
 		VCSClient:            vcsmock,
-
-		AzureDevopsPullGetter: azureDevopsMock,
 	}
 	return e, p, c, vcsmock, cp
 }

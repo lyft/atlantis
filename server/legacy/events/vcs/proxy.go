@@ -28,7 +28,7 @@ type ClientProxy struct {
 	clients map[models.VCSHostType]Client
 }
 
-func NewClientProxy(githubClient Client, bitbucketCloudClient Client, bitbucketServerClient Client, azuredevopsClient Client) *ClientProxy {
+func NewClientProxy(githubClient Client, bitbucketCloudClient Client, bitbucketServerClient Client) *ClientProxy {
 	if githubClient == nil {
 		githubClient = &NotConfiguredVCSClient{}
 	}
@@ -38,15 +38,11 @@ func NewClientProxy(githubClient Client, bitbucketCloudClient Client, bitbucketS
 	if bitbucketServerClient == nil {
 		bitbucketServerClient = &NotConfiguredVCSClient{}
 	}
-	if azuredevopsClient == nil {
-		azuredevopsClient = &NotConfiguredVCSClient{}
-	}
 	return &ClientProxy{
 		clients: map[models.VCSHostType]Client{
 			models.Github:          githubClient,
 			models.BitbucketCloud:  bitbucketCloudClient,
 			models.BitbucketServer: bitbucketServerClient,
-			models.AzureDevops:     azuredevopsClient,
 		},
 	}
 }
