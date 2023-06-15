@@ -103,7 +103,7 @@ type NeptuneWorkerProxy struct {
 
 func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg, request *http.BufferedRequest) error {
 	if cmd.Name == command.Apply {
-		return p.handleForceApplies(ctx, event, cmd, roots)
+		return p.handleApplies(ctx, event, cmd, roots)
 	}
 	// TODO: remove when we begin in-depth testing and rollout of pr mode
 	// feature allocator is only temporary while we continue building out implementation
@@ -136,7 +136,7 @@ func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *com
 	return nil
 }
 
-func (p *NeptuneWorkerProxy) handleForceApplies(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
+func (p *NeptuneWorkerProxy) handleApplies(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
 	triggerInfo := workflows.DeployTriggerInfo{
 		Type:  workflows.ManualTrigger,
 		Force: cmd.ForceApply,
