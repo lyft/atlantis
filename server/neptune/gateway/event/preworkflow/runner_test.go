@@ -3,12 +3,13 @@ package preworkflow_test
 import (
 	"context"
 	"errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/models/fixtures"
+	"testing"
+
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/models"
+	"github.com/runatlantis/atlantis/server/models/fixtures"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestRunPreHooks_Clone(t *testing.T) {

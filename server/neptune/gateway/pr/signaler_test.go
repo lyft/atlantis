@@ -2,13 +2,14 @@ package pr_test
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"testing"
+
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
-	"testing"
 )
 
 func TestWorkflowSignaler_SignalWithStartWorkflow_Success(t *testing.T) {

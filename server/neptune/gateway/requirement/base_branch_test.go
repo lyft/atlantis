@@ -2,11 +2,12 @@ package requirement
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/stretchr/testify/assert"
 	"regexp"
 	"testing"
+
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/models"
+	"github.com/stretchr/testify/assert"
 )
 
 var regex = regexp.MustCompile(`abc`)

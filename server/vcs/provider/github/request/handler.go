@@ -3,17 +3,18 @@ package request
 import (
 	"context"
 	"fmt"
-	"github.com/palantir/go-githubapp/githubapp"
-	"github.com/runatlantis/atlantis/server/http"
 
-	"github.com/runatlantis/atlantis/server/controllers/events/handlers"
+	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/runatlantis/atlantis/server/legacy/http"
+
+	"github.com/runatlantis/atlantis/server/legacy/controllers/events/handlers"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 
 	"github.com/google/go-github/v45/github"
-	"github.com/runatlantis/atlantis/server/controllers/events/errors"
-	"github.com/runatlantis/atlantis/server/events/metrics"
+	"github.com/runatlantis/atlantis/server/legacy/controllers/events/errors"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/uber-go/tally/v4"
 )

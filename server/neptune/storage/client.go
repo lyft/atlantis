@@ -8,7 +8,7 @@ import (
 
 	"github.com/graymeta/stow"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/valid"
 )
 
 type ContainerNotFoundError struct {

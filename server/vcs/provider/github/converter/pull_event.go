@@ -3,12 +3,13 @@ package converter
 import (
 	"context"
 	"fmt"
-	"github.com/palantir/go-githubapp/githubapp"
-	"github.com/pkg/errors"
 	"time"
 
+	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/pkg/errors"
+
 	"github.com/google/go-github/v45/github"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 )
 

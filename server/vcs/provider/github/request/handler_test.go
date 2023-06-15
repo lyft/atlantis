@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/google/go-github/v45/github"
-	"github.com/runatlantis/atlantis/server/controllers/events/errors"
-	"github.com/runatlantis/atlantis/server/events/models"
-	buffered "github.com/runatlantis/atlantis/server/http"
-	httputils "github.com/runatlantis/atlantis/server/http"
+	"github.com/runatlantis/atlantis/server/legacy/controllers/events/errors"
+	buffered "github.com/runatlantis/atlantis/server/legacy/http"
+	httputils "github.com/runatlantis/atlantis/server/legacy/http"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/stretchr/testify/assert"
 )

@@ -3,11 +3,12 @@ package pr
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"strconv"
+
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"go.temporal.io/sdk/client"
-	"strconv"
 )
 
 type signaler interface {

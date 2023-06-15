@@ -2,8 +2,6 @@ package workflows_test
 
 import (
 	"context"
-	"github.com/hashicorp/go-version"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"net/http"
 	"net/url"
 	"os"
@@ -11,14 +9,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-version"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
+
 	"github.com/google/go-github/v45/github"
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/local"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/raw"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/core/runtime/cache"
+	"github.com/runatlantis/atlantis/server/config/raw"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/legacy/core/runtime/cache"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"

@@ -1,7 +1,7 @@
 package converter
 
 import (
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
 

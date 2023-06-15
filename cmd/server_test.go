@@ -15,16 +15,17 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	homedir "github.com/mitchellh/go-homedir"
-	"github.com/runatlantis/atlantis/server"
-	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
+	server "github.com/runatlantis/atlantis/server/legacy"
+	"github.com/runatlantis/atlantis/server/legacy/events/vcs/fixtures"
 	. "github.com/runatlantis/atlantis/testing"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -75,10 +76,6 @@ var testFlags = map[string]interface{}{
 	GHAppSlugFlag:                "atlantis",
 	GHOrganizationFlag:           "",
 	GHWebhookSecretFlag:          "secret",
-	GitlabHostnameFlag:           "gitlab-hostname",
-	GitlabTokenFlag:              "gitlab-token",
-	GitlabUserFlag:               "gitlab-user",
-	GitlabWebhookSecretFlag:      "gitlab-secret",
 	LogLevelFlag:                 "debug",
 	StatsNamespace:               "atlantis",
 	AllowDraftPRs:                true,
@@ -355,7 +352,7 @@ func TestExecute_ValidateSSLConfig(t *testing.T) {
 }
 
 func TestExecute_ValidateVCSConfig(t *testing.T) {
-	expErr := "--gh-user/--gh-token or --gh-app-id/--gh-app-key-file or --gh-app-id/--gh-app-key or --gitlab-user/--gitlab-token or --bitbucket-user/--bitbucket-token or --azuredevops-user/--azuredevops-token must be set"
+	expErr := "--gh-user/--gh-token or --gh-app-id/--gh-app-key-file or --gh-app-id/--gh-app-key or --bitbucket-user/--bitbucket-token or --azuredevops-user/--azuredevops-token must be set"
 	cases := []struct {
 		description string
 		flags       map[string]interface{}
@@ -370,13 +367,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			"just github token set",
 			map[string]interface{}{
 				GHTokenFlag: "token",
-			},
-			true,
-		},
-		{
-			"just gitlab token set",
-			map[string]interface{}{
-				GitlabTokenFlag: "token",
 			},
 			true,
 		},
@@ -423,13 +413,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			true,
 		},
 		{
-			"just gitlab user set",
-			map[string]interface{}{
-				GitlabUserFlag: "user",
-			},
-			true,
-		},
-		{
 			"just bitbucket user set",
 			map[string]interface{}{
 				BitbucketUserFlag: "user",
@@ -440,22 +423,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			"just azuredevops user set",
 			map[string]interface{}{
 				ADUserFlag: "user",
-			},
-			true,
-		},
-		{
-			"github user and gitlab token set",
-			map[string]interface{}{
-				GHUserFlag:      "user",
-				GitlabTokenFlag: "token",
-			},
-			true,
-		},
-		{
-			"gitlab user and github token set",
-			map[string]interface{}{
-				GitlabUserFlag: "user",
-				GHTokenFlag:    "token",
 			},
 			true,
 		},
@@ -484,14 +451,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			false,
 		},
 		{
-			"gitlab user and gitlab token set and should be successful",
-			map[string]interface{}{
-				GitlabUserFlag:  "user",
-				GitlabTokenFlag: "token",
-			},
-			false,
-		},
-		{
 			"bitbucket user and bitbucket token set and should be successful",
 			map[string]interface{}{
 				BitbucketUserFlag:  "user",
@@ -512,8 +471,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			map[string]interface{}{
 				GHUserFlag:         "user",
 				GHTokenFlag:        "token",
-				GitlabUserFlag:     "user",
-				GitlabTokenFlag:    "token",
 				BitbucketUserFlag:  "user",
 				BitbucketTokenFlag: "token",
 				ADUserFlag:         "user",
@@ -592,19 +549,6 @@ func TestExecute_GithubApp(t *testing.T) {
 	Ok(t, err)
 
 	Equals(t, int64(1), passedConfig.GithubAppID)
-}
-
-func TestExecute_GitlabUser(t *testing.T) {
-	t.Log("Should remove the @ from the gitlab username if it's passed.")
-	c := setup(map[string]interface{}{
-		GitlabUserFlag:    "@user",
-		GitlabTokenFlag:   "token",
-		RepoAllowlistFlag: "*",
-	}, t)
-	err := c.Execute()
-	Ok(t, err)
-
-	Equals(t, "user", passedConfig.GitlabUser)
 }
 
 func TestExecute_BitbucketUser(t *testing.T) {
@@ -807,7 +751,7 @@ func tempFile(t *testing.T, contents string) string {
 	newName := f.Name() + ".yaml"
 	err = os.Rename(f.Name(), newName)
 	Ok(t, err)
-	os.WriteFile(newName, []byte(contents), 0600) // nolint: errcheck
+	os.WriteFile(newName, []byte(contents), 0o600) // nolint: errcheck
 	return newName
 }
 

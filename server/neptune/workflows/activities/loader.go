@@ -2,14 +2,15 @@ package activities
 
 import (
 	"fmt"
+	"path/filepath"
+	"runtime"
+
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
-	runtime_models "github.com/runatlantis/atlantis/server/core/runtime/models"
+	runtime_models "github.com/runatlantis/atlantis/server/legacy/core/runtime/models"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"path/filepath"
-	"runtime"
 )
 
 const conftestDownloadURL = "https://github.com/open-policy-agent/conftest/releases/download/v"

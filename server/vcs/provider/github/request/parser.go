@@ -2,7 +2,7 @@ package request
 
 import (
 	"github.com/google/go-github/v45/github"
-	"github.com/runatlantis/atlantis/server/http"
+	"github.com/runatlantis/atlantis/server/legacy/http"
 )
 
 type webhookParser interface {

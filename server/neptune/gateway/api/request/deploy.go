@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/middleware"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/request/external"
 	internal "github.com/runatlantis/atlantis/server/vcs/provider/github"

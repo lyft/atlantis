@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/terraform/filter"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/legacy/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 
