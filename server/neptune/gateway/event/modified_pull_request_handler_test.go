@@ -84,7 +84,7 @@ func TestModifiedPullHandler_Handle_SignalerFailure(t *testing.T) {
 		Allocator: &testFeatureAllocator{Enabled: true},
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{})
-	assert.ErrorIs(t, err, assert.AnError)
+	assert.ErrorContains(t, err, assert.AnError.Error())
 }
 
 func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {

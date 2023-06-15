@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"github.com/hashicorp/go-multierror"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/config/valid"
@@ -103,19 +104,22 @@ func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.Buffered
 		return errors.Wrap(err, "generating roots")
 	}
 
-	// TODO: remove when we deprecate legacy mode
-	// TODO: call this async
-	if err := p.LegacyHandler.Handle(ctx, request, event, rootCfgs); err != nil {
-		p.Logger.ErrorContext(ctx, err.Error())
+	fxns := []func(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg) error{
+		p.LegacyHandler.Handle, // TODO: remove when we deprecate legacy mode
+		p.handlePlatformMode,
 	}
-
-	if err := p.handlePlatformMode(ctx, event, rootCfgs); err != nil {
-		return errors.Wrap(err, "handling platform mode")
+	var combinedErrors *multierror.Error
+	for _, fxn := range fxns {
+		f := fxn
+		err := p.Scheduler.Schedule(ctx, func(ctx context.Context) error {
+			return f(ctx, request, event, rootCfgs)
+		})
+		combinedErrors = multierror.Append(combinedErrors, err)
 	}
-	return nil
+	return combinedErrors.ErrorOrNil()
 }
 
-func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, event PullRequest, roots []*valid.MergedProjectCfg) error {
+func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, request *http.BufferedRequest, event PullRequest, roots []*valid.MergedProjectCfg) error {
 	// skip signaling workflow if no roots
 	if len(roots) == 0 {
 		return nil
