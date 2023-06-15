@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"time"
 
 	"github.com/pkg/errors"
