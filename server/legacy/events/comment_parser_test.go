@@ -745,8 +745,7 @@ Use "atlantis [command] --help" for more information about a command.` +
 
 func TestParse_VCSUsername(t *testing.T) {
 	cp := events.CommentParser{
-		GithubUser:    "gh",
-		BitbucketUser: "bb",
+		GithubUser: "gh",
 	}
 	cases := []struct {
 		vcs  models.VCSHostType
@@ -755,14 +754,6 @@ func TestParse_VCSUsername(t *testing.T) {
 		{
 			vcs:  models.Github,
 			user: "gh",
-		},
-		{
-			vcs:  models.BitbucketServer,
-			user: "bb",
-		},
-		{
-			vcs:  models.BitbucketCloud,
-			user: "bb",
 		},
 	}
 

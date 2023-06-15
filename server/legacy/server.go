@@ -74,8 +74,6 @@ import (
 	"github.com/runatlantis/atlantis/server/legacy/events"
 	"github.com/runatlantis/atlantis/server/legacy/events/command"
 	"github.com/runatlantis/atlantis/server/legacy/events/vcs"
-	"github.com/runatlantis/atlantis/server/legacy/events/vcs/bitbucketcloud"
-	"github.com/runatlantis/atlantis/server/legacy/events/vcs/bitbucketserver"
 	lyft_vcs "github.com/runatlantis/atlantis/server/legacy/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/legacy/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -177,8 +175,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	var githubClient vcs.IGithubClient
 	var githubAppEnabled bool
 	var githubCredentials vcs.GithubCredentials
-	var bitbucketCloudClient *bitbucketcloud.Client
-	var bitbucketServerClient *bitbucketserver.Client
 	var featureAllocator feature.Allocator
 
 	mergeabilityChecker := vcs.NewLyftPullMergeabilityChecker(userConfig.VCSStatusName)
@@ -281,28 +277,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 
 		githubClient = vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
 	}
-	if userConfig.BitbucketUser != "" {
-		if userConfig.BitbucketBaseURL == bitbucketcloud.BaseURL {
-			supportedVCSHosts = append(supportedVCSHosts, models.BitbucketCloud)
-			bitbucketCloudClient = bitbucketcloud.NewClient(
-				http.DefaultClient,
-				userConfig.BitbucketUser,
-				userConfig.BitbucketToken,
-				userConfig.AtlantisURL)
-		} else {
-			supportedVCSHosts = append(supportedVCSHosts, models.BitbucketServer)
-			var err error
-			bitbucketServerClient, err = bitbucketserver.NewClient(
-				http.DefaultClient,
-				userConfig.BitbucketUser,
-				userConfig.BitbucketToken,
-				userConfig.BitbucketBaseURL,
-				userConfig.AtlantisURL)
-			if err != nil {
-				return nil, errors.Wrapf(err, "setting up Bitbucket Server client")
-			}
-		}
-	}
 
 	if userConfig.WriteGitCreds {
 		home, err := homedir.Dir()
@@ -311,17 +285,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		}
 		if userConfig.GithubUser != "" {
 			if err := github.WriteGitCreds(userConfig.GithubUser, userConfig.GithubToken, userConfig.GithubHostname, home, ctxLogger, false); err != nil {
-				return nil, err
-			}
-		}
-		if userConfig.BitbucketUser != "" {
-			// The default BitbucketBaseURL is https://api.bitbucket.org which can't actually be used for git
-			// so we override it here only if it's that to be bitbucket.org
-			bitbucketBaseURL := userConfig.BitbucketBaseURL
-			if bitbucketBaseURL == "https://api.bitbucket.org" {
-				bitbucketBaseURL = "bitbucket.org"
-			}
-			if err := github.WriteGitCreds(userConfig.BitbucketUser, userConfig.BitbucketToken, bitbucketBaseURL, home, ctxLogger, false); err != nil {
 				return nil, err
 			}
 		}
@@ -341,7 +304,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing webhooks")
 	}
-	vcsClient := vcs.NewClientProxy(githubClient, bitbucketCloudClient, bitbucketServerClient)
+	vcsClient := vcs.NewClientProxy(githubClient)
 	vcsStatusUpdater := &command.VCSStatusUpdater{
 		Client: vcsClient,
 		TitleBuilder: vcs.StatusTitleBuilder{
@@ -480,16 +443,12 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	)
 
 	eventParser := &events.EventParser{
-		GithubUser:         userConfig.GithubUser,
-		GithubToken:        userConfig.GithubToken,
-		AllowDraftPRs:      userConfig.PlanDrafts,
-		BitbucketUser:      userConfig.BitbucketUser,
-		BitbucketToken:     userConfig.BitbucketToken,
-		BitbucketServerURL: userConfig.BitbucketBaseURL,
+		GithubUser:    userConfig.GithubUser,
+		GithubToken:   userConfig.GithubToken,
+		AllowDraftPRs: userConfig.PlanDrafts,
 	}
 	commentParser := &events.CommentParser{
 		GithubUser:    userConfig.GithubUser,
-		BitbucketUser: userConfig.BitbucketUser,
 		ApplyDisabled: userConfig.DisableApply,
 	}
 	defaultTfVersion := terraformClient.DefaultVersion()
@@ -901,7 +860,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		ctxLogger,
 		userConfig.DisableApply,
 		supportedVCSHosts,
-		[]byte(userConfig.BitbucketWebhookSecret),
 		repoConverter,
 		pullConverter,
 		githubClient,

@@ -189,10 +189,6 @@ func TestRepoAllowlistChecker_ContainsSchema(t *testing.T) {
 			"://",
 			`allowlist "://" contained ://`,
 		},
-		{
-			"valid/*,https://bitbucket.org/*",
-			`allowlist "https://bitbucket.org/*" contained ://`,
-		},
 	}
 
 	for _, c := range cases {

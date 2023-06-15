@@ -54,10 +54,6 @@ func (s *ServerStarterMock) Start() error {
 var testFlags = map[string]interface{}{
 	AtlantisURLFlag:              "url",
 	AutoplanFileListFlag:         "**/*.tf,**/*.yml",
-	BitbucketBaseURLFlag:         "https://bitbucket-base-url.com",
-	BitbucketTokenFlag:           "bitbucket-token",
-	BitbucketUserFlag:            "bitbucket-user",
-	BitbucketWebhookSecretFlag:   "bitbucket-secret",
 	CheckoutStrategyFlag:         "merge",
 	DataDirFlag:                  "/path",
 	DefaultTFVersionFlag:         "v0.11.0",
@@ -348,7 +344,7 @@ func TestExecute_ValidateSSLConfig(t *testing.T) {
 }
 
 func TestExecute_ValidateVCSConfig(t *testing.T) {
-	expErr := "--gh-user/--gh-token or --gh-app-id/--gh-app-key-file or --gh-app-id/--gh-app-key or --bitbucket-user/--bitbucket-token must be set"
+	expErr := "--gh-user/--gh-token or --gh-app-id/--gh-app-key-file or --gh-app-id/--gh-app-key must be set"
 	cases := []struct {
 		description string
 		flags       map[string]interface{}
@@ -363,13 +359,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			"just github token set",
 			map[string]interface{}{
 				GHTokenFlag: "token",
-			},
-			true,
-		},
-		{
-			"just bitbucket token set",
-			map[string]interface{}{
-				BitbucketTokenFlag: "token",
 			},
 			true,
 		},
@@ -402,21 +391,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			true,
 		},
 		{
-			"just bitbucket user set",
-			map[string]interface{}{
-				BitbucketUserFlag: "user",
-			},
-			true,
-		},
-		{
-			"github user and bitbucket token set",
-			map[string]interface{}{
-				GHUserFlag:         "user",
-				BitbucketTokenFlag: "token",
-			},
-			true,
-		},
-		{
 			"github user and github token set and should be successful",
 			map[string]interface{}{
 				GHUserFlag:  "user",
@@ -429,24 +403,6 @@ func TestExecute_ValidateVCSConfig(t *testing.T) {
 			map[string]interface{}{
 				GHAppIDFlag:  "1",
 				GHAppKeyFlag: fixtures.GithubPrivateKey,
-			},
-			false,
-		},
-		{
-			"bitbucket user and bitbucket token set and should be successful",
-			map[string]interface{}{
-				BitbucketUserFlag:  "user",
-				BitbucketTokenFlag: "token",
-			},
-			false,
-		},
-		{
-			"all set should be successful",
-			map[string]interface{}{
-				GHUserFlag:         "user",
-				GHTokenFlag:        "token",
-				BitbucketUserFlag:  "user",
-				BitbucketTokenFlag: "token",
 			},
 			false,
 		},
@@ -521,62 +477,6 @@ func TestExecute_GithubApp(t *testing.T) {
 	Ok(t, err)
 
 	Equals(t, int64(1), passedConfig.GithubAppID)
-}
-
-func TestExecute_BitbucketUser(t *testing.T) {
-	t.Log("Should remove the @ from the bitbucket username if it's passed.")
-	c := setup(map[string]interface{}{
-		BitbucketUserFlag:  "@user",
-		BitbucketTokenFlag: "token",
-		RepoAllowlistFlag:  "*",
-	}, t)
-	err := c.Execute()
-	Ok(t, err)
-
-	Equals(t, "user", passedConfig.BitbucketUser)
-}
-
-// If using bitbucket cloud, webhook secrets are not supported.
-func TestExecute_BitbucketCloudWithWebhookSecret(t *testing.T) {
-	c := setup(map[string]interface{}{
-		BitbucketUserFlag:          "user",
-		BitbucketTokenFlag:         "token",
-		RepoAllowlistFlag:          "*",
-		BitbucketWebhookSecretFlag: "my secret",
-	}, t)
-	err := c.Execute()
-	ErrEquals(t, "--bitbucket-webhook-secret cannot be specified for Bitbucket Cloud because it is not supported by Bitbucket", err)
-}
-
-// Base URL must have a scheme.
-func TestExecute_BitbucketServerBaseURLScheme(t *testing.T) {
-	c := setup(map[string]interface{}{
-		BitbucketUserFlag:    "user",
-		BitbucketTokenFlag:   "token",
-		RepoAllowlistFlag:    "*",
-		BitbucketBaseURLFlag: "mydomain.com",
-	}, t)
-	ErrEquals(t, "--bitbucket-base-url must have http:// or https://, got \"mydomain.com\"", c.Execute())
-
-	c = setup(map[string]interface{}{
-		BitbucketUserFlag:    "user",
-		BitbucketTokenFlag:   "token",
-		RepoAllowlistFlag:    "*",
-		BitbucketBaseURLFlag: "://mydomain.com",
-	}, t)
-	ErrEquals(t, "error parsing --bitbucket-webhook-secret flag value \"://mydomain.com\": parse \"://mydomain.com\": missing protocol scheme", c.Execute())
-}
-
-// Port should be retained on base url.
-func TestExecute_BitbucketServerBaseURLPort(t *testing.T) {
-	c := setup(map[string]interface{}{
-		BitbucketUserFlag:    "user",
-		BitbucketTokenFlag:   "token",
-		RepoAllowlistFlag:    "*",
-		BitbucketBaseURLFlag: "http://mydomain.com:7990",
-	}, t)
-	Ok(t, c.Execute())
-	Equals(t, "http://mydomain.com:7990", passedConfig.BitbucketBaseURL)
 }
 
 // Can't use both --repo-config and --repo-config-json.
