@@ -3,6 +3,9 @@ package event
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"time"
 
 	"github.com/pkg/errors"
@@ -65,7 +68,7 @@ func (c Comment) GetRepo() models.Repo {
 	return c.BaseRepo
 }
 
-func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, errorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
+func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, allocator feature.Allocator, prSignaler prSignaler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, errorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
 		logger:    logger,
 		scheduler: scheduler,
@@ -80,6 +83,8 @@ func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, schedul
 			deploySignaler:     deploySignaler,
 			commentCreator:     commentCreator,
 			requirementChecker: requirementChecker,
+			allocator:          allocator,
+			prSignaler:         prSignaler,
 		},
 		vcsStatusUpdater:  vcsStatusUpdater,
 		rootConfigBuilder: rootConfigBuilder,
@@ -92,15 +97,46 @@ type NeptuneWorkerProxy struct {
 	deploySignaler     deploySignaler
 	commentCreator     commentCreator
 	requirementChecker requirementChecker
+	allocator          feature.Allocator
+	prSignaler         prSignaler
 }
 
-func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
-	// currently the only comments on platform mode are applies, we can add to this as necessary.
-	// TODO: in followup PR, we will modify this to support both plan and applies
-	if cmd.Name != command.Apply {
+func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg, request *http.BufferedRequest) error {
+	if cmd.Name == command.Apply {
+		return p.handleApplies(ctx, event, cmd, roots)
+	}
+	// TODO: remove when we begin in-depth testing and rollout of pr mode
+	// feature allocator is only temporary while we continue building out implementation
+	shouldAllocate, err := p.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: event.Pull.HeadRepo.FullName,
+	})
+	if err != nil {
+		p.logger.ErrorContext(ctx, "unable to allocate pr mode")
 		return nil
 	}
+	if !shouldAllocate {
+		p.logger.InfoContext(ctx, "handler not configured for allocation")
+		return nil
+	}
+	prRequest := pr.Request{
+		Number:            event.Pull.Num,
+		Revision:          event.Pull.HeadCommit,
+		Repo:              event.Pull.HeadRepo,
+		InstallationToken: event.InstallationToken,
+		Branch:            event.Pull.HeadBranch,
+		ValidateEnvs:      buildValidateEnvsFromComment(event),
+	}
+	run, err := p.prSignaler.SignalWithStartWorkflow(ctx, roots, prRequest)
+	if err != nil {
+		return errors.Wrap(err, "signaling workflow")
+	}
+	p.logger.InfoContext(ctx, "Signaled workflow.", map[string]interface{}{
+		"workflow-id": run.GetID(), "run-id": run.GetRunID(),
+	})
+	return nil
+}
 
+func (p *NeptuneWorkerProxy) handleApplies(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg) error {
 	triggerInfo := workflows.DeployTriggerInfo{
 		Type:  workflows.ManualTrigger,
 		Force: cmd.ForceApply,
@@ -190,14 +226,19 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 		return nil
 	}
 
-	if err := p.legacyHandler.Handle(ctx, request, event, cmd); err != nil {
-		return errors.Wrap(err, "handling event in legacy sns worker handler")
+	fxns := []func(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg, request *http.BufferedRequest) error{
+		p.legacyHandler.Handle,
+		p.neptuneWorkerProxy.Handle,
 	}
-	if err := p.neptuneWorkerProxy.Handle(ctx, event, cmd, roots); err != nil {
-		return errors.Wrap(err, "handling event in signal temporal worker handler")
+	var combinedErrors *multierror.Error
+	for _, fxn := range fxns {
+		f := fxn
+		err := p.scheduler.Schedule(ctx, func(ctx context.Context) error {
+			return f(ctx, event, cmd, roots, request)
+		})
+		combinedErrors = multierror.Append(combinedErrors, err)
 	}
-
-	return nil
+	return combinedErrors.ErrorOrNil()
 }
 
 // TODO: do we need to keep marking plan as successful after legacy deprecation?
@@ -225,4 +266,16 @@ func partitionRootsByProject(name string, cmds []*valid.MergedProjectCfg) []*val
 		}
 	}
 	return cfgs
+}
+
+func buildValidateEnvsFromComment(event Comment) []pr.ValidateEnvs {
+	return []pr.ValidateEnvs{
+		{
+			Username:       event.User.Username,
+			PullNum:        event.Pull.Num,
+			PullAuthor:     event.Pull.Author,
+			HeadCommit:     event.Pull.HeadCommit,
+			BaseBranchName: event.Pull.HeadRepo.DefaultBranch,
+		},
+	}
 }

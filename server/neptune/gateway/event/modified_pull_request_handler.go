@@ -144,7 +144,7 @@ func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, request *h
 		InstallationToken: event.InstallationToken,
 		Branch:            event.Pull.HeadBranch,
 		// TODO: gate populating field with a config since this is Lyft specific
-		ValidateEnvs: buildValidateEnvs(event),
+		ValidateEnvs: buildValidateEnvsFromPull(event),
 	}
 	run, err := p.PRSignaler.SignalWithStartWorkflow(ctx, roots, prRequest)
 	if err != nil {
@@ -156,7 +156,7 @@ func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, request *h
 	return nil
 }
 
-func buildValidateEnvs(event PullRequest) []pr.ValidateEnvs {
+func buildValidateEnvsFromPull(event PullRequest) []pr.ValidateEnvs {
 	return []pr.ValidateEnvs{
 		{
 			Username:       event.User.Username,
