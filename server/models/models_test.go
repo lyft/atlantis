@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/legacy/events/vcs"
 	"github.com/runatlantis/atlantis/server/models"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -42,11 +41,6 @@ func TestNewRepo_CloneURLWrongRepo(t *testing.T) {
 	ErrEquals(t, `expected clone url to have path "/owner/repo.git" but had "/notowner/repo.git"`, err)
 }
 
-func TestNewRepo_EmptyAzureDevopsProject(t *testing.T) {
-	_, err := models.NewRepo(models.AzureDevops, "", "https://dev.azure.com/notowner/project/_git/repo", "u", "p")
-	ErrEquals(t, "repoFullName can't be empty", err)
-}
-
 // For bitbucket server we don't validate the clone URL because the callers
 // are actually constructing it.
 func TestNewRepo_CloneURLBitbucketServer(t *testing.T) {
@@ -67,12 +61,7 @@ func TestNewRepo_CloneURLBitbucketServer(t *testing.T) {
 
 // If the clone URL contains a space, NewRepo() should encode it
 func TestNewRepo_CloneURLContainsSpace(t *testing.T) {
-	repo, err := models.NewRepo(models.AzureDevops, "owner/project space/repo", "https://dev.azure.com/owner/project space/repo", "u", "p")
-	Ok(t, err)
-	Equals(t, repo.CloneURL, "https://u:p@dev.azure.com/owner/project%20space/repo")
-	Equals(t, repo.SanitizedCloneURL, "https://u:<redacted>@dev.azure.com/owner/project%20space/repo")
-
-	repo, err = models.NewRepo(models.BitbucketCloud, "owner/repo space", "https://bitbucket.org/owner/repo space", "u", "p")
+	repo, err := models.NewRepo(models.BitbucketCloud, "owner/repo space", "https://bitbucket.org/owner/repo space", "u", "p")
 	Ok(t, err)
 	Equals(t, repo.CloneURL, "https://u:p@bitbucket.org/owner/repo%20space.git")
 	Equals(t, repo.SanitizedCloneURL, "https://u:<redacted>@bitbucket.org/owner/repo%20space.git")
@@ -83,10 +72,6 @@ func TestNewRepo_FullNameWrongFormat(t *testing.T) {
 		repoFullName string
 		expErr       string
 	}{
-		{
-			"owner/repo/extra",
-			`invalid repo format "owner/repo/extra", owner "owner/repo" should not contain any /'s`,
-		},
 		{
 			"/",
 			`invalid repo format "/", owner "" or repo "" was empty`,
@@ -115,14 +100,6 @@ func TestNewRepo_FullNameWrongFormat(t *testing.T) {
 			ErrEquals(t, c.expErr, err)
 		})
 	}
-}
-
-// If the clone url doesn't end with .git, and VCS is not Azure DevOps, it is appended
-func TestNewRepo_MissingDotGit(t *testing.T) {
-	repo, err := models.NewRepo(models.BitbucketCloud, "owner/repo", "https://bitbucket.org/owner/repo", "u", "p")
-	Ok(t, err)
-	Equals(t, repo.CloneURL, "https://u:p@bitbucket.org/owner/repo.git")
-	Equals(t, repo.SanitizedCloneURL, "https://u:<redacted>@bitbucket.org/owner/repo.git")
 }
 
 func TestNewRepo_HTTPAuth(t *testing.T) {
@@ -210,10 +187,6 @@ func TestVCSHostType_ToString(t *testing.T) {
 			models.BitbucketServer,
 			"BitbucketServer",
 		},
-		{
-			models.AzureDevops,
-			"AzureDevops",
-		},
 	}
 
 	for _, c := range cases {
@@ -270,82 +243,6 @@ func TestSplitRepoFullName(t *testing.T) {
 		t.Run(c.input, func(t *testing.T) {
 			owner, repo := models.SplitRepoFullName(c.input)
 			Equals(t, c.expOwner, owner)
-			Equals(t, c.expRepo, repo)
-		})
-	}
-}
-
-// These test cases should cover the same behavior as TestSplitRepoFullName
-// and only produce different output in the AzureDevops case of
-// owner/project/repo.
-func TestAzureDevopsSplitRepoFullName(t *testing.T) {
-	cases := []struct {
-		input      string
-		expOwner   string
-		expRepo    string
-		expProject string
-	}{
-		{
-			"owner/repo",
-			"owner",
-			"repo",
-			"",
-		},
-		{
-			"group/subgroup/owner/repo",
-			"group/subgroup/owner",
-			"repo",
-			"",
-		},
-		{
-			"group/subgroup/owner/project/repo",
-			"group/subgroup/owner/project",
-			"repo",
-			"",
-		},
-		{
-			"",
-			"",
-			"",
-			"",
-		},
-		{
-			"/",
-			"",
-			"",
-			"",
-		},
-		{
-			"owner/",
-			"",
-			"",
-			"",
-		},
-		{
-			"/repo",
-			"",
-			"repo",
-			"",
-		},
-		{
-			"group/subgroup/",
-			"",
-			"",
-			"",
-		},
-		{
-			"owner/project/repo",
-			"owner",
-			"repo",
-			"project",
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.input, func(t *testing.T) {
-			owner, project, repo := vcs.SplitAzureDevopsRepoFullName(c.input)
-			Equals(t, c.expOwner, owner)
-			Equals(t, c.expProject, project)
 			Equals(t, c.expRepo, repo)
 		})
 	}
