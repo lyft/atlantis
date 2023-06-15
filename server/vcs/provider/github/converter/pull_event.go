@@ -52,6 +52,11 @@ func (e PullEventConverter) Convert(ctx context.Context, pullEvent *github.PullR
 		action = "other"
 	}
 
+	// if original event was not: synchronize, open, ready_for_review, or closed, we don't want to process revision
+	if !eventActionModifiesPull(pullEvent) {
+		action = "other"
+	}
+
 	var pullEventType models.PullRequestEventType
 	switch action {
 	case "open":
@@ -73,4 +78,13 @@ func (e PullEventConverter) Convert(ctx context.Context, pullEvent *github.PullR
 		Timestamp:         eventTimestamp,
 		InstallationToken: installationToken,
 	}, nil
+}
+
+func eventActionModifiesPull(pullEvent *github.PullRequestEvent) bool {
+	originalAction := pullEvent.GetAction()
+	switch originalAction {
+	case "opened", "ready_for_review", "synchronized", "closed":
+		return true
+	}
+	return false
 }
