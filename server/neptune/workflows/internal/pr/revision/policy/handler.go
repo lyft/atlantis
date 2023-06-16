@@ -61,6 +61,7 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 	if len(remainingFailedPolicies) == 0 {
 		return
 	}
+	// we don't want to notify any workflows that were successful before we started polling for approvals
 	_, previouslyFailingWorkflows := partitionWorkflowsByFailure(workflowResponses, remainingFailedPolicies)
 
 	var action Action
