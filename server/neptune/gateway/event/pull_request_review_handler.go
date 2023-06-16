@@ -51,6 +51,7 @@ type PullRequestReviewWorkerProxy struct {
 
 func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullRequestReview, request *http.BufferedRequest) error {
 	// Ignore non-approval events
+	// TODO: Handle case where user takes back approval
 	if event.State != Approved {
 		return nil
 	}

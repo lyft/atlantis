@@ -61,6 +61,7 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 	if len(remainingFailedPolicies) == 0 {
 		return
 	}
+	previouslySuccessfulWorkflows, previouslyFailingWorkflows := partitionOutSuccessfulWorkflows(workflowResponses, remainingFailedPolicies)
 
 	var action Action
 	s := temporalInternal.SelectorWithTimeout{
@@ -103,9 +104,16 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 			cancelTimer()
 			cancelTimer, _ = s.AddTimeout(ctx, 10*time.Minute, onTimeout)
 		}
-		// filter out approved policies and update check status onPollTick and onApprovalSignal actions
+		// onPollTick and onApprovalSignal actions, filter out any newly approved policies
 		remainingFailedPolicies = f.filterOutApprovedPolicies(ctx, revision, remainingFailedPolicies)
-		f.updateCheckStatuses(ctx, roots, workflowResponses, remainingFailedPolicies)
+		// check if new approvals have turned any failing workflows into successful workflows
+		successfulWorkflows, failingWorkflows := partitionOutSuccessfulWorkflows(previouslyFailingWorkflows, remainingFailedPolicies)
+		if !sameWorkflows(successfulWorkflows, previouslySuccessfulWorkflows) {
+			// notify on newly successful workflows
+			f.updateCheckStatuses(ctx, roots, successfulWorkflows)
+			previouslySuccessfulWorkflows = successfulWorkflows
+			previouslyFailingWorkflows = failingWorkflows
+		}
 	}
 }
 
@@ -155,24 +163,43 @@ func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Rep
 	return listTeamMembersResponse.Members, err
 }
 
+// partitionOutSuccessfulWorkflows filters out workflows that have no remaining failing policies
+func partitionOutSuccessfulWorkflows(workflows []terraform.Response, failingPolicies []activities.PolicySet) ([]terraform.Response, []terraform.Response) {
+	var failingWorkflows []terraform.Response
+	var successfulWorkflows []terraform.Response
+	for _, workflow := range workflows {
+		if containsPolicy(workflow.ValidationResults, failingPolicies) {
+			failingWorkflows = append(failingWorkflows, workflow)
+		} else {
+			successfulWorkflows = append(successfulWorkflows, workflow)
+		}
+	}
+	return successfulWorkflows, failingWorkflows
+}
+
 // updateCheckStatuses checks to see if each root's workflow has any remaining failing policies.
 // If it doesn't then the workflow's check status reason is updated to be bypassed (i.e. passing)
-func (f *FailedPolicyHandler) updateCheckStatuses(ctx workflow.Context, roots map[string]revision.RootInfo, workflowResponses []terraform.Response, remainingFailedPolicies []activities.PolicySet) {
-	for _, workflowResponse := range workflowResponses {
-		// if this workflow's failing policies have been bypassed
-		if containsFailingPolicy(workflowResponse.ValidationResults, remainingFailedPolicies) {
-			continue
-		}
-		workflowState := workflowResponse.WorkflowState
-		workflowState.Result.Status = state.CompleteWorkflowStatus
-		workflowState.Result.Reason = state.BypassedFailedValidationReason
+func (f *FailedPolicyHandler) updateCheckStatuses(ctx workflow.Context, roots map[string]revision.RootInfo, successfulWorkflows []terraform.Response) {
+	numUpdates := 0
+	for _, successfulWorkflow := range successfulWorkflows {
+		sw := successfulWorkflow
 		workflow.Go(ctx, func(c workflow.Context) {
+			workflowState := sw.WorkflowState
+			workflowState.Result.Status = state.CompleteWorkflowStatus
+			workflowState.Result.Reason = state.BypassedFailedValidationReason
 			f.Notifier.Notify(c, &workflowState, roots)
+			numUpdates++
 		})
+	}
+	err := workflow.Await(ctx, func() bool {
+		return numUpdates == len(successfulWorkflows)
+	})
+	if err != nil {
+		workflow.GetLogger(ctx).Error(err.Error())
 	}
 }
 
-func containsFailingPolicy(results []activities.ValidationResult, failingPolicies []activities.PolicySet) bool {
+func containsPolicy(results []activities.ValidationResult, failingPolicies []activities.PolicySet) bool {
 	for _, result := range results {
 		for _, policy := range failingPolicies {
 			if result.PolicySet.Name == policy.Name {
@@ -210,4 +237,16 @@ func toSlice(policyMap map[string]activities.PolicySet) []activities.PolicySet {
 		policies = append(policies, policy)
 	}
 	return policies
+}
+
+func sameWorkflows(a, b []terraform.Response) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].WorkflowState.ID != b[i].WorkflowState.ID {
+			return false
+		}
+	}
+	return true
 }
