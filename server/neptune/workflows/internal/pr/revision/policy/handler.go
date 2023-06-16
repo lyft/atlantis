@@ -61,7 +61,7 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 	if len(remainingFailedPolicies) == 0 {
 		return
 	}
-	previouslySuccessfulWorkflows, previouslyFailingWorkflows := partitionOutSuccessfulWorkflows(workflowResponses, remainingFailedPolicies)
+	_, previouslyFailingWorkflows := partitionWorkflowsByFailure(workflowResponses, remainingFailedPolicies)
 
 	var action Action
 	s := temporalInternal.SelectorWithTimeout{
@@ -105,14 +105,14 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 			cancelTimer, _ = s.AddTimeout(ctx, 10*time.Minute, onTimeout)
 		}
 		// onPollTick and onApprovalSignal actions, filter out any newly approved policies
-		remainingFailedPolicies = f.filterOutApprovedPolicies(ctx, revision, remainingFailedPolicies)
-		// check if new approvals have turned any failing workflows into successful workflows
-		successfulWorkflows, failingWorkflows := partitionOutSuccessfulWorkflows(previouslyFailingWorkflows, remainingFailedPolicies)
-		if !sameWorkflows(successfulWorkflows, previouslySuccessfulWorkflows) {
-			// notify on newly successful workflows
+		failingPolicies := f.filterOutApprovedPolicies(ctx, revision, remainingFailedPolicies)
+		// check if we've filtered out any newly approved policies
+		if len(failingPolicies) < len(remainingFailedPolicies) {
+			// notify any workflows that are now newly successful
+			successfulWorkflows, failingWorkflows := partitionWorkflowsByFailure(previouslyFailingWorkflows, failingPolicies)
 			f.updateCheckStatuses(ctx, roots, successfulWorkflows)
-			previouslySuccessfulWorkflows = successfulWorkflows
 			previouslyFailingWorkflows = failingWorkflows
+			remainingFailedPolicies = failingPolicies
 		}
 	}
 }
@@ -163,12 +163,13 @@ func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Rep
 	return listTeamMembersResponse.Members, err
 }
 
-// partitionOutSuccessfulWorkflows filters out workflows that have no remaining failing policies
-func partitionOutSuccessfulWorkflows(workflows []terraform.Response, failingPolicies []activities.PolicySet) ([]terraform.Response, []terraform.Response) {
+// partitionWorkflowsByFailure separates workflows into successful and failing workflows
+// based on the provided failing policies
+func partitionWorkflowsByFailure(workflows []terraform.Response, failingPolicies []activities.PolicySet) ([]terraform.Response, []terraform.Response) {
 	var failingWorkflows []terraform.Response
 	var successfulWorkflows []terraform.Response
 	for _, workflow := range workflows {
-		if containsPolicy(workflow.ValidationResults, failingPolicies) {
+		if containsAnyPolicy(workflow, failingPolicies) {
 			failingWorkflows = append(failingWorkflows, workflow)
 		} else {
 			successfulWorkflows = append(successfulWorkflows, workflow)
@@ -199,10 +200,11 @@ func (f *FailedPolicyHandler) updateCheckStatuses(ctx workflow.Context, roots ma
 	}
 }
 
-func containsPolicy(results []activities.ValidationResult, failingPolicies []activities.PolicySet) bool {
-	for _, result := range results {
+// containsAnyPolicy checks if any of the provided failing policies are present in the provided workflow
+func containsAnyPolicy(workflowResponse terraform.Response, failingPolicies []activities.PolicySet) bool {
+	for _, response := range workflowResponse.ValidationResults {
 		for _, policy := range failingPolicies {
-			if result.PolicySet.Name == policy.Name {
+			if response.PolicySet.Name == policy.Name {
 				return true
 			}
 		}
@@ -237,16 +239,4 @@ func toSlice(policyMap map[string]activities.PolicySet) []activities.PolicySet {
 		policies = append(policies, policy)
 	}
 	return policies
-}
-
-func sameWorkflows(a, b []terraform.Response) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i].WorkflowState.ID != b[i].WorkflowState.ID {
-			return false
-		}
-	}
-	return true
 }
