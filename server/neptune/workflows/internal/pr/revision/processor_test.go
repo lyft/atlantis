@@ -4,6 +4,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/stretchr/testify/assert"
@@ -95,6 +96,16 @@ func testProcessRevisionWorkflow(ctx workflow.Context, r processRevisionRequest)
 			expectedRevision:       r.Revision,
 			t:                      r.T,
 		},
+		GithubCheckRunCache: &testCheckRunCache{
+			t: r.T,
+			expectedRequest: notifier.GithubCheckRunRequest{
+				Title: "atlantis/plan",
+				Sha:   r.Revision.Revision,
+				Repo:  r.Revision.Repo,
+				State: github.CheckRunSuccess,
+				Mode:  terraformActivities.PR,
+			},
+		},
 	}
 	processor.Process(ctx, r.Revision)
 
@@ -133,4 +144,14 @@ type testPolicyHandler struct {
 func (p testPolicyHandler) Handle(_ workflow.Context, revision revision.Revision, failedPolicies []terraform.Response) {
 	assert.Equal(p.t, p.expectedRevision, revision)
 	assert.Equal(p.t, p.expectedFailedPolicies, failedPolicies)
+}
+
+type testCheckRunCache struct {
+	expectedRequest notifier.GithubCheckRunRequest
+	t               *testing.T
+}
+
+func (c *testCheckRunCache) CreateOrUpdate(ctx workflow.Context, id string, request notifier.GithubCheckRunRequest) (int64, error) {
+	assert.Equal(c.t, c.expectedRequest.Title, request.Title)
+	return 0, nil
 }
