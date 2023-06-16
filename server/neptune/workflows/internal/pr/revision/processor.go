@@ -140,6 +140,8 @@ func (p *Processor) markCombinedCheckRunSuccessful(ctx workflow.Context, revisio
 		State: github.CheckRunSuccess,
 		Mode:  terraformActivities.PR,
 	}
+	// ID is empty because we want to create a new check run
+	// TODO: do we want to create a new check run, are we persisting the original mark plan CR as queued in gateway?
 	_, err := p.GithubCheckRunCache.CreateOrUpdate(ctx, "", request)
 	if err != nil {
 		workflow.GetLogger(ctx).Error("unable to update check run with validation error", internalContext.ErrKey, err)
