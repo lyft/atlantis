@@ -56,14 +56,16 @@ const (
 	onSkip
 )
 
-func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, roots map[string]revision.RootInfo, workflowResponses []terraform.Response) {
+// Handle processes the roots corresponding to each Terraform workflow response and determines if any policies are failing
+// and need manual approvals from policy owners.
+func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, roots map[string]revision.RootInfo, terraformWorkflowResponses []terraform.Response) {
 	scope := f.Scope.SubScopeWithTags(map[string]string{metricNames.RevisionTag: revision.Revision})
-	remainingFailedPolicies := dedup(workflowResponses, scope)
+	remainingFailedPolicies := fetchAllFailingPolicies(terraformWorkflowResponses, scope)
 	if len(remainingFailedPolicies) == 0 {
 		return
 	}
 	// we don't want to notify any workflows that were successful before we started polling for approvals
-	_, previouslyFailingWorkflows := partitionWorkflowsByFailure(workflowResponses, remainingFailedPolicies)
+	_, failingTerraformWorkflowResponses := partitionWorkflowsByFailure(terraformWorkflowResponses, remainingFailedPolicies)
 
 	var action Action
 	s := temporalInternal.SelectorWithTimeout{
@@ -111,9 +113,9 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 		// check if we've filtered out any newly approved policies
 		if len(failingPolicies) < len(remainingFailedPolicies) {
 			// notify any workflows that are now newly successful
-			successfulWorkflows, failingWorkflows := partitionWorkflowsByFailure(previouslyFailingWorkflows, failingPolicies)
+			successfulWorkflows, failingWorkflows := partitionWorkflowsByFailure(failingTerraformWorkflowResponses, failingPolicies)
 			f.updateCheckStatuses(ctx, roots, successfulWorkflows)
-			previouslyFailingWorkflows = failingWorkflows
+			failingTerraformWorkflowResponses = failingWorkflows
 			remainingFailedPolicies = failingPolicies
 		}
 	}
@@ -214,7 +216,7 @@ func containsAnyPolicy(workflowResponse terraform.Response, failingPolicies []ac
 	return false
 }
 
-func dedup(workflowResponses []terraform.Response, scope metrics.Scope) []activities.PolicySet {
+func fetchAllFailingPolicies(workflowResponses []terraform.Response, scope metrics.Scope) []activities.PolicySet {
 	var failedPolicies []activities.PolicySet
 	for _, response := range workflowResponses {
 		for _, validationResult := range response.ValidationResults {
