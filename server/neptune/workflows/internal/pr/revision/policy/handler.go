@@ -2,8 +2,10 @@ package policy
 
 import (
 	"context"
+	"time"
+
 	"github.com/google/go-github/v45/github"
-	metricNames "github.com/runatlantis/atlantis/server/events/metrics"
+	metricNames "github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	gh "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -12,7 +14,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/workflow"
-	"time"
 )
 
 type githubActivities interface {

@@ -1,7 +1,11 @@
 package pr
 
 import (
-	metricNames "github.com/runatlantis/atlantis/server/events/metrics"
+	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
+	"time"
+
+	metricNames "github.com/runatlantis/atlantis/server/metrics"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -11,7 +15,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
-	"time"
 )
 
 type Action int64
@@ -59,7 +62,15 @@ type Runner struct {
 	lastAttemptedRevision string
 }
 
-func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, org string, tfWorkflow revision.TFWorkflow, prNum int, internalNotifiers []revision.WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *Runner {
+func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, org string, tfWorkflow revision.TFWorkflow, prNum int, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *Runner {
+	var a *prActivities
+	checkRunCache := notifier.NewGithubCheckRunCache(a)
+	internalNotifiers := []revision.WorkflowNotifier{
+		&notifier.CheckRunNotifier{
+			CheckRunSessionCache: checkRunCache,
+			Mode:                 tfModel.PR,
+		},
+	}
 	revisionReceiver := revision.NewRevisionReceiver(ctx, scope)
 	stateReceiver := revision.StateReceiver{
 		InternalNotifiers:   internalNotifiers,
@@ -83,6 +94,7 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, org string, tf
 			Scope:                 scope.SubScope("policies"),
 			Notifier:              &stateReceiver,
 		},
+		GithubCheckRunCache: checkRunCache,
 	}
 	shutdownChecker := ShutdownStateChecker{
 		GithubActivities: ga,

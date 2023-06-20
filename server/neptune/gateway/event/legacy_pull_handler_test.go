@@ -3,13 +3,14 @@ package event_test
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/http"
+	"testing"
+
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/legacy/http"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestLegacyHandler_Handle_NoRoots(t *testing.T) {

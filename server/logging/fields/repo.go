@@ -7,7 +7,7 @@ package fields
 import (
 	"strconv"
 
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/context"
 )
 

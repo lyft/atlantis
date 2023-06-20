@@ -7,8 +7,8 @@ import (
 
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/raw"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/raw"
+	"github.com/runatlantis/atlantis/server/config/valid"
 	"gopkg.in/yaml.v2"
 )
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/runtime/cache"
+	"github.com/runatlantis/atlantis/server/legacy/core/runtime/cache"
 )
 
 type execBuilder struct {

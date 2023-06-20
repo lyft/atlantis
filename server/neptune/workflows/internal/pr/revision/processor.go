@@ -5,6 +5,7 @@ import (
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
@@ -26,10 +27,15 @@ type PolicyHandler interface {
 	Handle(ctx workflow.Context, prRevision Revision, roots map[string]RootInfo, workflowResponses []terraform.Response)
 }
 
+type CheckRunClient interface {
+	CreateOrUpdate(ctx workflow.Context, id string, request notifier.GithubCheckRunRequest) (int64, error)
+}
+
 type Processor struct {
-	TFStateReceiver TFStateReceiver
-	TFWorkflow      TFWorkflow
-	PolicyHandler   PolicyHandler
+	TFStateReceiver     TFStateReceiver
+	TFWorkflow          TFWorkflow
+	PolicyHandler       PolicyHandler
+	GithubCheckRunCache CheckRunClient
 }
 
 // Process handles spinning off child Terraform workflows per root and
@@ -56,6 +62,8 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 	}
 	workflowResponses := p.awaitWorkflows(ctx, futures, roots)
 	p.PolicyHandler.Handle(ctx, prRevision, roots, workflowResponses)
+	// At this point, all workflows should be successful, and we can mark combined plan check run as success
+	p.markCombinedCheckRunSuccessful(ctx, prRevision)
 }
 
 func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision Revision, id uuid.UUID) workflow.ChildWorkflowFuture {
@@ -118,4 +126,24 @@ func (p *Processor) awaitWorkflows(ctx workflow.Context, futures []workflow.Chil
 		}
 	}
 	return results
+}
+
+func (p *Processor) markCombinedCheckRunSuccessful(ctx workflow.Context, revision Revision) {
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		MaximumAttempts: 3,
+	})
+
+	request := notifier.GithubCheckRunRequest{
+		Title: notifier.CombinedPlanCheckRunTitle,
+		Sha:   revision.Revision,
+		Repo:  revision.Repo,
+		State: github.CheckRunSuccess,
+		Mode:  terraformActivities.PR,
+	}
+	// ID is empty because we want to create a new check run
+	// TODO: do we want to create a new check run, are we persisting the original mark plan CR as queued in gateway?
+	_, err := p.GithubCheckRunCache.CreateOrUpdate(ctx, "", request)
+	if err != nil {
+		workflow.GetLogger(ctx).Error("unable to update check run with validation error", internalContext.ErrKey, err)
+	}
 }

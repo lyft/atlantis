@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/uber-go/tally/v4"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,9 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/events/vcs/fixtures"
+	"github.com/uber-go/tally/v4"
+
+	"github.com/runatlantis/atlantis/server/legacy/events/vcs/fixtures"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/stretchr/testify/assert"
 )

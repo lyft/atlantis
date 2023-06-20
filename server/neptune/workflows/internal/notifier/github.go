@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	KeyDelim       = "_"
-	CompleteStatus = "completed"
+	KeyDelim                  = "_"
+	CompleteStatus            = "completed"
+	CombinedPlanCheckRunTitle = "atlantis/plan"
 )
 
 type checksActivities interface {

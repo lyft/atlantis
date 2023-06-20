@@ -3,9 +3,10 @@ package revision
 import (
 	"context"
 	"fmt"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
-	"github.com/runatlantis/atlantis/server/events/metrics"
+	"github.com/runatlantis/atlantis/server/metrics"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/google/uuid"

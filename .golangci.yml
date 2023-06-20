@@ -23,13 +23,13 @@ linters:
     - whitespace
 issues:
   exclude-rules:
-    - path: server/controllers/events/events_controller(.+)test.go
+    - path: server/legacy/controllers/events/events_controller(.+)test.go
       linters:
         - dogsled
-    - path: server/events/event_parser_test.go
+    - path: server/legacy/events/event_parser_test.go
       linters:
         - dogsled
-    - path: server/events/command_runner_test.go
+    - path: server/legacy/events/command_runner_test.go
       linters:
         - dogsled
 linters-settings:

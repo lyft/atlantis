@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/models"
-	"github.com/runatlantis/atlantis/server/http"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/legacy/events/command"
+	"github.com/runatlantis/atlantis/server/legacy/http"
 	"github.com/runatlantis/atlantis/server/logging"
+	"github.com/runatlantis/atlantis/server/models"
 )
 
 type LegacyCommentHandler struct {
@@ -19,7 +20,7 @@ type LegacyCommentHandler struct {
 	globalCfg        valid.GlobalCfg
 }
 
-func (p *LegacyCommentHandler) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
+func (p *LegacyCommentHandler) Handle(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg, request *http.BufferedRequest) error {
 	// legacy mode should not be handling any type of apply command anymore
 	if cmd.Name == command.Apply {
 		return nil

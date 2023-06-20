@@ -19,9 +19,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
-	"github.com/runatlantis/atlantis/server/events/command"
-	"github.com/runatlantis/atlantis/server/events/models"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/legacy/events/command"
+	"github.com/runatlantis/atlantis/server/models"
 	. "github.com/runatlantis/atlantis/server/vcs/markdown"
 	. "github.com/runatlantis/atlantis/testing"
 )
@@ -1213,10 +1213,9 @@ func TestRenderProjectResults_DisableFolding(t *testing.T) {
 // VCS hosts during an error.
 func TestRenderProjectResults_WrappedErrorf(t *testing.T) {
 	cases := []struct {
-		VCSHost                 models.VCSHostType
-		GitlabCommonMarkSupport bool
-		Output                  string
-		ShouldWrap              bool
+		VCSHost    models.VCSHostType
+		Output     string
+		ShouldWrap bool
 	}{
 		{
 			VCSHost:    models.Github,
@@ -1228,59 +1227,13 @@ func TestRenderProjectResults_WrappedErrorf(t *testing.T) {
 			Output:     strings.Repeat("line\n", 13),
 			ShouldWrap: true,
 		},
-		{
-			VCSHost:                 models.Gitlab,
-			GitlabCommonMarkSupport: false,
-			Output:                  strings.Repeat("line\n", 1),
-			ShouldWrap:              false,
-		},
-		{
-			VCSHost:                 models.Gitlab,
-			GitlabCommonMarkSupport: false,
-			Output:                  strings.Repeat("line\n", 13),
-			ShouldWrap:              false,
-		},
-		{
-			VCSHost:                 models.Gitlab,
-			GitlabCommonMarkSupport: true,
-			Output:                  strings.Repeat("line\n", 1),
-			ShouldWrap:              false,
-		},
-		{
-			VCSHost:                 models.Gitlab,
-			GitlabCommonMarkSupport: true,
-			Output:                  strings.Repeat("line\n", 13),
-			ShouldWrap:              true,
-		},
-		{
-			VCSHost:    models.BitbucketCloud,
-			Output:     strings.Repeat("line\n", 1),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketCloud,
-			Output:     strings.Repeat("line\n", 13),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketServer,
-			Output:     strings.Repeat("line\n", 1),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketServer,
-			Output:     strings.Repeat("line\n", 13),
-			ShouldWrap: false,
-		},
 	}
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("%s_%v", c.VCSHost.String(), c.ShouldWrap),
 			func(t *testing.T) {
 				mr := Renderer{
-					TemplateResolver: TemplateResolver{
-						GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
-					},
+					TemplateResolver: TemplateResolver{},
 				}
 
 				rendered := mr.Render(command.Result{
@@ -1328,10 +1281,9 @@ $$$
 // VCS hosts for a single project.
 func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 	cases := []struct {
-		VCSHost                 models.VCSHostType
-		GitlabCommonMarkSupport bool
-		Output                  string
-		ShouldWrap              bool
+		VCSHost    models.VCSHostType
+		Output     string
+		ShouldWrap bool
 	}{
 		{
 			VCSHost:    models.Github,
@@ -1343,50 +1295,6 @@ func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 			Output:     strings.Repeat("line\n", 13) + "No changes. Infrastructure is up-to-date.",
 			ShouldWrap: true,
 		},
-		{
-			VCSHost:                 models.Gitlab,
-			GitlabCommonMarkSupport: false,
-			Output:                  strings.Repeat("line\n", 1),
-			ShouldWrap:              false,
-		},
-		{
-			VCSHost:                 models.Gitlab,
-			GitlabCommonMarkSupport: false,
-			Output:                  strings.Repeat("line\n", 13),
-			ShouldWrap:              false,
-		},
-		{
-			VCSHost:                 models.Gitlab,
-			GitlabCommonMarkSupport: true,
-			Output:                  strings.Repeat("line\n", 1),
-			ShouldWrap:              false,
-		},
-		{
-			VCSHost:                 models.Gitlab,
-			GitlabCommonMarkSupport: true,
-			Output:                  strings.Repeat("line\n", 13) + "No changes. Infrastructure is up-to-date.",
-			ShouldWrap:              true,
-		},
-		{
-			VCSHost:    models.BitbucketCloud,
-			Output:     strings.Repeat("line\n", 1),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketCloud,
-			Output:     strings.Repeat("line\n", 13),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketServer,
-			Output:     strings.Repeat("line\n", 1),
-			ShouldWrap: false,
-		},
-		{
-			VCSHost:    models.BitbucketServer,
-			Output:     strings.Repeat("line\n", 13),
-			ShouldWrap: false,
-		},
 	}
 
 	for _, c := range cases {
@@ -1394,9 +1302,7 @@ func TestRenderProjectResults_WrapSingleProject(t *testing.T) {
 			t.Run(fmt.Sprintf("%s_%s_%v", c.VCSHost.String(), cmd.String(), c.ShouldWrap),
 				func(t *testing.T) {
 					mr := Renderer{
-						TemplateResolver: TemplateResolver{
-							GitlabSupportsCommonMark: c.GitlabCommonMarkSupport,
-						},
+						TemplateResolver: TemplateResolver{},
 					}
 					var pr command.ProjectResult
 					switch cmd {

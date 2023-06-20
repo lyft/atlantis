@@ -8,10 +8,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/runatlantis/atlantis/server/events/metrics"
+	"github.com/runatlantis/atlantis/server/metrics"
 	contextInternal "github.com/runatlantis/atlantis/server/neptune/context"
 
-	"github.com/runatlantis/atlantis/server/core/config/valid"
+	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/uber-go/tally/v4"
 	"go.temporal.io/sdk/client"
 	temporaltally "go.temporal.io/sdk/contrib/tally"

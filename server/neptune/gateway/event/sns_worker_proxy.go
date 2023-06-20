@@ -4,8 +4,9 @@ package event
 import (
 	"bytes"
 	"context"
+
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/http"
+	"github.com/runatlantis/atlantis/server/legacy/http"
 	"github.com/runatlantis/atlantis/server/logging"
 )
 

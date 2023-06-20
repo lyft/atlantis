@@ -3,20 +3,21 @@ package event_test
 import (
 	"bytes"
 	"context"
-	"github.com/runatlantis/atlantis/server/events/models"
-	buffered "github.com/runatlantis/atlantis/server/http"
+	"io"
+	"net/http"
+	"testing"
+
+	buffered "github.com/runatlantis/atlantis/server/legacy/http"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/lyft/feature"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/tally/v4"
 	"go.temporal.io/api/serviceerror"
 	"go.temporal.io/sdk/client"
-	"io"
-	"net/http"
-	"testing"
 )
 
 const (
