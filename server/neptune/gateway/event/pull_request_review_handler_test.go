@@ -51,7 +51,7 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessWithFailedPolicies(t *testing
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
 		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
 	proxy := event.PullRequestReviewWorkerProxy{
@@ -91,7 +91,7 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessNoFailedPolicies(t *testing.T
 		expectedRunID:      "",
 		expectedErr:        serviceerror.NewNotFound("workflow not found"),
 		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
 	proxy := event.PullRequestReviewWorkerProxy{
@@ -156,7 +156,7 @@ func TestPullRequestReviewWorkerProxy_FetcherError(t *testing.T) {
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
 		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
 	proxy := event.PullRequestReviewWorkerProxy{
@@ -197,7 +197,7 @@ func TestPullRequestReviewWorkerProxy_SNSError(t *testing.T) {
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
 		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
 	proxy := event.PullRequestReviewWorkerProxy{
@@ -239,7 +239,7 @@ func TestPullRequestReviewWorkerProxy_SignalerError(t *testing.T) {
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
 		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedErr:        assert.AnError,
 		expectedOptions:    client.StartWorkflowOptions{},
 	}

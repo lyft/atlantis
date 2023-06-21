@@ -28,18 +28,18 @@ type policyFilter interface {
 	Filter(teams map[string][]string, currentApprovals []*github.PullRequestReview, failedPolicies []activities.PolicySet) []activities.PolicySet
 }
 
-type NewApprovalRequest struct {
+type NewReviewRequest struct {
 	Revision string
 }
 
 type FailedPolicyHandler struct {
-	ApprovalSignalChannel workflow.ReceiveChannel
-	Dismisser             dismisser
-	PolicyFilter          policyFilter
-	GithubActivities      githubActivities
-	PRNumber              int
-	Org                   string
-	Scope                 metrics.Scope
+	ReviewSignalChannel workflow.ReceiveChannel
+	Dismisser           dismisser
+	PolicyFilter        policyFilter
+	GithubActivities    githubActivities
+	PRNumber            int
+	Org                 string
+	Scope               metrics.Scope
 }
 
 type Action int64
@@ -61,15 +61,15 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 	s := temporalInternal.SelectorWithTimeout{
 		Selector: workflow.NewSelector(ctx),
 	}
-	s.AddReceive(f.ApprovalSignalChannel, func(c workflow.ReceiveChannel, more bool) {
+	s.AddReceive(f.ReviewSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		action = onApprovalSignal
 		if !more {
 			return
 		}
-		var approvalRequest NewApprovalRequest
-		c.Receive(ctx, &approvalRequest)
+		var reviewRequest NewReviewRequest
+		c.Receive(ctx, &reviewRequest)
 		// skip signal if it's not for the current revision
-		if approvalRequest.Revision != revision.Revision {
+		if reviewRequest.Revision != revision.Revision {
 			action = onSkip
 		}
 		scope.SubScopeWithTags(map[string]string{metricNames.SignalNameTag: "pr-approval"}).
