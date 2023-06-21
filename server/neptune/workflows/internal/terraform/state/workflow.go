@@ -39,6 +39,7 @@ const (
 	ActivityDurationTimeoutError
 	SkippedCompletionReason
 	ValidationFailedReason
+	BypassedFailedValidationReason
 )
 
 type JobOutput struct {

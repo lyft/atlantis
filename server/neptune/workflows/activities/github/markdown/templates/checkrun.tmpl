@@ -39,6 +39,11 @@ Policy checks for this revision have failed. Please review logs to determine whi
 For most cases, these policy checks are designed to prevent accidental deployments of invalid infrastructure changes.
 If your change needs to bypass these checks, please reach out to the owners of the failing policy check/s and request PR approvals from them.
 {{end}}
+{{if .BypassedError }}
+## Validation Checks Bypassed :white_check_mark:
+Policy checks for this revision originally failed, but have been bypassed by a user with policy admin privileges.
+If you need to reference back to which policies originally failed, the original logs are linked above.
+{{end}}
 {{if .TimedOut }}
 ## Timeout :clock1:
 :point_right: We've hit an unknown timeout.  Please retry the deployment. If this persists this is most likely a bug, please contact the owners of atlantis so they can diagnose it.
