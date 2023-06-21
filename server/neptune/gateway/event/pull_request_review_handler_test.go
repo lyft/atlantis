@@ -50,7 +50,7 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessWithFailedPolicies(t *testing
 		t:                  t,
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
-		expectedSignalName: "pr-approval",
+		expectedSignalName: "pr-review",
 		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
@@ -90,7 +90,7 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessNoFailedPolicies(t *testing.T
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
 		expectedErr:        serviceerror.NewNotFound("workflow not found"),
-		expectedSignalName: "pr-approval",
+		expectedSignalName: "pr-review",
 		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
@@ -155,7 +155,7 @@ func TestPullRequestReviewWorkerProxy_FetcherError(t *testing.T) {
 		t:                  t,
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
-		expectedSignalName: "pr-approval",
+		expectedSignalName: "pr-review",
 		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
@@ -196,7 +196,7 @@ func TestPullRequestReviewWorkerProxy_SNSError(t *testing.T) {
 		t:                  t,
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
-		expectedSignalName: "pr-approval",
+		expectedSignalName: "pr-review",
 		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
@@ -238,7 +238,7 @@ func TestPullRequestReviewWorkerProxy_SignalerError(t *testing.T) {
 		t:                  t,
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
-		expectedSignalName: "pr-approval",
+		expectedSignalName: "pr-review",
 		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedErr:        assert.AnError,
 		expectedOptions:    client.StartWorkflowOptions{},
