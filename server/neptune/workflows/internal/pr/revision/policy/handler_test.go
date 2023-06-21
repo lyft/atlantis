@@ -55,12 +55,12 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		t:                 r.T,
 	}
 	handler := &policy.FailedPolicyHandler{
-		ApprovalSignalChannel: workflow.GetSignalChannel(ctx, approveID),
-		Dismisser:             dismisser,
-		PolicyFilter:          filter,
-		GithubActivities:      r.GithubActivities,
-		PRNumber:              1,
-		Scope:                 metrics.NewNullableScope(),
+		ReviewSignalChannel: workflow.GetSignalChannel(ctx, approveID),
+		Dismisser:           dismisser,
+		PolicyFilter:        filter,
+		GithubActivities:    r.GithubActivities,
+		PRNumber:            1,
+		Scope:               metrics.NewNullableScope(),
 	}
 	handler.Handle(ctx, r.Revision, r.WorkflowResponses)
 	return response{
@@ -90,7 +90,7 @@ func TestFailedPolicyHandlerRunner_NoRoots(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(approveID, policy.NewApprovalRequest{})
+		env.SignalWorkflow(approveID, policy.NewReviewRequest{})
 	}, 2*time.Second)
 	env.ExecuteWorkflow(testWorkflow, req)
 	var resp response
@@ -128,10 +128,10 @@ func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterActivity(ga)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(approveID, policy.NewApprovalRequest{Revision: "stale"})
+		env.SignalWorkflow(approveID, policy.NewReviewRequest{Revision: "stale"})
 	}, 2*time.Second)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(approveID, policy.NewApprovalRequest{Revision: "sha"})
+		env.SignalWorkflow(approveID, policy.NewReviewRequest{Revision: "sha"})
 	}, 2*time.Second)
 	env.ExecuteWorkflow(testWorkflow, req)
 	var resp response

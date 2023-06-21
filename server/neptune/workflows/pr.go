@@ -11,14 +11,14 @@ import (
 var PRTaskQueue = pr.TaskQueue
 var PRTerraformRevisionSignalID = revision.TerraformRevisionSignalID
 var PRShutdownSignalName = pr.ShutdownSignalID
-var PRApprovalSignalName = revision.ApprovalSignalID
+var PRReviewSignalName = revision.ReviewSignalID
 
 const PRDestroyPlanMode = request.DestroyPlanMode
 const PRNormalPlanMode = request.NormalPlanMode
 
 type PRShutdownRequest = pr.NewShutdownRequest
 type PRNewRevisionSignalRequest = revision.NewTerraformRevisionRequest
-type PRApprovalRequest = policy.NewApprovalRequest
+type PRReviewRequest = policy.NewReviewRequest
 type PRRepo = request.Repo
 type PRRoot = request.Root
 type PRJob = request.Job

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	ApprovalSignalID = "pr-approval"
+	ReviewSignalID = "pr-review"
 )
 
 type TFWorkflow func(ctx workflow.Context, request terraform.Request) (terraform.Response, error)

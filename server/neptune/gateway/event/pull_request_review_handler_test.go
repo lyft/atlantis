@@ -50,8 +50,8 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessWithFailedPolicies(t *testing
 		t:                  t,
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
-		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalName: "pr-review",
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
 	proxy := event.PullRequestReviewWorkerProxy{
@@ -90,8 +90,8 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessNoFailedPolicies(t *testing.T
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
 		expectedErr:        serviceerror.NewNotFound("workflow not found"),
-		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalName: "pr-review",
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
 	proxy := event.PullRequestReviewWorkerProxy{
@@ -155,8 +155,8 @@ func TestPullRequestReviewWorkerProxy_FetcherError(t *testing.T) {
 		t:                  t,
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
-		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalName: "pr-review",
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
 	proxy := event.PullRequestReviewWorkerProxy{
@@ -196,8 +196,8 @@ func TestPullRequestReviewWorkerProxy_SNSError(t *testing.T) {
 		t:                  t,
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
-		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalName: "pr-review",
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedOptions:    client.StartWorkflowOptions{},
 	}
 	proxy := event.PullRequestReviewWorkerProxy{
@@ -238,8 +238,8 @@ func TestPullRequestReviewWorkerProxy_SignalerError(t *testing.T) {
 		t:                  t,
 		expectedWorkflowID: "repo||0",
 		expectedRunID:      "",
-		expectedSignalName: "pr-approval",
-		expectedSignalArg:  workflows.PRApprovalRequest{Revision: ref},
+		expectedSignalName: "pr-review",
+		expectedSignalArg:  workflows.PRReviewRequest{Revision: ref},
 		expectedErr:        assert.AnError,
 		expectedOptions:    client.StartWorkflowOptions{},
 	}

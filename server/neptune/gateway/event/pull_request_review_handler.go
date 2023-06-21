@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	Approved = "approved"
+	Approved         = "approved"
+	ChangesRequested = "changes_requested"
 )
 
 type PullRequestReview struct {
@@ -51,10 +52,6 @@ type PullRequestReviewWorkerProxy struct {
 }
 
 func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullRequestReview, request *http.BufferedRequest) error {
-	// Ignore non-approval events
-	if event.State != Approved {
-		return nil
-	}
 	fxns := []func(ctx context.Context, request *http.BufferedRequest, event PullRequestReview) error{
 		p.handleLegacyMode,
 		p.handlePlatformMode,
@@ -71,6 +68,10 @@ func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullReq
 }
 
 func (p *PullRequestReviewWorkerProxy) handleLegacyMode(ctx context.Context, request *http.BufferedRequest, event PullRequestReview) error {
+	// Ignore non-approval events
+	if event.State != Approved {
+		return nil
+	}
 	// Ignore PRs without failing policy checks
 	failedPolicyCheckRuns, err := p.CheckRunFetcher.ListFailedPolicyCheckRunNames(ctx, event.InstallationToken, event.Repo, event.Ref)
 	if err != nil {
@@ -98,6 +99,10 @@ func (p *PullRequestReviewWorkerProxy) forwardToSns(ctx context.Context, request
 }
 
 func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, request *http.BufferedRequest, event PullRequestReview) error {
+	// Ignore events that are neither approved nor changes requested
+	if event.State != Approved && event.State != ChangesRequested {
+		return nil
+	}
 	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
 		RepoName: event.Repo.FullName,
 	})
@@ -115,8 +120,8 @@ func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, r
 		pr.BuildPRWorkflowID(event.Repo.FullName, event.Pull.Num),
 		// keeping this empty is fine since temporal will find the currently running workflow
 		"",
-		workflows.PRApprovalSignalName,
-		workflows.PRApprovalRequest{Revision: event.Ref})
+		workflows.PRReviewSignalName,
+		workflows.PRReviewRequest{Revision: event.Ref})
 
 	var workflowNotFoundErr *serviceerror.NotFound
 	if errors.As(err, &workflowNotFoundErr) {
