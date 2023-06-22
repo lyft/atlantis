@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
+	contextUtils "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"time"
@@ -199,9 +200,14 @@ type CommentEventWorkerProxy struct {
 }
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
-	executor := p.errorHandler.WrapWithHandling(ctx, event, cmd.CommandName().String(), func(ctx context.Context) error {
-		return p.handle(ctx, request, event, cmd)
-	})
+	executor := func(ctx context.Context) error {
+		err := p.handle(ctx, request, event, cmd)
+		if err != nil {
+			p.logger.ErrorContext(context.WithValue(ctx, contextUtils.ErrKey, err), "handling error")
+			return err
+		}
+		return nil
+	}
 	return errors.Wrap(p.scheduler.Schedule(ctx, executor), "scheduling handle")
 }
 
@@ -233,8 +239,11 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 	var combinedErrors *multierror.Error
 	for _, fxn := range fxns {
 		f := fxn
-		err := p.scheduler.Schedule(ctx, func(ctx context.Context) error {
+		executor := p.errorHandler.WrapWithHandling(ctx, event, cmd.CommandName().String(), func(ctx context.Context) error {
 			return f(ctx, event, cmd, roots, request)
+		})
+		err := p.scheduler.Schedule(ctx, func(ctx context.Context) error {
+			return p.scheduler.Schedule(ctx, executor)
 		})
 		combinedErrors = multierror.Append(combinedErrors, err)
 	}
