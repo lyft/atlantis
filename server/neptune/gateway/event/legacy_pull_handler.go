@@ -12,7 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/models"
 )
 
-const PlatformModeApplyStatusMessage = "Bypassed for platform mode"
+const PlatformModeApplyStatusMessage = "THIS IS A LEGACY STATUS CHECK AND IS NOT RELEVANT PLEASE LOOK AT atlantis/deploy status checks"
 
 type vcsStatusUpdater interface {
 	UpdateCombined(ctx context.Context, repo models.Repo, pull models.PullRequest, status models.VCSStatus, cmdName fmt.Stringer, statusID string, output string) (string, error)
