@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
-	contextUtils "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"time"
@@ -201,12 +200,7 @@ type CommentEventWorkerProxy struct {
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
 	executor := func(ctx context.Context) error {
-		err := p.handle(ctx, request, event, cmd)
-		if err != nil {
-			p.logger.ErrorContext(context.WithValue(ctx, contextUtils.ErrKey, err), "handling error")
-			return err
-		}
-		return nil
+		return p.handle(ctx, request, event, cmd)
 	}
 	return errors.Wrap(p.scheduler.Schedule(ctx, executor), "scheduling handle")
 }
