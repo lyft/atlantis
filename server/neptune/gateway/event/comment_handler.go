@@ -242,9 +242,7 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 		executor := p.errorHandler.WrapWithHandling(ctx, event, cmd.CommandName().String(), func(ctx context.Context) error {
 			return f(ctx, event, cmd, roots, request)
 		})
-		err := p.scheduler.Schedule(ctx, func(ctx context.Context) error {
-			return p.scheduler.Schedule(ctx, executor)
-		})
+		err := p.scheduler.Schedule(ctx, executor)
 		combinedErrors = multierror.Append(combinedErrors, err)
 	}
 	return combinedErrors.ErrorOrNil()
