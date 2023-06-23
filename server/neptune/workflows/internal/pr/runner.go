@@ -91,9 +91,11 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, org string, tf
 			Dismisser:           &dismisser,
 			PolicyFilter:        &policy.Filter{},
 			Org:                 org,
-			Scope:               scope.SubScope("policies"),
+			Scope:               scope,
+			Notifier:            &stateReceiver,
 		},
 		GithubCheckRunCache: checkRunCache,
+		Scope:               scope,
 	}
 	shutdownChecker := ShutdownStateChecker{
 		GithubActivities: ga,

@@ -2,9 +2,12 @@ package revision
 
 import (
 	"github.com/google/uuid"
+	metricNames "github.com/runatlantis/atlantis/server/metrics"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -24,7 +27,7 @@ type TFStateReceiver interface {
 }
 
 type PolicyHandler interface {
-	Handle(ctx workflow.Context, prRevision Revision, failedPolicies []terraform.Response)
+	Handle(ctx workflow.Context, prRevision Revision, roots map[string]RootInfo, workflowResponses []terraform.Response)
 }
 
 type CheckRunClient interface {
@@ -36,6 +39,7 @@ type Processor struct {
 	TFWorkflow          TFWorkflow
 	PolicyHandler       PolicyHandler
 	GithubCheckRunCache CheckRunClient
+	Scope               metrics.Scope
 }
 
 // Process handles spinning off child Terraform workflows per root and
@@ -43,6 +47,9 @@ type Processor struct {
 func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 	roots := make(map[string]RootInfo)
 	var futures []workflow.ChildWorkflowFuture
+	scope := p.Scope.SubScope("policies").SubScopeWithTags(map[string]string{
+		metricNames.RevisionTag: prRevision.Revision,
+	})
 	for _, root := range prRevision.Roots {
 		id, err := sideeffect.GenerateUUID(ctx)
 		if err != nil {
@@ -60,8 +67,22 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 		future := p.processRoot(ctx, root, prRevision, id)
 		futures = append(futures, future)
 	}
-	workflowResponses := p.awaitWorkflows(ctx, futures, roots)
-	p.PolicyHandler.Handle(ctx, prRevision, workflowResponses)
+
+	terraformWorkflowResponses := p.awaitChildTerraformWorkflows(ctx, futures, roots)
+	// Count all policy successes/failures + handle any failures by listening for approvals in PolicyHandler
+	var failingTerraformWorkflowResponses []terraform.Response
+	for _, resp := range terraformWorkflowResponses {
+		for _, validationResult := range resp.ValidationResults {
+			switch validationResult.Status {
+			case activities.Fail:
+				scope.SubScope(validationResult.PolicySet.Name).Counter(metricNames.ExecutionFailureMetric).Inc(1)
+				failingTerraformWorkflowResponses = append(failingTerraformWorkflowResponses, resp)
+			case activities.Success:
+				scope.SubScope(validationResult.PolicySet.Name).Counter(metricNames.ExecutionSuccessMetric).Inc(1)
+			}
+		}
+	}
+	p.PolicyHandler.Handle(ctx, prRevision, roots, failingTerraformWorkflowResponses)
 	// At this point, all workflows should be successful, and we can mark combined plan check run as success
 	p.markCombinedCheckRunSuccessful(ctx, prRevision)
 }
@@ -93,9 +114,9 @@ func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.R
 	return future
 }
 
-// awaitWorkflows creates a selector to listen to the completion of each root's child workflow future and any state
+// awaitChildTerraformWorkflows creates a selector to listen to the completion of each root's child workflow future and any state
 // change signals they send over the shared WorkflowStateChangeSignal channel; we only return when all workflows complete
-func (p *Processor) awaitWorkflows(ctx workflow.Context, futures []workflow.ChildWorkflowFuture, roots map[string]RootInfo) []terraform.Response {
+func (p *Processor) awaitChildTerraformWorkflows(ctx workflow.Context, futures []workflow.ChildWorkflowFuture, roots map[string]RootInfo) []terraform.Response {
 	selector := workflow.NewNamedSelector(ctx, "TerraformChildWorkflow")
 	ch := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
 	selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {

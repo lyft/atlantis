@@ -349,9 +349,13 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 	if r.Request.WorkflowMode == terraform.PR {
 		validationResults, err := r.Validate(ctx, root, response.ServerURL, planResponse.PlanJSONFile)
 		if err != nil {
-			return Response{ValidationResults: validationResults}, r.toExternalError(err, "running validate job")
+			return Response{}, r.toExternalError(err, "running validate job")
 		}
-		return Response{ValidationResults: validationResults}, nil
+		resp := Response{
+			ValidationResults: validationResults,
+			WorkflowState:     r.Store.GetStateCopy(),
+		}
+		return resp, nil
 	}
 
 	if err = r.Apply(ctx, root, response.ServerURL, planResponse); err != nil {

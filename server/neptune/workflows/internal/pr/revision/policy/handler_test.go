@@ -9,6 +9,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision/policy"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
@@ -27,6 +28,8 @@ type request struct {
 	FilterResponse      []activities.PolicySet
 	FilterErr           error
 	GithubActivities    *mockGithubActivities
+	Roots               map[string]revision.RootInfo
+	State               *state.Workflow
 }
 
 type response struct {
@@ -35,10 +38,11 @@ type response struct {
 	DismisserErr     error
 	FilterCalls      int
 	FilterPolicies   []activities.PolicySet
+	NotifierCalls    int
 }
 
 const (
-	approveID = "approve"
+	reviewID = "review"
 )
 
 func testWorkflow(ctx workflow.Context, r request) (response, error) {
@@ -54,43 +58,42 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		filteredPolicies:  r.FilterResponse,
 		t:                 r.T,
 	}
+	notifier := &mockNotifier{
+		t:                     r.T,
+		expectedRoots:         r.Roots,
+		expectedWorkflowState: r.State,
+	}
 	handler := &policy.FailedPolicyHandler{
-		ReviewSignalChannel: workflow.GetSignalChannel(ctx, approveID),
+		ReviewSignalChannel: workflow.GetSignalChannel(ctx, reviewID),
 		Dismisser:           dismisser,
 		PolicyFilter:        filter,
 		GithubActivities:    r.GithubActivities,
 		PRNumber:            1,
 		Scope:               metrics.NewNullableScope(),
+		Notifier:            notifier,
 	}
-	handler.Handle(ctx, r.Revision, r.WorkflowResponses)
+	handler.Handle(ctx, r.Revision, r.Roots, r.WorkflowResponses)
+	_ = workflow.Sleep(ctx, 5*time.Second) //sleep to test notifier called
 	return response{
 		DismisserCalls:   dismisser.calls,
 		DismisserReviews: dismisser.expectedReviews,
 		DismisserErr:     dismisser.err,
 		FilterCalls:      filter.calls,
 		FilterPolicies:   filter.filteredPolicies,
+		NotifierCalls:    notifier.calls,
 	}, nil
 }
 
 func TestFailedPolicyHandlerRunner_NoRoots(t *testing.T) {
 	req := request{
-		T:        t,
-		Revision: revision.Revision{Repo: gh.Repo{Name: "repo"}},
-		WorkflowResponses: []terraform.Response{
-			{
-				ValidationResults: []activities.ValidationResult{
-					{
-						Status:    activities.Success,
-						PolicySet: activities.PolicySet{Name: "policy1"},
-					},
-				},
-			},
-		},
+		T:                 t,
+		Revision:          revision.Revision{Repo: gh.Repo{Name: "repo"}},
+		WorkflowResponses: []terraform.Response{},
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(approveID, policy.NewReviewRequest{})
+		env.SignalWorkflow(reviewID, policy.NewReviewRequest{})
 	}, 2*time.Second)
 	env.ExecuteWorkflow(testWorkflow, req)
 	var resp response
@@ -108,6 +111,9 @@ func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
 	ga := &mockGithubActivities{
 		reviews: activities.ListPRReviewsResponse{Reviews: []*github.PullRequestReview{testApproval}},
 	}
+	roots := map[string]revision.RootInfo{
+		"testRoot": {},
+	}
 	req := request{
 		T:        t,
 		Revision: revision.Revision{Repo: gh.Repo{Name: "repo"}, Revision: "sha"},
@@ -123,25 +129,31 @@ func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
 		},
 		GithubActivities: ga,
 		DismissResponse:  []*github.PullRequestReview{testApproval},
+		Roots:            roots,
+		State: &state.Workflow{Result: state.WorkflowResult{
+			Status: state.CompleteWorkflowStatus,
+			Reason: state.ValidationFailedReason,
+		}},
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterActivity(ga)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(approveID, policy.NewReviewRequest{Revision: "stale"})
+		env.SignalWorkflow(reviewID, policy.NewReviewRequest{Revision: "stale"})
 	}, 2*time.Second)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(approveID, policy.NewReviewRequest{Revision: "sha"})
+		env.SignalWorkflow(reviewID, policy.NewReviewRequest{Revision: "sha"})
 	}, 2*time.Second)
 	env.ExecuteWorkflow(testWorkflow, req)
 	var resp response
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
-	assert.Equal(t, resp.DismisserCalls, 1)
-	assert.Equal(t, resp.FilterCalls, 1)
+	assert.Equal(t, 1, resp.DismisserCalls)
+	assert.Equal(t, 1, resp.FilterCalls)
 	assert.NoError(t, resp.DismisserErr)
 	assert.Empty(t, resp.FilterPolicies)
-	assert.Equal(t, resp.DismisserReviews[0], testApproval)
+	assert.Equal(t, testApproval, resp.DismisserReviews[0])
+	assert.Equal(t, 1, resp.NotifierCalls)
 }
 
 type mockDismisser struct {
@@ -181,4 +193,17 @@ func (g *mockGithubActivities) GithubListTeamMembers(ctx context.Context, reques
 func (g *mockGithubActivities) GithubListPRReviews(ctx context.Context, request activities.ListPRReviewsRequest) (activities.ListPRReviewsResponse, error) {
 	g.called = true
 	return g.reviews, g.err
+}
+
+type mockNotifier struct {
+	calls                 int
+	t                     *testing.T
+	expectedWorkflowState *state.Workflow
+	expectedRoots         map[string]revision.RootInfo
+}
+
+func (m *mockNotifier) Notify(ctx workflow.Context, workflowState *state.Workflow, roots map[string]revision.RootInfo) {
+	m.calls++
+	assert.Equal(m.t, m.expectedWorkflowState, workflowState)
+	assert.Equal(m.t, m.expectedRoots, roots)
 }

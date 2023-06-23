@@ -12,6 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -28,6 +29,10 @@ type policyFilter interface {
 	Filter(teams map[string][]string, currentApprovals []*github.PullRequestReview, failedPolicies []activities.PolicySet) []activities.PolicySet
 }
 
+type notifier interface {
+	Notify(ctx workflow.Context, workflowState *state.Workflow, roots map[string]revision.RootInfo)
+}
+
 type NewReviewRequest struct {
 	Revision string
 }
@@ -40,20 +45,22 @@ type FailedPolicyHandler struct {
 	PRNumber            int
 	Org                 string
 	Scope               metrics.Scope
+	Notifier            notifier
 }
 
 type Action int64
 
 const (
-	onApprovalSignal Action = iota
+	onReviewSignal Action = iota
 	onPollTick
 	onSkip
 )
 
-func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, workflowResponses []terraform.Response) {
+// Handle processes the roots corresponding to each Terraform workflow response and determines if any policies are failing
+// and need manual approvals from policy owners.
+func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Revision, roots map[string]revision.RootInfo, failingTerraformWorkflows []terraform.Response) {
 	scope := f.Scope.SubScopeWithTags(map[string]string{metricNames.RevisionTag: revision.Revision})
-	failedPolicies := dedup(workflowResponses, scope)
-	if len(failedPolicies) == 0 {
+	if len(failingTerraformWorkflows) == 0 {
 		return
 	}
 
@@ -62,7 +69,7 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 		Selector: workflow.NewSelector(ctx),
 	}
 	s.AddReceive(f.ReviewSignalChannel, func(c workflow.ReceiveChannel, more bool) {
-		action = onApprovalSignal
+		action = onReviewSignal
 		if !more {
 			return
 		}
@@ -72,39 +79,47 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 		if reviewRequest.Revision != revision.Revision {
 			action = onSkip
 		}
-		scope.SubScopeWithTags(map[string]string{metricNames.SignalNameTag: "pr-approval"}).
+		scope.SubScopeWithTags(map[string]string{metricNames.SignalNameTag: "pr-review"}).
 			Counter(metricNames.SignalReceive).
 			Inc(1)
 	})
 	onTimeout := func(f workflow.Future) {
 		_ = f.Get(ctx, nil)
 		action = onPollTick
-		scope.SubScopeWithTags(map[string]string{metricNames.PollNameTag: "pr-approval"}).
+		scope.SubScopeWithTags(map[string]string{metricNames.PollNameTag: "pr-review"}).
 			Counter(metricNames.PollTick).
 			Inc(1)
 	}
-	cancelTimer, _ := s.AddTimeout(ctx, 5*time.Minute, onTimeout)
+	cancelTimer, _ := s.AddTimeout(ctx, 10*time.Minute, onTimeout)
 
 	for {
-		if len(failedPolicies) == 0 {
+		if len(failingTerraformWorkflows) == 0 {
 			break
 		}
 		s.Select(ctx)
 		switch action {
 		case onSkip:
 			continue
-		case onApprovalSignal:
-			failedPolicies = f.handle(ctx, revision, failedPolicies)
 		case onPollTick:
 			// TODO: evaluate a better polling rate for approvals, or remove all together
 			cancelTimer()
 			cancelTimer, _ = s.AddTimeout(ctx, 10*time.Minute, onTimeout)
-			failedPolicies = f.handle(ctx, revision, failedPolicies)
 		}
+
+		// onPollTick and onReviewSignal actions, filter out failing policies that have been approved and identify if
+		// any previously failing terraform workflows are now successful
+		remainingFailedPolicies := f.filterOutBypassedPolicies(ctx, revision, failingTerraformWorkflows)
+		successfulTerraformWorkflows := partitionWorkflowsByResult(failingTerraformWorkflows, remainingFailedPolicies, true)
+		failingTerraformWorkflows = partitionWorkflowsByResult(failingTerraformWorkflows, remainingFailedPolicies, false)
+		// for newly successful workflows, update their corresponding check statuses to passing
+		f.updateCheckStatuses(ctx, roots, successfulTerraformWorkflows)
 	}
 }
 
-func (f *FailedPolicyHandler) handle(ctx workflow.Context, revision revision.Revision, failedPolicies []activities.PolicySet) []activities.PolicySet {
+func (f *FailedPolicyHandler) filterOutBypassedPolicies(ctx workflow.Context, revision revision.Revision, failingTerraformWorkflowResponses []terraform.Response) []activities.PolicySet {
+	// Process set of currently failing policies
+	failedPolicies := fetchAllFailingPolicies(failingTerraformWorkflowResponses)
+
 	// Fetch current approvals in activity
 	var listPRReviewsResponse activities.ListPRReviewsResponse
 	err := workflow.ExecuteActivity(ctx, f.GithubActivities.GithubListPRReviews, activities.ListPRReviewsRequest{
@@ -128,6 +143,7 @@ func (f *FailedPolicyHandler) handle(ctx workflow.Context, revision revision.Rev
 	}
 
 	// Dismiss stale approvals
+	// TODO gate dismissal with flag
 	currentReviews := listPRReviewsResponse.Reviews
 	currentReviews, err = f.Dismisser.Dismiss(ctx, revision, teams, currentReviews)
 	if err != nil {
@@ -150,16 +166,59 @@ func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Rep
 	return listTeamMembersResponse.Members, err
 }
 
-func dedup(workflowResponses []terraform.Response, scope metrics.Scope) []activities.PolicySet {
+func partitionWorkflowsByResult(workflows []terraform.Response, failingPolicies []activities.PolicySet, success bool) []terraform.Response {
+	var partitionedWorkflows []terraform.Response
+	for _, workflow := range workflows {
+		if success && !containsAnyFailingPolicy(workflow, failingPolicies) {
+			partitionedWorkflows = append(partitionedWorkflows, workflow)
+		} else if !success && containsAnyFailingPolicy(workflow, failingPolicies) {
+			partitionedWorkflows = append(partitionedWorkflows, workflow)
+		}
+	}
+	return partitionedWorkflows
+}
+
+// updateCheckStatuses marks each successful TF workflow's corresponding check status as passing (i.e. each root)
+func (f *FailedPolicyHandler) updateCheckStatuses(ctx workflow.Context, roots map[string]revision.RootInfo, successfulWorkflows []terraform.Response) {
+	numUpdates := 0
+	for _, successfulWorkflow := range successfulWorkflows {
+		sw := successfulWorkflow
+		workflow.Go(ctx, func(c workflow.Context) {
+			defer func() {
+				numUpdates++
+			}()
+			workflowState := sw.WorkflowState
+			workflowState.Result.Status = state.CompleteWorkflowStatus
+			workflowState.Result.Reason = state.BypassedFailedValidationReason
+			f.Notifier.Notify(c, &workflowState, roots)
+		})
+	}
+	err := workflow.Await(ctx, func() bool {
+		return numUpdates == len(successfulWorkflows)
+	})
+	if err != nil {
+		workflow.GetLogger(ctx).Error(err.Error())
+	}
+}
+
+// containsAnyFailingPolicy checks if any of the provided failing policies are present in the provided workflow
+func containsAnyFailingPolicy(workflowResponse terraform.Response, failingPolicies []activities.PolicySet) bool {
+	for _, response := range workflowResponse.ValidationResults {
+		for _, policy := range failingPolicies {
+			if response.PolicySet.Name == policy.Name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func fetchAllFailingPolicies(workflowResponses []terraform.Response) []activities.PolicySet {
 	var failedPolicies []activities.PolicySet
 	for _, response := range workflowResponses {
 		for _, validationResult := range response.ValidationResults {
-			switch validationResult.Status {
-			case activities.Fail:
+			if validationResult.Status == activities.Fail {
 				failedPolicies = append(failedPolicies, validationResult.PolicySet)
-				scope.SubScope(validationResult.PolicySet.Name).Counter(metricNames.ExecutionFailureMetric).Inc(1)
-			case activities.Success:
-				scope.SubScope(validationResult.PolicySet.Name).Counter(metricNames.ExecutionSuccessMetric).Inc(1)
 			}
 		}
 	}
