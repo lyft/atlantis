@@ -424,15 +424,6 @@ func (r *Runner) toExternalError(err error, msg string) error {
 		return e.ToTemporalApplicationError()
 	}
 
-	var validationErr ValidationError
-	if errors.As(err, &validationErr) {
-		e := ApplicationError{
-			ErrType: validationErr.GetExternalType(),
-			Msg:     errors.Wrap(err, msg).Error(),
-		}
-		return e.ToTemporalApplicationError()
-	}
-
 	var timeoutErr *temporal.TimeoutError
 	if errors.As(err, &timeoutErr) {
 		switch timeoutErr.TimeoutType() {
