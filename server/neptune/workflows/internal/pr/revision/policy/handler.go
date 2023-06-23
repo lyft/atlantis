@@ -189,11 +189,13 @@ func (f *FailedPolicyHandler) updateCheckStatuses(ctx workflow.Context, roots ma
 	for _, successfulWorkflow := range successfulWorkflows {
 		sw := successfulWorkflow
 		workflow.Go(ctx, func(c workflow.Context) {
+			defer func() {
+				numUpdates++
+			}()
 			workflowState := sw.WorkflowState
 			workflowState.Result.Status = state.CompleteWorkflowStatus
 			workflowState.Result.Reason = state.BypassedFailedValidationReason
 			f.Notifier.Notify(c, &workflowState, roots)
-			numUpdates++
 		})
 	}
 	err := workflow.Await(ctx, func() bool {
