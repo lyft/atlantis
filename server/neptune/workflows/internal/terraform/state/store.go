@@ -173,6 +173,10 @@ func (s *WorkflowStore) UpdateCompletion(result WorkflowResult) error {
 	return s.notifier(s.state)
 }
 
+func (s *WorkflowStore) GetStateCopy() Workflow {
+	return *s.state
+}
+
 func getStartTimeFromOpts(options ...UpdateOptions) time.Time {
 	for _, o := range options {
 		if !o.StartTime.IsZero() {

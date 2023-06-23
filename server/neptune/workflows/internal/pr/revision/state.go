@@ -26,6 +26,10 @@ func (s *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		metrics.SignalNameTag: state.WorkflowStateChangeSignal,
 	}).Counter(metrics.SignalReceive).Inc(1)
 
+	s.Notify(ctx, workflowState, roots)
+}
+
+func (s *StateReceiver) Notify(ctx workflow.Context, workflowState *state.Workflow, roots map[string]RootInfo) {
 	rootInfo := roots[workflowState.ID]
 	for _, notifier := range s.InternalNotifiers {
 		if err := notifier.Notify(ctx, rootInfo.ToInternalInfo(), workflowState); err != nil {

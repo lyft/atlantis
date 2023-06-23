@@ -24,7 +24,7 @@ type TFStateReceiver interface {
 }
 
 type PolicyHandler interface {
-	Handle(ctx workflow.Context, prRevision Revision, failedPolicies []terraform.Response)
+	Handle(ctx workflow.Context, prRevision Revision, roots map[string]RootInfo, workflowResponses []terraform.Response)
 }
 
 type CheckRunClient interface {
@@ -61,7 +61,7 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 		futures = append(futures, future)
 	}
 	workflowResponses := p.awaitWorkflows(ctx, futures, roots)
-	p.PolicyHandler.Handle(ctx, prRevision, workflowResponses)
+	p.PolicyHandler.Handle(ctx, prRevision, roots, workflowResponses)
 	// At this point, all workflows should be successful, and we can mark combined plan check run as success
 	p.markCombinedCheckRunSuccessful(ctx, prRevision)
 }
