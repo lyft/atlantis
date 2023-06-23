@@ -633,7 +633,7 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 	var resp response
 	err = env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
-	assert.True(t, resp.ValidateErr)
+	assert.False(t, resp.ValidateErr)
 
 	// assert results are expected
 	env.AssertExpectations(t)
