@@ -4,6 +4,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
@@ -119,6 +120,7 @@ func testProcessRevisionWorkflow(ctx workflow.Context, r processRevisionRequest)
 				Mode:  terraformActivities.PR,
 			},
 		},
+		Scope: metrics.NewNullableScope(),
 	}
 	processor.Process(ctx, r.Revision)
 

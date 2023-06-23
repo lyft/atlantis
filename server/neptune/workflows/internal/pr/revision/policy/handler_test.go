@@ -86,18 +86,9 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 
 func TestFailedPolicyHandlerRunner_NoRoots(t *testing.T) {
 	req := request{
-		T:        t,
-		Revision: revision.Revision{Repo: gh.Repo{Name: "repo"}},
-		WorkflowResponses: []terraform.Response{
-			{
-				ValidationResults: []activities.ValidationResult{
-					{
-						Status:    activities.Success,
-						PolicySet: activities.PolicySet{Name: "policy1"},
-					},
-				},
-			},
-		},
+		T:                 t,
+		Revision:          revision.Revision{Repo: gh.Repo{Name: "repo"}},
+		WorkflowResponses: []terraform.Response{},
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
