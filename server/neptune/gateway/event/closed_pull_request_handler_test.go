@@ -10,11 +10,9 @@ import (
 	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
-	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/tally/v4"
 	"go.temporal.io/api/serviceerror"
-	"go.temporal.io/sdk/client"
 )
 
 func TestClosedPullHandler_Handle(t *testing.T) {
@@ -27,13 +25,10 @@ func TestClosedPullHandler_Handle(t *testing.T) {
 		t: t,
 	}
 	workerProxy := &mockWorkerProxy{}
-	signaler := &testSignaler{
-		t:                  t,
-		expectedWorkflowID: "repo||1",
-		expectedRunID:      "",
-		expectedSignalName: "pr-close",
-		expectedSignalArg:  workflows.PRShutdownRequest{},
-		expectedOptions:    client.StartWorkflowOptions{},
+	signaler := &testCloseSignaler{
+		t:                t,
+		expectedRepoName: "repo",
+		expectedPullNum:  1,
 	}
 	pullHandler := event.ClosedPullRequestHandler{
 		Allocator:       allocator,
@@ -66,7 +61,7 @@ func TestClosedPullHandler_Handle_AllocationError(t *testing.T) {
 		t: t,
 	}
 	workerProxy := &mockWorkerProxy{}
-	signaler := &testSignaler{}
+	signaler := &testCloseSignaler{}
 	pullHandler := event.ClosedPullRequestHandler{
 		Allocator:       allocator,
 		Logger:          logging.NewNoopCtxLogger(t),
@@ -97,7 +92,7 @@ func TestClosedPullHandler_Handle_AllocationFail(t *testing.T) {
 		t: t,
 	}
 	workerProxy := &mockWorkerProxy{}
-	signaler := &testSignaler{}
+	signaler := &testCloseSignaler{}
 	pullHandler := event.ClosedPullRequestHandler{
 		Allocator:       allocator,
 		Logger:          logging.NewNoopCtxLogger(t),
@@ -129,14 +124,11 @@ func TestClosedPullHandler_Handle_SignalError(t *testing.T) {
 		t: t,
 	}
 	workerProxy := &mockWorkerProxy{}
-	signaler := &testSignaler{
-		t:                  t,
-		expectedWorkflowID: "repo||1",
-		expectedRunID:      "",
-		expectedSignalName: "pr-close",
-		expectedSignalArg:  workflows.PRShutdownRequest{},
-		expectedOptions:    client.StartWorkflowOptions{},
-		expectedErr:        assert.AnError,
+	signaler := &testCloseSignaler{
+		t:                t,
+		err:              assert.AnError,
+		expectedRepoName: "repo",
+		expectedPullNum:  1,
 	}
 	pullHandler := event.ClosedPullRequestHandler{
 		Allocator:       allocator,
@@ -169,14 +161,11 @@ func TestClosedPullHandler_Handle_SignalNotFoundError(t *testing.T) {
 		t: t,
 	}
 	workerProxy := &mockWorkerProxy{}
-	signaler := &testSignaler{
-		t:                  t,
-		expectedWorkflowID: "repo||1",
-		expectedRunID:      "",
-		expectedSignalName: "pr-close",
-		expectedSignalArg:  workflows.PRShutdownRequest{},
-		expectedOptions:    client.StartWorkflowOptions{},
-		expectedErr:        errors.Wrap(serviceerror.NewNotFound(""), "error wrapping"),
+	signaler := &testCloseSignaler{
+		t:                t,
+		expectedRepoName: "repo",
+		expectedPullNum:  1,
+		err:              errors.Wrap(serviceerror.NewNotFound(""), "error wrapping"),
 	}
 	pullHandler := event.ClosedPullRequestHandler{
 		Allocator:       allocator,
@@ -198,4 +187,19 @@ func TestClosedPullHandler_Handle_SignalNotFoundError(t *testing.T) {
 	assert.True(t, signaler.called)
 	assert.True(t, workerProxy.called)
 	assert.NoError(t, err)
+}
+
+type testCloseSignaler struct {
+	t                *testing.T
+	called           bool
+	err              error
+	expectedRepoName string
+	expectedPullNum  int
+}
+
+func (c *testCloseSignaler) SendCloseSignal(ctx context.Context, repoName string, pullNum int) error {
+	c.called = true
+	assert.Equal(c.t, c.expectedRepoName, repoName)
+	assert.Equal(c.t, c.expectedPullNum, pullNum)
+	return c.err
 }

@@ -83,6 +83,52 @@ func (s *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfgs
 	return run, err
 }
 
+func (s *WorkflowSignaler) SendRevisionSignal(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, request Request) error {
+	return s.TemporalClient.SignalWorkflow(
+		ctx,
+		BuildPRWorkflowID(request.Repo.FullName, request.Number),
+		// keeping this empty is fine since temporal will find the currently running workflow
+		"",
+		workflows.PRTerraformRevisionSignalID,
+		workflows.PRNewRevisionSignalRequest{
+			Revision: request.Revision,
+			Roots:    s.buildRoots(rootCfgs, request.ValidateEnvs...),
+			Repo: workflows.PRRepo{
+				URL:           request.Repo.CloneURL,
+				FullName:      request.Repo.FullName,
+				Name:          request.Repo.Name,
+				Owner:         request.Repo.Owner,
+				DefaultBranch: request.Repo.DefaultBranch,
+				Credentials: workflows.PRAppCredentials{
+					InstallationToken: request.InstallationToken,
+				},
+			},
+		},
+	)
+}
+
+func (s *WorkflowSignaler) SendCloseSignal(ctx context.Context, repoName string, pullNum int) error {
+	return s.TemporalClient.SignalWorkflow(
+		ctx,
+		BuildPRWorkflowID(repoName, pullNum),
+		// keeping this empty is fine since temporal will find the currently running workflow
+		"",
+		workflows.PRShutdownSignalName,
+		workflows.PRShutdownRequest{},
+	)
+}
+
+func (s *WorkflowSignaler) SendReviewSignal(ctx context.Context, repoName string, pullNum int, revision string) error {
+	return s.TemporalClient.SignalWorkflow(
+		ctx,
+		BuildPRWorkflowID(repoName, pullNum),
+		// keeping this empty is fine since temporal will find the currently running workflow
+		"",
+		workflows.PRReviewSignalName,
+		workflows.PRReviewRequest{Revision: revision},
+	)
+}
+
 func BuildPRWorkflowID(repoName string, prNum int) string {
 	return fmt.Sprintf("%s||%d", repoName, prNum)
 }
@@ -190,8 +236,4 @@ func (s *WorkflowSignaler) generatePRModeEnvSteps(cfg *valid.MergedProjectCfg, v
 		})
 	}
 	return steps
-}
-
-func (s *WorkflowSignaler) SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, args interface{}) error {
-	return s.TemporalClient.SignalWorkflow(ctx, workflowID, runID, signalName, args)
 }
