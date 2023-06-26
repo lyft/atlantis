@@ -12,7 +12,8 @@ func TestFilter_FilterOutTeamA(t *testing.T) {
 	filter := policy.Filter{}
 	expectedFilteredPolicies := []activities.PolicySet{
 		{
-			Owner: "team-c",
+			Owner: "owners-c",
+			Name:  "team-c",
 		},
 	}
 	teams := map[string][]string{
@@ -22,10 +23,12 @@ func TestFilter_FilterOutTeamA(t *testing.T) {
 	}
 	failedPolicies := []activities.PolicySet{
 		{
-			Owner: "team-a",
+			Owner: "owners-a",
+			Name:  "team-a",
 		},
 		{
-			Owner: "team-c",
+			Owner: "owners-c",
+			Name:  "team-c",
 		},
 	}
 	currentReviews := []*github.PullRequestReview{
@@ -55,10 +58,12 @@ func TestFilter_IgnoreOldApprovalWhenChangesRequested(t *testing.T) {
 	}
 	failedPolicies := []activities.PolicySet{
 		{
-			Owner: "team-a",
+			Owner: "owners-a",
+			Name:  "team-a",
 		},
 		{
-			Owner: "team-c",
+			Owner: "owners-c",
+			Name:  "team-c",
 		},
 	}
 	currentReviews := []*github.PullRequestReview{

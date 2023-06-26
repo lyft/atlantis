@@ -9,13 +9,13 @@ type Filter struct{}
 
 func (p *Filter) Filter(teams map[string][]string, currentReviews []*github.PullRequestReview, failedPolicies []activities.PolicySet) []activities.PolicySet {
 	approvers := findRecentApprovers(currentReviews)
-	var filteredFailedPolicies []activities.PolicySet
+	var remainingFailedPolicies []activities.PolicySet
 	for _, failedPolicy := range failedPolicies {
-		if approved := p.policyApprovedByOwner(approvers, teams[failedPolicy.Owner]); !approved {
-			filteredFailedPolicies = append(filteredFailedPolicies, failedPolicy)
+		if approved := p.policyApprovedByOwner(approvers, teams[failedPolicy.Name]); !approved {
+			remainingFailedPolicies = append(remainingFailedPolicies, failedPolicy)
 		}
 	}
-	return filteredFailedPolicies
+	return remainingFailedPolicies
 }
 
 // only return an approval from a user if it is their most recent review
