@@ -140,6 +140,7 @@ func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, r
 }
 
 func (p *PullRequestReviewWorkerProxy) handleChangesRequestedEvent(ctx context.Context, event PullRequestReview) error {
+	// TODO: consider adding check confirming a failing plan check run exists before proceeding
 	commit := &config.RepoCommit{
 		Repo:          event.Pull.HeadRepo,
 		Branch:        event.Pull.HeadBranch,
@@ -172,10 +173,7 @@ func (p *PullRequestReviewWorkerProxy) handleChangesRequestedEvent(ctx context.C
 		Branch:            event.Pull.HeadBranch,
 		ValidateEnvs:      buildValidateEnvsFromPullReview(event),
 	}
-	err = p.WorkflowSignaler.SendRevisionSignal(
-		ctx,
-		rootCfgs,
-		prRequest)
+	err = p.WorkflowSignaler.SendRevisionSignal(ctx, rootCfgs, prRequest)
 	return err
 }
 
