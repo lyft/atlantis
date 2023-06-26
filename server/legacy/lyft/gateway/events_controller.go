@@ -76,7 +76,7 @@ func NewVCSEventsController(
 		WorkerProxy:     pullEventSNSProxy,
 		Allocator:       featureAllocator,
 		Logger:          logger,
-		PRCloseSignaler: temporalClient,
+		PRCloseSignaler: prSignaler,
 		Scope:           scope.SubScope("pull.closed"),
 	}
 
@@ -147,13 +147,15 @@ func NewVCSEventsController(
 	}
 
 	pullRequestReviewHandler := &gateway_handlers.PullRequestReviewWorkerProxy{
-		Scheduler:          asyncScheduler,
-		SnsWriter:          snsWriter,
-		Logger:             logger,
-		CheckRunFetcher:    checkRunFetcher,
-		Allocator:          featureAllocator,
-		PRApprovalSignaler: temporalClient,
-		Scope:              scope.SubScope("pull.review"),
+		Scheduler:         asyncScheduler,
+		SnsWriter:         snsWriter,
+		Logger:            logger,
+		CheckRunFetcher:   checkRunFetcher,
+		Allocator:         featureAllocator,
+		WorkflowSignaler:  prSignaler,
+		Scope:             scope.SubScope("pull.review"),
+		RootConfigBuilder: rootConfigBuilder,
+		GlobalCfg:         globalCfg,
 	}
 	pullFetcher := &github.PRFetcher{
 		ClientCreator: clientCreator,

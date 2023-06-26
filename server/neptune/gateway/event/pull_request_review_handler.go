@@ -3,11 +3,13 @@ package event
 import (
 	"bytes"
 	"context"
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
-	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/uber-go/tally/v4"
 	"go.temporal.io/api/serviceerror"
 
@@ -37,18 +39,21 @@ type fetcher interface {
 	ListFailedPolicyCheckRunNames(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error)
 }
 
-type prApprovalSignaler interface {
-	SignalWorkflow(ctx context.Context, workflowID string, runID string, signalName string, arg interface{}) error
+type workflowSignaler interface {
+	SendReviewSignal(ctx context.Context, repoName string, pullNum int, revision string) error
+	SendRevisionSignal(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, request pr.Request) error
 }
 
 type PullRequestReviewWorkerProxy struct {
-	Scheduler          scheduler
-	SnsWriter          Writer
-	Logger             logging.Logger
-	CheckRunFetcher    fetcher
-	Allocator          feature.Allocator
-	PRApprovalSignaler prApprovalSignaler
-	Scope              tally.Scope
+	Scheduler         scheduler
+	SnsWriter         Writer
+	Logger            logging.Logger
+	CheckRunFetcher   fetcher
+	Allocator         feature.Allocator
+	WorkflowSignaler  workflowSignaler
+	Scope             tally.Scope
+	RootConfigBuilder rootConfigBuilder
+	GlobalCfg         valid.GlobalCfg
 }
 
 func (p *PullRequestReviewWorkerProxy) Handle(ctx context.Context, event PullRequestReview, request *http.BufferedRequest) error {
@@ -115,13 +120,14 @@ func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, r
 		return nil
 	}
 
-	err = p.PRApprovalSignaler.SignalWorkflow(
-		ctx,
-		pr.BuildPRWorkflowID(event.Repo.FullName, event.Pull.Num),
-		// keeping this empty is fine since temporal will find the currently running workflow
-		"",
-		workflows.PRReviewSignalName,
-		workflows.PRReviewRequest{Revision: event.Ref})
+	switch event.State {
+	case ChangesRequested:
+		err = p.handleChangesRequestedEvent(ctx, event)
+	case Approved:
+		err = p.WorkflowSignaler.SendReviewSignal(ctx, event.Repo.FullName, event.Pull.Num, event.Ref)
+	default:
+		return nil
+	}
 
 	var workflowNotFoundErr *serviceerror.NotFound
 	if errors.As(err, &workflowNotFoundErr) {
@@ -131,4 +137,54 @@ func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, r
 		return nil
 	}
 	return err
+}
+
+func (p *PullRequestReviewWorkerProxy) handleChangesRequestedEvent(ctx context.Context, event PullRequestReview) error {
+	// TODO: consider adding check confirming a failing plan check run exists before proceeding
+	commit := &config.RepoCommit{
+		Repo:          event.Pull.HeadRepo,
+		Branch:        event.Pull.HeadBranch,
+		Sha:           event.Pull.HeadCommit,
+		OptionalPRNum: event.Pull.Num,
+	}
+
+	// set clone depth to 1 for repos with a branch checkout strategy,
+	// repos with a branch checkout strategy are most likely large and
+	// would take too long to provide a full history depth within a clone
+	cloneDepth := 0
+	matchingRepo := p.GlobalCfg.MatchingRepo(event.Pull.HeadRepo.ID())
+	if matchingRepo != nil && matchingRepo.CheckoutStrategy == "branch" {
+		cloneDepth = 1
+	}
+	builderOptions := config.BuilderOptions{
+		RepoFetcherOptions: &github.RepoFetcherOptions{
+			CloneDepth: cloneDepth,
+		},
+	}
+	rootCfgs, err := p.RootConfigBuilder.Build(ctx, commit, event.InstallationToken, builderOptions)
+	if err != nil {
+		return errors.Wrap(err, "generating roots")
+	}
+	prRequest := pr.Request{
+		Number:            event.Pull.Num,
+		Revision:          event.Pull.HeadCommit,
+		Repo:              event.Pull.HeadRepo,
+		InstallationToken: event.InstallationToken,
+		Branch:            event.Pull.HeadBranch,
+		ValidateEnvs:      buildValidateEnvsFromPullReview(event),
+	}
+	err = p.WorkflowSignaler.SendRevisionSignal(ctx, rootCfgs, prRequest)
+	return err
+}
+
+func buildValidateEnvsFromPullReview(event PullRequestReview) []pr.ValidateEnvs {
+	return []pr.ValidateEnvs{
+		{
+			Username:       event.User.Username,
+			PullNum:        event.Pull.Num,
+			PullAuthor:     event.Pull.Author,
+			HeadCommit:     event.Pull.HeadCommit,
+			BaseBranchName: event.Pull.HeadRepo.DefaultBranch,
+		},
+	}
 }
