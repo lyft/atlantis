@@ -31,6 +31,7 @@ const (
 	// Signal receive is when we receive it off the channel
 	SignalReceive = "signal_receive"
 	PollTick      = "poll_tick"
+	ContextCancel = "context_canceled"
 
 	// Forced shutdown timeout when a workflow is suspected to be abandoned
 	ShutdownTimeout = "shutdown_timeout"

@@ -54,6 +54,7 @@ const (
 	onReviewSignal Action = iota
 	onPollTick
 	onSkip
+	onShutdown
 )
 
 // Handle processes the roots corresponding to each Terraform workflow response and determines if any policies are failing
@@ -68,6 +69,10 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 	s := temporalInternal.SelectorWithTimeout{
 		Selector: workflow.NewSelector(ctx),
 	}
+	s.AddReceive(ctx.Done(), func(c workflow.ReceiveChannel, more bool) {
+		action = onShutdown
+		scope.Counter(metricNames.ContextCancel).Inc(1)
+	})
 	s.AddReceive(f.ReviewSignalChannel, func(c workflow.ReceiveChannel, more bool) {
 		action = onReviewSignal
 		if !more {
@@ -98,6 +103,8 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 		}
 		s.Select(ctx)
 		switch action {
+		case onShutdown:
+			return
 		case onSkip:
 			continue
 		case onPollTick:
