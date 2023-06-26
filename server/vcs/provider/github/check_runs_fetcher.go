@@ -15,7 +15,8 @@ const (
 	FailedConclusion = "failure"
 )
 
-var checkRunRegex = regexp.MustCompile("atlantis/policy_check.*")
+var policyCheckRunRegex = regexp.MustCompile("atlantis/policy_check.*")
+var planCheckRunRegex = regexp.MustCompile("atlantis/plan.*")
 
 type CheckRunsFetcher struct {
 	ClientCreator githubapp.ClientCreator
@@ -32,11 +33,31 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRunNames(ctx context.Context, in
 	for _, r := range runs {
 		results = append(results, r.GetName())
 	}
-
 	return results, nil
 }
 
 func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]*gh.CheckRun, error) {
+	return r.listFailedCheckRunsMatchingRegex(ctx, installationToken, repo, ref, policyCheckRunRegex)
+}
+
+func (r *CheckRunsFetcher) ListFailedPlanCheckRunNames(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error) {
+	runs, err := r.ListFailedPlanCheckRuns(ctx, installationToken, repo, ref)
+	if err != nil {
+		return []string{}, err
+	}
+
+	var results []string
+	for _, r := range runs {
+		results = append(results, r.GetName())
+	}
+	return results, nil
+}
+
+func (r *CheckRunsFetcher) ListFailedPlanCheckRuns(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]*gh.CheckRun, error) {
+	return r.listFailedCheckRunsMatchingRegex(ctx, installationToken, repo, ref, planCheckRunRegex)
+}
+
+func (r *CheckRunsFetcher) listFailedCheckRunsMatchingRegex(ctx context.Context, installationToken int64, repo models.Repo, ref string, regex *regexp.Regexp) ([]*gh.CheckRun, error) {
 	client, err := r.ClientCreator.NewInstallationClient(installationToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating installation client")
@@ -61,11 +82,11 @@ func (r *CheckRunsFetcher) ListFailedPolicyCheckRuns(ctx context.Context, instal
 	if err != nil {
 		return nil, errors.Wrap(err, "iterating through entries")
 	}
-	var failedPolicyCheckRuns []*gh.CheckRun
+	var failedCheckRuns []*gh.CheckRun
 	for _, checkRun := range checkRuns {
-		if checkRunRegex.MatchString(checkRun.GetName()) && checkRun.GetConclusion() == FailedConclusion {
-			failedPolicyCheckRuns = append(failedPolicyCheckRuns, checkRun)
+		if regex.MatchString(checkRun.GetName()) && checkRun.GetConclusion() == FailedConclusion {
+			failedCheckRuns = append(failedCheckRuns, checkRun)
 		}
 	}
-	return failedPolicyCheckRuns, nil
+	return failedCheckRuns, nil
 }
