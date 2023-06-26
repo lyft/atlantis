@@ -143,7 +143,6 @@ func (f *FailedPolicyHandler) filterOutBypassedPolicies(ctx workflow.Context, re
 	}
 
 	// Dismiss stale approvals
-	// TODO gate dismissal with flag
 	currentReviews := listPRReviewsResponse.Reviews
 	currentReviews, err = f.Dismisser.Dismiss(ctx, revision, teams, currentReviews)
 	if err != nil {
