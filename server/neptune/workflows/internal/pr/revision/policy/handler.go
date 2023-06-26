@@ -143,7 +143,6 @@ func (f *FailedPolicyHandler) filterOutBypassedPolicies(ctx workflow.Context, re
 	}
 
 	// Dismiss stale approvals
-	// TODO gate dismissal with flag
 	currentReviews := listPRReviewsResponse.Reviews
 	currentReviews, err = f.Dismisser.Dismiss(ctx, revision, teams, currentReviews)
 	if err != nil {
@@ -152,8 +151,8 @@ func (f *FailedPolicyHandler) filterOutBypassedPolicies(ctx workflow.Context, re
 	}
 
 	// Filter out failed policies from policy approvals
-	filteredPolicies := f.PolicyFilter.Filter(teams, currentReviews, failedPolicies)
-	return filteredPolicies
+	remainingFailedPolicies := f.PolicyFilter.Filter(teams, currentReviews, failedPolicies)
+	return remainingFailedPolicies
 }
 
 func (f *FailedPolicyHandler) fetchTeamMembers(ctx workflow.Context, repo gh.Repo, slug string) ([]string, error) {
