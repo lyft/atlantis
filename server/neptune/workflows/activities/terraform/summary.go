@@ -66,7 +66,7 @@ func NewPlanSummaryFromJSON(b []byte) (PlanSummary, error) {
 
 func (s PlanSummary) String() string {
 	if s.IsEmpty() {
-		return ""
+		return "No plan summary created."
 	}
 	return fmt.Sprintf("Plan: %d to add, %d to change, %d to destroy.", len(s.Creations), len(s.Updates), len(s.Deletions))
 }
