@@ -2,6 +2,7 @@ package terraform
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/hashicorp/terraform-json"
 	"github.com/pkg/errors"
@@ -61,4 +62,11 @@ func NewPlanSummaryFromJSON(b []byte) (PlanSummary, error) {
 		Deletions: deletions,
 		Updates:   updates,
 	}, nil
+}
+
+func (s PlanSummary) String() string {
+	if s.IsEmpty() {
+		return ""
+	}
+	return fmt.Sprintf("Plan: %d to add, %d to change, %d to destroy.", len(s.Creations), len(s.Updates), len(s.Deletions))
 }

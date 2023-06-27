@@ -33,17 +33,34 @@ If a specific terraform operation has failed, check the logs (linked above) to d
 
 **Note: If the terraform operations do not indicate any failure, there is a likely a platform issue. Contact service owners for additional debugging.**
 {{end}}
+
+{{if .PlanSummary }}
+## Plan Summary
+`{{.PlanSummary}}`
+
+:warning: **Please review plan logs linked above carefully for details on what resources were added, modified, or deleted (if any).**
+{{end}}
+
+{{if .ValidateSummary }}
+## Validation Summary
+`{{.ValidateSummary}}`
+
+:warning: **Please review validation logs linked above carefully for details on what specific validation rules failed (if any).**
+{{end}}
+
 {{if .ValidationError }}
 ## Validation Failure :no_entry_sign:
 Policy checks for this revision have failed. Please review logs to determine which policies have failed and why.
 For most cases, these policy checks are designed to prevent accidental deployments of invalid infrastructure changes.
 If your change needs to bypass these checks, please reach out to the owners of the failing policy check/s and request PR approvals from them.
 {{end}}
+
 {{if .BypassedError }}
 ## Validation Checks Bypassed :white_check_mark:
 Policy checks for this revision originally failed, but have been bypassed by a user with policy admin privileges.
 If you need to reference back to which policies originally failed, the original logs are linked above.
 {{end}}
+
 {{if .TimedOut }}
 ## Timeout :clock1:
 :point_right: We've hit an unknown timeout.  Please retry the deployment. If this persists this is most likely a bug, please contact the owners of atlantis so they can diagnose it.

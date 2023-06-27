@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
 	"time"
 
@@ -193,16 +194,19 @@ func (r *Runner) Validate(ctx workflow.Context, root *terraform.LocalRoot, serve
 
 	if containsFailure(validateResults) {
 		if e := r.Store.UpdateValidateJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
-			EndTime: time.Now(),
+			EndTime:         time.Now(),
+			ValidateSummary: conftest.NewValidateSummaryFromResults(validateResults),
 		}); e != nil {
-			return nil, newUpdateJobError(e, "unable to update job with failed status")
+			// not returning UpdateJobError here since we want to surface the job failure itself
+			workflow.GetLogger(ctx).Error("unable to update job with failed status, job failed with error. ", key.ErrKey, e)
 		}
 		// even if we fail, we still want to return the results for processing the failed policies
 		return validateResults, nil
 	}
 
 	if err := r.Store.UpdateValidateJobWithStatus(state.SuccessJobStatus, state.UpdateOptions{
-		EndTime: time.Now(),
+		EndTime:         time.Now(),
+		ValidateSummary: conftest.NewValidateSummaryFromResults(validateResults),
 	}); err != nil {
 		return nil, newUpdateJobError(err, "unable to update job with success status")
 	}

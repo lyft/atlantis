@@ -67,3 +67,12 @@ func TestSummary_empty(t *testing.T) {
 	assert.Equal(t, terraform.PlanSummary{}, summary)
 	assert.True(t, summary.IsEmpty())
 }
+
+func TestSummary_string(t *testing.T) {
+	plan := "{\"format_version\": \"1.0\",\"resource_changes\":[{\"change\":{\"actions\":[\"update\"]},\"address\":\"type.resource_update\"},{\"change\":{\"actions\":[\"create\"]},\"address\":\"type.resource_create\"}, {\"change\":{\"actions\":[\"delete\"]},\"address\":\"type.resource_delete\"}]}"
+
+	summary, err := terraform.NewPlanSummaryFromJSON([]byte(plan))
+	assert.NoError(t, err)
+
+	assert.Equal(t, "Plan: 1 to add, 1 to change, 1 to destroy.", summary.String())
+}
