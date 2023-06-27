@@ -43,10 +43,10 @@ func TestValidateSummary_String(t *testing.T) {
 		Failures:  []string{},
 		Successes: []string{"policy2"},
 	}
-	assert.Equal(t, summary.String(), "Successful policies: policy2\n\nFailing policies: None\n")
+	assert.Equal(t, summary.String(), "Successful policies: policy2`\n\n`Failing policies: None")
 	summary = ValidateSummary{
 		Failures:  []string{"policy1"},
 		Successes: []string{"policy2"},
 	}
-	assert.Equal(t, summary.String(), "Successful policies: policy2\n\nFailing policies: policy1\n")
+	assert.Equal(t, summary.String(), "Successful policies: policy2`\n\n`Failing policies: policy1")
 }

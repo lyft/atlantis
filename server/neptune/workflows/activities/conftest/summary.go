@@ -52,7 +52,5 @@ func (s ValidateSummary) String() string {
 	}
 
 	return fmt.Sprintf(
-		"Successful policies: %s\n\n"+
-			"Failing policies: %s\n",
-		successes, failures)
+		"Successful policies: %s`\n\n`"+"Failing policies: %s", successes, failures)
 }
