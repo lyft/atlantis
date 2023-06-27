@@ -38,14 +38,14 @@ If a specific terraform operation has failed, check the logs (linked above) to d
 ## Plan Summary
 `{{.PlanSummary}}`
 
-:warning: **Please review plan logs linked above carefully for details on what resources were added, modified, or deleted (if any).**
+:warning: **Please carefully review plan logs linked above for details on what resources were added, modified, or deleted (if any).**
 {{end}}
 
 {{if .ValidateSummary }}
 ## Validation Summary
 `{{.ValidateSummary}}`
 
-:warning: **Please review validation logs linked above carefully for details on what specific validation rules failed (if any).**
+:warning: **Please carefully review validation logs linked above for details on what specific validation rules failed (if any).**
 {{end}}
 
 {{if .ValidationError }}
