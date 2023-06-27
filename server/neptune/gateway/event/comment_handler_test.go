@@ -497,14 +497,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 	writer := &mockSnsWriter{}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	commentCreator := &mockCommentCreator{}
-	statusUpdater := &mockStatusUpdater{
-		expectedRepo:      testRepo,
-		expectedPull:      testPull,
-		expectedVCSStatus: models.QueuedVCSStatus,
-		expectedCmd:       command.Plan.String(),
-		expectedBody:      "Request received. Adding to the queue...",
-		expectedT:         t,
-	}
+	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
 	allocator := &testAllocator{
 		t:                 t,
@@ -520,7 +513,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 	}
 	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
-	assert.True(t, statusUpdater.isCalled)
+	assert.False(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
 	assert.False(t, testSignaler.called)
 	assert.True(t, writer.isCalled)
@@ -574,14 +567,7 @@ func TestCommentEventWorkerProxy_HandlePlanCommentAllocatorEnabled(t *testing.T)
 	writer := &mockSnsWriter{}
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	commentCreator := &mockCommentCreator{}
-	statusUpdater := &mockStatusUpdater{
-		expectedRepo:      testRepo,
-		expectedPull:      testPull,
-		expectedVCSStatus: models.QueuedVCSStatus,
-		expectedCmd:       command.Plan.String(),
-		expectedBody:      "Request received. Adding to the queue...",
-		expectedT:         t,
-	}
+	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
 	allocator := &testAllocator{
 		t:                  t,
@@ -600,7 +586,7 @@ func TestCommentEventWorkerProxy_HandlePlanCommentAllocatorEnabled(t *testing.T)
 	}
 	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
-	assert.True(t, statusUpdater.isCalled)
+	assert.False(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
 	assert.False(t, testSignaler.called)
 	assert.True(t, writer.isCalled)
@@ -631,14 +617,7 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 	scheduler := &sync.SynchronousScheduler{Logger: logger}
 	rootDeployer := &mockRootDeployer{}
 	commentCreator := &mockCommentCreator{}
-	statusUpdater := &mockStatusUpdater{
-		expectedRepo:      testRepo,
-		expectedPull:      testPull,
-		expectedVCSStatus: models.QueuedVCSStatus,
-		expectedCmd:       command.Plan.String(),
-		expectedBody:      "Request received. Adding to the queue...",
-		expectedT:         t,
-	}
+	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
 	allocator := &testAllocator{
 		t:                 t,
@@ -664,7 +643,7 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 	}
 	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.Error(t, err)
-	assert.True(t, statusUpdater.isCalled)
+	assert.False(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
 	assert.False(t, rootDeployer.isCalled)
 	assert.True(t, writer.isCalled)
