@@ -38,7 +38,7 @@ func TestValidateSummary_IsEmpty(t *testing.T) {
 
 func TestValidateSummary_String(t *testing.T) {
 	summary := ValidateSummary{}
-	assert.Equal(t, summary.String(), "No policies exist in this run.")
+	assert.Equal(t, summary.String(), "No policies exist in this run. Most likely, no policies were ever configured or there was an internal error. Please check the logs.")
 	summary = ValidateSummary{
 		Failures:  []string{},
 		Successes: []string{"policy2"},
