@@ -40,7 +40,7 @@ func (s ValidateSummary) IsEmpty() bool {
 
 func (s ValidateSummary) String() string {
 	if s.IsEmpty() {
-		return "No policies exist in this run."
+		return "No policies exist in this run. Most likely, no policies were ever configured or there was an internal error. Please check the logs."
 	}
 	successes := strings.Join(s.Successes, ", ")
 	if successes == "" {
