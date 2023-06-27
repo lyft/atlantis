@@ -125,10 +125,9 @@ func (s *WorkflowStore) UpdateValidateJobWithStatus(status JobStatus, options ..
 
 	case FailedJobStatus, SuccessJobStatus:
 		s.state.Validate.EndTime = getEndTimeFromOpts(options...)
-	}
-
-	for _, o := range options {
-		s.state.Validate.Output.ValidateSummary = o.ValidateSummary
+		for _, o := range options {
+			s.state.Validate.Output.ValidateSummary = o.ValidateSummary
+		}
 	}
 
 	s.state.Validate.Status = status
