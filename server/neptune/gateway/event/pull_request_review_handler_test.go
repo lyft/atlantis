@@ -69,7 +69,7 @@ func TestPullRequestReviewWorkerProxy_HandleApprovalWithFailedPolicies(t *testin
 	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
 	assert.NoError(t, err)
 	assert.True(t, writer.isCalled)
-	assert.True(t, mockFetcher.isCalled)
+	assert.True(t, mockFetcher.called)
 	assert.True(t, signaler.called)
 }
 
@@ -86,6 +86,9 @@ func TestPullRequestReviewWorkerProxy_HandleChangesRequestedWithFailedPolicies(t
 		expectedRepoName: "repo",
 		expectedPullNum:  1,
 		expectedRevision: "1234",
+	}
+	mockFetcher := &mockCheckRunFetcher{
+		failedPolicies: []string{"failed policy"},
 	}
 	expectedCommit := &config.RepoCommit{
 		Repo:          testRepo,
@@ -106,6 +109,7 @@ func TestPullRequestReviewWorkerProxy_HandleChangesRequestedWithFailedPolicies(t
 		Scope:             tally.NewTestScope("", map[string]string{}),
 		RootConfigBuilder: rootConfigBuilder,
 		GlobalCfg:         valid.GlobalCfg{},
+		CheckRunFetcher:   mockFetcher,
 	}
 	pull := models.PullRequest{
 		HeadRepo:   testRepo,
@@ -121,6 +125,7 @@ func TestPullRequestReviewWorkerProxy_HandleChangesRequestedWithFailedPolicies(t
 	}
 	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
 	assert.NoError(t, err)
+	assert.True(t, mockFetcher.called)
 	assert.True(t, signaler.called)
 }
 
@@ -157,7 +162,7 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessNoFailedPolicies(t *testing.T
 	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
 	assert.NoError(t, err)
 	assert.False(t, writer.isCalled)
-	assert.True(t, mockFetcher.isCalled)
+	assert.True(t, mockFetcher.called)
 	assert.True(t, signaler.called)
 }
 
@@ -181,7 +186,7 @@ func TestPullRequestReviewWorkerProxy_InvalidEvent(t *testing.T) {
 	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
 	assert.NoError(t, err)
 	assert.False(t, writer.isCalled)
-	assert.False(t, mockFetcher.isCalled)
+	assert.False(t, mockFetcher.called)
 	assert.False(t, signaler.called)
 }
 
@@ -220,7 +225,7 @@ func TestPullRequestReviewWorkerProxy_FetcherError(t *testing.T) {
 	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
 	assert.Error(t, err)
 	assert.False(t, writer.isCalled)
-	assert.True(t, mockFetcher.isCalled)
+	assert.True(t, mockFetcher.called)
 	assert.True(t, signaler.called)
 }
 
@@ -260,7 +265,7 @@ func TestPullRequestReviewWorkerProxy_SNSError(t *testing.T) {
 	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
 	assert.NoError(t, err)
 	assert.True(t, writer.isCalled)
-	assert.True(t, mockFetcher.isCalled)
+	assert.True(t, mockFetcher.called)
 	assert.True(t, signaler.called)
 }
 
@@ -301,7 +306,7 @@ func TestPullRequestReviewWorkerProxy_SignalerError(t *testing.T) {
 	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
 	assert.Error(t, err)
 	assert.True(t, writer.isCalled)
-	assert.True(t, mockFetcher.isCalled)
+	assert.True(t, mockFetcher.called)
 	assert.True(t, signaler.called)
 }
 
@@ -318,11 +323,16 @@ func (s *mockSnsWriter) WriteWithContext(ctx context.Context, payload []byte) er
 type mockCheckRunFetcher struct {
 	failedPolicies []string
 	err            error
-	isCalled       bool
+	called         bool
+}
+
+func (f *mockCheckRunFetcher) ListFailedPlanCheckRunNames(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error) {
+	f.called = true
+	return f.failedPolicies, f.err
 }
 
 func (f *mockCheckRunFetcher) ListFailedPolicyCheckRunNames(_ context.Context, _ int64, _ models.Repo, _ string) ([]string, error) {
-	f.isCalled = true
+	f.called = true
 	return f.failedPolicies, f.err
 }
 

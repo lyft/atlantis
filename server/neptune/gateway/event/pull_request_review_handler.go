@@ -37,6 +37,7 @@ type PullRequestReview struct {
 
 type fetcher interface {
 	ListFailedPolicyCheckRunNames(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error)
+	ListFailedPlanCheckRunNames(ctx context.Context, installationToken int64, repo models.Repo, ref string) ([]string, error)
 }
 
 type workflowSignaler interface {
@@ -140,7 +141,14 @@ func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, r
 }
 
 func (p *PullRequestReviewWorkerProxy) handleChangesRequestedEvent(ctx context.Context, event PullRequestReview) error {
-	// TODO: consider adding check confirming a failing plan check run exists before proceeding
+	checkruns, err := p.CheckRunFetcher.ListFailedPlanCheckRunNames(ctx, event.InstallationToken, event.Pull.HeadRepo, event.Pull.HeadCommit)
+	if err != nil {
+		return errors.Wrap(err, "fetching prior plan check runs")
+	}
+	// skip event if the PR currently doesn't have failed any failed plan checkruns
+	if len(checkruns) == 0 {
+		return nil
+	}
 	commit := &config.RepoCommit{
 		Repo:          event.Pull.HeadRepo,
 		Branch:        event.Pull.HeadBranch,
