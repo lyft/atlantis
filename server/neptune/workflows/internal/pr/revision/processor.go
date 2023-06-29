@@ -74,7 +74,11 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 		if temporal.IsCanceledError(ctx.Err()) {
 			ctx, _ := workflow.NewDisconnectedContext(ctx)
 			p.markCheckRunsAborted(ctx, prRevision, roots)
+			return
 		}
+
+		// At this point, all workflows should be successful, and we can mark combined plan check run as success
+		p.markCombinedCheckRun(ctx, prRevision, github.CheckRunSuccess, "")
 	}()
 
 	terraformWorkflowResponses := p.awaitChildTerraformWorkflows(ctx, futures, roots)
@@ -92,8 +96,6 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 		}
 	}
 	p.PolicyHandler.Handle(ctx, prRevision, roots, failingTerraformWorkflowResponses)
-	// At this point, all workflows should be successful, and we can mark combined plan check run as success
-	p.markCombinedCheckRun(ctx, prRevision, github.CheckRunSuccess, "")
 }
 
 func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision Revision, id uuid.UUID) workflow.ChildWorkflowFuture {
