@@ -47,16 +47,6 @@ func NewLegacyErrorHandler(commentCreator *github.CommentCreator, cfg valid.Glob
 	}
 }
 
-func NewPREventErrorHandler(commentCreator *github.CommentCreator, cfg valid.GlobalCfg, logger logging.Logger) *PREventErrorHandler {
-	return &PREventErrorHandler{
-		commentCreator: commentCreator,
-		templateLoader: &template.Loader[template.PRCommentData]{
-			GlobalCfg: cfg,
-		},
-		logger: logger,
-	}
-}
-
 type LegacyPREventErrorHandler struct {
 	allocator feature.Allocator
 	delegate  *PREventErrorHandler
