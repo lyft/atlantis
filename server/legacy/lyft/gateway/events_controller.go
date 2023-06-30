@@ -87,10 +87,18 @@ func NewVCSEventsController(
 		closedPullHandler,
 	)
 
-	errorHandler := gateway_handlers.NewPREventErrorHandler(
+	legacyErrorHandler := gateway_handlers.NewLegacyErrorHandler(
 		commentCreator,
 		globalCfg,
 		logger,
+		featureAllocator,
+	)
+
+	neptuneErrorHandler := gateway_handlers.NewNeptuneErrorHandler(
+		commentCreator,
+		globalCfg,
+		logger,
+		featureAllocator,
 	)
 
 	teamMemberFetcher := &github.TeamMemberFetcher{
@@ -120,7 +128,8 @@ func NewVCSEventsController(
 			vcsStatusUpdater,
 			globalCfg,
 			rootConfigBuilder,
-			errorHandler,
+			legacyErrorHandler,
+			neptuneErrorHandler,
 			requirementChecker),
 		logger,
 	)

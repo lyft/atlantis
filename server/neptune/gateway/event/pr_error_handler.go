@@ -9,6 +9,7 @@ import (
 	"github.com/runatlantis/atlantis/server/models"
 	contextUtils "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/requirement"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/template"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
@@ -20,6 +21,32 @@ type PREvent interface {
 	GetRepo() models.Repo
 }
 
+func NewNeptuneErrorHandler(commentCreator *github.CommentCreator, cfg valid.GlobalCfg, logger logging.Logger, allocator feature.Allocator) *NeptunePREventErrorHandler {
+	return &NeptunePREventErrorHandler{
+		allocator: allocator,
+		delegate: &PREventErrorHandler{
+			commentCreator: commentCreator,
+			templateLoader: &template.Loader[template.PRCommentData]{
+				GlobalCfg: cfg,
+			},
+			logger: logger,
+		},
+	}
+}
+
+func NewLegacyErrorHandler(commentCreator *github.CommentCreator, cfg valid.GlobalCfg, logger logging.Logger, allocator feature.Allocator) *LegacyPREventErrorHandler {
+	return &LegacyPREventErrorHandler{
+		allocator: allocator,
+		delegate: &PREventErrorHandler{
+			commentCreator: commentCreator,
+			templateLoader: &template.Loader[template.PRCommentData]{
+				GlobalCfg: cfg,
+			},
+			logger: logger,
+		},
+	}
+}
+
 func NewPREventErrorHandler(commentCreator *github.CommentCreator, cfg valid.GlobalCfg, logger logging.Logger) *PREventErrorHandler {
 	return &PREventErrorHandler{
 		commentCreator: commentCreator,
@@ -28,6 +55,48 @@ func NewPREventErrorHandler(commentCreator *github.CommentCreator, cfg valid.Glo
 		},
 		logger: logger,
 	}
+}
+
+type LegacyPREventErrorHandler struct {
+	allocator feature.Allocator
+	delegate  *PREventErrorHandler
+}
+
+func (p *LegacyPREventErrorHandler) WrapWithHandling(ctx context.Context, event PREvent, commandName string, executor sync.Executor) sync.Executor {
+	allocation, err := p.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: event.GetRepo().FullName,
+	})
+
+	if err != nil {
+		return p.delegate.WrapWithHandling(ctx, event, commandName, executor)
+	}
+
+	if allocation {
+		return executor
+	}
+
+	return p.delegate.WrapWithHandling(ctx, event, commandName, executor)
+}
+
+type NeptunePREventErrorHandler struct {
+	allocator feature.Allocator
+	delegate  *PREventErrorHandler
+}
+
+func (p *NeptunePREventErrorHandler) WrapWithHandling(ctx context.Context, event PREvent, commandName string, executor sync.Executor) sync.Executor {
+	allocation, err := p.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: event.GetRepo().FullName,
+	})
+
+	if err != nil {
+		return p.delegate.WrapWithHandling(ctx, event, commandName, executor)
+	}
+
+	if !allocation {
+		return executor
+	}
+
+	return p.delegate.WrapWithHandling(ctx, event, commandName, executor)
 }
 
 // PREventErrorHandler is used provide additional functionality for handlers that want to provide feedback to the user

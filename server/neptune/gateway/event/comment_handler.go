@@ -3,10 +3,11 @@ package event
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/config/valid"
@@ -68,7 +69,7 @@ func (c Comment) GetRepo() models.Repo {
 	return c.BaseRepo
 }
 
-func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, allocator feature.Allocator, prSignaler prSignaler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, errorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
+func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, allocator feature.Allocator, prSignaler prSignaler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, legacyErrorHandler errorHandler, neptuneErrorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
 		logger:    logger,
 		scheduler: scheduler,
@@ -86,9 +87,10 @@ func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, schedul
 			allocator:          allocator,
 			prSignaler:         prSignaler,
 		},
-		vcsStatusUpdater:  vcsStatusUpdater,
-		rootConfigBuilder: rootConfigBuilder,
-		errorHandler:      errorHandler,
+		vcsStatusUpdater:    vcsStatusUpdater,
+		rootConfigBuilder:   rootConfigBuilder,
+		legacyErrorHandler:  legacyErrorHandler,
+		neptuneErrorHandler: neptuneErrorHandler,
 	}
 }
 
@@ -189,13 +191,14 @@ func (p *NeptuneWorkerProxy) handleApplies(ctx context.Context, event Comment, c
 }
 
 type CommentEventWorkerProxy struct {
-	logger             logging.Logger
-	scheduler          scheduler
-	vcsStatusUpdater   statusUpdater
-	rootConfigBuilder  rootConfigBuilder
-	legacyHandler      *LegacyCommentHandler
-	neptuneWorkerProxy *NeptuneWorkerProxy
-	errorHandler       errorHandler
+	logger              logging.Logger
+	scheduler           scheduler
+	vcsStatusUpdater    statusUpdater
+	rootConfigBuilder   rootConfigBuilder
+	legacyHandler       *LegacyCommentHandler
+	neptuneWorkerProxy  *NeptuneWorkerProxy
+	neptuneErrorHandler errorHandler
+	legacyErrorHandler  errorHandler
 }
 
 func (p *CommentEventWorkerProxy) Handle(ctx context.Context, request *http.BufferedRequest, event Comment, cmd *command.Comment) error {
@@ -226,17 +229,19 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 		return nil
 	}
 
-	fxns := []func(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg, request *http.BufferedRequest) error{
-		p.legacyHandler.Handle,
-		p.neptuneWorkerProxy.Handle,
+	fxns := []sync.Executor{
+		p.legacyErrorHandler.WrapWithHandling(ctx, event, cmd.CommandName().String(), func(ctx context.Context) error {
+			return p.legacyHandler.Handle(ctx, event, cmd, roots, request)
+		}),
+		p.neptuneErrorHandler.WrapWithHandling(ctx, event, cmd.CommandName().String(), func(ctx context.Context) error {
+			return p.neptuneWorkerProxy.Handle(ctx, event, cmd, roots, request)
+		}),
 	}
+
 	var combinedErrors *multierror.Error
 	for _, fxn := range fxns {
 		f := fxn
-		executor := p.errorHandler.WrapWithHandling(ctx, event, cmd.CommandName().String(), func(ctx context.Context) error {
-			return f(ctx, event, cmd, roots, request)
-		})
-		err := p.scheduler.Schedule(ctx, executor)
+		err := p.scheduler.Schedule(ctx, f)
 		combinedErrors = multierror.Append(combinedErrors, err)
 	}
 	return combinedErrors.ErrorOrNil()

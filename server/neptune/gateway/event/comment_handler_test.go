@@ -3,9 +3,10 @@ package event_test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
-	"testing"
 
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy/events/command"
@@ -178,7 +179,7 @@ func TestCommentEventWorkerProxy_HandleForceApply(t *testing.T) {
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name:       command.Apply,
@@ -236,7 +237,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_RequirementsFailed(t *testin
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{
 		err: assert.AnError,
 	})
 	bufReq := buildRequest(t)
@@ -319,7 +320,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment(t *testing.T) {
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -394,7 +395,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -453,7 +454,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -513,7 +514,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -593,7 +594,7 @@ func TestCommentEventWorkerProxy_HandlePlanCommentAllocatorEnabled(t *testing.T)
 		expectedRoots:     roots,
 		expectedPRRequest: prRequest,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -647,7 +648,7 @@ func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	commentEvent := event.Comment{
 		Pull:     testPull,
