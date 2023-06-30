@@ -20,11 +20,10 @@ func NewValidateSummaryFromResults(results []activities.ValidationResult) Valida
 	var successes []string
 	for _, result := range results {
 		summary := result.PolicySet.Name
-		switch result.Status {
-		case activities.Fail:
-			failures = append(failures, summary)
-		case activities.Success:
+		if result.Status == activities.Success {
 			successes = append(successes, summary)
+		} else {
+			failures = append(failures, summary)
 		}
 	}
 
