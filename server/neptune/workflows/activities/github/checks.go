@@ -53,6 +53,7 @@ const (
 	CheckRunQueued         CheckRunState = "queued"
 	CheckRunSkipped        CheckRunState = "skipped"
 	CheckRunActionRequired CheckRunState = "action_required"
+	CheckRunCancelled      CheckRunState = "cancelled"
 	CheckRunUnknown        CheckRunState = ""
 
 	Approve PlanReviewActionType = "Approve"

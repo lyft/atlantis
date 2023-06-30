@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	ReviewSignalID = "pr-review"
+	ReviewSignalID    = "pr-review"
+	CheckRunCancelled = "checkrun was cancelled"
 )
 
 type TFWorkflow func(ctx workflow.Context, request terraform.Request) (terraform.Response, error)
@@ -68,6 +69,18 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 		futures = append(futures, future)
 	}
 
+	// Mark checkruns as aborted if the context was cancelled, this typically happens if revisions arrive in quick succession
+	defer func() {
+		if temporal.IsCanceledError(ctx.Err()) {
+			ctx, _ := workflow.NewDisconnectedContext(ctx)
+			p.markCheckRunsAborted(ctx, prRevision, roots)
+			return
+		}
+
+		// At this point, all workflows should be successful, and we can mark combined plan check run as success
+		p.markCombinedCheckRun(ctx, prRevision, github.CheckRunSuccess, "")
+	}()
+
 	terraformWorkflowResponses := p.awaitChildTerraformWorkflows(ctx, futures, roots)
 	// Count all policy successes/failures + handle any failures by listening for approvals in PolicyHandler
 	var failingTerraformWorkflowResponses []terraform.Response
@@ -83,8 +96,6 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 		}
 	}
 	p.PolicyHandler.Handle(ctx, prRevision, roots, failingTerraformWorkflowResponses)
-	// At this point, all workflows should be successful, and we can mark combined plan check run as success
-	p.markCombinedCheckRunSuccessful(ctx, prRevision)
 }
 
 func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision Revision, id uuid.UUID) workflow.ChildWorkflowFuture {
@@ -149,22 +160,46 @@ func (p *Processor) awaitChildTerraformWorkflows(ctx workflow.Context, futures [
 	return results
 }
 
-func (p *Processor) markCombinedCheckRunSuccessful(ctx workflow.Context, revision Revision) {
+func (p *Processor) markCombinedCheckRun(ctx workflow.Context, revision Revision, state github.CheckRunState, summary string) {
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: 3,
 	})
 
 	request := notifier.GithubCheckRunRequest{
-		Title: notifier.CombinedPlanCheckRunTitle,
-		Sha:   revision.Revision,
-		Repo:  revision.Repo,
-		State: github.CheckRunSuccess,
-		Mode:  terraformActivities.PR,
+		Title:   notifier.CombinedPlanCheckRunTitle,
+		Sha:     revision.Revision,
+		Repo:    revision.Repo,
+		State:   state,
+		Mode:    terraformActivities.PR,
+		Summary: summary,
 	}
 	// ID is empty because we want to create a new check run
 	// TODO: do we want to create a new check run, are we persisting the original mark plan CR as queued in gateway?
 	_, err := p.GithubCheckRunCache.CreateOrUpdate(ctx, "", request)
 	if err != nil {
 		workflow.GetLogger(ctx).Error("unable to update check run with validation error", internalContext.ErrKey, err)
+	}
+}
+
+func (p *Processor) markCheckRunsAborted(ctx workflow.Context, revision Revision, roots map[string]RootInfo) {
+	p.markCombinedCheckRun(ctx, revision, github.CheckRunCancelled, CheckRunCancelled)
+
+	for _, rootInfo := range roots {
+		ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+			MaximumAttempts: 3,
+		})
+
+		request := notifier.GithubCheckRunRequest{
+			Title:   notifier.BuildPlanCheckRunTitle(rootInfo.Root.Name),
+			Sha:     revision.Revision,
+			Repo:    revision.Repo,
+			State:   github.CheckRunCancelled,
+			Mode:    terraformActivities.PR,
+			Summary: CheckRunCancelled,
+		}
+		_, err := p.GithubCheckRunCache.CreateOrUpdate(ctx, rootInfo.ID.String(), request)
+		if err != nil {
+			workflow.GetLogger(ctx).Error("unable to update check run with validation error", internalContext.ErrKey, err)
+		}
 	}
 }

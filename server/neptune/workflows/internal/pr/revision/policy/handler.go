@@ -95,7 +95,8 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 			Counter(metricNames.PollTick).
 			Inc(1)
 	}
-	cancelTimer, _ := s.AddTimeout(ctx, 10*time.Minute, onTimeout)
+	// perform initial check immediately (subsequent polls can occur at larger intervals)
+	cancelTimer, _ := s.AddTimeout(ctx, time.Millisecond, onTimeout)
 
 	for {
 		if len(failingTerraformWorkflows) == 0 {
