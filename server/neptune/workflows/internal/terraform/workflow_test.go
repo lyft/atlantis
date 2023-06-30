@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
 	"testing"
 	"time"
@@ -35,6 +36,14 @@ const (
 
 var testGithubRepo = github.Repo{
 	Name: testRepoName,
+}
+
+var planSummary = terraformModel.PlanSummary{
+	Updates: []terraformModel.ResourceSummary{
+		{
+			Address: "addr",
+		},
+	},
 }
 
 var approvalReason = "Because I want"
@@ -221,7 +230,8 @@ func copy(s *state.Workflow) state.Workflow {
 		copy.Plan = &state.Job{
 			Status: s.Plan.Status,
 			Output: &state.JobOutput{
-				URL: s.Plan.Output.URL,
+				URL:         s.Plan.Output.URL,
+				PlanSummary: s.Plan.Output.PlanSummary,
 			},
 		}
 	}
@@ -230,7 +240,8 @@ func copy(s *state.Workflow) state.Workflow {
 		copy.Validate = &state.Job{
 			Status: s.Validate.Status,
 			Output: &state.JobOutput{
-				URL: s.Validate.Output.URL,
+				URL:             s.Validate.Output.URL,
+				ValidateSummary: s.Validate.Output.ValidateSummary,
 			},
 		}
 	}
@@ -317,7 +328,8 @@ func TestSuccess_DeployMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 		},
@@ -325,7 +337,8 @@ func TestSuccess_DeployMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Apply: &state.Job{
@@ -339,7 +352,8 @@ func TestSuccess_DeployMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Apply: &state.Job{
@@ -366,7 +380,8 @@ func TestSuccess_DeployMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Apply: &state.Job{
@@ -393,7 +408,8 @@ func TestSuccess_DeployMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Apply: &state.Job{
@@ -420,7 +436,8 @@ func TestSuccess_DeployMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Apply: &state.Job{
@@ -487,7 +504,7 @@ func TestSuccess_PRMode(t *testing.T) {
 		ValidateResults: []activities.ValidationResult{
 			{
 				Status:    activities.Success,
-				PolicySet: activities.PolicySet{},
+				PolicySet: activities.PolicySet{Name: "policy"},
 			},
 		},
 	})
@@ -496,6 +513,10 @@ func TestSuccess_PRMode(t *testing.T) {
 	var resp response
 	err = env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
+
+	validateSummary := conftest.ValidateSummary{
+		Successes: []string{"policy"},
+	}
 
 	// assert results are expected
 	env.AssertExpectations(t)
@@ -520,7 +541,8 @@ func TestSuccess_PRMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 		},
@@ -528,7 +550,8 @@ func TestSuccess_PRMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Validate: &state.Job{
@@ -542,7 +565,8 @@ func TestSuccess_PRMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Validate: &state.Job{
@@ -556,13 +580,15 @@ func TestSuccess_PRMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Validate: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:             outputURL,
+					ValidateSummary: validateSummary,
 				},
 			},
 		},
@@ -570,13 +596,15 @@ func TestSuccess_PRMode(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Validate: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:             outputURL,
+					ValidateSummary: validateSummary,
 				},
 			},
 			Result: state.WorkflowResult{
@@ -624,7 +652,7 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 		ValidateResults: []activities.ValidationResult{
 			{
 				Status:    activities.Fail,
-				PolicySet: activities.PolicySet{},
+				PolicySet: activities.PolicySet{Name: "policy"},
 			},
 		},
 	})
@@ -634,6 +662,10 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 	err = env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
 	assert.False(t, resp.ValidateErr)
+
+	validateSummary := conftest.ValidateSummary{
+		Failures: []string{"policy"},
+	}
 
 	// assert results are expected
 	env.AssertExpectations(t)
@@ -658,7 +690,8 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 		},
@@ -666,7 +699,8 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Validate: &state.Job{
@@ -680,7 +714,8 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Validate: &state.Job{
@@ -694,13 +729,15 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Validate: &state.Job{
 				Status: state.FailedJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:             outputURL,
+					ValidateSummary: validateSummary,
 				},
 			},
 		},
@@ -708,13 +745,15 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Validate: &state.Job{
 				Status: state.FailedJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:             outputURL,
+					ValidateSummary: validateSummary,
 				},
 			},
 			Result: state.WorkflowResult{
@@ -831,7 +870,8 @@ func TestPlanRejection(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 		},
@@ -839,7 +879,8 @@ func TestPlanRejection(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Apply: &state.Job{
@@ -853,7 +894,8 @@ func TestPlanRejection(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Apply: &state.Job{
@@ -880,7 +922,8 @@ func TestPlanRejection(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Apply: &state.Job{
@@ -907,7 +950,8 @@ func TestPlanRejection(t *testing.T) {
 			Plan: &state.Job{
 				Status: state.SuccessJobStatus,
 				Output: &state.JobOutput{
-					URL: outputURL,
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Apply: &state.Job{

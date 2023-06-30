@@ -4,10 +4,9 @@ import (
 	"bytes"
 	_ "embed" //embedding files
 	"fmt"
-	"html/template"
-
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"html/template"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 )
@@ -49,6 +48,8 @@ type checkrunTemplateData struct {
 	Skipped                 bool
 	ValidationError         bool
 	BypassedError           bool
+	PlanSummary             string
+	ValidateSummary         string
 }
 
 func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
@@ -72,15 +73,29 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	}
 
 	var applyActionsSummary string
-
 	if workflowState.Apply != nil {
 		applyActionsSummary = workflowState.Apply.GetActions().Summary
 	}
+
+	var planSummary string
+	var validateSummary string
+	if prMode {
+		if workflowState.Plan != nil && workflowState.Plan.IsComplete() && workflowState.Plan.Output != nil {
+			planSummary = workflowState.Plan.Output.PlanSummary.String()
+		}
+
+		if workflowState.Validate != nil && workflowState.Validate.IsComplete() && workflowState.Validate.Output != nil {
+			validateSummary = workflowState.Validate.Output.ValidateSummary.String()
+		}
+	}
+
 	return renderTemplate(checkrunTemplate, checkrunTemplateData{
 		PlanStatus:              planStatus,
 		PlanLogURL:              planLogURL,
+		PlanSummary:             planSummary,
 		ValidateStatus:          validateStatus,
 		ValidateLogURL:          validateLogURL,
+		ValidateSummary:         validateSummary,
 		ApplyStatus:             applyStatus,
 		ApplyLogURL:             applyLogURL,
 		PRMode:                  prMode,

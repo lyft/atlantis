@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
 	"time"
 
@@ -46,7 +47,10 @@ type JobOutput struct {
 	URL *url.URL
 
 	// populated for plan jobs
-	Summary terraform.PlanSummary
+	PlanSummary terraform.PlanSummary
+
+	// populated for validate jobs
+	ValidateSummary conftest.ValidateSummary
 }
 
 type JobAction struct {
@@ -96,6 +100,10 @@ func (j Job) GetActions() JobActions {
 	}
 
 	return JobActions{}
+}
+
+func (j Job) IsComplete() bool {
+	return j.Status == SuccessJobStatus || j.Status == FailedJobStatus
 }
 
 type WorkflowResult struct {

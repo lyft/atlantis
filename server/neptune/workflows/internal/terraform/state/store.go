@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
 	"time"
 
@@ -28,10 +29,11 @@ type WorkflowStore struct {
 }
 
 type UpdateOptions struct {
-	PlanSummary  terraform.PlanSummary
-	PlanApproval terraform.PlanApproval
-	StartTime    time.Time
-	EndTime      time.Time
+	PlanSummary     terraform.PlanSummary
+	PlanApproval    terraform.PlanApproval
+	ValidateSummary conftest.ValidateSummary
+	StartTime       time.Time
+	EndTime         time.Time
 }
 
 func NewWorkflowStoreWithGenerator(notifier UpdateNotifier, g urlGenerator, mode terraform.WorkflowMode, id string) *WorkflowStore {
@@ -123,6 +125,9 @@ func (s *WorkflowStore) UpdateValidateJobWithStatus(status JobStatus, options ..
 
 	case FailedJobStatus, SuccessJobStatus:
 		s.state.Validate.EndTime = getEndTimeFromOpts(options...)
+		for _, o := range options {
+			s.state.Validate.Output.ValidateSummary = o.ValidateSummary
+		}
 	}
 
 	s.state.Validate.Status = status
@@ -150,7 +155,7 @@ func (s *WorkflowStore) UpdatePlanJobWithStatus(status JobStatus, options ...Upd
 	s.state.Plan.Status = status
 
 	for _, o := range options {
-		s.state.Plan.Output.Summary = o.PlanSummary
+		s.state.Plan.Output.PlanSummary = o.PlanSummary
 	}
 	return s.notifier(s.state)
 }
