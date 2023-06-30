@@ -11,20 +11,10 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
 )
-
-type testFeatureAllocator struct {
-	Enabled bool
-	Err     error
-}
-
-func (t *testFeatureAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
-	return t.Enabled, t.Err
-}
 
 func TestModifiedPullHandler_Handle_CriteriaFailure(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
