@@ -4,10 +4,9 @@ import (
 	"bytes"
 	_ "embed" //embedding files
 	"fmt"
-	"html/template"
-
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"html/template"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 )
@@ -81,11 +80,11 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	var planSummary string
 	var validateSummary string
 	if prMode {
-		if workflowState.Plan != nil && workflowState.Plan.Output != nil {
+		if workflowState.Plan != nil && workflowState.Plan.IsComplete() && workflowState.Plan.Output != nil {
 			planSummary = workflowState.Plan.Output.PlanSummary.String()
 		}
 
-		if workflowState.Validate != nil && workflowState.Validate.Output != nil {
+		if workflowState.Validate != nil && workflowState.Validate.IsComplete() && workflowState.Validate.Output != nil {
 			validateSummary = workflowState.Validate.Output.ValidateSummary.String()
 		}
 	}

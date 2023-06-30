@@ -102,6 +102,10 @@ func (j Job) GetActions() JobActions {
 	return JobActions{}
 }
 
+func (j Job) IsComplete() bool {
+	return j.Status == SuccessJobStatus || j.Status == FailedJobStatus
+}
+
 type WorkflowResult struct {
 	Status WorkflowStatus
 	Reason WorkflowCompletionReason
