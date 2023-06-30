@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
-
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy/events/command"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -15,6 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/requirement"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
@@ -172,14 +170,10 @@ func TestCommentEventWorkerProxy_HandleForceApply(t *testing.T) {
 	}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	allocator := &testAllocator{
-		t:                 t,
-		expectedFeatureID: feature.LegacyDeprecation,
-	}
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name:       command.Apply,
@@ -224,10 +218,6 @@ func TestCommentEventWorkerProxy_HandleApplyComment_RequirementsFailed(t *testin
 		InstallationToken: 123,
 	}
 	testSignaler := &testDeploySignaler{}
-	allocator := &testAllocator{
-		t:                 t,
-		expectedFeatureID: feature.LegacyDeprecation,
-	}
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
@@ -237,7 +227,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_RequirementsFailed(t *testin
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{
 		err: assert.AnError,
 	})
 	bufReq := buildRequest(t)
@@ -313,14 +303,10 @@ func TestCommentEventWorkerProxy_HandleApplyComment(t *testing.T) {
 	commentCreator := &mockCommentCreator{}
 	statusUpdater := &mockStatusUpdater{}
 	cfg := valid.NewGlobalCfg("somedir")
-	allocator := &testAllocator{
-		t:                 t,
-		expectedFeatureID: feature.LegacyDeprecation,
-	}
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -388,14 +374,10 @@ func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
 		},
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	allocator := &testAllocator{
-		t:                 t,
-		expectedFeatureID: feature.LegacyDeprecation,
-	}
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -447,14 +429,10 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 		},
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	allocator := &testAllocator{
-		t:                 t,
-		expectedFeatureID: feature.LegacyDeprecation,
-	}
 	prSignaler := &mockPRSignaler{
 		expectedT: t,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Apply,
@@ -469,6 +447,27 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 
 func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
+	roots := []*valid.MergedProjectCfg{
+		{
+			Name: "root2",
+		},
+	}
+	token := int64(123)
+	prRequest := pr.Request{
+		Number:            testPull.Num,
+		Revision:          testPull.HeadCommit,
+		Repo:              testPull.HeadRepo,
+		InstallationToken: token,
+		Branch:            testPull.HeadBranch,
+		ValidateEnvs: []pr.ValidateEnvs{
+			{
+				PullNum:    testPull.Num,
+				PullAuthor: testPull.Author,
+				HeadCommit: testPull.HeadCommit,
+				Username:   "someuser",
+			},
+		},
+	}
 	rootConfigBuilder := &mockRootConfigBuilder{
 		expectedT: t,
 		expectedCommit: &config.RepoCommit{
@@ -478,13 +477,9 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 			OptionalPRNum: testPull.Num,
 		},
 		expectedToken: 123,
-		rootConfigs: []*valid.MergedProjectCfg{
-			{
-				Name: "root2",
-			},
-		},
+		rootConfigs:   roots,
 	}
-	testSignaler := &testDeploySignaler{}
+	deploySignaler := &testDeploySignaler{}
 	commentEvent := event.Comment{
 		Pull:     testPull,
 		PullNum:  testPull.Num,
@@ -507,14 +502,12 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	allocator := &testAllocator{
-		t:                 t,
-		expectedFeatureID: feature.LegacyDeprecation,
-	}
 	prSignaler := &mockPRSignaler{
-		expectedT: t,
+		expectedT:         t,
+		expectedRoots:     roots,
+		expectedPRRequest: prRequest,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, prSignaler, deploySignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -523,7 +516,8 @@ func TestCommentEventWorkerProxy_HandlePlanComment(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, statusUpdater.isCalled)
 	assert.False(t, commentCreator.isCalled)
-	assert.False(t, testSignaler.called)
+	assert.False(t, deploySignaler.called)
+	assert.True(t, prSignaler.called)
 	assert.True(t, writer.isCalled)
 }
 
@@ -584,17 +578,12 @@ func TestCommentEventWorkerProxy_HandlePlanCommentAllocatorEnabled(t *testing.T)
 		expectedT:         t,
 	}
 	cfg := valid.NewGlobalCfg("somedir")
-	allocator := &testAllocator{
-		t:                  t,
-		expectedFeatureID:  feature.LegacyDeprecation,
-		expectedAllocation: true,
-	}
 	prSignaler := &mockPRSignaler{
 		expectedT:         t,
 		expectedRoots:     roots,
 		expectedPRRequest: prRequest,
 	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
+	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
 	bufReq := buildRequest(t)
 	cmd := &command.Comment{
 		Name: command.Plan,
@@ -606,69 +595,6 @@ func TestCommentEventWorkerProxy_HandlePlanCommentAllocatorEnabled(t *testing.T)
 	assert.False(t, testSignaler.called)
 	assert.True(t, writer.isCalled)
 	assert.True(t, prSignaler.called)
-}
-
-func TestCommentEventWorkerProxy_WriteError(t *testing.T) {
-	logger := logging.NewNoopCtxLogger(t)
-	rootConfigBuilder := &mockRootConfigBuilder{
-		expectedT: t,
-		expectedCommit: &config.RepoCommit{
-			Repo:          testRepo,
-			Branch:        testPull.HeadBranch,
-			Sha:           testPull.HeadCommit,
-			OptionalPRNum: testPull.Num,
-		},
-		expectedToken: 123,
-		rootConfigs: []*valid.MergedProjectCfg{
-			{
-				Name: "root2",
-			},
-		},
-	}
-	testSignaler := &testDeploySignaler{}
-	writer := &mockSnsWriter{
-		err: assert.AnError,
-	}
-	scheduler := &sync.SynchronousScheduler{Logger: logger}
-	rootDeployer := &mockRootDeployer{}
-	commentCreator := &mockCommentCreator{}
-	statusUpdater := &mockStatusUpdater{
-		expectedRepo:      testRepo,
-		expectedPull:      testPull,
-		expectedVCSStatus: models.QueuedVCSStatus,
-		expectedCmd:       command.Plan.String(),
-		expectedBody:      "Request received. Adding to the queue...",
-		expectedT:         t,
-	}
-	cfg := valid.NewGlobalCfg("somedir")
-	allocator := &testAllocator{
-		t:                 t,
-		expectedFeatureID: feature.LegacyDeprecation,
-	}
-	prSignaler := &mockPRSignaler{
-		expectedT: t,
-	}
-	commentEventWorkerProxy := event.NewCommentEventWorkerProxy(logger, writer, scheduler, allocator, prSignaler, testSignaler, commentCreator, statusUpdater, cfg, rootConfigBuilder, noopErrorHandler{}, noopErrorHandler{}, &requirementsChecker{})
-	bufReq := buildRequest(t)
-	commentEvent := event.Comment{
-		Pull:     testPull,
-		PullNum:  testPull.Num,
-		BaseRepo: testRepo,
-		HeadRepo: testRepo,
-		User: models.User{
-			Username: "someuser",
-		},
-		InstallationToken: 123,
-	}
-	cmd := &command.Comment{
-		Name: command.Plan,
-	}
-	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
-	assert.Error(t, err)
-	assert.True(t, statusUpdater.isCalled)
-	assert.False(t, commentCreator.isCalled)
-	assert.False(t, rootDeployer.isCalled)
-	assert.True(t, writer.isCalled)
 }
 
 type mockCommentCreator struct {

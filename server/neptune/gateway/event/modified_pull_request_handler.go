@@ -9,7 +9,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/requirement"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"go.temporal.io/sdk/client"
 
@@ -34,7 +33,6 @@ type ModifiedPullHandler struct {
 	GlobalCfg          valid.GlobalCfg
 	RequirementChecker requirementChecker
 	LegacyHandler      legacyHandler
-	Allocator          feature.Allocator
 	PRSignaler         prSignaler
 }
 
@@ -47,7 +45,7 @@ type PullRequest struct {
 	InstallationToken int64
 }
 
-func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConfigBuilder rootConfigBuilder, globalCfg valid.GlobalCfg, requirementChecker requirementChecker, prSignaler prSignaler, legacyHandler legacyHandler, allocator feature.Allocator) *ModifiedPullHandler {
+func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConfigBuilder rootConfigBuilder, globalCfg valid.GlobalCfg, requirementChecker requirementChecker, prSignaler prSignaler, legacyHandler legacyHandler) *ModifiedPullHandler {
 	return &ModifiedPullHandler{
 		Logger:             logger,
 		Scheduler:          scheduler,
@@ -56,7 +54,6 @@ func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConf
 		RequirementChecker: requirementChecker,
 		LegacyHandler:      legacyHandler,
 		PRSignaler:         prSignaler,
-		Allocator:          allocator,
 	}
 }
 
@@ -122,19 +119,6 @@ func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.Buffered
 func (p *ModifiedPullHandler) handlePlatformMode(ctx context.Context, request *http.BufferedRequest, event PullRequest, roots []*valid.MergedProjectCfg) error {
 	// skip signaling workflow if no roots
 	if len(roots) == 0 {
-		return nil
-	}
-	// TODO: remove when we begin in-depth testing and rollout of pr mode
-	// feature allocator is only temporary while we continue building out implementation
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
-		RepoName: event.Pull.HeadRepo.FullName,
-	})
-	if err != nil {
-		p.Logger.ErrorContext(ctx, "unable to allocate pr mode")
-		return nil
-	}
-	if !shouldAllocate {
-		p.Logger.InfoContext(ctx, "handler not configured for allocation")
 		return nil
 	}
 	prRequest := pr.Request{

@@ -81,7 +81,6 @@ func TestModifiedPullHandler_Handle_SignalerFailure(t *testing.T) {
 			expectedT:         t,
 			expectedPRRequest: prRequest,
 		},
-		Allocator: &testFeatureAllocator{Enabled: true},
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{})
 	assert.ErrorContains(t, err, assert.AnError.Error())
@@ -156,7 +155,6 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 		},
 		LegacyHandler: legacyHandler,
 		PRSignaler:    signaler,
-		Allocator:     &testFeatureAllocator{Enabled: true},
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pull)
 	assert.NoError(t, err)
@@ -225,7 +223,6 @@ func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
 		},
 		LegacyHandler: legacyHandler,
 		PRSignaler:    signaler,
-		Allocator:     &testFeatureAllocator{Enabled: true},
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pr)
 	assert.NoError(t, err)

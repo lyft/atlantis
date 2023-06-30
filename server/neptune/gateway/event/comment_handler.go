@@ -6,9 +6,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
-
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy/events/command"
@@ -17,6 +14,7 @@ import (
 	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/requirement"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
@@ -69,7 +67,7 @@ func (c Comment) GetRepo() models.Repo {
 	return c.BaseRepo
 }
 
-func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, allocator feature.Allocator, prSignaler prSignaler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, legacyErrorHandler errorHandler, neptuneErrorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
+func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, prSignaler prSignaler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, legacyErrorHandler errorHandler, neptuneErrorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
 		logger:    logger,
 		scheduler: scheduler,
@@ -84,7 +82,6 @@ func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, schedul
 			deploySignaler:     deploySignaler,
 			commentCreator:     commentCreator,
 			requirementChecker: requirementChecker,
-			allocator:          allocator,
 			prSignaler:         prSignaler,
 		},
 		vcsStatusUpdater:    vcsStatusUpdater,
@@ -99,26 +96,12 @@ type NeptuneWorkerProxy struct {
 	deploySignaler     deploySignaler
 	commentCreator     commentCreator
 	requirementChecker requirementChecker
-	allocator          feature.Allocator
 	prSignaler         prSignaler
 }
 
 func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg, request *http.BufferedRequest) error {
 	if cmd.Name == command.Apply {
 		return p.handleApplies(ctx, event, cmd, roots)
-	}
-	// TODO: remove when we begin in-depth testing and rollout of pr mode
-	// feature allocator is only temporary while we continue building out implementation
-	shouldAllocate, err := p.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
-		RepoName: event.Pull.HeadRepo.FullName,
-	})
-	if err != nil {
-		p.logger.ErrorContext(ctx, "unable to allocate pr mode")
-		return nil
-	}
-	if !shouldAllocate {
-		p.logger.InfoContext(ctx, "handler not configured for allocation")
-		return nil
 	}
 	prRequest := pr.Request{
 		Number:            event.Pull.Num,
