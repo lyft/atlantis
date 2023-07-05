@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -94,6 +95,8 @@ func (e ChecksConclusion) String() string {
 	}
 	return ""
 }
+
+var policyCheckRunRegex = regexp.MustCompile("atlantis/policy_check.*")
 
 // github checks status
 type CheckStatus int
@@ -504,7 +507,9 @@ func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateSta
 		return "", errors.Wrap(err, "unable to allocate legacy deprecation feature flag")
 	}
 	// if legacy deprecation is enabled, don't mutate check runs in legacy workflow
-	if shouldAllocate {
+	// exception: we always want to mutate atlantis/policy_check since new PR workflow has no knowledge of it
+	// eventually we will get rid of it entirely
+	if shouldAllocate && !policyCheckRunRegex.MatchString(request.StatusName) {
 		g.logger.InfoContext(ctx, "legacy deprecation feature flag enabled, not updating check runs")
 		return "", nil
 	}
