@@ -111,7 +111,7 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 		case onPollTick:
 			// TODO: evaluate a better polling rate for approvals, or remove all together
 			cancelTimer()
-			cancelTimer, _ = s.AddTimeout(ctx, 10*time.Minute, onTimeout)
+			cancelTimer, _ = s.AddTimeout(ctx, time.Hour, onTimeout)
 		}
 
 		// onPollTick and onReviewSignal actions, filter out failing policies that have been approved and identify if

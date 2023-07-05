@@ -43,6 +43,7 @@ type githubClient interface { //nolint:interfacebloat
 	ListCommits(ctx internal.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error)
 	DismissReview(ctx internal.Context, owner, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error)
 	ListTeamMembers(ctx internal.Context, org string, teamSlug string) ([]*github.User, error)
+	CreateComment(ctx internal.Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error)
 }
 
 type DiffDirection string
@@ -464,4 +465,29 @@ func (a *githubActivities) GithubListTeamMembers(ctx context.Context, request Li
 	return ListTeamMembersResponse{
 		Members: members,
 	}, nil
+}
+
+type CreateCommentRequest struct {
+	Repo        internal.Repo
+	PRNumber    int
+	CommentBody string
+}
+
+type CreateCommentResponse struct{}
+
+func (a *githubActivities) GithubCreateComment(ctx context.Context, request CreateCommentRequest) (CreateCommentResponse, error) {
+	comment := &github.IssueComment{
+		Body: github.String(request.CommentBody),
+	}
+	_, _, err := a.Client.CreateComment(
+		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		request.Repo.Owner,
+		request.Repo.Name,
+		request.PRNumber,
+		comment,
+	)
+	if err != nil {
+		return CreateCommentResponse{}, errors.Wrap(err, "creating comment on PR")
+	}
+	return CreateCommentResponse{}, nil
 }
