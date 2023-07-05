@@ -479,14 +479,14 @@ func (a *githubActivities) GithubCreateComment(ctx context.Context, request Crea
 	comment := &github.IssueComment{
 		Body: github.String(request.CommentBody),
 	}
-	_, resp, err := a.Client.CreateComment(
+	_, _, err := a.Client.CreateComment(
 		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
 		request.Repo.Owner,
 		request.Repo.Name,
 		request.PRNumber,
 		comment,
 	)
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return CreateCommentResponse{}, errors.Wrap(err, "creating comment on PR")
 	}
 	return CreateCommentResponse{}, nil
