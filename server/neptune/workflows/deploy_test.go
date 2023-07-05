@@ -262,6 +262,10 @@ type testGithubClient struct {
 	DeploymentID string
 }
 
+func (c *testGithubClient) CreateComment(ctx internalGithub.Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error) {
+	return &github.IssueComment{}, &github.Response{}, nil
+}
+
 func (c *testGithubClient) ListTeamMembers(ctx internalGithub.Context, org string, teamSlug string) ([]*github.User, error) {
 	return []*github.User{}, nil
 }

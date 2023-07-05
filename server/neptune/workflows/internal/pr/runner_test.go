@@ -1,9 +1,12 @@
 package pr
 
 import (
+	"context"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 	"testing"
@@ -17,6 +20,7 @@ type request struct {
 	ShutdownPollTime      time.Duration
 	NumShutdownPollTicks  int
 	T                     *testing.T
+	GithubActivities      *testActivities
 }
 
 type response struct {
@@ -27,6 +31,12 @@ const (
 	revisionID = "revision"
 	shutdownID = "shutdown"
 )
+
+type testActivities struct{}
+
+func (a *testActivities) GithubCreateComment(ctx context.Context, request activities.CreateCommentRequest) (activities.CreateCommentResponse, error) {
+	return activities.CreateCommentResponse{}, nil
+}
 
 func testWorkflow(ctx workflow.Context, r request) (response, error) {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
@@ -46,6 +56,8 @@ func testWorkflow(ctx workflow.Context, r request) (response, error) {
 		InactivityTimeout:     r.InactivityTimeout,
 		ShutdownPollTick:      r.ShutdownPollTime,
 		Scope:                 metrics.NewNullableScope(),
+		GithubActivities:      r.GithubActivities,
+		PRNumber:              1,
 	}
 	err := runner.Run(ctx)
 	return response{
@@ -83,13 +95,21 @@ func TestWorkflowRunner_Run(t *testing.T) {
 }
 
 func TestWorkflowRunner_Run_InactivityTimeout(t *testing.T) {
+	a := &testActivities{}
 	req := request{
 		mockRevisionProcessor: testRevisionProcessor{},
 		InactivityTimeout:     time.Second,
 		ShutdownPollTime:      time.Hour,
+		GithubActivities:      a,
 	}
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
+	env.RegisterActivity(a)
+	commentRequest := activities.CreateCommentRequest{
+		PRNumber:    1,
+		CommentBody: TimeoutComment,
+	}
+	env.OnActivity(a.GithubCreateComment, mock.Anything, commentRequest).Return(activities.CompareCommitResponse{}, nil)
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow(revisionID, revision.NewTerraformRevisionRequest{
 			Revision: "abc",

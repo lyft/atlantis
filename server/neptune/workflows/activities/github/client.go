@@ -138,3 +138,11 @@ func (c *Client) ListTeamMembers(ctx Context, org string, teamSlug string) ([]*g
 	}
 	return gh_helper.Iterate(ctx, run)
 }
+
+func (c *Client) CreateComment(ctx Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+	if err != nil {
+		return nil, nil, err
+	}
+	return client.Issues.CreateComment(ctx, owner, repo, number, comment)
+}
