@@ -242,6 +242,9 @@ func (r *Runner) shouldProcessRevision(prRevision revision.Revision) bool {
 }
 
 func (r *Runner) notifyOnTimeout(ctx workflow.Context, prRevision revision.Revision) {
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		MaximumAttempts: 3,
+	})
 	createCommentRequest := activities.CreateCommentRequest{
 		Repo:        prRevision.Repo,
 		PRNumber:    r.PRNumber,
