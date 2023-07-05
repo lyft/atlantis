@@ -1,6 +1,7 @@
 package pr
 
 import (
+	"context"
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"time"
@@ -35,7 +36,10 @@ const (
 	complete
 )
 
-const ShutdownSignalID = "pr-close"
+const (
+	ShutdownSignalID = "pr-close"
+	TimeoutComment   = "Atlantis has deleted the state it managed for this PR due to inactivity, please rerun `atlantis plan` to rebuild the state."
+)
 
 type NewShutdownRequest struct{}
 
@@ -47,6 +51,10 @@ type ShutdownChecker interface {
 	ShouldShutdown(ctx workflow.Context, prRevision revision.Revision) bool
 }
 
+type ghActivities interface {
+	GithubCreateComment(ctx context.Context, request activities.CreateCommentRequest) (activities.CreateCommentResponse, error)
+}
+
 type Runner struct {
 	RevisionSignalChannel workflow.ReceiveChannel
 	RevisionReceiver      *revision.Receiver
@@ -56,6 +64,8 @@ type Runner struct {
 	Scope                 workflowMetrics.Scope
 	InactivityTimeout     time.Duration
 	ShutdownPollTick      time.Duration
+	GithubActivities      ghActivities
+	PRNumber              int
 
 	// mutable state
 	state                 RunnerState
@@ -108,6 +118,8 @@ func newRunner(ctx workflow.Context, scope workflowMetrics.Scope, org string, tf
 		Scope:                 scope,
 		RevisionProcessor:     &revisionProcessor,
 		ShutdownChecker:       &shutdownChecker,
+		GithubActivities:      ga,
+		PRNumber:              prNum,
 
 		// TODO: make these configurations
 		InactivityTimeout: time.Hour * 24 * 7,
@@ -179,8 +191,9 @@ func (r *Runner) Run(ctx workflow.Context) error {
 			continue
 		case onCancel:
 			continue
-		case onTimeout: // TODO: send message to PR stating atlantis deleted state due to inactivity and to rerun to trigger atlantis workflow
+		case onTimeout:
 			workflow.GetLogger(ctx).Info("workflow timed out, shutting down")
+			r.notifyOnTimeout(ctx, prRevision)
 			revisionCancel()
 			return nil
 		case onShutdown:
@@ -226,4 +239,17 @@ func (r *Runner) shouldProcessRevision(prRevision revision.Revision) bool {
 		return false
 	}
 	return true
+}
+
+func (r *Runner) notifyOnTimeout(ctx workflow.Context, prRevision revision.Revision) {
+	createCommentRequest := activities.CreateCommentRequest{
+		Repo:        prRevision.Repo,
+		PRNumber:    r.PRNumber,
+		CommentBody: TimeoutComment,
+	}
+	err := workflow.ExecuteActivity(ctx, r.GithubActivities.GithubCreateComment, createCommentRequest).Get(ctx, nil)
+	if err != nil {
+		// we won't fail workflow if we can't create this comment
+		workflow.GetLogger(ctx).Error("creating github comment")
+	}
 }
