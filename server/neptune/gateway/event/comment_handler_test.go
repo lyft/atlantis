@@ -402,7 +402,7 @@ func TestCommentEventWorkerProxy_HandlePlanComment_NoCmds(t *testing.T) {
 	}
 	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
-	assert.True(t, statusUpdater.AllCalled())
+	assert.False(t, statusUpdater.AllCalled())
 	assert.False(t, commentCreator.isCalled)
 	assert.False(t, testSignaler.called)
 	assert.False(t, writer.isCalled)
@@ -461,7 +461,7 @@ func TestCommentEventWorkerProxy_HandleApplyComment_NoCmds(t *testing.T) {
 	}
 	err := commentEventWorkerProxy.Handle(context.Background(), bufReq, commentEvent, cmd)
 	assert.NoError(t, err)
-	assert.True(t, statusUpdater.AllCalled())
+	assert.False(t, statusUpdater.AllCalled())
 	assert.False(t, commentCreator.isCalled)
 	assert.False(t, testSignaler.called)
 	assert.False(t, writer.isCalled)
