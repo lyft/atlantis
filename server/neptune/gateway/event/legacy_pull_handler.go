@@ -46,11 +46,6 @@ func (l *LegacyPullHandler) Handle(ctx context.Context, request *http.BufferedRe
 		l.Logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 	}
 
-	// mark plan status as queued. since this is the pull handler, we know that we're only executing plans
-	if _, err := l.VCSStatusUpdater.UpdateCombined(ctx, event.Pull.HeadRepo, event.Pull, models.QueuedVCSStatus, command.Plan, "", "Request received. Adding to the queue..."); err != nil {
-		l.Logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", err))
-	}
-
 	// forward to sns
 	err := l.WorkerProxy.Handle(ctx, request, event)
 	if err != nil {
