@@ -33,17 +33,10 @@ func (l *LegacyPullHandler) Handle(ctx context.Context, request *http.BufferedRe
 	// mark legacy statuses as successful if there are no roots in general
 	// this is processed here to make it easy to clean up when we deprecate legacy mode
 	if len(allRoots) == 0 {
-		for _, cmd := range []command.Name{command.Plan, command.Apply, command.PolicyCheck} {
-			if _, statusErr := l.VCSStatusUpdater.UpdateCombinedCount(ctx, event.Pull.HeadRepo, event.Pull, models.SuccessVCSStatus, cmd, 0, 0, ""); statusErr != nil {
-				l.Logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", statusErr))
-			}
+		if _, statusErr := l.VCSStatusUpdater.UpdateCombinedCount(ctx, event.Pull.HeadRepo, event.Pull, models.SuccessVCSStatus, command.Plan, 0, 0, ""); statusErr != nil {
+			l.Logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 		}
 		return nil
-	}
-
-	// mark apply status as successful until we're able to remove this as a required check from our github org.
-	if _, statusErr := l.VCSStatusUpdater.UpdateCombined(ctx, event.Pull.HeadRepo, event.Pull, models.SuccessVCSStatus, command.Apply, "", PlatformModeApplyStatusMessage); statusErr != nil {
-		l.Logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %s", statusErr))
 	}
 
 	// forward to sns
