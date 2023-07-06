@@ -72,10 +72,9 @@ func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, schedul
 		logger:    logger,
 		scheduler: scheduler,
 		legacyHandler: &LegacyCommentHandler{
-			logger:           logger,
-			snsWriter:        snsWriter,
-			vcsStatusUpdater: vcsStatusUpdater,
-			globalCfg:        globalCfg,
+			logger:    logger,
+			snsWriter: snsWriter,
+			globalCfg: globalCfg,
 		},
 		neptuneWorkerProxy: &NeptuneWorkerProxy{
 			logger:             logger,
@@ -230,7 +229,7 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 	return combinedErrors.ErrorOrNil()
 }
 
-// TODO: do we need to keep marking plan as successful after legacy deprecation?
+// TODO: remove Apply after we roll out pr workflow, and PolicyCheck after all legacy code is removed
 func (p *CommentEventWorkerProxy) markSuccessStatuses(ctx context.Context, event Comment, cmd *command.Comment) {
 	if cmd.Name == command.Plan {
 		for _, name := range []command.Name{command.Plan, command.PolicyCheck, command.Apply} {
