@@ -199,9 +199,6 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 	}, event.InstallationToken)
 
 	if err != nil {
-		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, event.HeadRepo, event.Pull, models.FailedVCSStatus, cmd.Name, "", err.Error()); statusErr != nil {
-			p.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %v", statusErr))
-		}
 		return errors.Wrap(err, "getting project commands")
 	}
 
@@ -229,18 +226,9 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 	return combinedErrors.ErrorOrNil()
 }
 
-// TODO: remove Apply after we roll out pr workflow, and PolicyCheck after all legacy code is removed
 func (p *CommentEventWorkerProxy) markSuccessStatuses(ctx context.Context, event Comment, cmd *command.Comment) {
 	if cmd.Name == command.Plan {
-		for _, name := range []command.Name{command.Plan, command.PolicyCheck, command.Apply} {
-			if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, event.HeadRepo, event.Pull, models.SuccessVCSStatus, name, "", "no modified roots"); statusErr != nil {
-				p.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %v", statusErr))
-			}
-		}
-	}
-
-	if cmd.Name == command.Apply {
-		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, event.HeadRepo, event.Pull, models.SuccessVCSStatus, cmd.Name, "", "no modified roots"); statusErr != nil {
+		if _, statusErr := p.vcsStatusUpdater.UpdateCombined(ctx, event.HeadRepo, event.Pull, models.SuccessVCSStatus, command.Plan, "", "no modified roots"); statusErr != nil {
 			p.logger.WarnContext(ctx, fmt.Sprintf("unable to update commit status: %v", statusErr))
 		}
 	}

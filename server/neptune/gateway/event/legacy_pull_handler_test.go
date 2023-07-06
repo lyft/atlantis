@@ -25,7 +25,7 @@ func TestLegacyHandler_Handle_NoRoots(t *testing.T) {
 	err := legacyHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{}, []*valid.MergedProjectCfg{})
 	assert.NoError(t, err)
 	assert.False(t, workerProxy.called)
-	assert.Equal(t, statusUpdater.combinedCountCalls, 3)
+	assert.Equal(t, statusUpdater.combinedCountCalls, 1)
 	assert.Equal(t, statusUpdater.combinedCalls, 0)
 }
 
@@ -43,7 +43,7 @@ func TestLegacyHandler_Handle_WorkerProxyFailure(t *testing.T) {
 	err := legacyHandler.Handle(context.Background(), &http.BufferedRequest{}, event.PullRequest{}, []*valid.MergedProjectCfg{legacyRoot})
 	assert.ErrorIs(t, err, assert.AnError)
 	assert.Equal(t, 0, statusUpdater.combinedCountCalls)
-	assert.Equal(t, 1, statusUpdater.combinedCalls)
+	assert.Equal(t, 0, statusUpdater.combinedCalls)
 }
 
 func TestLegacyHandler_Handle_WorkerProxySuccess(t *testing.T) {
@@ -62,7 +62,7 @@ func TestLegacyHandler_Handle_WorkerProxySuccess(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, workerProxy.called)
 	assert.Equal(t, 0, statusUpdater.combinedCountCalls)
-	assert.Equal(t, 1, statusUpdater.combinedCalls)
+	assert.Equal(t, 0, statusUpdater.combinedCalls)
 }
 
 type mockVCSStatusUpdater struct {
