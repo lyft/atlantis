@@ -61,8 +61,12 @@ func (c *GithubCheckRunCache) CreateOrUpdate(ctx workflow.Context, deploymentID 
 		if err != nil {
 			return 0, err
 		}
-		c.deploymentCheckRunCache[key] = resp.ID
-		c.deleteIfCompleted(resp.Status, key)
+		// skip adding to cache if ID is invalid
+		// this case can occur in PR workflows if the allocator is not enabled
+		if resp.ID != 0 {
+			c.deploymentCheckRunCache[key] = resp.ID
+			c.deleteIfCompleted(resp.Status, key)
+		}
 
 		return resp.ID, nil
 	}
