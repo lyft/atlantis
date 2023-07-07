@@ -210,9 +210,9 @@ func (f *FailedPolicyHandler) updateCheckStatuses(ctx workflow.Context, roots ma
 
 // containsAnyFailingPolicy checks if any of the provided failing policies are present in the provided workflow
 func containsAnyFailingPolicy(workflowResponse terraform.Response, failingPolicies []activities.PolicySet) bool {
-	for _, response := range workflowResponse.ValidationResults {
+	for _, validationResult := range workflowResponse.ValidationResults {
 		for _, policy := range failingPolicies {
-			if response.PolicySet.Name == policy.Name {
+			if validationResult.Status == activities.Fail && validationResult.PolicySet.Name == policy.Name {
 				return true
 			}
 		}
