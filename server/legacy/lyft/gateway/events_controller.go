@@ -135,7 +135,6 @@ func NewVCSEventsController(
 	)
 
 	pushHandler := &gateway_handlers.PushHandler{
-		Allocator:    featureAllocator,
 		Scheduler:    asyncScheduler,
 		Logger:       logger,
 		RootDeployer: rootDeployer,

@@ -53,17 +53,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 				Name: "blah",
 			},
 		}
-		allocator := &testAllocator{
-			expectedAllocation: true,
-			expectedFeatureID:  feature.PlatformMode,
-			expectedFeatureCtx: feature.FeatureContext{
-				RepoName: repoFullName,
-			},
-			t: t,
-		}
-
 		handler := event.PushHandler{
-			Allocator:    allocator,
 			Scheduler:    &sync.SynchronousScheduler{Logger: logger},
 			Logger:       logger,
 			RootDeployer: &mockRootDeployer{},
@@ -89,17 +79,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 			},
 		}
 
-		allocator := &testAllocator{
-			expectedAllocation: true,
-			expectedFeatureID:  feature.PlatformMode,
-			expectedFeatureCtx: feature.FeatureContext{
-				RepoName: repoFullName,
-			},
-			t: t,
-		}
-
 		handler := event.PushHandler{
-			Allocator:    allocator,
 			Scheduler:    &sync.SynchronousScheduler{Logger: logger},
 			Logger:       logger,
 			RootDeployer: &mockRootDeployer{},
@@ -125,17 +105,7 @@ func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 				Name: "main",
 			},
 		}
-		allocator := &testAllocator{
-			expectedAllocation: true,
-			expectedFeatureID:  feature.PlatformMode,
-			expectedFeatureCtx: feature.FeatureContext{
-				RepoName: repoFullName,
-			},
-			t: t,
-		}
-
 		handler := event.PushHandler{
-			Allocator:    allocator,
 			Scheduler:    &sync.SynchronousScheduler{Logger: logger},
 			Logger:       logger,
 			RootDeployer: &mockRootDeployer{},
@@ -172,17 +142,7 @@ func TestHandlePushEvent(t *testing.T) {
 	}
 
 	t.Run("allocation result false", func(t *testing.T) {
-		allocator := &testAllocator{
-			expectedAllocation: false,
-			expectedFeatureID:  feature.PlatformMode,
-			expectedFeatureCtx: feature.FeatureContext{
-				RepoName: repoFullName,
-			},
-			t: t,
-		}
-
 		handler := event.PushHandler{
-			Allocator:    allocator,
 			Scheduler:    &sync.SynchronousScheduler{Logger: logger},
 			Logger:       logger,
 			RootDeployer: &mockRootDeployer{},
@@ -193,17 +153,7 @@ func TestHandlePushEvent(t *testing.T) {
 	})
 
 	t.Run("allocation error", func(t *testing.T) {
-		allocator := &testAllocator{
-			expectedError:     assert.AnError,
-			expectedFeatureID: feature.PlatformMode,
-			expectedFeatureCtx: feature.FeatureContext{
-				RepoName: repoFullName,
-			},
-			t: t,
-		}
-
 		handler := event.PushHandler{
-			Allocator:    allocator,
 			Scheduler:    &sync.SynchronousScheduler{Logger: logger},
 			Logger:       logger,
 			RootDeployer: &mockRootDeployer{},
@@ -214,17 +164,8 @@ func TestHandlePushEvent(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		allocator := &testAllocator{
-			expectedAllocation: true,
-			expectedFeatureID:  feature.PlatformMode,
-			expectedFeatureCtx: feature.FeatureContext{
-				RepoName: repoFullName,
-			},
-			t: t,
-		}
 		ctx := context.Background()
 		handler := event.PushHandler{
-			Allocator:    allocator,
 			Scheduler:    &sync.SynchronousScheduler{Logger: logger},
 			Logger:       logger,
 			RootDeployer: &mockRootDeployer{},
@@ -235,18 +176,8 @@ func TestHandlePushEvent(t *testing.T) {
 	})
 
 	t.Run("root deployer error", func(t *testing.T) {
-		allocator := &testAllocator{
-			expectedAllocation: true,
-			expectedFeatureID:  feature.PlatformMode,
-			expectedFeatureCtx: feature.FeatureContext{
-				RepoName: repoFullName,
-			},
-			t: t,
-		}
-
 		ctx := context.Background()
 		handler := event.PushHandler{
-			Allocator:    allocator,
 			Scheduler:    &sync.SynchronousScheduler{Logger: logger},
 			Logger:       logger,
 			RootDeployer: &mockRootDeployer{error: assert.AnError},

@@ -8,7 +8,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/vcs"
@@ -40,27 +39,12 @@ type rootDeployer interface {
 }
 
 type PushHandler struct {
-	Allocator    feature.Allocator
 	Scheduler    scheduler
 	Logger       logging.Logger
 	RootDeployer rootDeployer
 }
 
 func (p *PushHandler) Handle(ctx context.Context, event Push) error {
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{
-		RepoName: event.Repo.FullName,
-	})
-
-	if err != nil {
-		p.Logger.ErrorContext(ctx, "unable to allocate platformmode")
-		return nil
-	}
-
-	if !shouldAllocate {
-		p.Logger.InfoContext(ctx, "handler not configured for allocation")
-		return nil
-	}
-
 	if event.Ref.Type != vcs.BranchRef || event.Ref.Name != event.Repo.DefaultBranch {
 		p.Logger.WarnContext(ctx, "dropping event for unexpected ref")
 		return nil
