@@ -103,6 +103,10 @@ type NeptuneWorkerProxy struct {
 }
 
 func (p *NeptuneWorkerProxy) Handle(ctx context.Context, event Comment, cmd *command.Comment, roots []*valid.MergedProjectCfg, request *http.BufferedRequest) error {
+	if cmd.IsForSpecificProject() {
+		roots = partitionRootsByProject(cmd.ProjectName, roots)
+	}
+
 	if cmd.Name == command.Apply {
 		return p.handleApplies(ctx, event, cmd, roots)
 	}
@@ -141,10 +145,6 @@ func (p *NeptuneWorkerProxy) handleApplies(ctx context.Context, event Comment, c
 	triggerInfo := workflows.DeployTriggerInfo{
 		Type:  workflows.ManualTrigger,
 		Force: cmd.ForceApply,
-	}
-
-	if cmd.IsForSpecificProject() {
-		roots = partitionRootsByProject(cmd.ProjectName, roots)
 	}
 
 	if len(roots) == 0 {
