@@ -124,6 +124,10 @@ func TestFailedPolicyHandlerRunner_Handle(t *testing.T) {
 						Status:    activities.Fail,
 						PolicySet: activities.PolicySet{Name: "policy1"},
 					},
+					{
+						Status:    activities.Success,
+						PolicySet: activities.PolicySet{Name: "policy2"},
+					},
 				},
 			},
 		},
