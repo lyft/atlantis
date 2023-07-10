@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/uber-go/tally/v4"
 	"go.temporal.io/api/serviceerror"
 
@@ -50,7 +49,6 @@ type PullRequestReviewWorkerProxy struct {
 	SnsWriter         Writer
 	Logger            logging.Logger
 	CheckRunFetcher   fetcher
-	Allocator         feature.Allocator
 	WorkflowSignaler  workflowSignaler
 	Scope             tally.Scope
 	RootConfigBuilder rootConfigBuilder
@@ -109,18 +107,7 @@ func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, r
 	if event.State != Approved && event.State != ChangesRequested {
 		return nil
 	}
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
-		RepoName: event.Repo.FullName,
-	})
-	if err != nil {
-		p.Logger.ErrorContext(ctx, "unable to allocate pr mode")
-		return nil
-	}
-	if !shouldAllocate {
-		p.Logger.InfoContext(ctx, "prr handler not configured for allocation")
-		return nil
-	}
-
+	var err error
 	switch event.State {
 	case ChangesRequested:
 		err = p.handleChangesRequestedEvent(ctx, event)

@@ -71,10 +71,9 @@ func NewVCSEventsController(
 	}
 	prSignaler := &pr.WorkflowSignaler{TemporalClient: temporalClient, DefaultTFVersion: defaultTFVersion}
 	prRequirementChecker := requirement.NewPRAggregate(globalCfg)
-	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler, legacyHandler, featureAllocator)
+	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler, legacyHandler)
 	closedPullHandler := &gateway_handlers.ClosedPullRequestHandler{
 		WorkerProxy:     pullEventSNSProxy,
-		Allocator:       featureAllocator,
 		Logger:          logger,
 		PRCloseSignaler: prSignaler,
 		Scope:           scope.SubScope("pull.closed"),
@@ -121,7 +120,6 @@ func NewVCSEventsController(
 			logger,
 			snsWriter,
 			asyncScheduler,
-			featureAllocator,
 			prSignaler,
 			deploySignaler,
 			vcsClient,
@@ -159,7 +157,6 @@ func NewVCSEventsController(
 		SnsWriter:         snsWriter,
 		Logger:            logger,
 		CheckRunFetcher:   checkRunFetcher,
-		Allocator:         featureAllocator,
 		WorkflowSignaler:  prSignaler,
 		Scope:             scope.SubScope("pull.review"),
 		RootConfigBuilder: rootConfigBuilder,

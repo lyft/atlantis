@@ -14,7 +14,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/tally/v4"
@@ -40,12 +39,6 @@ func TestPullRequestReviewWorkerProxy_HandleApprovalWithFailedPolicies(t *testin
 		failedPolicies: []string{"failed policy"},
 	}
 	logger := logging.NewNoopCtxLogger(t)
-	allocator := &testAllocator{
-		t:                  t,
-		expectedFeatureID:  feature.LegacyDeprecation,
-		expectedFeatureCtx: feature.FeatureContext{RepoName: repoFullName},
-		expectedAllocation: true,
-	}
 	signaler := &reviewSignaler{
 		t:                t,
 		expectedRepoName: "repo",
@@ -57,7 +50,6 @@ func TestPullRequestReviewWorkerProxy_HandleApprovalWithFailedPolicies(t *testin
 		SnsWriter:        writer,
 		Logger:           logger,
 		CheckRunFetcher:  mockFetcher,
-		Allocator:        allocator,
 		WorkflowSignaler: signaler,
 		Scope:            tally.NewTestScope("", map[string]string{}),
 	}
@@ -75,12 +67,6 @@ func TestPullRequestReviewWorkerProxy_HandleApprovalWithFailedPolicies(t *testin
 
 func TestPullRequestReviewWorkerProxy_HandleChangesRequestedWithFailedPolicies(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
-	allocator := &testAllocator{
-		t:                  t,
-		expectedFeatureID:  feature.LegacyDeprecation,
-		expectedFeatureCtx: feature.FeatureContext{RepoName: repoFullName},
-		expectedAllocation: true,
-	}
 	signaler := &reviewSignaler{
 		t:                t,
 		expectedRepoName: "repo",
@@ -104,7 +90,6 @@ func TestPullRequestReviewWorkerProxy_HandleChangesRequestedWithFailedPolicies(t
 	proxy := event.PullRequestReviewWorkerProxy{
 		Scheduler:         &sync.SynchronousScheduler{Logger: logger},
 		Logger:            logger,
-		Allocator:         allocator,
 		WorkflowSignaler:  signaler,
 		Scope:             tally.NewTestScope("", map[string]string{}),
 		RootConfigBuilder: rootConfigBuilder,
@@ -133,12 +118,6 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessNoFailedPolicies(t *testing.T
 	writer := &mockSnsWriter{}
 	mockFetcher := &mockCheckRunFetcher{}
 	logger := logging.NewNoopCtxLogger(t)
-	allocator := &testAllocator{
-		t:                  t,
-		expectedFeatureID:  feature.LegacyDeprecation,
-		expectedFeatureCtx: feature.FeatureContext{RepoName: repoFullName},
-		expectedAllocation: true,
-	}
 	signaler := &reviewSignaler{
 		t:                t,
 		expectedRepoName: "repo",
@@ -150,7 +129,6 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessNoFailedPolicies(t *testing.T
 		SnsWriter:        writer,
 		Logger:           logger,
 		CheckRunFetcher:  mockFetcher,
-		Allocator:        allocator,
 		WorkflowSignaler: signaler,
 		Scope:            tally.NewTestScope("", map[string]string{}),
 	}
@@ -196,12 +174,6 @@ func TestPullRequestReviewWorkerProxy_FetcherError(t *testing.T) {
 		err: assert.AnError,
 	}
 	logger := logging.NewNoopCtxLogger(t)
-	allocator := &testAllocator{
-		t:                  t,
-		expectedFeatureID:  feature.LegacyDeprecation,
-		expectedFeatureCtx: feature.FeatureContext{RepoName: repoFullName},
-		expectedAllocation: true,
-	}
 	signaler := &reviewSignaler{
 		t:                t,
 		expectedRepoName: "repo",
@@ -213,7 +185,6 @@ func TestPullRequestReviewWorkerProxy_FetcherError(t *testing.T) {
 		SnsWriter:        writer,
 		Logger:           logger,
 		CheckRunFetcher:  mockFetcher,
-		Allocator:        allocator,
 		WorkflowSignaler: signaler,
 		Scope:            tally.NewTestScope("", map[string]string{}),
 	}
@@ -235,12 +206,6 @@ func TestPullRequestReviewWorkerProxy_SNSError(t *testing.T) {
 		failedPolicies: []string{"failed policy"},
 	}
 	logger := logging.NewNoopCtxLogger(t)
-	allocator := &testAllocator{
-		t:                  t,
-		expectedFeatureID:  feature.LegacyDeprecation,
-		expectedFeatureCtx: feature.FeatureContext{RepoName: repoFullName},
-		expectedAllocation: true,
-	}
 	signaler := &reviewSignaler{
 		t:                t,
 		expectedRepoName: "repo",
@@ -252,7 +217,6 @@ func TestPullRequestReviewWorkerProxy_SNSError(t *testing.T) {
 		SnsWriter:        writer,
 		Logger:           logger,
 		CheckRunFetcher:  mockFetcher,
-		Allocator:        allocator,
 		WorkflowSignaler: signaler,
 		Scope:            tally.NewTestScope("", map[string]string{}),
 	}
@@ -275,12 +239,6 @@ func TestPullRequestReviewWorkerProxy_SignalerError(t *testing.T) {
 		failedPolicies: []string{"failed policy"},
 	}
 	logger := logging.NewNoopCtxLogger(t)
-	allocator := &testAllocator{
-		t:                  t,
-		expectedFeatureID:  feature.LegacyDeprecation,
-		expectedFeatureCtx: feature.FeatureContext{RepoName: repoFullName},
-		expectedAllocation: true,
-	}
 	signaler := &reviewSignaler{
 		t:                t,
 		expectedRepoName: "repo",
@@ -293,7 +251,6 @@ func TestPullRequestReviewWorkerProxy_SignalerError(t *testing.T) {
 		SnsWriter:        writer,
 		Logger:           logger,
 		CheckRunFetcher:  mockFetcher,
-		Allocator:        allocator,
 		WorkflowSignaler: signaler,
 		Scope:            tally.NewTestScope("", map[string]string{}),
 	}
