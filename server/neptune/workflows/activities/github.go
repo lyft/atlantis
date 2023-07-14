@@ -21,11 +21,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
-type ClientContext struct {
-	InstallationToken int64
-	context.Context
-}
-
 var HashiGetter = func(ctx context.Context, dst, src string) error {
 	return getter.Get(dst, src, getter.WithContext(ctx))
 }
@@ -34,16 +29,16 @@ var HashiGetter = func(ctx context.Context, dst, src string) error {
 type gogetter func(ctx context.Context, dst, src string) error
 
 type githubClient interface { //nolint:interfacebloat
-	CreateCheckRun(ctx internal.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error)
-	UpdateCheckRun(ctx internal.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error)
-	GetArchiveLink(ctx internal.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
-	CompareCommits(ctx internal.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
-	ListReviews(ctx internal.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error)
-	GetPullRequest(ctx internal.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error)
-	ListCommits(ctx internal.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error)
-	DismissReview(ctx internal.Context, owner, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error)
-	ListTeamMembers(ctx internal.Context, org string, teamSlug string) ([]*github.User, error)
-	CreateComment(ctx internal.Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error)
+	CreateCheckRun(ctx context.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error)
+	UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error)
+	GetArchiveLink(ctx context.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error)
+	CompareCommits(ctx context.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error)
+	ListReviews(ctx context.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error)
+	GetPullRequest(ctx context.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error)
+	ListCommits(ctx context.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error)
+	DismissReview(ctx context.Context, owner, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error)
+	ListTeamMembers(ctx context.Context, org string, teamSlug string) ([]*github.User, error)
+	CreateComment(ctx context.Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error)
 }
 
 type DiffDirection string
@@ -142,7 +137,7 @@ func (a *githubActivities) GithubUpdateCheckRun(ctx context.Context, request Upd
 	}
 
 	run, _, err := a.Client.UpdateCheckRun(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		ctx,
 		request.Repo.Owner, request.Repo.Name, request.ID, opts,
 	)
 
@@ -200,7 +195,7 @@ func (a *githubActivities) GithubCreateCheckRun(ctx context.Context, request Cre
 	}
 
 	run, _, err := a.Client.CreateCheckRun(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		ctx,
 		request.Repo.Owner, request.Repo.Name, opts,
 	)
 
@@ -275,7 +270,7 @@ func (a *githubActivities) GithubFetchRoot(ctx context.Context, request FetchRoo
 		Ref: request.Revision,
 	}
 	// note: this link exists for 5 minutes when fetching a private repository archive
-	archiveLink, resp, err := a.Client.GetArchiveLink(internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken), request.Repo.Owner, request.Repo.Name, github.Zipball, opts, true)
+	archiveLink, resp, err := a.Client.GetArchiveLink(ctx, request.Repo.Owner, request.Repo.Name, github.Zipball, opts, true)
 	if err != nil {
 		return FetchRootResponse{}, errors.Wrap(err, "getting repo archive link")
 	}
@@ -315,7 +310,7 @@ type CompareCommitResponse struct {
 }
 
 func (a *githubActivities) GithubCompareCommit(ctx context.Context, request CompareCommitRequest) (CompareCommitResponse, error) {
-	comparison, resp, err := a.Client.CompareCommits(internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken), request.Repo.Owner, request.Repo.Name, request.LatestDeployedRevision, request.DeployRequestRevision, &github.ListOptions{})
+	comparison, resp, err := a.Client.CompareCommits(ctx, request.Repo.Owner, request.Repo.Name, request.LatestDeployedRevision, request.DeployRequestRevision, &github.ListOptions{})
 
 	if err != nil {
 		return CompareCommitResponse{}, errors.Wrap(err, "comparing commits")
@@ -341,7 +336,7 @@ type GetPullRequestStateResponse struct {
 
 func (a *githubActivities) GithubGetPullRequestState(ctx context.Context, request GetPullRequestStateRequest) (GetPullRequestStateResponse, error) {
 	resp, _, err := a.Client.GetPullRequest(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		ctx,
 		request.Repo.Owner,
 		request.Repo.Name,
 		request.PRNumber,
@@ -365,7 +360,7 @@ type ListPRReviewsResponse struct {
 
 func (a *githubActivities) GithubListPRReviews(ctx context.Context, request ListPRReviewsRequest) (ListPRReviewsResponse, error) {
 	reviews, err := a.Client.ListReviews(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		ctx,
 		request.Repo.Owner,
 		request.Repo.Name,
 		request.PRNumber,
@@ -389,7 +384,7 @@ type ListPRCommitsResponse struct {
 
 func (a *githubActivities) GithubListPRCommits(ctx context.Context, request ListPRCommitsRequest) (ListPRCommitsResponse, error) {
 	commits, err := a.Client.ListCommits(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		ctx,
 		request.Repo.Owner,
 		request.Repo.Name,
 		request.PRNumber,
@@ -426,7 +421,7 @@ func (a *githubActivities) GithubDismiss(ctx context.Context, request DismissReq
 		Message: github.String(request.DismissReason),
 	}
 	_, _, err = a.Client.DismissReview(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		ctx,
 		request.Repo.Owner,
 		request.Repo.Name,
 		request.PRNumber,
@@ -451,7 +446,7 @@ type ListTeamMembersResponse struct {
 
 func (a *githubActivities) GithubListTeamMembers(ctx context.Context, request ListTeamMembersRequest) (ListTeamMembersResponse, error) {
 	users, err := a.Client.ListTeamMembers(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		ctx,
 		request.Org,
 		request.TeamSlug,
 	)
@@ -480,7 +475,7 @@ func (a *githubActivities) GithubCreateComment(ctx context.Context, request Crea
 		Body: github.String(request.CommentBody),
 	}
 	_, _, err := a.Client.CreateComment(
-		internal.ContextWithInstallationToken(ctx, request.Repo.Credentials.InstallationToken),
+		ctx,
 		request.Repo.Owner,
 		request.Repo.Name,
 		request.PRNumber,

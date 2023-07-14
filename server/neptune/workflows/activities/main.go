@@ -221,7 +221,7 @@ func NewGithubWithClient(client githubClient, dataDir string, getter gogetter, a
 	}, nil
 }
 
-func NewGithub(appConfig githubapp.Config, scope tally.Scope, dataDir string, allocator feature.Allocator) (*Github, error) {
+func NewGithub(appConfig githubapp.Config, installationID int64, scope tally.Scope, dataDir string, allocator feature.Allocator) (*Github, error) {
 	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
 		appConfig,
 		githubapp.WithClientMiddleware(
@@ -233,7 +233,8 @@ func NewGithub(appConfig githubapp.Config, scope tally.Scope, dataDir string, al
 	}
 
 	client := &internal.Client{
-		ClientCreator: clientCreator,
+		ClientCreator:  clientCreator,
+		InstallationID: installationID,
 	}
 
 	return NewGithubWithClient(client, dataDir, HashiGetter, allocator)

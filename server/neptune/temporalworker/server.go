@@ -198,6 +198,7 @@ func NewServer(config *config.Config) (*Server, error) {
 
 	githubActivities, err := activities.NewGithub(
 		config.App,
+		0, // TODO, pass config here
 		scope.SubScope("app"),
 		config.DataDir,
 		featureAllocator,
