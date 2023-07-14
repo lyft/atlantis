@@ -178,6 +178,7 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 		cfg.DataDir,
 		cfg.ServerCfg.URL,
 		cfg.TemporalCfg.TerraformTaskQueue,
+		0,
 		streamCloser,
 		activities.TerraformOptions{
 			TFVersionCache:          cache.NewLocalBinaryCache("terraform"),

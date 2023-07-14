@@ -203,12 +203,11 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 			}
 
 			req := TerraformInitRequest{
-				DynamicEnvs:          c.DynamicEnvs,
-				JobID:                jobID,
-				Path:                 path,
-				TfVersion:            c.RequestVersion,
-				Args:                 c.RequestArgs,
-				GithubInstallationID: 1235,
+				DynamicEnvs: c.DynamicEnvs,
+				JobID:       jobID,
+				Path:        path,
+				TfVersion:   c.RequestVersion,
+				Args:        c.RequestArgs,
 			}
 
 			credsRefresher := &testCredsRefresher{
@@ -225,7 +224,8 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 				credsRefresher,
 				&file.RWLock{},
 				&mockWriter{},
-				"some/dir")
+				"some/dir",
+				1235)
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -273,9 +273,8 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 	}
 
 	req := TerraformInitRequest{
-		JobID:                jobID,
-		Path:                 path,
-		GithubInstallationID: 1235,
+		JobID: jobID,
+		Path:  path,
 	}
 
 	streamHandler := &testStreamHandler{
@@ -289,7 +288,7 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 		t:                      t,
 	}
 
-	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{}, "some/dir")
+	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{}, "some/dir", 1235)
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformInit, req)
@@ -465,7 +464,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 
 			tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, &testStreamHandler{
 				t: t,
-			}, credsRefresher, &file.RWLock{}, fileWriter, "some/dir")
+			}, credsRefresher, &file.RWLock{}, fileWriter, "some/dir", 0)
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformPlan, req)
@@ -547,7 +546,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 
 	credsRefresher := &testCredsRefresher{}
 
-	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{}, "some/dir")
+	tfActivity := NewTerraformActivities(&testTfClient, expectedVersion, streamHandler, credsRefresher, &file.RWLock{}, &mockWriter{}, "some/dir", 0)
 
 	env.RegisterActivity(tfActivity)
 
@@ -681,7 +680,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 
 			tfActivity := NewTerraformActivities(testClient, expectedVersion, &testStreamHandler{
 				t: t,
-			}, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{}, "some/dir")
+			}, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{}, "some/dir", 0)
 			env.RegisterActivity(tfActivity)
 
 			_, err = env.ExecuteActivity(tfActivity.TerraformApply, req)
@@ -738,7 +737,7 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 		expectedJobID: jobID,
 	}
 
-	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{}, "some/dir")
+	tfActivity := NewTerraformActivities(testTfClient, expectedVersion, streamHandler, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{}, "some/dir", 0)
 	env.RegisterActivity(tfActivity)
 
 	_, err = env.ExecuteActivity(tfActivity.TerraformApply, req)

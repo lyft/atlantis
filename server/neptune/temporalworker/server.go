@@ -161,6 +161,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.DataDir,
 		config.ServerCfg.URL,
 		config.TemporalCfg.TerraformTaskQueue,
+		config.GithubCfg.TemporalAppInstallationID,
 		jobStreamHandler,
 	)
 	if err != nil {

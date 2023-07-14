@@ -93,7 +93,7 @@ type PolicySet struct {
 	Paths []string
 }
 
-func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.ValidationConfig, ghAppConfig githubapp.Config, dataDir string, serverURL *url.URL, taskQueue string, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
+func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.ValidationConfig, ghAppConfig githubapp.Config, dataDir string, serverURL *url.URL, taskQueue string, installationID int64, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -185,6 +185,7 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 			GitCredentialsFileLock: gitCredentialsFileLock,
 			FileWriter:             &file.Writer{},
 			CacheDir:               cacheDir,
+			InstallationID:         installationID,
 		},
 		conftestActivity: &conftestActivity{
 			DefaultConftestVersion: defaultConftestVersion,
