@@ -8,28 +8,12 @@ import (
 	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/vcs"
 	"github.com/stretchr/testify/assert"
 )
 
 const testRoot = "testroot"
-
-type testAllocator struct {
-	t                  *testing.T
-	expectedFeatureID  feature.Name
-	expectedFeatureCtx feature.FeatureContext
-	expectedAllocation bool
-	expectedError      error
-}
-
-func (a *testAllocator) ShouldAllocate(featureID feature.Name, featureCtx feature.FeatureContext) (bool, error) {
-	assert.Equal(a.t, a.expectedFeatureID, featureID)
-	assert.Equal(a.t, a.expectedFeatureCtx, featureCtx)
-
-	return a.expectedAllocation, a.expectedError
-}
 
 func TestHandlePushEvent_FiltersEvents(t *testing.T) {
 	logger := logging.NewNoopCtxLogger(t)
