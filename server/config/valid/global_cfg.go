@@ -61,6 +61,7 @@ type GlobalCfg struct {
 	PersistenceConfig    PersistenceConfig
 	TerraformLogFilter   TerraformLogFilters
 	Temporal             Temporal
+	Github               Github
 	RevisionSetter       RevisionSetter
 	Admin                Admin
 }
@@ -142,6 +143,11 @@ type Temporal struct {
 	UseSystemCACert    bool
 	Namespace          string
 	TerraformTaskQueue string
+}
+
+type Github struct {
+	GatewayAppInstallationID  int64
+	TemporalAppInstallationID int64
 }
 
 type TerraformLogFilters struct {

@@ -69,6 +69,7 @@ func (t *TemporalWorker) NewServer(userConfig legacy.UserConfig, config legacy.C
 		DeploymentConfig:         globalCfg.PersistenceConfig.Deployments,
 		DataDir:                  userConfig.DataDir,
 		TemporalCfg:              globalCfg.Temporal,
+		GithubCfg:                globalCfg.Github,
 		App:                      appConfig,
 		CtxLogger:                ctxLogger,
 		StatsNamespace:           userConfig.StatsNamespace,

@@ -22,6 +22,7 @@ type GlobalCfg struct {
 	Metrics              Metrics              `yaml:"metrics" json:"metrics"`
 	TerraformLogFilters  TerraformLogFilters  `yaml:"terraform_log_filters" json:"terraform_log_filters"`
 	Temporal             Temporal             `yaml:"temporal" json:"temporal"`
+	Github               Github               `yaml:"github" json:"github"`
 	Persistence          Persistence          `yaml:"persistence" json:"persistence"`
 	RevisionSetter       RevisionSetter       `yaml:"revision_setter" json:"revision_setter"`
 	Admin                Admin                `yaml:"admin" json:"admin"`
@@ -110,6 +111,7 @@ func (g GlobalCfg) Validate() error {
 		validation.Field(&g.PullRequestWorkflows),
 		validation.Field(&g.DeploymentWorkflows),
 		validation.Field(&g.Metrics),
+		validation.Field(&g.Github),
 		validation.Field(&g.TerraformLogFilters),
 		validation.Field(&g.Persistence),
 	)
@@ -191,6 +193,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		PersistenceConfig:    g.Persistence.ToValid(defaultCfg),
 		TerraformLogFilter:   g.TerraformLogFilters.ToValid(),
 		Temporal:             g.Temporal.ToValid(),
+		Github:               g.Github.ToValid(),
 		Admin:                g.Admin.ToValid(),
 		RevisionSetter:       g.RevisionSetter.ToValid(),
 	}
