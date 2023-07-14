@@ -45,6 +45,7 @@ type Config struct {
 	ServerCfg        ServerConfig
 	FeatureConfig    FeatureConfig
 	TemporalCfg      valid.Temporal
+	GithubCfg        valid.Github
 	TerraformCfg     TerraformConfig
 	ValidationConfig ValidationConfig
 	DeploymentConfig valid.StoreConfig

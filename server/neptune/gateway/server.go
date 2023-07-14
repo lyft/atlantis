@@ -337,6 +337,10 @@ func NewServer(config Config) (*Server, error) {
 				Executor:  crons.NewRuntimeStats(statsScope).Run,
 				Frequency: 1 * time.Minute,
 			},
+			{
+				Executor:  crons.NewRateLimitStats(statsScope, clientCreator, globalCfg.Github.GatewayAppInstallationID).Run,
+				Frequency: 1 * time.Minute,
+			},
 		},
 		StatsCloser:    closer,
 		Scheduler:      asyncScheduler,
