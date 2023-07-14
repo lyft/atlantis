@@ -18,13 +18,11 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/cli"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/link"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/slack-go/slack"
-	"github.com/uber-go/tally/v4"
 )
 
 const (
@@ -221,17 +219,7 @@ func NewGithubWithClient(client githubClient, dataDir string, getter gogetter, a
 	}, nil
 }
 
-func NewGithub(appConfig githubapp.Config, installationID int64, scope tally.Scope, dataDir string, allocator feature.Allocator) (*Github, error) {
-	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
-		appConfig,
-		githubapp.WithClientMiddleware(
-			github.ClientMetrics(scope.SubScope("app")),
-		))
-
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing client creator")
-	}
-
+func NewGithub(clientCreator githubapp.ClientCreator, installationID int64, dataDir string, allocator feature.Allocator) (*Github, error) {
 	client := &internal.Client{
 		ClientCreator:  clientCreator,
 		InstallationID: installationID,
