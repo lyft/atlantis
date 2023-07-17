@@ -20,12 +20,10 @@ import (
 )
 
 const (
-	TaskQueue          = "deploy"
-	AddNotifierVersion = "add-notifier"
+	TaskQueue = "deploy"
 
 	RevisionReceiveTimeout = 60 * time.Minute
 
-	QueueStatusNotifierHourPST = 10
 	QueueStatusNotifierHourUTC = 17
 
 	ActiveDeployWorkflowStat  = "active"
@@ -200,19 +198,8 @@ func (r *Runner) Run(ctx workflow.Context) error {
 
 		action = OnNotify
 	}
-
-	v := workflow.GetVersion(ctx, AddNotifierVersion, workflow.DefaultVersion, workflow.Version(2))
-
-	var notifierPeriod time.Duration
-	if v == workflow.Version(1) {
-		notifierPeriod = r.NotifierPeriod(ctx, QueueStatusNotifierHourPST)
-	} else if v == workflow.Version(2) {
-		notifierPeriod = r.NotifierPeriod(ctx, QueueStatusNotifierHourUTC)
-	}
-
-	if v > workflow.DefaultVersion {
-		s.AddTimeout(ctx, notifierPeriod, notifyTimerFunc)
-	}
+	notifierPeriod := r.NotifierPeriod(ctx, QueueStatusNotifierHourUTC)
+	s.AddTimeout(ctx, notifierPeriod, notifyTimerFunc)
 
 	// main loop which handles external signals
 	// and in turn signals the queue worker
