@@ -25,8 +25,9 @@ func NewDestroyPlanMode() *PlanMode {
 }
 
 type PlanJob struct {
-	Mode     *PlanMode
-	Approval PlanApproval
+	Mode              *PlanMode
+	Approval          PlanApproval
+	CleanUpAfterHours int // should only be set in PR mode by a plan comment
 	execute.Job
 }
 

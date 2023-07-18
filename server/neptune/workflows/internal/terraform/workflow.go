@@ -369,6 +369,13 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 }
 
 func (r *Runner) executeCleanup(ctx workflow.Context, handlers ...func(workflow.Context) error) {
+	sleepHours := r.Request.Root.Plan.CleanUpAfterHours
+	if sleepHours > 0 {
+		// we already will check if the context was canceled right after call, so skip error handling here
+		_ = workflow.Sleep(ctx, time.Hour*time.Duration(sleepHours))
+		// TODO: send a comment when sleep was complete/canceled?
+	}
+
 	// create a new disconnected ctx since we want this run even in the event of
 	// cancellation
 	if temporal.IsCanceledError(ctx.Err()) {
