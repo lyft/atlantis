@@ -226,11 +226,10 @@ func NewServer(config *config.Config) (*Server, error) {
 				Executor:  crons.NewRuntimeStats(scope).Run,
 				Frequency: 1 * time.Minute,
 			},
-			// TODO: use when we rollout new app for temporalworker all together
-			//{
-			//	Executor:  crons.NewRateLimitStats(scope, clientCreator, config.GithubCfg.TemporalAppInstallationID).Run,
-			//	Frequency: 1 * time.Minute,
-			//},
+			{
+				Executor:  crons.NewRateLimitStats(scope, clientCreator, config.GithubCfg.TemporalAppInstallationID).Run,
+				Frequency: 1 * time.Minute,
+			},
 		},
 		HTTPServerProxy:            httpServerProxy,
 		Port:                       config.ServerCfg.Port,
