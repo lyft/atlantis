@@ -213,7 +213,8 @@ func NewServer(config *config.Config) (*Server, error) {
 	}
 
 	prRevisionGithubActivities := &lyftActivities.Github{
-		ClientCreator: clientCreator,
+		ClientCreator:  clientCreator,
+		InstallationID: config.GithubCfg.TemporalAppInstallationID,
 	}
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
