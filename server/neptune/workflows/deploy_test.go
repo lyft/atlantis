@@ -23,7 +23,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	internalGithub "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 )
@@ -179,6 +178,7 @@ func initAndRegisterActivities(t *testing.T, env *testsuite.TestWorkflowEnvironm
 		cfg.DataDir,
 		cfg.ServerCfg.URL,
 		cfg.TemporalCfg.TerraformTaskQueue,
+		0,
 		streamCloser,
 		activities.TerraformOptions{
 			TFVersionCache:          cache.NewLocalBinaryCache("terraform"),
@@ -262,23 +262,23 @@ type testGithubClient struct {
 	DeploymentID string
 }
 
-func (c *testGithubClient) CreateComment(ctx internalGithub.Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error) {
+func (c *testGithubClient) CreateComment(ctx context.Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error) {
 	return &github.IssueComment{}, &github.Response{}, nil
 }
 
-func (c *testGithubClient) ListTeamMembers(ctx internalGithub.Context, org string, teamSlug string) ([]*github.User, error) {
+func (c *testGithubClient) ListTeamMembers(ctx context.Context, org string, teamSlug string) ([]*github.User, error) {
 	return []*github.User{}, nil
 }
 
-func (c *testGithubClient) ListCommits(ctx internalGithub.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error) {
+func (c *testGithubClient) ListCommits(ctx context.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error) {
 	return []*github.RepositoryCommit{}, nil
 }
 
-func (c *testGithubClient) DismissReview(ctx internalGithub.Context, owner, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error) {
+func (c *testGithubClient) DismissReview(ctx context.Context, owner, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error) {
 	return &github.PullRequestReview{}, &github.Response{}, nil
 }
 
-func (c *testGithubClient) ListReviews(ctx internalGithub.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error) {
+func (c *testGithubClient) ListReviews(ctx context.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error) {
 	return []*github.PullRequestReview{
 		{
 			State: github.String("APPROVED"),
@@ -286,17 +286,17 @@ func (c *testGithubClient) ListReviews(ctx internalGithub.Context, owner string,
 	}, nil
 }
 
-func (c *testGithubClient) GetPullRequest(ctx internalGithub.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error) {
+func (c *testGithubClient) GetPullRequest(ctx context.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error) {
 	return &github.PullRequest{}, &github.Response{}, nil
 }
 
-func (c *testGithubClient) CreateCheckRun(ctx internalGithub.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
+func (c *testGithubClient) CreateCheckRun(ctx context.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
 	c.DeploymentID = opts.GetExternalID()
 	return &github.CheckRun{
 		ID: github.Int64(123),
 	}, &github.Response{}, nil
 }
-func (c *testGithubClient) UpdateCheckRun(ctx internalGithub.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
+func (c *testGithubClient) UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
 	c.DeploymentID = opts.GetExternalID()
 	update := CheckRunUpdate{
 		Summary:    opts.GetOutput().GetSummary(),
@@ -308,12 +308,12 @@ func (c *testGithubClient) UpdateCheckRun(ctx internalGithub.Context, owner, rep
 
 	return &github.CheckRun{}, &github.Response{}, nil
 }
-func (c *testGithubClient) GetArchiveLink(ctx internalGithub.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error) {
+func (c *testGithubClient) GetArchiveLink(ctx context.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error) {
 	url, _ := url.Parse("www.testurl.com")
 
 	return url, &github.Response{Response: &http.Response{StatusCode: http.StatusFound}}, nil
 }
-func (c *testGithubClient) CompareCommits(ctx internalGithub.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error) {
+func (c *testGithubClient) CompareCommits(ctx context.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error) {
 	return &github.CommitsComparison{
 		Status: github.String("ahead"),
 	}, &github.Response{}, nil

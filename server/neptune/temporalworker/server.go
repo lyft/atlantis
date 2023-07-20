@@ -161,6 +161,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.DataDir,
 		config.ServerCfg.URL,
 		config.TemporalCfg.TerraformTaskQueue,
+		config.GithubCfg.TemporalAppInstallationID,
 		jobStreamHandler,
 	)
 	if err != nil {
@@ -197,8 +198,8 @@ func NewServer(config *config.Config) (*Server, error) {
 	}
 
 	githubActivities, err := activities.NewGithub(
-		config.App,
-		scope.SubScope("app"),
+		clientCreator,
+		config.GithubCfg.TemporalAppInstallationID,
 		config.DataDir,
 		featureAllocator,
 	)
@@ -225,11 +226,10 @@ func NewServer(config *config.Config) (*Server, error) {
 				Executor:  crons.NewRuntimeStats(scope).Run,
 				Frequency: 1 * time.Minute,
 			},
-			// TODO: use when we rollout new app for temporalworker all together
-			//{
-			//	Executor:  crons.NewRateLimitStats(scope, clientCreator, config.GithubCfg.TemporalAppInstallationID).Run,
-			//	Frequency: 1 * time.Minute,
-			//},
+			{
+				Executor:  crons.NewRateLimitStats(scope, clientCreator, config.GithubCfg.TemporalAppInstallationID).Run,
+				Frequency: 1 * time.Minute,
+			},
 		},
 		HTTPServerProxy:            httpServerProxy,
 		Port:                       config.ServerCfg.Port,
