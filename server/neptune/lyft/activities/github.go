@@ -13,7 +13,8 @@ import (
 )
 
 type Github struct {
-	ClientCreator githubapp.ClientCreator
+	ClientCreator  githubapp.ClientCreator
+	InstallationID int64
 }
 
 type ListPRsRequest struct {
@@ -29,7 +30,7 @@ type ListPRsResponse struct {
 
 func (a *Github) GithubListPRs(ctx context.Context, request ListPRsRequest) (ListPRsResponse, error) {
 	prs, err := a.listPullRequests(
-		ctx, request.Repo.Credentials.InstallationToken,
+		ctx, a.InstallationID,
 		request.Repo.Owner,
 		request.Repo.Name,
 		request.Repo.DefaultBranch,
@@ -65,7 +66,7 @@ type ListModifiedFilesResponse struct {
 
 func (a *Github) GithubListModifiedFiles(ctx context.Context, request ListModifiedFilesRequest) (ListModifiedFilesResponse, error) {
 	files, err := a.listModifiedFiles(
-		ctx, request.Repo.Credentials.InstallationToken,
+		ctx, a.InstallationID,
 		request.Repo.Owner,
 		request.Repo.Name,
 		request.PullRequest.Number,
