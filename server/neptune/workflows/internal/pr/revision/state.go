@@ -1,12 +1,17 @@
 package revision
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/workflow"
+)
+
+const (
+	CheckBeforeNotify = "checkbeforenotify"
 )
 
 type WorkflowNotifier interface {
@@ -30,7 +35,15 @@ func (s *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 }
 
 func (s *StateReceiver) Notify(ctx workflow.Context, workflowState *state.Workflow, roots map[string]RootInfo) {
-	rootInfo := roots[workflowState.ID]
+	rootInfo, ok := roots[workflowState.ID]
+
+	// TODO remove versioning
+	v := workflow.GetVersion(ctx, CheckBeforeNotify, workflow.DefaultVersion, workflow.Version(1))
+	if v != workflow.DefaultVersion && !ok {
+		workflow.GetLogger(ctx).Warn(fmt.Sprintf("skipping notifying root %s", workflowState.ID))
+		return
+	}
+
 	for _, notifier := range s.InternalNotifiers {
 		if err := notifier.Notify(ctx, rootInfo.ToInternalInfo(), workflowState); err != nil {
 			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
