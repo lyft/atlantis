@@ -38,6 +38,9 @@ func (s *StateReceiver) Notify(ctx workflow.Context, workflowState *state.Workfl
 	rootInfo, ok := roots[workflowState.ID]
 
 	// TODO remove versioning
+	// there can be an edge case where we've canceled a previous check run to handle a new revision
+	// but the canceled child terraform workflow has sent over one last update prior to shutdown
+	// we should avoid notifying on this case
 	v := workflow.GetVersion(ctx, CheckBeforeNotify, workflow.DefaultVersion, workflow.Version(1))
 	if v != workflow.DefaultVersion && !ok {
 		workflow.GetLogger(ctx).Warn(fmt.Sprintf("skipping notifying root %s", workflowState.ID))
