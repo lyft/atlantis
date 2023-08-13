@@ -88,7 +88,7 @@ func TestStateReceive(t *testing.T) {
 		},
 	}
 
-	t.Run("calls notifiers with state", func(t *testing.T) {
+	t.Run("calls notifiers with missing root info", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
@@ -98,6 +98,30 @@ func TestStateReceive(t *testing.T) {
 					Output: jobOutput,
 					Status: state.WaitingJobStatus,
 				},
+				ID: internalRootInfo.ID.String(),
+			},
+			T: t,
+		})
+
+		env.AssertExpectations(t)
+
+		var result stateReceiveResponse
+		err = env.GetWorkflowResult(&result)
+		assert.False(t, result.NotifierCalled)
+		assert.NoError(t, err)
+	})
+
+	t.Run("calls notifiers with valid state", func(t *testing.T) {
+		ts := testsuite.WorkflowTestSuite{}
+		env := ts.NewTestWorkflowEnvironment()
+
+		env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{
+			State: &state.Workflow{
+				Plan: &state.Job{
+					Output: jobOutput,
+					Status: state.WaitingJobStatus,
+				},
+				ID: internalRootInfo.ID.String(),
 			},
 			RootInfo: internalRootInfo,
 			T:        t,

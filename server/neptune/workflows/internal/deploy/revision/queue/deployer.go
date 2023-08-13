@@ -20,6 +20,8 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+const ValidRerunCriteria = "validrerun"
+
 type ValidationError struct {
 	error
 }
@@ -71,7 +73,7 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.De
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, DirectionBehindSummary, nil)
 		return nil, NewValidationError("requested revision %s is behind latest deployed revision %s", requestedDeployment.Commit.Revision, latestDeployment.Revision)
 	}
-	if requestedDeployment.Root.TriggerInfo.Rerun && commitDirection != activities.DirectionIdentical {
+	if requestedDeployment.Root.TriggerInfo.Rerun && !validRerun(ctx, commitDirection, latestDeployment) {
 		scope.Counter("invalid_rerun_err").Inc(1)
 		// always returns error for caller to skip revision
 		p.updateCheckRun(ctx, requestedDeployment, github.CheckRunFailure, RerunNotIdenticalSummary, nil)
@@ -100,6 +102,16 @@ func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.De
 	// We do this as a safety measure to avoid deploying out of order revision after a failed deploy since it could still
 	// mutate the state file
 	return requestedDeployment.BuildPersistableInfo(), err
+}
+
+func validRerun(ctx workflow.Context, commitDirection activities.DiffDirection, latestDeployment *deployment.Info) bool {
+	v := workflow.GetVersion(ctx, ValidRerunCriteria, workflow.DefaultVersion, workflow.Version(1))
+	if v == workflow.DefaultVersion {
+		return commitDirection == activities.DirectionIdentical
+	}
+
+	// we allow for a rerun only if requested revision matches the latest deployment or is the first deployment
+	return latestDeployment == nil || commitDirection == activities.DirectionIdentical
 }
 
 func (p *Deployer) runPostDeployTasks(ctx workflow.Context, deployment terraform.DeploymentInfo) error {
