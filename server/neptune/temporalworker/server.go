@@ -161,6 +161,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.DataDir,
 		config.ServerCfg.URL,
 		config.TemporalCfg.TerraformTaskQueue,
+		config.GithubCfg.TemporalAppInstallationID,
 		jobStreamHandler,
 	)
 	if err != nil {
@@ -197,8 +198,8 @@ func NewServer(config *config.Config) (*Server, error) {
 	}
 
 	githubActivities, err := activities.NewGithub(
-		config.App,
-		scope.SubScope("app"),
+		clientCreator,
+		config.GithubCfg.TemporalAppInstallationID,
 		config.DataDir,
 		featureAllocator,
 	)
@@ -212,7 +213,8 @@ func NewServer(config *config.Config) (*Server, error) {
 	}
 
 	prRevisionGithubActivities := &lyftActivities.Github{
-		ClientCreator: clientCreator,
+		ClientCreator:  clientCreator,
+		InstallationID: config.GithubCfg.TemporalAppInstallationID,
 	}
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)

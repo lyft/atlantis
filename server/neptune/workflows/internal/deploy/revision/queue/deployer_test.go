@@ -190,6 +190,82 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 	assert.Equal(t, latestDeployedRevision, resp.Info)
 }
 
+func TestDeployer_FirstDeploy_Retry(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	da := &testDeployActivity{}
+	env.RegisterActivity(da)
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	root := model.Root{
+		Name: "root_1",
+		TriggerInfo: model.TriggerInfo{
+			Rerun: true,
+		},
+	}
+
+	deploymentInfo := terraform.DeploymentInfo{
+		ID: uuid.UUID{},
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
+		CheckRunID: 1234,
+		Root:       root,
+		Repo:       repo,
+	}
+
+	latestDeployedRevision := &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Version:  1.0,
+		Revision: "3455",
+		Branch:   "default-branch",
+		Root: deployment.Root{
+			Name:        deploymentInfo.Root.Name,
+			ManualRerun: true,
+		},
+		Repo: deployment.Repo{
+			Owner: deploymentInfo.Repo.Owner,
+			Name:  deploymentInfo.Repo.Name,
+		},
+	}
+
+	storeDeploymentRequest := activities.StoreLatestDeploymentRequest{
+		DeploymentInfo: &deployment.Info{
+			Version:  deployment.InfoSchemaVersion,
+			ID:       deploymentInfo.ID.String(),
+			Revision: deploymentInfo.Commit.Revision,
+			Branch:   deploymentInfo.Commit.Branch,
+			Root: deployment.Root{
+				Name:        deploymentInfo.Root.Name,
+				ManualRerun: true,
+			},
+			Repo: deployment.Repo{
+				Owner: deploymentInfo.Repo.Owner,
+				Name:  deploymentInfo.Repo.Name,
+			},
+		},
+	}
+
+	env.OnActivity(da.StoreLatestDeployment, mock.Anything, storeDeploymentRequest).Return(nil)
+	env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+		Info: deploymentInfo,
+	})
+
+	env.AssertExpectations(t)
+
+	var resp *deployResponse
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	assert.Equal(t, latestDeployedRevision, resp.Info)
+}
+
 func TestDeployer_CompareCommit_DeployAhead(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()

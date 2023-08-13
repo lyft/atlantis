@@ -97,6 +97,7 @@ type terraformActivities struct {
 	GitCredentialsFileLock *file.RWLock
 	FileWriter             writer
 	CacheDir               string
+	InstallationID         int64
 }
 
 func NewTerraformActivities(
@@ -107,6 +108,7 @@ func NewTerraformActivities(
 	gitCredentialsFileLock *file.RWLock,
 	fileWriter writer,
 	cacheDir string,
+	installationID int64,
 ) *terraformActivities { //nolint:revive // avoiding refactor while adding linter action
 	return &terraformActivities{
 		TerraformClient:        client,
@@ -114,6 +116,7 @@ func NewTerraformActivities(
 		StreamHandler:          streamHandler,
 		GitCLICredentials:      gitCredentialsRefresher,
 		GitCredentialsFileLock: gitCredentialsFileLock,
+		InstallationID:         installationID,
 		FileWriter:             fileWriter,
 		CacheDir:               cacheDir,
 	}
@@ -176,7 +179,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 		Version:           tfVersion,
 	}
 
-	err = t.GitCLICredentials.Refresh(ctx, request.GithubInstallationID)
+	err = t.GitCLICredentials.Refresh(ctx, t.InstallationID)
 	if err != nil {
 		activity.GetLogger(ctx).Error("Error refreshing git cli credentials. This is bug and will likely cause fetching of private modules to fail", key.ErrKey, err)
 	}

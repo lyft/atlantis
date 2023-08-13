@@ -18,13 +18,11 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/cli"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github/link"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/slack-go/slack"
-	"github.com/uber-go/tally/v4"
 )
 
 const (
@@ -95,7 +93,7 @@ type PolicySet struct {
 	Paths []string
 }
 
-func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.ValidationConfig, ghAppConfig githubapp.Config, dataDir string, serverURL *url.URL, taskQueue string, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
+func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.ValidationConfig, ghAppConfig githubapp.Config, dataDir string, serverURL *url.URL, taskQueue string, installationID int64, streamHandler StreamCloser, opts ...TerraformOptions) (*Terraform, error) {
 	binDir, err := mkSubDir(dataDir, BinDirName)
 	if err != nil {
 		return nil, err
@@ -187,6 +185,7 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 			GitCredentialsFileLock: gitCredentialsFileLock,
 			FileWriter:             &file.Writer{},
 			CacheDir:               cacheDir,
+			InstallationID:         installationID,
 		},
 		conftestActivity: &conftestActivity{
 			DefaultConftestVersion: defaultConftestVersion,
@@ -221,19 +220,10 @@ func NewGithubWithClient(client githubClient, dataDir string, getter gogetter, a
 	}, nil
 }
 
-func NewGithub(appConfig githubapp.Config, scope tally.Scope, dataDir string, allocator feature.Allocator) (*Github, error) {
-	clientCreator, err := githubapp.NewDefaultCachingClientCreator(
-		appConfig,
-		githubapp.WithClientMiddleware(
-			github.ClientMetrics(scope.SubScope("app")),
-		))
-
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing client creator")
-	}
-
+func NewGithub(clientCreator githubapp.ClientCreator, installationID int64, dataDir string, allocator feature.Allocator) (*Github, error) {
 	client := &internal.Client{
-		ClientCreator: clientCreator,
+		ClientCreator:  clientCreator,
+		InstallationID: installationID,
 	}
 
 	return NewGithubWithClient(client, dataDir, HashiGetter, allocator)

@@ -174,9 +174,6 @@ func TestWorkflowRunner_RunWithDivergedCommit(t *testing.T) {
 func TestWorkflowRunner_PlanRejected(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
-
-	env.OnGetVersion(internalTerraform.PlanRejected, workflow.DefaultVersion, workflow.Version(1)).Return(workflow.Version(1))
-
 	env.RegisterWorkflow(testTerraformWorklfowWithPlanRejectionError)
 
 	env.ExecuteWorkflow(parentWorkflow, request{

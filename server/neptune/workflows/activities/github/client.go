@@ -11,32 +11,12 @@ import (
 )
 
 type Client struct {
-	ClientCreator githubapp.ClientCreator
+	ClientCreator  githubapp.ClientCreator
+	InstallationID int64
 }
 
-type Context interface {
-	GetInstallationToken() int64
-	context.Context
-}
-
-type contextWithToken struct {
-	InstallationToken int64
-	context.Context
-}
-
-func (c *contextWithToken) GetInstallationToken() int64 {
-	return c.InstallationToken
-}
-
-func ContextWithInstallationToken(ctx context.Context, installationToken int64) Context {
-	return &contextWithToken{
-		InstallationToken: installationToken,
-		Context:           ctx,
-	}
-}
-
-func (c *Client) CreateCheckRun(ctx Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) CreateCheckRun(ctx context.Context, owner, repo string, opts github.CreateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating client from installation")
@@ -44,8 +24,8 @@ func (c *Client) CreateCheckRun(ctx Context, owner, repo string, opts github.Cre
 
 	return client.Checks.CreateCheckRun(ctx, owner, repo, opts)
 }
-func (c *Client) UpdateCheckRun(ctx Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, opts github.UpdateCheckRunOptions) (*github.CheckRun, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating client from installation")
@@ -53,8 +33,8 @@ func (c *Client) UpdateCheckRun(ctx Context, owner, repo string, checkRunID int6
 
 	return client.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, opts)
 }
-func (c *Client) GetArchiveLink(ctx Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) GetArchiveLink(ctx context.Context, owner, repo string, archiveformat github.ArchiveFormat, opts *github.RepositoryContentGetOptions, followRedirects bool) (*url.URL, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating client from installation")
@@ -63,8 +43,8 @@ func (c *Client) GetArchiveLink(ctx Context, owner, repo string, archiveformat g
 	return client.Repositories.GetArchiveLink(ctx, owner, repo, archiveformat, opts, followRedirects)
 }
 
-func (c *Client) CompareCommits(ctx Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) CompareCommits(ctx context.Context, owner, repo string, base, head string, opts *github.ListOptions) (*github.CommitsComparison, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating client from installation")
@@ -73,8 +53,8 @@ func (c *Client) CompareCommits(ctx Context, owner, repo string, base, head stri
 	return client.Repositories.CompareCommits(ctx, owner, repo, base, head, opts)
 }
 
-func (c *Client) ListReviews(ctx Context, owner string, repo string, number int) ([]*github.PullRequestReview, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) ListReviews(ctx context.Context, owner string, repo string, number int) ([]*github.PullRequestReview, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating client from installation")
 	}
@@ -89,16 +69,16 @@ func (c *Client) ListReviews(ctx Context, owner string, repo string, number int)
 	return gh_helper.Iterate(ctx, run)
 }
 
-func (c *Client) GetPullRequest(ctx Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) GetPullRequest(ctx context.Context, owner, repo string, number int) (*github.PullRequest, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating client from installation")
 	}
 	return client.PullRequests.Get(ctx, owner, repo, number)
 }
 
-func (c *Client) ListCommits(ctx Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) ListCommits(ctx context.Context, owner string, repo string, number int) ([]*github.RepositoryCommit, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating client from installation")
 	}
@@ -113,16 +93,16 @@ func (c *Client) ListCommits(ctx Context, owner string, repo string, number int)
 	return gh_helper.Iterate(ctx, run)
 }
 
-func (c *Client) DismissReview(ctx Context, owner string, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) DismissReview(ctx context.Context, owner string, repo string, number int, reviewID int64, review *github.PullRequestReviewDismissalRequest) (*github.PullRequestReview, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating client from installation")
 	}
 	return client.PullRequests.DismissReview(ctx, owner, repo, number, reviewID, review)
 }
 
-func (c *Client) ListTeamMembers(ctx Context, org string, teamSlug string) ([]*github.User, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) ListTeamMembers(ctx context.Context, org string, teamSlug string) ([]*github.User, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating client from installation")
 	}
@@ -139,8 +119,8 @@ func (c *Client) ListTeamMembers(ctx Context, org string, teamSlug string) ([]*g
 	return gh_helper.Iterate(ctx, run)
 }
 
-func (c *Client) CreateComment(ctx Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error) {
-	client, err := c.ClientCreator.NewInstallationClient(ctx.GetInstallationToken())
+func (c *Client) CreateComment(ctx context.Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error) {
+	client, err := c.ClientCreator.NewInstallationClient(c.InstallationID)
 	if err != nil {
 		return nil, nil, err
 	}
