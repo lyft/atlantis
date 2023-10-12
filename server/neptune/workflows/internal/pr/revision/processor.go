@@ -1,6 +1,7 @@
 package revision
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	metricNames "github.com/runatlantis/atlantis/server/metrics"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
@@ -147,7 +148,7 @@ func (p *Processor) awaitChildTerraformWorkflows(ctx workflow.Context, futures [
 				workflow.GetLogger(workflow.WithValue(ctx, internalContext.ErrKey, err)).Error("executing terraform workflow")
 				return
 			}
-			workflow.GetLogger(ctx).Info("child tf workflow ready", "id", resp.WorkflowState.ID)
+			workflow.GetLogger(ctx).Info(fmt.Sprintf("child tf workflow ready: %s", resp.WorkflowState.ID))
 			results = append(results, resp)
 		})
 	}
