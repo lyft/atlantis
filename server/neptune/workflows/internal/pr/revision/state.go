@@ -46,6 +46,7 @@ func (s *StateReceiver) Notify(ctx workflow.Context, workflowState *state.Workfl
 		workflow.GetLogger(ctx).Warn(fmt.Sprintf("skipping notifying root %s", workflowState.ID))
 		return
 	}
+	workflow.GetLogger(ctx).Info("receiving state change signal", "root", rootInfo.Root.Name)
 
 	for _, notifier := range s.InternalNotifiers {
 		if err := notifier.Notify(ctx, rootInfo.ToInternalInfo(), workflowState); err != nil {

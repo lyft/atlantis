@@ -57,6 +57,7 @@ func (c *GithubCheckRunCache) CreateOrUpdate(ctx workflow.Context, deploymentID 
 
 	// if we haven't created one, let's do so now
 	if !ok {
+		workflow.GetLogger(ctx).Info("cache before create", "cache", c.deploymentCheckRunCache)
 		resp, err := c.load(ctx, deploymentID, request)
 		if err != nil {
 			return 0, err
@@ -66,17 +67,20 @@ func (c *GithubCheckRunCache) CreateOrUpdate(ctx workflow.Context, deploymentID 
 		if resp.ID != 0 {
 			c.deploymentCheckRunCache[key] = resp.ID
 			c.deleteIfCompleted(resp.Status, key)
+			workflow.GetLogger(ctx).Info("cache after create", "cache", c.deploymentCheckRunCache)
 		}
 
 		return resp.ID, nil
 	}
 
 	// update existing checks
+	workflow.GetLogger(ctx).Info("cache before update", "cache", c.deploymentCheckRunCache)
 	resp, err := c.update(ctx, deploymentID, request, checkRunID)
 	if err != nil {
 		return 0, err
 	}
 	c.deleteIfCompleted(resp.Status, key)
+	workflow.GetLogger(ctx).Info("cache after update", "cache", c.deploymentCheckRunCache)
 
 	return checkRunID, nil
 }
@@ -102,7 +106,9 @@ func (c *GithubCheckRunCache) update(ctx workflow.Context, externalID string, re
 	}
 
 	var resp activities.UpdateCheckRunResponse
+	workflow.GetLogger(ctx).Info("executing update check run", "title", request.Title, "rev", request.Sha)
 	err := workflow.ExecuteActivity(ctx, c.activities.GithubUpdateCheckRun, updateCheckRunRequest).Get(ctx, &resp)
+	workflow.GetLogger(ctx).Info("update check run completed", "title", request.Title, "rev", request.Sha)
 	if err != nil {
 		return resp, errors.Wrapf(err, "updating check run with id: %d", checkRunID)
 	}
@@ -122,7 +128,9 @@ func (c *GithubCheckRunCache) load(ctx workflow.Context, externalID string, requ
 	}
 
 	var resp activities.CreateCheckRunResponse
+	workflow.GetLogger(ctx).Info("executing create check run", "title", request.Title, "rev", request.Sha)
 	err := workflow.ExecuteActivity(ctx, c.activities.GithubCreateCheckRun, createCheckRunRequest).Get(ctx, &resp)
+	workflow.GetLogger(ctx).Info("create check run completed", "title", request.Title, "rev", request.Sha)
 	if err != nil {
 		return resp, errors.Wrap(err, "creating check run")
 	}

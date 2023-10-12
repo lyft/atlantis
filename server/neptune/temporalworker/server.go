@@ -276,6 +276,7 @@ func (s Server) Start() error {
 			Interceptors: []interceptor.WorkerInterceptor{
 				temporal.NewWorkerInterceptor(),
 			},
+			EnableLoggingInReplay: true,
 		})
 		prWorker.RegisterActivity(s.GithubActivities)
 		prWorker.RegisterActivity(s.TerraformActivities)

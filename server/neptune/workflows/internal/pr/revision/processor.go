@@ -147,6 +147,7 @@ func (p *Processor) awaitChildTerraformWorkflows(ctx workflow.Context, futures [
 				workflow.GetLogger(workflow.WithValue(ctx, internalContext.ErrKey, err)).Error("executing terraform workflow")
 				return
 			}
+			workflow.GetLogger(ctx).Info("child tf workflow ready", "id", resp.WorkflowState.ID)
 			results = append(results, resp)
 		})
 	}

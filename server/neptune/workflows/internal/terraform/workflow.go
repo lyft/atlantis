@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
+	"strings"
 	"time"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
@@ -144,6 +145,9 @@ func (r *Runner) Plan(ctx workflow.Context, root *terraform.LocalRoot, serverURL
 
 	if err := r.Store.UpdatePlanJobWithStatus(state.InProgressJobStatus); err != nil {
 		return response, newUpdateJobError(err, "unable to update job with in-progress status")
+	}
+	if strings.HasSuffix(root.Path, "simple") {
+		_ = workflow.Sleep(ctx, 20*time.Second)
 	}
 
 	response, err = r.JobRunner.Plan(ctx, root, jobID.String(), r.Request.WorkflowMode)
