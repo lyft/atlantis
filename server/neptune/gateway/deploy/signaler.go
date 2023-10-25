@@ -18,6 +18,8 @@ type signaler interface {
 const (
 	Deprecated = "deprecated"
 	Destroy    = "-destroy"
+	Manifest   = "manifest_path"
+	EnvStep    = "env"
 )
 
 type WorkflowSignaler struct {
@@ -52,7 +54,7 @@ func (d *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfg 
 			Root: workflows.Root{
 				Name: rootCfg.Name,
 				Plan: workflows.Job{
-					Steps: d.generateSteps(rootCfg.DeploymentWorkflow.Plan.Steps),
+					Steps: d.prependPlanEnvSteps(rootCfg),
 				},
 				Apply: workflows.Job{
 					Steps: d.generateSteps(rootCfg.DeploymentWorkflow.Apply.Steps),
@@ -92,6 +94,20 @@ func (d *WorkflowSignaler) SignalWithStartWorkflow(ctx context.Context, rootCfg 
 
 func BuildDeployWorkflowID(repoName string, rootName string) string {
 	return fmt.Sprintf("%s||%s", repoName, rootName)
+}
+
+func (d *WorkflowSignaler) prependPlanEnvSteps(cfg *valid.MergedProjectCfg) []workflows.Step {
+	var steps []workflows.Step
+	if t, ok := cfg.Tags[Manifest]; ok {
+		//this is a Lyft specific env var
+		steps = append(steps, workflows.Step{
+			StepName:    EnvStep,
+			EnvVarName:  "MANIFEST_FILEPATH",
+			EnvVarValue: t,
+		})
+	}
+	steps = append(steps, d.generateSteps(cfg.DeploymentWorkflow.Plan.Steps)...)
+	return steps
 }
 
 func (d *WorkflowSignaler) generateSteps(steps []valid.Step) []workflows.Step {

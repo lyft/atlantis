@@ -145,11 +145,25 @@ func (s *WorkflowSignaler) buildRoots(rootCfgs []*valid.MergedProjectCfg, valida
 			RepoRelPath: rootCfg.RepoRelDir,
 			TfVersion:   tfVersion,
 			PlanMode:    generatePlanMode(rootCfg),
-			Plan:        workflows.PRJob{Steps: generateSteps(rootCfg.PullRequestWorkflow.Plan.Steps)},
+			Plan:        workflows.PRJob{Steps: s.prependPlanEnvSteps(rootCfg)},
 			Validate:    workflows.PRJob{Steps: s.prependValidateEnvSteps(rootCfg, validateEnvOpts...)},
 		})
 	}
 	return roots
+}
+
+func (s *WorkflowSignaler) prependPlanEnvSteps(cfg *valid.MergedProjectCfg) []workflows.PRStep {
+	var steps []workflows.PRStep
+	if t, ok := cfg.Tags[Manifest]; ok {
+		//this is a Lyft specific env var
+		steps = append(steps, workflows.PRStep{
+			StepName:    EnvStep,
+			EnvVarName:  "MANIFEST_FILEPATH",
+			EnvVarValue: t,
+		})
+	}
+	steps = append(steps, generateSteps(cfg.PullRequestWorkflow.Plan.Steps)...)
+	return steps
 }
 
 func (s *WorkflowSignaler) prependValidateEnvSteps(rootCfg *valid.MergedProjectCfg, opts ...ValidateEnvs) []workflows.PRStep {
