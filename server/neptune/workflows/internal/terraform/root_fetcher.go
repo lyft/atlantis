@@ -27,6 +27,10 @@ func (r *RootFetcher) Fetch(ctx workflow.Context) (*terraform.LocalRoot, func(wo
 		return nil, func(_ workflow.Context) error { return nil }, err
 	}
 
+	if r.Request.WorkflowMode == terraform.Admin {
+		return fetchRootResponse.LocalRoot, func(c workflow.Context) error { return nil }, nil
+	}
+
 	return fetchRootResponse.LocalRoot, func(c workflow.Context) error {
 		var cleanupResponse activities.CleanupResponse
 		err = workflow.ExecuteActivity(c, r.Ta.Cleanup, activities.CleanupRequest{ //nolint:gosimple // unnecessary to add a method to convert reponses

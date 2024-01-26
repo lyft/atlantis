@@ -176,6 +176,10 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		WorkflowMode: req.WorkflowMode,
 	}
 
+	if req.WorkflowMode == terraformModel.Admin {
+		tAct = nil
+	}
+
 	subject := &terraform.Runner{
 		ReviewGate: &gate.Review{
 			Timeout:        30 * time.Second,
@@ -605,6 +609,88 @@ func TestSuccess_PRMode(t *testing.T) {
 				Output: &state.JobOutput{
 					URL:             outputURL,
 					ValidateSummary: validateSummary,
+				},
+			},
+			Result: state.WorkflowResult{
+				Reason: state.SuccessfulCompletionReason,
+				Status: state.CompleteWorkflowStatus,
+			},
+		},
+	}, resp.States)
+}
+
+func TestSuccess_AdminMode(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	ga := &githubActivities{}
+	ta := &terraformActivities{}
+	env.RegisterActivity(ga)
+	env.RegisterActivity(ta)
+
+	outputURL, err := url.Parse("www.test.com/jobs/1235")
+	assert.NoError(t, err)
+
+	// set activity expectations
+	env.OnActivity(ga.GithubFetchRoot, mock.MatchedBy(func(ctx context.Context) bool {
+		info := activity.GetInfo(ctx)
+
+		assert.Equal(t, "taskqueue", info.TaskQueue)
+		assert.Equal(t, 1*time.Minute, info.HeartbeatTimeout)
+
+		return true
+	}), activities.FetchRootRequest{
+		Repo:         testGithubRepo,
+		Root:         testLocalRoot.Root,
+		DeploymentID: testDeploymentID,
+	}).Return(activities.FetchRootResponse{
+		LocalRoot:       testLocalRoot,
+		DeployDirectory: DeployDir,
+	}, nil)
+
+	// execute workflow
+	env.ExecuteWorkflow(testTerraformWorkflow, request{
+		WorkflowMode: terraformModel.Admin,
+	})
+	assert.True(t, env.IsWorkflowCompleted())
+
+	var resp response
+	err = env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+
+	// assert results are expected
+	env.AssertExpectations(t)
+	assert.Equal(t, []state.Workflow{
+		{
+			Plan: &state.Job{
+				Status: state.WaitingJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.InProgressJobStatus,
+				Output: &state.JobOutput{
+					URL: outputURL,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL:         outputURL,
+					PlanSummary: planSummary,
+				},
+			},
+		},
+		{
+			Plan: &state.Job{
+				Status: state.SuccessJobStatus,
+				Output: &state.JobOutput{
+					URL:         outputURL,
+					PlanSummary: planSummary,
 				},
 			},
 			Result: state.WorkflowResult{

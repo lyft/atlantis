@@ -53,4 +53,5 @@ type WorkflowMode int
 const (
 	Deploy WorkflowMode = iota
 	PR
+	Admin
 )
