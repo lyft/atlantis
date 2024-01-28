@@ -350,6 +350,10 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 		return Response{}, r.toExternalError(err, "running plan job")
 	}
 
+	if r.Request.WorkflowMode == terraform.Admin {
+		return Response{}, nil
+	}
+
 	if r.Request.WorkflowMode == terraform.PR {
 		validationResults, err := r.Validate(ctx, root, response.ServerURL, planResponse.PlanJSONFile)
 		if err != nil {
