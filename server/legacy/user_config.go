@@ -11,6 +11,7 @@ const (
 	Gateway
 	Worker
 	TemporalWorker
+	TerraformAdmin
 )
 
 // UserConfig holds config values passed in by the user.
@@ -75,6 +76,10 @@ type UserConfig struct {
 
 	// Supports adding a default URL to the checkrun UI when details URL is not set
 	DefaultCheckrunDetailsURL string `mapstructure:"default-checkrun-details-url"`
+
+	RepoNameForTerraformAdminFlag string `mapstructure:"repo-name-for-terraform-admin-flag"`
+	RootNameForTerraformAdminFlag string `mapstructure:"root-name-for-terraform-admin-flag"`
+	RevisionForTerraformAdminFlag string `mapstructure:"revision-for-terraform-admin-flag"`
 }
 
 // ToLogLevel returns the LogLevel object corresponding to the user-passed
@@ -104,6 +109,8 @@ func (u UserConfig) ToLyftMode() Mode {
 		return Worker
 	case "temporalworker":
 		return TemporalWorker
+	case "terraformadmin":
+		return TerraformAdmin
 	}
 	return Default
 }

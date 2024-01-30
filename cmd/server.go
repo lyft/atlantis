@@ -84,6 +84,9 @@ const (
 	LyftModeFlag                 = "lyft-mode"
 	LyftWorkerQueueURLFlag       = "lyft-worker-queue-url"
 
+	RepoNameForTerraformAdminFlag = "repo-name-for-terraform-admin"
+	RootNameForTerraformAdminFlag = "root-name-for-terraform-admin"
+	RevisionForTerraformAdminFlag = "revision-for-terraform-admin"
 	// NOTE: Must manually set these as defaults in the setDefaults function.
 	DefaultADBasicUser            = ""
 	DefaultADBasicPassword        = ""
@@ -236,6 +239,18 @@ var stringFlags = map[string]stringFlag{
 	},
 	LyftWorkerQueueURLFlag: {
 		description:  "Provide queue of AWS SQS queue for atlantis work to pull GH events from and process.",
+		defaultValue: "",
+	},
+	RepoNameForTerraformAdminFlag: {
+		description:  "The repo name is necessary when running in terraform admin mode so that we know which repo to clone",
+		defaultValue: "",
+	},
+	RootNameForTerraformAdminFlag: {
+		description:  "The root name is necessary when running in terraform admin mode so that we know which root to run ops on",
+		defaultValue: "",
+	},
+	RevisionForTerraformAdminFlag: {
+		description:  "The revision is necessary when running in terraform admin mode so that we know which revision to run ops on",
 		defaultValue: "",
 	},
 }

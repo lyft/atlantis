@@ -51,6 +51,10 @@ func TestUserConfig_ToLyftMode(t *testing.T) {
 		expMode  server.Mode
 	}{
 		{
+			"terraformadmin",
+			server.TerraformAdmin,
+		},
+		{
 			"default",
 			server.Default,
 		},
