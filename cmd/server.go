@@ -84,9 +84,9 @@ const (
 	LyftModeFlag                 = "lyft-mode"
 	LyftWorkerQueueURLFlag       = "lyft-worker-queue-url"
 
-	RepoNameForTerraformAdminFlag = "repo-name-for-terraform-admin"
-	RootNameForTerraformAdminFlag = "root-name-for-terraform-admin"
-	RevisionForTerraformAdminFlag = "revision-for-terraform-admin"
+	RepoNameForTerraformAdminFlag = "repo-name-for-terraform-admin-flag"
+	RootNameForTerraformAdminFlag = "root-name-for-terraform-admin-flag"
+	RevisionForTerraformAdminFlag = "revision-for-terraform-admin-flag"
 	// NOTE: Must manually set these as defaults in the setDefaults function.
 	DefaultADBasicUser            = ""
 	DefaultADBasicPassword        = ""
