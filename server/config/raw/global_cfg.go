@@ -26,8 +26,13 @@ type GlobalCfg struct {
 	Persistence          Persistence          `yaml:"persistence" json:"persistence"`
 	RevisionSetter       RevisionSetter       `yaml:"revision_setter" json:"revision_setter"`
 	Admin                Admin                `yaml:"admin" json:"admin"`
+	TerraformAdminMode   TerraformAdminMode   `yaml:"terraform_admin_mode" json:"terraform_admin_mode"`
 }
 
+type TerraformAdminMode struct {
+	Repo string `yaml:"repo" json:"repo"`
+	Root string `yaml:"root" json:"root"`
+}
 type GithubTeam struct {
 	Name string `yaml:"name" json:"name"`
 	Org  string `yaml:"org" json:"org"`
