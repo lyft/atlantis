@@ -33,6 +33,12 @@ type TerraformAdminMode struct {
 	Repo string `yaml:"repo" json:"repo"`
 	Root string `yaml:"root" json:"root"`
 }
+
+type (t TerraformAdminMode) Validate() error {
+	return validation.ValidateStruct(
+		&t,
+
+
 type GithubTeam struct {
 	Name string `yaml:"name" json:"name"`
 	Org  string `yaml:"org" json:"org"`
@@ -201,6 +207,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		Github:               g.Github.ToValid(),
 		Admin:                g.Admin.ToValid(),
 		RevisionSetter:       g.RevisionSetter.ToValid(),
+		TerraformAdminMode:   g.TerraformAdminMode,
 	}
 }
 

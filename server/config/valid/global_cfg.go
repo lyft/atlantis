@@ -64,6 +64,12 @@ type GlobalCfg struct {
 	Github               Github
 	RevisionSetter       RevisionSetter
 	Admin                Admin
+	TerraformAdminMode   TerraformAdminMode
+}
+
+type TerraformAdminMode struct {
+	Repo string
+	Root string
 }
 
 type GithubTeam struct {
