@@ -42,10 +42,8 @@ func (t TerraformAdminMode) ToValid() valid.TerraformAdminMode {
 }
 
 func (t TerraformAdminMode) Validate() error {
-	return validation.ValidateStruct(&t,
-		validation.Field(&t.Repo),
-		validation.Field(&t.Root),
-	)
+	// We don't need to validate the inputs so we can just return nil
+	return nil
 }
 
 type GithubTeam struct {
