@@ -26,6 +26,24 @@ type GlobalCfg struct {
 	Persistence          Persistence          `yaml:"persistence" json:"persistence"`
 	RevisionSetter       RevisionSetter       `yaml:"revision_setter" json:"revision_setter"`
 	Admin                Admin                `yaml:"admin" json:"admin"`
+	TerraformAdminMode   TerraformAdminMode   `yaml:"terraform_admin_mode" json:"terraform_admin_mode"`
+}
+
+type TerraformAdminMode struct {
+	Repo string `yaml:"repo" json:"repo"`
+	Root string `yaml:"root" json:"root"`
+}
+
+func (t TerraformAdminMode) ToValid() valid.TerraformAdminMode {
+	return valid.TerraformAdminMode{
+		Repo: t.Repo,
+		Root: t.Root,
+	}
+}
+
+func (t TerraformAdminMode) Validate() error {
+	// We don't need to validate the inputs so we can just return nil
+	return nil
 }
 
 type GithubTeam struct {
@@ -196,6 +214,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		Github:               g.Github.ToValid(),
 		Admin:                g.Admin.ToValid(),
 		RevisionSetter:       g.RevisionSetter.ToValid(),
+		TerraformAdminMode:   g.TerraformAdminMode.ToValid(),
 	}
 }
 
