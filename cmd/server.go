@@ -231,7 +231,8 @@ var stringFlags = map[string]stringFlag{
 			"default: Runs atlantis with default event handler that processes events within same.\n" +
 			"gateway: Runs atlantis with gateway event handler that publishes events through sns.\n" +
 			"worker:  Runs atlantis with a sqs handler that polls for events in the queue to process.\n" +
-			"hybrid:  Runs atlantis with both a gateway event handler and sqs handler to perform both gateway and worker behaviors.",
+			"hybrid:  Runs atlantis with both a gateway event handler and sqs handler to perform both gateway and worker behaviors.\n" +
+			"terraformadmin: Runs atlantis in a mode that allows for running terraform commands on behalf of other users.",
 		defaultValue: "",
 	},
 	LyftWorkerQueueURLFlag: {
@@ -344,6 +345,7 @@ func NewServerCmd(v *viper.Viper, version string) *ServerCmd {
 			GatewayCreator:        &GatewayCreator{},
 			WorkerCreator:         &WorkerCreator{},
 			TemporalWorkerCreator: &TemporalWorker{},
+			TerraformAdminCreator: &TerraformAdmin{},
 		},
 		Viper:           v,
 		AtlantisVersion: version,
@@ -374,6 +376,7 @@ type ServerCreatorProxy struct {
 	GatewayCreator        ServerCreator
 	WorkerCreator         ServerCreator
 	TemporalWorkerCreator ServerCreator
+	TerraformAdminCreator ServerCreator
 }
 
 func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
@@ -387,6 +390,10 @@ func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config serv
 
 	if userConfig.ToLyftMode() == server.TemporalWorker {
 		return d.TemporalWorkerCreator.NewServer(userConfig, config)
+	}
+
+	if userConfig.ToLyftMode() == server.TerraformAdmin {
+		return d.TerraformAdminCreator.NewServer(userConfig, config)
 	}
 
 	return d.WorkerCreator.NewServer(userConfig, config)

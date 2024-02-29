@@ -70,6 +70,14 @@ func TestUserConfig_ToLyftMode(t *testing.T) {
 			"",
 			server.Default,
 		},
+		{
+			"terraformadmin",
+			server.TerraformAdmin,
+		},
+		{
+			"temporalworker",
+			server.TemporalWorker,
+		},
 	}
 
 	for _, c := range cases {
