@@ -232,7 +232,7 @@ var stringFlags = map[string]stringFlag{
 			"gateway: Runs atlantis with gateway event handler that publishes events through sns.\n" +
 			"worker:  Runs atlantis with a sqs handler that polls for events in the queue to process.\n" +
 			"hybrid:  Runs atlantis with both a gateway event handler and sqs handler to perform both gateway and worker behaviors.\n" +
-			"terraformadmin: Runs atlantis in a mode that allows for running terraform commands on behalf of other users.",
+			"terraformadmin: Runs atlantis in a mode that allows for running terraform commands.",
 		defaultValue: "",
 	},
 	LyftWorkerQueueURLFlag: {
