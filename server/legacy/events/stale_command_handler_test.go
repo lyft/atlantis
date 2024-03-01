@@ -42,9 +42,10 @@ func TestStaleCommandHandler_CommandIsStale(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.Description, func(t *testing.T) {
 			RegisterMockTestingT(t)
+			pull := c.PullStatus
 			ctx := &command.Context{
 				TriggerTimestamp: c.CommandTimestamp,
-				PullStatus:       &c.PullStatus,
+				PullStatus:       &pull,
 			}
 			staleCommandHandler := &events.StaleCommandHandler{
 				StaleStatsScope: testScope,

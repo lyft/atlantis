@@ -60,6 +60,7 @@ var Repo = github.Repository{
 	CloneURL: github.String("https://github.com/owner/repo.git"),
 }
 
+// nolint: gosec
 const GithubPrivateKey = `-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEAuEPzOUE+kiEH1WLiMeBytTEF856j0hOVcSUSUkZxKvqczkWM
 9vo1gDyC7ZXhdH9fKh32aapba3RSsp4ke+giSmYTk2mGR538ShSDxh0OgpJmjiKP
@@ -120,8 +121,6 @@ var githubConversionJSON = `{
 	"created_at":     "2018-09-13T12:28:37Z",
 	"updated_at":     "2018-09-13T12:28:37Z",
 	"client_id":      "Iv1.8a61f9b3a7aba766",
-	"client_secret":  "1726be1638095a19edd134c77bde3aa2ece1e5d8",
-	"webhook_secret": "e340154128314309424b7c8e90325147d99fdafa",
 	"pem":            "%s"
 }`
 
