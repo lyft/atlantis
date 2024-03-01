@@ -77,7 +77,6 @@ type Server struct {
 	GithubActivities         *activities.Github
 	RevisionSetterActivities *lyftActivities.RevisionSetter
 	// Temporary until we move this into our private code
-	AuditActivity              *lyftActivities.Audit
 	PRRevisionGithubActivities *lyftActivities.Github
 	TerraformTaskQueue         string
 	RevisionSetterConfig       valid.RevisionSetter
@@ -141,10 +140,8 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	auditActivity, err := lyftActivities.NewAuditActivity(config.LyftAuditJobsSnsTopicArn)
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing lyft activities")
-	}
+	// we don't need audit activities
+
 	deployActivities, err := activities.NewDeploy(config.DeploymentConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing deploy activities")
@@ -227,11 +224,15 @@ func NewServer(config *config.Config) (*Server, error) {
 		RevisionSetterActivities:   revisionSetterActivities,
 		TerraformTaskQueue:         config.TemporalCfg.TerraformTaskQueue,
 		RevisionSetterConfig:       config.RevisionSetter,
-		AuditActivity:              auditActivity,
 		PRRevisionGithubActivities: prRevisionGithubActivities,
 	}
 	return &server, nil
 }
+
+/*
+ * BIG TODO FOR ATLANTIS DEPRECATION:
+ * Figure out what workers / activities / stuff and things we don't need and remove them
+ */
 
 func (s Server) Start() error {
 	defer s.shutdown()
@@ -384,7 +385,6 @@ func (s Server) buildDeployWorker() worker.Worker {
 	})
 	deployWorker.RegisterActivity(s.DeployActivities)
 	deployWorker.RegisterActivity(s.GithubActivities)
-	deployWorker.RegisterActivity(s.AuditActivity)
 	deployWorker.RegisterActivity(s.TerraformActivities)
 	deployWorker.RegisterWorkflowWithOptions(workflows.GetDeployWithPlugins(
 		func(ctx workflow.Context, dr workflows.DeployRequest) (plugins.Deploy, error) {

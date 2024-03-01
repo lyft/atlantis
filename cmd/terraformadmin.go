@@ -6,8 +6,8 @@ import (
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker"
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/terraformadmin"
 )
 
 type TerraformAdmin struct{}
@@ -21,12 +21,15 @@ func (t *TerraformAdmin) NewServer(userConfig legacy.UserConfig, config legacy.C
 
 	globalCfg := valid.NewGlobalCfg(userConfig.DataDir)
 	validator := &cfgParser.ParserValidator{}
+
+	// TODO: should terraformadminmode pass in this stuff?
 	if userConfig.RepoConfig != "" {
 		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing %s file", userConfig.RepoConfig)
 		}
 	}
+
 	parsedURL, err := legacy.ParseAtlantisURL(userConfig.AtlantisURL)
 	if err != nil {
 		return nil, errors.Wrapf(err,
@@ -40,6 +43,8 @@ func (t *TerraformAdmin) NewServer(userConfig legacy.UserConfig, config legacy.C
 		return nil, err
 	}
 
+	// we don't need the feature config
+
 	cfg := &neptune.Config{
 		AuthCfg: neptune.AuthConfig{
 			SslCertFile: userConfig.SSLCertFile,
@@ -49,12 +54,6 @@ func (t *TerraformAdmin) NewServer(userConfig legacy.UserConfig, config legacy.C
 			URL:     parsedURL,
 			Version: config.AtlantisVersion,
 			Port:    userConfig.Port,
-		},
-		FeatureConfig: neptune.FeatureConfig{
-			FFOwner:  userConfig.FFOwner,
-			FFRepo:   userConfig.FFRepo,
-			FFPath:   userConfig.FFPath,
-			FFBranch: userConfig.FFBranch,
 		},
 		TerraformCfg: neptune.TerraformConfig{
 			DefaultVersion: userConfig.DefaultTFVersion,
@@ -77,5 +76,5 @@ func (t *TerraformAdmin) NewServer(userConfig legacy.UserConfig, config legacy.C
 		LyftAuditJobsSnsTopicArn: userConfig.LyftAuditJobsSnsTopicArn,
 		RevisionSetter:           globalCfg.RevisionSetter,
 	}
-	return temporalworker.NewServer(cfg)
+	return terraformadmin.NewServer(cfg)
 }
