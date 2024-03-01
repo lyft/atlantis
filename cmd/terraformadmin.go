@@ -36,15 +36,12 @@ func (t *TerraformAdmin) NewServer(userConfig legacy.UserConfig, config legacy.C
 			"parsing atlantis url %q", userConfig.AtlantisURL)
 	}
 
-	// TODO: we should just supply a yaml file with this info and load it directly into the
-	// app config struct
 	appConfig, err := createGHAppConfig(userConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	// we don't need the feature config
-
 	cfg := &neptune.Config{
 		AuthCfg: neptune.AuthConfig{
 			SslCertFile: userConfig.SSLCertFile,
