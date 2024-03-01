@@ -5,7 +5,7 @@ linters:
     # We don't use goconst because it gives false positives in the tests.
     #  - goconst
     - gofmt
-    # We don't use goconst because it gives false positives in the tests.
+    # We don't use revive because it gives false positives in the tests.
     #  - revive
     - gosec
     - gosimple
