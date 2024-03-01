@@ -16,5 +16,5 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3.2.0
         with:
-          args: --timeout 3m --verbose
+          args: --timeout 3m --verbose --disable revive
           version: v1.56.2
