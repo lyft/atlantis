@@ -425,13 +425,15 @@ projects:
 				var actCtxs []command.ProjectContext
 				var err error
 				if cmdName == command.Plan {
+					cmd := c.Cmd
 					actCtxs, err = builder.BuildPlanCommands(&command.Context{
 						RequestCtx: context.TODO(),
 						Log:        logger,
 						Scope:      scope,
-					}, &c.Cmd)
+					}, &cmd)
 				} else {
-					actCtxs, err = builder.BuildApplyCommands(&command.Context{Log: logger, Scope: scope, RequestCtx: context.TODO()}, &c.Cmd)
+					cmd := c.Cmd
+					actCtxs, err = builder.BuildApplyCommands(&command.Context{Log: logger, Scope: scope, RequestCtx: context.TODO()}, &cmd)
 				}
 
 				if c.ExpErr != "" {

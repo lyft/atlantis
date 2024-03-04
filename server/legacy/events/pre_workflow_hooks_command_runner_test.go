@@ -210,7 +210,7 @@ func TestRunPreHooks_Clone(t *testing.T) {
 		When(whWorkingDir.Clone(log, fixtures.GithubRepo, newPull, events.DefaultWorkspace)).ThenReturn(repoDir, false, nil)
 		When(whPreWorkflowHookRunner.Run(ctx, pCtx, testHook.RunCommand, repoDir)).ThenReturn(result, errors.New("some error"))
 
-		err := wh.RunPreHooks(context.TODO(), cmdCtx)
+		err := wh.RunPreHooks(ctx, cmdCtx)
 
 		Assert(t, err != nil, "error not nil")
 		Assert(t, *unlockCalled == true, "unlock function called")
