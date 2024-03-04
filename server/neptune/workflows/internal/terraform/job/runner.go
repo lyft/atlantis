@@ -215,8 +215,11 @@ func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step 
 }
 
 func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, workflowMode terraform.WorkflowMode, extraArgs []string) (activities.TerraformPlanResponse, error) {
+	if workflowMode == terraform.Admin {
+		// Admin mode doesn't need to run a plan.
+		return activities.TerraformPlanResponse{}, nil
+	}
 	var resp activities.TerraformPlanResponse
-
 	args, err := command.NewArgumentList(extraArgs)
 	if err != nil {
 		return resp, errors.Wrapf(err, "creating argument list")
