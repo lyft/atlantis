@@ -43,10 +43,12 @@ func (t *TerraformAdmin) NewServer(userConfig legacy.UserConfig, config legacy.C
 
 	// we don't need the feature config
 	cfg := &neptune.Config{
+		// we need the authCfg and ssl stuff for the http server
 		AuthCfg: neptune.AuthConfig{
 			SslCertFile: userConfig.SSLCertFile,
 			SslKeyFile:  userConfig.SSLKeyFile,
 		},
+		// we need the servercfg stuff, see setAtlantisURL
 		ServerCfg: neptune.ServerConfig{
 			URL:     parsedURL,
 			Version: config.AtlantisVersion,
@@ -61,7 +63,6 @@ func (t *TerraformAdmin) NewServer(userConfig legacy.UserConfig, config legacy.C
 			DefaultVersion: globalCfg.PolicySets.Version,
 			Policies:       globalCfg.PolicySets,
 		},
-		JobConfig:                globalCfg.PersistenceConfig.Jobs,
 		DeploymentConfig:         globalCfg.PersistenceConfig.Deployments,
 		DataDir:                  userConfig.DataDir,
 		TemporalCfg:              globalCfg.Temporal,

@@ -38,26 +38,6 @@ import (
 	"go.temporal.io/sdk/worker"
 )
 
-const (
-	ProjectJobsViewRouteName = "project-jobs-detail"
-
-	// to make this clear,
-	// time t     event
-	// 0 min      sigterm received from kube
-	// 50 min     activity ctx canceled
-	// 50 + x min sigkill received from kube
-	//
-	// Note: x must be configured outside atlantis and is the grace period effectively.
-	TemporalWorkerTimeout = 50 * time.Minute
-
-	// allow any in-progress PRRevision workflow executions to gracefully exit which shouldn't take longer than 10 minutes
-	PRRevisionWorkerTimeout = 10 * time.Minute
-
-	// 5 minutes to allow cleaning up the job store
-	StreamHandlerTimeout                   = 5 * time.Minute
-	PRRevisionTaskQueueActivitiesPerSecond = 2
-)
-
 type Server struct {
 	Logger              logging.Logger
 	HTTPServerProxy     *neptune_http.ServerProxy
@@ -139,12 +119,8 @@ func NewServer(config *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "client creator")
 	}
-	repoConfig := feature.RepoConfig{
-		Owner:  config.FeatureConfig.FFOwner,
-		Repo:   config.FeatureConfig.FFRepo,
-		Branch: config.FeatureConfig.FFBranch,
-		Path:   config.FeatureConfig.FFPath,
-	}
+	// TODO fill in details here
+	repoConfig := feature.RepoConfig{}
 	installationFetcher := &github.InstallationRetriever{
 		ClientCreator: clientCreator,
 	}
@@ -225,16 +201,6 @@ func (s Server) Start() error {
 }
 
 func (s Server) shutdown() {
-	// On cleanup, stream handler closes all active receivers and persists in memory jobs to storage
-	ctx, cancel := context.WithTimeout(context.Background(), StreamHandlerTimeout)
-	defer cancel()
-
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := s.HTTPServerProxy.Shutdown(ctx); err != nil {
-		s.Logger.Error(err.Error())
-	}
-
 	s.TemporalClient.Close()
 
 	// flush stats before shutdown
@@ -248,7 +214,6 @@ func (s Server) shutdown() {
 func (s Server) buildTerraformWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	terraformWorker := worker.New(s.TemporalClient.Client, s.TerraformTaskQueue, worker.Options{
-		WorkerStopTimeout: TemporalWorkerTimeout,
 		Interceptors: []interceptor.WorkerInterceptor{
 			temporal.NewWorkerInterceptor(),
 		},
