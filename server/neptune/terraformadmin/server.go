@@ -246,6 +246,9 @@ func (s Server) shutdown() {
 
 // TODO: add deployWorker if we need it
 
+// Note that we will need to do things similar to how gateway does it to get the metadata we need
+// specifically the root
+
 func (s Server) buildTerraformWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	terraformWorker := worker.New(s.TemporalClient.Client, s.TerraformTaskQueue, worker.Options{
@@ -263,6 +266,8 @@ func (s Server) buildTerraformWorker() worker.Worker {
 	terraformWorker.RegisterWorkflow(workflows.Terraform)
 	return terraformWorker
 }
+
+// TODO: eventually we can make it so the pod is ready when the repo is done cloning...
 
 // Healthz returns the health check response. It always returns a 200 currently.
 func Healthz(w http.ResponseWriter, _ *http.Request) {

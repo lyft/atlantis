@@ -48,31 +48,42 @@ func (t *TerraformAdmin) NewServer(userConfig legacy.UserConfig, config legacy.C
 			SslCertFile: userConfig.SSLCertFile,
 			SslKeyFile:  userConfig.SSLKeyFile,
 		},
-		// we need the servercfg stuff, see setAtlantisURL
+		// we need the servercfg stuff, see setAtlantisURL() TODO: is this true?
 		ServerCfg: neptune.ServerConfig{
 			URL:     parsedURL,
 			Version: config.AtlantisVersion,
 			Port:    userConfig.Port,
 		},
+		// we need the terraformcfg stuff, since we need terraformActivities
 		TerraformCfg: neptune.TerraformConfig{
 			DefaultVersion: userConfig.DefaultTFVersion,
 			DownloadURL:    userConfig.TFDownloadURL,
 			LogFilters:     globalCfg.TerraformLogFilter,
 		},
+		// also passed to terraform activities, even though we don't need conf test OPA stuff
+		// TODO: But we have to introduce branching if we remove this...
 		ValidationConfig: neptune.ValidationConfig{
 			DefaultVersion: globalCfg.PolicySets.Version,
 			Policies:       globalCfg.PolicySets,
 		},
-		DeploymentConfig:         globalCfg.PersistenceConfig.Deployments,
-		DataDir:                  userConfig.DataDir,
-		TemporalCfg:              globalCfg.Temporal,
-		GithubCfg:                globalCfg.Github,
-		App:                      appConfig,
-		CtxLogger:                ctxLogger,
-		StatsNamespace:           userConfig.StatsNamespace,
-		Metrics:                  globalCfg.Metrics,
-		LyftAuditJobsSnsTopicArn: userConfig.LyftAuditJobsSnsTopicArn,
-		RevisionSetter:           globalCfg.RevisionSetter,
+
+		// Do not need deployment config
+		// do need datadir, we will save the archive there
+		DataDir: userConfig.DataDir,
+		// do need temporalconfig since we use temporal
+		TemporalCfg: globalCfg.Temporal,
+		// do need githubcfg, since we use github to get the archive
+		GithubCfg: globalCfg.Github,
+		// same as above
+		App: appConfig,
+		// we do need logging
+		CtxLogger: ctxLogger,
+		// we do need stats
+		StatsNamespace: userConfig.StatsNamespace,
+		// we do need metrics
+		Metrics: globalCfg.Metrics,
+		// no SnsTopicArn since we don't use the auditing
+		// no revision setter
 	}
 	return terraformadmin.NewServer(cfg)
 }
