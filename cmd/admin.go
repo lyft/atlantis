@@ -23,7 +23,7 @@ func (a *Admin) NewServer(userConfig legacy.UserConfig, config legacy.Config) (S
 	globalCfg := valid.NewGlobalCfg(userConfig.DataDir)
 	validator := &cfgParser.ParserValidator{}
 
-	// TODO: should terraformadminmode pass in this stuff?
+	// TODO: fill in values from globalCfg
 	if userConfig.RepoConfig != "" {
 		globalCfg, err = validator.ParseGlobalCfg(userConfig.RepoConfig, globalCfg)
 		if err != nil {
