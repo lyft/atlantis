@@ -345,7 +345,7 @@ func NewServerCmd(v *viper.Viper, version string) *ServerCmd {
 			GatewayCreator:        &GatewayCreator{},
 			WorkerCreator:         &WorkerCreator{},
 			TemporalWorkerCreator: &TemporalWorker{},
-			TerraformAdminCreator: &TerraformAdmin{},
+			AdminCreator:          &Admin{},
 		},
 		Viper:           v,
 		AtlantisVersion: version,
@@ -376,7 +376,7 @@ type ServerCreatorProxy struct {
 	GatewayCreator        ServerCreator
 	WorkerCreator         ServerCreator
 	TemporalWorkerCreator ServerCreator
-	TerraformAdminCreator ServerCreator
+	AdminCreator          ServerCreator
 }
 
 func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
@@ -392,8 +392,8 @@ func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config serv
 		return d.TemporalWorkerCreator.NewServer(userConfig, config)
 	}
 
-	if userConfig.ToLyftMode() == server.TerraformAdmin {
-		return d.TerraformAdminCreator.NewServer(userConfig, config)
+	if userConfig.ToLyftMode() == server.Admin {
+		return d.AdminCreator.NewServer(userConfig, config)
 	}
 
 	return d.WorkerCreator.NewServer(userConfig, config)
