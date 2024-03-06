@@ -6,8 +6,8 @@ import (
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy"
 	"github.com/runatlantis/atlantis/server/logging"
-	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/terraformadmin"
+	adminconfig "github.com/runatlantis/atlantis/server/neptune/terraformadmin/config"
 )
 
 type TerraformAdmin struct{}
@@ -42,27 +42,27 @@ func (t *TerraformAdmin) NewServer(userConfig legacy.UserConfig, config legacy.C
 	}
 
 	// we don't need the feature config
-	cfg := &neptune.Config{
+	cfg := &adminconfig.Config{
 		// we need the authCfg and ssl stuff for the http server
-		AuthCfg: neptune.AuthConfig{
+		AuthCfg: adminconfig.AuthConfig{
 			SslCertFile: userConfig.SSLCertFile,
 			SslKeyFile:  userConfig.SSLKeyFile,
 		},
 		// we need the servercfg stuff, see setAtlantisURL() TODO: is this true?
-		ServerCfg: neptune.ServerConfig{
+		ServerCfg: adminconfig.ServerConfig{
 			URL:     parsedURL,
 			Version: config.AtlantisVersion,
 			Port:    userConfig.Port,
 		},
 		// we need the terraformcfg stuff, since we need terraformActivities
-		TerraformCfg: neptune.TerraformConfig{
+		TerraformCfg: adminconfig.TerraformConfig{
 			DefaultVersion: userConfig.DefaultTFVersion,
 			DownloadURL:    userConfig.TFDownloadURL,
 			LogFilters:     globalCfg.TerraformLogFilter,
 		},
 		// also passed to terraform activities, even though we don't need conf test OPA stuff
 		// TODO: But we have to introduce branching if we remove this...
-		ValidationConfig: neptune.ValidationConfig{
+		ValidationConfig: adminconfig.ValidationConfig{
 			DefaultVersion: globalCfg.PolicySets.Version,
 			Policies:       globalCfg.PolicySets,
 		},

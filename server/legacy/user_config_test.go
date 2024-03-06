@@ -71,8 +71,8 @@ func TestUserConfig_ToLyftMode(t *testing.T) {
 			server.Default,
 		},
 		{
-			"terraformadmin",
-			server.TerraformAdmin,
+			"admin",
+			server.Admin,
 		},
 		{
 			"temporalworker",

@@ -1,4 +1,4 @@
-package terraformadmin
+package admin
 
 import (
 	"context"
@@ -25,7 +25,7 @@ import (
 	"github.com/runatlantis/atlantis/server/metrics"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
-	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	adminconfig "github.com/runatlantis/atlantis/server/neptune/terraformadmin/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/static"
@@ -44,20 +44,11 @@ type Server struct {
 	TemporalClient      *temporal.ClientWrapper
 	TerraformActivities *activities.Terraform
 	GithubActivities    *activities.Github
-	// differences from temporal worker:
-	// - no additional notifiers
-	// - no revision setter
-	// - no PRRevisionGithubActivities
-	// - no AuditActivity
-	// - no RevisionSetterActivities
-	// - no DeployActivities
-	// - no JobStreamHandler
-	// - no CronScheduler
-	// - no crons
+
 	TerraformTaskQueue string
 }
 
-func NewServer(config *config.Config) (*Server, error) {
+func NewServer(config *adminconfig.Config) (*Server, error) {
 	statsReporter, err := metrics.NewReporter(config.Metrics, config.CtxLogger)
 
 	if err != nil {
@@ -70,7 +61,7 @@ func NewServer(config *config.Config) (*Server, error) {
 	}
 
 	scope = scope.Tagged(map[string]string{
-		"mode": "terraformadmin",
+		"mode": "admin",
 	})
 
 	// difference from temporalworker: no job stuff (handler, controller, etc)
@@ -115,7 +106,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.TemporalCfg.TerraformTaskQueue,
 		config.GithubCfg.TemporalAppInstallationID,
 		nil,
-		// difference from temporalworker: no jobstreamhandler TODO: test if this actually works
+	// difference from temporalworker: no jobstreamhandler TODO: test if this actually works
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
