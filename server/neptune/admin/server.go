@@ -164,6 +164,7 @@ func NewServer(config *adminconfig.Config) (*Server, error) {
 		StatsCloser:         statsCloser,
 		TemporalClient:      temporalClient,
 		TerraformActivities: terraformActivities,
+		TerraformTaskQueue:  config.TemporalCfg.TerraformTaskQueue,
 		GithubActivities:    githubActivities,
 	}
 	return &server, nil
@@ -234,8 +235,6 @@ func (s Server) shutdown() {
 
 	s.Logger.Close()
 }
-
-// TODO: add deployWorker if we need it
 
 // Note that we will need to do things similar to how gateway does it to get the metadata we need
 // specifically the root
