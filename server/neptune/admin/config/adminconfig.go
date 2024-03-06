@@ -15,7 +15,6 @@ type Config struct {
 	TemporalCfg      valid.Temporal
 	GithubCfg        valid.Github
 	TerraformCfg     neptune.TerraformConfig
-	ValidationConfig neptune.ValidationConfig
 	DeploymentConfig valid.StoreConfig
 	JobConfig        valid.StoreConfig
 	Metrics          valid.Metrics

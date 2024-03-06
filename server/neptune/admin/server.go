@@ -26,6 +26,7 @@ import (
 	adminconfig "github.com/runatlantis/atlantis/server/neptune/admin/config"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
+	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/static"
@@ -64,9 +65,6 @@ func NewServer(config *adminconfig.Config) (*Server, error) {
 		"mode": "admin",
 	})
 
-	// difference from temporalworker: no job stuff (handler, controller, etc)
-
-	// temporal client + worker initialization
 	opts := &temporal.Options{
 		StatsReporter: statsReporter,
 	}
@@ -76,8 +74,6 @@ func NewServer(config *adminconfig.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing temporal client")
 	}
 
-	// difference from temporalworker: no job endpoints
-	// router initialization
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods(http.MethodGet)
 	router.PathPrefix("/static/").Handler(http.FileServer(&assetfs.AssetFS{Asset: static.Asset, AssetDir: static.AssetDir, AssetInfo: static.AssetInfo}))
@@ -95,18 +91,15 @@ func NewServer(config *adminconfig.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	// difference from temporalworker - no audit or deploy activities
-
 	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
-		config.ValidationConfig,
+		neptune.ValidationConfig{},
 		config.App,
 		config.DataDir,
 		config.ServerCfg.URL,
 		config.TemporalCfg.TerraformTaskQueue,
 		config.GithubCfg.TemporalAppInstallationID,
 		nil,
-	// difference from temporalworker: no jobstreamhandler TODO: test if this actually works
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
@@ -152,10 +145,6 @@ func NewServer(config *adminconfig.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing github activities")
 	}
 
-	// difference from temporalworker:
-	// - no revisionSetterActivities or prRevisionGithubActivities
-	// - no cron scheduler or crons
-
 	server := Server{
 		Logger:              config.CtxLogger,
 		HTTPServerProxy:     httpServerProxy,
@@ -189,11 +178,6 @@ func (s Server) Start() error {
 		s.Logger.InfoContext(ctx, "Shutting down terraform worker, resource clean up may still be occurring in the background")
 	}()
 
-	// note the difference from temporalworker:
-	// - no default prRevisionWorker
-	// - no slow prRevisionWorker
-	// - no deployWorker
-
 	// Ensure server gracefully drains connections when stopped.
 	stop := make(chan os.Signal, 1)
 	// Stop on SIGINTs and SIGTERMs.
@@ -216,10 +200,6 @@ func (s Server) Start() error {
 }
 
 func (s Server) shutdown() {
-	// this differs from temporalworker in that we:
-	// - don't shut down the jobstreamhandler
-	// - don't shutdown the cron scheduler
-	// as we don't need them
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := s.HTTPServerProxy.Shutdown(ctx); err != nil {
