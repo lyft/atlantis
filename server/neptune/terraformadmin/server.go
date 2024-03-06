@@ -21,16 +21,13 @@ import (
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
-	lyftActivities "github.com/runatlantis/atlantis/server/neptune/lyft/activities"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"github.com/runatlantis/atlantis/server/static"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/negroni"
@@ -47,11 +44,17 @@ type Server struct {
 	TemporalClient      *temporal.ClientWrapper
 	TerraformActivities *activities.Terraform
 	GithubActivities    *activities.Github
-	// Temporary until we move this into our private code
-	PRRevisionGithubActivities *lyftActivities.Github
-	TerraformTaskQueue         string
-	RevisionSetterConfig       valid.RevisionSetter
-	AdditionalNotifiers        []plugins.TerraformWorkflowNotifier
+	// differences from temporal worker:
+	// - no additional notifiers
+	// - no revision setter
+	// - no PRRevisionGithubActivities
+	// - no AuditActivity
+	// - no RevisionSetterActivities
+	// - no DeployActivities
+	// - no JobStreamHandler
+	// - no CronScheduler
+	// - no crons
+	TerraformTaskQueue string
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -70,6 +73,8 @@ func NewServer(config *config.Config) (*Server, error) {
 		"mode": "terraformadmin",
 	})
 
+	// difference from temporalworker: no job stuff (handler, controller, etc)
+
 	// temporal client + worker initialization
 	opts := &temporal.Options{
 		StatsReporter: statsReporter,
@@ -80,6 +85,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing temporal client")
 	}
 
+	// difference from temporalworker: no job endpoints
 	// router initialization
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", Healthz).Methods(http.MethodGet)
@@ -98,6 +104,8 @@ func NewServer(config *config.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
+	// difference from temporalworker - no audit or deploy activities
+
 	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
 		config.ValidationConfig,
@@ -107,6 +115,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		config.TemporalCfg.TerraformTaskQueue,
 		config.GithubCfg.TemporalAppInstallationID,
 		nil,
+		// difference from temporalworker: no jobstreamhandler TODO: test if this actually works
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
@@ -119,8 +128,13 @@ func NewServer(config *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "client creator")
 	}
-	// TODO fill in details here
-	repoConfig := feature.RepoConfig{}
+	// TODO fill in details here - in another PR pull from globalCfg since we have the items in the repo_template
+	repoConfig := feature.RepoConfig{
+		Owner:  config.FeatureConfig.FFOwner,
+		Repo:   config.FeatureConfig.FFRepo,
+		Branch: config.FeatureConfig.FFBranch,
+		Path:   config.FeatureConfig.FFPath,
+	}
 	installationFetcher := &github.InstallationRetriever{
 		ClientCreator: clientCreator,
 	}
@@ -146,6 +160,10 @@ func NewServer(config *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing github activities")
 	}
+
+	// difference from temporalworker:
+	// - no revisionSetterActivities or prRevisionGithubActivities
+	// - no cron scheduler or crons
 
 	server := Server{
 		Logger:              config.CtxLogger,
@@ -179,6 +197,11 @@ func (s Server) Start() error {
 		s.Logger.InfoContext(ctx, "Shutting down terraform worker, resource clean up may still be occurring in the background")
 	}()
 
+	// note the difference from temporalworker:
+	// - no default prRevisionWorker
+	// - no slow prRevisionWorker
+	// - no deployWorker
+
 	// Ensure server gracefully drains connections when stopped.
 	stop := make(chan os.Signal, 1)
 	// Stop on SIGINTs and SIGTERMs.
@@ -201,6 +224,16 @@ func (s Server) Start() error {
 }
 
 func (s Server) shutdown() {
+	// this differs from temporalworker in that we:
+	// - don't shut down the jobstreamhandler
+	// - don't shutdown the cron scheduler
+	// as we don't need them
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := s.HTTPServerProxy.Shutdown(ctx); err != nil {
+		s.Logger.Error(err.Error())
+	}
+
 	s.TemporalClient.Close()
 
 	// flush stats before shutdown
@@ -211,12 +244,18 @@ func (s Server) shutdown() {
 	s.Logger.Close()
 }
 
+// TODO: add deployWorker if we need it
+
 func (s Server) buildTerraformWorker() worker.Worker {
 	// pass the underlying client otherwise this will panic()
 	terraformWorker := worker.New(s.TemporalClient.Client, s.TerraformTaskQueue, worker.Options{
 		Interceptors: []interceptor.WorkerInterceptor{
 			temporal.NewWorkerInterceptor(),
 		},
+		// default is 1k, however Nish's comment says that:
+		// "30 falls in line with our current cpu resourcing for each worker and should be the
+		// maximum number of concurrent tf operations we allow."
+		// We shouldn't need too many as we are only doing one thing here on this batch pod
 		MaxConcurrentActivityExecutionSize: 30,
 	})
 	terraformWorker.RegisterActivity(s.TerraformActivities)
