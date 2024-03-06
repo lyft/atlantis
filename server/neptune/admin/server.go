@@ -15,6 +15,7 @@ import (
 
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
+	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/runatlantis/atlantis/server/metrics"
 	adminconfig "github.com/runatlantis/atlantis/server/neptune/admin/config"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
+	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
@@ -38,6 +40,8 @@ import (
 
 type Server struct {
 	Logger              logging.Logger
+	CronScheduler       *internalSync.CronScheduler
+	Crons               []*internalSync.Cron
 	HTTPServerProxy     *neptune_http.ServerProxy
 	Port                int
 	StatsScope          tally.Scope
@@ -145,8 +149,17 @@ func NewServer(config *adminconfig.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "initializing github activities")
 	}
 
+	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
+
 	server := Server{
-		Logger:              config.CtxLogger,
+		Logger:        config.CtxLogger,
+		CronScheduler: cronScheduler,
+		Crons: []*internalSync.Cron{
+			{
+				Executor:  crons.NewRuntimeStats(scope).Run,
+				Frequency: 1 * time.Minute,
+			},
+		},
 		HTTPServerProxy:     httpServerProxy,
 		Port:                config.ServerCfg.Port,
 		StatsScope:          scope,
