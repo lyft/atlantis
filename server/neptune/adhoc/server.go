@@ -116,7 +116,7 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "client creator")
 	}
-	// TODO fill in details here - in another PR pull from globalCfg since we have the items in the repo_template
+
 	repoConfig := feature.RepoConfig{
 		Owner:  config.FeatureConfig.FFOwner,
 		Repo:   config.FeatureConfig.FFRepo,
