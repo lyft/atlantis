@@ -11,9 +11,9 @@ import (
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 )
 
-type Admin struct{}
+type Adhoc struct{}
 
-func (a *Admin) NewServer(userConfig legacy.UserConfig, config legacy.Config) (ServerStarter, error) {
+func (a *Adhoc) NewServer(userConfig legacy.UserConfig, config legacy.Config) (ServerStarter, error) {
 	ctxLogger, err := logging.NewLoggerFromLevel(userConfig.ToLogLevel())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build context logger")

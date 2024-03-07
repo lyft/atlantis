@@ -71,8 +71,8 @@ func TestUserConfig_ToLyftMode(t *testing.T) {
 			server.Default,
 		},
 		{
-			"admin",
-			server.Admin,
+			"adhoc",
+			server.Adhoc,
 		},
 		{
 			"temporalworker",
