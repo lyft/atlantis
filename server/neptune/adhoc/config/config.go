@@ -9,15 +9,13 @@ import (
 
 // Config is TerraformAdmin (Adhoc mode) specific user config
 type Config struct {
-	AuthCfg          neptune.AuthConfig
-	ServerCfg        neptune.ServerConfig
-	FeatureConfig    neptune.FeatureConfig
-	TemporalCfg      valid.Temporal
-	GithubCfg        valid.Github
-	TerraformCfg     neptune.TerraformConfig
-	DeploymentConfig valid.StoreConfig
-	JobConfig        valid.StoreConfig
-	Metrics          valid.Metrics
+	AuthCfg       neptune.AuthConfig
+	ServerCfg     neptune.ServerConfig
+	FeatureConfig neptune.FeatureConfig
+	TemporalCfg   valid.Temporal
+	GithubCfg     valid.Github
+	TerraformCfg  neptune.TerraformConfig
+	Metrics       valid.Metrics
 
 	StatsNamespace string
 
