@@ -70,6 +70,14 @@ func TestUserConfig_ToLyftMode(t *testing.T) {
 			"",
 			server.Default,
 		},
+		{
+			"adhoc",
+			server.Adhoc,
+		},
+		{
+			"temporalworker",
+			server.TemporalWorker,
+		},
 	}
 
 	for _, c := range cases {

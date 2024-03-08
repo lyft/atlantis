@@ -231,7 +231,8 @@ var stringFlags = map[string]stringFlag{
 			"default: Runs atlantis with default event handler that processes events within same.\n" +
 			"gateway: Runs atlantis with gateway event handler that publishes events through sns.\n" +
 			"worker:  Runs atlantis with a sqs handler that polls for events in the queue to process.\n" +
-			"hybrid:  Runs atlantis with both a gateway event handler and sqs handler to perform both gateway and worker behaviors.",
+			"hybrid:  Runs atlantis with both a gateway event handler and sqs handler to perform both gateway and worker behaviors.\n" +
+			"adhoc:   Runs atlantis in an admin mode that allows for running adhoc terraform commands.",
 		defaultValue: "",
 	},
 	LyftWorkerQueueURLFlag: {
@@ -344,6 +345,7 @@ func NewServerCmd(v *viper.Viper, version string) *ServerCmd {
 			GatewayCreator:        &GatewayCreator{},
 			WorkerCreator:         &WorkerCreator{},
 			TemporalWorkerCreator: &TemporalWorker{},
+			AdhocCreator:          &Adhoc{},
 		},
 		Viper:           v,
 		AtlantisVersion: version,
@@ -374,6 +376,7 @@ type ServerCreatorProxy struct {
 	GatewayCreator        ServerCreator
 	WorkerCreator         ServerCreator
 	TemporalWorkerCreator ServerCreator
+	AdhocCreator          ServerCreator
 }
 
 func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config server.Config) (ServerStarter, error) {
@@ -387,6 +390,10 @@ func (d *ServerCreatorProxy) NewServer(userConfig server.UserConfig, config serv
 
 	if userConfig.ToLyftMode() == server.TemporalWorker {
 		return d.TemporalWorkerCreator.NewServer(userConfig, config)
+	}
+
+	if userConfig.ToLyftMode() == server.Adhoc {
+		return d.AdhocCreator.NewServer(userConfig, config)
 	}
 
 	return d.WorkerCreator.NewServer(userConfig, config)

@@ -64,10 +64,10 @@ type GlobalCfg struct {
 	Github               Github
 	RevisionSetter       RevisionSetter
 	Admin                Admin
-	TerraformAdminMode   TerraformAdminMode
+	AdhocMode            AdhocMode
 }
 
-type TerraformAdminMode struct {
+type AdhocMode struct {
 	Repo string
 	Root string
 }
