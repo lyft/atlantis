@@ -218,7 +218,7 @@ func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step 
 func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, workflowMode terraform.WorkflowMode, extraArgs []string) (activities.TerraformPlanResponse, error) {
 	// TODO: Don't we already check this earlier? Why are we checking again, is there somewhere else this can get called?
 	if workflowMode == terraform.Adhoc {
-		// Admin mode doesn't need to run a plan.
+		// Adhoc mode doesn't need to run a plan.
 		return activities.TerraformPlanResponse{}, nil
 	}
 	var resp activities.TerraformPlanResponse
