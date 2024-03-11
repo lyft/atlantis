@@ -3,9 +3,10 @@ package terraform
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/api/enums/v1"
@@ -341,6 +342,12 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 	if err != nil {
 		return Response{}, r.toExternalError(err, "fetching root")
 	}
+
+	// if we are in adhoc / terraform admin mode, we don't need to cleanup, plan, validate, or apply
+	if r.Request.WorkflowMode == terraform.Adhoc {
+		return Response{}, nil
+	}
+
 	defer func() {
 		r.executeCleanup(ctx, cleanup)
 	}()
@@ -348,10 +355,6 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 	planResponse, err := r.Plan(ctx, root, response.ServerURL)
 	if err != nil {
 		return Response{}, r.toExternalError(err, "running plan job")
-	}
-
-	if r.Request.WorkflowMode == terraform.Admin {
-		return Response{}, nil
 	}
 
 	if r.Request.WorkflowMode == terraform.PR {
