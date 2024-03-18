@@ -4,7 +4,7 @@ This was forked from [runatlantis/atlantis](https://github.com/runatlantis/atlan
 
 Since then this version has diverged significantly from upstream and was therefore detached.
 
-:warning: This repo is still still contains a lot of code from upstream which is slowly being phased out as we test our implementation in production.  It is not ready for general consumption.
+:warning: This repo still contains a lot of code from upstream which is slowly being phased out as we test our implementation in production.  It is not ready for general consumption.
 
 
 ## What's different?
