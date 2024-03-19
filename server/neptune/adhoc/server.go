@@ -196,7 +196,6 @@ type AdhocTerraformWorkflowExecutionParams struct {
 	DeploymentID string
 	Root         terraform.Root
 	Repo         ghClient.Repo
-	// TODO: in separate PR, fill in github.Repo and terraform.Root (need helper funcs to get those)
 }
 
 // This function constructs the request we want to send to the temporal client,
