@@ -3,9 +3,10 @@ package terraform
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/api/enums/v1"
@@ -350,7 +351,7 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 		return Response{}, r.toExternalError(err, "running plan job")
 	}
 
-	if r.Request.WorkflowMode == terraform.Admin {
+	if r.Request.WorkflowMode == terraform.Adhoc {
 		return Response{}, nil
 	}
 

@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
@@ -215,7 +216,7 @@ func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step 
 }
 
 func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, workflowMode terraform.WorkflowMode, extraArgs []string) (activities.TerraformPlanResponse, error) {
-	if workflowMode == terraform.Admin {
+	if workflowMode == terraform.Adhoc {
 		// Admin mode doesn't need to run a plan.
 		return activities.TerraformPlanResponse{}, nil
 	}
