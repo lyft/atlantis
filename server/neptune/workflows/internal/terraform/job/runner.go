@@ -216,7 +216,6 @@ func (r *JobRunner) apply(executionCtx *ExecutionContext, planFile string, step 
 }
 
 func (r *JobRunner) plan(ctx *ExecutionContext, mode *terraform.PlanMode, workflowMode terraform.WorkflowMode, extraArgs []string) (activities.TerraformPlanResponse, error) {
-
 	if workflowMode == terraform.Adhoc {
 		// Adhoc mode doesn't need to run a plan.
 		return activities.TerraformPlanResponse{}, nil

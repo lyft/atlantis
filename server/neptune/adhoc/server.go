@@ -203,6 +203,7 @@ func (s Server) manuallyExecuteTerraformWorkflow(adhocExecutionParams AdhocTerra
 	res, err := s.TemporalClient.ExecuteWorkflow(context.Background(), options, workflows.Terraform, request)
 	if err != nil {
 		s.Logger.Error(err.Error())
+		return nil, err
 	}
 	return res, nil
 }
