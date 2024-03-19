@@ -179,7 +179,14 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 
 // TODO: complete this func
 func getAdhocExecutionParams(config *adhocconfig.Config) AdhocTerraformWorkflowExecutionParams {
-	return AdhocTerraformWorkflowExecutionParams{}
+	return AdhocTerraformWorkflowExecutionParams{
+		AtlantisRoot: "",
+		AtlantisRepo: "",
+		Revision:     "",
+		DeploymentID: "",
+		Root:         terraform.Root{},
+		Repo:         ghClient.Repo{},
+	}
 }
 
 type AdhocTerraformWorkflowExecutionParams struct {
@@ -187,6 +194,8 @@ type AdhocTerraformWorkflowExecutionParams struct {
 	AtlantisRepo string
 	Revision     string
 	DeploymentID string
+	Root         terraform.Root
+	Repo         ghClient.Repo
 	// TODO: in separate PR, fill in github.Repo and terraform.Root (need helper funcs to get those)
 }
 
@@ -199,6 +208,8 @@ func (s Server) manuallyExecuteTerraformWorkflow(adhocExecutionParams AdhocTerra
 		DeploymentID: adhocExecutionParams.DeploymentID,
 		Revision:     adhocExecutionParams.Revision,
 		WorkflowMode: terraform.Adhoc,
+		Root:         adhocExecutionParams.Root,
+		Repo:         adhocExecutionParams.Repo,
 	}
 	options := client.StartWorkflowOptions{
 		TaskQueue: s.TerraformTaskQueue,
