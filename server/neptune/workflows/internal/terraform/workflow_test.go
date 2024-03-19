@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
@@ -176,7 +177,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		WorkflowMode: req.WorkflowMode,
 	}
 
-	if req.WorkflowMode == terraformModel.Admin {
+	if req.WorkflowMode == terraformModel.Adhoc {
 		tAct = nil
 	}
 
@@ -649,7 +650,7 @@ func TestSuccess_AdminMode(t *testing.T) {
 
 	// execute workflow
 	env.ExecuteWorkflow(testTerraformWorkflow, request{
-		WorkflowMode: terraformModel.Admin,
+		WorkflowMode: terraformModel.Adhoc,
 	})
 	assert.True(t, env.IsWorkflowCompleted())
 
