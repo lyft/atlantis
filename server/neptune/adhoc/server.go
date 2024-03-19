@@ -153,6 +153,8 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
 
+	adhocExecutionParams := getAdhocExecutionParams(config)
+
 	server := Server{
 		Logger:        config.CtxLogger,
 		CronScheduler: cronScheduler,
@@ -162,16 +164,22 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:     httpServerProxy,
-		Port:                config.ServerCfg.Port,
-		StatsScope:          scope,
-		StatsCloser:         statsCloser,
-		TemporalClient:      temporalClient,
-		TerraformActivities: terraformActivities,
-		TerraformTaskQueue:  config.TemporalCfg.TerraformTaskQueue,
-		GithubActivities:    githubActivities,
+		HTTPServerProxy:      httpServerProxy,
+		Port:                 config.ServerCfg.Port,
+		StatsScope:           scope,
+		StatsCloser:          statsCloser,
+		TemporalClient:       temporalClient,
+		TerraformActivities:  terraformActivities,
+		TerraformTaskQueue:   config.TemporalCfg.TerraformTaskQueue,
+		GithubActivities:     githubActivities,
+		adhocExecutionParams: adhocExecutionParams,
 	}
 	return &server, nil
+}
+
+// TODO: complete this func
+func getAdhocExecutionParams(config *adhocconfig.Config) AdhocTerraformWorkflowExecutionParams {
+	return AdhocTerraformWorkflowExecutionParams{}
 }
 
 type AdhocTerraformWorkflowExecutionParams struct {
