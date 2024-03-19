@@ -177,7 +177,7 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 	return &server, nil
 }
 
-// TODO: complete this func
+// TODO: complete this func, filling in the values from global config or something
 func getAdhocExecutionParams(config *adhocconfig.Config) AdhocTerraformWorkflowExecutionParams {
 	return AdhocTerraformWorkflowExecutionParams{
 		AtlantisRoot: "",
