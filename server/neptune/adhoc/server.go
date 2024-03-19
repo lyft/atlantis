@@ -177,25 +177,23 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 	return &server, nil
 }
 
-// TODO: complete this func, filling in the values from global config or something
 func getAdhocExecutionParams(config *adhocconfig.Config) AdhocTerraformWorkflowExecutionParams {
 	return AdhocTerraformWorkflowExecutionParams{
-		AtlantisRoot: "",
-		AtlantisRepo: "",
-		Revision:     "",
-		DeploymentID: "",
-		Root:         terraform.Root{},
-		Repo:         ghClient.Repo{},
+		AtlantisRoot:  "",
+		AtlantisRepo:  "",
+		Revision:      "",
+		TerraformRoot: terraform.Root{},
+		GithubRepo:    ghClient.Repo{},
 	}
 }
 
 type AdhocTerraformWorkflowExecutionParams struct {
-	AtlantisRoot string
-	AtlantisRepo string
-	Revision     string
-	DeploymentID string
-	Root         terraform.Root
-	Repo         ghClient.Repo
+	AtlantisRoot  string
+	AtlantisRepo  string
+	Revision      string
+	TerraformRoot terraform.Root
+	GithubRepo    ghClient.Repo
+	// Note that deploymentID is used in NewWorkflowStore(), but we don't care about that in adhoc mode so can leave it blank
 }
 
 // This function constructs the request we want to send to the temporal client,
@@ -204,11 +202,10 @@ type AdhocTerraformWorkflowExecutionParams struct {
 // since we don't care about requests in adhoc mode.
 func (s Server) manuallyExecuteTerraformWorkflow(adhocExecutionParams AdhocTerraformWorkflowExecutionParams) (interface{}, error) {
 	request := workflows.TerraformRequest{
-		DeploymentID: adhocExecutionParams.DeploymentID,
 		Revision:     adhocExecutionParams.Revision,
 		WorkflowMode: terraform.Adhoc,
-		Root:         adhocExecutionParams.Root,
-		Repo:         adhocExecutionParams.Repo,
+		Root:         adhocExecutionParams.TerraformRoot,
+		Repo:         adhocExecutionParams.GithubRepo,
 	}
 	options := client.StartWorkflowOptions{
 		TaskQueue: s.TerraformTaskQueue,
