@@ -177,16 +177,6 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 	return &server, nil
 }
 
-func getAdhocExecutionParams(config *adhocconfig.Config) AdhocTerraformWorkflowExecutionParams {
-	return AdhocTerraformWorkflowExecutionParams{
-		AtlantisRoot:  "",
-		AtlantisRepo:  "",
-		Revision:      "",
-		TerraformRoot: terraform.Root{},
-		GithubRepo:    ghClient.Repo{},
-	}
-}
-
 type AdhocTerraformWorkflowExecutionParams struct {
 	AtlantisRoot  string
 	AtlantisRepo  string
