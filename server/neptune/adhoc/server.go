@@ -1,4 +1,4 @@
-package admin
+package adhoc
 
 import (
 	"context"
@@ -242,11 +242,14 @@ func (s Server) Start() error {
 		s.Logger.InfoContext(ctx, "Shutting down terraform worker, resource clean up may still be occurring in the background")
 	}()
 
-	_, err := s.manuallyExecuteTerraformWorkflow(s.adhocExecutionParams)
-	if err != nil {
-		s.Logger.Error(err.Error())
-		return err
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, err := s.manuallyExecuteTerraformWorkflow(s.adhocExecutionParams)
+		if err != nil {
+			s.Logger.Error(err.Error())
+		}
+	}()
 
 	// Ensure server gracefully drains connections when stopped.
 	stop := make(chan os.Signal, 1)
