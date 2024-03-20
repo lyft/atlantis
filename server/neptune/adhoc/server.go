@@ -161,14 +161,15 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:     httpServerProxy,
-		Port:                config.ServerCfg.Port,
-		StatsScope:          scope,
-		StatsCloser:         statsCloser,
-		TemporalClient:      temporalClient,
-		TerraformActivities: terraformActivities,
-		TerraformTaskQueue:  config.TemporalCfg.TerraformTaskQueue,
-		GithubActivities:    githubActivities,
+		HTTPServerProxy:      httpServerProxy,
+		Port:                 config.ServerCfg.Port,
+		StatsScope:           scope,
+		StatsCloser:          statsCloser,
+		TemporalClient:       temporalClient,
+		TerraformActivities:  terraformActivities,
+		TerraformTaskQueue:   config.TemporalCfg.TerraformTaskQueue,
+		GithubActivities:     githubActivities,
+		AdhocExecutionParams: config.AdhocExecutionParams,
 	}
 	return &server, nil
 }
