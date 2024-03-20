@@ -1,4 +1,4 @@
-package admin
+package adhoc
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
+	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
 	adhocconfig "github.com/runatlantis/atlantis/server/neptune/adhoc/config"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
@@ -39,18 +40,18 @@ import (
 )
 
 type Server struct {
-	Logger              logging.Logger
-	CronScheduler       *internalSync.CronScheduler
-	Crons               []*internalSync.Cron
-	HTTPServerProxy     *neptune_http.ServerProxy
-	Port                int
-	StatsScope          tally.Scope
-	StatsCloser         io.Closer
-	TemporalClient      *temporal.ClientWrapper
-	TerraformActivities *activities.Terraform
-	GithubActivities    *activities.Github
-
-	TerraformTaskQueue string
+	Logger               logging.Logger
+	CronScheduler        *internalSync.CronScheduler
+	Crons                []*internalSync.Cron
+	HTTPServerProxy      *neptune_http.ServerProxy
+	Port                 int
+	StatsScope           tally.Scope
+	StatsCloser          io.Closer
+	TemporalClient       *temporal.ClientWrapper
+	TerraformActivities  *activities.Terraform
+	GithubActivities     *activities.Github
+	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
+	TerraformTaskQueue   string
 }
 
 func NewServer(config *adhocconfig.Config) (*Server, error) {
