@@ -13,13 +13,3 @@ type AdhocTerraformWorkflowExecutionParams struct {
 	GithubRepo    github.Repo
 	// Note that deploymentID is used in NewWorkflowStore(), but we don't care about that in adhoc mode so can leave it blank
 }
-
-func getAdhocExecutionParams(config *adhocconfig.Config) AdhocTerraformWorkflowExecutionParams {
-	return AdhocTerraformWorkflowExecutionParams{
-		AtlantisRoot:  "",
-		AtlantisRepo:  "",
-		Revision:      "",
-		TerraformRoot: terraform.Root{},
-		GithubRepo:    github.Repo{},
-	}
-}
