@@ -7,8 +7,11 @@ import (
 	"github.com/runatlantis/atlantis/server/legacy"
 	"github.com/runatlantis/atlantis/server/logging"
 	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc"
+	adhocHelpers "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
 	adhocconfig "github.com/runatlantis/atlantis/server/neptune/adhoc/config"
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
 type Adhoc struct{}
@@ -62,6 +65,13 @@ func (a *Adhoc) NewServer(userConfig legacy.UserConfig, config legacy.Config) (S
 		CtxLogger:      ctxLogger,
 		StatsNamespace: userConfig.StatsNamespace,
 		Metrics:        globalCfg.Metrics,
+		AdhocExecutionParams: adhocHelpers.AdhocTerraformWorkflowExecutionParams{
+			AtlantisRoot:  globalCfg.AdhocMode.Root,
+			AtlantisRepo:  globalCfg.AdhocMode.Repo,
+			Revision:      "",
+			TerraformRoot: terraform.Root{},
+			GithubRepo:    github.Repo{},
+		},
 	}
 	return adhoc.NewServer(cfg)
 }
