@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
+	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
 	adhocconfig "github.com/runatlantis/atlantis/server/neptune/adhoc/config"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
@@ -51,7 +52,7 @@ type Server struct {
 	TemporalClient       *temporal.ClientWrapper
 	TerraformActivities  *activities.Terraform
 	GithubActivities     *activities.Github
-	adhocExecutionParams AdhocTerraformWorkflowExecutionParams
+	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
 	TerraformTaskQueue   string
 }
 
@@ -153,8 +154,6 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
 
-	adhocExecutionParams := getAdhocExecutionParams(config)
-
 	server := Server{
 		Logger:        config.CtxLogger,
 		CronScheduler: cronScheduler,
@@ -172,25 +171,16 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		TerraformActivities:  terraformActivities,
 		TerraformTaskQueue:   config.TemporalCfg.TerraformTaskQueue,
 		GithubActivities:     githubActivities,
-		adhocExecutionParams: adhocExecutionParams,
+		AdhocExecutionParams: config.AdhocExecutionParams,
 	}
 	return &server, nil
-}
-
-type AdhocTerraformWorkflowExecutionParams struct {
-	AtlantisRoot  string
-	AtlantisRepo  string
-	Revision      string
-	TerraformRoot terraform.Root
-	GithubRepo    ghClient.Repo
-	// Note that deploymentID is used in NewWorkflowStore(), but we don't care about that in adhoc mode so can leave it blank
 }
 
 // This function constructs the request we want to send to the temporal client,
 // then executes the Terraform workflow. Note normally this workflow is executed
 // when a request is made to the server, but we are manually executing it here,
 // since we don't care about requests in adhoc mode.
-func (s Server) manuallyExecuteTerraformWorkflow(adhocExecutionParams AdhocTerraformWorkflowExecutionParams) (interface{}, error) {
+func (s Server) manuallyExecuteTerraformWorkflow(adhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams) (interface{}, error) {
 	request := workflows.TerraformRequest{
 		Revision:     adhocExecutionParams.Revision,
 		WorkflowMode: terraform.Adhoc,
@@ -235,7 +225,7 @@ func (s Server) Start() error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := s.manuallyExecuteTerraformWorkflow(s.adhocExecutionParams)
+		_, err := s.manuallyExecuteTerraformWorkflow(s.AdhocExecutionParams)
 		if err != nil {
 			s.Logger.Error(err.Error())
 		}
