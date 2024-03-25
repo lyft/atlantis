@@ -15,6 +15,7 @@ import (
 
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/legacy/events/vcs"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -56,7 +57,7 @@ type Server struct {
 	GithubActivities       *activities.Github
 	AdhocExecutionParams   adhoc.AdhocTerraformWorkflowExecutionParams
 	TerraformTaskQueue     string
-	AdhocRootConfigBuilder root_config.Builder
+	AdhocRootConfigBuilder *root_config.Builder
 }
 
 func NewServer(config *adhocconfig.Config, globalCfg valid.GlobalCfg, ctxLogger logging.Logger) (*Server, error) {
@@ -157,12 +158,23 @@ func NewServer(config *adhocconfig.Config, globalCfg valid.GlobalCfg, ctxLogger 
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
 
+	privateKey, err := os.ReadFile(config.GithubAppKeyFile)
+	if err != nil {
+		return nil, err
+	}
+	githubCredentials := &vcs.GithubAppCredentials{
+		AppID:    config.GithubAppID,
+		Key:      privateKey,
+		Hostname: config.GithubHostname,
+		AppSlug:  config.GithubAppSlug,
+	}
+
 	repoFetcher := &github.RepoFetcher{
 		DataDir:           config.DataDir,
 		GithubCredentials: githubCredentials,
 		GithubHostname:    config.GithubHostname,
 		Logger:            ctxLogger,
-		Scope:             statsScope.SubScope("repo.fetch"),
+		Scope:             scope.SubScope("repo.fetch"),
 	}
 
 	hooksRunner := &preworkflow.HooksRunner{

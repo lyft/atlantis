@@ -72,6 +72,10 @@ func (a *Adhoc) NewServer(userConfig legacy.UserConfig, config legacy.Config) (S
 			TerraformRoot: terraform.Root{},
 			GithubRepo:    github.Repo{},
 		},
+		GithubHostname:   userConfig.GithubHostname,
+		GithubAppID:      userConfig.GithubAppID,
+		GithubAppKeyFile: userConfig.GithubAppKeyFile,
+		GithubAppSlug:    userConfig.GithubAppSlug,
 	}
 	return adhoc.NewServer(cfg, globalCfg, ctxLogger)
 }
