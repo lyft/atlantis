@@ -278,7 +278,7 @@ func (a *githubActivities) GithubFetchRoot(ctx context.Context, request FetchRoo
 	if resp.StatusCode != http.StatusFound {
 		return FetchRootResponse{}, errors.Errorf("getting repo archive link returns non-302 status %d", resp.StatusCode)
 	}
-	downloadLink := a.LinkBuilder.BuildDownloadLinkFromArchive(archiveLink, request.Root, request.Repo, request.Revision)
+	downloadLink := a.LinkBuilder.BuildDownloadLinkFromArchive(archiveLink, request.Repo, request.Revision)
 	err = a.Getter(ctx, repositoryPath, downloadLink)
 	if err != nil {
 		return FetchRootResponse{}, errors.Wrap(err, "fetching and extracting zip")
