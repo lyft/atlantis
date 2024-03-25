@@ -73,5 +73,5 @@ func (a *Adhoc) NewServer(userConfig legacy.UserConfig, config legacy.Config) (S
 			GithubRepo:    github.Repo{},
 		},
 	}
-	return adhoc.NewServer(cfg)
+	return adhoc.NewServer(cfg, globalCfg, ctxLogger)
 }

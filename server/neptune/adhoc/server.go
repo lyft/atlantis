@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -26,6 +27,9 @@ import (
 	"github.com/runatlantis/atlantis/server/metrics"
 	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
 	adhocconfig "github.com/runatlantis/atlantis/server/neptune/adhoc/config"
+	root_config "github.com/runatlantis/atlantis/server/neptune/gateway/config"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -40,21 +44,22 @@ import (
 )
 
 type Server struct {
-	Logger               logging.Logger
-	CronScheduler        *internalSync.CronScheduler
-	Crons                []*internalSync.Cron
-	HTTPServerProxy      *neptune_http.ServerProxy
-	Port                 int
-	StatsScope           tally.Scope
-	StatsCloser          io.Closer
-	TemporalClient       *temporal.ClientWrapper
-	TerraformActivities  *activities.Terraform
-	GithubActivities     *activities.Github
-	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
-	TerraformTaskQueue   string
+	Logger                 logging.Logger
+	CronScheduler          *internalSync.CronScheduler
+	Crons                  []*internalSync.Cron
+	HTTPServerProxy        *neptune_http.ServerProxy
+	Port                   int
+	StatsScope             tally.Scope
+	StatsCloser            io.Closer
+	TemporalClient         *temporal.ClientWrapper
+	TerraformActivities    *activities.Terraform
+	GithubActivities       *activities.Github
+	AdhocExecutionParams   adhoc.AdhocTerraformWorkflowExecutionParams
+	TerraformTaskQueue     string
+	AdhocRootConfigBuilder root_config.Builder
 }
 
-func NewServer(config *adhocconfig.Config) (*Server, error) {
+func NewServer(config *adhocconfig.Config, globalCfg valid.GlobalCfg, ctxLogger logging.Logger) (*Server, error) {
 	statsReporter, err := metrics.NewReporter(config.Metrics, config.CtxLogger)
 
 	if err != nil {
@@ -152,6 +157,34 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
 
+	repoFetcher := &github.RepoFetcher{
+		DataDir:           config.DataDir,
+		GithubCredentials: githubCredentials,
+		GithubHostname:    config.GithubHostname,
+		Logger:            ctxLogger,
+		Scope:             statsScope.SubScope("repo.fetch"),
+	}
+
+	hooksRunner := &preworkflow.HooksRunner{
+		GlobalCfg: globalCfg,
+		HookExecutor: &preworkflow.HookExecutor{
+			Logger: ctxLogger,
+		},
+	}
+
+	rootConfigBuilder := &root_config.Builder{
+		RepoFetcher:     repoFetcher,
+		HooksRunner:     hooksRunner,
+		ParserValidator: &root_config.ParserValidator{GlobalCfg: globalCfg},
+		Strategy: &root_config.ModifiedRootsStrategy{
+			RootFinder:  &deploy.RepoRootFinder{Logger: ctxLogger},
+			FileFetcher: &github.RemoteFileFetcher{ClientCreator: clientCreator},
+		},
+		GlobalCfg: globalCfg,
+		Logger:    ctxLogger,
+		Scope:     scope.SubScope("event.filters.root"),
+	}
+
 	server := Server{
 		Logger:        config.CtxLogger,
 		CronScheduler: cronScheduler,
@@ -161,15 +194,16 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:      httpServerProxy,
-		Port:                 config.ServerCfg.Port,
-		StatsScope:           scope,
-		StatsCloser:          statsCloser,
-		TemporalClient:       temporalClient,
-		TerraformActivities:  terraformActivities,
-		TerraformTaskQueue:   config.TemporalCfg.TerraformTaskQueue,
-		GithubActivities:     githubActivities,
-		AdhocExecutionParams: config.AdhocExecutionParams,
+		HTTPServerProxy:        httpServerProxy,
+		Port:                   config.ServerCfg.Port,
+		StatsScope:             scope,
+		StatsCloser:            statsCloser,
+		TemporalClient:         temporalClient,
+		TerraformActivities:    terraformActivities,
+		TerraformTaskQueue:     config.TemporalCfg.TerraformTaskQueue,
+		GithubActivities:       githubActivities,
+		AdhocExecutionParams:   config.AdhocExecutionParams,
+		AdhocRootConfigBuilder: rootConfigBuilder,
 	}
 	return &server, nil
 }
