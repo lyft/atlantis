@@ -24,4 +24,11 @@ type Config struct {
 	CtxLogger            logging.Logger
 	App                  githubapp.Config
 	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
+
+	GithubAppID      int64
+	GithubAppKeyFile string
+	GithubAppSlug    string
+	GithubHostname   string
+
+	GlobalCfg valid.GlobalCfg
 }
