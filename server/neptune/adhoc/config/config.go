@@ -29,4 +29,6 @@ type Config struct {
 	GithubAppKeyFile string
 	GithubAppSlug    string
 	GithubHostname   string
+
+	GlobalCfg valid.GlobalCfg
 }

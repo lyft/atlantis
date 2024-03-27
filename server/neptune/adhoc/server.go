@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/palantir/go-githubapp/githubapp"
-	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy/events/vcs"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
@@ -45,22 +44,22 @@ import (
 )
 
 type Server struct {
-	Logger                 logging.Logger
-	CronScheduler          *internalSync.CronScheduler
-	Crons                  []*internalSync.Cron
-	HTTPServerProxy        *neptune_http.ServerProxy
-	Port                   int
-	StatsScope             tally.Scope
-	StatsCloser            io.Closer
-	TemporalClient         *temporal.ClientWrapper
-	TerraformActivities    *activities.Terraform
-	GithubActivities       *activities.Github
-	AdhocExecutionParams   adhoc.AdhocTerraformWorkflowExecutionParams
-	TerraformTaskQueue     string
-	AdhocRootConfigBuilder *root_config.Builder
+	Logger               logging.Logger
+	CronScheduler        *internalSync.CronScheduler
+	Crons                []*internalSync.Cron
+	HTTPServerProxy      *neptune_http.ServerProxy
+	Port                 int
+	StatsScope           tally.Scope
+	StatsCloser          io.Closer
+	TemporalClient       *temporal.ClientWrapper
+	TerraformActivities  *activities.Terraform
+	GithubActivities     *activities.Github
+	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
+	TerraformTaskQueue   string
+	RootConfigBuilder    *root_config.Builder
 }
 
-func NewServer(config *adhocconfig.Config, globalCfg valid.GlobalCfg, ctxLogger logging.Logger) (*Server, error) {
+func NewServer(config *adhocconfig.Config) (*Server, error) {
 	statsReporter, err := metrics.NewReporter(config.Metrics, config.CtxLogger)
 
 	if err != nil {
@@ -173,27 +172,27 @@ func NewServer(config *adhocconfig.Config, globalCfg valid.GlobalCfg, ctxLogger 
 		DataDir:           config.DataDir,
 		GithubCredentials: githubCredentials,
 		GithubHostname:    config.GithubHostname,
-		Logger:            ctxLogger,
+		Logger:            config.CtxLogger,
 		Scope:             scope.SubScope("repo.fetch"),
 	}
 
 	hooksRunner := &preworkflow.HooksRunner{
-		GlobalCfg: globalCfg,
+		GlobalCfg: config.GlobalCfg,
 		HookExecutor: &preworkflow.HookExecutor{
-			Logger: ctxLogger,
+			Logger: config.CtxLogger,
 		},
 	}
 
 	rootConfigBuilder := &root_config.Builder{
 		RepoFetcher:     repoFetcher,
 		HooksRunner:     hooksRunner,
-		ParserValidator: &root_config.ParserValidator{GlobalCfg: globalCfg},
+		ParserValidator: &root_config.ParserValidator{GlobalCfg: config.GlobalCfg},
 		Strategy: &root_config.ModifiedRootsStrategy{
-			RootFinder:  &deploy.RepoRootFinder{Logger: ctxLogger},
+			RootFinder:  &deploy.RepoRootFinder{Logger: config.CtxLogger},
 			FileFetcher: &github.RemoteFileFetcher{ClientCreator: clientCreator},
 		},
-		GlobalCfg: globalCfg,
-		Logger:    ctxLogger,
+		GlobalCfg: config.GlobalCfg,
+		Logger:    config.CtxLogger,
 		Scope:     scope.SubScope("event.filters.root"),
 	}
 
@@ -206,16 +205,16 @@ func NewServer(config *adhocconfig.Config, globalCfg valid.GlobalCfg, ctxLogger 
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:        httpServerProxy,
-		Port:                   config.ServerCfg.Port,
-		StatsScope:             scope,
-		StatsCloser:            statsCloser,
-		TemporalClient:         temporalClient,
-		TerraformActivities:    terraformActivities,
-		TerraformTaskQueue:     config.TemporalCfg.TerraformTaskQueue,
-		GithubActivities:       githubActivities,
-		AdhocExecutionParams:   config.AdhocExecutionParams,
-		AdhocRootConfigBuilder: rootConfigBuilder,
+		HTTPServerProxy:      httpServerProxy,
+		Port:                 config.ServerCfg.Port,
+		StatsScope:           scope,
+		StatsCloser:          statsCloser,
+		TemporalClient:       temporalClient,
+		TerraformActivities:  terraformActivities,
+		TerraformTaskQueue:   config.TemporalCfg.TerraformTaskQueue,
+		GithubActivities:     githubActivities,
+		AdhocExecutionParams: config.AdhocExecutionParams,
+		RootConfigBuilder:    rootConfigBuilder,
 	}
 	return &server, nil
 }
