@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/palantir/go-githubapp/githubapp"
+	"github.com/runatlantis/atlantis/server/legacy/events/vcs"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -27,6 +28,9 @@ import (
 	"github.com/runatlantis/atlantis/server/metrics"
 	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
 	adhocconfig "github.com/runatlantis/atlantis/server/neptune/adhoc/config"
+	root_config "github.com/runatlantis/atlantis/server/neptune/gateway/config"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -54,6 +58,7 @@ type Server struct {
 	GithubActivities     *activities.Github
 	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
 	TerraformTaskQueue   string
+	RootConfigBuilder    *root_config.Builder
 }
 
 func NewServer(config *adhocconfig.Config) (*Server, error) {
@@ -154,6 +159,45 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
 
+	privateKey, err := os.ReadFile(config.GithubAppKeyFile)
+	if err != nil {
+		return nil, err
+	}
+	githubCredentials := &vcs.GithubAppCredentials{
+		AppID:    config.GithubAppID,
+		Key:      privateKey,
+		Hostname: config.GithubHostname,
+		AppSlug:  config.GithubAppSlug,
+	}
+
+	repoFetcher := &github.RepoFetcher{
+		DataDir:           config.DataDir,
+		GithubCredentials: githubCredentials,
+		GithubHostname:    config.GithubHostname,
+		Logger:            config.CtxLogger,
+		Scope:             scope.SubScope("repo.fetch"),
+	}
+
+	hooksRunner := &preworkflow.HooksRunner{
+		GlobalCfg: config.GlobalCfg,
+		HookExecutor: &preworkflow.HookExecutor{
+			Logger: config.CtxLogger,
+		},
+	}
+
+	rootConfigBuilder := &root_config.Builder{
+		RepoFetcher:     repoFetcher,
+		HooksRunner:     hooksRunner,
+		ParserValidator: &root_config.ParserValidator{GlobalCfg: config.GlobalCfg},
+		Strategy: &root_config.ModifiedRootsStrategy{
+			RootFinder:  &deploy.RepoRootFinder{Logger: config.CtxLogger},
+			FileFetcher: &github.RemoteFileFetcher{ClientCreator: clientCreator},
+		},
+		GlobalCfg: config.GlobalCfg,
+		Logger:    config.CtxLogger,
+		Scope:     scope.SubScope("event.filters.root"),
+	}
+
 	server := Server{
 		Logger:        config.CtxLogger,
 		CronScheduler: cronScheduler,
@@ -172,6 +216,7 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		TerraformTaskQueue:   config.TemporalCfg.TerraformTaskQueue,
 		GithubActivities:     githubActivities,
 		AdhocExecutionParams: config.AdhocExecutionParams,
+		RootConfigBuilder:    rootConfigBuilder,
 	}
 	return &server, nil
 }
