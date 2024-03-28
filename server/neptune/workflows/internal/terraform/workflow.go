@@ -342,6 +342,7 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 	if err != nil {
 		return Response{}, r.toExternalError(err, "fetching root")
 	}
+
 	defer func() {
 		r.executeCleanup(ctx, cleanup)
 	}()

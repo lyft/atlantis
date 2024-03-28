@@ -18,6 +18,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
@@ -39,6 +40,7 @@ import (
 	"github.com/runatlantis/atlantis/server/static"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/negroni"
+	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 )
@@ -219,6 +221,33 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 	return &server, nil
 }
 
+// This function constructs the request we want to send to the temporal client,
+// then executes the Terraform workflow. Note normally this workflow is executed
+// when a request is made to the server, but we are manually executing it here,
+// since we don't care about requests in adhoc mode.
+func (s Server) manuallyExecuteTerraformWorkflow(adhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams) (interface{}, error) {
+	request := workflows.TerraformRequest{
+		Revision:     adhocExecutionParams.Revision,
+		WorkflowMode: terraform.Adhoc,
+		Root:         adhocExecutionParams.TerraformRoot,
+		Repo:         adhocExecutionParams.GithubRepo,
+	}
+	options := client.StartWorkflowOptions{
+		TaskQueue: s.TerraformTaskQueue,
+		SearchAttributes: map[string]interface{}{
+			"atlantis_repository": adhocExecutionParams.AtlantisRepo,
+			"atlantis_root":       adhocExecutionParams.AtlantisRoot,
+		},
+	}
+
+	res, err := s.TemporalClient.ExecuteWorkflow(context.Background(), options, workflows.Terraform, request)
+	if err != nil {
+		s.Logger.Error(err.Error())
+		return nil, err
+	}
+	return res, nil
+}
+
 func (s Server) Start() error {
 	defer s.shutdown()
 
@@ -236,6 +265,15 @@ func (s Server) Start() error {
 		}
 
 		s.Logger.InfoContext(ctx, "Shutting down terraform worker, resource clean up may still be occurring in the background")
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, err := s.manuallyExecuteTerraformWorkflow(s.AdhocExecutionParams)
+		if err != nil {
+			s.Logger.Error(err.Error())
+		}
 	}()
 
 	// Ensure server gracefully drains connections when stopped.
