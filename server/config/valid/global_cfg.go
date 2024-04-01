@@ -68,8 +68,9 @@ type GlobalCfg struct {
 }
 
 type AdhocMode struct {
-	Repo string
-	Root string
+	Repo     string
+	Root     string
+	Revision string
 }
 
 type GithubTeam struct {
