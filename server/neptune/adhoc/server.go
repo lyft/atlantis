@@ -224,6 +224,10 @@ func (s Server) Start() error {
 
 	ctx := context.Background()
 
+	for _, cron := range s.Crons {
+		s.CronScheduler.Schedule(cron)
+	}
+
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -273,6 +277,7 @@ func (s Server) shutdown() {
 		s.Logger.Error(err.Error())
 	}
 
+	s.CronScheduler.Shutdown(5 * time.Second)
 	s.Logger.Close()
 }
 

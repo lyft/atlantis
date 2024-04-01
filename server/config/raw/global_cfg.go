@@ -30,14 +30,16 @@ type GlobalCfg struct {
 }
 
 type AdhocMode struct {
-	Repo string `yaml:"repo" json:"repo"`
-	Root string `yaml:"root" json:"root"`
+	Repo     string `yaml:"repo" json:"repo"`
+	Root     string `yaml:"root" json:"root"`
+	Revision string `yaml:"revision" json:"revision"`
 }
 
 func (t AdhocMode) ToValid() valid.AdhocMode {
 	return valid.AdhocMode{
-		Repo: t.Repo,
-		Root: t.Root,
+		Repo:     t.Repo,
+		Root:     t.Root,
+		Revision: t.Revision,
 	}
 }
 
