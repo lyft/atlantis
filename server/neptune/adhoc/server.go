@@ -258,7 +258,7 @@ func (s Server) Start() error {
 	}()
 
 	<-stop
-	wg.Wait()aoeuaouaoeu
+	wg.Wait()
 
 	return nil
 }
