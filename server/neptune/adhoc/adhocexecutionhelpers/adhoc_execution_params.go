@@ -6,10 +6,8 @@ import (
 )
 
 type AdhocTerraformWorkflowExecutionParams struct {
-	AtlantisRoot  string
-	AtlantisRepo  string
-	Revision      string
-	TerraformRoot terraform.Root
-	GithubRepo    github.Repo
+	Revision       string
+	TerraformRoots []terraform.Root
+	GithubRepo     github.Repo
 	// Note that deploymentID is used in NewWorkflowStore(), but we don't care about that in adhoc mode so can leave it blank
 }
