@@ -290,6 +290,13 @@ func TestFetch_ErrorGettingGHToken(t *testing.T) {
 	assert.ErrorContains(t, err, "error")
 }
 
+func TestDirPaths(t *testing.T) {
+	fetcher := &github.RepoFetcher{
+		DataDir: "/data",
+	}
+	assert.Equal(t, "/data/repo", fetcher.GenerateSimpleDirPath("repo"))
+}
+
 func newBaseRepo(repoDir string) models.Repo {
 	return models.Repo{
 		VCSHost: models.VCSHost{

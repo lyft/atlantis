@@ -75,7 +75,7 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 	destinationPath := g.generateDirPath(repo.Name)
 	// If simple path is enabled, we don't need a prefix and UUID
 	if options.SimplePath {
-		destinationPath = g.generateSimpleDirPath(repo.Name)
+		destinationPath = g.GenerateSimpleDirPath(repo.Name)
 	}
 
 	// Create the directory and parents if necessary.
@@ -119,7 +119,7 @@ func (g *RepoFetcher) generateDirPath(repoName string) string {
 	return filepath.Join(g.DataDir, workingDirPrefix, repoName, uuid.New().String())
 }
 
-func (g *RepoFetcher) generateSimpleDirPath(repoName string) string {
+func (g *RepoFetcher) GenerateSimpleDirPath(repoName string) string {
 	return filepath.Join(g.DataDir, repoName)
 }
 
