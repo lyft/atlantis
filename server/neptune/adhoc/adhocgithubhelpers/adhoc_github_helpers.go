@@ -6,7 +6,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/models"
-	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	internal "github.com/runatlantis/atlantis/server/vcs/provider/github"
 )
@@ -22,22 +21,6 @@ type installationRetriever interface {
 type AdhocGithubRetriever struct {
 	RepoRetriever         repoRetriever
 	InstallationRetriever installationRetriever
-}
-
-func ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx context.Context, repoName string, revision string, githubRetriever *AdhocGithubRetriever) (adhoc.AdhocTerraformWorkflowExecutionParams, error) {
-	adhocExecParams := adhoc.AdhocTerraformWorkflowExecutionParams{}
-	// TODO: in the future, could potentially pass in the owner instead of hardcoding lyft
-	repo, token, err := githubRetriever.GetRepositoryAndToken(ctx, "lyft", repoName)
-	if err != nil {
-		return adhocExecParams, errors.Wrap(err, "getting repo")
-	}
-
-	githubRepo := convertRepoToGithubRepo(repo, token)
-
-	adhocExecParams.GithubRepo = githubRepo
-	adhocExecParams.Revision = revision
-
-	return adhocExecParams, nil
 }
 
 func (r *AdhocGithubRetriever) GetRepositoryAndToken(ctx context.Context, owner string, repoName string) (models.Repo, int64, error) {
@@ -58,7 +41,7 @@ func (r *AdhocGithubRetriever) GetRepositoryAndToken(ctx context.Context, owner 
 	return repo, installation.Token, nil
 }
 
-func convertRepoToGithubRepo(repo models.Repo, token int64) github.Repo {
+func ConvertRepoToGithubRepo(repo models.Repo, token int64) github.Repo {
 	return github.Repo{
 		Owner:         repo.Owner,
 		Name:          repo.Name,
