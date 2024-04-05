@@ -329,7 +329,7 @@ func TestDirPaths(t *testing.T) {
 	assert.NoError(t, err)
 
 	// make sure the simple file path is correct
-	assert.Equal(t, fmt.Sprintf("%s", dataDir), destinationPath)
+	assert.Equal(t, fmt.Sprintf("%s/%s", dataDir, "repo"), destinationPath)
 }
 
 func newBaseRepo(repoDir string) models.Repo {
@@ -340,6 +340,7 @@ func newBaseRepo(repoDir string) models.Repo {
 		FullName:      "nish/repo",
 		DefaultBranch: "branch",
 		CloneURL:      fmt.Sprintf("file://%s", repoDir),
+		Name:          "repo",
 	}
 }
 
