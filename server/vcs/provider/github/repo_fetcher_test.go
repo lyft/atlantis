@@ -291,10 +291,45 @@ func TestFetch_ErrorGettingGHToken(t *testing.T) {
 }
 
 func TestDirPaths(t *testing.T) {
+	// Initialize the git repo.
+	repoDir, cleanupRepo := initRepo(t)
+	defer cleanupRepo()
+	sha1 := appendCommit(t, repoDir, ".gitkeep", "initial commit")
+	_ = runCmd(t, repoDir, "git", "rev-parse", "HEAD")
+	sha2 := appendCommit(t, repoDir, ".gitignore", "second commit")
+	expCommit2 := runCmd(t, repoDir, "git", "rev-parse", "HEAD")
+
+	dataDir, cleanupDataDir := tempDir(t)
+	defer cleanupDataDir()
+	defer disableSSLVerification()()
+	testServer, err := fixtures.GithubAppTestServer(t)
+	assert.NoError(t, err)
+	logger := logging.NewNoopCtxLogger(t)
 	fetcher := &github.RepoFetcher{
-		DataDir: "/data",
+		DataDir:           dataDir,
+		GithubHostname:    testServer,
+		Logger:            logger,
+		GithubCredentials: &testTokenGetter{},
+		Scope:             tally.NewTestScope("test", map[string]string{}),
 	}
-	assert.Equal(t, "/data/repo", fetcher.GenerateSimpleDirPath("repo"))
+	repo := newBaseRepo(repoDir)
+	optionsSimplePathTrue := github.RepoFetcherOptions{
+		SimplePath: true,
+	}
+	destinationPath, _, err := fetcher.Fetch(context.Background(), repo, repo.DefaultBranch, sha2, optionsSimplePathTrue)
+	assert.NoError(t, err)
+
+	// Use rev-parse to verify at correct commit.
+	actCommit := runCmd(t, destinationPath, "git", "rev-parse", "HEAD")
+	assert.Equal(t, expCommit2, actCommit)
+
+	cpCmd := exec.Command("git", "checkout", sha1)
+	cpCmd.Dir = destinationPath
+	_, err = cpCmd.CombinedOutput()
+	assert.NoError(t, err)
+
+	// make sure the simple file path is correct
+	assert.Equal(t, fmt.Sprintf("%s", dataDir), destinationPath)
 }
 
 func newBaseRepo(repoDir string) models.Repo {
