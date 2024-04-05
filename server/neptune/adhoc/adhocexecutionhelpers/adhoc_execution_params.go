@@ -16,17 +16,15 @@ type AdhocTerraformWorkflowExecutionParams struct {
 	// Note that deploymentID is used in NewWorkflowStore(), but we don't care about that in adhoc mode so can leave it blank
 }
 
-func (a *AdhocTerraformWorkflowExecutionParams) ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx context.Context, repoName string, revision string, githubRetriever *adhocgithubhelpers.AdhocGithubRetriever) error {
+func ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx context.Context, repoName string, revision string, githubRetriever *adhocgithubhelpers.AdhocGithubRetriever) (AdhocTerraformWorkflowExecutionParams, error) {
 	// TODO: in the future, could potentially pass in the owner instead of hardcoding lyft
-	repo, token, err := githubRetriever.GetRepositoryAndToken(ctx, "lyft", repoName)
+	repo, err := githubRetriever.GetRepository(ctx, "lyft", repoName)
 	if err != nil {
-		return errors.Wrap(err, "getting repo")
+		return AdhocTerraformWorkflowExecutionParams{}, errors.Wrap(err, "getting repo")
 	}
 
-	githubRepo := adhocgithubhelpers.ConvertRepoToGithubRepo(repo, token)
-
-	a.GithubRepo = githubRepo
-	a.Revision = revision
-
-	return nil
+	return AdhocTerraformWorkflowExecutionParams{
+		Revision:   revision,
+		GithubRepo: repo,
+	}, nil
 }

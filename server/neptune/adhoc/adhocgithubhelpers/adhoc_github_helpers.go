@@ -23,32 +23,28 @@ type AdhocGithubRetriever struct {
 	InstallationRetriever installationRetriever
 }
 
-func (r *AdhocGithubRetriever) GetRepositoryAndToken(ctx context.Context, owner string, repoName string) (models.Repo, int64, error) {
+func (r *AdhocGithubRetriever) GetRepository(ctx context.Context, owner string, repoName string) (github.Repo, error) {
 	installation, err := r.InstallationRetriever.FindOrganizationInstallation(ctx, owner)
 	if err != nil {
-		return models.Repo{}, installation.Token, errors.Wrap(err, "finding installation")
+		return github.Repo{}, errors.Wrap(err, "finding installation")
 	}
 
 	repo, err := r.RepoRetriever.Get(ctx, installation.Token, owner, repoName)
 	if err != nil {
-		return repo, installation.Token, errors.Wrap(err, "getting repo")
+		return github.Repo{}, errors.Wrap(err, "getting repo")
 	}
 
 	if len(repo.DefaultBranch) == 0 {
-		return repo, installation.Token, fmt.Errorf("default branch was nil, this is a bug on github's side")
+		return github.Repo{}, fmt.Errorf("default branch was nil, this is a bug on github's side")
 	}
 
-	return repo, installation.Token, nil
-}
-
-func ConvertRepoToGithubRepo(repo models.Repo, token int64) github.Repo {
 	return github.Repo{
 		Owner:         repo.Owner,
 		Name:          repo.Name,
 		URL:           repo.CloneURL,
 		DefaultBranch: repo.DefaultBranch,
 		Credentials: github.AppCredentials{
-			InstallationToken: token,
+			InstallationToken: installation.Token,
 		},
-	}
+	}, nil
 }
