@@ -26,6 +26,7 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
 	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
+	adhocGithubHelpers "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocgithubhelpers"
 	adhocconfig "github.com/runatlantis/atlantis/server/neptune/adhoc/config"
 	root_config "github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
@@ -37,6 +38,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/static"
+	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/negroni"
 	"go.temporal.io/sdk/interceptor"
@@ -57,6 +59,7 @@ type Server struct {
 	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
 	TerraformTaskQueue   string
 	RootConfigBuilder    *root_config.Builder
+	GithubRetriever      *adhocGithubHelpers.AdhocGithubRetriever
 }
 
 func NewServer(config *adhocconfig.Config) (*Server, error) {
@@ -196,6 +199,18 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		Scope:     scope.SubScope("event.filters.root"),
 	}
 
+	repoConverter := github_converter.RepoConverter{}
+	repoRetriever := &github.RepoRetriever{
+		ClientCreator: clientCreator,
+		RepoConverter: repoConverter,
+	}
+
+	// This exists to convert a repo name to a repo object
+	githubRetriever := &adhocGithubHelpers.AdhocGithubRetriever{
+		RepoRetriever:         repoRetriever,
+		InstallationRetriever: installationFetcher,
+	}
+
 	server := Server{
 		Logger:        config.CtxLogger,
 		CronScheduler: cronScheduler,
@@ -215,6 +230,7 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		GithubActivities:     githubActivities,
 		AdhocExecutionParams: config.AdhocExecutionParams,
 		RootConfigBuilder:    rootConfigBuilder,
+		GithubRetriever:      githubRetriever,
 	}
 	return &server, nil
 }
