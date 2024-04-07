@@ -37,6 +37,8 @@ type RepoFetcher struct {
 
 type RepoFetcherOptions struct {
 	CloneDepth int
+	// Use simple path for adhoc mode, where there is only 1 repo so we can use a simpler path rather than one with UUID and repos prefix
+	SimplePath bool
 }
 
 func (g *RepoFetcher) Fetch(ctx context.Context, repo models.Repo, branch string, sha string, options RepoFetcherOptions) (string, func(ctx context.Context, filePath string), error) {
@@ -71,6 +73,11 @@ func (g *RepoFetcher) Fetch(ctx context.Context, repo models.Repo, branch string
 
 func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string, sha string, options RepoFetcherOptions) (string, func(ctx context.Context, filePath string), error) {
 	destinationPath := g.generateDirPath(repo.Name)
+	// If simple path is enabled, we don't need a prefix and UUID
+	if options.SimplePath {
+		destinationPath = g.generateSimpleDirPath(repo.Name)
+	}
+
 	// Create the directory and parents if necessary.
 	if err := os.MkdirAll(destinationPath, 0700); err != nil {
 		return "", nil, errors.Wrap(err, "creating new directory")
@@ -110,6 +117,10 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 
 func (g *RepoFetcher) generateDirPath(repoName string) string {
 	return filepath.Join(g.DataDir, workingDirPrefix, repoName, uuid.New().String())
+}
+
+func (g *RepoFetcher) generateSimpleDirPath(repoName string) string {
+	return filepath.Join(g.DataDir, repoName)
 }
 
 func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath string) ([]byte, error) {
