@@ -175,7 +175,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		Root:         testLocalRoot.Root,
 		Repo:         testGithubRepo,
 		DeploymentID: testDeploymentID,
-		WorkflowMode: testWorkflowMode,
+		WorkflowMode: req.WorkflowMode,
 	}
 
 	if req.WorkflowMode == terraformModel.Adhoc {
