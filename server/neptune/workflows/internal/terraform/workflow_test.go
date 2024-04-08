@@ -33,9 +33,8 @@ const (
 	testDeploymentID = "123"
 	testPath         = "rel/path"
 	DeployDir        = "deployments/123"
+	testWorkflowMode = terraformModel.Deploy
 )
-
-var testWorkflowMode terraformModel.WorkflowMode = terraformModel.Deploy
 
 var testGithubRepo = github.Repo{
 	Name: testRepoName,
