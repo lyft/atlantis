@@ -35,6 +35,8 @@ const (
 	DeployDir        = "deployments/123"
 )
 
+var testWorkflowMode terraformModel.WorkflowMode = terraformModel.Deploy
+
 var testGithubRepo = github.Repo{
 	Name: testRepoName,
 }
@@ -174,7 +176,7 @@ func testTerraformWorkflow(ctx workflow.Context, req request) (*response, error)
 		Root:         testLocalRoot.Root,
 		Repo:         testGithubRepo,
 		DeploymentID: testDeploymentID,
-		WorkflowMode: req.WorkflowMode,
+		WorkflowMode: testWorkflowMode,
 	}
 
 	if req.WorkflowMode == terraformModel.Adhoc {
@@ -287,6 +289,7 @@ func TestSuccess_DeployMode(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
+		WorkflowMode: testWorkflowMode,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
