@@ -497,7 +497,7 @@ func TestSuccess_PRMode(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
-		WorkflowMode: testWorkflowMode,
+		WorkflowMode: terraformModel.PR,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
@@ -646,7 +646,7 @@ func TestSuccess_AdminMode(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
-		WorkflowMode: testWorkflowMode,
+		WorkflowMode: terraformModel.Adhoc,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
@@ -729,7 +729,7 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
-		WorkflowMode: testWorkflowMode,
+		WorkflowMode: terraformModel.PR,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
