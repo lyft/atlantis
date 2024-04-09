@@ -39,7 +39,7 @@ func convertMergedProjectCfgToRoot(rootCfg *valid.MergedProjectCfg) workflows.Ro
 	}
 }
 
-func convertToTerraformRoot(root workflows.AdhocRoot) terraform.Root {
+func convertToTerraformRoot(root workflows.Root) terraform.Root {
 	return terraform.Root{
 		Name: root.Name,
 		Apply: execute.Job{

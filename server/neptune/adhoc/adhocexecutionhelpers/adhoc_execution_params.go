@@ -29,6 +29,7 @@ func ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx context.Cont
 	opts := config.BuilderOptions{
 		RepoFetcherOptions: &internal_gh.RepoFetcherOptions{
 			CloneDepth: 1,
+			SimplePath: true,
 		},
 	}
 
