@@ -8,7 +8,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
-func getRootsFromMergedProjectCfgs(rootCfgs []*valid.MergedProjectCfg) ([]terraform.Root, error) {
+func getRootsFromMergedProjectCfgs(rootCfgs []*valid.MergedProjectCfg) []terraform.Root {
 	roots := make([]terraform.Root, 0, len(rootCfgs))
 	for _, rootCfg := range rootCfgs {
 
@@ -16,7 +16,7 @@ func getRootsFromMergedProjectCfgs(rootCfgs []*valid.MergedProjectCfg) ([]terraf
 		terraformRoot := convertToTerraformRoot(root)
 		roots = append(roots, terraformRoot)
 	}
-	return roots, nil
+	return roots
 }
 
 func convertMergedProjectCfgToRoot(rootCfg *valid.MergedProjectCfg) workflows.Root {

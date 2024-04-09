@@ -37,10 +37,7 @@ func ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx context.Cont
 		return AdhocTerraformWorkflowExecutionParams{}, errors.Wrap(err, "building root cfgs")
 	}
 
-	roots, err := getRootsFromMergedProjectCfgs(rootCfgs)
-	if err != nil {
-		return AdhocTerraformWorkflowExecutionParams{}, errors.Wrap(err, "getting roots from merged project cfgs")
-	}
+	roots := getRootsFromMergedProjectCfgs(rootCfgs)
 
 	return AdhocTerraformWorkflowExecutionParams{
 		Revision:       revision,
