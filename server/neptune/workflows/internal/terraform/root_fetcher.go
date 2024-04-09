@@ -21,6 +21,7 @@ func (r *RootFetcher) Fetch(ctx workflow.Context) (*terraform.LocalRoot, func(wo
 		Root:         r.Request.Root,
 		DeploymentID: r.Request.DeploymentID,
 		Revision:     r.Request.Revision,
+		WorkflowMode: r.Request.WorkflowMode,
 	}).Get(ctx, &fetchRootResponse)
 
 	if err != nil {

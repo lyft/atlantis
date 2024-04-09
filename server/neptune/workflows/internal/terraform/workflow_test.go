@@ -33,6 +33,7 @@ const (
 	testDeploymentID = "123"
 	testPath         = "rel/path"
 	DeployDir        = "deployments/123"
+	testWorkflowMode = terraformModel.Deploy
 )
 
 var testGithubRepo = github.Repo{
@@ -287,6 +288,7 @@ func TestSuccess_DeployMode(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
+		WorkflowMode: testWorkflowMode,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
@@ -495,6 +497,7 @@ func TestSuccess_PRMode(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
+		WorkflowMode: terraformModel.PR,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
@@ -643,6 +646,7 @@ func TestSuccess_AdminMode(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
+		WorkflowMode: terraformModel.Adhoc,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
@@ -725,6 +729,7 @@ func TestSuccess_PRMode_FailedPolicy(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
+		WorkflowMode: terraformModel.PR,
 	}).Return(activities.FetchRootResponse{
 		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
@@ -867,6 +872,7 @@ func TestUpdateJobError(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
+		WorkflowMode: testWorkflowMode,
 	}).Return(activities.FetchRootResponse{
 		DeployDirectory: DeployDir,
 		LocalRoot:       testLocalRoot,
@@ -913,6 +919,7 @@ func TestPlanRejection(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
+		WorkflowMode: testWorkflowMode,
 	}).Return(activities.FetchRootResponse{
 		DeployDirectory: DeployDir,
 		LocalRoot:       testLocalRoot,
@@ -1081,6 +1088,7 @@ func TestFetchRootError(t *testing.T) {
 		Repo:         testGithubRepo,
 		Root:         testLocalRoot.Root,
 		DeploymentID: testDeploymentID,
+		WorkflowMode: testWorkflowMode,
 	}).Return(activities.FetchRootResponse{
 		DeployDirectory: DeployDir,
 		LocalRoot:       testLocalRoot,
