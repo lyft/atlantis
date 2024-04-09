@@ -11,7 +11,6 @@ import (
 func getRootsFromMergedProjectCfgs(rootCfgs []*valid.MergedProjectCfg) []terraform.Root {
 	roots := make([]terraform.Root, 0, len(rootCfgs))
 	for _, rootCfg := range rootCfgs {
-
 		root := convertMergedProjectCfgToRoot(rootCfg)
 		terraformRoot := convertToTerraformRoot(root)
 		roots = append(roots, terraformRoot)
