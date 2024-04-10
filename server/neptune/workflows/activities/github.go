@@ -249,6 +249,7 @@ type FetchRootRequest struct {
 	Root         terraform.Root
 	DeploymentID string
 	Revision     string
+	WorkflowMode terraform.WorkflowMode
 }
 
 type FetchRootResponse struct {
@@ -265,6 +266,10 @@ func (a *githubActivities) GithubFetchRoot(ctx context.Context, request FetchRoo
 	defer cancel()
 
 	deployBasePath := filepath.Join(a.DataDir, deploymentsDirName, request.DeploymentID)
+	// if we are in Adhoc mode, we can use a simple file path without a UUID since there will only be one repository
+	if request.WorkflowMode == terraform.Adhoc {
+		deployBasePath = filepath.Join(a.DataDir)
+	}
 	repositoryPath := filepath.Join(deployBasePath, "repo")
 	opts := &github.RepositoryContentGetOptions{
 		Ref: request.Revision,
