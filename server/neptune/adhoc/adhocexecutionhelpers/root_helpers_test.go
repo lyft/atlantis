@@ -159,5 +159,4 @@ func TestSteps(t *testing.T) {
 		res := steps(tt.requestSteps)
 		assert.True(t, compareExecuteSteps(res, tt.expectedSteps))
 	}
-
 }
