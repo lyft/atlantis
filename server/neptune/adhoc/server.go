@@ -48,20 +48,22 @@ import (
 )
 
 type Server struct {
-	Logger               logging.Logger
-	CronScheduler        *internalSync.CronScheduler
-	Crons                []*internalSync.Cron
-	HTTPServerProxy      *neptune_http.ServerProxy
-	Port                 int
-	StatsScope           tally.Scope
-	StatsCloser          io.Closer
-	TemporalClient       *temporal.ClientWrapper
-	TerraformActivities  *activities.Terraform
-	GithubActivities     *activities.Github
-	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
-	TerraformTaskQueue   string
-	RootConfigBuilder    *root_config.Builder
-	GithubRetriever      *adhocGithubHelpers.AdhocGithubRetriever
+	Logger              logging.Logger
+	CronScheduler       *internalSync.CronScheduler
+	Crons               []*internalSync.Cron
+	HTTPServerProxy     *neptune_http.ServerProxy
+	Port                int
+	StatsScope          tally.Scope
+	StatsCloser         io.Closer
+	TemporalClient      *temporal.ClientWrapper
+	TerraformActivities *activities.Terraform
+	GithubActivities    *activities.Github
+	TerraformTaskQueue  string
+	RootConfigBuilder   *root_config.Builder
+	GithubRetriever     *adhocGithubHelpers.AdhocGithubRetriever
+	Repo                string
+	Root                string
+	Revision            string
 }
 
 func NewServer(config *adhocconfig.Config) (*Server, error) {
@@ -222,17 +224,16 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:      httpServerProxy,
-		Port:                 config.ServerCfg.Port,
-		StatsScope:           scope,
-		StatsCloser:          statsCloser,
-		TemporalClient:       temporalClient,
-		TerraformActivities:  terraformActivities,
-		TerraformTaskQueue:   config.TemporalCfg.TerraformTaskQueue,
-		GithubActivities:     githubActivities,
-		AdhocExecutionParams: config.AdhocExecutionParams,
-		RootConfigBuilder:    rootConfigBuilder,
-		GithubRetriever:      githubRetriever,
+		HTTPServerProxy:     httpServerProxy,
+		Port:                config.ServerCfg.Port,
+		StatsScope:          scope,
+		StatsCloser:         statsCloser,
+		TemporalClient:      temporalClient,
+		TerraformActivities: terraformActivities,
+		TerraformTaskQueue:  config.TemporalCfg.TerraformTaskQueue,
+		GithubActivities:    githubActivities,
+		RootConfigBuilder:   rootConfigBuilder,
+		GithubRetriever:     githubRetriever,
 	}
 	return &server, nil
 }
@@ -241,18 +242,18 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 // then executes the Terraform workflow. Note normally this workflow is executed
 // when a request is made to the server, but we are manually executing it here,
 // since we don't care about requests in adhoc mode.
-func (s Server) manuallyExecuteTerraformWorkflow(adhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams) (interface{}, error) {
+func (s Server) manuallyExecuteTerraformWorkflow(repo ghClient.Repo, revision string, root terraform.Root) (interface{}, error) {
 	request := workflows.TerraformRequest{
-		Revision:     adhocExecutionParams.Revision,
+		Revision:     revision,
 		WorkflowMode: terraform.Adhoc,
-		Root:         adhocExecutionParams.TerraformRoot,
-		Repo:         adhocExecutionParams.GithubRepo,
+		Root:         root,
+		Repo:         repo,
 	}
 	options := client.StartWorkflowOptions{
 		TaskQueue: s.TerraformTaskQueue,
 		SearchAttributes: map[string]interface{}{
-			"atlantis_repository": adhocExecutionParams.AtlantisRepo,
-			"atlantis_root":       adhocExecutionParams.AtlantisRoot,
+			"atlantis_repository": repo.GetFullName(),
+			"atlantis_root":       root.Name,
 		},
 	}
 
@@ -290,9 +291,18 @@ func (s Server) Start() error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := s.manuallyExecuteTerraformWorkflow(s.AdhocExecutionParams)
+
+		adhocExecutionParams, err := adhoc.ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx, s.Repo, s.Revision, s.GithubRetriever, s.RootConfigBuilder)
 		if err != nil {
 			s.Logger.Error(err.Error())
+			return
+		}
+
+		for _, root := range adhocExecutionParams.TerraformRoots {
+			_, err := s.manuallyExecuteTerraformWorkflow(adhocExecutionParams.GithubRepo, adhocExecutionParams.Revision, root)
+			if err != nil {
+				s.Logger.Error(err.Error())
+			}
 		}
 	}()
 
