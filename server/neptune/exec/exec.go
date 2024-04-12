@@ -2,13 +2,14 @@ package exec
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/logging"
-	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"os"
 	"os/exec"
 	"syscall"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/logging"
+	key "github.com/runatlantis/atlantis/server/neptune/context"
 )
 
 type Cmd struct {
@@ -48,7 +49,7 @@ func (c *Cmd) RunWithNewProcessGroup(ctx context.Context) error {
 
 	err := c.Wait()
 	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "waiting for process")
+		return errors.Wrap(ctx.Err(), "context error, waiting for process")
 	}
 	if err != nil {
 		return errors.Wrap(err, "waiting for process")
