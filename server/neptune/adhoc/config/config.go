@@ -31,4 +31,6 @@ type Config struct {
 	GithubHostname   string
 
 	GlobalCfg valid.GlobalCfg
+
+	ValidationConfig neptune.ValidationConfig
 }
