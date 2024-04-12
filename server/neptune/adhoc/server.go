@@ -213,6 +213,8 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		GithubActivities:    githubActivities,
 		RootConfigBuilder:   rootConfigBuilder,
 		GithubRetriever:     githubRetriever,
+		Repo:                config.GlobalCfg.AdhocMode.Repo,
+		Revision:            config.GlobalCfg.AdhocMode.Revision,
 	}
 	return &server, nil
 }
