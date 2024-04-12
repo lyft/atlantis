@@ -15,7 +15,6 @@ import (
 
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/legacy/events/vcs"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
@@ -103,17 +102,6 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		Logger:      config.CtxLogger,
 	}
 
-	/*
-		config.TerraformCfg,
-		config.ValidationConfig,
-		config.App,
-		config.DataDir,
-		config.ServerCfg.URL,
-		config.TemporalCfg.TerraformTaskQueue,
-		config.GithubCfg.TemporalAppInstallationID,
-		jobStreamHandler,
-	*/
-
 	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
 		config.ValidationConfig,
@@ -136,33 +124,15 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "client creator")
 	}
 
-	repoConfig := feature.RepoConfig{
-		Owner:  config.FeatureConfig.FFOwner,
-		Repo:   config.FeatureConfig.FFRepo,
-		Branch: config.FeatureConfig.FFBranch,
-		Path:   config.FeatureConfig.FFPath,
-	}
 	installationFetcher := &github.InstallationRetriever{
 		ClientCreator: clientCreator,
-	}
-	fileFetcher := &github.SingleFileContentsFetcher{
-		ClientCreator: clientCreator,
-	}
-	retriever := &feature.CustomGithubInstallationRetriever{
-		InstallationFetcher: installationFetcher,
-		FileContentsFetcher: fileFetcher,
-		Cfg:                 repoConfig,
-	}
-	featureAllocator, err := feature.NewGHSourcedAllocator(retriever, config.CtxLogger)
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing feature allocator")
 	}
 
 	githubActivities, err := activities.NewGithub(
 		clientCreator,
 		config.GithubCfg.TemporalAppInstallationID,
 		config.DataDir,
-		featureAllocator,
+		nil,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing github activities")
