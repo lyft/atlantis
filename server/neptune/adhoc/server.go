@@ -15,7 +15,6 @@ import (
 
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/legacy/events/vcs"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
@@ -35,7 +34,6 @@ import (
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
-	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/static"
@@ -110,7 +108,7 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 
 	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
-		neptune.ValidationConfig{},
+		config.ValidationConfig,
 		config.App,
 		config.DataDir,
 		config.ServerCfg.URL,
@@ -130,33 +128,14 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "client creator")
 	}
 
-	repoConfig := feature.RepoConfig{
-		Owner:  config.FeatureConfig.FFOwner,
-		Repo:   config.FeatureConfig.FFRepo,
-		Branch: config.FeatureConfig.FFBranch,
-		Path:   config.FeatureConfig.FFPath,
-	}
 	installationFetcher := &github.InstallationRetriever{
 		ClientCreator: clientCreator,
 	}
-	fileFetcher := &github.SingleFileContentsFetcher{
-		ClientCreator: clientCreator,
-	}
-	retriever := &feature.CustomGithubInstallationRetriever{
-		InstallationFetcher: installationFetcher,
-		FileContentsFetcher: fileFetcher,
-		Cfg:                 repoConfig,
-	}
-	featureAllocator, err := feature.NewGHSourcedAllocator(retriever, config.CtxLogger)
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing feature allocator")
-	}
-
 	githubActivities, err := activities.NewGithub(
 		clientCreator,
 		config.GithubCfg.TemporalAppInstallationID,
 		config.DataDir,
-		featureAllocator,
+		nil,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing github activities")
