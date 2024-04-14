@@ -91,7 +91,8 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 	}
 	_, err := g.run(ctx, cloneCmd, destinationPath)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to clone directory")
+		debugStr := fmt.Sprintf("clone cmd is %v, destination path is %s", cloneCmd, destinationPath)
+		return "", nil, errors.Wrap(err, "failed to clone directory, debug info: "+debugStr)
 	}
 
 	// Return immediately if commit at HEAD of clone matches request commit
@@ -137,7 +138,7 @@ func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath st
 	cmd.Stderr = &b
 	err := cmd.RunWithNewProcessGroup(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "running command in separate process group")
+		return nil, errors.Wrap(err, "running command in separate process group, command is "+cmd.String())
 	}
 	return b.Bytes(), nil
 }
