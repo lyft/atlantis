@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/neptune/adhoc/adhocgithubhelpers"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	root_config "github.com/runatlantis/atlantis/server/neptune/gateway/config"
@@ -33,7 +34,21 @@ func ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx context.Cont
 		},
 	}
 
-	rootCfgs, err := rootCfgBuilder.Build(ctx, &root_config.RepoCommit{}, repo.Credentials.InstallationToken, opts)
+	rootCfgs, err := rootCfgBuilder.Build(ctx, &root_config.RepoCommit{
+		Repo: models.Repo{
+			FullName: repo.GetFullName(),
+			Owner:    repo.Owner,
+			Name:     repoName,
+			CloneURL: repo.URL,
+			VCSHost: models.VCSHost{
+				Hostname: "github.com",
+				Type:     models.Github,
+			},
+			DefaultBranch: repo.DefaultBranch,
+		},
+		Branch: repo.DefaultBranch,
+		Sha:    revision,
+	}, repo.Credentials.InstallationToken, opts)
 	if err != nil {
 		return AdhocTerraformWorkflowExecutionParams{}, errors.Wrap(err, "building root cfgs")
 	}

@@ -72,9 +72,6 @@ func (g *RepoFetcher) Fetch(ctx context.Context, repo models.Repo, branch string
 }
 
 func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string, sha string, options RepoFetcherOptions) (string, func(ctx context.Context, filePath string), error) {
-	// debug
-	options.SimplePath = false
-
 	destinationPath := g.generateDirPath(repo.Name)
 	// If simple path is enabled, we don't need a prefix and UUID
 	if options.SimplePath {
