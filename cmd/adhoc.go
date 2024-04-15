@@ -67,10 +67,6 @@ func (a *Adhoc) NewServer(userConfig legacy.UserConfig, config legacy.Config) (S
 		GithubAppKeyFile: userConfig.GithubAppKeyFile,
 		GithubAppSlug:    userConfig.GithubAppSlug,
 		GlobalCfg:        globalCfg,
-		ValidationConfig: neptune.ValidationConfig{
-			DefaultVersion: globalCfg.PolicySets.Version,
-			Policies:       globalCfg.PolicySets,
-		},
 	}
 	return adhoc.NewServer(cfg)
 }

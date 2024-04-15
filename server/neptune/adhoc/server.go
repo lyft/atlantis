@@ -34,6 +34,7 @@ import (
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
+	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/static"
@@ -108,7 +109,7 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 
 	terraformActivities, err := activities.NewTerraform(
 		config.TerraformCfg,
-		config.ValidationConfig,
+		neptune.ValidationConfig{},
 		config.App,
 		config.DataDir,
 		config.ServerCfg.URL,
