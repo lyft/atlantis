@@ -150,7 +150,6 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing version %s", tfConfig.DefaultVersion)
 	}
-	defaultConftestVersion := validationConfig.DefaultVersion
 
 	tfClient, err := command.NewAsyncClient(
 		defaultTfVersion,
@@ -160,12 +159,16 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 		return nil, err
 	}
 
-	conftestClient, err := command.NewAsyncClient(
-		defaultConftestVersion,
-		conftestVersionCache,
-	)
-	if err != nil {
-		return nil, err
+	defaultConftestVersion := validationConfig.DefaultVersion
+	var conftestClient *command.AsyncClient
+	if defaultConftestVersion != nil {
+		conftestClient, err = command.NewAsyncClient(
+			defaultConftestVersion,
+			conftestVersionCache,
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	policies := convertPolicies(validationConfig.Policies.PolicySets)
