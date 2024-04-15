@@ -54,7 +54,8 @@ func (s *ModifiedRootsStrategy) FindMatches(ctx context.Context, config valid.Re
 		Sha:   repo.RepoCommit.Sha,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding modified files: %s", modifiedFiles)
+		debugStr := fmt.Sprintf("sha: %s, prNum: %d, dir %s", repo.RepoCommit.Sha, repo.RepoCommit.OptionalPRNum, repo.Dir)
+		return nil, errors.Wrapf(err, "finding modified files: %s, debug str: %s", modifiedFiles, debugStr)
 	}
 
 	matchingRoots, err := s.RootFinder.FindRoots(ctx, config, repo.Dir, modifiedFiles)
@@ -131,6 +132,7 @@ func (b *Builder) build(ctx context.Context, commit *RepoCommit, installationTok
 		RepoCommit: commit,
 		Dir:        repoDir,
 	}
+	b.Logger.Info(fmt.Sprintf("localRepo is: full repo name: %s, commit sha: %s, commit branch: %s, commit repo name: %s, repodir: %s", commit.Repo.FullName, commit.Sha, commit.Branch, commit.Repo.Name, repoDir))
 
 	// Run pre-workflow hooks
 	err = b.HooksRunner.Run(ctx, localRepo.Repo, localRepo.Dir)
