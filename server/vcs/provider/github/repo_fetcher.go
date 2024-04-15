@@ -62,12 +62,14 @@ func (g *RepoFetcher) Fetch(ctx context.Context, repo models.Repo, branch string
 	authURL := fmt.Sprintf("://x-access-token:%s", ghToken)
 	repo.CloneURL = strings.Replace(repo.CloneURL, "://:", authURL, 1)
 	repo.SanitizedCloneURL = strings.Replace(repo.SanitizedCloneURL, "://:", "://x-access-token:", 1)
+	g.Logger.Info(fmt.Sprintf("about to clone inside RepoFetcher Fetch with params: repo: %v. branch: %s, sha: %s", repo, branch, sha))
 	path, cleanup, err := g.clone(ctx, repo, branch, sha, options)
 	if err != nil {
 		g.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
 		return path, cleanup, err
 	}
 	g.Scope.Counter(metrics.ExecutionSuccessMetric).Inc(1)
+	g.Logger.Info(fmt.Sprintf("cloned repo %s to path %s", repo.Name, path))
 	return path, cleanup, err
 }
 
@@ -79,6 +81,7 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 	}
 
 	// Create the directory and parents if necessary.
+	g.Logger.Info("creating new directory inside clone at path: " + destinationPath)
 	if err := os.MkdirAll(destinationPath, 0700); err != nil {
 		return "", nil, errors.Wrap(err, "creating new directory")
 	}
@@ -144,6 +147,7 @@ func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath st
 }
 
 func (g *RepoFetcher) Cleanup(ctx context.Context, filePath string) {
+	g.Logger.Info(fmt.Sprintf("cleaning up cloned repo at path %s", filePath))
 	if err := os.RemoveAll(filePath); err != nil {
 		g.Logger.ErrorContext(ctx, "failed deleting cloned repo", map[string]interface{}{
 			"err": err,

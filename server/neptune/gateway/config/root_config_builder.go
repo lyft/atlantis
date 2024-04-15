@@ -135,6 +135,7 @@ func (b *Builder) build(ctx context.Context, commit *RepoCommit, installationTok
 	b.Logger.Info(fmt.Sprintf("localRepo is: full repo name: %s, commit sha: %s, commit branch: %s, commit repo name: %s, repodir: %s", commit.Repo.FullName, commit.Sha, commit.Branch, commit.Repo.Name, repoDir))
 
 	// Run pre-workflow hooks
+	b.Logger.Info(fmt.Sprintf("running pre-workflow hooks"))
 	err = b.HooksRunner.Run(ctx, localRepo.Repo, localRepo.Dir)
 	if err != nil {
 		return nil, errors.Wrap(err, "running pre-workflow hooks")
@@ -144,16 +145,19 @@ func (b *Builder) build(ctx context.Context, commit *RepoCommit, installationTok
 	// TODO: rename project to roots
 	var mergedRootCfgs []*valid.MergedProjectCfg
 
+	b.Logger.Info(fmt.Sprintf("parsing repo config"))
 	repoCfg, err := b.ParserValidator.ParseRepoCfg(localRepo.Dir, localRepo.Repo.ID())
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing %s", config.AtlantisYAMLFilename)
 	}
 
+	b.Logger.Info(fmt.Sprintf("getting matching roots"))
 	matchingRoots, err := b.getMatchingRoots(ctx, repoCfg, localRepo, installationToken, rootNames)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting matching roots")
 	}
 
+	b.Logger.Info(fmt.Sprintf("merging roots for %s", localRepo.Repo.FullName))
 	for _, mr := range matchingRoots {
 		mergedRootCfg := b.GlobalCfg.MergeProjectCfg(localRepo.Repo.ID(), mr, repoCfg)
 		mergedRootCfgs = append(mergedRootCfgs, &mergedRootCfg)
