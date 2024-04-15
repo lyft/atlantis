@@ -160,9 +160,9 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 	}
 
 	defaultConftestVersion := validationConfig.DefaultVersion
-	var confTestClient *command.AsyncClient
+	var conftestClient *command.AsyncClient
 	if defaultConftestVersion != nil {
-		confTestClient, err = command.NewAsyncClient(
+		conftestClient, err = command.NewAsyncClient(
 			defaultConftestVersion,
 			conftestVersionCache,
 		)
@@ -191,7 +191,7 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 		},
 		conftestActivity: &conftestActivity{
 			DefaultConftestVersion: defaultConftestVersion,
-			ConftestClient:         confTestClient,
+			ConftestClient:         conftestClient,
 			StreamHandler:          streamHandler,
 			Policies:               policies,
 			FileValidator:          &file.Validator{},
