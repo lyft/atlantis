@@ -69,7 +69,7 @@ type GlobalCfg struct {
 
 type AdhocMode struct {
 	Repo  string
-	PRNum int64
+	PRNum int
 }
 
 type GithubTeam struct {

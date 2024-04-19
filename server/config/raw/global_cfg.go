@@ -31,7 +31,7 @@ type GlobalCfg struct {
 
 type AdhocMode struct {
 	Repo  string `yaml:"repo" json:"repo"`
-	PRNum int64  `yaml:"pr_num" json:"pr_num"`
+	PRNum int    `yaml:"pr_num" json:"pr_num"`
 }
 
 func (t AdhocMode) ToValid() valid.AdhocMode {
