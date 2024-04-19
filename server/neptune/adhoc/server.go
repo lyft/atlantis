@@ -196,8 +196,6 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		RepoConverter: repoConverter,
 	}
 
-	config.CtxLogger.Info(fmt.Sprintf("Starting adhoc server, params are: repo: %s, root: %s, revision: %s", config.GlobalCfg.AdhocMode.Repo, config.GlobalCfg.AdhocMode.Root, config.GlobalCfg.AdhocMode.Revision))
-
 	server := Server{
 		Logger:        config.CtxLogger,
 		CronScheduler: cronScheduler,
