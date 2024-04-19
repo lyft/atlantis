@@ -237,11 +237,13 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 // when a request is made to the server, but we are manually executing it here,
 // since we don't care about requests in adhoc mode.
 func (s Server) manuallyExecuteTerraformWorkflow(repo ghClient.Repo, revision string, root terraform.Root) (interface{}, error) {
+	deploymentIDStr := revision + "-" + root.Name + "-" + repo.Name
 	request := workflows.TerraformRequest{
 		Revision:     revision,
 		WorkflowMode: terraform.Adhoc,
 		Root:         root,
 		Repo:         repo,
+		DeploymentID: deploymentIDStr,
 	}
 	options := client.StartWorkflowOptions{
 		TaskQueue: s.TerraformTaskQueue,
