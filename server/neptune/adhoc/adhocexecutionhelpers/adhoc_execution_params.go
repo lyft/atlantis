@@ -27,7 +27,6 @@ func ConstructAdhocExecParams(
 	pullConverter converter.PullConverter,
 	installationRetriever *internal_gh.InstallationRetriever,
 	rootCfgBuilder *root_config.Builder) (AdhocTerraformWorkflowExecutionParams, error) {
-
 	orgName := "lyft"
 	installationToken, err := installationRetriever.FindOrganizationInstallation(ctx, orgName)
 	if err != nil {
