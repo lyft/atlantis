@@ -279,7 +279,7 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		adhocExecutionParams, err := adhoc.ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx, s.Repo, s.PRNum, s.PullFetcher, s.PullConverter, s.InstallationRetriever, s.RootConfigBuilder)
+		adhocExecutionParams, err := adhoc.ConstructAdhocExecParams(ctx, s.Repo, s.PRNum, s.PullFetcher, s.PullConverter, s.InstallationRetriever, s.RootConfigBuilder)
 		if err != nil {
 			s.Logger.Error(err.Error())
 			return

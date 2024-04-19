@@ -19,7 +19,7 @@ type AdhocTerraformWorkflowExecutionParams struct {
 	// Note that deploymentID is used in NewWorkflowStore(), but we don't care about that in adhoc mode so can leave it blank
 }
 
-func ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(
+func ConstructAdhocExecParams(
 	ctx context.Context,
 	repoName string,
 	PRNum int,
