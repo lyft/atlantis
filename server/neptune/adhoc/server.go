@@ -19,6 +19,7 @@ import (
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
@@ -26,7 +27,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
 	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
-	adhocGithubHelpers "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocgithubhelpers"
 	adhocconfig "github.com/runatlantis/atlantis/server/neptune/adhoc/config"
 	root_config "github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
@@ -38,7 +38,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/static"
-	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/negroni"
 	"go.temporal.io/sdk/client"
@@ -47,22 +46,23 @@ import (
 )
 
 type Server struct {
-	Logger              logging.Logger
-	CronScheduler       *internalSync.CronScheduler
-	Crons               []*internalSync.Cron
-	HTTPServerProxy     *neptune_http.ServerProxy
-	Port                int
-	StatsScope          tally.Scope
-	StatsCloser         io.Closer
-	TemporalClient      *temporal.ClientWrapper
-	TerraformActivities *activities.Terraform
-	GithubActivities    *activities.Github
-	TerraformTaskQueue  string
-	RootConfigBuilder   *root_config.Builder
-	GithubRetriever     *adhocGithubHelpers.AdhocGithubRetriever
-	Repo                string
-	Root                string
-	Revision            string
+	Logger                logging.Logger
+	CronScheduler         *internalSync.CronScheduler
+	Crons                 []*internalSync.Cron
+	HTTPServerProxy       *neptune_http.ServerProxy
+	Port                  int
+	StatsScope            tally.Scope
+	StatsCloser           io.Closer
+	TemporalClient        *temporal.ClientWrapper
+	TerraformActivities   *activities.Terraform
+	GithubActivities      *activities.Github
+	TerraformTaskQueue    string
+	RootConfigBuilder     *root_config.Builder
+	Repo                  string
+	PRNum                 int
+	InstallationRetriever *github.InstallationRetriever
+	PullFetcher           *github.PRFetcher
+	PullConverter         converter.PullConverter
 }
 
 func NewServer(config *adhocconfig.Config) (*Server, error) {
@@ -183,17 +183,19 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		Scope:     scope.SubScope("event.filters.root"),
 	}
 
-	repoConverter := github_converter.RepoConverter{}
-	repoRetriever := &github.RepoRetriever{
+	pullFetcher := &github.PRFetcher{
 		ClientCreator: clientCreator,
+	}
+
+	repoConverter := converter.RepoConverter{
+		GithubUser:  config.GithubUser,
+		GithubToken: config.GithubToken,
+	}
+
+	pullConverter := converter.PullConverter{
 		RepoConverter: repoConverter,
 	}
 
-	// This exists to convert a repo name to a repo object
-	githubRetriever := &adhocGithubHelpers.AdhocGithubRetriever{
-		RepoRetriever:         repoRetriever,
-		InstallationRetriever: installationFetcher,
-	}
 	config.CtxLogger.Info(fmt.Sprintf("Starting adhoc server, params are: repo: %s, root: %s, revision: %s", config.GlobalCfg.AdhocMode.Repo, config.GlobalCfg.AdhocMode.Root, config.GlobalCfg.AdhocMode.Revision))
 
 	server := Server{
@@ -205,18 +207,20 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:     httpServerProxy,
-		Port:                config.ServerCfg.Port,
-		StatsScope:          scope,
-		StatsCloser:         statsCloser,
-		TemporalClient:      temporalClient,
-		TerraformActivities: terraformActivities,
-		TerraformTaskQueue:  config.TemporalCfg.TerraformTaskQueue,
-		GithubActivities:    githubActivities,
-		RootConfigBuilder:   rootConfigBuilder,
-		GithubRetriever:     githubRetriever,
-		Repo:                config.GlobalCfg.AdhocMode.Repo,
-		Revision:            config.GlobalCfg.AdhocMode.Revision,
+		HTTPServerProxy:       httpServerProxy,
+		Port:                  config.ServerCfg.Port,
+		StatsScope:            scope,
+		StatsCloser:           statsCloser,
+		TemporalClient:        temporalClient,
+		TerraformActivities:   terraformActivities,
+		TerraformTaskQueue:    config.TemporalCfg.TerraformTaskQueue,
+		GithubActivities:      githubActivities,
+		RootConfigBuilder:     rootConfigBuilder,
+		Repo:                  config.GlobalCfg.AdhocMode.Repo,
+		PRNum:                 config.GlobalCfg.AdhocMode.PRNum,
+		InstallationRetriever: installationFetcher,
+		PullFetcher:           pullFetcher,
+		PullConverter:         pullConverter,
 	}
 	return &server, nil
 }
@@ -275,7 +279,7 @@ func (s Server) Start() error {
 	go func() {
 		defer wg.Done()
 
-		adhocExecutionParams, err := adhoc.ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx, s.Repo, s.Revision, s.GithubRetriever, s.RootConfigBuilder)
+		adhocExecutionParams, err := adhoc.ConstructAdhocExecParamsWithRootCfgBuilderAndRepoRetriever(ctx, s.Repo, s.PRNum, s.PullFetcher, s.PullConverter, s.InstallationRetriever, s.RootConfigBuilder)
 		if err != nil {
 			s.Logger.Error(err.Error())
 			return

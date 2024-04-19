@@ -67,6 +67,8 @@ func (a *Adhoc) NewServer(userConfig legacy.UserConfig, config legacy.Config) (S
 		GithubAppKeyFile: userConfig.GithubAppKeyFile,
 		GithubAppSlug:    userConfig.GithubAppSlug,
 		GlobalCfg:        globalCfg,
+		GithubUser:       userConfig.GithubUser,
+		GithubToken:      userConfig.GithubToken,
 	}
 	return adhoc.NewServer(cfg)
 }
