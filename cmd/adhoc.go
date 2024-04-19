@@ -69,6 +69,7 @@ func (a *Adhoc) NewServer(userConfig legacy.UserConfig, config legacy.Config) (S
 		GlobalCfg:        globalCfg,
 		GithubUser:       userConfig.GithubUser,
 		GithubToken:      userConfig.GithubToken,
+		JobConfig:        globalCfg.PersistenceConfig.Jobs,
 	}
 	return adhoc.NewServer(cfg)
 }

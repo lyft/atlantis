@@ -17,6 +17,7 @@ type Config struct {
 	TerraformCfg  neptune.TerraformConfig
 	Metrics       valid.Metrics
 
+	JobConfig      valid.StoreConfig
 	StatsNamespace string
 
 	DataDir   string
