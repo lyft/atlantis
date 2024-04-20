@@ -61,10 +61,8 @@ func ConstructAdhocExecParams(
 		return AdhocTerraformWorkflowExecutionParams{}, errors.Wrap(err, "building root cfgs")
 	}
 
-	rootCfgBuilder.Logger.Info("getting roots from merged project cfgs")
 	roots := getRootsFromMergedProjectCfgs(rootCfgs)
 
-	rootCfgBuilder.Logger.Info("returning adhocexecution params")
 	return AdhocTerraformWorkflowExecutionParams{
 		Revision: actualCommit.HeadCommit,
 		GithubRepo: github.Repo{
