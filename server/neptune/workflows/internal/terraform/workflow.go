@@ -99,6 +99,10 @@ func newRunner(ctx workflow.Context, request Request) *Runner {
 	// be no situation where we are deploying while this is failing.
 	store := state.NewWorkflowStore(
 		func(s *state.Workflow) error {
+			// in adhoc mode we have no parent workflow to signal
+			if request.WorkflowMode == terraform.Adhoc {
+				return nil
+			}
 			return workflow.SignalExternalWorkflow(ctx, parent.ID, parent.RunID, state.WorkflowStateChangeSignal, s).Get(ctx, nil)
 		},
 		request.WorkflowMode,
