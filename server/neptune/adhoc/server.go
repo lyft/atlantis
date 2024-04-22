@@ -294,12 +294,7 @@ func (s Server) Start() error {
 			return
 		}
 
-		if len(adhocExecutionParams.TerraformRoots) == 0 {
-			s.Logger.Info("no roots found")
-		}
-
 		for _, root := range adhocExecutionParams.TerraformRoots {
-			s.Logger.Info("running terraform workflow for root " + root.Name)
 			_, err := s.manuallyExecuteTerraformWorkflow(adhocExecutionParams.GithubRepo, adhocExecutionParams.Revision, root)
 			if err != nil {
 				s.Logger.Error(err.Error())
