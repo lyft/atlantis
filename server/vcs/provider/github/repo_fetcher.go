@@ -81,7 +81,6 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 	}
 
 	// Create the directory and parents if necessary.
-	g.Logger.Info("creating new directory inside clone at path: " + destinationPath)
 	if err := os.MkdirAll(destinationPath, 0700); err != nil {
 		return "", nil, errors.Wrap(err, "creating new directory")
 	}
