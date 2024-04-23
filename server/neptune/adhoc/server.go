@@ -15,10 +15,11 @@ import (
 
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/legacy/events/vcs"
-	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	ghClient "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
+	"github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
@@ -26,7 +27,6 @@ import (
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
 	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
-	adhocGithubHelpers "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocgithubhelpers"
 	adhocconfig "github.com/runatlantis/atlantis/server/neptune/adhoc/config"
 	root_config "github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"
@@ -38,28 +38,31 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/static"
-	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/uber-go/tally/v4"
 	"github.com/urfave/negroni"
+	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 )
 
 type Server struct {
-	Logger               logging.Logger
-	CronScheduler        *internalSync.CronScheduler
-	Crons                []*internalSync.Cron
-	HTTPServerProxy      *neptune_http.ServerProxy
-	Port                 int
-	StatsScope           tally.Scope
-	StatsCloser          io.Closer
-	TemporalClient       *temporal.ClientWrapper
-	TerraformActivities  *activities.Terraform
-	GithubActivities     *activities.Github
-	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
-	TerraformTaskQueue   string
-	RootConfigBuilder    *root_config.Builder
-	GithubRetriever      *adhocGithubHelpers.AdhocGithubRetriever
+	Logger                logging.Logger
+	CronScheduler         *internalSync.CronScheduler
+	Crons                 []*internalSync.Cron
+	HTTPServerProxy       *neptune_http.ServerProxy
+	Port                  int
+	StatsScope            tally.Scope
+	StatsCloser           io.Closer
+	TemporalClient        *temporal.ClientWrapper
+	TerraformActivities   *activities.Terraform
+	GithubActivities      *activities.Github
+	TerraformTaskQueue    string
+	RootConfigBuilder     *root_config.Builder
+	Repo                  string
+	PRNum                 int
+	InstallationRetriever *github.InstallationRetriever
+	PullFetcher           *github.PRFetcher
+	PullConverter         converter.PullConverter
 }
 
 func NewServer(config *adhocconfig.Config) (*Server, error) {
@@ -126,33 +129,14 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		return nil, errors.Wrap(err, "client creator")
 	}
 
-	repoConfig := feature.RepoConfig{
-		Owner:  config.FeatureConfig.FFOwner,
-		Repo:   config.FeatureConfig.FFRepo,
-		Branch: config.FeatureConfig.FFBranch,
-		Path:   config.FeatureConfig.FFPath,
-	}
 	installationFetcher := &github.InstallationRetriever{
 		ClientCreator: clientCreator,
 	}
-	fileFetcher := &github.SingleFileContentsFetcher{
-		ClientCreator: clientCreator,
-	}
-	retriever := &feature.CustomGithubInstallationRetriever{
-		InstallationFetcher: installationFetcher,
-		FileContentsFetcher: fileFetcher,
-		Cfg:                 repoConfig,
-	}
-	featureAllocator, err := feature.NewGHSourcedAllocator(retriever, config.CtxLogger)
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing feature allocator")
-	}
-
 	githubActivities, err := activities.NewGithub(
 		clientCreator,
 		config.GithubCfg.TemporalAppInstallationID,
 		config.DataDir,
-		featureAllocator,
+		nil,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing github activities")
@@ -199,16 +183,17 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		Scope:     scope.SubScope("event.filters.root"),
 	}
 
-	repoConverter := github_converter.RepoConverter{}
-	repoRetriever := &github.RepoRetriever{
+	pullFetcher := &github.PRFetcher{
 		ClientCreator: clientCreator,
-		RepoConverter: repoConverter,
 	}
 
-	// This exists to convert a repo name to a repo object
-	githubRetriever := &adhocGithubHelpers.AdhocGithubRetriever{
-		RepoRetriever:         repoRetriever,
-		InstallationRetriever: installationFetcher,
+	repoConverter := converter.RepoConverter{
+		GithubUser:  config.GithubUser,
+		GithubToken: config.GithubToken,
+	}
+
+	pullConverter := converter.PullConverter{
+		RepoConverter: repoConverter,
 	}
 
 	server := Server{
@@ -220,19 +205,51 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 				Frequency: 1 * time.Minute,
 			},
 		},
-		HTTPServerProxy:      httpServerProxy,
-		Port:                 config.ServerCfg.Port,
-		StatsScope:           scope,
-		StatsCloser:          statsCloser,
-		TemporalClient:       temporalClient,
-		TerraformActivities:  terraformActivities,
-		TerraformTaskQueue:   config.TemporalCfg.TerraformTaskQueue,
-		GithubActivities:     githubActivities,
-		AdhocExecutionParams: config.AdhocExecutionParams,
-		RootConfigBuilder:    rootConfigBuilder,
-		GithubRetriever:      githubRetriever,
+		HTTPServerProxy:       httpServerProxy,
+		Port:                  config.ServerCfg.Port,
+		StatsScope:            scope,
+		StatsCloser:           statsCloser,
+		TemporalClient:        temporalClient,
+		TerraformActivities:   terraformActivities,
+		TerraformTaskQueue:    config.TemporalCfg.TerraformTaskQueue,
+		GithubActivities:      githubActivities,
+		RootConfigBuilder:     rootConfigBuilder,
+		Repo:                  config.GlobalCfg.AdhocMode.Repo,
+		PRNum:                 config.GlobalCfg.AdhocMode.PRNum,
+		InstallationRetriever: installationFetcher,
+		PullFetcher:           pullFetcher,
+		PullConverter:         pullConverter,
 	}
 	return &server, nil
+}
+
+// This function constructs the request we want to send to the temporal client,
+// then executes the Terraform workflow. Note normally this workflow is executed
+// when a request is made to the server, but we are manually executing it here,
+// since we don't care about requests in adhoc mode.
+func (s Server) manuallyExecuteTerraformWorkflow(repo ghClient.Repo, revision string, root terraform.Root) (interface{}, error) {
+	deploymentIDStr := revision + "-" + root.Name + "-" + repo.Name
+	request := workflows.TerraformRequest{
+		Revision:     revision,
+		WorkflowMode: terraform.Adhoc,
+		Root:         root,
+		Repo:         repo,
+		DeploymentID: deploymentIDStr,
+	}
+	options := client.StartWorkflowOptions{
+		TaskQueue: s.TerraformTaskQueue,
+		SearchAttributes: map[string]interface{}{
+			"atlantis_repository": repo.GetFullName(),
+			"atlantis_root":       root.Name,
+		},
+	}
+
+	res, err := s.TemporalClient.ExecuteWorkflow(context.Background(), options, workflows.Terraform, request)
+	if err != nil {
+		s.Logger.Error(err.Error())
+		return nil, err
+	}
+	return res, nil
 }
 
 func (s Server) Start() error {
@@ -256,6 +273,24 @@ func (s Server) Start() error {
 		}
 
 		s.Logger.InfoContext(ctx, "Shutting down terraform worker, resource clean up may still be occurring in the background")
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		adhocExecutionParams, err := adhoc.ConstructAdhocExecParams(ctx, s.Repo, s.PRNum, s.PullFetcher, s.PullConverter, s.InstallationRetriever, s.RootConfigBuilder)
+		if err != nil {
+			s.Logger.Error(err.Error())
+			return
+		}
+
+		for _, root := range adhocExecutionParams.TerraformRoots {
+			_, err := s.manuallyExecuteTerraformWorkflow(adhocExecutionParams.GithubRepo, adhocExecutionParams.Revision, root)
+			if err != nil {
+				s.Logger.Error(err.Error())
+			}
+		}
 	}()
 
 	// Ensure server gracefully drains connections when stopped.

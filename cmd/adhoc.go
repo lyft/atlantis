@@ -7,11 +7,8 @@ import (
 	"github.com/runatlantis/atlantis/server/legacy"
 	"github.com/runatlantis/atlantis/server/logging"
 	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc"
-	adhocHelpers "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
 	adhocconfig "github.com/runatlantis/atlantis/server/neptune/adhoc/config"
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 )
 
 type Adhoc struct{}
@@ -58,23 +55,21 @@ func (a *Adhoc) NewServer(userConfig legacy.UserConfig, config legacy.Config) (S
 			DownloadURL:    userConfig.TFDownloadURL,
 			LogFilters:     globalCfg.TerraformLogFilter,
 		},
-		DataDir:        userConfig.DataDir,
-		TemporalCfg:    globalCfg.Temporal,
-		GithubCfg:      globalCfg.Github,
-		App:            appConfig,
-		CtxLogger:      ctxLogger,
-		StatsNamespace: userConfig.StatsNamespace,
-		Metrics:        globalCfg.Metrics,
-		AdhocExecutionParams: adhocHelpers.AdhocTerraformWorkflowExecutionParams{
-			Revision:       "",
-			TerraformRoots: []terraform.Root{},
-			GithubRepo:     github.Repo{},
-		},
+		DataDir:          userConfig.DataDir,
+		TemporalCfg:      globalCfg.Temporal,
+		GithubCfg:        globalCfg.Github,
+		App:              appConfig,
+		CtxLogger:        ctxLogger,
+		StatsNamespace:   userConfig.StatsNamespace,
+		Metrics:          globalCfg.Metrics,
 		GithubHostname:   userConfig.GithubHostname,
 		GithubAppID:      userConfig.GithubAppID,
 		GithubAppKeyFile: userConfig.GithubAppKeyFile,
 		GithubAppSlug:    userConfig.GithubAppSlug,
 		GlobalCfg:        globalCfg,
+		GithubUser:       userConfig.GithubUser,
+		GithubToken:      userConfig.GithubToken,
+		JobConfig:        globalCfg.PersistenceConfig.Jobs,
 	}
 	return adhoc.NewServer(cfg)
 }

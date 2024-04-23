@@ -623,7 +623,7 @@ func TestSuccess_PRMode(t *testing.T) {
 	}, resp.States)
 }
 
-func TestSuccess_AdminMode(t *testing.T) {
+func TestSuccess_AdhocMode(t *testing.T) {
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
 	ga := &githubActivities{}

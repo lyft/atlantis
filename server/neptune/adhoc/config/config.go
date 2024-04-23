@@ -4,7 +4,6 @@ import (
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/logging"
-	adhoc "github.com/runatlantis/atlantis/server/neptune/adhoc/adhocexecutionhelpers"
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
 )
 
@@ -18,17 +17,19 @@ type Config struct {
 	TerraformCfg  neptune.TerraformConfig
 	Metrics       valid.Metrics
 
+	JobConfig      valid.StoreConfig
 	StatsNamespace string
 
-	DataDir              string
-	CtxLogger            logging.Logger
-	App                  githubapp.Config
-	AdhocExecutionParams adhoc.AdhocTerraformWorkflowExecutionParams
+	DataDir   string
+	CtxLogger logging.Logger
+	App       githubapp.Config
 
 	GithubAppID      int64
 	GithubAppKeyFile string
 	GithubAppSlug    string
 	GithubHostname   string
+	GithubUser       string
+	GithubToken      string
 
 	GlobalCfg valid.GlobalCfg
 }
