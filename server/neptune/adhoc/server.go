@@ -35,6 +35,7 @@ import (
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
 	neptune "github.com/runatlantis/atlantis/server/neptune/temporalworker/config"
+	"github.com/runatlantis/atlantis/server/neptune/temporalworker/job"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/static"
@@ -81,6 +82,14 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		"mode": "adhoc",
 	})
 
+	jobStore, err := job.NewStorageBackendStore(config.JobConfig, scope.SubScope("job.store"), config.CtxLogger)
+	if err != nil {
+		return nil, errors.Wrapf(err, "initializing job store")
+	}
+	receiverRegistry := job.NewReceiverRegistry()
+
+	jobStreamHandler := job.NewStreamHandler(jobStore, receiverRegistry, config.TerraformCfg.LogFilters, config.CtxLogger)
+
 	opts := &temporal.Options{
 		StatsReporter: statsReporter,
 	}
@@ -115,7 +124,7 @@ func NewServer(config *adhocconfig.Config) (*Server, error) {
 		config.ServerCfg.URL,
 		config.TemporalCfg.TerraformTaskQueue,
 		config.GithubCfg.TemporalAppInstallationID,
-		nil,
+		jobStreamHandler,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing terraform activities")
