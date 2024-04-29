@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	ReviewSignalID    = "pr-review"
-	CheckRunCancelled = "checkrun was cancelled"
+	ReviewSignalID             = "pr-review"
+	CheckRunCancelled          = "checkrun was cancelled"
+	NotifyAllCheckRunsChangeID = "notify-all-checkruns-always"
 )
 
 type TFWorkflow func(ctx workflow.Context, request terraform.Request) (terraform.Response, error)
@@ -72,9 +73,11 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 	// Mark checkruns as aborted if the context was cancelled, this typically happens if revisions arrive in quick succession
 	defer func() {
 		if temporal.IsCanceledError(ctx.Err()) {
-			ctx, _ := workflow.NewDisconnectedContext(ctx)
-			p.markCheckRunsAborted(ctx, prRevision, roots)
-			return
+			version := workflow.GetVersion(ctx, NotifyAllCheckRunsChangeID, workflow.DefaultVersion, 1)
+			if version == workflow.DefaultVersion {
+				p.markCheckRunsAborted(ctx, prRevision, roots)
+				return
+			}
 		}
 
 		// At this point, all workflows should be successful, and we can mark combined plan check run as success
@@ -131,6 +134,13 @@ func (p *Processor) awaitChildTerraformWorkflows(ctx workflow.Context, futures [
 	selector := workflow.NewNamedSelector(ctx, "TerraformChildWorkflow")
 	ch := workflow.GetSignalChannel(ctx, state.WorkflowStateChangeSignal)
 	selector.AddReceive(ch, func(c workflow.ReceiveChannel, _ bool) {
+		// The parent workflow can be cancelled when a new revision is received, but we still would like to notify
+		// state of any of the terraform workflows which will finish regardless of parent cancellation.
+		ctx := ctx
+		version := workflow.GetVersion(ctx, NotifyAllCheckRunsChangeID, workflow.DefaultVersion, 1)
+		if version == 1 {
+			ctx, _ = workflow.NewDisconnectedContext(ctx)
+		}
 		p.TFStateReceiver.Receive(ctx, c, roots)
 	})
 
@@ -182,7 +192,6 @@ func (p *Processor) markCombinedCheckRun(ctx workflow.Context, revision Revision
 
 func (p *Processor) markCheckRunsAborted(ctx workflow.Context, revision Revision, roots map[string]RootInfo) {
 	p.markCombinedCheckRun(ctx, revision, github.CheckRunCancelled, CheckRunCancelled)
-
 	for _, rootInfo := range roots {
 		ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 			MaximumAttempts: 3,
