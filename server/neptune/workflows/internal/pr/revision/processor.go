@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	ReviewSignalID    = "pr-review"
-	CheckRunCancelled = "checkrun was cancelled"
+	ReviewSignalID         = "pr-review"
+	CheckRunCancelled      = "Checkrun was cancelled, please review latest revision for Terraform changes."
+	SkipCancelingCheckRuns = "skip-cancelling-checkruns"
 )
 
 type TFWorkflow func(ctx workflow.Context, request terraform.Request) (terraform.Response, error)
@@ -182,6 +183,10 @@ func (p *Processor) markCombinedCheckRun(ctx workflow.Context, revision Revision
 
 func (p *Processor) markCheckRunsAborted(ctx workflow.Context, revision Revision, roots map[string]RootInfo) {
 	p.markCombinedCheckRun(ctx, revision, github.CheckRunCancelled, CheckRunCancelled)
+	version := workflow.GetVersion(ctx, SkipCancelingCheckRuns, workflow.DefaultVersion, 1)
+	if version != workflow.DefaultVersion {
+		return
+	}
 
 	for _, rootInfo := range roots {
 		ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
