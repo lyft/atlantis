@@ -30,6 +30,7 @@ func (n *NoopStreamHandler) CloseJob(ctx context.Context, jobID string) error {
 }
 
 func (n *NoopStreamHandler) CleanUp(ctx context.Context) error {
+	n.wg.Wait()
 	return nil
 }
 
