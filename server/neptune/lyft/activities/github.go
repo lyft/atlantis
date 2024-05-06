@@ -44,15 +44,31 @@ func (a *Github) GithubListPRs(ctx context.Context, request ListPRsRequest) (Lis
 
 	pullRequests := []internal.PullRequest{}
 	for _, pullRequest := range prs {
+
+		isAutomated := IsPRAutomated(pullRequest)
+
 		pullRequests = append(pullRequests, internal.PullRequest{
-			Number:    pullRequest.GetNumber(),
-			UpdatedAt: pullRequest.GetUpdatedAt(),
+			Number:        pullRequest.GetNumber(),
+			UpdatedAt:     pullRequest.GetUpdatedAt(),
+			IsAutomatedPR: isAutomated,
 		})
 	}
 
 	return ListPRsResponse{
 		PullRequests: pullRequests,
 	}, nil
+}
+
+func IsPRAutomated(pr *github.PullRequest) bool {
+	if pr.Labels == nil {
+		return false
+	}
+	for _, label := range pr.Labels {
+		if label.GetName() == "automated" {
+			return true
+		}
+	}
+	return false
 }
 
 type ListModifiedFilesRequest struct {

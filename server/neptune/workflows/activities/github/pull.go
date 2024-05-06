@@ -8,6 +8,8 @@ import (
 type PullRequest struct {
 	Number    int
 	UpdatedAt time.Time
+	// Whether the PR has a label of "automated" or not, useful for identifying refactorator PRs
+	IsAutomatedPR bool
 }
 
 type PullRequestState string
