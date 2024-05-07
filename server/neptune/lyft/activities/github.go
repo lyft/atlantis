@@ -44,9 +44,7 @@ func (a *Github) GithubListPRs(ctx context.Context, request ListPRsRequest) (Lis
 
 	pullRequests := []internal.PullRequest{}
 	for _, pullRequest := range prs {
-
 		isAutomated := IsPRAutomated(pullRequest)
-
 		pullRequests = append(pullRequests, internal.PullRequest{
 			Number:        pullRequest.GetNumber(),
 			UpdatedAt:     pullRequest.GetUpdatedAt(),
