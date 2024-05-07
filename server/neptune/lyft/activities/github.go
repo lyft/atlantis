@@ -58,7 +58,7 @@ func (a *Github) GithubListPRs(ctx context.Context, request ListPRsRequest) (Lis
 }
 
 func IsPRAutomated(pr *github.PullRequest) bool {
-	if pr.Labels == nil {
+	if pr == nil || len(pr.Labels) == 0 {
 		return false
 	}
 	for _, label := range pr.Labels {
