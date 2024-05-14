@@ -27,6 +27,27 @@ type GlobalCfg struct {
 	RevisionSetter       RevisionSetter       `yaml:"revision_setter" json:"revision_setter"`
 	Admin                Admin                `yaml:"admin" json:"admin"`
 	AdhocMode            AdhocMode            `yaml:"adhoc_mode" json:"adhoc_mode"`
+	ExtraGithubRateLimit ExtraGithubRateLimit `yaml:"extra_github_rate_limit" json:"extra_github_rate_limit"`
+}
+
+type ExtraGithubRateLimit struct {
+	Enabled  bool   `yaml:"enabled" json:"enabled"`
+	GHSlug   string `yaml:"gh_slug" json:"gh_slug"`
+	GHAppID  string `yaml:"gh_app_id" json:"gh_app_id"`
+	GHAppKey string `yaml:"gh_app_key" json:"gh_app_key"`
+}
+
+func (t ExtraGithubRateLimit) ToValid() valid.ExtraGithubRateLimit {
+	return valid.ExtraGithubRateLimit{
+		Enabled:  t.Enabled,
+		GHSlug:   t.GHSlug,
+		GHAppID:  t.GHAppID,
+		GHAppKey: t.GHAppKey,
+	}
+}
+
+func (t ExtraGithubRateLimit) Validate() error {
+	return nil
 }
 
 type AdhocMode struct {
@@ -215,6 +236,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		Admin:                g.Admin.ToValid(),
 		RevisionSetter:       g.RevisionSetter.ToValid(),
 		AdhocMode:            g.AdhocMode.ToValid(),
+		ExtraGithubRateLimit: g.ExtraGithubRateLimit.ToValid(),
 	}
 }
 
