@@ -69,7 +69,6 @@ type GlobalCfg struct {
 }
 
 type ExtraGithubRateLimit struct {
-	Enabled  bool
 	GHSlug   string
 	GHAppID  string
 	GHAppKey string

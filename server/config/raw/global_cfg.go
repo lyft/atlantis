@@ -31,7 +31,6 @@ type GlobalCfg struct {
 }
 
 type ExtraGithubRateLimit struct {
-	Enabled  bool   `yaml:"enabled" json:"enabled"`
 	GHSlug   string `yaml:"gh_slug" json:"gh_slug"`
 	GHAppID  string `yaml:"gh_app_id" json:"gh_app_id"`
 	GHAppKey string `yaml:"gh_app_key" json:"gh_app_key"`
@@ -39,7 +38,6 @@ type ExtraGithubRateLimit struct {
 
 func (t ExtraGithubRateLimit) ToValid() valid.ExtraGithubRateLimit {
 	return valid.ExtraGithubRateLimit{
-		Enabled:  t.Enabled,
 		GHSlug:   t.GHSlug,
 		GHAppID:  t.GHAppID,
 		GHAppKey: t.GHAppKey,
