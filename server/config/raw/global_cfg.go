@@ -32,7 +32,7 @@ type GlobalCfg struct {
 
 type ExtraGithubRateLimit struct {
 	GHSlug   string `yaml:"gh_slug" json:"gh_slug"`
-	GHAppID  string `yaml:"gh_app_id" json:"gh_app_id"`
+	GHAppID  int    `yaml:"gh_app_id" json:"gh_app_id"`
 	GHAppKey string `yaml:"gh_app_key" json:"gh_app_key"`
 }
 

@@ -68,9 +68,10 @@ type GlobalCfg struct {
 	ExtraGithubRateLimit ExtraGithubRateLimit
 }
 
+// This is here for using an extra github app
 type ExtraGithubRateLimit struct {
 	GHSlug   string
-	GHAppID  string
+	GHAppID  int // note that this is also known as the "integration ID"
 	GHAppKey string
 }
 
