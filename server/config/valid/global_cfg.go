@@ -65,6 +65,13 @@ type GlobalCfg struct {
 	RevisionSetter       RevisionSetter
 	Admin                Admin
 	AdhocMode            AdhocMode
+	ExtraGithubRateLimit ExtraGithubRateLimit
+}
+
+type ExtraGithubRateLimit struct {
+	GHSlug   string
+	GHAppID  string
+	GHAppKey string
 }
 
 type AdhocMode struct {
