@@ -73,7 +73,7 @@ func TestTeam(t *testing.T) {
 			cfg: globalCfg,
 			fetcher: testFetcher{
 				users: []string{
-					"samra",
+					"test",
 				},
 			},
 			errorGenerator: testErrGenerator[template.UserForbiddenData]{
