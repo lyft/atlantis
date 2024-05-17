@@ -31,16 +31,16 @@ type GlobalCfg struct {
 }
 
 type ExtraGithubRateLimit struct {
-	GHSlug   string `yaml:"gh_slug" json:"gh_slug"`
-	GHAppID  int    `yaml:"gh_app_id" json:"gh_app_id"`
-	GHAppKey string `yaml:"gh_app_key" json:"gh_app_key"`
+	GHSlug       string `yaml:"gh_slug" json:"gh_slug"`
+	GHAppID      int    `yaml:"gh_app_id" json:"gh_app_id"`
+	GHAppKeyPath string `yaml:"gh_app_key_path" json:"gh_app_key_path"`
 }
 
 func (t ExtraGithubRateLimit) ToValid() valid.ExtraGithubRateLimit {
 	return valid.ExtraGithubRateLimit{
-		GHSlug:   t.GHSlug,
-		GHAppID:  t.GHAppID,
-		GHAppKey: t.GHAppKey,
+		GHSlug:       t.GHSlug,
+		GHAppID:      t.GHAppID,
+		GHAppKeyPath: t.GHAppKeyPath,
 	}
 }
 
