@@ -69,5 +69,6 @@ func TestGetClientCreatorWithMaxRemainingRateLimit(t *testing.T) {
 	clientCreator, err := c.GetClientCreatorWithMaxRemainingRateLimit()
 	assert.NoError(t, err)
 	assert.NotNil(t, clientCreator)
+	assert.Equal(t, clientCreator, c.idToClientCreator[564754])
 	assert.Equal(t, 9000, c.GetRateLimitRemaining(564754))
 }
