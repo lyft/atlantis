@@ -32,7 +32,7 @@ func initialize(t *testing.T) ClientCreatorPool {
 	c := ClientCreatorPool{}
 	ctxLogger := logging.NewNoopCtxLogger(t)
 	scope, _, _ := metrics.NewLoggingScope(ctxLogger, "null")
-	c.Initialize(configs, scope)
+	_ = c.Initialize(configs, scope)
 	return c
 }
 
@@ -70,5 +70,4 @@ func TestGetClientCreatorWithMaxRemainingRateLimit(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, clientCreator)
 	assert.Equal(t, 9000, c.GetRateLimitRemaining(564754))
-
 }
