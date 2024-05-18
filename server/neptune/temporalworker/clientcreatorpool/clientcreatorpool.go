@@ -73,3 +73,7 @@ func (c *ClientCreatorPool) GetClientCreatorWithMaxRemainingRateLimit() (githuba
 func (c *ClientCreatorPool) SetRateLimitRemaining(id int, remaining int) {
 	c.idToRateLimitRemaning[id] = remaining
 }
+
+func (c *ClientCreatorPool) GetRateLimitRemaining(id int) int {
+	return c.idToRateLimitRemaning[id]
+}
