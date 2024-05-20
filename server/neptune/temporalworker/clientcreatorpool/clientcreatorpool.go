@@ -44,7 +44,8 @@ func (c *ClientCreatorPool) Initialize(configs []ClientCreatorPoolConfig, scope 
 			return errors.Wrap(err, "client creator")
 		}
 		c.idToClientCreator[config.id] = clientCreator
-		// just needs to be non-zero, true value will be updated within 60 seconds by the cron that checks the rate limit
+		// For the rate limit remaining, initially needs to be non-zero, the actual rate limit number value will be
+		// updated within 60 seconds by the cron that checks the rate limit
 		c.idToRateLimitRemaning[config.id] = 100
 	}
 
