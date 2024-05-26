@@ -70,9 +70,10 @@ type GlobalCfg struct {
 
 // This is here for using an extra github app
 type ExtraGithubRateLimit struct {
-	GHSlug       string
-	GHAppID      int // note that this is also known as the "integration ID"
-	GHAppKeyPath string
+	GHSlug          string
+	GHAppID         int // note that this is also known as the "integration ID"
+	GHAppKeyPath    string
+	GHWebHookSecret string
 }
 
 type AdhocMode struct {
