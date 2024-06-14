@@ -3,10 +3,11 @@ package activities
 import (
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
@@ -133,6 +134,7 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 		},
 		{
@@ -157,6 +159,7 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 		},
 		{
@@ -173,6 +176,7 @@ func TestTerraformInit_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 
 			// defaults
@@ -267,6 +271,7 @@ func TestTerraformInit_StreamsOutput(t *testing.T) {
 			"DIR":                        "some/path",
 			"TF_IN_AUTOMATION":           "true",
 			"TF_PLUGIN_CACHE_DIR":        "some/dir",
+			"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 		},
 		version: expectedVersion,
 		resp:    expectedMsgStr,
@@ -337,6 +342,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 		},
 		{
@@ -367,6 +373,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 		},
 		{
@@ -387,6 +394,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 		},
 		{
@@ -404,6 +412,7 @@ func TestTerraformPlan_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 
 			// default
@@ -512,6 +521,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 					"DIR":                        "some/path",
 					"TF_IN_AUTOMATION":           "true",
 					"TF_PLUGIN_CACHE_DIR":        "some/dir",
+					"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 				},
 				version: expectedVersion,
 				resp:    expectedMsgStr,
@@ -526,6 +536,7 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 					"DIR":                        "some/path",
 					"TF_IN_AUTOMATION":           "true",
 					"TF_PLUGIN_CACHE_DIR":        "some/dir",
+					"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 				},
 				version: expectedVersion,
 				resp:    "{\"format_version\": \"1.0\",\"resource_changes\":[{\"change\":{\"actions\":[\"update\"]},\"address\":\"type.resource\"}]}",
@@ -602,6 +613,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 		},
 		{
@@ -624,6 +636,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 		},
 		{
