@@ -5,11 +5,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"io"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/sdk/activity"
@@ -23,11 +24,12 @@ import (
 )
 
 const (
-	TFInAutomation           = "TF_IN_AUTOMATION"
-	TFInAutomationVal        = "true"
-	AtlantisTerraformVersion = "ATLANTIS_TERRAFORM_VERSION"
-	Dir                      = "DIR"
-	TFPluginCacheDir         = "TF_PLUGIN_CACHE_DIR"
+	TFInAutomation                        = "TF_IN_AUTOMATION"
+	TFInAutomationVal                     = "true"
+	AtlantisTerraformVersion              = "ATLANTIS_TERRAFORM_VERSION"
+	Dir                                   = "DIR"
+	TFPluginCacheDir                      = "TF_PLUGIN_CACHE_DIR"
+	PluginCacheMayBreakDependencyLockFile = "TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE"
 )
 
 // TerraformClientError can be used to assert a non-retryable error type for
@@ -419,4 +421,6 @@ func (t *terraformActivities) addTerraformEnvs(envs map[string]string, path stri
 	envs[AtlantisTerraformVersion] = tfVersion.String()
 	envs[Dir] = path
 	envs[TFPluginCacheDir] = t.CacheDir
+	// This is
+	envs[PluginCacheMayBreakDependencyLockFile] = "true"
 }
