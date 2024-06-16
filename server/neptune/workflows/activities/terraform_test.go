@@ -653,6 +653,7 @@ func TestTerraformApply_RequestValidation(t *testing.T) {
 				"DIR":                        "some/path",
 				"TF_IN_AUTOMATION":           "true",
 				"TF_PLUGIN_CACHE_DIR":        "some/dir",
+				"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 			},
 
 			//default
@@ -733,6 +734,7 @@ func TestTerraformApply_StreamsOutput(t *testing.T) {
 			"DIR":                        "some/path",
 			"TF_IN_AUTOMATION":           "true",
 			"TF_PLUGIN_CACHE_DIR":        "some/dir",
+			"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
 		},
 		version: expectedVersion,
 		resp:    expectedMsgStr,
