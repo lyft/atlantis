@@ -1,9 +1,0 @@
-repos:
-- id: /.*/
-  apply_requirements: [approved]
-policies:
-  policy_sets:
-    - name: test_policy
-      owner: runatlantis
-      paths:
-        - policies/policy.rego

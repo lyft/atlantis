@@ -1,5 +1,0 @@
-Ran Apply for dir: `.` workspace: `default`
-
-```diff
-atlantis apply is disabled for this project. Please track the deployment when the PR is merged. 
-```
