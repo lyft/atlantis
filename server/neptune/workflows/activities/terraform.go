@@ -421,6 +421,8 @@ func (t *terraformActivities) addTerraformEnvs(envs map[string]string, path stri
 	envs[AtlantisTerraformVersion] = tfVersion.String()
 	envs[Dir] = path
 	envs[TFPluginCacheDir] = t.CacheDir
-	// This is
+	// This is not a long-term fix. Eventually the underlying functionality in terraform will be changed.
+	// See https://developer.hashicorp.com/terraform/cli/config/config-file#allowing-the-provider-plugin-cache-to-break-the-dependency-lock-file
+	// and https://github.com/hashicorp/terraform/issues/32205 for discussions and context.
 	envs[PluginCacheMayBreakDependencyLockFile] = "true"
 }
