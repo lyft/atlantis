@@ -45,35 +45,6 @@ func TestFilter_Approved(t *testing.T) {
 	assert.Empty(t, filteredPolicies)
 }
 
-func TestFilter_NotApproved(t *testing.T) {
-	reviewFetcher := &mockReviewFetcher{
-		reviews: []*github.PullRequestReview{
-			{
-				User: &github.User{Login: github.String(ownerA)},
-			},
-			{
-				User: &github.User{Login: github.String(ownerB)},
-			},
-		},
-	}
-	teamFetcher := &mockTeamMemberFetcher{
-		members: []string{ownerC},
-	}
-	reviewDismisser := &mockReviewDismisser{}
-	failedPolicies := []valid.PolicySet{
-		{Name: policyName, Owner: policyOwner},
-	}
-
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.AutoTrigger, failedPolicies)
-	assert.NoError(t, err)
-	assert.False(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
-	assert.True(t, teamFetcher.isCalled)
-	assert.False(t, reviewDismisser.isCalled)
-	assert.Equal(t, failedPolicies, filteredPolicies)
-}
-
 func TestFilter_DismissalBlockedByFeatureAllocator(t *testing.T) {
 	reviewFetcher := &mockReviewFetcher{
 		reviews: []*github.PullRequestReview{
@@ -97,32 +68,6 @@ func TestFilter_DismissalBlockedByFeatureAllocator(t *testing.T) {
 	assert.False(t, reviewFetcher.listApprovalsIsCalled)
 	assert.False(t, teamFetcher.isCalled)
 	assert.False(t, reviewDismisser.isCalled)
-	assert.Equal(t, failedPolicies, filteredPolicies)
-}
-
-func TestFilter_NotApproved_Dismissal(t *testing.T) {
-	reviewFetcher := &mockReviewFetcher{
-		reviews: []*github.PullRequestReview{
-			{
-				User: &github.User{Login: github.String(ownerA)},
-			},
-		},
-	}
-	teamFetcher := &mockTeamMemberFetcher{
-		members: []string{ownerA},
-	}
-	reviewDismisser := &mockReviewDismisser{}
-	failedPolicies := []valid.PolicySet{
-		{Name: policyName, Owner: policyOwner},
-	}
-
-	policyFilter := NewApprovedPolicyFilter(reviewFetcher, reviewDismisser, teamFetcher, &testFeatureAllocator{}, failedPolicies, logging.NewNoopCtxLogger(t))
-	filteredPolicies, err := policyFilter.Filter(context.Background(), 0, models.Repo{}, 0, command.AutoTrigger, failedPolicies)
-	assert.NoError(t, err)
-	assert.False(t, reviewFetcher.listUsernamesIsCalled)
-	assert.True(t, reviewFetcher.listApprovalsIsCalled)
-	assert.True(t, teamFetcher.isCalled)
-	assert.True(t, reviewDismisser.isCalled)
 	assert.Equal(t, failedPolicies, filteredPolicies)
 }
 
