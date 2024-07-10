@@ -34,36 +34,6 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
-var projectCommandTemplateWithLogs = `
-| **Command Name** | **Project** | **Workspace** | **Status** | **Logs** |  
-| - | - | - | - | - |
-| %s  | {%s}  | {%s}  | {%s}  | %s  | 
-`
-
-var projectCommandTemplate = `
-| **Command Name**  | **Project** | **Workspace** | **Status** | 
-| - | - | - | - |
-| %s  | {%s}  | {%s}  | {%s}  |
-`
-
-var commandTemplate = `
-| **Command Name**  |  **Status** |  
-| - | - |
-| %s  | {%s}  | 
-
-:information_source: Visit the checkrun for the root in the navigation panel on your left to view logs and details on the operation. 
-
-`
-
-var commandTemplateWithCount = `
-| **Command Name** | **Num Total** | **Num Success** | **Status** |  
-| - | - | - | - |
-| %s | {%s} | {%s} | {%s} |  
-
-:information_source: Visit the checkrun for the root in the navigation panel on your left to view logs and details on the operation. 
-
-`
-
 // github checks conclusion
 type ChecksConclusion int //nolint:golint // avoiding refactor while adding linter action
 
@@ -119,8 +89,6 @@ func (e CheckStatus) String() string {
 // by GitHub.
 const (
 	maxCommentLength = 65536
-	// Reference: https://github.com/github/docs/issues/3765
-	maxChecksOutputLength = 65535
 )
 
 // allows for custom handling of github 404s
@@ -498,32 +466,6 @@ func (g *GithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest
 func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
 	// since legacy deprecation feature flag was enabled (2024), we don't need to do the updating of check runs
 	return "", nil
-}
-
-// Github Checks uses Status and Conclusion to report status of the check run. Need to map models.VcsStatus to Status and Conclusion
-// Status -> queued, in_progress, completed
-// Conclusion -> failure, neutral, cancelled, timed_out, or action_required. (Optional. Required if you provide a status of "completed".)
-func (g *GithubClient) resolveChecksStatus(state models.VCSStatus) (string, string) {
-	status := Queued
-	conclusion := Neutral
-
-	switch state {
-	case models.SuccessVCSStatus:
-		status = Completed
-		conclusion = Success
-
-	case models.PendingVCSStatus:
-		status = InProgress
-
-	case models.FailedVCSStatus:
-		status = Completed
-		conclusion = Failure
-
-	case models.QueuedVCSStatus:
-		status = Queued
-	}
-
-	return status.String(), conclusion.String()
 }
 
 // MarkdownPullLink specifies the string used in a pull request comment to reference another pull request.

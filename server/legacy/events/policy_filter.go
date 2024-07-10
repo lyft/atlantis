@@ -78,23 +78,6 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 	return filteredFailedPolicies, nil
 }
 
-func (p *ApprovedPolicyFilter) approverIsOwner(ctx context.Context, installationToken int64, approval *gh.PullRequestReview) (bool, error) {
-	if approval.GetUser() == nil {
-		return false, errors.New("failed to identify approver")
-	}
-	reviewers := []string{approval.GetUser().GetLogin()}
-	for _, policy := range p.policies {
-		isOwner, err := p.reviewersContainsPolicyOwner(ctx, installationToken, reviewers, policy)
-		if err != nil {
-			return false, errors.Wrap(err, "validating policy approval")
-		}
-		if isOwner {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func (p *ApprovedPolicyFilter) reviewersContainsPolicyOwner(ctx context.Context, installationToken int64, reviewers []string, policy valid.PolicySet) (bool, error) {
 	// fetch owners from GH team
 	owners, err := p.teamMemberFetcher.ListTeamMembers(ctx, installationToken, policy.Owner)

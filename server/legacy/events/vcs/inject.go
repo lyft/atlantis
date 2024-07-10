@@ -3,7 +3,7 @@ package vcs
 // Declare all package dependencies here
 
 func NewPullMergeabilityChecker(vcsStatusPrefix string) MergeabilityChecker {
-	statusFilters := newValidStatusFilters(vcsStatusPrefix)
+	statusFilters := newValidStatusFilters()
 	checksFilters := newValidChecksFilters(vcsStatusPrefix)
 
 	return &PullMergeabilityChecker{
@@ -11,7 +11,7 @@ func NewPullMergeabilityChecker(vcsStatusPrefix string) MergeabilityChecker {
 	}
 }
 
-func newValidStatusFilters(vcsStatusPrefix string) []ValidStatusFilter {
+func newValidStatusFilters() []ValidStatusFilter {
 	return []ValidStatusFilter{
 		SuccessStateFilter,
 	}
