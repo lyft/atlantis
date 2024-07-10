@@ -95,17 +95,6 @@ type UpdateCheckRunResponse struct {
 }
 
 func (a *githubActivities) GithubUpdateCheckRun(ctx context.Context, request UpdateCheckRunRequest) (UpdateCheckRunResponse, error) {
-	shouldAllocate, err := a.Allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
-		RepoName: request.Repo.GetFullName(),
-	})
-	if err != nil {
-		activity.GetLogger(ctx).Error("unable to allocate legacy deprecation feature flag", key.ErrKey, err)
-	}
-	// skip check run mutation if we're in PR mode and legacy deprecation is not enabled
-	if request.Mode == terraform.PR && !shouldAllocate {
-		return UpdateCheckRunResponse{}, nil
-	}
-
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
 		Text:    &request.Title,
@@ -152,17 +141,6 @@ func (a *githubActivities) GithubUpdateCheckRun(ctx context.Context, request Upd
 }
 
 func (a *githubActivities) GithubCreateCheckRun(ctx context.Context, request CreateCheckRunRequest) (CreateCheckRunResponse, error) {
-	shouldAllocate, err := a.Allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
-		RepoName: request.Repo.GetFullName(),
-	})
-	if err != nil {
-		activity.GetLogger(ctx).Error("unable to allocate legacy deprecation feature flag", key.ErrKey, err)
-	}
-	// skip check run mutation if we're in PR mode and legacy deprecation is not enabled
-	if request.Mode == terraform.PR && !shouldAllocate {
-		return CreateCheckRunResponse{}, nil
-	}
-
 	output := github.CheckRunOutput{
 		Title:   &request.Title,
 		Text:    &request.Title,
@@ -412,20 +390,10 @@ type DismissRequest struct {
 type DismissResponse struct{}
 
 func (a *githubActivities) GithubDismiss(ctx context.Context, request DismissRequest) (DismissResponse, error) {
-	shouldAllocate, err := a.Allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
-		RepoName: request.Repo.GetFullName(),
-	})
-	if err != nil {
-		return DismissResponse{}, errors.Wrap(err, "unable to allocate legacy deprecation feature flag")
-	}
-	// skip PR dismissals if we're in PR mode and legacy deprecation is not enabled
-	if !shouldAllocate {
-		return DismissResponse{}, nil
-	}
 	dismissRequest := &github.PullRequestReviewDismissalRequest{
 		Message: github.String(request.DismissReason),
 	}
-	_, _, err = a.Client.DismissReview(
+	_, _, err := a.Client.DismissReview(
 		ctx,
 		request.Repo.Owner,
 		request.Repo.Name,

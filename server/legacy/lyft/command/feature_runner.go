@@ -1,8 +1,6 @@
 package command
 
 import (
-	"fmt"
-
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy/events"
 	"github.com/runatlantis/atlantis/server/legacy/events/command"
@@ -33,20 +31,9 @@ func (a *PlatformModeRunner) Run(ctx *command.Context, cmd *command.Comment) {
 		return
 	}
 
-	shouldAllocate, err := a.Allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{RepoName: ctx.HeadRepo.FullName})
-	if err != nil {
-		a.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err))
-	}
-
-	// if this isn't allocated don't worry about the rest
-	if !shouldAllocate {
-		a.Runner.Run(ctx, cmd)
-		return
-	}
-
 	// now let's determine whether the repo is configured for platform mode by building commands
 	var projectCmds []command.ProjectContext
-	projectCmds, err = a.Builder.BuildApplyCommands(ctx, cmd)
+	projectCmds, err := a.Builder.BuildApplyCommands(ctx, cmd)
 	if err != nil {
 		a.Logger.ErrorContext(ctx.RequestCtx, err.Error())
 		return
@@ -74,12 +61,7 @@ type PlatformModeProjectRunner struct { //create object and test
 
 // Plan runs terraform plan for the project described by ctx.
 func (p *PlatformModeProjectRunner) Plan(ctx command.ProjectContext) command.ProjectResult {
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{RepoName: ctx.HeadRepo.FullName})
-	if err != nil {
-		p.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err))
-	}
-
-	if shouldAllocate && (ctx.WorkflowModeType == valid.PlatformWorkflowMode) {
+	if ctx.WorkflowModeType == valid.PlatformWorkflowMode {
 		return p.PlatformModeRunner.Plan(ctx)
 	}
 
@@ -88,12 +70,7 @@ func (p *PlatformModeProjectRunner) Plan(ctx command.ProjectContext) command.Pro
 
 // PolicyCheck evaluates policies defined with Rego for the project described by ctx.
 func (p *PlatformModeProjectRunner) PolicyCheck(ctx command.ProjectContext) command.ProjectResult {
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{RepoName: ctx.HeadRepo.FullName})
-	if err != nil {
-		p.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err))
-	}
-
-	if shouldAllocate && (ctx.WorkflowModeType == valid.PlatformWorkflowMode) {
+	if ctx.WorkflowModeType == valid.PlatformWorkflowMode {
 		return p.PlatformModeRunner.PolicyCheck(ctx)
 	}
 
@@ -102,12 +79,7 @@ func (p *PlatformModeProjectRunner) PolicyCheck(ctx command.ProjectContext) comm
 
 // Apply runs terraform apply for the project described by ctx.
 func (p *PlatformModeProjectRunner) Apply(ctx command.ProjectContext) command.ProjectResult {
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{RepoName: ctx.HeadRepo.FullName})
-	if err != nil {
-		p.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err))
-	}
-
-	if shouldAllocate && (ctx.WorkflowModeType == valid.PlatformWorkflowMode) {
+	if ctx.WorkflowModeType == valid.PlatformWorkflowMode {
 		return command.ProjectResult{
 			Command:      command.Apply,
 			RepoRelDir:   ctx.RepoRelDir,
@@ -122,12 +94,7 @@ func (p *PlatformModeProjectRunner) Apply(ctx command.ProjectContext) command.Pr
 }
 
 func (p *PlatformModeProjectRunner) Version(ctx command.ProjectContext) command.ProjectResult {
-	shouldAllocate, err := p.Allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{RepoName: ctx.HeadRepo.FullName})
-	if err != nil {
-		p.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err))
-	}
-
-	if shouldAllocate && (ctx.WorkflowModeType == valid.PlatformWorkflowMode) {
+	if ctx.WorkflowModeType == valid.PlatformWorkflowMode {
 		return p.PlatformModeRunner.Version(ctx)
 	}
 

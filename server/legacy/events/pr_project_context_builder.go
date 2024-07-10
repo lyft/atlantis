@@ -1,8 +1,6 @@
 package events
 
 import (
-	"fmt"
-
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy/events/command"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -38,23 +36,14 @@ func (p *PlatformModeProjectContextBuilder) BuildProjectContext(
 	repoDir string,
 	contextFlags *command.ContextFlags,
 ) []command.ProjectContext {
-	shouldAllocate, err := p.allocator.ShouldAllocate(feature.PlatformMode, feature.FeatureContext{RepoName: ctx.HeadRepo.FullName})
-	if err != nil {
-		p.Logger.ErrorContext(ctx.RequestCtx, fmt.Sprintf("unable to allocate for feature: %s, error: %s", feature.PlatformMode, err))
-	}
-
-	if shouldAllocate {
-		return buildContext(
-			ctx,
-			cmdName,
-			getSteps(cmdName, prjCfg.PullRequestWorkflow, contextFlags.LogLevel),
-			p.CommentBuilder,
-			prjCfg,
-			commentArgs,
-			repoDir,
-			contextFlags,
-		)
-	}
-
-	return p.delegate.BuildProjectContext(ctx, cmdName, prjCfg, commentArgs, repoDir, contextFlags)
+	return buildContext(
+		ctx,
+		cmdName,
+		getSteps(cmdName, prjCfg.PullRequestWorkflow, contextFlags.LogLevel),
+		p.CommentBuilder,
+		prjCfg,
+		commentArgs,
+		repoDir,
+		contextFlags,
+	)
 }
