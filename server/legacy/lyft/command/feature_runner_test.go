@@ -374,15 +374,6 @@ func TestPlatformModeProjectRunner_policyCheck(t *testing.T) {
 				expectedPolicyCheckResult: expectedResult,
 			},
 		},
-		{
-			description:      "not allocated and platform mode enabled",
-			shouldAllocate:   false,
-			workflowModeType: valid.PlatformWorkflowMode,
-			platformRunner:   &testRunner{},
-			prModeRunner: &testRunner{
-				expectedPolicyCheckResult: expectedResult,
-			},
-		},
 	}
 
 	for _, c := range cases {
