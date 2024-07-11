@@ -5,12 +5,13 @@ package mocks
 
 import (
 	context "context"
+	"reflect"
+	"time"
+
 	go_version "github.com/hashicorp/go-version"
 	pegomock "github.com/petergtz/pegomock"
 	helpers "github.com/runatlantis/atlantis/server/legacy/core/terraform/helpers"
 	command "github.com/runatlantis/atlantis/server/legacy/events/command"
-	"reflect"
-	"time"
 )
 
 type MockClientAsync struct {

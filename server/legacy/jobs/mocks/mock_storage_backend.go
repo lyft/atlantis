@@ -5,9 +5,10 @@ package mocks
 
 import (
 	context "context"
-	pegomock "github.com/petergtz/pegomock"
 	"reflect"
 	"time"
+
+	pegomock "github.com/petergtz/pegomock"
 )
 
 type MockStorageBackend struct {

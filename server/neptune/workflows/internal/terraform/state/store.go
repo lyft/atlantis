@@ -2,9 +2,10 @@ package state
 
 import (
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"

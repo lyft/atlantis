@@ -5,12 +5,13 @@ package mocks
 
 import (
 	context "context"
+	"reflect"
+	"time"
+
 	go_version "github.com/hashicorp/go-version"
 	pegomock "github.com/petergtz/pegomock"
 	command "github.com/runatlantis/atlantis/server/legacy/events/command"
 	logging "github.com/runatlantis/atlantis/server/logging"
-	"reflect"
-	"time"
 )
 
 type MockVersionedExecutorWorkflow struct {

@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 

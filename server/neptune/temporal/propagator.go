@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"context"
+
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 
 	"github.com/pkg/errors"

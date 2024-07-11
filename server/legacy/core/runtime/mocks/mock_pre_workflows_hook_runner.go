@@ -5,10 +5,11 @@ package mocks
 
 import (
 	context "context"
-	pegomock "github.com/petergtz/pegomock"
-	models "github.com/runatlantis/atlantis/server/models"
 	"reflect"
 	"time"
+
+	pegomock "github.com/petergtz/pegomock"
+	models "github.com/runatlantis/atlantis/server/models"
 )
 
 type MockPreWorkflowHookRunner struct {

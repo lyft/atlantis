@@ -2,11 +2,12 @@ package crons
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/uber-go/tally/v4"
-	"net/http"
 )
 
 const (

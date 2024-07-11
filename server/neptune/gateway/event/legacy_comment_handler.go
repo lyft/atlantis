@@ -3,6 +3,7 @@ package event
 import (
 	"bytes"
 	"context"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy/events/command"

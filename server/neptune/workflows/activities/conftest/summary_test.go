@@ -1,9 +1,10 @@
 package conftest
 
 import (
+	"testing"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"gopkg.in/go-playground/assert.v1"
-	"testing"
 )
 
 func TestNewValidateSummaryFromResults(t *testing.T) {

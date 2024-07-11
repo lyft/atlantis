@@ -4,11 +4,12 @@
 package mocks
 
 import (
+	"reflect"
+	"time"
+
 	pegomock "github.com/petergtz/pegomock"
 	locking "github.com/runatlantis/atlantis/server/legacy/core/locking"
 	models "github.com/runatlantis/atlantis/server/models"
-	"reflect"
-	"time"
 )
 
 type MockLocker struct {

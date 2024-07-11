@@ -3,12 +3,13 @@ package event_test
 import (
 	"bytes"
 	"context"
-	"github.com/runatlantis/atlantis/server/config/valid"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"io"
 	"net/http"
 	"testing"
+
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 
 	buffered "github.com/runatlantis/atlantis/server/legacy/http"
 	"github.com/runatlantis/atlantis/server/logging"

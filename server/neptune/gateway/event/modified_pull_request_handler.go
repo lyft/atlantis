@@ -2,8 +2,9 @@ package event
 
 import (
 	"context"
-	"github.com/hashicorp/go-multierror"
 	"time"
+
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"

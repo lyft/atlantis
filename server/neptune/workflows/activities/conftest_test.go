@@ -1,12 +1,13 @@
 package activities
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
-	"strings"
-	"testing"
 )
 
 func TestConftest_RequestValidation(t *testing.T) {

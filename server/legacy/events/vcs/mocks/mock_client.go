@@ -5,11 +5,12 @@ package mocks
 
 import (
 	context "context"
+	"reflect"
+	"time"
+
 	pegomock "github.com/petergtz/pegomock"
 	types "github.com/runatlantis/atlantis/server/legacy/events/vcs/types"
 	models "github.com/runatlantis/atlantis/server/models"
-	"reflect"
-	"time"
 )
 
 type MockClient struct {

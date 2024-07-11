@@ -5,12 +5,13 @@ package mocks
 
 import (
 	context "context"
+	"reflect"
+	"time"
+
 	pegomock "github.com/petergtz/pegomock"
 	events "github.com/runatlantis/atlantis/server/legacy/events"
 	logging "github.com/runatlantis/atlantis/server/logging"
 	models "github.com/runatlantis/atlantis/server/models"
-	"reflect"
-	"time"
 )
 
 type MockProjectLocker struct {

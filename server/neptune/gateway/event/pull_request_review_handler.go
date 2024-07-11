@@ -3,10 +3,11 @@ package event
 import (
 	"bytes"
 	"context"
+	"time"
+
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
-	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/uber-go/tally/v4"

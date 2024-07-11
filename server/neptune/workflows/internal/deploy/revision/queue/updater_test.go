@@ -1,9 +1,10 @@
 package queue_test
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"testing"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"

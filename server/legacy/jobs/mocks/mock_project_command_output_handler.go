@@ -5,12 +5,13 @@ package mocks
 
 import (
 	context "context"
+	"reflect"
+	"time"
+
 	pegomock "github.com/petergtz/pegomock"
 	command "github.com/runatlantis/atlantis/server/legacy/events/command"
 	jobs "github.com/runatlantis/atlantis/server/legacy/jobs"
 	models "github.com/runatlantis/atlantis/server/models"
-	"reflect"
-	"time"
 )
 
 type MockProjectCommandOutputHandler struct {

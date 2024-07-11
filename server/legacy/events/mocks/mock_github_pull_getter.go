@@ -4,11 +4,12 @@
 package mocks
 
 import (
+	"reflect"
+	"time"
+
 	github "github.com/google/go-github/v45/github"
 	pegomock "github.com/petergtz/pegomock"
 	models "github.com/runatlantis/atlantis/server/models"
-	"reflect"
-	"time"
 )
 
 type MockGithubPullGetter struct {

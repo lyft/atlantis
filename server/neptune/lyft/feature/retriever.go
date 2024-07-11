@@ -2,6 +2,7 @@ package feature
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 	gh "github.com/runatlantis/atlantis/server/vcs/provider/github"
 )

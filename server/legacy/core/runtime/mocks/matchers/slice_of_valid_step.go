@@ -2,9 +2,10 @@
 package matchers
 
 import (
+	"reflect"
+
 	"github.com/petergtz/pegomock"
 	valid "github.com/runatlantis/atlantis/server/config/valid"
-	"reflect"
 )
 
 func AnySliceOfValidStep() []valid.Step {

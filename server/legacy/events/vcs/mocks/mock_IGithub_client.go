@@ -5,12 +5,13 @@ package mocks
 
 import (
 	context "context"
+	"reflect"
+	"time"
+
 	github "github.com/google/go-github/v45/github"
 	pegomock "github.com/petergtz/pegomock"
 	types "github.com/runatlantis/atlantis/server/legacy/events/vcs/types"
 	models "github.com/runatlantis/atlantis/server/models"
-	"reflect"
-	"time"
 )
 
 type MockIGithubClient struct {

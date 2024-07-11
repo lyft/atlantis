@@ -4,11 +4,12 @@
 package mocks
 
 import (
+	"reflect"
+	"time"
+
 	pegomock "github.com/petergtz/pegomock"
 	logging "github.com/runatlantis/atlantis/server/logging"
 	models "github.com/runatlantis/atlantis/server/models"
-	"reflect"
-	"time"
 )
 
 type MockWorkingDir struct {

@@ -3,10 +3,11 @@ package github
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	gh "github.com/google/go-github/v45/github"
 	"github.com/palantir/go-githubapp/githubapp"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 type PRFetcher struct {

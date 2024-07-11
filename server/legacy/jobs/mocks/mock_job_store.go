@@ -5,10 +5,11 @@ package mocks
 
 import (
 	context "context"
-	pegomock "github.com/petergtz/pegomock"
-	jobs "github.com/runatlantis/atlantis/server/legacy/jobs"
 	"reflect"
 	"time"
+
+	pegomock "github.com/petergtz/pegomock"
+	jobs "github.com/runatlantis/atlantis/server/legacy/jobs"
 )
 
 type MockJobStore struct {

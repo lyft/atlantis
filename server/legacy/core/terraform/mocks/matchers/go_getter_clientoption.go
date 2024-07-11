@@ -2,9 +2,10 @@
 package matchers
 
 import (
+	"reflect"
+
 	go_getter "github.com/hashicorp/go-getter"
 	"github.com/petergtz/pegomock"
-	"reflect"
 )
 
 func AnyGoGetterClientOption() go_getter.ClientOption {

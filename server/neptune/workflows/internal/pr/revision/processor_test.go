@@ -1,6 +1,9 @@
 package revision_test
 
 import (
+	"testing"
+	"time"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
@@ -11,8 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
-	"testing"
-	"time"
 )
 
 const (
