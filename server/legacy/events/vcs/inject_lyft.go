@@ -5,7 +5,7 @@ import "github.com/runatlantis/atlantis/server/legacy/events/vcs/lyft"
 // Declare all lyft package dependencies here
 
 func NewLyftPullMergeabilityChecker(vcsStatusPrefix string) MergeabilityChecker {
-	statusFilters := newValidStatusFilters(vcsStatusPrefix)
+	statusFilters := newValidStatusFilters()
 	statusFilters = append(statusFilters, lyft.NewSQFilter())
 
 	checksFilters := newValidChecksFilters(vcsStatusPrefix)

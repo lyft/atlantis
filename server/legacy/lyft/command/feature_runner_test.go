@@ -231,61 +231,6 @@ func TestPlatformModeRunner_allocatesButPartialPlatformMode(t *testing.T) {
 	assert.False(t, commenter.called)
 }
 
-func TestPlatformModeRunner_doesntAllocate(t *testing.T) {
-	ctx := &command.Context{
-		RequestCtx: context.Background(),
-		HeadRepo: models.Repo{
-			FullName: "owner/repo",
-		},
-		Pull: models.PullRequest{
-			Num: 1,
-			BaseRepo: models.Repo{
-				FullName: "owner/base",
-			},
-		},
-	}
-	cmd := &command.Comment{
-		Workspace: "hi",
-	}
-
-	commenter := &TestCommenter{
-		expectedT:       t,
-		expectedComment: "Platform mode does not support legacy apply commands. Please merge your PR to apply the changes. ",
-		expectedPullNum: 1,
-		expectedRepo:    ctx.Pull.BaseRepo,
-	}
-
-	builder := &TestBuilder{
-		Type: valid.PlatformWorkflowMode,
-	}
-	runner := &testCMDRunner{
-		t:           t,
-		expectedCmd: cmd,
-	}
-
-	subject := &lyftCommand.PlatformModeRunner{
-		Allocator: &testAllocator{
-			expectedFeatureName: feature.PlatformMode,
-			expectedT:           t,
-			expectedCtx:         feature.FeatureContext{RepoName: "owner/repo"},
-			expectedResult:      false,
-		},
-		Logger:  logging.NewNoopCtxLogger(t),
-		Builder: builder,
-		TemplateLoader: template.Loader[lyftCommand.LegacyApplyCommentInput]{
-			GlobalCfg: valid.GlobalCfg{},
-		},
-		VCSClient: commenter,
-		Runner:    runner,
-	}
-
-	subject.Run(ctx, cmd)
-
-	assert.True(t, runner.called)
-	assert.False(t, builder.called)
-	assert.False(t, commenter.called)
-}
-
 func TestPlatformModeRunner_success(t *testing.T) {
 	ctx := &command.Context{
 		RequestCtx: context.Background(),
@@ -367,15 +312,6 @@ func TestPlatformModeProjectRunner_plan(t *testing.T) {
 				expectedPlanResult: expectedResult,
 			},
 		},
-		{
-			description:      "not allocated and platform mode enabled",
-			shouldAllocate:   false,
-			workflowModeType: valid.PlatformWorkflowMode,
-			platformRunner:   &testRunner{},
-			prModeRunner: &testRunner{
-				expectedPlanResult: expectedResult,
-			},
-		},
 	}
 
 	for _, c := range cases {
@@ -438,15 +374,6 @@ func TestPlatformModeProjectRunner_policyCheck(t *testing.T) {
 				expectedPolicyCheckResult: expectedResult,
 			},
 		},
-		{
-			description:      "not allocated and platform mode enabled",
-			shouldAllocate:   false,
-			workflowModeType: valid.PlatformWorkflowMode,
-			platformRunner:   &testRunner{},
-			prModeRunner: &testRunner{
-				expectedPolicyCheckResult: expectedResult,
-			},
-		},
 	}
 
 	for _, c := range cases {
@@ -466,174 +393,6 @@ func TestPlatformModeProjectRunner_policyCheck(t *testing.T) {
 			}
 
 			result := subject.PolicyCheck(command.ProjectContext{
-				RequestCtx: context.Background(),
-				HeadRepo: models.Repo{
-					FullName: "nish/repo",
-				},
-				WorkflowModeType: c.workflowModeType,
-			})
-
-			assert.Equal(t, expectedResult, result)
-		})
-	}
-}
-
-func TestPlatformModeProjectRunner_apply(t *testing.T) {
-	cases := []struct {
-		description      string
-		shouldAllocate   bool
-		workflowModeType valid.WorkflowModeType
-		platformRunner   events.ProjectCommandRunner
-		prModeRunner     events.ProjectCommandRunner
-		subject          lyftCommand.PlatformModeProjectRunner
-		expectedResult   command.ProjectResult
-	}{
-		{
-			description:      "allocated and platform mode enabled",
-			shouldAllocate:   true,
-			workflowModeType: valid.PlatformWorkflowMode,
-			platformRunner: &testRunner{
-				expectedApplyResult: command.ProjectResult{
-					RepoRelDir:   "reldir",
-					Workspace:    "default",
-					ProjectName:  "project",
-					StatusID:     "id",
-					Command:      command.Apply,
-					ApplySuccess: "atlantis apply is disabled for this project. Please track the deployment when the PR is merged. ",
-				},
-			},
-			expectedResult: command.ProjectResult{
-				RepoRelDir:   "reldir",
-				Workspace:    "default",
-				ProjectName:  "project",
-				StatusID:     "id",
-				Command:      command.Apply,
-				ApplySuccess: "atlantis apply is disabled for this project. Please track the deployment when the PR is merged. ",
-			},
-			prModeRunner: &testRunner{},
-		},
-		{
-			description:      "allocated and platform mode not enabled",
-			shouldAllocate:   true,
-			workflowModeType: valid.DefaultWorkflowMode,
-			platformRunner:   &testRunner{},
-			prModeRunner: &testRunner{
-				expectedApplyResult: command.ProjectResult{
-					JobID: "1234y",
-				},
-			},
-			expectedResult: command.ProjectResult{
-				JobID: "1234y",
-			},
-		},
-		{
-			description:      "not allocated and platform mode enabled",
-			shouldAllocate:   false,
-			workflowModeType: valid.PlatformWorkflowMode,
-			platformRunner:   &testRunner{},
-			prModeRunner: &testRunner{
-				expectedApplyResult: command.ProjectResult{
-					JobID: "1234y",
-				},
-			},
-			expectedResult: command.ProjectResult{
-				JobID: "1234y",
-			},
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.description, func(t *testing.T) {
-			subject := lyftCommand.PlatformModeProjectRunner{
-				PlatformModeRunner: c.platformRunner,
-				PrModeRunner:       c.prModeRunner,
-				Allocator: &testAllocator{
-					expectedResult:      c.shouldAllocate,
-					expectedFeatureName: feature.PlatformMode,
-					expectedCtx: feature.FeatureContext{
-						RepoName: "nish/repo",
-					},
-					expectedT: t,
-				},
-				Logger: logging.NewNoopCtxLogger(t),
-			}
-
-			result := subject.Apply(command.ProjectContext{
-				RequestCtx: context.Background(),
-				HeadRepo: models.Repo{
-					FullName: "nish/repo",
-				},
-				RepoRelDir:       "reldir",
-				Workspace:        "default",
-				ProjectName:      "project",
-				StatusID:         "id",
-				WorkflowModeType: c.workflowModeType,
-			})
-
-			assert.Equal(t, c.expectedResult, result)
-		})
-	}
-}
-
-func TestPlatformModeProjectRunner_version(t *testing.T) {
-	expectedResult := command.ProjectResult{
-		JobID: "1234y",
-	}
-
-	cases := []struct {
-		description      string
-		shouldAllocate   bool
-		workflowModeType valid.WorkflowModeType
-		platformRunner   events.ProjectCommandRunner
-		prModeRunner     events.ProjectCommandRunner
-		subject          lyftCommand.PlatformModeProjectRunner
-	}{
-		{
-			description:      "allocated and platform mode enabled",
-			shouldAllocate:   true,
-			workflowModeType: valid.PlatformWorkflowMode,
-			platformRunner: &testRunner{
-				expectedVersionResult: expectedResult,
-			},
-			prModeRunner: &testRunner{},
-		},
-		{
-			description:      "allocated and platform mode not enabled",
-			shouldAllocate:   true,
-			workflowModeType: valid.DefaultWorkflowMode,
-			platformRunner:   &testRunner{},
-			prModeRunner: &testRunner{
-				expectedVersionResult: expectedResult,
-			},
-		},
-		{
-			description:      "not allocated and platform mode enabled",
-			shouldAllocate:   false,
-			workflowModeType: valid.PlatformWorkflowMode,
-			platformRunner:   &testRunner{},
-			prModeRunner: &testRunner{
-				expectedVersionResult: expectedResult,
-			},
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.description, func(t *testing.T) {
-			subject := lyftCommand.PlatformModeProjectRunner{
-				PlatformModeRunner: c.platformRunner,
-				PrModeRunner:       c.prModeRunner,
-				Allocator: &testAllocator{
-					expectedResult:      c.shouldAllocate,
-					expectedFeatureName: feature.PlatformMode,
-					expectedCtx: feature.FeatureContext{
-						RepoName: "nish/repo",
-					},
-					expectedT: t,
-				},
-				Logger: logging.NewNoopCtxLogger(t),
-			}
-
-			result := subject.Version(command.ProjectContext{
 				RequestCtx: context.Background(),
 				HeadRepo: models.Repo{
 					FullName: "nish/repo",
