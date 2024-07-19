@@ -447,7 +447,7 @@ func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
 				IsApproved: false,
 			},
 		},
-		WorkflowModeType: valid.DefaultWorkflowMode,
+		WorkflowModeType: valid.PlatformWorkflowMode,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
@@ -534,7 +534,7 @@ func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
 			Mergeable: false,
 		},
 		ApplyRequirements: []string{"mergeable"},
-		WorkflowModeType:  valid.DefaultWorkflowMode,
+		WorkflowModeType:  valid.PlatformWorkflowMode,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
