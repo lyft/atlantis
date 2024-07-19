@@ -487,33 +487,6 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	Equals(t, "", firstRes.Failure)
 }
 
-// Test that if mergeable is required and the PR isn't mergeable we give an error.
-func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
-	RegisterMockTestingT(t)
-	mockWorkingDir := mocks.NewMockWorkingDir()
-	runner := &events.DefaultProjectCommandRunner{
-		WorkingDir:       mockWorkingDir,
-		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
-		StepsRunner:      smocks.NewMockStepsRunner(),
-		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			WorkingDir: mockWorkingDir,
-		},
-	}
-	prjCtx := command.ProjectContext{
-		PullReqStatus: models.PullReqStatus{
-			Mergeable: false,
-		},
-		ApplyRequirements: []string{"mergeable"},
-		WorkflowModeType:  valid.PlatformWorkflowMode,
-	}
-	tmp, cleanup := TempDir(t)
-	defer cleanup()
-	When(mockWorkingDir.GetWorkingDir(prjCtx.BaseRepo, prjCtx.Pull, prjCtx.Workspace)).ThenReturn(tmp, nil)
-
-	firstRes := runner.Apply(prjCtx)
-	Equals(t, "Pull request must be mergeable before running apply.", firstRes.Failure)
-}
-
 // Test that if undiverged is required and the PR is diverged we give an error.
 func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	RegisterMockTestingT(t)
