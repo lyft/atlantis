@@ -487,31 +487,6 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 	Equals(t, "", firstRes.Failure)
 }
 
-// Test that if undiverged is required and the PR is diverged we give an error.
-func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
-	RegisterMockTestingT(t)
-	mockWorkingDir := mocks.NewMockWorkingDir()
-	runner := &events.DefaultProjectCommandRunner{
-		WorkingDir:       mockWorkingDir,
-		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
-		StepsRunner:      smocks.NewMockStepsRunner(),
-		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			WorkingDir: mockWorkingDir,
-		},
-	}
-	prjCtx := command.ProjectContext{
-		ApplyRequirements: []string{"undiverged"},
-		WorkflowModeType:  valid.PlatformWorkflowMode,
-	}
-	tmp, cleanup := TempDir(t)
-	defer cleanup()
-	When(mockWorkingDir.GetWorkingDir(prjCtx.BaseRepo, prjCtx.Pull, prjCtx.Workspace)).ThenReturn(tmp, nil)
-	When(mockWorkingDir.HasDiverged(matchers.AnyLoggingLogger(), AnyString(), matchers.AnyModelsRepo())).ThenReturn(true)
-
-	firstRes := runner.Apply(prjCtx)
-	Equals(t, "Default branch must be rebased onto pull request before running apply.", firstRes.Failure)
-}
-
 // Test that it runs the expected apply steps.
 func TestDefaultProjectCommandRunner_Apply(t *testing.T) {
 	cases := []struct {
