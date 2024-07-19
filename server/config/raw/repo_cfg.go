@@ -41,12 +41,12 @@ func (r RepoCfg) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Version, validation.By(equals2)),
 		validation.Field(&r.Projects),
-		validation.Field(&r.WorkflowModeType, validation.In("pr", "platform")),
+		validation.Field(&r.WorkflowModeType, validation.In("platform")),
 	)
 }
 
 func (r RepoCfg) ToValid() valid.RepoCfg {
-	workflowModeType := toWorkflowModeType(r.WorkflowModeType)
+	workflowModeType := toWorkflowModeType()
 
 	var validProjects []valid.Project
 	for _, p := range r.Projects {
@@ -72,11 +72,7 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 	}
 }
 
-func toWorkflowModeType(workflowModeType string) valid.WorkflowModeType {
+func toWorkflowModeType() valid.WorkflowModeType {
 	result := valid.PlatformWorkflowMode
-	switch workflowModeType {
-	case "pr":
-		result = valid.DefaultWorkflowMode
-	}
 	return result
 }

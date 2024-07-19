@@ -97,9 +97,6 @@ func (b *TestMultiBuilder) BuildApplyCommands(ctx *command.Context, comment *com
 		{
 			WorkflowModeType: valid.PlatformWorkflowMode,
 		},
-		{
-			WorkflowModeType: valid.DefaultWorkflowMode,
-		},
 	}, nil
 }
 
@@ -148,7 +145,7 @@ func TestPlatformModeRunner_allocatesButNotPlatformMode(t *testing.T) {
 	}
 
 	builder := &TestBuilder{
-		Type: valid.DefaultWorkflowMode,
+		Type: valid.PlatformWorkflowMode,
 	}
 	runner := &testCMDRunner{
 		t:           t,
@@ -303,15 +300,6 @@ func TestPlatformModeProjectRunner_plan(t *testing.T) {
 			},
 			prModeRunner: &testRunner{},
 		},
-		{
-			description:      "allocated and platform mode not enabled",
-			shouldAllocate:   true,
-			workflowModeType: valid.DefaultWorkflowMode,
-			platformRunner:   &testRunner{},
-			prModeRunner: &testRunner{
-				expectedPlanResult: expectedResult,
-			},
-		},
 	}
 
 	for _, c := range cases {
@@ -364,15 +352,6 @@ func TestPlatformModeProjectRunner_policyCheck(t *testing.T) {
 				expectedPolicyCheckResult: expectedResult,
 			},
 			prModeRunner: &testRunner{},
-		},
-		{
-			description:      "allocated and platform mode not enabled",
-			shouldAllocate:   true,
-			workflowModeType: valid.DefaultWorkflowMode,
-			platformRunner:   &testRunner{},
-			prModeRunner: &testRunner{
-				expectedPolicyCheckResult: expectedResult,
-			},
 		},
 	}
 

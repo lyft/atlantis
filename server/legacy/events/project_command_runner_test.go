@@ -558,7 +558,7 @@ func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
 	}
 	prjCtx := command.ProjectContext{
 		ApplyRequirements: []string{"undiverged"},
-		WorkflowModeType:  valid.DefaultWorkflowMode,
+		WorkflowModeType:  valid.PlatformWorkflowMode,
 	}
 	tmp, cleanup := TempDir(t)
 	defer cleanup()
