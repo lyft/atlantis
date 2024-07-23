@@ -41,7 +41,6 @@ type WorkflowModeType int
 
 const (
 	PlatformWorkflowMode WorkflowModeType = iota
-	DefaultWorkflowMode
 )
 
 type BackendType string

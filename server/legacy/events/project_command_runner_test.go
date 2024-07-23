@@ -427,36 +427,6 @@ func TestDefaultProjectCommandRunner_ApplyNotCloned(t *testing.T) {
 	ErrEquals(t, "project has not been cloned–did you run plan?", firstRes.Error)
 }
 
-// Test that if approval is required and the PR isn't approved we give an error.
-func TestDefaultProjectCommandRunner_ApplyNotApproved(t *testing.T) {
-	RegisterMockTestingT(t)
-	mockWorkingDir := mocks.NewMockWorkingDir()
-	mockSender := mocks.NewMockWebhooksSender()
-	runner := &events.DefaultProjectCommandRunner{
-		WorkingDir:       mockWorkingDir,
-		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
-		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			WorkingDir: mockWorkingDir,
-		},
-		Webhooks: mockSender,
-	}
-	prjCtx := command.ProjectContext{
-		ApplyRequirements: []string{"approved"},
-		PullReqStatus: models.PullReqStatus{
-			ApprovalStatus: models.ApprovalStatus{
-				IsApproved: false,
-			},
-		},
-		WorkflowModeType: valid.DefaultWorkflowMode,
-	}
-	tmp, cleanup := TempDir(t)
-	defer cleanup()
-	When(mockWorkingDir.GetWorkingDir(prjCtx.BaseRepo, prjCtx.Pull, prjCtx.Workspace)).ThenReturn(tmp, nil)
-
-	firstRes := runner.Apply(prjCtx)
-	Equals(t, "Pull request must be approved by at least one person other than the author before running apply.", firstRes.Failure)
-}
-
 func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs_IfPlatformMode(t *testing.T) {
 	RegisterMockTestingT(t)
 	mockWorkingDir := mocks.NewMockWorkingDir()
@@ -515,58 +485,6 @@ func TestDefaultProjectCommandRunner_ForceOverridesApplyReqs(t *testing.T) {
 
 	firstRes := runner.Apply(prjCtx)
 	Equals(t, "", firstRes.Failure)
-}
-
-// Test that if mergeable is required and the PR isn't mergeable we give an error.
-func TestDefaultProjectCommandRunner_ApplyNotMergeable(t *testing.T) {
-	RegisterMockTestingT(t)
-	mockWorkingDir := mocks.NewMockWorkingDir()
-	runner := &events.DefaultProjectCommandRunner{
-		WorkingDir:       mockWorkingDir,
-		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
-		StepsRunner:      smocks.NewMockStepsRunner(),
-		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			WorkingDir: mockWorkingDir,
-		},
-	}
-	prjCtx := command.ProjectContext{
-		PullReqStatus: models.PullReqStatus{
-			Mergeable: false,
-		},
-		ApplyRequirements: []string{"mergeable"},
-		WorkflowModeType:  valid.DefaultWorkflowMode,
-	}
-	tmp, cleanup := TempDir(t)
-	defer cleanup()
-	When(mockWorkingDir.GetWorkingDir(prjCtx.BaseRepo, prjCtx.Pull, prjCtx.Workspace)).ThenReturn(tmp, nil)
-
-	firstRes := runner.Apply(prjCtx)
-	Equals(t, "Pull request must be mergeable before running apply.", firstRes.Failure)
-}
-
-// Test that if undiverged is required and the PR is diverged we give an error.
-func TestDefaultProjectCommandRunner_ApplyDiverged(t *testing.T) {
-	RegisterMockTestingT(t)
-	mockWorkingDir := mocks.NewMockWorkingDir()
-	runner := &events.DefaultProjectCommandRunner{
-		WorkingDir:       mockWorkingDir,
-		WorkingDirLocker: events.NewDefaultWorkingDirLocker(),
-		StepsRunner:      smocks.NewMockStepsRunner(),
-		AggregateApplyRequirements: &events.AggregateApplyRequirements{
-			WorkingDir: mockWorkingDir,
-		},
-	}
-	prjCtx := command.ProjectContext{
-		ApplyRequirements: []string{"undiverged"},
-		WorkflowModeType:  valid.DefaultWorkflowMode,
-	}
-	tmp, cleanup := TempDir(t)
-	defer cleanup()
-	When(mockWorkingDir.GetWorkingDir(prjCtx.BaseRepo, prjCtx.Pull, prjCtx.Workspace)).ThenReturn(tmp, nil)
-	When(mockWorkingDir.HasDiverged(matchers.AnyLoggingLogger(), AnyString(), matchers.AnyModelsRepo())).ThenReturn(true)
-
-	firstRes := runner.Apply(prjCtx)
-	Equals(t, "Default branch must be rebased onto pull request before running apply.", firstRes.Failure)
 }
 
 // Test that it runs the expected apply steps.
