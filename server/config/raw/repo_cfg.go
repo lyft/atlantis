@@ -46,7 +46,7 @@ func (r RepoCfg) Validate() error {
 }
 
 func (r RepoCfg) ToValid() valid.RepoCfg {
-	workflowModeType := toWorkflowModeType()
+	workflowModeType := valid.PlatformWorkflowMode
 
 	var validProjects []valid.Project
 	for _, p := range r.Projects {
@@ -70,9 +70,4 @@ func (r RepoCfg) ToValid() valid.RepoCfg {
 		ParallelPlan:        parallelPlan,
 		ParallelPolicyCheck: parallelPlan,
 	}
-}
-
-func toWorkflowModeType() valid.WorkflowModeType {
-	result := valid.PlatformWorkflowMode
-	return result
 }

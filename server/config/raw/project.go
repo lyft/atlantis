@@ -93,7 +93,7 @@ func (p Project) ToValid(defaultWorkflowModeType valid.WorkflowModeType) valid.P
 	v.DeploymentWorkflowName = p.DeploymentWorkflowName
 	v.WorkflowModeType = defaultWorkflowModeType
 	if p.WorkflowModeType != nil {
-		v.WorkflowModeType = toWorkflowModeType()
+		v.WorkflowModeType = valid.PlatformWorkflowMode
 	}
 	if p.TerraformVersion != nil {
 		v.TerraformVersion, _ = version.NewVersion(*p.TerraformVersion)
