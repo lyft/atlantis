@@ -1,7 +1,6 @@
 package command
 
 import (
-	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy/events"
 	"github.com/runatlantis/atlantis/server/legacy/events/command"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -61,42 +60,26 @@ type PlatformModeProjectRunner struct { //create object and test
 
 // Plan runs terraform plan for the project described by ctx.
 func (p *PlatformModeProjectRunner) Plan(ctx command.ProjectContext) command.ProjectResult {
-	if ctx.WorkflowModeType == valid.PlatformWorkflowMode {
-		return p.PlatformModeRunner.Plan(ctx)
-	}
-
-	return p.PrModeRunner.Plan(ctx)
+	return p.PlatformModeRunner.Plan(ctx)
 }
 
 // PolicyCheck evaluates policies defined with Rego for the project described by ctx.
 func (p *PlatformModeProjectRunner) PolicyCheck(ctx command.ProjectContext) command.ProjectResult {
-	if ctx.WorkflowModeType == valid.PlatformWorkflowMode {
-		return p.PlatformModeRunner.PolicyCheck(ctx)
-	}
-
-	return p.PrModeRunner.PolicyCheck(ctx)
+	return p.PlatformModeRunner.PolicyCheck(ctx)
 }
 
 // Apply runs terraform apply for the project described by ctx.
 func (p *PlatformModeProjectRunner) Apply(ctx command.ProjectContext) command.ProjectResult {
-	if ctx.WorkflowModeType == valid.PlatformWorkflowMode {
-		return command.ProjectResult{
-			Command:      command.Apply,
-			RepoRelDir:   ctx.RepoRelDir,
-			Workspace:    ctx.Workspace,
-			ProjectName:  ctx.ProjectName,
-			StatusID:     ctx.StatusID,
-			ApplySuccess: "atlantis apply is disabled for this project. Please track the deployment when the PR is merged. ",
-		}
+	return command.ProjectResult{
+		Command:      command.Apply,
+		RepoRelDir:   ctx.RepoRelDir,
+		Workspace:    ctx.Workspace,
+		ProjectName:  ctx.ProjectName,
+		StatusID:     ctx.StatusID,
+		ApplySuccess: "atlantis apply is disabled for this project. Please track the deployment when the PR is merged. ",
 	}
-
-	return p.PrModeRunner.Apply(ctx)
 }
 
 func (p *PlatformModeProjectRunner) Version(ctx command.ProjectContext) command.ProjectResult {
-	if ctx.WorkflowModeType == valid.PlatformWorkflowMode {
-		return p.PlatformModeRunner.Version(ctx)
-	}
-
-	return p.PrModeRunner.Version(ctx)
+	return p.PlatformModeRunner.Version(ctx)
 }

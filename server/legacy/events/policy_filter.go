@@ -58,6 +58,11 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 		return failedPolicies, nil
 	}
 
+	// Dismiss PR reviews when event came from pull request change/atlantis plan comment
+	if trigger == command.AutoTrigger || trigger == command.CommentTrigger {
+		return failedPolicies, nil
+	}
+
 	// Fetch reviewers who approved the PR
 	approvedReviewers, err := p.prReviewFetcher.ListLatestApprovalUsernames(ctx, installationToken, repo, prNum)
 	if err != nil {
