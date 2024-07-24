@@ -60,9 +60,12 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 
 	// Dismiss PR reviews when event came from pull request change/atlantis plan comment
 	if trigger == command.AutoTrigger || trigger == command.CommentTrigger {
+		err := p.dismissStalePRReviews(ctx, installationToken, repo, prNum)
+		if err != nil {
+			return failedPolicies, errors.Wrap(err, "failed to dismiss stale PR reviews")
+		}
 		return failedPolicies, nil
 	}
-
 	// Fetch reviewers who approved the PR
 	approvedReviewers, err := p.prReviewFetcher.ListLatestApprovalUsernames(ctx, installationToken, repo, prNum)
 	if err != nil {
@@ -81,6 +84,55 @@ func (p *ApprovedPolicyFilter) Filter(ctx context.Context, installationToken int
 		}
 	}
 	return filteredFailedPolicies, nil
+}
+func (p *ApprovedPolicyFilter) dismissStalePRReviews(ctx context.Context, installationToken int64, repo models.Repo, prNum int) error {
+	shouldAllocate, err := p.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: repo.FullName,
+	})
+	if err != nil {
+		return errors.Wrap(err, "unable to allocate legacy deprecation feature flag")
+	}
+	// if legacy deprecation is enabled, don't dismiss stale PR reviews in legacy workflow
+	if shouldAllocate {
+		p.logger.InfoContext(ctx, "legacy deprecation feature flag enabled, not dismissing stale PR reviews")
+		return nil
+	}
+
+	approvalReviews, err := p.prReviewFetcher.ListApprovalReviews(ctx, installationToken, repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch GH PR reviews")
+	}
+
+	for _, approval := range approvalReviews {
+		isOwner, err := p.approverIsOwner(ctx, installationToken, approval)
+		if err != nil {
+			return errors.Wrap(err, "failed to validate approver is owner")
+		}
+		if isOwner {
+			err = p.prReviewDismisser.Dismiss(ctx, installationToken, repo, prNum, approval.GetID())
+			if err != nil {
+				return errors.Wrap(err, "failed to dismiss GH PR reviews")
+			}
+		}
+	}
+	return nil
+}
+
+func (p *ApprovedPolicyFilter) approverIsOwner(ctx context.Context, installationToken int64, approval *gh.PullRequestReview) (bool, error) {
+	if approval.GetUser() == nil {
+		return false, errors.New("failed to identify approver")
+	}
+	reviewers := []string{approval.GetUser().GetLogin()}
+	for _, policy := range p.policies {
+		isOwner, err := p.reviewersContainsPolicyOwner(ctx, installationToken, reviewers, policy)
+		if err != nil {
+			return false, errors.Wrap(err, "validating policy approval")
+		}
+		if isOwner {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (p *ApprovedPolicyFilter) reviewersContainsPolicyOwner(ctx context.Context, installationToken int64, reviewers []string, policy valid.PolicySet) (bool, error) {

@@ -53,7 +53,19 @@ type LegacyPREventErrorHandler struct {
 }
 
 func (p *LegacyPREventErrorHandler) WrapWithHandling(ctx context.Context, event PREvent, commandName string, executor sync.Executor) sync.Executor {
-	return executor
+	allocation, err := p.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: event.GetRepo().FullName,
+	})
+
+	if err != nil {
+		return p.delegate.WrapWithHandling(ctx, event, commandName, executor)
+	}
+
+	if allocation {
+		return executor
+	}
+
+	return p.delegate.WrapWithHandling(ctx, event, commandName, executor)
 }
 
 type NeptunePREventErrorHandler struct {
@@ -62,6 +74,17 @@ type NeptunePREventErrorHandler struct {
 }
 
 func (p *NeptunePREventErrorHandler) WrapWithHandling(ctx context.Context, event PREvent, commandName string, executor sync.Executor) sync.Executor {
+	allocation, err := p.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: event.GetRepo().FullName,
+	})
+
+	if err != nil {
+		return p.delegate.WrapWithHandling(ctx, event, commandName, executor)
+	}
+
+	if !allocation {
+		return executor
+	}
 	return p.delegate.WrapWithHandling(ctx, event, commandName, executor)
 }
 

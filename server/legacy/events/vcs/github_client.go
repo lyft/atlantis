@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,6 +34,32 @@ import (
 	"github.com/runatlantis/atlantis/server/models"
 	"github.com/shurcooL/githubv4"
 )
+
+var projectCommandTemplateWithLogs = `
+| **Command Name** | **Project** | **Workspace** | **Status** | **Logs** |  
+| - | - | - | - | - |
+| %s  | {%s}  | {%s}  | {%s}  | %s  | 
+`
+
+var projectCommandTemplate = `
+| **Command Name**  | **Project** | **Workspace** | **Status** | 
+| - | - | - | - |
+| %s  | {%s}  | {%s}  | {%s}  |
+`
+
+var commandTemplate = `
+| **Command Name**  |  **Status** |  
+| - | - |
+| %s  | {%s}  | 
+:information_source: Visit the checkrun for the root in the navigation panel on your left to view logs and details on the operation. 
+`
+
+var commandTemplateWithCount = `
+| **Command Name** | **Num Total** | **Num Success** | **Status** |  
+| - | - | - | - |
+| %s | {%s} | {%s} | {%s} |  
+:information_source: Visit the checkrun for the root in the navigation panel on your left to view logs and details on the operation. 
+`
 
 // github checks conclusion
 type ChecksConclusion int //nolint:golint // avoiding refactor while adding linter action
@@ -89,6 +116,8 @@ func (e CheckStatus) String() string {
 // by GitHub.
 const (
 	maxCommentLength = 65536
+	// Reference: https://github.com/github/docs/issues/3765
+	maxChecksOutputLength = 65535
 )
 
 // allows for custom handling of github 404s
@@ -464,8 +493,171 @@ func (g *GithubClient) GetRepoStatuses(repo models.Repo, pull models.PullRequest
 // UpdateStatus updates the status badge on the pull request.
 // See https://github.com/blog/1227-commit-status-api.
 func (g *GithubClient) UpdateStatus(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
-	// since legacy deprecation feature flag was enabled (2024), we don't need to do the updating of check runs
-	return "", nil
+	shouldAllocate, err := g.allocator.ShouldAllocate(feature.LegacyDeprecation, feature.FeatureContext{
+		RepoName: request.Repo.FullName,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "unable to allocate legacy deprecation feature flag")
+	}
+	// if legacy deprecation is enabled, don't mutate check runs in legacy workflow
+	if shouldAllocate {
+		g.logger.InfoContext(ctx, "legacy deprecation feature flag enabled, not updating check runs")
+		return "", nil
+	}
+
+	// Empty status ID means we create a new check run
+	if request.StatusID == "" {
+		return g.createCheckRun(ctx, request)
+	}
+	return request.StatusID, g.updateCheckRun(ctx, request, request.StatusID)
+}
+
+func (g *GithubClient) createCheckRun(ctx context.Context, request types.UpdateStatusRequest) (string, error) {
+	status, conclusion := g.resolveChecksStatus(request.State)
+	createCheckRunOpts := github.CreateCheckRunOptions{
+		Name:    request.StatusName,
+		HeadSHA: request.Ref,
+		Status:  &status,
+		Output:  g.createCheckRunOutput(request),
+	}
+
+	if request.DetailsURL != "" {
+		createCheckRunOpts.DetailsURL = &request.DetailsURL
+	}
+
+	// Conclusion is required if status is Completed
+	if status == Completed.String() {
+		createCheckRunOpts.Conclusion = &conclusion
+	}
+
+	checkRun, _, err := g.client.Checks.CreateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, createCheckRunOpts)
+	if err != nil {
+		return "", err
+	}
+
+	return strconv.FormatInt(*checkRun.ID, 10), nil
+}
+
+func (g *GithubClient) updateCheckRun(ctx context.Context, request types.UpdateStatusRequest, checkRunID string) error {
+	status, conclusion := g.resolveChecksStatus(request.State)
+	updateCheckRunOpts := github.UpdateCheckRunOptions{
+		Name:   request.StatusName,
+		Status: &status,
+		Output: g.createCheckRunOutput(request),
+	}
+
+	if request.DetailsURL != "" {
+		updateCheckRunOpts.DetailsURL = &request.DetailsURL
+	}
+
+	// Conclusion is required if status is Completed
+	if status == Completed.String() {
+		updateCheckRunOpts.Conclusion = &conclusion
+	}
+
+	checkRunIDInt, err := strconv.ParseInt(checkRunID, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = g.client.Checks.UpdateCheckRun(ctx, request.Repo.Owner, request.Repo.Name, checkRunIDInt, updateCheckRunOpts)
+	return err
+}
+
+func (g *GithubClient) resolveState(state models.VCSStatus) string {
+	switch state {
+	case models.QueuedVCSStatus:
+		return "Queued"
+	case models.PendingVCSStatus:
+		return "In Progress"
+	case models.SuccessVCSStatus:
+		return "Success"
+	case models.FailedVCSStatus:
+		return "Failed"
+	}
+	return "Failed"
+}
+
+func (g *GithubClient) createCheckRunOutput(request types.UpdateStatusRequest) *github.CheckRunOutput {
+	var summary string
+
+	// Project command
+	if strings.Contains(request.StatusName, ":") {
+		// plan/apply command
+		if request.DetailsURL != "" {
+			summary = fmt.Sprintf(projectCommandTemplateWithLogs,
+				request.CommandName,
+				request.Project,
+				request.Workspace,
+				g.resolveState(request.State),
+				fmt.Sprintf("[Logs](%s)", request.DetailsURL),
+			)
+		} else {
+			summary = fmt.Sprintf(projectCommandTemplate,
+				request.CommandName,
+				request.Project,
+				request.Workspace,
+				g.resolveState(request.State),
+			)
+		}
+	} else {
+		if request.NumSuccess != "" && request.NumTotal != "" {
+			summary = fmt.Sprintf(commandTemplateWithCount,
+				request.CommandName,
+				request.NumTotal,
+				request.NumSuccess,
+				g.resolveState(request.State))
+		} else {
+			summary = fmt.Sprintf(commandTemplate,
+				request.CommandName,
+				g.resolveState(request.State))
+		}
+	}
+
+	// Add formatting to summary
+	summary = strings.ReplaceAll(strings.ReplaceAll(summary, "{", "`"), "}", "`")
+
+	checkRunOutput := github.CheckRunOutput{
+		Title:   &request.StatusName,
+		Summary: &summary,
+	}
+
+	if request.Output == "" {
+		return &checkRunOutput
+	}
+	if len(request.Output) > maxChecksOutputLength {
+		terraformOutputTooLong := "Terraform output is too long for Github UI, please review the above link to view detailed logs."
+		checkRunOutput.Text = &terraformOutputTooLong
+	} else {
+		checkRunOutput.Text = &request.Output
+	}
+	return &checkRunOutput
+}
+
+// Github Checks uses Status and Conclusion to report status of the check run. Need to map models.VcsStatus to Status and Conclusion
+// Status -> queued, in_progress, completed
+// Conclusion -> failure, neutral, cancelled, timed_out, or action_required. (Optional. Required if you provide a status of "completed".)
+func (g *GithubClient) resolveChecksStatus(state models.VCSStatus) (string, string) {
+	status := Queued
+	conclusion := Neutral
+
+	switch state {
+	case models.SuccessVCSStatus:
+		status = Completed
+		conclusion = Success
+
+	case models.PendingVCSStatus:
+		status = InProgress
+
+	case models.FailedVCSStatus:
+		status = Completed
+		conclusion = Failure
+
+	case models.QueuedVCSStatus:
+		status = Queued
+	}
+
+	return status.String(), conclusion.String()
 }
 
 // MarkdownPullLink specifies the string used in a pull request comment to reference another pull request.
