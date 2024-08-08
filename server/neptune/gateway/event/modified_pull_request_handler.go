@@ -19,10 +19,6 @@ import (
 	"github.com/runatlantis/atlantis/server/models"
 )
 
-type legacyHandler interface {
-	Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg) error
-}
-
 type prSignaler interface {
 	SignalWithStartWorkflow(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, prRequest pr.Request) (client.WorkflowRun, error)
 }

@@ -106,11 +106,6 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 	pull := event.PullRequest{
 		Pull: pullRequest,
 	}
-	legacyHandler := &mockLegacyHandler{
-		expectedEvent:    pull,
-		expectedAllRoots: []*valid.MergedProjectCfg{legacyRoot},
-		expectedT:        t,
-	}
 	prRequest := pr.Request{
 		Revision:          "sha",
 		Repo:              testRepo,
@@ -143,7 +138,6 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pull)
 	assert.NoError(t, err)
-	assert.True(t, legacyHandler.called)
 	assert.True(t, signaler.called)
 }
 
@@ -191,11 +185,6 @@ func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
 	pr := event.PullRequest{
 		Pull: pullRequest,
 	}
-	legacyHandler := &mockLegacyHandler{
-		expectedEvent:    pr,
-		expectedAllRoots: []*valid.MergedProjectCfg{root},
-		expectedT:        t,
-	}
 	pullHandler := event.ModifiedPullHandler{
 		Logger:             logger,
 		Scheduler:          &sync.SynchronousScheduler{Logger: logger},
@@ -210,7 +199,6 @@ func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pr)
 	assert.NoError(t, err)
-	assert.True(t, legacyHandler.called)
 	assert.True(t, signaler.called)
 }
 
@@ -229,21 +217,6 @@ func (r *mockConfigBuilder) Build(_ context.Context, commit *config.RepoCommit, 
 	assert.Len(r.expectedT, opts, 1)
 	assert.Equal(r.expectedT, r.expectedCloneDepth, opts[0].RepoFetcherOptions.CloneDepth)
 	return r.rootConfigs, r.error
-}
-
-type mockLegacyHandler struct {
-	expectedEvent    event.PullRequest
-	expectedAllRoots []*valid.MergedProjectCfg
-	expectedT        *testing.T
-	error            error
-	called           bool
-}
-
-func (l *mockLegacyHandler) Handle(ctx context.Context, _ *http.BufferedRequest, event event.PullRequest, allRoots []*valid.MergedProjectCfg) error {
-	l.called = true
-	assert.Equal(l.expectedT, l.expectedEvent, event)
-	assert.Equal(l.expectedT, l.expectedAllRoots, allRoots)
-	return l.error
 }
 
 type mockPRSignaler struct {
