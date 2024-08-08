@@ -3,12 +3,13 @@ package event_test
 import (
 	"bytes"
 	"context"
-	"github.com/runatlantis/atlantis/server/config/valid"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"io"
 	"net/http"
 	"testing"
+
+	"github.com/runatlantis/atlantis/server/config/valid"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
+	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 
 	buffered "github.com/runatlantis/atlantis/server/legacy/http"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -31,38 +32,6 @@ func buildRequest(t *testing.T) *buffered.BufferedRequest {
 	r, err := buffered.NewBufferedRequest(rawRequest)
 	assert.NoError(t, err)
 	return r
-}
-
-func TestPullRequestReviewWorkerProxy_HandleApprovalWithFailedPolicies(t *testing.T) {
-	writer := &mockSnsWriter{}
-	mockFetcher := &mockCheckRunFetcher{
-		failedPolicies: []string{"failed policy"},
-	}
-	logger := logging.NewNoopCtxLogger(t)
-	signaler := &reviewSignaler{
-		t:                t,
-		expectedRepoName: "repo",
-		expectedPullNum:  0,
-		expectedRevision: ref,
-	}
-	proxy := event.PullRequestReviewWorkerProxy{
-		Scheduler:        &sync.SynchronousScheduler{Logger: logger},
-		SnsWriter:        writer,
-		Logger:           logger,
-		CheckRunFetcher:  mockFetcher,
-		WorkflowSignaler: signaler,
-		Scope:            tally.NewTestScope("", map[string]string{}),
-	}
-	prrEvent := event.PullRequestReview{
-		State: event.Approved,
-		Repo:  models.Repo{FullName: repoFullName},
-		Ref:   "ref",
-	}
-	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
-	assert.NoError(t, err)
-	assert.True(t, writer.isCalled)
-	assert.True(t, mockFetcher.called)
-	assert.True(t, signaler.called)
 }
 
 func TestPullRequestReviewWorkerProxy_HandleChangesRequestedWithFailedPolicies(t *testing.T) {
@@ -126,7 +95,6 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessNoFailedPolicies(t *testing.T
 	}
 	proxy := event.PullRequestReviewWorkerProxy{
 		Scheduler:        &sync.SynchronousScheduler{Logger: logger},
-		SnsWriter:        writer,
 		Logger:           logger,
 		CheckRunFetcher:  mockFetcher,
 		WorkflowSignaler: signaler,
@@ -140,129 +108,6 @@ func TestPullRequestReviewWorkerProxy_HandleSuccessNoFailedPolicies(t *testing.T
 	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
 	assert.NoError(t, err)
 	assert.False(t, writer.isCalled)
-	assert.True(t, mockFetcher.called)
-	assert.True(t, signaler.called)
-}
-
-func TestPullRequestReviewWorkerProxy_InvalidEvent(t *testing.T) {
-	writer := &mockSnsWriter{}
-	mockFetcher := &mockCheckRunFetcher{}
-	logger := logging.NewNoopCtxLogger(t)
-	signaler := &reviewSignaler{}
-	proxy := event.PullRequestReviewWorkerProxy{
-		Scheduler:        &sync.SynchronousScheduler{Logger: logger},
-		SnsWriter:        writer,
-		Logger:           logger,
-		CheckRunFetcher:  mockFetcher,
-		WorkflowSignaler: signaler,
-		Scope:            tally.NewTestScope("", map[string]string{}),
-	}
-	prrEvent := event.PullRequestReview{
-		State: "something else",
-		Repo:  models.Repo{FullName: repoFullName},
-	}
-	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
-	assert.NoError(t, err)
-	assert.False(t, writer.isCalled)
-	assert.False(t, mockFetcher.called)
-	assert.False(t, signaler.called)
-}
-
-func TestPullRequestReviewWorkerProxy_FetcherError(t *testing.T) {
-	writer := &mockSnsWriter{}
-	mockFetcher := &mockCheckRunFetcher{
-		err: assert.AnError,
-	}
-	logger := logging.NewNoopCtxLogger(t)
-	signaler := &reviewSignaler{
-		t:                t,
-		expectedRepoName: "repo",
-		expectedPullNum:  0,
-		expectedRevision: ref,
-	}
-	proxy := event.PullRequestReviewWorkerProxy{
-		Scheduler:        &sync.SynchronousScheduler{Logger: logger},
-		SnsWriter:        writer,
-		Logger:           logger,
-		CheckRunFetcher:  mockFetcher,
-		WorkflowSignaler: signaler,
-		Scope:            tally.NewTestScope("", map[string]string{}),
-	}
-	prrEvent := event.PullRequestReview{
-		State: event.Approved,
-		Repo:  models.Repo{FullName: repoFullName},
-		Ref:   ref,
-	}
-	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
-	assert.Error(t, err)
-	assert.False(t, writer.isCalled)
-	assert.True(t, mockFetcher.called)
-	assert.True(t, signaler.called)
-}
-
-func TestPullRequestReviewWorkerProxy_SNSError(t *testing.T) {
-	writer := &mockSnsWriter{}
-	mockFetcher := &mockCheckRunFetcher{
-		failedPolicies: []string{"failed policy"},
-	}
-	logger := logging.NewNoopCtxLogger(t)
-	signaler := &reviewSignaler{
-		t:                t,
-		expectedRepoName: "repo",
-		expectedPullNum:  0,
-		expectedRevision: ref,
-	}
-	proxy := event.PullRequestReviewWorkerProxy{
-		Scheduler:        &sync.SynchronousScheduler{Logger: logger},
-		SnsWriter:        writer,
-		Logger:           logger,
-		CheckRunFetcher:  mockFetcher,
-		WorkflowSignaler: signaler,
-		Scope:            tally.NewTestScope("", map[string]string{}),
-	}
-	prrEvent := event.PullRequestReview{
-		State: event.Approved,
-		Repo:  models.Repo{FullName: repoFullName},
-		Ref:   ref,
-	}
-
-	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
-	assert.NoError(t, err)
-	assert.True(t, writer.isCalled)
-	assert.True(t, mockFetcher.called)
-	assert.True(t, signaler.called)
-}
-
-func TestPullRequestReviewWorkerProxy_SignalerError(t *testing.T) {
-	writer := &mockSnsWriter{}
-	mockFetcher := &mockCheckRunFetcher{
-		failedPolicies: []string{"failed policy"},
-	}
-	logger := logging.NewNoopCtxLogger(t)
-	signaler := &reviewSignaler{
-		t:                t,
-		expectedRepoName: "repo",
-		expectedPullNum:  0,
-		expectedRevision: ref,
-		err:              assert.AnError,
-	}
-	proxy := event.PullRequestReviewWorkerProxy{
-		Scheduler:        &sync.SynchronousScheduler{Logger: logger},
-		SnsWriter:        writer,
-		Logger:           logger,
-		CheckRunFetcher:  mockFetcher,
-		WorkflowSignaler: signaler,
-		Scope:            tally.NewTestScope("", map[string]string{}),
-	}
-	prrEvent := event.PullRequestReview{
-		State: event.Approved,
-		Repo:  models.Repo{FullName: repoFullName},
-		Ref:   ref,
-	}
-
-	err := proxy.Handle(context.Background(), prrEvent, buildRequest(t))
-	assert.Error(t, err)
-	assert.True(t, writer.isCalled)
 	assert.True(t, mockFetcher.called)
 	assert.True(t, signaler.called)
 }

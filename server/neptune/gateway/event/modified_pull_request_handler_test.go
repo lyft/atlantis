@@ -61,10 +61,6 @@ func TestModifiedPullHandler_Handle_SignalerFailure(t *testing.T) {
 			expectedT:      t,
 			rootConfigs:    []*valid.MergedProjectCfg{root},
 		},
-		LegacyHandler: &mockLegacyHandler{
-			expectedAllRoots: []*valid.MergedProjectCfg{root},
-			expectedT:        t,
-		},
 		PRSignaler: &mockPRSignaler{
 			error:             assert.AnError,
 			expectedRoots:     []*valid.MergedProjectCfg{root},
@@ -143,8 +139,7 @@ func TestModifiedPullHandler_Handle_BranchStrategy(t *testing.T) {
 			expectedT:          t,
 			rootConfigs:        []*valid.MergedProjectCfg{legacyRoot},
 		},
-		LegacyHandler: legacyHandler,
-		PRSignaler:    signaler,
+		PRSignaler: signaler,
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pull)
 	assert.NoError(t, err)
@@ -211,8 +206,7 @@ func TestModifiedPullHandler_Handle_MergeStrategy(t *testing.T) {
 			expectedT:      t,
 			rootConfigs:    []*valid.MergedProjectCfg{root},
 		},
-		LegacyHandler: legacyHandler,
-		PRSignaler:    signaler,
+		PRSignaler: signaler,
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pr)
 	assert.NoError(t, err)
