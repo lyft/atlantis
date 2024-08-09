@@ -51,21 +51,18 @@ import (
 	"github.com/runatlantis/atlantis/server/legacy/jobs"
 	"github.com/runatlantis/atlantis/server/legacy/lyft/aws"
 	"github.com/runatlantis/atlantis/server/legacy/lyft/aws/sns"
-	"github.com/runatlantis/atlantis/server/legacy/lyft/aws/sqs"
 	lyftCommands "github.com/runatlantis/atlantis/server/legacy/lyft/command"
 	lyftRuntime "github.com/runatlantis/atlantis/server/legacy/lyft/core/runtime"
 	"github.com/runatlantis/atlantis/server/legacy/lyft/scheduled"
 	"github.com/runatlantis/atlantis/server/legacy/wrappers"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
-	github_converter "github.com/runatlantis/atlantis/server/vcs/provider/github/converter"
 	"github.com/uber-go/tally/v4"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	cfgParser "github.com/runatlantis/atlantis/server/config"
 	"github.com/runatlantis/atlantis/server/legacy/controllers"
-	events_controllers "github.com/runatlantis/atlantis/server/legacy/controllers/events"
 	"github.com/runatlantis/atlantis/server/legacy/controllers/templates"
 	"github.com/runatlantis/atlantis/server/legacy/controllers/websocket"
 	"github.com/runatlantis/atlantis/server/legacy/core/locking"
@@ -77,7 +74,6 @@ import (
 	lyft_vcs "github.com/runatlantis/atlantis/server/legacy/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/legacy/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
@@ -115,7 +111,6 @@ type Server struct {
 	StatsCloser                   io.Closer
 	Locker                        locking.Locker
 	ApplyLocker                   locking.ApplyLocker
-	VCSPostHandler                sqs.VCSPostHandler
 	GithubAppController           *controllers.GithubAppController
 	LocksController               *controllers.LocksController
 	StatusController              *controllers.StatusController
@@ -165,8 +160,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	var supportedVCSHosts []models.VCSHostType
 
 	// not to be used directly, currently this is just used
 	// for reporting rate limits
@@ -218,7 +211,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
-		supportedVCSHosts = append(supportedVCSHosts, models.Github)
 		if userConfig.GithubUser != "" {
 			githubCredentials = &vcs.GithubUserCredentials{
 				User:  userConfig.GithubUser,
@@ -427,21 +419,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		WorkingDirLocker: workingDirLocker,
 		DB:               boltdb,
 	}
-
-	pullClosedExecutor := events.NewInstrumentedPullClosedExecutor(
-		statsScope,
-		ctxLogger,
-		&events.PullClosedExecutor{
-			Locker:                   lockingClient,
-			WorkingDir:               workingDir,
-			Logger:                   ctxLogger,
-			DB:                       boltdb,
-			PullClosedTemplate:       &events.PullClosedEventTemplate{},
-			LogStreamResourceCleaner: projectCmdOutputHandler,
-			VCSClient:                vcsClient,
-		},
-	)
-
 	eventParser := &events.EventParser{
 		GithubUser:    userConfig.GithubUser,
 		GithubToken:   userConfig.GithubToken,
@@ -742,16 +719,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		PolicyCommandRunner:           prrPolicyCommandRunner,
 	}
 
-	forceApplyCommandRunner := &events.ForceApplyCommandRunner{
-		CommandRunner: commandRunner,
-		VCSClient:     vcsClient,
-		Logger:        ctxLogger,
-	}
-
-	repoAllowlist, err := events.NewRepoAllowlistChecker(userConfig.RepoAllowlist)
-	if err != nil {
-		return nil, err
-	}
 	locksController := &controllers.LocksController{
 		AtlantisVersion:    config.AtlantisVersion,
 		AtlantisURL:        parsedURL,
@@ -833,59 +800,10 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		rawGithubClient,
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(context.Background())
 
-	repoConverter := github_converter.RepoConverter{
-		GithubUser:  userConfig.GithubUser,
-		GithubToken: userConfig.GithubToken,
-	}
-
-	pullConverter := github_converter.PullConverter{
-		RepoConverter: repoConverter,
-	}
-	pullFetcher := &github.PRFetcher{
-		ClientCreator: clientCreator,
-	}
-
-	defaultEventsController := events_controllers.NewVCSEventsController(
-		statsScope,
-		[]byte(userConfig.GithubWebhookSecret),
-		userConfig.PlanDrafts,
-		forceApplyCommandRunner,
-		commentParser,
-		eventParser,
-		pullClosedExecutor,
-		repoAllowlist,
-		vcsClient,
-		ctxLogger,
-		userConfig.DisableApply,
-		supportedVCSHosts,
-		repoConverter,
-		pullConverter,
-		githubClient,
-		pullFetcher,
-	)
-
-	var vcsPostHandler sqs.VCSPostHandler
 	lyftMode := userConfig.ToLyftMode()
-	switch lyftMode {
-	case Default: // default eventsController handles POST
-		vcsPostHandler = defaultEventsController
-		ctxLogger.Info("running Atlantis in default mode")
-	case Worker: // an SQS worker is set up to handle messages via default eventsController
-		worker, err := sqs.NewGatewaySQSWorker(ctx, statsScope, ctxLogger, userConfig.LyftWorkerQueueURL, defaultEventsController)
-		if err != nil {
-			ctxLogger.Error("unable to set up worker", map[string]interface{}{
-				"err": err,
-			})
-			cancel()
-			return nil, errors.Wrapf(err, "setting up sqs handler for worker mode")
-		}
-		go worker.Work(ctx)
-		ctxLogger.Info("running Atlantis in worker mode", map[string]interface{}{
-			"queue": userConfig.LyftWorkerQueueURL,
-		})
-	}
+	ctxLogger.Info("running Atlantis in default mode")
 
 	return &Server{
 		AtlantisVersion:               config.AtlantisVersion,
@@ -899,7 +817,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		StatsCloser:                   closer,
 		Locker:                        lockingClient,
 		ApplyLocker:                   applyLockingClient,
-		VCSPostHandler:                vcsPostHandler,
 		GithubAppController:           githubAppController,
 		LocksController:               locksController,
 		JobsController:                jobsController,
@@ -922,9 +839,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 func (s *Server) Start() error {
 	s.Router.HandleFunc("/healthz", s.Healthz).Methods(http.MethodGet)
 	s.Router.HandleFunc("/status", s.StatusController.Get).Methods(http.MethodGet)
-	if s.LyftMode != Worker {
-		s.Router.HandleFunc("/events", s.VCSPostHandler.Post).Methods(http.MethodPost)
-	}
 	s.Router.HandleFunc("/", s.Index).Methods(http.MethodGet).MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
 		return r.URL.Path == "/" || r.URL.Path == "/index.html"
 	})
@@ -976,12 +890,6 @@ func (s *Server) Start() error {
 		}
 	}()
 	<-stop
-
-	// Shutdown sqs polling. Any received messages being processed will either succeed/fail depending on if drainer started.
-	if s.LyftMode == Worker {
-		s.CtxLogger.Warn("Received interrupt. Shutting down the sqs handler")
-		s.CancelWorker()
-	}
 
 	s.CtxLogger.Warn("Received interrupt. Waiting for in-progress operations to complete")
 	s.waitForDrain()
