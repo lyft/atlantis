@@ -123,7 +123,6 @@ require go.temporal.io/sdk v1.15.0
 require (
 	github.com/aws/aws-sdk-go-v2 v1.13.0
 	github.com/aws/aws-sdk-go-v2/config v1.13.1
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.16.0
 	github.com/graymeta/stow v0.2.7
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/hashicorp/go-multierror v1.0.0
