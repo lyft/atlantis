@@ -74,7 +74,6 @@ import (
 	lyft_vcs "github.com/runatlantis/atlantis/server/legacy/events/vcs/lyft"
 	"github.com/runatlantis/atlantis/server/legacy/events/webhooks"
 	"github.com/runatlantis/atlantis/server/logging"
-	"github.com/runatlantis/atlantis/server/models"
 	"github.com/runatlantis/atlantis/server/vcs/markdown"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
@@ -162,8 +161,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		return nil, err
 	}
 
-	var supportedVCSHosts []models.VCSHostType
-
 	// not to be used directly, currently this is just used
 	// for reporting rate limits
 	var rawGithubClient *vcs.GithubClient
@@ -214,7 +211,6 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 	}
 
 	if userConfig.GithubUser != "" || userConfig.GithubAppID != 0 {
-		supportedVCSHosts = append(supportedVCSHosts, models.Github)
 		if userConfig.GithubUser != "" {
 			githubCredentials = &vcs.GithubUserCredentials{
 				User:  userConfig.GithubUser,
