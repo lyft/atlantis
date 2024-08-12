@@ -67,15 +67,10 @@ func (c Comment) GetRepo() models.Repo {
 	return c.BaseRepo
 }
 
-func NewCommentEventWorkerProxy(logger logging.Logger, snsWriter Writer, scheduler scheduler, prSignaler prSignaler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, legacyErrorHandler errorHandler, neptuneErrorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
+func NewCommentEventWorkerProxy(logger logging.Logger, scheduler scheduler, prSignaler prSignaler, deploySignaler deploySignaler, commentCreator commentCreator, vcsStatusUpdater statusUpdater, globalCfg valid.GlobalCfg, rootConfigBuilder rootConfigBuilder, legacyErrorHandler errorHandler, neptuneErrorHandler errorHandler, requirementChecker requirementChecker) *CommentEventWorkerProxy {
 	return &CommentEventWorkerProxy{
 		logger:    logger,
 		scheduler: scheduler,
-		legacyHandler: &LegacyCommentHandler{
-			logger:    logger,
-			snsWriter: snsWriter,
-			globalCfg: globalCfg,
-		},
 		neptuneWorkerProxy: &NeptuneWorkerProxy{
 			logger:             logger,
 			deploySignaler:     deploySignaler,
@@ -177,7 +172,6 @@ type CommentEventWorkerProxy struct {
 	scheduler           scheduler
 	vcsStatusUpdater    statusUpdater
 	rootConfigBuilder   rootConfigBuilder
-	legacyHandler       *LegacyCommentHandler
 	neptuneWorkerProxy  *NeptuneWorkerProxy
 	neptuneErrorHandler errorHandler
 	legacyErrorHandler  errorHandler
@@ -209,9 +203,6 @@ func (p *CommentEventWorkerProxy) handle(ctx context.Context, request *http.Buff
 	}
 
 	fxns := []sync.Executor{
-		p.legacyErrorHandler.WrapWithHandling(ctx, event, cmd.CommandName().String(), func(ctx context.Context) error {
-			return p.legacyHandler.Handle(ctx, event, cmd, roots, request)
-		}),
 		p.neptuneErrorHandler.WrapWithHandling(ctx, event, cmd.CommandName().String(), func(ctx context.Context) error {
 			return p.neptuneWorkerProxy.Handle(ctx, event, cmd, roots, request)
 		}),
