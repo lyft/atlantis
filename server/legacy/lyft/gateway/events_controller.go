@@ -60,9 +60,13 @@ func NewVCSEventsController(
 	clientCreator githubapp.ClientCreator,
 	defaultTFVersion string,
 ) *VCSEventsController {
+	legacyHandler := &gateway_handlers.LegacyPullHandler{
+		Logger:           logger,
+		VCSStatusUpdater: vcsStatusUpdater,
+	}
 	prSignaler := &pr.WorkflowSignaler{TemporalClient: temporalClient, DefaultTFVersion: defaultTFVersion}
 	prRequirementChecker := requirement.NewPRAggregate(globalCfg)
-	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler)
+	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler, legacyHandler)
 	closedPullHandler := &gateway_handlers.ClosedPullRequestHandler{
 		Logger:          logger,
 		PRCloseSignaler: prSignaler,
