@@ -15,12 +15,17 @@ type prCloseSignaler interface {
 }
 
 type ClosedPullRequestHandler struct {
+	WorkerProxy     workerProxy
 	Logger          logging.Logger
 	PRCloseSignaler prCloseSignaler
 	Scope           tally.Scope
 }
 
 func (c *ClosedPullRequestHandler) Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest) error {
+	if err := c.WorkerProxy.Handle(ctx, request, event); err != nil {
+		c.Logger.ErrorContext(ctx, err.Error())
+	}
+
 	if err := c.handlePlatformMode(ctx, event); err != nil {
 		return errors.Wrap(err, "handling platform mode")
 	}

@@ -15,6 +15,7 @@ import (
 )
 
 func TestClosedPullHandler_Handle(t *testing.T) {
+	workerProxy := &mockWorkerProxy{}
 	signaler := &testCloseSignaler{
 		t:                t,
 		expectedRepoName: "repo",
@@ -22,6 +23,7 @@ func TestClosedPullHandler_Handle(t *testing.T) {
 	}
 	pullHandler := event.ClosedPullRequestHandler{
 		Logger:          logging.NewNoopCtxLogger(t),
+		WorkerProxy:     workerProxy,
 		PRCloseSignaler: signaler,
 	}
 	pr := event.PullRequest{
@@ -35,10 +37,12 @@ func TestClosedPullHandler_Handle(t *testing.T) {
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pr)
 	assert.True(t, signaler.called)
+	assert.True(t, workerProxy.called)
 	assert.NoError(t, err)
 }
 
 func TestClosedPullHandler_Handle_SignalError(t *testing.T) {
+	workerProxy := &mockWorkerProxy{}
 	signaler := &testCloseSignaler{
 		t:                t,
 		err:              assert.AnError,
@@ -47,6 +51,7 @@ func TestClosedPullHandler_Handle_SignalError(t *testing.T) {
 	}
 	pullHandler := event.ClosedPullRequestHandler{
 		Logger:          logging.NewNoopCtxLogger(t),
+		WorkerProxy:     workerProxy,
 		PRCloseSignaler: signaler,
 	}
 	pr := event.PullRequest{
@@ -60,10 +65,12 @@ func TestClosedPullHandler_Handle_SignalError(t *testing.T) {
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pr)
 	assert.True(t, signaler.called)
+	assert.True(t, workerProxy.called)
 	assert.Error(t, err)
 }
 
 func TestClosedPullHandler_Handle_SignalNotFoundError(t *testing.T) {
+	workerProxy := &mockWorkerProxy{}
 	signaler := &testCloseSignaler{
 		t:                t,
 		expectedRepoName: "repo",
@@ -72,6 +79,7 @@ func TestClosedPullHandler_Handle_SignalNotFoundError(t *testing.T) {
 	}
 	pullHandler := event.ClosedPullRequestHandler{
 		Logger:          logging.NewNoopCtxLogger(t),
+		WorkerProxy:     workerProxy,
 		PRCloseSignaler: signaler,
 		Scope:           tally.NewTestScope("", map[string]string{}),
 	}
@@ -86,6 +94,7 @@ func TestClosedPullHandler_Handle_SignalNotFoundError(t *testing.T) {
 	}
 	err := pullHandler.Handle(context.Background(), &http.BufferedRequest{}, pr)
 	assert.True(t, signaler.called)
+	assert.True(t, workerProxy.called)
 	assert.NoError(t, err)
 }
 

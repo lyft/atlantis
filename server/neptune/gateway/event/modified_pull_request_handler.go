@@ -2,9 +2,8 @@ package event
 
 import (
 	"context"
-	"time"
-
 	"github.com/hashicorp/go-multierror"
+	"time"
 
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
@@ -19,6 +18,10 @@ import (
 	"github.com/runatlantis/atlantis/server/models"
 )
 
+type legacyHandler interface {
+	Handle(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg) error
+}
+
 type prSignaler interface {
 	SignalWithStartWorkflow(ctx context.Context, rootCfgs []*valid.MergedProjectCfg, prRequest pr.Request) (client.WorkflowRun, error)
 }
@@ -29,6 +32,7 @@ type ModifiedPullHandler struct {
 	RootConfigBuilder  rootConfigBuilder
 	GlobalCfg          valid.GlobalCfg
 	RequirementChecker requirementChecker
+	LegacyHandler      legacyHandler
 	PRSignaler         prSignaler
 }
 
@@ -41,13 +45,14 @@ type PullRequest struct {
 	InstallationToken int64
 }
 
-func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConfigBuilder rootConfigBuilder, globalCfg valid.GlobalCfg, requirementChecker requirementChecker, prSignaler prSignaler) *ModifiedPullHandler {
+func NewModifiedPullHandler(logger logging.Logger, scheduler scheduler, rootConfigBuilder rootConfigBuilder, globalCfg valid.GlobalCfg, requirementChecker requirementChecker, prSignaler prSignaler, legacyHandler legacyHandler) *ModifiedPullHandler {
 	return &ModifiedPullHandler{
 		Logger:             logger,
 		Scheduler:          scheduler,
 		RootConfigBuilder:  rootConfigBuilder,
 		GlobalCfg:          globalCfg,
 		RequirementChecker: requirementChecker,
+		LegacyHandler:      legacyHandler,
 		PRSignaler:         prSignaler,
 	}
 }
@@ -97,6 +102,7 @@ func (p *ModifiedPullHandler) handle(ctx context.Context, request *http.Buffered
 	}
 
 	fxns := []func(ctx context.Context, request *http.BufferedRequest, event PullRequest, allRoots []*valid.MergedProjectCfg) error{
+		p.LegacyHandler.Handle, // TODO: remove when we deprecate legacy mode
 		p.handlePlatformMode,
 	}
 	var combinedErrors *multierror.Error

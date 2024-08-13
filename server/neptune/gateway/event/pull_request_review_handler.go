@@ -1,12 +1,12 @@
 package event
 
 import (
+	"bytes"
 	"context"
-	"time"
-
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
+	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/gateway/pr"
 	"github.com/uber-go/tally/v4"
@@ -46,6 +46,7 @@ type workflowSignaler interface {
 
 type PullRequestReviewWorkerProxy struct {
 	Scheduler         scheduler
+	SnsWriter         Writer
 	Logger            logging.Logger
 	CheckRunFetcher   fetcher
 	WorkflowSignaler  workflowSignaler
@@ -84,8 +85,23 @@ func (p *PullRequestReviewWorkerProxy) handleLegacyMode(ctx context.Context, req
 	if len(failedPolicyCheckRuns) == 0 {
 		return nil
 	}
+	// Forward to SNS to further process in the worker
+	return p.forwardToSns(ctx, request)
+}
+
+func (p *PullRequestReviewWorkerProxy) forwardToSns(ctx context.Context, request *http.BufferedRequest) error {
+	buffer := bytes.NewBuffer([]byte{})
+	if err := request.GetRequestWithContext(ctx).Write(buffer); err != nil {
+		return errors.Wrap(err, "writing request to buffer")
+	}
+
+	if err := p.SnsWriter.WriteWithContext(ctx, buffer.Bytes()); err != nil {
+		return errors.Wrap(err, "writing buffer to sns")
+	}
+	p.Logger.InfoContext(ctx, "proxied request to sns")
 	return nil
 }
+
 func (p *PullRequestReviewWorkerProxy) handlePlatformMode(ctx context.Context, request *http.BufferedRequest, event PullRequestReview) error {
 	// Ignore events that are neither approved nor changes requested
 	if event.State != Approved && event.State != ChangesRequested {

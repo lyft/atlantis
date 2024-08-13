@@ -19,6 +19,8 @@ import (
 	"github.com/runatlantis/atlantis/server/legacy/events"
 	"github.com/runatlantis/atlantis/server/legacy/events/command"
 	"github.com/runatlantis/atlantis/server/legacy/events/vcs"
+	"github.com/runatlantis/atlantis/server/legacy/lyft/aws"
+	"github.com/runatlantis/atlantis/server/legacy/lyft/aws/sns"
 	lyft_gateway "github.com/runatlantis/atlantis/server/legacy/lyft/gateway"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
@@ -172,6 +174,8 @@ func NewServer(config Config) (*Server, error) {
 	}
 
 	vcsClient := vcs.NewInstrumentedGithubClient(rawGithubClient, statsScope, ctxLogger)
+
+	session, err := aws.NewSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing new aws session")
 	}
@@ -191,6 +195,8 @@ func NewServer(config Config) (*Server, error) {
 		PanicRecoveryEnabled: true,
 	}
 	asyncScheduler := sync.NewAsyncScheduler(ctxLogger, syncScheduler)
+
+	gatewaySnsWriter := sns.NewWriterWithStats(session, config.SNSTopicArn, statsScope.SubScope("aws.sns.gateway"))
 	vcsStatusUpdater := &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: config.GithubStatusName}}
 
 	repoConverter := github_converter.RepoConverter{}
@@ -257,6 +263,7 @@ func NewServer(config Config) (*Server, error) {
 		statsScope,
 		[]byte(config.GithubWebhookSecret),
 		false,
+		gatewaySnsWriter,
 		commentParser,
 		repoAllowlist,
 		vcsClient,

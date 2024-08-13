@@ -38,6 +38,7 @@ func NewVCSEventsController(
 	scope tally.Scope,
 	webhookSecret []byte,
 	allowDraftPRs bool,
+	snsWriter gateway_handlers.Writer,
 	commentParser events.CommentParsing,
 	repoAllowlistChecker *events.RepoAllowlistChecker,
 	vcsClient vcs.Client,
@@ -60,10 +61,19 @@ func NewVCSEventsController(
 	clientCreator githubapp.ClientCreator,
 	defaultTFVersion string,
 ) *VCSEventsController {
+	pullEventSNSProxy := gateway_handlers.NewSNSWorkerProxy(
+		snsWriter, logger,
+	)
+	legacyHandler := &gateway_handlers.LegacyPullHandler{
+		Logger:           logger,
+		WorkerProxy:      pullEventSNSProxy,
+		VCSStatusUpdater: vcsStatusUpdater,
+	}
 	prSignaler := &pr.WorkflowSignaler{TemporalClient: temporalClient, DefaultTFVersion: defaultTFVersion}
 	prRequirementChecker := requirement.NewPRAggregate(globalCfg)
-	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler)
+	modifiedPullHandler := gateway_handlers.NewModifiedPullHandler(logger, asyncScheduler, rootConfigBuilder, globalCfg, prRequirementChecker, prSignaler, legacyHandler)
 	closedPullHandler := &gateway_handlers.ClosedPullRequestHandler{
+		WorkerProxy:     pullEventSNSProxy,
 		Logger:          logger,
 		PRCloseSignaler: prSignaler,
 		Scope:           scope.SubScope("pull.closed"),
@@ -108,6 +118,7 @@ func NewVCSEventsController(
 		vcsClient,
 		gateway_handlers.NewCommentEventWorkerProxy(
 			logger,
+			snsWriter,
 			asyncScheduler,
 			prSignaler,
 			deploySignaler,
@@ -143,6 +154,7 @@ func NewVCSEventsController(
 
 	pullRequestReviewHandler := &gateway_handlers.PullRequestReviewWorkerProxy{
 		Scheduler:         asyncScheduler,
+		SnsWriter:         snsWriter,
 		Logger:            logger,
 		CheckRunFetcher:   checkRunFetcher,
 		WorkflowSignaler:  prSignaler,
