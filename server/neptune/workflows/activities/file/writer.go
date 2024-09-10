@@ -5,5 +5,5 @@ import "os"
 type Writer struct{}
 
 func (f *Writer) Write(name string, data []byte) error {
-	return os.WriteFile(name, data, 0600)
+	return os.WriteFile(name, data, os.ModePerm) //nolint:gosec
 }

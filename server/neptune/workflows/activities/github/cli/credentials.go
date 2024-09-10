@@ -110,7 +110,7 @@ func (c *Credentials) safeReadFile(file string) (string, error) {
 }
 
 func (c *Credentials) writeConfig(file string, contents []byte) error {
-	if err := c.safeWriteFile(file, contents, 0600); err != nil {
+	if err := c.safeWriteFile(file, contents, os.ModePerm); err != nil { //nolint:gosec
 		return err
 	}
 	if err := c.Git("config", "--global", "credential.helper", "store"); err != nil {

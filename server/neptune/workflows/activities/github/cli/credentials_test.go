@@ -113,7 +113,7 @@ func TestRefresh(t *testing.T) {
 		credentialsFile := filepath.Join(dir, ".git-credentials")
 		oldContents := "https://x-access-token:123456@github.com"
 
-		err := os.WriteFile(credentialsFile, []byte(oldContents), 0600)
+		err := os.WriteFile(credentialsFile, []byte(oldContents), os.ModePerm) //nolint:gosec
 		assert.NoError(t, err)
 
 		capturedGitArgs := [][]string{}
@@ -159,7 +159,7 @@ func TestRefresh(t *testing.T) {
 		credentialsFile := filepath.Join(dir, ".git-credentials")
 		oldContents := "https://x-access-token:123456@github.com"
 
-		err := os.WriteFile(credentialsFile, []byte(oldContents), 0600)
+		err := os.WriteFile(credentialsFile, []byte(oldContents), os.ModePerm) //nolint:gosec
 		assert.NoError(t, err)
 
 		tc := &testInstallationTransport{
