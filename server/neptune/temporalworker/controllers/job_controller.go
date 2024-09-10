@@ -78,7 +78,7 @@ func NewJobsController(
 func (j *JobsController) getProjectJobs(w http.ResponseWriter, r *http.Request) error {
 	jobID, err := j.KeyGenerator.Generate(r)
 	if err != nil {
-		j.respond(w, http.StatusBadRequest, err.Error())
+		j.respond(w, http.StatusBadRequest, "%s", err.Error())
 		return err
 	}
 
@@ -106,7 +106,7 @@ func (j *JobsController) GetProjectJobs(w http.ResponseWriter, r *http.Request) 
 func (j *JobsController) getProjectJobsWS(w http.ResponseWriter, r *http.Request) error {
 	err := j.WsMux.Handle(w, r)
 	if err != nil {
-		j.respond(w, http.StatusBadRequest, err.Error())
+		j.respond(w, http.StatusBadRequest, "%s", err.Error())
 		return err
 	}
 	return nil
