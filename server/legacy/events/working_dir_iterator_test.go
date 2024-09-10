@@ -41,7 +41,7 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 	t.Run("pull not found", func(t *testing.T) {
 		baseDir := t.TempDir()
 
-		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm)
+		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm) //nolint:gosec
 
 		pullNotFound := &vcs.PullRequestNotFound{Err: errors.New("error")}
 
@@ -72,7 +72,7 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 
 		baseDir := t.TempDir()
 
-		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm)
+		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm) //nolint:gosec
 
 		pegomock.When(mockGHClient.GetPullRequestFromName("repo1", "nish", 1)).ThenReturn(expectedGithubPull, nil)
 		pegomock.When(mockEventParser.ParseGithubPull(expectedGithubPull)).ThenReturn(expectedInternalPull, models.Repo{}, models.Repo{}, nil)
@@ -112,8 +112,8 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 
 		baseDir := t.TempDir()
 
-		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm)
-		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "2", "default"), os.ModePerm)
+		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm) //nolint:gosec
+		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "2", "default"), os.ModePerm) //nolint:gosec
 
 		pegomock.When(mockGHClient.GetPullRequestFromName("repo1", "nish", pullNum1)).ThenReturn(expectedGithubPull1, nil)
 		pegomock.When(mockGHClient.GetPullRequestFromName("repo1", "nish", pullNum2)).ThenReturn(expectedGithubPull2, nil)
@@ -156,8 +156,8 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 
 		baseDir := t.TempDir()
 
-		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm)
-		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo2", "2", "default"), os.ModePerm)
+		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm) //nolint:gosec
+		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo2", "2", "default"), os.ModePerm) //nolint:gosec
 
 		pegomock.When(mockGHClient.GetPullRequestFromName("repo1", "nish", pullNum1)).ThenReturn(expectedGithubPull1, nil)
 		pegomock.When(mockGHClient.GetPullRequestFromName("repo2", "nish", pullNum2)).ThenReturn(expectedGithubPull2, nil)
