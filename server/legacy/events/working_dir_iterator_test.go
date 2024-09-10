@@ -41,7 +41,7 @@ func TestListCurrentWorkingDirPulls(t *testing.T) {
 	t.Run("pull not found", func(t *testing.T) {
 		baseDir := t.TempDir()
 
-		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), os.ModePerm)
+		_ = os.MkdirAll(filepath.Join(baseDir, "repos", "nish", "repo1", "1", "default"), 0600)
 
 		pullNotFound := &vcs.PullRequestNotFound{Err: errors.New("error")}
 
