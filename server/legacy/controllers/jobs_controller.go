@@ -90,6 +90,8 @@ func (j *JobsController) GetProjectJobsWS(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// disabling govet linter for now as it has a bug as highlighted in https://github.com/argoproj/argo-cd/issues/19772 also
+// nolint: govet
 func (j *JobsController) respond(w http.ResponseWriter, responseCode int, format string, args ...interface{}) {
 	response := fmt.Sprintf(format, args...)
 	j.Logger.Error(response)
