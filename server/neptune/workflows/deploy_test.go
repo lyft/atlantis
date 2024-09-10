@@ -129,7 +129,7 @@ func buildConfig(t *testing.T) config.Config {
 	dataDir := t.TempDir()
 
 	// storage client uses this for it's local backend.
-	err = os.Mkdir(filepath.Join(dataDir, "container"), os.ModePerm)
+	err = os.Mkdir(filepath.Join(dataDir, "container"), 0600)
 	assert.NoError(t, err)
 	conftestVersion, err := version.NewVersion("0.25.0")
 	assert.NoError(t, err)
@@ -238,13 +238,13 @@ var fileContents = ` resource "null_resource" "null" {}
 func GetLocalTestRoot(ctx context.Context, dst, src string) error {
 	// dst will be the repo path here but we also need to create the root itself
 	dst = filepath.Join(dst, "terraform", "mytestroot")
-	err := os.MkdirAll(dst, os.ModePerm)
+	err := os.MkdirAll(dst, 0600)
 
 	if err != nil {
 		return errors.Wrapf(err, "creating directory at %s", dst)
 	}
 
-	if err := os.WriteFile(filepath.Join(dst, "main.tf"), []byte(fileContents), os.ModePerm); err != nil {
+	if err := os.WriteFile(filepath.Join(dst, "main.tf"), []byte(fileContents), 0600); err != nil {
 		return errors.Wrapf(err, "writing file")
 	}
 
