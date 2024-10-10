@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+
 const atlantisVersion = "0.17.3"
 
 func main() {
