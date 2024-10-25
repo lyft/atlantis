@@ -1,9 +1,12 @@
 package revision_test
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -13,6 +16,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/stretchr/testify/assert"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -23,8 +27,11 @@ type testCheckRunClient struct {
 }
 
 func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID string, request notifier.GithubCheckRunRequest) (int64, error) {
-	assert.Equal(t.expectedT, t.expectedRequest, request)
-
+	ok := assert.Equal(t.expectedT, t.expectedRequest, request)
+	if !ok {
+		return 1, temporal.NewApplicationError("failing workflow", "myType")
+		// t.expectedT.Exit("CreateOrUpdate had unexpected request")
+	}
 	return 1, nil
 }
 
@@ -47,6 +54,21 @@ func (q *testQueue) GetLockState() queue.LockState {
 
 func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state queue.LockState) {
 	q.Lock = state
+}
+
+func (q *testQueue) IsEmpty() bool {
+	return q.Queue == nil || len(q.Queue) == 0
+}
+
+func (q *testQueue) GetQueuedRevisionsSummary() string {
+	var revisions []string
+	if q.IsEmpty() {
+		return "No other revisions ahead In queue."
+	}
+	for _, deploy := range q.Scan() {
+		revisions = append(revisions, deploy.Commit.Revision)
+	}
+	return fmt.Sprintf("Revisions in queue: %s", strings.Join(revisions, ", "))
 }
 
 type testWorker struct {
@@ -137,10 +159,11 @@ func TestEnqueue(t *testing.T) {
 	env.ExecuteWorkflow(testWorkflow, req{
 		ID: id,
 		ExpectedRequest: notifier.GithubCheckRunRequest{
-			Title: "atlantis/deploy: root",
-			Sha:   rev,
-			Repo:  github.Repo{Name: "nish"},
-			State: github.CheckRunQueued,
+			Title:   "atlantis/deploy: root",
+			Sha:     rev,
+			Repo:    github.Repo{Name: "nish"},
+			State:   github.CheckRunQueued,
+			Summary: "This deploy is queued and will be processed as soon as possible.\nNo other revisions ahead In queue.",
 		},
 		ExpectedT: t,
 	})
@@ -197,10 +220,11 @@ func TestEnqueue_ManualTrigger(t *testing.T) {
 	env.ExecuteWorkflow(testWorkflow, req{
 		ID: id,
 		ExpectedRequest: notifier.GithubCheckRunRequest{
-			Title: "atlantis/deploy: root",
-			Sha:   rev,
-			Repo:  github.Repo{Name: "nish"},
-			State: github.CheckRunQueued,
+			Title:   "atlantis/deploy: root",
+			Sha:     rev,
+			Repo:    github.Repo{Name: "nish"},
+			State:   github.CheckRunQueued,
+			Summary: "This deploy is queued and will be processed as soon as possible.\nNo other revisions ahead In queue.",
 		},
 		ExpectedT: t,
 	})
@@ -263,10 +287,11 @@ func TestEnqueue_ManualTrigger_QueueAlreadyLocked(t *testing.T) {
 			Revision: "123334444555",
 		},
 		ExpectedRequest: notifier.GithubCheckRunRequest{
-			Title: "atlantis/deploy: root",
-			Sha:   rev,
-			Repo:  github.Repo{Name: "nish"},
-			State: github.CheckRunQueued,
+			Title:   "atlantis/deploy: root",
+			Sha:     rev,
+			Repo:    github.Repo{Name: "nish"},
+			State:   github.CheckRunQueued,
+			Summary: "This deploy is queued and will be processed as soon as possible.\nNo other revisions ahead In queue.",
 		},
 		ExpectedT: t,
 	})
@@ -321,8 +346,22 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 
 	id := uuid.Must(uuid.NewUUID())
 
+	deploymentInfo := terraformWorkflow.DeploymentInfo{
+		Commit: github.Commit{
+			Revision: "123334444555",
+			Branch:   "locking-branch",
+		},
+		CheckRunID: 0,
+		Root: terraform.Root{Name: "root", TriggerInfo: terraform.TriggerInfo{
+			Type: terraform.MergeTrigger,
+		}, Trigger: terraform.MergeTrigger},
+		ID:   id,
+		Repo: github.Repo{Name: "nish"},
+	}
+
 	env.ExecuteWorkflow(testWorkflow, req{
-		ID: id,
+		ID:              id,
+		InitialElements: []terraformWorkflow.DeploymentInfo{deploymentInfo},
 		Lock: queue.LockState{
 			// ensure that the lock gets updated
 			Status:   queue.LockedStatus,
@@ -332,7 +371,7 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 			Title:   "atlantis/deploy: root",
 			Sha:     rev,
 			Repo:    github.Repo{Name: "nish"},
-			Summary: "This deploy is locked from a manual deployment for revision [123334444555](https://github.com//nish/commit/123334444555).  Unlock to proceed.",
+			Summary: "This deploy is locked from a manual deployment for revision [123334444555](https://github.com//nish/commit/123334444555).  Unlock to proceed.\nRevisions in queue: 12333444455",
 			Actions: []github.CheckRunAction{github.CreateUnlockAction()},
 			State:   github.CheckRunActionRequired,
 		},
@@ -346,6 +385,7 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, []terraformWorkflow.DeploymentInfo{
+		deploymentInfo,
 		{
 			Commit: github.Commit{
 				Revision: rev,

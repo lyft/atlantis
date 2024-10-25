@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
@@ -24,12 +25,13 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 
 	var actions []github.CheckRunAction
 	var summary string
+	var revisionsSummary string = queue.GetQueuedRevisionsSummary()
 	state := github.CheckRunQueued
 	if lock.Status == LockedStatus {
 		actions = append(actions, github.CreateUnlockAction())
 		state = github.CheckRunActionRequired
 		revisionLink := github.BuildRevisionURLMarkdown(repoFullName, lock.Revision)
-		summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.", revisionLink)
+		summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.\n%s", revisionLink, revisionsSummary)
 	}
 
 	for _, i := range infos {

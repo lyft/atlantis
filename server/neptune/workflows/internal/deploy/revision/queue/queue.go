@@ -3,6 +3,7 @@ package queue
 import (
 	"container/list"
 	"fmt"
+	"strings"
 
 	activity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
@@ -83,6 +84,17 @@ func (q *Deploy) Push(msg terraform.DeploymentInfo) {
 		return
 	}
 	q.queue.Push(msg, Low)
+}
+
+func (q *Deploy) GetQueuedRevisionsSummary() string {
+	var revisions []string
+	if q.IsEmpty() {
+		return "No other revisions ahead In queue."
+	}
+	for _, deploy := range q.Scan() {
+		revisions = append(revisions, deploy.Commit.Revision)
+	}
+	return fmt.Sprintf("Revisions in queue: %s", strings.Join(revisions, ", "))
 }
 
 // priority is a simple 2 priority queue implementation

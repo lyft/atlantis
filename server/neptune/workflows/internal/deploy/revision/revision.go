@@ -46,6 +46,7 @@ type Queue interface {
 	GetLockState() queue.LockState
 	SetLockForMergedItems(ctx workflow.Context, state queue.LockState)
 	Scan() []terraform.DeploymentInfo
+	GetQueuedRevisionsSummary() string
 }
 
 type DeploymentStore interface {
@@ -136,14 +137,15 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, root activity.Root, repo github.Repo) int64 {
 	lock := n.queue.GetLockState()
 	var actions []github.CheckRunAction
-	summary := "This deploy is queued and will be processed as soon as possible."
+	var revisionsSummary string = n.queue.GetQueuedRevisionsSummary()
+	summary := "This deploy is queued and will be processed as soon as possible.\n" + revisionsSummary
 	state := github.CheckRunQueued
 
 	if lock.Status == queue.LockedStatus && (root.TriggerInfo.Type == activity.MergeTrigger) {
 		actions = append(actions, github.CreateUnlockAction())
 		state = github.CheckRunActionRequired
 		revisionLink := github.BuildRevisionURLMarkdown(repo.GetFullName(), lock.Revision)
-		summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.", revisionLink)
+		summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.\n%s", revisionLink, revisionsSummary)
 	}
 
 	cid, err := n.checkRunClient.CreateOrUpdate(ctx, id, notifier.GithubCheckRunRequest{
