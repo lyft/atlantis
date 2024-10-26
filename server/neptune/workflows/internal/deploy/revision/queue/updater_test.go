@@ -1,9 +1,10 @@
 package queue_test
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"testing"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
@@ -14,6 +15,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -25,9 +27,13 @@ type testCheckRunClient struct {
 }
 
 func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID string, request notifier.GithubCheckRunRequest) (int64, error) {
-	assert.Equal(t.expectedT, t.expectedRequest, request)
-	assert.Equal(t.expectedT, t.expectedDeploymentID, deploymentID)
+	switch {
+	case assert.Equal(t.expectedT, t.expectedRequest, request):
 
+	case assert.Equal(t.expectedT, t.expectedDeploymentID, deploymentID):
+	default:
+		return 1, temporal.NewApplicationError("failing workflow", "myType")
+	}
 	return 1, nil
 }
 

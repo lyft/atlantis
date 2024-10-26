@@ -51,6 +51,10 @@ func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state queue.Lock
 	q.Lock = state
 }
 
+func (q *testQueue) GetQueuedRevisionsSummary() string {
+	return "Revisions in queue"
+}
+
 type workerRequest struct {
 	Queue                         []internalTerraform.DeploymentInfo
 	ExpectedValidationErrors      []*queue.ValidationError
