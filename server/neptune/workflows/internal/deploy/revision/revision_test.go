@@ -16,7 +16,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	terraformWorkflow "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/stretchr/testify/assert"
-	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -29,8 +28,7 @@ type testCheckRunClient struct {
 func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID string, request notifier.GithubCheckRunRequest) (int64, error) {
 	ok := assert.Equal(t.expectedT, t.expectedRequest, request)
 	if !ok {
-		return 1, temporal.NewApplicationError("failing workflow", "myType")
-		// t.expectedT.Exit("CreateOrUpdate had unexpected request")
+		t.expectedT.FailNow()
 	}
 	return 1, nil
 }
@@ -57,7 +55,7 @@ func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state queue.Lock
 }
 
 func (q *testQueue) IsEmpty() bool {
-	return q.Queue == nil || len(q.Queue) == 0
+	return len(q.Queue) == 0
 }
 
 func (q *testQueue) GetQueuedRevisionsSummary() string {
@@ -371,7 +369,7 @@ func TestEnqueue_MergeTrigger_QueueAlreadyLocked(t *testing.T) {
 			Title:   "atlantis/deploy: root",
 			Sha:     rev,
 			Repo:    github.Repo{Name: "nish"},
-			Summary: "This deploy is locked from a manual deployment for revision [123334444555](https://github.com//nish/commit/123334444555).  Unlock to proceed.\nRevisions in queue: 12333444455",
+			Summary: "This deploy is locked from a manual deployment for revision [123334444555](https://github.com//nish/commit/123334444555).  Unlock to proceed.\nRevisions in queue: 123334444555",
 			Actions: []github.CheckRunAction{github.CreateUnlockAction()},
 			State:   github.CheckRunActionRequired,
 		},

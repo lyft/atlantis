@@ -15,7 +15,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -32,7 +31,7 @@ func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID s
 
 	case assert.Equal(t.expectedT, t.expectedDeploymentID, deploymentID):
 	default:
-		return 1, temporal.NewApplicationError("failing workflow", "myType")
+		t.expectedT.FailNow()
 	}
 	return 1, nil
 }
