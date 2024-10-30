@@ -1,10 +1,11 @@
 package terraform
 
 import (
+	"reflect"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
-
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/workflow"
@@ -18,6 +19,7 @@ type StateReceiver struct {
 
 	// We have separate classes of notifiers since we can be more flexible with our internal ones in terms of the data model
 	// What we support externally should be well thought out so for now this is kept to a minimum.
+	Queue               deployQueue
 	InternalNotifiers   []WorkflowNotifier
 	AdditionalNotifiers []plugins.TerraformWorkflowNotifier
 }
@@ -37,6 +39,10 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 			workflow.GetMetricsHandler(ctx).Counter("notifier_plugin_failure").Inc(1)
 			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
 		}
+	}
+
+	if workflowState.Apply.Status == state.WaitingJobStatus && reflect.ValueOf(workflowState.Apply.OnWaitingActions).IsZero() {
+		// lock the queue item
 	}
 
 	for _, notifier := range n.InternalNotifiers {
