@@ -48,7 +48,9 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		}
 	}
 
-	if workflowState.Apply.Status == state.WaitingJobStatus && !reflect.ValueOf(workflowState.Apply.OnWaitingActions).IsZero() {
+	if workflowState.Apply != nil &&
+		workflowState.Apply.Status == state.WaitingJobStatus &&
+		!reflect.ValueOf(workflowState.Apply.OnWaitingActions).IsZero() {
 		// update queue with information about current deployment pending confirm/reject action
 		infos := n.Queue.GetOrderedMergedItems()
 
