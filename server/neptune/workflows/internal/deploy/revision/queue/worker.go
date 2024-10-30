@@ -25,6 +25,7 @@ type queue interface {
 	CanPop() bool
 	Pop() (terraform.DeploymentInfo, error)
 	SetLockForMergedItems(ctx workflow.Context, state LockState)
+	GetOrderedMergedItems() []terraform.DeploymentInfo
 	GetQueuedRevisionsSummary() string
 }
 
@@ -97,7 +98,7 @@ func NewWorker(
 		},
 	}
 
-	tfWorkflowRunner := terraform.NewWorkflowRunner(q, tfWorkflow, notifiers, additionalNotifiers...)
+	tfWorkflowRunner := terraform.NewWorkflowRunner(q, tfWorkflow, githubCheckRunCache, notifiers, additionalNotifiers...)
 	deployer := &Deployer{
 		Activities:              a,
 		TerraformWorkflowRunner: tfWorkflowRunner,

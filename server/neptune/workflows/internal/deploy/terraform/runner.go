@@ -34,20 +34,16 @@ type stateReceiver interface {
 }
 
 type deployQueue interface {
-	// IsEmpty() bool
-	// CanPop() bool
-	// Pop() (DeploymentInfo, error)
-	// Scan() []DeploymentInfo
-	// GetLockState() queue.LockState
-	// SetLockForMergedItems(ctx workflow.Context, state queue.LockState)
+	GetOrderedMergedItems() []DeploymentInfo
 	GetQueuedRevisionsSummary() string
 }
 
-func NewWorkflowRunner(queue deployQueue, w Workflow, internalNotifiers []WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *WorkflowRunner {
+func NewWorkflowRunner(queue deployQueue, w Workflow, githubCheckRunCache CheckRunClient, internalNotifiers []WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *WorkflowRunner {
 	return &WorkflowRunner{
 		Workflow: w,
 		StateReceiver: &StateReceiver{
 			Queue:               queue,
+			CheckRunCache:       githubCheckRunCache,
 			InternalNotifiers:   internalNotifiers,
 			AdditionalNotifiers: additionalNotifiers,
 		},

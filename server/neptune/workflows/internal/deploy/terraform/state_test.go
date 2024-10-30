@@ -1,10 +1,13 @@
 package terraform_test
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
+	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -49,13 +52,41 @@ func (n *testExternalNotifier) Notify(ctx workflow.Context, info plugins.Terrafo
 	return nil
 }
 
+type testCheckRunClient struct {
+	called bool
+}
+
+func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID string, request notifier.GithubCheckRunRequest) (int64, error) {
+	t.called = true
+	return 1, nil
+}
+
+type testQueue struct {
+	Queue []internalTerraform.DeploymentInfo
+}
+
+func (q *testQueue) GetQueuedRevisionsSummary() string {
+	var revisions []string
+	for _, deploy := range q.Queue {
+		revisions = append(revisions, deploy.Commit.Revision)
+	}
+	return fmt.Sprintf("Revisions in queue: %s", strings.Join(revisions, ", "))
+}
+
+func (q *testQueue) GetOrderedMergedItems() []internalTerraform.DeploymentInfo {
+	return q.Queue
+}
+
 type stateReceiveRequest struct {
+	Queue          *testQueue
+	CheckRunCache  testCheckRunClient
 	State          *state.Workflow
 	DeploymentInfo internalTerraform.DeploymentInfo
 	T              *testing.T
 }
 
 type stateReceiveResponse struct {
+	CheckRunCacheCalled    bool
 	NotifierCalled         bool
 	ExternalNotifierCalled bool
 }
@@ -79,6 +110,8 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 	}
 
 	receiver := &internalTerraform.StateReceiver{
+		Queue:         r.Queue,
+		CheckRunCache: &r.CheckRunCache,
 		InternalNotifiers: []internalTerraform.WorkflowNotifier{
 			notifier,
 		},
@@ -94,6 +127,7 @@ func testStateReceiveWorkflow(ctx workflow.Context, r stateReceiveRequest) (stat
 	receiver.Receive(ctx, ch, r.DeploymentInfo)
 
 	return stateReceiveResponse{
+		CheckRunCacheCalled:    r.CheckRunCache.called,
 		NotifierCalled:         notifier.called,
 		ExternalNotifierCalled: externalNotifier.called,
 	}, nil
@@ -117,15 +151,48 @@ func TestStateReceive(t *testing.T) {
 		},
 	}
 
+	queue := &testQueue{
+		Queue: []internalTerraform.DeploymentInfo{
+			{
+				CheckRunID: 0,
+				ID:         uuid.New(),
+				Root:       terraform.Root{Name: "root"},
+				Repo:       github.Repo{Name: "hello"},
+				Commit: github.Commit{
+					Revision: "56789",
+				},
+			},
+		},
+	}
+
 	t.Run("calls notifiers with state", func(t *testing.T) {
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
 		env.ExecuteWorkflow(testStateReceiveWorkflow, stateReceiveRequest{
+			Queue:         queue,
+			CheckRunCache: testCheckRunClient{},
 			State: &state.Workflow{
 				Plan: &state.Job{
 					Output: jobOutput,
 					Status: state.WaitingJobStatus,
+				},
+				Apply: &state.Job{
+					Output: jobOutput,
+					Status: state.WaitingJobStatus,
+					OnWaitingActions: state.JobActions{
+						Actions: []state.JobAction{
+							{
+								ID:   state.ConfirmAction,
+								Info: "Confirm this plan to proceed to apply",
+							},
+							{
+								ID:   state.RejectAction,
+								Info: "Reject this plan to prevent the apply",
+							},
+						},
+						Summary: "some reason",
+					},
 				},
 			},
 			DeploymentInfo: internalDeploymentInfo,
@@ -136,6 +203,7 @@ func TestStateReceive(t *testing.T) {
 
 		var result stateReceiveResponse
 		err = env.GetWorkflowResult(&result)
+		assert.True(t, result.CheckRunCacheCalled)
 		assert.True(t, result.NotifierCalled)
 		assert.True(t, result.ExternalNotifierCalled)
 		assert.NoError(t, err)

@@ -47,6 +47,14 @@ func (q *testQueue) Push(msg internalTerraform.DeploymentInfo) {
 	q.Queue.PushBack(msg)
 }
 
+func (q *testQueue) GetOrderedMergedItems() []internalTerraform.DeploymentInfo {
+	var result []internalTerraform.DeploymentInfo
+	for e := q.Queue.Front(); e != nil; e = e.Next() {
+		result = append(result, e.Value.(internalTerraform.DeploymentInfo))
+	}
+	return result
+}
+
 func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state queue.LockState) {
 	q.Lock = state
 }
