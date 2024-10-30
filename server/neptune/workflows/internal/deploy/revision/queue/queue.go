@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	activity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -92,7 +93,8 @@ func (q *Deploy) GetQueuedRevisionsSummary() string {
 		return "No other revisions ahead In queue."
 	}
 	for _, deploy := range q.Scan() {
-		revisions = append(revisions, deploy.Commit.Revision)
+		revisionLink := github.BuildRevisionURLMarkdown(deploy.Repo.GetFullName(), deploy.Commit.Revision)
+		revisions = append(revisions, revisionLink)
 	}
 	return fmt.Sprintf("Revisions in queue: %s", strings.Join(revisions, ", "))
 }
