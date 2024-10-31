@@ -90,13 +90,13 @@ func (q *Deploy) Push(msg terraform.DeploymentInfo) {
 func (q *Deploy) GetQueuedRevisionsSummary() string {
 	var revisions []string
 	if q.IsEmpty() {
-		return "No other revisions ahead In queue."
+		return "No other runs ahead in queue."
 	}
 	for _, deploy := range q.Scan() {
-		revisionLink := github.BuildRevisionURLMarkdown(deploy.Repo.GetFullName(), deploy.Commit.Revision)
-		revisions = append(revisions, revisionLink)
+		runLink := github.BuildRunURLMarkdown(deploy.Repo.GetFullName(), deploy.Commit.Revision, deploy.CheckRunID)
+		revisions = append(revisions, runLink)
 	}
-	return fmt.Sprintf("Revisions in queue: %s", strings.Join(revisions, ", "))
+	return fmt.Sprintf("Runs in queue: %s", strings.Join(revisions, ", "))
 }
 
 // priority is a simple 2 priority queue implementation

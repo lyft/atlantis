@@ -56,8 +56,8 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 
 		revisionsSummary := n.Queue.GetQueuedRevisionsSummary()
 		state := github.CheckRunQueued
-		revisionLink := github.BuildRevisionURLMarkdown(deploymentInfo.Repo.GetFullName(), deploymentInfo.Commit.Revision)
-		summary := fmt.Sprintf("This deploy is queued pending action on revision %s.\n%s", revisionLink, revisionsSummary)
+		runLink := github.BuildRunURLMarkdown(deploymentInfo.Repo.GetFullName(), deploymentInfo.Commit.Revision, deploymentInfo.CheckRunID)
+		summary := fmt.Sprintf("This deploy is queued pending action on run for revision %s.\n%s", runLink, revisionsSummary)
 
 		for _, i := range infos {
 			request := notifier.GithubCheckRunRequest{
