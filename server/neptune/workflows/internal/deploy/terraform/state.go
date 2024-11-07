@@ -64,20 +64,23 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		return
 	}
 	if workflowState.Apply != nil &&
-		workflowState.Apply.Status == state.WaitingJobStatus &&
 		len(workflowState.Apply.OnWaitingActions.Actions) > 0 {
 		queuedDeployments := n.Queue.GetOrderedMergedItems()
-
 		revisionsSummary := n.Queue.GetQueuedRevisionsSummary()
-		state := github.CheckRunQueued
-		runLink := github.BuildRunURLMarkdown(deploymentInfo.Repo.GetFullName(), deploymentInfo.Commit.Revision, deploymentInfo.CheckRunID)
-		summary := fmt.Sprintf("This deploy is queued pending action on run for revision %s.\n%s", runLink, revisionsSummary)
+		var summary string
 
+		if workflowState.Apply.Status == state.WaitingJobStatus {
+			runLink := github.BuildRunURLMarkdown(deploymentInfo.Repo.GetFullName(), deploymentInfo.Commit.Revision, deploymentInfo.CheckRunID)
+			summary = fmt.Sprintf("This deploy is queued pending action on run for revision %s.\n%s", runLink, revisionsSummary)
+		} else if workflowState.Apply.Status == state.RejectedJobStatus || workflowState.Apply.Status == state.InProgressJobStatus {
+			// If the current deployment is Rejected or In Progress status, we need to restore the queued check runs to reflect that the queued deployments are not blocked.
+			summary = "This deploy is queued and will be processed as soon as possible.\n" + revisionsSummary
+		}
 		for _, i := range queuedDeployments {
 			request := notifier.GithubCheckRunRequest{
 				Title:   notifier.BuildDeployCheckRunTitle(i.Root.Name),
 				Sha:     i.Commit.Revision,
-				State:   state,
+				State:   github.CheckRunQueued,
 				Repo:    i.Repo,
 				Summary: summary,
 			}
