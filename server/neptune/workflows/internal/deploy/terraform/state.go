@@ -2,7 +2,6 @@ package terraform
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/metrics"
@@ -32,6 +31,8 @@ type StateReceiver struct {
 }
 
 func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo) {
+	// deploymentInfo is the current deployment being processed in TerraformWorkflow. Receive is triggered whenever the TerraformWorkflow has a state change.
+
 	var workflowState *state.Workflow
 	c.Receive(ctx, &workflowState)
 
@@ -48,18 +49,18 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		}
 	}
 
+	// Updates all other deployments waiting in queue when the current deployment is pending a confirm/reject user action. Current deployment is not on the queue at this point since its child TerraformWorkflow was started.
 	if workflowState.Apply != nil &&
 		workflowState.Apply.Status == state.WaitingJobStatus &&
-		!reflect.ValueOf(workflowState.Apply.OnWaitingActions).IsZero() {
-		// update queue with information about current deployment pending confirm/reject action
-		infos := n.Queue.GetOrderedMergedItems()
+		len(workflowState.Apply.OnWaitingActions.Actions) > 0 {
+		queued_deployments := n.Queue.GetOrderedMergedItems()
 
 		revisionsSummary := n.Queue.GetQueuedRevisionsSummary()
 		state := github.CheckRunQueued
 		runLink := github.BuildRunURLMarkdown(deploymentInfo.Repo.GetFullName(), deploymentInfo.Commit.Revision, deploymentInfo.CheckRunID)
 		summary := fmt.Sprintf("This deploy is queued pending action on run for revision %s.\n%s", runLink, revisionsSummary)
 
-		for _, i := range infos {
+		for _, i := range queued_deployments {
 			request := notifier.GithubCheckRunRequest{
 				Title:   notifier.BuildDeployCheckRunTitle(i.Root.Name),
 				Sha:     i.Commit.Revision,
@@ -77,6 +78,7 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		}
 	}
 
+	// Updates github check run with Terraform statuses for the current running deployment
 	for _, notifier := range n.InternalNotifiers {
 		if err := notifier.Notify(ctx, deploymentInfo.ToInternalInfo(), workflowState); err != nil {
 			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
