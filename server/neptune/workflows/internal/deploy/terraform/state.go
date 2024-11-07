@@ -48,19 +48,32 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
 		}
 	}
+	// Updates github check run with Terraform statuses for the current running deployment
+	for _, notifier := range n.InternalNotifiers {
+		if err := notifier.Notify(ctx, deploymentInfo.ToInternalInfo(), workflowState); err != nil {
+			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
+			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
+		}
+	}
 
 	// Updates all other deployments waiting in queue when the current deployment is pending a confirm/reject user action. Current deployment is not on the queue at this point since its child TerraformWorkflow was started.
+	// CheckRunCache.CreateOrUpdate executes an activity and is a nondeterministic operation (i.e. it is not guaranteed to be executed in the same order across different workflow runs). This is why we need to check the workflow version to determine if we should update the check run.
+	// See https://docs.temporal.io/develop/go/versioning#patching for how to upgrade workflow version.
+	v := workflow.GetVersion(ctx, "SurfaceQueueInCheckRuns", workflow.DefaultVersion, 1)
+	if v == workflow.DefaultVersion {
+		return
+	}
 	if workflowState.Apply != nil &&
 		workflowState.Apply.Status == state.WaitingJobStatus &&
 		len(workflowState.Apply.OnWaitingActions.Actions) > 0 {
-		queued_deployments := n.Queue.GetOrderedMergedItems()
+		queuedDeployments := n.Queue.GetOrderedMergedItems()
 
 		revisionsSummary := n.Queue.GetQueuedRevisionsSummary()
 		state := github.CheckRunQueued
 		runLink := github.BuildRunURLMarkdown(deploymentInfo.Repo.GetFullName(), deploymentInfo.Commit.Revision, deploymentInfo.CheckRunID)
 		summary := fmt.Sprintf("This deploy is queued pending action on run for revision %s.\n%s", runLink, revisionsSummary)
 
-		for _, i := range queued_deployments {
+		for _, i := range queuedDeployments {
 			request := notifier.GithubCheckRunRequest{
 				Title:   notifier.BuildDeployCheckRunTitle(i.Root.Name),
 				Sha:     i.Commit.Revision,
@@ -75,14 +88,6 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 			if err != nil {
 				workflow.GetLogger(ctx).Debug(fmt.Sprintf("updating check run for revision %s", i.Commit.Revision), err)
 			}
-		}
-	}
-
-	// Updates github check run with Terraform statuses for the current running deployment
-	for _, notifier := range n.InternalNotifiers {
-		if err := notifier.Notify(ctx, deploymentInfo.ToInternalInfo(), workflowState); err != nil {
-			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
-			workflow.GetLogger(ctx).Error(errors.Wrap(err, "notifying workflow state change").Error())
 		}
 	}
 }
