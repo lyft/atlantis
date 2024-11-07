@@ -49,6 +49,7 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		}
 	}
 	// Updates github check run with Terraform statuses for the current running deployment
+	// TODO: do not notify github if workflowState.Result.Status == InProgressWorkflowStatus && workflowState.Result.Reason == UnknownCompletionReason
 	for _, notifier := range n.InternalNotifiers {
 		if err := notifier.Notify(ctx, deploymentInfo.ToInternalInfo(), workflowState); err != nil {
 			workflow.GetMetricsHandler(ctx).Counter("notifier_failure").Inc(1)
