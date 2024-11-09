@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 )
 
 type testCheckRunClient struct {
@@ -126,8 +127,8 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 
 	env.ExecuteWorkflow(testUpdaterWorkflow, updaterReq{
 		Queue: []terraform.DeploymentInfo{info},
-		Lock: queue.LockState{
-			Status:   queue.LockedStatus,
+		Lock: lock.LockState{
+			Status:   lock.LockedStatus,
 			Revision: "1234",
 		},
 		ExpectedRequest: notifier.GithubCheckRunRequest{
@@ -152,7 +153,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 
 type updaterReq struct {
 	Queue                []terraform.DeploymentInfo
-	Lock                 queue.LockState
+	Lock                 lock.LockState
 	ExpectedRequest      notifier.GithubCheckRunRequest
 	ExpectedDeploymentID string
 	ExpectedT            *testing.T

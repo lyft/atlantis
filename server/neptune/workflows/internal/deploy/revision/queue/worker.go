@@ -18,15 +18,17 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 )
 
 type queue interface {
 	IsEmpty() bool
 	CanPop() bool
 	Pop() (terraform.DeploymentInfo, error)
-	SetLockForMergedItems(ctx workflow.Context, state LockState)
+	SetLockForMergedItems(ctx workflow.Context, state lock.LockState)
 	GetOrderedMergedItems() []terraform.DeploymentInfo
 	GetQueuedRevisionsSummary() string
+	GetLockState() lock.LockState
 }
 
 type deployer interface {
@@ -114,8 +116,8 @@ func NewWorker(
 	// we don't persist lock state anywhere so in the case of workflow completion we need to rebuild
 	// the lock state
 	if latestDeployment != nil && latestDeployment.Root.Trigger == string(tfModel.ManualTrigger) {
-		q.SetLockForMergedItems(ctx, LockState{
-			Status:   LockedStatus,
+		q.SetLockForMergedItems(ctx, lock.LockState{
+			Status:   lock.LockedStatus,
 			Revision: latestDeployment.Revision,
 		})
 	}
@@ -181,8 +183,8 @@ func (w *Worker) Work(ctx workflow.Context) {
 			workflow.GetMetricsHandler(ctx).WithTags(map[string]string{metricNames.SignalNameTag: UnlockSignalName}).
 				Counter(metricNames.SignalReceive).
 				Inc(1)
-			w.Queue.SetLockForMergedItems(ctx, LockState{
-				Status: UnlockedStatus,
+			w.Queue.SetLockForMergedItems(ctx, lock.LockState{
+				Status: lock.UnlockedStatus,
 			})
 			continue
 		default:

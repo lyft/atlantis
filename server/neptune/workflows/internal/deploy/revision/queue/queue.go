@@ -10,20 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"go.temporal.io/sdk/workflow"
-)
-
-type LockStatus int
-
-type LockState struct {
-	Revision string
-	Status   LockStatus
-}
-
-const (
-	UnlockedStatus LockStatus = iota
-	LockedStatus
-
-	QueueDepthStat = "queue.depth"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 )
 
 type Deploy struct {
@@ -32,7 +19,7 @@ type Deploy struct {
 	scope              metrics.Scope
 
 	// mutable: default is unlocked
-	lock LockState
+	lock lock.LockState
 }
 
 func NewQueue(callback func(workflow.Context, *Deploy), scope metrics.Scope) *Deploy {
@@ -43,12 +30,12 @@ func NewQueue(callback func(workflow.Context, *Deploy), scope metrics.Scope) *De
 	}
 }
 
-func (q *Deploy) GetLockState() LockState {
+func (q *Deploy) GetLockState() lock.LockState {
 	return q.lock
 }
 
-func (q *Deploy) SetLockForMergedItems(ctx workflow.Context, state LockState) {
-	if state.Status == LockedStatus {
+func (q *Deploy) SetLockForMergedItems(ctx workflow.Context, state lock.LockState) {
+	if state.Status == lock.LockedStatus {
 		q.scope.Counter("locked").Inc(1)
 	} else {
 		q.scope.Counter("unlocked").Inc(1)
@@ -58,11 +45,11 @@ func (q *Deploy) SetLockForMergedItems(ctx workflow.Context, state LockState) {
 }
 
 func (q *Deploy) CanPop() bool {
-	return q.queue.HasItemsOfPriority(High) || (q.lock.Status == UnlockedStatus && !q.queue.IsEmpty())
+	return q.queue.HasItemsOfPriority(High) || (q.lock.Status == lock.UnlockedStatus && !q.queue.IsEmpty())
 }
 
 func (q *Deploy) Pop() (terraform.DeploymentInfo, error) {
-	defer q.scope.Gauge(QueueDepthStat).Update(float64(q.queue.Size()))
+	defer q.scope.Gauge(lock.QueueDepthStat).Update(float64(q.queue.Size()))
 	return q.queue.Pop()
 }
 
@@ -79,7 +66,7 @@ func (q *Deploy) IsEmpty() bool {
 }
 
 func (q *Deploy) Push(msg terraform.DeploymentInfo) {
-	defer q.scope.Gauge(QueueDepthStat).Update(float64(q.queue.Size()))
+	defer q.scope.Gauge(lock.QueueDepthStat).Update(float64(q.queue.Size()))
 	if msg.Root.TriggerInfo.Type == activity.ManualTrigger {
 		q.queue.Push(msg, High)
 		return

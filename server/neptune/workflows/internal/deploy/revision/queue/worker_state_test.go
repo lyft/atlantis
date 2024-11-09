@@ -16,6 +16,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 )
 
 type testBlockingDeployer struct{}
@@ -47,7 +48,7 @@ func testStateWorkflow(ctx workflow.Context, r workerRequest) (workerResponse, e
 		Queue: list.New(),
 	}
 
-	q.SetLockForMergedItems(ctx, queue.LockState{Status: r.InitialLockStatus})
+	q.SetLockForMergedItems(ctx, lock.LockState{Status: r.InitialLockStatus})
 
 	workflow.Go(ctx, func(ctx workflow.Context) {
 		ch := workflow.GetSignalChannel(ctx, "add-to-queue")
@@ -109,8 +110,8 @@ func TestWorker_StartsWithEmptyQueue(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.True(t, q.QueueIsEmpty)
-		assert.Equal(t, queue.LockState{
-			Status: queue.UnlockedStatus,
+		assert.Equal(t, lock.LockState{
+			Status: lock.UnlockedStatus,
 		}, q.Lock)
 		assert.Equal(t, queue.WaitingWorkerState, q.State)
 	}, 2*time.Second)
@@ -145,8 +146,8 @@ func TestWorker_StartsWithEmptyQueue(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.True(t, q.QueueIsEmpty)
-		assert.Equal(t, queue.LockState{
-			Status: queue.UnlockedStatus,
+		assert.Equal(t, lock.LockState{
+			Status: lock.UnlockedStatus,
 		}, q.Lock)
 		assert.Equal(t, queue.WorkingWorkerState, q.State)
 	}, 6*time.Second)

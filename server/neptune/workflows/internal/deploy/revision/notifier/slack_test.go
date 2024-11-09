@@ -11,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ import (
 )
 
 type request struct {
-	LockState    queue.LockState
+	LockState    lock.LockState
 	InitialItems []terraform.DeploymentInfo
 }
 
@@ -51,7 +52,7 @@ func testWorkflow(ctx workflow.Context, request request) error {
 
 func TestNotifier(t *testing.T) {
 	t.Run("empty queue", func(t *testing.T) {
-		state := queue.LockState{Status: queue.UnlockedStatus}
+		state := lock.LockState{Status: lock.UnlockedStatus}
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
@@ -68,7 +69,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("locked state", func(t *testing.T) {
-		state := queue.LockState{Status: queue.LockedStatus}
+		state := lock.LockState{Status: lock.LockedStatus}
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
@@ -85,7 +86,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("no slack config", func(t *testing.T) {
-		state := queue.LockState{Status: queue.LockedStatus}
+		state := lock.LockState{Status: lock.LockedStatus}
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 
@@ -121,7 +122,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("activity called", func(t *testing.T) {
-		state := queue.LockState{Status: queue.LockedStatus}
+		state := lock.LockState{Status: lock.LockedStatus}
 		ts := testsuite.WorkflowTestSuite{}
 		env := ts.NewTestWorkflowEnvironment()
 

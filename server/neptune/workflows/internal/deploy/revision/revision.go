@@ -16,6 +16,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/request/converter"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -43,8 +44,8 @@ type NewRevisionRequest struct {
 
 type Queue interface {
 	Push(terraform.DeploymentInfo)
-	GetLockState() queue.LockState
-	SetLockForMergedItems(ctx workflow.Context, state queue.LockState)
+	GetLockState() lock.LockState
+	SetLockForMergedItems(ctx workflow.Context, state lock.LockState)
 	Scan() []terraform.DeploymentInfo
 	GetQueuedRevisionsSummary() string
 }
@@ -115,8 +116,8 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 	// lock the queue on a manual deployment
 	if root.TriggerInfo.Type == activity.ManualTrigger {
 		// Lock the queue on a manual deployment
-		n.queue.SetLockForMergedItems(ctx, queue.LockState{
-			Status:   queue.LockedStatus,
+		n.queue.SetLockForMergedItems(ctx, lock.LockState{
+			Status:   lock.LockedStatus,
 			Revision: request.Revision,
 		})
 	}
@@ -135,16 +136,16 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 }
 
 func (n *Receiver) createCheckRun(ctx workflow.Context, id, revision string, root activity.Root, repo github.Repo) int64 {
-	lock := n.queue.GetLockState()
+	queueLock := n.queue.GetLockState()
 	var actions []github.CheckRunAction
 	var revisionsSummary string = n.queue.GetQueuedRevisionsSummary()
 	summary := "This deploy is queued and will be processed as soon as possible.\n" + revisionsSummary
 	state := github.CheckRunQueued
 
-	if lock.Status == queue.LockedStatus && (root.TriggerInfo.Type == activity.MergeTrigger) {
+	if queueLock.Status == lock.LockedStatus && (root.TriggerInfo.Type == activity.MergeTrigger) {
 		actions = append(actions, github.CreateUnlockAction())
 		state = github.CheckRunActionRequired
-		revisionLink := github.BuildRevisionURLMarkdown(repo.GetFullName(), lock.Revision)
+		revisionLink := github.BuildRevisionURLMarkdown(repo.GetFullName(), queueLock.Revision)
 		summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.\n%s", revisionLink, revisionsSummary)
 	}
 

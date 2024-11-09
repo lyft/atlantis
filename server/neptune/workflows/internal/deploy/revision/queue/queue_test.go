@@ -11,6 +11,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/test"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/workflow"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 )
 
 func noopCallback(ctx workflow.Context, q *queue.Deploy) {}
@@ -38,8 +39,8 @@ func TestQueue(t *testing.T) {
 		q := queue.NewQueue(func(ctx workflow.Context, d *queue.Deploy) {
 			called = true
 		}, metrics.NewNullableScope())
-		q.SetLockForMergedItems(test.Background(), queue.LockState{
-			Status: queue.LockedStatus,
+		q.SetLockForMergedItems(test.Background(), lock.LockState{
+			Status: lock.LockedStatus,
 		})
 
 		assert.True(t, called)
@@ -52,8 +53,8 @@ func TestQueue(t *testing.T) {
 
 	t.Run("can pop empty queue locked", func(t *testing.T) {
 		q := queue.NewQueue(noopCallback, metrics.NewNullableScope())
-		q.SetLockForMergedItems(test.Background(), queue.LockState{
-			Status: queue.LockedStatus,
+		q.SetLockForMergedItems(test.Background(), lock.LockState{
+			Status: lock.LockedStatus,
 		})
 		assert.Equal(t, false, q.CanPop())
 	})
@@ -61,8 +62,8 @@ func TestQueue(t *testing.T) {
 		q := queue.NewQueue(noopCallback, metrics.NewNullableScope())
 		msg1 := wrap("1", activity.ManualTrigger)
 		q.Push(msg1)
-		q.SetLockForMergedItems(test.Background(), queue.LockState{
-			Status: queue.LockedStatus,
+		q.SetLockForMergedItems(test.Background(), lock.LockState{
+			Status: lock.LockedStatus,
 		})
 		assert.Equal(t, true, q.CanPop())
 	})
@@ -76,8 +77,8 @@ func TestQueue(t *testing.T) {
 		q := queue.NewQueue(noopCallback, metrics.NewNullableScope())
 		msg1 := wrap("1", activity.MergeTrigger)
 		q.Push(msg1)
-		q.SetLockForMergedItems(test.Background(), queue.LockState{
-			Status: queue.LockedStatus,
+		q.SetLockForMergedItems(test.Background(), lock.LockState{
+			Status: lock.LockedStatus,
 		})
 		assert.Equal(t, false, q.CanPop())
 	})

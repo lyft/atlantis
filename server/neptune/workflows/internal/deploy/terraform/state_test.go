@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
@@ -63,6 +64,11 @@ func (t *testCheckRunClient) CreateOrUpdate(ctx workflow.Context, deploymentID s
 
 type testQueue struct {
 	Queue []internalTerraform.DeploymentInfo
+	Lock  lock.LockState
+}
+
+func (q *testQueue) GetLockState() lock.LockState {
+	return q.Lock
 }
 
 func (q *testQueue) GetQueuedRevisionsSummary() string {
