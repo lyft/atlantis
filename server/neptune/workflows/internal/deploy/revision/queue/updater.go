@@ -7,8 +7,8 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
-	"go.temporal.io/sdk/workflow"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
+	"go.temporal.io/sdk/workflow"
 )
 
 type CheckRunClient interface {
