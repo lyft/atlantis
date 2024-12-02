@@ -35,4 +35,4 @@ issues:
         - dogsled
 linters-settings:
   interfacebloat:
-    max: 6
+    max: 7
