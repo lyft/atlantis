@@ -3,6 +3,7 @@ package terraform
 import (
 	"github.com/pkg/errors"
 	terraformActivities "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
@@ -33,10 +34,18 @@ type stateReceiver interface {
 	Receive(ctx workflow.Context, c workflow.ReceiveChannel, deploymentInfo DeploymentInfo)
 }
 
-func NewWorkflowRunner(w Workflow, internalNotifiers []WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *WorkflowRunner {
+type deployQueue interface {
+	GetOrderedMergedItems() []DeploymentInfo
+	GetQueuedRevisionsSummary() string
+	GetLockState() lock.LockState
+}
+
+func NewWorkflowRunner(queue deployQueue, w Workflow, githubCheckRunCache CheckRunClient, internalNotifiers []WorkflowNotifier, additionalNotifiers ...plugins.TerraformWorkflowNotifier) *WorkflowRunner {
 	return &WorkflowRunner{
 		Workflow: w,
 		StateReceiver: &StateReceiver{
+			Queue:               queue,
+			CheckRunCache:       githubCheckRunCache,
 			InternalNotifiers:   internalNotifiers,
 			AdditionalNotifiers: additionalNotifiers,
 		},

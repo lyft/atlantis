@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/slack-go/slack"
 	"go.temporal.io/sdk/workflow"
@@ -24,7 +25,7 @@ type Slack struct {
 func (s *Slack) Notify(ctx workflow.Context) error {
 	state := s.DeployQueue.GetLockState()
 
-	if state.Status == queue.UnlockedStatus {
+	if state.Status == lock.UnlockedStatus {
 		return nil
 	}
 

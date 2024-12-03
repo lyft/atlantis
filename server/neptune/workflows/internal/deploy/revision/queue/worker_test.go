@@ -12,6 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	internalTerraform "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -25,7 +26,7 @@ import (
 
 type testQueue struct {
 	Queue *list.List
-	Lock  queue.LockState
+	Lock  lock.LockState
 }
 
 func (q *testQueue) IsEmpty() bool {
@@ -47,8 +48,24 @@ func (q *testQueue) Push(msg internalTerraform.DeploymentInfo) {
 	q.Queue.PushBack(msg)
 }
 
-func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state queue.LockState) {
+func (q *testQueue) GetOrderedMergedItems() []internalTerraform.DeploymentInfo {
+	var result []internalTerraform.DeploymentInfo
+	for e := q.Queue.Front(); e != nil; e = e.Next() {
+		result = append(result, e.Value.(internalTerraform.DeploymentInfo))
+	}
+	return result
+}
+
+func (q *testQueue) SetLockForMergedItems(ctx workflow.Context, state lock.LockState) {
 	q.Lock = state
+}
+
+func (q *testQueue) GetLockState() lock.LockState {
+	return q.Lock
+}
+
+func (q *testQueue) GetQueuedRevisionsSummary() string {
+	return "Revisions in queue"
 }
 
 type workerRequest struct {
@@ -56,7 +73,7 @@ type workerRequest struct {
 	ExpectedValidationErrors      []*queue.ValidationError
 	ExpectedPlanRejectionErrros   []*internalTerraform.PlanRejectionError
 	ExpectedTerraformClientErrors []*activities.TerraformClientError
-	InitialLockStatus             queue.LockStatus
+	InitialLockStatus             lock.LockStatus
 }
 
 type workerResponse struct {
@@ -68,7 +85,7 @@ type workerResponse struct {
 type queueAndState struct {
 	QueueIsEmpty      bool
 	State             queue.WorkerState
-	Lock              queue.LockState
+	Lock              lock.LockState
 	CurrentDeployment queue.CurrentDeployment
 	LatestDeployment  *deployment.Info
 }
@@ -113,7 +130,7 @@ func testWorkerWorkflow(ctx workflow.Context, r workerRequest) (workerResponse, 
 		Queue: list.New(),
 	}
 
-	q.SetLockForMergedItems(ctx, queue.LockState{Status: r.InitialLockStatus})
+	q.SetLockForMergedItems(ctx, lock.LockState{Status: r.InitialLockStatus})
 
 	var infos []*deployment.Info
 	for _, s := range r.Queue {
@@ -179,8 +196,8 @@ func TestWorker_ReceivesUnlockSignal(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.True(t, q.QueueIsEmpty)
-		assert.Equal(t, queue.LockState{
-			Status: queue.UnlockedStatus,
+		assert.Equal(t, lock.LockState{
+			Status: lock.UnlockedStatus,
 		}, q.Lock)
 		assert.Equal(t, queue.WaitingWorkerState, q.State)
 
@@ -189,7 +206,7 @@ func TestWorker_ReceivesUnlockSignal(t *testing.T) {
 
 	env.ExecuteWorkflow(testWorkerWorkflow, workerRequest{
 		// start locked and ensure we can unlock it.
-		InitialLockStatus: queue.LockedStatus,
+		InitialLockStatus: lock.LockedStatus,
 	})
 
 	env.AssertExpectations(t)
@@ -388,7 +405,7 @@ func TestNewWorker(t *testing.T) {
 	}
 
 	type res struct {
-		Lock queue.LockState
+		Lock lock.LockState
 	}
 
 	testWorkflow := func(ctx workflow.Context) (res, error) {
@@ -432,9 +449,9 @@ func TestNewWorker(t *testing.T) {
 		err := env.GetWorkflowResult(&r)
 		assert.NoError(t, err)
 
-		assert.Equal(t, queue.LockState{
+		assert.Equal(t, lock.LockState{
 			Revision: "1234",
-			Status:   queue.LockedStatus,
+			Status:   lock.LockedStatus,
 		}, r.Lock)
 	})
 
@@ -463,7 +480,7 @@ func TestNewWorker(t *testing.T) {
 		err := env.GetWorkflowResult(&r)
 		assert.NoError(t, err)
 
-		assert.Equal(t, queue.LockState{}, r.Lock)
+		assert.Equal(t, lock.LockState{}, r.Lock)
 	})
 
 	t.Run("first deploy", func(t *testing.T) {
@@ -485,7 +502,7 @@ func TestNewWorker(t *testing.T) {
 		err := env.GetWorkflowResult(&r)
 		assert.NoError(t, err)
 
-		assert.Equal(t, queue.LockState{}, r.Lock)
+		assert.Equal(t, lock.LockState{}, r.Lock)
 	})
 }
 
