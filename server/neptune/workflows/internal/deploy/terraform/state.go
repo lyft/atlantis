@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
@@ -68,6 +69,8 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		len(workflowState.Apply.OnWaitingActions.Actions) > 0 {
 		queuedDeployments := n.Queue.GetOrderedMergedItems()
 		revisionsSummary := n.Queue.GetQueuedRevisionsSummary()
+		runState := github.CheckRunQueued
+		var actions []github.CheckRunAction
 		var summary string
 
 		if workflowState.Apply.Status == state.WaitingJobStatus {
@@ -75,15 +78,25 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 			summary = fmt.Sprintf("This deploy is queued pending action on run for revision %s.\n%s", runLink, revisionsSummary)
 		} else if workflowState.Apply.Status == state.RejectedJobStatus || workflowState.Apply.Status == state.InProgressJobStatus {
 			// If the current deployment is Rejected or In Progress status, we need to restore the queued check runs to reflect that the queued deployments are not blocked.
-			summary = "This deploy is queued and will be processed as soon as possible.\n" + revisionsSummary
+			// If the queue is currently locked we need to provide the unlock action.
+			queueLock := n.Queue.GetLockState()
+			if queueLock.Status == lock.LockedStatus {
+				actions = append(actions, github.CreateUnlockAction())
+				runState = github.CheckRunActionRequired
+				revisionLink := github.BuildRevisionURLMarkdown(deploymentInfo.Repo.GetFullName(), queueLock.Revision)
+				summary = fmt.Sprintf("This deploy is locked from a manual deployment for revision %s.  Unlock to proceed.\n%s", revisionLink, revisionsSummary)
+			} else {
+				summary = "This deploy is queued and will be processed as soon as possible.\n" + revisionsSummary
+			}
 		}
 		for _, i := range queuedDeployments {
 			request := notifier.GithubCheckRunRequest{
 				Title:   notifier.BuildDeployCheckRunTitle(i.Root.Name),
 				Sha:     i.Commit.Revision,
-				State:   github.CheckRunQueued,
+				State:   runState,
 				Repo:    i.Repo,
 				Summary: summary,
+				Actions: actions,
 			}
 
 			workflow.GetLogger(ctx).Debug(fmt.Sprintf("Updating action pending summary for deployment id: %s", i.ID.String()))

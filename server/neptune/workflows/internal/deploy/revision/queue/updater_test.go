@@ -10,6 +10,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	tfActivity "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
@@ -126,8 +127,8 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 
 	env.ExecuteWorkflow(testUpdaterWorkflow, updaterReq{
 		Queue: []terraform.DeploymentInfo{info},
-		Lock: queue.LockState{
-			Status:   queue.LockedStatus,
+		Lock: lock.LockState{
+			Status:   lock.LockedStatus,
 			Revision: "1234",
 		},
 		ExpectedRequest: notifier.GithubCheckRunRequest{
@@ -152,7 +153,7 @@ func TestLockStateUpdater_locked_new_version(t *testing.T) {
 
 type updaterReq struct {
 	Queue                []terraform.DeploymentInfo
-	Lock                 queue.LockState
+	Lock                 lock.LockState
 	ExpectedRequest      notifier.GithubCheckRunRequest
 	ExpectedDeploymentID string
 	ExpectedT            *testing.T
