@@ -6,7 +6,6 @@ Since then this version has diverged significantly from upstream and was therefo
 
 :warning: This repo is still still contains a lot of code from upstream which is slowly being phased out as we test our implementation in production.  It is not ready for general consumption.
 
-
 ## What's different?
 
 **Functional Differences**
