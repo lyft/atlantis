@@ -1,6 +1,6 @@
 module github.com/runatlantis/atlantis
 
-go 1.23
+go 1.24
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.45.0
 
