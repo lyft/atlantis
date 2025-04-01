@@ -25,6 +25,6 @@ jobs:
             && sudo cp conftest /usr/local/bin/conftest
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.23
+          go-version: 1.24
       - uses: actions/checkout@v3
       - run: make test-all
