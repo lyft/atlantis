@@ -347,7 +347,6 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 		return Response{}, r.toExternalError(err, "fetching root")
 	}
 
-	// Create disconnected context for cleanup outside defer to prevent non-determinism
 	var cleanupCtx workflow.Context
 	version := workflow.GetVersion(ctx, "DisconnectedCleanupContext", workflow.DefaultVersion, workflow.Version(1))
 	if version != workflow.DefaultVersion {
