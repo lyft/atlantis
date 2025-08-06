@@ -12,6 +12,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
+	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -20,6 +21,7 @@ const (
 	ReviewSignalID         = "pr-review"
 	CheckRunCancelled      = "Checkrun was cancelled, please review latest revision for Terraform changes."
 	SkipCancelingCheckRuns = "skip-cancelling-checkruns"
+	ParentRequestCancel    = "parent-request-cancel"
 )
 
 type TFWorkflow func(ctx workflow.Context, request terraform.Request) (terraform.Response, error)
@@ -101,7 +103,10 @@ func (p *Processor) Process(ctx workflow.Context, prRevision Revision) {
 
 func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.Root, prRevision Revision, id uuid.UUID) workflow.ChildWorkflowFuture {
 	ctx = workflow.WithValue(ctx, internalContext.ProjectKey, root.Name)
-	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
+	// Use workflow versioning to safely add ParentClosePolicy without breaking existing workflows
+	version := workflow.GetVersion(ctx, ParentRequestCancel, workflow.DefaultVersion, workflow.Version(1))
+
+	childOptions := workflow.ChildWorkflowOptions{
 		WorkflowID: id.String(),
 		RetryPolicy: &temporal.RetryPolicy{
 			MaximumAttempts: 3,
@@ -114,7 +119,14 @@ func (p *Processor) processRoot(ctx workflow.Context, root terraformActivities.R
 			"atlantis_trigger":    root.Trigger,
 			"atlantis_revision":   prRevision.Revision,
 		},
-	})
+	}
+
+	// Add ParentClosePolicy for new workflow executions only
+	if version != workflow.DefaultVersion {
+		childOptions.ParentClosePolicy = enums.PARENT_CLOSE_POLICY_REQUEST_CANCEL
+	}
+	ctx = workflow.WithChildOptions(ctx, childOptions)
+
 	request := terraform.Request{
 		Repo:         prRevision.Repo,
 		Root:         root,
