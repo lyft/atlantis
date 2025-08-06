@@ -347,8 +347,16 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 		return Response{}, r.toExternalError(err, "fetching root")
 	}
 
+	var cleanupCtx workflow.Context
+	version := workflow.GetVersion(ctx, "DisconnectedCleanupContext", workflow.DefaultVersion, workflow.Version(1))
+	if version != workflow.DefaultVersion {
+		cleanupCtx, _ = workflow.NewDisconnectedContext(ctx)
+	} else {
+		cleanupCtx = ctx
+	}
+
 	defer func() {
-		r.executeCleanup(ctx, cleanup)
+		r.executeCleanup(cleanupCtx, cleanup)
 	}()
 
 	planResponse, err := r.Plan(ctx, root, response.ServerURL)
@@ -379,14 +387,6 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 }
 
 func (r *Runner) executeCleanup(ctx workflow.Context, handlers ...func(workflow.Context) error) {
-	// create a new disconnected ctx since we want this run even in the event of
-	// cancellation
-	if temporal.IsCanceledError(ctx.Err()) {
-		var cancel workflow.CancelFunc
-		ctx, cancel = workflow.NewDisconnectedContext(ctx)
-		defer cancel()
-	}
-
 	// cap these retries since this we don't want to block in the event we fail to do so.
 	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
 		MaximumAttempts: 3,
