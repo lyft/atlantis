@@ -9,8 +9,8 @@ import (
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 
-	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/metrics"
+	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/client"
 
