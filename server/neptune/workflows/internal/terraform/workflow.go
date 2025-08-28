@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
@@ -334,27 +333,33 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 	startTime := time.Now()
 
 	// Create metric tags
+	var workflowTypeStr string
+	switch r.Request.WorkflowMode {
+	case terraform.Deploy:
+		workflowTypeStr = "Deploy"
+	case terraform.PR:
+		workflowTypeStr = "PR"
+	case terraform.Adhoc:
+		workflowTypeStr = "Adhoc"
+	default:
+		workflowTypeStr = "Unknown"
+	}
+
 	tags := map[string]string{
-		metrics.WorkflowType: string(r.Request.WorkflowMode),
+		metrics.WorkflowType: workflowTypeStr,
 		metrics.WorkflowRepo: r.Request.Repo.GetFullName(),
 		metrics.WorkflowRoot: r.Request.Root.Name,
 	}
 
-	// If it's a PR workflow, add PR number
-	if r.Request.WorkflowMode == terraform.PR {
-		tags[metrics.WorkflowPRNum] = strconv.Itoa(r.Request.PRNum)
-	}
+	// Create metrics handler with tags
+	taggedHandler := r.MetricsHandler.WithTags(tags)
 
 	// Increment workflow execution counter
-	r.MetricsHandler.Counter(metrics.TerraformWorkflowExecution).
-		Tagged(tags).
-		Inc(1)
+	taggedHandler.Counter(metrics.TerraformWorkflowExecution).Inc(1)
 
 	defer func() {
 		// Record execution time
-		r.MetricsHandler.Timer("workflow.duration").
-			Tagged(tags).
-			Record(time.Since(startTime))
+		taggedHandler.Timer("workflow.duration").Record(time.Since(startTime))
 	}()
 
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
