@@ -359,7 +359,7 @@ func (r *Runner) run(ctx workflow.Context) (Response, error) {
 
 	defer func() {
 		// Record execution time
-		taggedHandler.Timer("workflow.duration").Record(time.Since(startTime))
+		taggedHandler.Timer(metrics.TerraformWorkflowDuration).Record(time.Since(startTime))
 	}()
 
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{

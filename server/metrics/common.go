@@ -47,6 +47,7 @@ const (
 
 	// Terraform workflow execution metrics
 	TerraformWorkflowExecution = "terraform.workflow.execution"
+	TerraformWorkflowDuration  = "terraform.workflow.duration"
 	WorkflowType               = "workflow_type" // PR, Deploy, Adhoc
 	WorkflowStatus             = "status"        // success, failure
 	WorkflowRepo               = "repository"
