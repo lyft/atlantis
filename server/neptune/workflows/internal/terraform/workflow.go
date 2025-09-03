@@ -8,6 +8,7 @@ import (
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 
+	"github.com/runatlantis/atlantis/server/metrics"
 	key "github.com/runatlantis/atlantis/server/neptune/context"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/client"
@@ -329,6 +330,38 @@ func (r *Runner) Run(ctx workflow.Context) (Response, error) {
 }
 
 func (r *Runner) run(ctx workflow.Context) (Response, error) {
+	startTime := time.Now()
+
+	// Create metric tags
+	var workflowTypeStr string
+	switch r.Request.WorkflowMode {
+	case terraform.Deploy:
+		workflowTypeStr = "Deploy"
+	case terraform.PR:
+		workflowTypeStr = "PR"
+	case terraform.Adhoc:
+		workflowTypeStr = "Adhoc"
+	default:
+		workflowTypeStr = "Unknown"
+	}
+
+	tags := map[string]string{
+		metrics.WorkflowType: workflowTypeStr,
+		metrics.WorkflowRepo: r.Request.Repo.GetFullName(),
+		metrics.WorkflowRoot: r.Request.Root.Name,
+	}
+
+	// Create metrics handler with tags
+	taggedHandler := r.MetricsHandler.WithTags(tags)
+
+	// Increment workflow execution counter
+	taggedHandler.Counter(metrics.TerraformWorkflowExecution).Inc(1)
+
+	defer func() {
+		// Record execution time
+		taggedHandler.Timer(metrics.TerraformWorkflowDuration).Record(time.Since(startTime))
+	}()
+
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: StartToCloseTimeout,
 	})
