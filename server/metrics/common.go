@@ -46,8 +46,8 @@ const (
 	ManualOverrideReasonTag = "reason"
 
 	// Terraform workflow execution metrics
-	TerraformWorkflowExecution = "terraform.workflow.execution"
-	TerraformWorkflowDuration  = "terraform.workflow.duration"
+	TerraformWorkflowExecution = "terraform_workflow_execution"
+	TerraformWorkflowDuration  = "terraform_workflow_duration"
 	WorkflowType               = "workflow_type" // PR, Deploy, Adhoc
 	WorkflowStatus             = "status"        // success, failure
 	WorkflowRepo               = "repository"
