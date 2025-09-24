@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/api/request"
 	"github.com/runatlantis/atlantis/server/neptune/gateway/deploy"

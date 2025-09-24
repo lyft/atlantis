@@ -4,9 +4,10 @@ import (
 	"bytes"
 	_ "embed" //embedding files
 	"fmt"
+	"html/template"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
-	"html/template"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/terraform/state"
 )

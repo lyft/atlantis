@@ -2,11 +2,12 @@ package github_test
 
 import (
 	"context"
+	"net/http"
+	"testing"
+
 	gh "github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
 )
 
 const (

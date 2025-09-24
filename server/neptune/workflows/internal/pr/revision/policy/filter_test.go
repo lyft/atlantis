@@ -1,11 +1,12 @@
 package policy_test
 
 import (
+	"testing"
+
 	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision/policy"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestFilter_FilterOutTeamA(t *testing.T) {

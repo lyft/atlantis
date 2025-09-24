@@ -1,8 +1,9 @@
 package temporal
 
 import (
-	"go.temporal.io/sdk/workflow"
 	"time"
+
+	"go.temporal.io/sdk/workflow"
 )
 
 // SelectorWithTimeout makes it a bit easier to add Timeout futures

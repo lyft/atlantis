@@ -335,7 +335,7 @@ func validateGithubToken(tokenString string) error {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			err := fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			err := fmt.Errorf("Unexpected signing method: %v", token.Header["alg"]) // nolint:staticcheck
 
 			return nil, err
 		}
@@ -347,7 +347,7 @@ func validateGithubToken(tokenString string) error {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); !ok || !token.Valid || claims["iss"] != "1" {
-		return fmt.Errorf("Invalid token")
+		return fmt.Errorf("Invalid token") // nolint:staticcheck
 	}
 	return nil
 }

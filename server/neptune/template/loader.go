@@ -94,7 +94,7 @@ func (l Loader[T]) Load(id Key, repo models.Repo, data T) (string, error) {
 
 	buf := &bytes.Buffer{}
 	if err := tmpl.Execute(buf, data); err != nil {
-		return "", fmt.Errorf("Failed to render template: %v", err)
+		return "", fmt.Errorf("failed to render template: %v", err)
 	}
 	return buf.String(), nil
 }

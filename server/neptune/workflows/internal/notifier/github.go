@@ -3,6 +3,7 @@ package notifier
 import (
 	"context"
 	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"

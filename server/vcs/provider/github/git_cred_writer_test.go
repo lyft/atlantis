@@ -2,11 +2,12 @@ package github_test
 
 import (
 	"fmt"
-	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/runatlantis/atlantis/server/vcs/provider/github"
 
 	"github.com/runatlantis/atlantis/server/logging"
 	. "github.com/runatlantis/atlantis/testing"

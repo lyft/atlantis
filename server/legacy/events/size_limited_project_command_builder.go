@@ -47,7 +47,7 @@ func (b *SizeLimitedProjectCommandBuilder) CheckAgainstLimit(projects []command.
 				"2) Pull Request batch is too large for the given Atlantis instance\n\n"+
 				"Please break this pull request into smaller batches and try again.",
 			b.Limit,
-		)
+		) // nolint:staticcheck
 	}
 	return nil
 }

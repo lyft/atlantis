@@ -2,8 +2,9 @@ package temporal
 
 import (
 	"context"
-	"go.temporal.io/sdk/activity"
 	"time"
+
+	"go.temporal.io/sdk/activity"
 )
 
 const HeartbeatTimeout = 5 * time.Second

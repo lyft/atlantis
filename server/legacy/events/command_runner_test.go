@@ -36,7 +36,6 @@ import (
 	lockingmocks "github.com/runatlantis/atlantis/server/legacy/core/locking/mocks"
 	"github.com/runatlantis/atlantis/server/legacy/events"
 	"github.com/runatlantis/atlantis/server/legacy/events/mocks"
-	eventmocks "github.com/runatlantis/atlantis/server/legacy/events/mocks"
 	"github.com/runatlantis/atlantis/server/legacy/events/mocks/matchers"
 	vcsmocks "github.com/runatlantis/atlantis/server/legacy/events/vcs/mocks"
 	"github.com/runatlantis/atlantis/server/models"
@@ -85,7 +84,7 @@ func setup(t *testing.T) *vcsmocks.MockClient {
 	Ok(t, err)
 
 	drainer = &events.Drainer{}
-	deleteLockCommand = eventmocks.NewMockDeleteLockCommand()
+	deleteLockCommand = mocks.NewMockDeleteLockCommand()
 	applyLockChecker = lockingmocks.NewMockApplyLockChecker()
 
 	dbUpdater = &events.DBUpdater{

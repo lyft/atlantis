@@ -2,11 +2,12 @@ package policy
 
 import (
 	"context"
+	"sort"
+
 	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"go.temporal.io/sdk/workflow"
-	"sort"
 )
 
 type dismisserGithubActivities interface {

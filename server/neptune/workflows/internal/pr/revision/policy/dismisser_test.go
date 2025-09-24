@@ -2,6 +2,9 @@ package policy_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	gh "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
@@ -10,8 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
-	"testing"
-	"time"
 )
 
 type dismissRequest struct {

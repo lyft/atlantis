@@ -99,7 +99,6 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 	cancelTimer, _ := s.AddTimeout(ctx, time.Millisecond, onTimeout)
 
 	for len(failingTerraformWorkflows) != 0 {
-
 		s.Select(ctx)
 		switch action {
 		case onShutdown:

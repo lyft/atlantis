@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	root_config "github.com/runatlantis/atlantis/server/neptune/gateway/config"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
@@ -44,7 +43,7 @@ func ConstructAdhocExecParams(
 		return AdhocTerraformWorkflowExecutionParams{}, errors.Wrap(err, "converting commit")
 	}
 
-	opts := config.BuilderOptions{
+	opts := root_config.BuilderOptions{
 		RepoFetcherOptions: &internal_gh.RepoFetcherOptions{
 			CloneDepth: 1,
 			SimplePath: true,

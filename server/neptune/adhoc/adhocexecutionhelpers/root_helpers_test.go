@@ -3,7 +3,6 @@ package adhoc
 import (
 	"testing"
 
-	"github.com/runatlantis/atlantis/server/config/valid"
 	v "github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
@@ -12,11 +11,11 @@ import (
 
 func TestPrependPlanEnvSteps(t *testing.T) {
 	tests := []struct {
-		cfg           *valid.MergedProjectCfg
+		cfg           *v.MergedProjectCfg
 		expectedSteps []workflows.Step
 	}{
 		{
-			cfg: &valid.MergedProjectCfg{
+			cfg: &v.MergedProjectCfg{
 				Tags: map[string]string{"manifest_path": "manifest_path"},
 				DeploymentWorkflow: v.Workflow{
 					Plan: v.Stage{
@@ -48,7 +47,7 @@ func TestPrependPlanEnvSteps(t *testing.T) {
 			},
 		},
 		{
-			cfg: &valid.MergedProjectCfg{
+			cfg: &v.MergedProjectCfg{
 				Tags: map[string]string{"foo": "foo"},
 				DeploymentWorkflow: v.Workflow{
 					Plan: v.Stage{

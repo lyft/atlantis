@@ -2,8 +2,9 @@ package conftest
 
 import (
 	"fmt"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"strings"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 )
 
 type ValidateSummary struct {

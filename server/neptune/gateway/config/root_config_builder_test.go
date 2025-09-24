@@ -17,7 +17,8 @@ import (
 
 var rcb config.Builder
 var globalCfg valid.GlobalCfg
-var expectedErr = errors.New("some error") //nolint:revive // error name is fine for testing purposes
+var errTest = errors.New("some error")
+
 const testRoot = "testroot"
 
 func setupTesting(t *testing.T) {
@@ -147,7 +148,7 @@ func TestRootConfigBuilder_DetermineRootsError(t *testing.T) {
 		Sha:  "1234",
 	}
 	mockRootFinder := &mockRootFinder{
-		error: expectedErr,
+		error: errTest,
 	}
 	rcb.Strategy.RootFinder = mockRootFinder
 	projectConfigs, err := rcb.Build(context.Background(), commit, 2)
@@ -166,7 +167,7 @@ func TestRootConfigBuilder_ParserValidatorParseError(t *testing.T) {
 		Sha:  "1234",
 	}
 	mockParserValidator := &mockParserValidator{
-		error: expectedErr,
+		error: errTest,
 	}
 	rcb.ParserValidator = mockParserValidator
 	projectConfigs, err := rcb.Build(context.Background(), commit, 2)
@@ -185,7 +186,7 @@ func TestRootConfigBuilder_GetModifiedFilesError(t *testing.T) {
 		Sha:  "1234",
 	}
 	rcb.Strategy.FileFetcher = &mockFileFetcher{
-		error: expectedErr,
+		error: errTest,
 	}
 	projectConfigs, err := rcb.Build(context.Background(), commit, 2)
 	assert.Error(t, err)
@@ -203,7 +204,7 @@ func TestRootConfigBuilder_CloneError(t *testing.T) {
 		Sha:  "1234",
 	}
 	rcb.RepoFetcher = &mockRepoFetcher{
-		cloneError: expectedErr,
+		cloneError: errTest,
 	}
 	projectConfigs, err := rcb.Build(context.Background(), commit, 2)
 	assert.Error(t, err)
@@ -221,7 +222,7 @@ func TestRootConfigBuilder_HooksRunnerError(t *testing.T) {
 		Sha:  "1234",
 	}
 	mockHooksRunner := &mockHooksRunner{
-		error: expectedErr,
+		error: errTest,
 	}
 	rcb.HooksRunner = mockHooksRunner
 	projectConfigs, err := rcb.Build(context.Background(), commit, 2)

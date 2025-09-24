@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/go-github/v45/github"
 	"github.com/runatlantis/atlantis/server/legacy/controllers/events/errors"
-	buffered "github.com/runatlantis/atlantis/server/legacy/http"
 	httputils "github.com/runatlantis/atlantis/server/legacy/http"
 	"github.com/runatlantis/atlantis/server/logging"
 	"github.com/runatlantis/atlantis/server/metrics"
@@ -125,7 +124,7 @@ type assertingPullRequestReviewHandler struct {
 	expectedInput event.PullRequestReview
 }
 
-func (h assertingPullRequestReviewHandler) Handle(_ context.Context, input event.PullRequestReview, _ *buffered.BufferedRequest) error {
+func (h assertingPullRequestReviewHandler) Handle(_ context.Context, input event.PullRequestReview, _ *httputils.BufferedRequest) error {
 	assert.Equal(h.t, h.expectedInput, input)
 	return nil
 }
