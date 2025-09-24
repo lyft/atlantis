@@ -15,7 +15,7 @@ type ServerProxy struct {
 
 func (p *ServerProxy) ListenAndServe() error {
 	if p.SSLCertFile != "" && p.SSLKeyFile != "" {
-		return p.Server.ListenAndServeTLS(p.SSLCertFile, p.SSLKeyFile)
+		return p.ListenAndServeTLS(p.SSLCertFile, p.SSLKeyFile)
 	}
 
 	return p.Server.ListenAndServe()

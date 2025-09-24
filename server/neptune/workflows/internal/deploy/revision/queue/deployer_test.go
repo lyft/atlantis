@@ -47,9 +47,10 @@ type testTerraformWorkflowRunner struct {
 }
 
 func (r testTerraformWorkflowRunner) Run(ctx workflow.Context, deploymentInfo terraform.DeploymentInfo, PlanApproval model.PlanApproval, scope metrics.Scope) error {
-	if r.expectedErrorType == PlanRejectionError {
+	switch r.expectedErrorType {
+	case PlanRejectionError:
 		return terraform.NewPlanRejectionError("plan rejected")
-	} else if r.expectedErrorType == TerraformClientError {
+	case TerraformClientError:
 		return activities.NewTerraformClientError(errors.New("error"))
 	}
 	return nil

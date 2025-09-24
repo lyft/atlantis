@@ -331,6 +331,6 @@ func (w *FileWorkspace) cloneDir(r models.Repo, p models.PullRequest, workspace 
 // sanitizeGitCredentials replaces any git clone urls that contain credentials
 // in s with the sanitized versions.
 func (w *FileWorkspace) sanitizeGitCredentials(s string, base models.Repo, head models.Repo) string {
-	baseReplaced := strings.Replace(s, base.CloneURL, base.SanitizedCloneURL, -1)
-	return strings.Replace(baseReplaced, head.CloneURL, head.SanitizedCloneURL, -1)
+	baseReplaced := strings.ReplaceAll(s, base.CloneURL, base.SanitizedCloneURL)
+	return strings.ReplaceAll(baseReplaced, head.CloneURL, head.SanitizedCloneURL)
 }

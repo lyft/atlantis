@@ -98,10 +98,8 @@ func (f *FailedPolicyHandler) Handle(ctx workflow.Context, revision revision.Rev
 	// perform initial check immediately (subsequent polls can occur at larger intervals)
 	cancelTimer, _ := s.AddTimeout(ctx, time.Millisecond, onTimeout)
 
-	for {
-		if len(failingTerraformWorkflows) == 0 {
-			break
-		}
+	for len(failingTerraformWorkflows) != 0 {
+
 		s.Select(ctx)
 		switch action {
 		case onShutdown:

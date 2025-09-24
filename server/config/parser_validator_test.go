@@ -1090,7 +1090,7 @@ repos:
 			act, err := r.ParseGlobalCfg(path, valid.NewGlobalCfg("somedir"))
 
 			if c.expErr != "" {
-				expErr := strings.Replace(c.expErr, "<tmp>", path, -1)
+				expErr := strings.ReplaceAll(c.expErr, "<tmp>", path)
 				ErrEquals(t, expErr, err)
 				return
 			}
@@ -1405,7 +1405,7 @@ deployment_workflows:
 			act, err := r.ParseGlobalCfg(path, valid.NewGlobalCfg("somedir"))
 
 			if c.expErr != "" {
-				expErr := strings.Replace(c.expErr, "<tmp>", path, -1)
+				expErr := strings.ReplaceAll(c.expErr, "<tmp>", path)
 				ErrEquals(t, expErr, err)
 				return
 			}

@@ -208,7 +208,7 @@ func (s *StorageBackendJobStore) Remove(jobID string) {
 // Persist all jobs in memory
 func (s *StorageBackendJobStore) Cleanup(ctx context.Context) error {
 	failedJobs := []string{}
-	for jobID, job := range s.InMemoryStore.GetJobs() {
+	for jobID, job := range s.GetJobs() {
 		_, err := s.storageBackend.Write(ctx, jobID, job.Output)
 
 		// Track failed jobs, log errors and continue with other jobs

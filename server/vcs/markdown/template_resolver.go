@@ -83,12 +83,12 @@ func (t *TemplateResolver) Resolve(common commonData, baseRepo models.Repo, numP
 	}
 
 	var tmpl *template.Template
-	switch {
-	case common.Command == planCommandTitle, common.Command == policyCheckCommandTitle:
+	switch common.Command {
+	case planCommandTitle, policyCheckCommandTitle:
 		tmpl = t.getPlanTmpl(common, templateOverrides, numPrjResults, numPlanSuccesses, numPolicyCheckSuccesses)
-	case common.Command == applyCommandTitle:
+	case applyCommandTitle:
 		tmpl = t.getApplyTmpl(templateOverrides, numPrjResults)
-	case common.Command == versionCommandTitle:
+	case versionCommandTitle:
 		tmpl = t.getVersionTmpl(templateOverrides, common, numPrjResults, numVersionSuccesses)
 	}
 

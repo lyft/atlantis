@@ -123,7 +123,7 @@ func (c *ConfTestExecutor) buildTitle(policySetNames []string) string {
 }
 
 func (c *ConfTestExecutor) sanitizeOutput(inputFile string, output string) string {
-	return strings.Replace(output, inputFile, "<redacted plan file>", -1)
+	return strings.ReplaceAll(output, inputFile, "<redacted plan file>")
 }
 
 func (c *ConfTestExecutor) processOutput(output string, policySet valid.PolicySet, err error) string {

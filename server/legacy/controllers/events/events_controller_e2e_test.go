@@ -785,7 +785,7 @@ func GitHubPullRequestOpenedEvent(t *testing.T, headSHA string) *http.Request {
 		},
 	)
 	// Replace sha with expected sha.
-	requestJSONStr := strings.Replace(pullRequestOpenedJSON, "c31fd9ea6f557ad2ea659944c3844a059b83bc5d", headSHA, -1)
+	requestJSONStr := strings.ReplaceAll(pullRequestOpenedJSON, "c31fd9ea6f557ad2ea659944c3844a059b83bc5d", headSHA)
 	req, err := http.NewRequest(http.MethodPost, "/events", bytes.NewBuffer([]byte(requestJSONStr)))
 	Ok(t, err)
 	req.Header.Set("Content-Type", "application/json")
@@ -820,7 +820,7 @@ func GitHubPullRequestReviewedEvent(t *testing.T, headSHA string) *http.Request 
 		},
 	)
 	// Replace sha with expected sha.
-	requestJSONStr := strings.Replace(pullRequestReviewedJSON, "c31fd9ea6f557ad2ea659944c3844a059b83bc5d", headSHA, -1)
+	requestJSONStr := strings.ReplaceAll(pullRequestReviewedJSON, "c31fd9ea6f557ad2ea659944c3844a059b83bc5d", headSHA)
 	req, err := http.NewRequest(http.MethodPost, "/events", bytes.NewBuffer([]byte(requestJSONStr)))
 	Ok(t, err)
 	req.Header.Set("Content-Type", "application/json")

@@ -137,7 +137,7 @@ func (c *conftestActivity) buildTitle(policySetNames []string) string {
 }
 
 func (c *conftestActivity) sanitizeOutput(inputFile string, output string) string {
-	return strings.Replace(output, inputFile, "<redacted plan file>", -1)
+	return strings.ReplaceAll(output, inputFile, "<redacted plan file>")
 }
 
 func (c *conftestActivity) processOutput(output string, policySet PolicySet, err error) string {

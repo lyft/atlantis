@@ -73,10 +73,11 @@ func (n *StateReceiver) Receive(ctx workflow.Context, c workflow.ReceiveChannel,
 		var actions []github.CheckRunAction
 		var summary string
 
-		if workflowState.Apply.Status == state.WaitingJobStatus {
+		switch workflowState.Apply.Status {
+		case state.WaitingJobStatus:
 			runLink := github.BuildRunURLMarkdown(deploymentInfo.Repo.GetFullName(), deploymentInfo.Commit.Revision, deploymentInfo.CheckRunID)
 			summary = fmt.Sprintf("This deploy is queued pending action on run for revision %s.\n%s", runLink, revisionsSummary)
-		} else if workflowState.Apply.Status == state.RejectedJobStatus || workflowState.Apply.Status == state.InProgressJobStatus {
+		case state.RejectedJobStatus, state.InProgressJobStatus:
 			// If the current deployment is Rejected or In Progress status, we need to restore the queued check runs to reflect that the queued deployments are not blocked.
 			// If the queue is currently locked we need to provide the unlock action.
 			queueLock := n.Queue.GetLockState()
