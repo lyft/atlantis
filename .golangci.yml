@@ -1,38 +1,45 @@
+version: "2"
 linters:
   enable:
-    - errcheck
-    - gochecknoinits
-    # We don't use goconst because it gives false positives in the tests.
-    #  - goconst
-    - gofmt
-    # We don't use revive because it gives false positives in the tests.
-    #  - revive
-    - gosec
-    - gosimple
-    - ineffassign
-    - staticcheck
-    - typecheck
-    - unconvert
-    - unused
-    - vet
-    - vetshadow
     - dogsled
     - dupword
-    - unparam
+    - gochecknoinits
+    - gosec
     - interfacebloat
+    - unconvert
+    - unparam
     - usestdlibvars
     - whitespace
-issues:
-  exclude-rules:
-    - path: server/legacy/controllers/events/events_controller(.+)test.go
-      linters:
-        - dogsled
-    - path: server/legacy/events/event_parser_test.go
-      linters:
-        - dogsled
-    - path: server/legacy/events/command_runner_test.go
-      linters:
-        - dogsled
-linters-settings:
-  interfacebloat:
-    max: 7
+  settings:
+    interfacebloat:
+      max: 7
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dogsled
+        path: server/legacy/controllers/events/events_controller(.+)test.go
+      - linters:
+          - dogsled
+        path: server/legacy/events/event_parser_test.go
+      - linters:
+          - dogsled
+        path: server/legacy/events/command_runner_test.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
