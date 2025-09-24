@@ -26,7 +26,7 @@ func (u *LockStateUpdater) UpdateQueuedRevisions(ctx workflow.Context, queue *De
 
 	var actions []github.CheckRunAction
 	var summary string
-	var revisionsSummary = queue.GetQueuedRevisionsSummary()
+	var revisionsSummary string = queue.GetQueuedRevisionsSummary()
 	state := github.CheckRunQueued
 	if queueLock.Status == lock.LockedStatus {
 		actions = append(actions, github.CreateUnlockAction())
