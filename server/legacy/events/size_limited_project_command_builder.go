@@ -41,13 +41,14 @@ func (b *SizeLimitedProjectCommandBuilder) CheckAgainstLimit(projects []command.
 	}
 
 	if b.Limit != InfiniteProjectsPerPR && len(planCommands) > b.Limit {
+		// nolint:staticcheck
 		return fmt.Errorf(
 			"Number of projects cannot exceed %d.  This can either be caused by:\n"+
 				"1) GH failure in recognizing the diff\n"+
 				"2) Pull Request batch is too large for the given Atlantis instance\n\n"+
 				"Please break this pull request into smaller batches and try again.",
 			b.Limit,
-		) // nolint:staticcheck
+		)
 	}
 	return nil
 }

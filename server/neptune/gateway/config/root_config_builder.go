@@ -49,12 +49,12 @@ type ModifiedRootsStrategy struct {
 
 func (s *ModifiedRootsStrategy) FindMatches(ctx context.Context, config valid.RepoCfg, repo *LocalRepo, installationToken int64) ([]valid.Project, error) {
 	// Fetch files modified in commit
-	modifiedFiles, err := s.FileFetcher.GetModifiedFiles(ctx, repo.Repo, installationToken, github.FileFetcherOptions{
-		PRNum: repo.OptionalPRNum,
-		Sha:   repo.Sha,
+	modifiedFiles, err := s.FileFetcher.GetModifiedFiles(ctx, repo.RepoCommit.Repo, installationToken, github.FileFetcherOptions{
+		PRNum: repo.RepoCommit.OptionalPRNum,
+		Sha:   repo.RepoCommit.Sha,
 	})
 	if err != nil {
-		debugStr := fmt.Sprintf("sha: %s, prNum: %d, dir %s", repo.Sha, repo.OptionalPRNum, repo.Dir)
+		debugStr := fmt.Sprintf("sha: %s, prNum: %d, dir %s", repo.RepoCommit.Sha, repo.RepoCommit.OptionalPRNum, repo.Dir)
 		return nil, errors.Wrapf(err, "finding modified files: %s, debug str: %s", modifiedFiles, debugStr)
 	}
 

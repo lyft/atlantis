@@ -139,7 +139,7 @@ func (a *Github) listPullRequests(ctx context.Context, installationToken int64, 
 			Sort:      sortBy,
 			Direction: order,
 		}
-		prListOptions.Page = nextPage
+		prListOptions.ListOptions.Page = nextPage
 		return client.PullRequests.List(ctx, owner, repo, &prListOptions)
 	}
 

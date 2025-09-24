@@ -137,7 +137,7 @@ func (i *clientMetricsOutboundInterceptor) ExecuteWorkflow(ctx context.Context, 
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
 
-	run, err := i.Next.ExecuteWorkflow(ctx, in)
+	run, err := i.ClientOutboundInterceptorBase.Next.ExecuteWorkflow(ctx, in)
 
 	if err != nil {
 		s.Counter("error").Inc(1)
@@ -155,7 +155,7 @@ func (i *clientMetricsOutboundInterceptor) SignalWorkflow(ctx context.Context, i
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
 
-	if err := i.Next.SignalWorkflow(ctx, in); err != nil {
+	if err := i.ClientOutboundInterceptorBase.Next.SignalWorkflow(ctx, in); err != nil {
 		s.Counter("error").Inc(1)
 		return err
 	}
@@ -171,7 +171,7 @@ func (i *clientMetricsOutboundInterceptor) SignalWithStartWorkflow(ctx context.C
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
 
-	run, err := i.Next.SignalWithStartWorkflow(ctx, in)
+	run, err := i.ClientOutboundInterceptorBase.Next.SignalWithStartWorkflow(ctx, in)
 
 	if err != nil {
 		s.Counter("error").Inc(1)
@@ -189,7 +189,7 @@ func (i *clientMetricsOutboundInterceptor) CancelWorkflow(ctx context.Context, i
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
 
-	if err := i.Next.CancelWorkflow(ctx, in); err != nil {
+	if err := i.ClientOutboundInterceptorBase.Next.CancelWorkflow(ctx, in); err != nil {
 		s.Counter("error").Inc(1)
 		return err
 	}
@@ -205,7 +205,7 @@ func (i *clientMetricsOutboundInterceptor) TerminateWorkflow(ctx context.Context
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
 
-	if err := i.Next.TerminateWorkflow(ctx, in); err != nil {
+	if err := i.ClientOutboundInterceptorBase.Next.TerminateWorkflow(ctx, in); err != nil {
 		s.Counter("error").Inc(1)
 		return err
 	}
@@ -221,7 +221,7 @@ func (i *clientMetricsOutboundInterceptor) QueryWorkflow(ctx context.Context, in
 	timer := s.Timer("latency").Start()
 	defer timer.Stop()
 
-	val, err := i.Next.QueryWorkflow(ctx, in)
+	val, err := i.ClientOutboundInterceptorBase.Next.QueryWorkflow(ctx, in)
 
 	if err != nil {
 		s.Counter("error").Inc(1)
