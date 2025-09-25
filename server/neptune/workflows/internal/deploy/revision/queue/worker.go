@@ -10,7 +10,6 @@ import (
 	metricNames "github.com/runatlantis/atlantis/server/metrics"
 
 	"github.com/pkg/errors"
-	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/lock"
@@ -285,11 +284,11 @@ func (w *Worker) awaitWork(ctx workflow.Context) workflow.Future {
 }
 
 func setContextKeys(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo) workflow.Context {
-	ctx = workflow.WithValue(ctx, internalContext.SHAKey, requestedDeployment.Commit.Revision)
-	ctx = workflow.WithValue(ctx, internalContext.BranchKey, requestedDeployment.Commit.Branch)
-	ctx = workflow.WithValue(ctx, internalContext.DeploymentIDKey, requestedDeployment.ID)
-	ctx = workflow.WithValue(ctx, internalContext.PlanMode, string(requestedDeployment.Root.Plan.GetPlanMode()))
-	ctx = workflow.WithValue(ctx, internalContext.Trigger, string(requestedDeployment.Root.TriggerInfo.Type))
+	ctx = workflow.WithValue(ctx, key.SHAKey, requestedDeployment.Commit.Revision)
+	ctx = workflow.WithValue(ctx, key.BranchKey, requestedDeployment.Commit.Branch)
+	ctx = workflow.WithValue(ctx, key.DeploymentIDKey, requestedDeployment.ID)
+	ctx = workflow.WithValue(ctx, key.PlanMode, string(requestedDeployment.Root.Plan.GetPlanMode()))
+	ctx = workflow.WithValue(ctx, key.Trigger, string(requestedDeployment.Root.TriggerInfo.Type))
 
 	return ctx
 }

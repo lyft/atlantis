@@ -166,14 +166,12 @@ func TestLyftGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 						w.Write([]byte(pullResponse)) // nolint: errcheck
 						return
 					case "/api/v3/repos/owner/repo/commits/2/status?per_page=100":
-						_, _ = w.Write([]byte(
-							fmt.Sprintf(combinedStatusJSON, strings.Join(c.statuses, ",")),
-						)) // nolint: errcheck
+						_, _ = fmt.Fprintf(w,
+							combinedStatusJSON, strings.Join(c.statuses, ",")) // nolint: errcheck
 						return
 					case "/api/v3/repos/owner/repo/commits/2/check-runs?per_page=100":
-						_, _ = w.Write([]byte(
-							fmt.Sprintf(combinedChecksJSON, strings.Join(c.checks, ",")),
-						))
+						_, _ = fmt.Fprintf(w,
+							combinedChecksJSON, strings.Join(c.checks, ","))
 						return
 					default:
 						t.Errorf("got unexpected request at %q", r.RequestURI)

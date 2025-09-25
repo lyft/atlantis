@@ -515,12 +515,11 @@ func TestGithubClient_PullIsMergeable(t *testing.T) {
 						w.Write([]byte(response)) // nolint: errcheck
 						return
 					case "/api/v3/repos/owner/repo/commits/2/status?per_page=100":
-						_, _ = w.Write([]byte(
-							fmt.Sprintf(combinedStatusJSON, fmt.Sprintf(statusJSON, "success", "some_status")),
-						)) // nolint: errcheck
+						_, _ = fmt.Fprintf(w,
+							combinedStatusJSON, fmt.Sprintf(statusJSON, "success", "some_status")) // nolint: errcheck
 						return
 					case "/api/v3/repos/owner/repo/commits/2/check-runs?per_page=100":
-						_, _ = w.Write([]byte(fmt.Sprintf(checksJSON, "completed", "success")))
+						_, _ = fmt.Fprintf(w, checksJSON, "completed", "success")
 						return
 					default:
 						t.Errorf("got unexpected request at %q", r.RequestURI)
@@ -662,14 +661,12 @@ func TestGithubClient_PullisMergeable_BlockedStatus(t *testing.T) {
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					switch r.RequestURI {
 					case "/api/v3/repos/owner/repo/commits/2/status?per_page=100":
-						_, _ = w.Write([]byte(
-							fmt.Sprintf(combinedStatusJSON, strings.Join(c.statuses, ",")),
-						)) // nolint: errcheck
+						_, _ = fmt.Fprintf(w,
+							combinedStatusJSON, strings.Join(c.statuses, ",")) // nolint: errcheck
 						return
 					case "/api/v3/repos/owner/repo/commits/2/check-runs?per_page=100":
-						_, _ = w.Write([]byte(
-							fmt.Sprintf(combinedChecksJSON, len(c.checks), strings.Join(c.checks, ",")),
-						))
+						_, _ = fmt.Fprintf(w,
+							combinedChecksJSON, len(c.checks), strings.Join(c.checks, ","))
 						return
 					case "/api/v3/repos/owner/repo/pulls/1":
 						w.Write([]byte(pullResponse)) // nolint: errcheck

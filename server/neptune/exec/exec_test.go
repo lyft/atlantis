@@ -2,10 +2,11 @@ package exec_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/runatlantis/atlantis/server/logging"
 	subprocess_exec "github.com/runatlantis/atlantis/server/neptune/exec"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestCmd_RunWithNewProcessGroup(t *testing.T) {

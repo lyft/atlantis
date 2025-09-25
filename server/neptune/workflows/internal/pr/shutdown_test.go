@@ -2,6 +2,9 @@ package pr_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr"
@@ -9,8 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
-	"testing"
-	"time"
 )
 
 type request struct {

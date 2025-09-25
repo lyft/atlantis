@@ -2,6 +2,7 @@ package revision
 
 import (
 	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"

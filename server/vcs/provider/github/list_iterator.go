@@ -3,9 +3,10 @@ package github
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	gh "github.com/google/go-github/v45/github"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 func Iterate[T interface{}](

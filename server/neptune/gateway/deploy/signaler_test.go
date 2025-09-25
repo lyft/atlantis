@@ -15,7 +15,7 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-var expectedErr = errors.New("some error") //nolint:revive // error name is fine for testing purposes
+var errTest = errors.New("some error")
 
 type testRun struct{}
 
@@ -44,7 +44,7 @@ type testSignaler struct {
 	expectedOptions      client.StartWorkflowOptions
 	expectedWorkflow     interface{}
 	expectedWorkflowArgs interface{}
-	expectedErr          error
+	errTest              error
 
 	called bool
 }
@@ -56,7 +56,7 @@ func (s *testSignaler) SignalWorkflow(ctx context.Context, workflowID string, ru
 	assert.Equal(s.t, s.expectedSignalName, signalName)
 	assert.Equal(s.t, s.expectedSignalArg, arg)
 
-	return s.expectedErr
+	return s.errTest
 }
 
 func (s *testSignaler) SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{},
@@ -70,7 +70,7 @@ func (s *testSignaler) SignalWithStartWorkflow(ctx context.Context, workflowID s
 	assert.IsType(s.t, s.expectedWorkflow, workflow)
 	assert.Equal(s.t, []interface{}{s.expectedWorkflowArgs}, workflowArgs)
 
-	return testRun{}, s.expectedErr
+	return testRun{}, s.errTest
 }
 
 func TestSignalWithStartWorkflow_Success(t *testing.T) {
@@ -332,7 +332,7 @@ func TestSignalWithStartWorkflow_Failure(t *testing.T) {
 				Name: rootCfg.Name,
 			},
 		},
-		expectedErr: expectedErr,
+		errTest: errTest,
 	}
 	deploySignaler := deploy.WorkflowSignaler{
 		TemporalClient: testSignaler,

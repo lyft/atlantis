@@ -63,6 +63,7 @@ func (d *DefaultWorkingDirLocker) TryLockPull(repoFullName string, pullNum int) 
 	pullKey := d.pullKey(repoFullName, pullNum)
 	for _, l := range d.locks {
 		if l == pullKey || strings.HasPrefix(l, pullKey+"/") {
+			// nolint:staticcheck
 			return func() {}, fmt.Errorf("The Atlantis working dir is currently locked by another" +
 				" command that is running for this pull request.\n" +
 				"Wait until the previous command is complete and try again.")
@@ -82,6 +83,7 @@ func (d *DefaultWorkingDirLocker) TryLock(repoFullName string, pullNum int, work
 	workspaceKey := d.workspaceKey(repoFullName, pullNum, workspace)
 	for _, l := range d.locks {
 		if l == pullKey || l == workspaceKey {
+			// nolint:staticcheck
 			return func() {}, fmt.Errorf("The %s workspace is currently locked by another"+
 				" command that is running for this pull request.\n"+
 				"Wait until the previous command is complete and try again.", workspace)

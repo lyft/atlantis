@@ -1,12 +1,13 @@
 package pr
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"go.temporal.io/sdk/workflow"
-	"strconv"
-	"time"
 )
 
 const TaskQueue = "pr"

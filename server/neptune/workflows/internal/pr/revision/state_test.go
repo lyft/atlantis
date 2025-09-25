@@ -1,11 +1,12 @@
 package revision_test
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/pr/revision"
 
 	"github.com/google/uuid"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"

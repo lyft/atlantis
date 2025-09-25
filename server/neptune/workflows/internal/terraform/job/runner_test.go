@@ -2,9 +2,10 @@ package job_test
 
 import (
 	"context"
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"testing"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"

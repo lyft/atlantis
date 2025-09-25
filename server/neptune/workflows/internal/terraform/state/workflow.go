@@ -1,9 +1,10 @@
 package state
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 	"net/url"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/conftest"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"

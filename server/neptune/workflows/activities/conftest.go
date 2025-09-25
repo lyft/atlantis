@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/command"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
 	"go.temporal.io/sdk/activity"
-	"strings"
 )
 
 type asyncClient interface {
@@ -137,7 +138,7 @@ func (c *conftestActivity) buildTitle(policySetNames []string) string {
 }
 
 func (c *conftestActivity) sanitizeOutput(inputFile string, output string) string {
-	return strings.Replace(output, inputFile, "<redacted plan file>", -1)
+	return strings.ReplaceAll(output, inputFile, "<redacted plan file>")
 }
 
 func (c *conftestActivity) processOutput(output string, policySet PolicySet, err error) string {

@@ -41,6 +41,7 @@ func (b *SizeLimitedProjectCommandBuilder) CheckAgainstLimit(projects []command.
 	}
 
 	if b.Limit != InfiniteProjectsPerPR && len(planCommands) > b.Limit {
+		// nolint:staticcheck
 		return fmt.Errorf(
 			"Number of projects cannot exceed %d.  This can either be caused by:\n"+
 				"1) GH failure in recognizing the diff\n"+

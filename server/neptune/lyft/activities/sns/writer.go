@@ -2,12 +2,11 @@ package sns
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sns"
 	awsSns "github.com/aws/aws-sdk-go/service/sns"
 )
 
 type snsPublisher interface {
-	Publish(*sns.PublishInput) (*sns.PublishOutput, error)
+	Publish(*awsSns.PublishInput) (*awsSns.PublishOutput, error)
 }
 
 type Writer struct {

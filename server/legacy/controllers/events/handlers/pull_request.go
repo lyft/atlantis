@@ -120,7 +120,7 @@ func (h *PullRequestEvent) Handle(ctx context.Context, request *http.BufferedReq
 	eventType := event.EventType
 
 	if !h.RepoAllowlistChecker.IsAllowlisted(baseRepo.FullName, baseRepo.VCSHost.Hostname) {
-		return fmt.Errorf("Pull request event from non-allowlisted repo \"%s/%s\"", baseRepo.VCSHost.Hostname, baseRepo.FullName)
+		return fmt.Errorf("Pull request event from non-allowlisted repo \"%s/%s\"", baseRepo.VCSHost.Hostname, baseRepo.FullName) // nolint:staticcheck
 	}
 
 	switch eventType {

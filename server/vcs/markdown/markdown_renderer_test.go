@@ -187,7 +187,7 @@ $$$
 		res := command.Result{
 			ProjectResults: c.ProjectResults,
 		}
-		expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
+		expWithBackticks := strings.ReplaceAll(c.Expected, "$", "`")
 		t.Run(fmt.Sprintf("%s_%t", c.Description, false), func(t *testing.T) {
 			s := r.Render(res, c.Command, testRepo)
 			Equals(t, expWithBackticks, s)
@@ -887,7 +887,7 @@ $$$
 			}
 			t.Run(c.Description, func(t *testing.T) {
 				s := r.Render(res, c.Command, testRepo)
-				expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
+				expWithBackticks := strings.ReplaceAll(c.Expected, "$", "`")
 				Equals(t, expWithBackticks, s)
 			})
 		})
@@ -1038,7 +1038,7 @@ $$$
 			}
 			t.Run(c.Description, func(t *testing.T) {
 				s := r.Render(res, c.Command, testRepo)
-				expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
+				expWithBackticks := strings.ReplaceAll(c.Expected, "$", "`")
 				Equals(t, expWithBackticks, s)
 			})
 		})
@@ -1182,7 +1182,7 @@ $$$
 			}
 			t.Run(c.Description, func(t *testing.T) {
 				s := r.Render(res, c.Command, testRepo)
-				expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
+				expWithBackticks := strings.ReplaceAll(c.Expected, "$", "`")
 				Equals(t, expWithBackticks, s)
 			})
 		})
@@ -1271,7 +1271,7 @@ $$$
 `
 				}
 
-				expWithBackticks := strings.Replace(exp, "$", "`", -1)
+				expWithBackticks := strings.ReplaceAll(exp, "$", "`")
 				Equals(t, expWithBackticks, rendered)
 			})
 	}
@@ -1402,7 +1402,7 @@ $$$
 						}
 					}
 
-					expWithBackticks := strings.Replace(exp, "$", "`", -1)
+					expWithBackticks := strings.ReplaceAll(exp, "$", "`")
 					Equals(t, expWithBackticks, rendered)
 				})
 		}
@@ -1451,7 +1451,7 @@ $$$
 ---
 
 `
-	expWithBackticks := strings.Replace(exp, "$", "`", -1)
+	expWithBackticks := strings.ReplaceAll(exp, "$", "`")
 	Equals(t, expWithBackticks, rendered)
 }
 
@@ -1526,7 +1526,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 * :put_litter_in_its_place: To delete all plans and locks for the PR, comment:
     * $atlantis unlock$
 `
-	expWithBackticks := strings.Replace(exp, "$", "`", -1)
+	expWithBackticks := strings.ReplaceAll(exp, "$", "`")
 	Equals(t, expWithBackticks, rendered)
 }
 
@@ -1804,7 +1804,7 @@ Plan: 1 to add, 1 to change, 1 to destroy.
 						Type: c.VCSHost,
 					},
 				})
-				expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
+				expWithBackticks := strings.ReplaceAll(c.Expected, "$", "`")
 				Equals(t, expWithBackticks, s)
 			})
 		})
@@ -1886,7 +1886,7 @@ $$$`,
 		r := Renderer{
 			TemplateResolver: templateResolver,
 		}
-		expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
+		expWithBackticks := strings.ReplaceAll(c.Expected, "$", "`")
 		t.Run(fmt.Sprintf("%s_%t", c.Description, false), func(t *testing.T) {
 			s := r.RenderProject(c.ProjectResult, c.Command, testRepo)
 			fmt.Println(s)
@@ -2050,7 +2050,7 @@ $$$
 		t.Run(c.Description, func(t *testing.T) {
 			s := r.RenderProject(c.ProjectResult, c.Command, testRepo)
 			fmt.Print(s)
-			expWithBackticks := strings.Replace(c.Expected, "$", "`", -1)
+			expWithBackticks := strings.ReplaceAll(c.Expected, "$", "`")
 			Equals(t, expWithBackticks, s)
 		})
 	}

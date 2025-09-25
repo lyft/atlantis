@@ -30,7 +30,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/gateway/event/preworkflow"
 	httpInternal "github.com/runatlantis/atlantis/server/neptune/http"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/feature"
-	"github.com/runatlantis/atlantis/server/neptune/sync"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
 	"github.com/runatlantis/atlantis/server/neptune/sync/crons"
 	"github.com/runatlantis/atlantis/server/neptune/temporal"
@@ -78,7 +77,7 @@ type Server struct {
 	Logger         logging.Logger
 	Port           int
 	Drainer        *events.Drainer
-	Scheduler      *sync.AsyncScheduler
+	Scheduler      *internalSync.AsyncScheduler
 	Server         httpInternal.ServerProxy
 	TemporalClient client.Client
 	CronScheduler  *internalSync.CronScheduler
@@ -186,11 +185,11 @@ func NewServer(config Config) (*Server, error) {
 		GithubUser: config.GithubAppSlug,
 	}
 
-	syncScheduler := &sync.SynchronousScheduler{
+	syncScheduler := &internalSync.SynchronousScheduler{
 		Logger:               ctxLogger,
 		PanicRecoveryEnabled: true,
 	}
-	asyncScheduler := sync.NewAsyncScheduler(ctxLogger, syncScheduler)
+	asyncScheduler := internalSync.NewAsyncScheduler(ctxLogger, syncScheduler)
 	vcsStatusUpdater := &command.VCSStatusUpdater{Client: vcsClient, TitleBuilder: vcs.StatusTitleBuilder{TitlePrefix: config.GithubStatusName}}
 
 	repoConverter := github_converter.RepoConverter{}

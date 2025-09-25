@@ -1,8 +1,9 @@
 package deploy
 
 import (
-	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"time"
+
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 
 	"github.com/pkg/errors"
 	key "github.com/runatlantis/atlantis/server/neptune/context"

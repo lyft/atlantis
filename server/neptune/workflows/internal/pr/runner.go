@@ -2,9 +2,10 @@ package pr
 
 import (
 	"context"
+	"time"
+
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
-	"time"
 
 	metricNames "github.com/runatlantis/atlantis/server/metrics"
 	internalContext "github.com/runatlantis/atlantis/server/neptune/context"
