@@ -33,13 +33,19 @@ func (r *RootFetcher) Fetch(ctx workflow.Context) (*terraform.LocalRoot, func(wo
 	}
 
 	return fetchRootResponse.LocalRoot, func(c workflow.Context) error {
+		logger := workflow.GetLogger(c)
+		logger.Info("starting cleanup of deployment directory", "deploy_directory", fetchRootResponse.DeployDirectory)
+
 		var cleanupResponse activities.CleanupResponse
 		err = workflow.ExecuteActivity(c, r.Ta.Cleanup, activities.CleanupRequest{ //nolint:gosimple // unnecessary to add a method to convert reponses
 			DeployDirectory: fetchRootResponse.DeployDirectory,
-		}).Get(ctx, &cleanupResponse)
+		}).Get(c, &cleanupResponse) // Use `c` (disconnected context) instead of `ctx` which may be cancelled
 		if err != nil {
+			logger.Error("failed to cleanup deployment directory", "deploy_directory", fetchRootResponse.DeployDirectory, "error", err)
 			return errors.Wrap(err, "cleaning up")
 		}
+
+		logger.Info("successfully cleaned up deployment directory", "deploy_directory", fetchRootResponse.DeployDirectory)
 		return nil
 	}, nil
 }
