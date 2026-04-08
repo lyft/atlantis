@@ -16,10 +16,12 @@ const (
 
 // JobState represents the state of a job at a given time.
 type JobState struct {
-	ID        string
-	Status    JobStatus
-	StartTime time.Time
-	EndTime   time.Time
+	ID           string
+	Status       JobStatus
+	StartTime    time.Time
+	EndTime      time.Time
+	ApprovedBy   string
+	ApprovedTime time.Time
 }
 
 // TerraformWorkflowState contains the state of all jobs in the workflow

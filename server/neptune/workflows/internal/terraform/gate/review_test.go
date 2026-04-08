@@ -13,7 +13,7 @@ import (
 )
 
 type res struct {
-	Status                        gate.PlanStatus
+	ReviewResult                  gate.ReviewResult
 	ActionsClientCalled           bool
 	ActionsClientCapturedApproval terraform.PlanApproval
 }
@@ -47,14 +47,14 @@ func testReviewWorkflow(ctx workflow.Context, r req) (res, error) {
 		Client:         c,
 	}
 
-	status, err := review.Await(ctx, terraform.Root{
+	result, err := review.Await(ctx, terraform.Root{
 		Plan: terraform.PlanJob{
 			Approval: r.ApprovalOverride,
 		},
 	}, r.PlanSummary)
 
 	return res{
-		Status:                        status,
+		ReviewResult:                  result,
 		ActionsClientCalled:           c.called,
 		ActionsClientCapturedApproval: c.capturedApproval,
 	}, err
@@ -80,11 +80,11 @@ func TestAwait_timesOut(t *testing.T) {
 	err := env.GetWorkflowResult(&r)
 	assert.NoError(t, err)
 
-	assert.Equal(t, r, res{
-		Status:                        gate.Rejected,
-		ActionsClientCalled:           true,
-		ActionsClientCapturedApproval: approvalOverride,
-	})
+	assert.Equal(t, gate.Rejected, r.ReviewResult.Status)
+	assert.Empty(t, r.ReviewResult.ApprovedBy)
+	assert.True(t, r.ReviewResult.ApprovedTime.IsZero())
+	assert.True(t, r.ActionsClientCalled)
+	assert.Equal(t, approvalOverride, r.ActionsClientCapturedApproval)
 }
 
 func TestAwait_approvesEmptyPlan(t *testing.T) {
@@ -101,10 +101,10 @@ func TestAwait_approvesEmptyPlan(t *testing.T) {
 	err := env.GetWorkflowResult(&r)
 	assert.NoError(t, err)
 
-	assert.Equal(t, r, res{
-		Status: gate.Approved,
-	})
+	assert.Equal(t, gate.Approved, r.ReviewResult.Status)
+	assert.Empty(t, r.ReviewResult.ApprovedBy)
 }
+
 func TestAwait_autoApprove(t *testing.T) {
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
@@ -115,7 +115,6 @@ func TestAwait_autoApprove(t *testing.T) {
 	err := env.GetWorkflowResult(&r)
 	assert.NoError(t, err)
 
-	assert.Equal(t, r, res{
-		Status: gate.Approved,
-	})
+	assert.Equal(t, gate.Approved, r.ReviewResult.Status)
+	assert.Empty(t, r.ReviewResult.ApprovedBy)
 }

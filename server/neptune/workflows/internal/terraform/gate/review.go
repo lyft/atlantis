@@ -19,15 +19,20 @@ const (
 type PlanStatus int
 type PlanReviewSignalRequest struct {
 	Status PlanStatus
-
-	// TODO: Output this info to the checks UI
-	User string
+	User   string
 }
 
 const (
 	Approved PlanStatus = iota
 	Rejected
 )
+
+// ReviewResult holds the outcome of a plan review gate.
+type ReviewResult struct {
+	Status       PlanStatus
+	ApprovedBy   string
+	ApprovedTime time.Time
+}
 
 // Review waits for a plan review signal or a timeout to occur and returns an associated status.
 type Review struct {
@@ -40,9 +45,11 @@ type ActionsClient interface {
 	UpdateApprovalActions(approval terraform.PlanApproval) error
 }
 
-func (r *Review) Await(ctx workflow.Context, root terraform.Root, planSummary terraform.PlanSummary) (PlanStatus, error) {
+// Await blocks until the plan is approved, rejected, or times out.
+// On approval it returns the approver username and the time of approval.
+func (r *Review) Await(ctx workflow.Context, root terraform.Root, planSummary terraform.PlanSummary) (ReviewResult, error) {
 	if root.Plan.Approval.Type == terraform.AutoApproval || planSummary.IsEmpty() {
-		return Approved, nil
+		return ReviewResult{Status: Approved}, nil
 	}
 
 	waitStartTime := time.Now()
@@ -56,8 +63,10 @@ func (r *Review) Await(ctx workflow.Context, root terraform.Root, planSummary te
 	}
 
 	var planReview PlanReviewSignalRequest
+	var approvedAt time.Time
 	selector.AddReceive(ch, func(c workflow.ReceiveChannel, more bool) {
 		ch.Receive(ctx, &planReview)
+		approvedAt = workflow.Now(ctx)
 	})
 
 	var timedOut bool
@@ -70,14 +79,18 @@ func (r *Review) Await(ctx workflow.Context, root terraform.Root, planSummary te
 
 	err := r.Client.UpdateApprovalActions(root.Plan.Approval)
 	if err != nil {
-		return Rejected, errors.Wrap(err, "updating approval actions")
+		return ReviewResult{Status: Rejected}, errors.Wrap(err, "updating approval actions")
 	}
 
 	selector.Select(ctx)
 
 	if timedOut {
-		return Rejected, nil
+		return ReviewResult{Status: Rejected}, nil
 	}
 
-	return planReview.Status, nil
+	return ReviewResult{
+		Status:       planReview.Status,
+		ApprovedBy:   planReview.User,
+		ApprovedTime: approvedAt,
+	}, nil
 }

@@ -241,13 +241,13 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 		return errors.Wrap(err, "initializing job")
 	}
 
-	planStatus, err := r.ReviewGate.Await(ctx, root.Root, planResponse.Summary)
+	reviewResult, err := r.ReviewGate.Await(ctx, root.Root, planResponse.Summary)
 	if err != nil {
 		workflow.GetLogger(ctx).Error("error waiting for plan review.", key.ErrKey, err)
 		return newPlanRejectedError()
 	}
 
-	if planStatus == gate.Rejected {
+	if reviewResult.Status == gate.Rejected {
 		if err := r.Store.UpdateApplyJobWithStatus(state.RejectedJobStatus); err != nil {
 			workflow.GetLogger(ctx).Error("unable to update job with rejected status.", key.ErrKey, err)
 		}
@@ -255,7 +255,9 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 	}
 
 	if err := r.Store.UpdateApplyJobWithStatus(state.InProgressJobStatus, state.UpdateOptions{
-		StartTime: time.Now(),
+		StartTime:    time.Now(),
+		ApprovedBy:   reviewResult.ApprovedBy,
+		ApprovedTime: reviewResult.ApprovedTime,
 	}); err != nil {
 		return newUpdateJobError(err, "unable to update job with success status")
 	}
