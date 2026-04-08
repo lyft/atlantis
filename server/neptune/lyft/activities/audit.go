@@ -53,7 +53,6 @@ type AtlantisJobEvent struct {
 	// ProjectName in the atlantis.yaml
 	RootName string `json:"root_name"`
 
-	// Currently we do not track approvers metadata.
 	ApprovedBy   string `json:"approved_by"`
 	ApprovedTime string `json:"approved_time"`
 }
@@ -83,6 +82,8 @@ type AuditJobRequest struct {
 	EndTime        string
 	IsForceApply   bool
 	Tags           map[string]string
+	ApprovedBy     string
+	ApprovedTime   string
 }
 
 func NewAuditActivity(snsTopicArn string) (*Audit, error) {
@@ -123,6 +124,8 @@ func (a *Audit) AuditJob(ctx context.Context, req AuditJobRequest) error {
 		Revision:       req.Revision,
 		Project:        req.Tags[ProjectTagKey],
 		Environment:    req.Tags[EnvironmentTagKey],
+		ApprovedBy:     req.ApprovedBy,
+		ApprovedTime:   req.ApprovedTime,
 	}
 
 	if req.State == AtlantisJobStateFailure || req.State == AtlantisJobStateSuccess {

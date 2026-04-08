@@ -2,13 +2,12 @@ package notifier
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/runatlantis/atlantis/server/neptune/lyft/activities"
 	t "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
 	"go.temporal.io/sdk/workflow"
-
-	"strconv"
 )
 
 type auditActivity interface {
@@ -45,6 +44,11 @@ func (n *SNSNotifier) Notify(ctx workflow.Context, deploymentInfo plugins.Terraf
 		return nil
 	}
 
+	var approvedTime string
+	if !jobState.ApprovedTime.IsZero() {
+		approvedTime = strconv.FormatInt(jobState.ApprovedTime.Unix(), 10)
+	}
+
 	auditJobReq := activities.AuditJobRequest{
 		Repo:           deploymentInfo.Repo,
 		Root:           deploymentInfo.Root,
@@ -56,6 +60,8 @@ func (n *SNSNotifier) Notify(ctx workflow.Context, deploymentInfo plugins.Terraf
 		StartTime:      startTime,
 		EndTime:        endTime,
 		IsForceApply:   deploymentInfo.Root.TriggerInfo.Type == t.ManualTrigger && deploymentInfo.Root.TriggerInfo.Force,
+		ApprovedBy:     jobState.ApprovedBy,
+		ApprovedTime:   approvedTime,
 	}
 
 	return workflow.ExecuteActivity(ctx, n.Activity.AuditJob, auditJobReq).Get(ctx, nil)

@@ -59,6 +59,7 @@ func testSNSNotifierWorkflow(ctx workflow.Context, r snsNotifierRequest) error {
 func TestSNSNotifier_SendsMessage(t *testing.T) {
 	stTime := time.Now()
 	endTime := stTime.Add(time.Second * 5)
+	approvalTime := stTime.Add(-time.Minute)
 	internalDeploymentInfo := plugins.TerraformDeploymentInfo{
 		ID:   uuid.New(),
 		Root: terraform.Root{Name: "root"},
@@ -78,8 +79,10 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 					Status: plugins.SuccessJobStatus,
 				},
 				Apply: &plugins.JobState{
-					Status:    plugins.InProgressJobStatus,
-					StartTime: stTime,
+					Status:       plugins.InProgressJobStatus,
+					StartTime:    stTime,
+					ApprovedBy:   "octocat",
+					ApprovedTime: approvalTime,
 				},
 			},
 			ExpectedAuditJobRequest: activities.AuditJobRequest{
@@ -89,6 +92,8 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 				State:        activities.AtlantisJobStateRunning,
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				IsForceApply: false,
+				ApprovedBy:   "octocat",
+				ApprovedTime: strconv.FormatInt(approvalTime.Unix(), 10),
 			},
 		},
 		{
@@ -160,9 +165,11 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 					Status: plugins.SuccessJobStatus,
 				},
 				Apply: &plugins.JobState{
-					Status:    plugins.SuccessJobStatus,
-					StartTime: stTime,
-					EndTime:   endTime,
+					Status:       plugins.SuccessJobStatus,
+					StartTime:    stTime,
+					EndTime:      endTime,
+					ApprovedBy:   "octocat",
+					ApprovedTime: approvalTime,
 				},
 			},
 			ExpectedAuditJobRequest: activities.AuditJobRequest{
@@ -173,6 +180,8 @@ func TestSNSNotifier_SendsMessage(t *testing.T) {
 				StartTime:    strconv.FormatInt(stTime.Unix(), 10),
 				EndTime:      strconv.FormatInt(endTime.Unix(), 10),
 				IsForceApply: false,
+				ApprovedBy:   "octocat",
+				ApprovedTime: strconv.FormatInt(approvalTime.Unix(), 10),
 			},
 		},
 	}

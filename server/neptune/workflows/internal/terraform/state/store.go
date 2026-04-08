@@ -35,6 +35,8 @@ type UpdateOptions struct {
 	ValidateSummary conftest.ValidateSummary
 	StartTime       time.Time
 	EndTime         time.Time
+	ApprovedBy      string
+	ApprovedTime    time.Time
 }
 
 func NewWorkflowStoreWithGenerator(notifier UpdateNotifier, g urlGenerator, mode terraform.WorkflowMode, id string) *WorkflowStore {
@@ -165,6 +167,8 @@ func (s *WorkflowStore) UpdateApplyJobWithStatus(status JobStatus, options ...Up
 	switch status {
 	case InProgressJobStatus:
 		s.state.Apply.StartTime = getStartTimeFromOpts(options...)
+		s.state.Apply.ApprovedBy = getApprovedByFromOpts(options...)
+		s.state.Apply.ApprovedTime = getApprovedTimeFromOpts(options...)
 
 	case FailedJobStatus, SuccessJobStatus:
 		s.state.Apply.EndTime = getEndTimeFromOpts(options...)
@@ -196,6 +200,24 @@ func getEndTimeFromOpts(options ...UpdateOptions) time.Time {
 	for _, o := range options {
 		if !o.EndTime.IsZero() {
 			return o.EndTime
+		}
+	}
+	return time.Time{}
+}
+
+func getApprovedByFromOpts(options ...UpdateOptions) string {
+	for _, o := range options {
+		if o.ApprovedBy != "" {
+			return o.ApprovedBy
+		}
+	}
+	return ""
+}
+
+func getApprovedTimeFromOpts(options ...UpdateOptions) time.Time {
+	for _, o := range options {
+		if !o.ApprovedTime.IsZero() {
+			return o.ApprovedTime
 		}
 	}
 	return time.Time{}

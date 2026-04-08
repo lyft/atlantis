@@ -82,16 +82,18 @@ type Job struct {
 	Status           JobStatus
 	StartTime        time.Time
 	EndTime          time.Time
+	ApprovedBy       string
+	ApprovedTime     time.Time
 }
 
 func (j *Job) toExternalJob() *plugins.JobState {
 	return &plugins.JobState{
-		ID: j.ID,
-
-		// we can probably do this in a cleaner way
-		Status:    plugins.JobStatus(string(j.Status)),
-		StartTime: j.StartTime,
-		EndTime:   j.EndTime,
+		ID:           j.ID,
+		Status:       plugins.JobStatus(string(j.Status)),
+		StartTime:    j.StartTime,
+		EndTime:      j.EndTime,
+		ApprovedBy:   j.ApprovedBy,
+		ApprovedTime: j.ApprovedTime,
 	}
 }
 
