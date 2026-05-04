@@ -209,6 +209,7 @@ func (s *StorageBackendJobStore) Remove(jobID string) {
 func (s *StorageBackendJobStore) Cleanup(ctx context.Context) error {
 	failedJobs := []string{}
 	for jobID, job := range s.InMemoryStore.GetJobs() {
+		s.logger.WarnContext(ctx, fmt.Sprintf("job: %s was not persisted before shutdown, persisting now during cleanup", jobID))
 		_, err := s.storageBackend.Write(ctx, jobID, job.Output)
 
 		// Track failed jobs, log errors and continue with other jobs
