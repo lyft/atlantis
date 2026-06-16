@@ -8,7 +8,9 @@
 :point_right: Please `confirm` or `reject` the Terraform plan.
 {{end}}
 
-| Operation | **Status** | **Logs** |  
+{{ if .ApprovedBy }}Approved by: {{ .ApprovedBy }}
+{{ end }}
+| Operation | **Status** | **Logs** |
 | - | - | - |
 | Plan | {{ if .PlanStatus }}`{{.PlanStatus}}`{{else}}N/A{{end}} |{{ if .PlanLogURL }}[Click Here]({{.PlanLogURL}}){{else}}N/A{{end}} |
 {{ if .PRMode -}}
