@@ -51,6 +51,7 @@ type checkrunTemplateData struct {
 	BypassedError           bool
 	PlanSummary             string
 	ValidateSummary         string
+	ApprovedBy              string
 }
 
 func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
@@ -74,8 +75,10 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	}
 
 	var applyActionsSummary string
+	var approvedBy string
 	if workflowState.Apply != nil {
 		applyActionsSummary = workflowState.Apply.GetActions().Summary
+		approvedBy = workflowState.Apply.ApprovedBy
 	}
 
 	var planSummary string
@@ -109,6 +112,7 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 		HeartbeatTimeout:        hearbeatTimeout,
 		ApplyActionsSummary:     applyActionsSummary,
 		Skipped:                 skipped,
+		ApprovedBy:              approvedBy,
 	})
 }
 
