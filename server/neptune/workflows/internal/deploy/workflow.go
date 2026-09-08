@@ -71,6 +71,14 @@ func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, pl
 	options := workflow.ActivityOptions{
 		TaskQueue:           TaskQueue,
 		StartToCloseTimeout: 5 * time.Second,
+		// Bound retries so a persistently-failing activity (e.g. a GitHub call that never
+		// completes within the 5s StartToCloseTimeout above) eventually fails the workflow loudly
+		// instead of retrying silently forever. Without this, we've seen deploy workflows retry a
+		// single activity hundreds of thousands of times over multiple weeks, undetected, while
+		// also starving the shared temporal worker pool of capacity for other work.
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 30,
+		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
