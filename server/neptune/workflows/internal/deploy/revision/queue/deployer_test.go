@@ -191,6 +191,57 @@ func TestDeployer_FirstDeploy(t *testing.T) {
 	assert.Equal(t, latestDeployedRevision, resp.Info)
 }
 
+// TestDeployer_CompareCommit_BoundsRetries exercises the real Temporal retry engine (not just the
+// RetryPolicy struct's field value) to confirm a persistently-failing GithubCompareCommit call
+// stops after queue.CompareCommitRetryCount attempts and fails the deploy, instead of retrying
+// forever. This guards against a regression like the one found in production, where
+// GithubCompareCommit retried for 3 weeks (18.9k+ attempts) undetected.
+func TestDeployer_CompareCommit_BoundsRetries(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	da := &testDeployActivity{}
+	env.RegisterActivity(da)
+
+	attempts := 0
+	env.OnActivity(da.GithubCompareCommit, mock.Anything, mock.Anything).
+		Run(func(mock.Arguments) { attempts++ }).
+		Return(activities.CompareCommitResponse{}, errors.New("comparing commits: boom"))
+
+	repo := github.Repo{
+		Owner: "owner",
+		Name:  "test",
+	}
+
+	deploymentInfo := terraform.DeploymentInfo{
+		ID: uuid.New(),
+		Commit: github.Commit{
+			Revision: "3455",
+			Branch:   "default-branch",
+		},
+		Root: model.Root{Name: "root_1"},
+		Repo: repo,
+	}
+
+	latestDeployedRevision := &deployment.Info{
+		ID:       deploymentInfo.ID.String(),
+		Revision: "3454",
+		Branch:   "default-branch",
+		Root:     deployment.Root{Name: deploymentInfo.Root.Name},
+		Repo:     deployment.Repo{Owner: repo.Owner, Name: repo.Name},
+	}
+
+	env.ExecuteWorkflow(testDeployerWorkflow, deployerRequest{
+		Info:         deploymentInfo,
+		LatestDeploy: latestDeployedRevision,
+	})
+
+	assert.True(t, env.IsWorkflowCompleted())
+	err := env.GetWorkflowError()
+	assert.Error(t, err, "expected the deploy to eventually fail rather than retry forever")
+	assert.Equal(t, queue.CompareCommitRetryCount, attempts, "expected GithubCompareCommit to stop retrying once CompareCommitRetryCount is reached")
+}
+
 func TestDeployer_FirstDeploy_Retry(t *testing.T) {
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()

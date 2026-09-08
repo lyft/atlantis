@@ -67,12 +67,20 @@ type ChildWorkflows struct {
 	Terraform terraform.Workflow
 }
 
-func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) error {
-	options := workflow.ActivityOptions{
+// DeployActivityOptions returns the default activity options for the top-level Deploy workflow.
+// This intentionally leaves retries unbounded by default: some activities in this workflow (e.g.
+// persistLatestDeployment) are documented as needing to retry indefinitely until they succeed.
+// Activities that shouldn't retry forever (e.g. GithubCompareCommit, GithubUpdateCheckRun) opt
+// into a bounded RetryPolicy at their own call site instead of overriding this default globally.
+func DeployActivityOptions() workflow.ActivityOptions {
+	return workflow.ActivityOptions{
 		TaskQueue:           TaskQueue,
 		StartToCloseTimeout: 5 * time.Second,
 	}
-	ctx = workflow.WithActivityOptions(ctx, options)
+}
+
+func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) error {
+	ctx = workflow.WithActivityOptions(ctx, DeployActivityOptions())
 
 	runner, err := newRunner(ctx, request, children, plugins)
 

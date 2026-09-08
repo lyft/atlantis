@@ -19,7 +19,19 @@ import (
 	internal "github.com/runatlantis/atlantis/server/neptune/workflows/activities/github"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	sdktemporal "go.temporal.io/sdk/temporal"
 )
+
+// GithubResourceNotFoundErrorType marks activity errors caused by a GitHub 404 (e.g. a PR or
+// commit that no longer exists) as non-retryable: retrying can never succeed and previously
+// caused these activities to retry hundreds of thousands of times against a permanent condition,
+// starving the shared temporal worker pool of capacity for legitimate work.
+const GithubResourceNotFoundErrorType = "GithubResourceNotFoundError"
+
+func isGithubNotFound(err error) bool {
+	ghErr, ok := err.(*github.ErrorResponse)
+	return ok && ghErr.Response != nil && ghErr.Response.StatusCode == http.StatusNotFound
+}
 
 var HashiGetter = func(ctx context.Context, dst, src string) error {
 	return getter.Get(dst, src, getter.WithContext(ctx))
@@ -317,7 +329,11 @@ func (a *githubActivities) GithubCompareCommit(ctx context.Context, request Comp
 	comparison, resp, err := a.Client.CompareCommits(ctx, request.Repo.Owner, request.Repo.Name, request.LatestDeployedRevision, request.DeployRequestRevision, &github.ListOptions{})
 
 	if err != nil {
-		return CompareCommitResponse{}, errors.Wrap(err, "comparing commits")
+		wrapped := errors.Wrap(err, "comparing commits")
+		if isGithubNotFound(err) {
+			return CompareCommitResponse{}, sdktemporal.NewNonRetryableApplicationError(wrapped.Error(), GithubResourceNotFoundErrorType, err)
+		}
+		return CompareCommitResponse{}, wrapped
 	}
 
 	if comparison.GetStatus() == "" || resp.StatusCode != http.StatusOK {
@@ -346,7 +362,11 @@ func (a *githubActivities) GithubGetPullRequestState(ctx context.Context, reques
 		request.PRNumber,
 	)
 	if err != nil {
-		return GetPullRequestStateResponse{}, errors.Wrap(err, "fetching PR status")
+		wrapped := errors.Wrap(err, "fetching PR status")
+		if isGithubNotFound(err) {
+			return GetPullRequestStateResponse{}, sdktemporal.NewNonRetryableApplicationError(wrapped.Error(), GithubResourceNotFoundErrorType, err)
+		}
+		return GetPullRequestStateResponse{}, wrapped
 	}
 	return GetPullRequestStateResponse{
 		State: resp.GetState(),

@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/plugins"
@@ -60,6 +61,14 @@ const (
 	DirectionBehindSummary   = "This revision is behind the current revision and will not be deployed.  If this is intentional, revert the default branch to this revision to trigger a new deployment."
 	RerunNotIdenticalSummary = "This revision is not identical to the last revision with an attempted deploy. Reruns are only supported on the most recent deploy."
 	UpdateCheckRunRetryCount = 5
+
+	// CompareCommitRetryCount bounds retries on GithubCompareCommit so a persistently-failing
+	// comparison eventually fails the deploy loudly instead of retrying silently forever. We found
+	// a production and staging deploy stuck retrying this exact call for 3 weeks (18.9k+ attempts)
+	// undetected, blocked on the default 5s StartToCloseTimeout being too tight for a GitHub round
+	// trip under any contention.
+	CompareCommitRetryCount = 10
+	CompareCommitTimeout    = 30 * time.Second
 )
 
 func (p *Deployer) Deploy(ctx workflow.Context, requestedDeployment terraform.DeploymentInfo, latestDeployment *deployment.Info, scope metrics.Scope) (*deployment.Info, error) {
@@ -146,6 +155,16 @@ func (p *Deployer) getDeployRequestCommitDirection(ctx workflow.Context, deployR
 		scope.Counter("first_deployment").Inc(1)
 		return activities.DirectionAhead, nil
 	}
+	ctx = workflow.WithStartToCloseTimeout(ctx, CompareCommitTimeout)
+	// Explicitly clear any inherited ScheduleToCloseTimeout so MaximumAttempts below is the only
+	// bound on total retry duration - a ScheduleToCloseTimeout set upstream would otherwise cap
+	// the whole retry sequence's wall-clock time and could stop retries well short of
+	// CompareCommitRetryCount attempts, independent of this policy.
+	ctx = workflow.WithScheduleToCloseTimeout(ctx, 0)
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{
+		MaximumAttempts: CompareCommitRetryCount,
+	})
+
 	var compareCommitResp activities.CompareCommitResponse
 	err := workflow.ExecuteActivity(ctx, p.Activities.GithubCompareCommit, activities.CompareCommitRequest{
 		DeployRequestRevision:  deployRequest.Commit.Revision,
