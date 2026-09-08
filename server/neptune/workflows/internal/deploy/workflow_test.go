@@ -1,8 +1,6 @@
 package deploy_test
 
 import (
-	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -10,8 +8,6 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/stretchr/testify/assert"
-	"go.temporal.io/sdk/activity"
-	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -176,32 +172,4 @@ func TestRunner(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, response{WorkerCtxCancelled: true, ReceiverCalled: true, NotifierCalled: true}, resp)
 	})
-}
-
-// alwaysFailingActivity is registered as a real Temporal activity so it goes through the SDK's
-// actual retry engine, rather than just asserting on the ActivityOptions struct's fields.
-func alwaysFailingActivity(_ context.Context) error {
-	return errors.New("always fails")
-}
-
-func retryBoundsTestWorkflow(ctx workflow.Context) error {
-	ctx = workflow.WithActivityOptions(ctx, deploy.DeployActivityOptions())
-	return workflow.ExecuteActivity(ctx, alwaysFailingActivity).Get(ctx, nil)
-}
-
-func TestDeployActivityOptions_BoundsRetries(t *testing.T) {
-	ts := testsuite.WorkflowTestSuite{}
-	env := ts.NewTestWorkflowEnvironment()
-
-	attempts := 0
-	env.SetOnActivityStartedListener(func(_ *activity.Info, _ context.Context, _ converter.EncodedValues) {
-		attempts++
-	})
-	env.RegisterActivity(alwaysFailingActivity)
-	env.ExecuteWorkflow(retryBoundsTestWorkflow)
-
-	assert.True(t, env.IsWorkflowCompleted())
-	err := env.GetWorkflowError()
-	assert.Error(t, err, "expected the workflow to eventually fail rather than retry forever")
-	assert.Equal(t, 30, attempts, "expected the activity to stop retrying once DeployActivityOptions' MaximumAttempts is reached")
 }

@@ -68,20 +68,14 @@ type ChildWorkflows struct {
 }
 
 // DeployActivityOptions returns the default activity options for the top-level Deploy workflow.
-// Exported (rather than inlined in Workflow) so its retry behavior can be exercised directly by
-// tests against a real Temporal test environment, instead of only being asserted by inspection.
+// This intentionally leaves retries unbounded by default: some activities in this workflow (e.g.
+// persistLatestDeployment) are documented as needing to retry indefinitely until they succeed.
+// Activities that shouldn't retry forever (e.g. GithubCompareCommit, GithubUpdateCheckRun) opt
+// into a bounded RetryPolicy at their own call site instead of overriding this default globally.
 func DeployActivityOptions() workflow.ActivityOptions {
 	return workflow.ActivityOptions{
 		TaskQueue:           TaskQueue,
 		StartToCloseTimeout: 5 * time.Second,
-		// Bound retries so a persistently-failing activity (e.g. a GitHub call that never
-		// completes within the 5s StartToCloseTimeout above) eventually fails the workflow loudly
-		// instead of retrying silently forever. Without this, we've seen deploy workflows retry a
-		// single activity hundreds of thousands of times over multiple weeks, undetected, while
-		// also starving the shared temporal worker pool of capacity for other work.
-		RetryPolicy: &temporal.RetryPolicy{
-			MaximumAttempts: 30,
-		},
 	}
 }
 
