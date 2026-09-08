@@ -67,8 +67,11 @@ type ChildWorkflows struct {
 	Terraform terraform.Workflow
 }
 
-func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) error {
-	options := workflow.ActivityOptions{
+// DeployActivityOptions returns the default activity options for the top-level Deploy workflow.
+// Exported (rather than inlined in Workflow) so its retry behavior can be exercised directly by
+// tests against a real Temporal test environment, instead of only being asserted by inspection.
+func DeployActivityOptions() workflow.ActivityOptions {
+	return workflow.ActivityOptions{
 		TaskQueue:           TaskQueue,
 		StartToCloseTimeout: 5 * time.Second,
 		// Bound retries so a persistently-failing activity (e.g. a GitHub call that never
@@ -80,7 +83,10 @@ func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, pl
 			MaximumAttempts: 30,
 		},
 	}
-	ctx = workflow.WithActivityOptions(ctx, options)
+}
+
+func Workflow(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) error {
+	ctx = workflow.WithActivityOptions(ctx, DeployActivityOptions())
 
 	runner, err := newRunner(ctx, request, children, plugins)
 
