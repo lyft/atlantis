@@ -184,8 +184,7 @@ func (p *RequestRouter) Route(w http.ResponseWriter, r *http.Request) {
 	// we do this to allow for multiple reads to the request body
 	request, err := httputils.NewBufferedRequest(r)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		p.logAndWriteBody(ctx, w, err.Error(), map[string]interface{}{key.ErrKey.String(): err})
+		p.logAndWriteBody(ctx, w, http.StatusInternalServerError, err.Error(), map[string]interface{}{key.ErrKey.String(): err})
 		return
 	}
 
@@ -197,47 +196,44 @@ func (p *RequestRouter) Route(w http.ResponseWriter, r *http.Request) {
 		err := resolver.Handle(request)
 
 		if e, ok := err.(*requestErrors.RequestValidationError); ok {
-			w.WriteHeader(http.StatusForbidden)
-			p.logAndWriteBody(ctx, w, e.Error(), map[string]interface{}{key.ErrKey.String(): e})
+			p.logAndWriteBody(ctx, w, http.StatusForbidden, e.Error(), map[string]interface{}{key.ErrKey.String(): e})
 			return
 		}
 
 		if e, ok := err.(*requestErrors.WebhookParsingError); ok {
-			w.WriteHeader(http.StatusBadRequest)
-			p.logAndWriteBody(ctx, w, e.Error(), map[string]interface{}{key.ErrKey.String(): e})
+			p.logAndWriteBody(ctx, w, http.StatusBadRequest, e.Error(), map[string]interface{}{key.ErrKey.String(): e})
 			return
 		}
 
 		if e, ok := err.(*requestErrors.EventParsingError); ok {
-			w.WriteHeader(http.StatusBadRequest)
-			p.logAndWriteBody(ctx, w, e.Error(), map[string]interface{}{key.ErrKey.String(): e})
+			p.logAndWriteBody(ctx, w, http.StatusBadRequest, e.Error(), map[string]interface{}{key.ErrKey.String(): e})
 			return
 		}
 
 		if e, ok := err.(*requestErrors.UnsupportedEventTypeError); ok {
 			// historically we've just ignored these so for now let's just do that.
-			w.WriteHeader(http.StatusOK)
-			p.logAndWriteBody(ctx, w, e.Error(), map[string]interface{}{key.ErrKey.String(): e})
+			p.logAndWriteBody(ctx, w, http.StatusOK, e.Error(), map[string]interface{}{key.ErrKey.String(): e})
 			return
 		}
 
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			p.logAndWriteBody(ctx, w, err.Error(), map[string]interface{}{key.ErrKey.String(): err})
+			p.logAndWriteBody(ctx, w, http.StatusInternalServerError, err.Error(), map[string]interface{}{key.ErrKey.String(): err})
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
-		p.logAndWriteBody(ctx, w, "Processing...")
+		p.logAndWriteBody(ctx, w, http.StatusOK, "Processing...")
 		return
 	}
 
-	w.WriteHeader(http.StatusInternalServerError)
-	p.logAndWriteBody(ctx, w, "no resolver configured for request")
+	p.logAndWriteBody(ctx, w, http.StatusInternalServerError, "no resolver configured for request")
 }
 
-func (p *RequestRouter) logAndWriteBody(ctx context.Context, w http.ResponseWriter, msg string, fields ...map[string]interface{}) {
-	fmt.Fprintln(w, msg)
+func (p *RequestRouter) logAndWriteBody(ctx context.Context, w http.ResponseWriter, code int, msg string, fields ...map[string]interface{}) {
+	// Content-Type must be set before WriteHeader -- header mutations after WriteHeader are no-ops.
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(code)
+	// Content-Type is explicitly text/plain, so this can't be interpreted as HTML by a browser.
+	fmt.Fprintln(w, msg) // nolint: gosec
 	p.Logger.InfoContext(ctx, msg, fields...)
 }
 

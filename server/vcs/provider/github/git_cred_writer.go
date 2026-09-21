@@ -86,7 +86,9 @@ func fileAppend(line string, filename string) error {
 	if len(currContents) > 0 && !strings.HasSuffix(string(currContents), "\n") {
 		line = "\n" + line
 	}
-	return os.WriteFile(filename, []byte(string(currContents)+line), 0600)
+	// filename is always credsFile, derived from a trusted home dir + hardcoded ".git-credentials",
+	// never attacker-controlled -- same reasoning as the nolint on the os.ReadFile calls above.
+	return os.WriteFile(filename, []byte(string(currContents)+line), 0600) // nolint: gosec
 }
 
 func fileLineReplace(line, user, host, filename string) error {
@@ -110,5 +112,7 @@ func fileLineReplace(line, user, host, filename string) error {
 		return fileAppend(line, filename)
 	}
 
-	return os.WriteFile(filename, []byte(toWrite), 0600)
+	// filename is always credsFile, derived from a trusted home dir + hardcoded ".git-credentials",
+	// never attacker-controlled -- same reasoning as the nolint on the os.ReadFile calls above.
+	return os.WriteFile(filename, []byte(toWrite), 0600) // nolint: gosec
 }

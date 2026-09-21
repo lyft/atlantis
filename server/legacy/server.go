@@ -800,7 +800,7 @@ func NewServer(userConfig UserConfig, config Config) (*Server, error) {
 		rawGithubClient,
 	)
 
-	_, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(context.Background()) // nolint: gosec // cancel is stored below as CancelWorker, not dropped
 
 	lyftMode := userConfig.ToLyftMode()
 	ctxLogger.Info("running Atlantis in default mode")

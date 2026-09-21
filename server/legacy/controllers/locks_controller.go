@@ -167,6 +167,7 @@ func (l *LocksController) respond(w http.ResponseWriter, lvl logging.LogLevel, r
 	default:
 		l.Logger.Error(response)
 	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(responseCode)
-	fmt.Fprintln(w, response)
+	fmt.Fprintln(w, response) // nolint: gosec // Content-Type is explicitly text/plain, so this can't be interpreted as HTML by a browser
 }

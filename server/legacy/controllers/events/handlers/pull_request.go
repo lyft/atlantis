@@ -42,7 +42,7 @@ type asyncAutoplanner struct {
 }
 
 func (p *asyncAutoplanner) Handle(ctx context.Context, request *http.BufferedRequest, event event_types.PullRequest) error {
-	go func() {
+	go func() { // nolint: gosec
 		// Passing background context to avoid context cancellation since the parent goroutine does not wait for this goroutine to finish execution.
 		ctx = contextInternal.CopyFields(context.Background(), ctx)
 		err := p.autoplanner.Handle(ctx, request, event)
