@@ -41,7 +41,7 @@ func NewPullRequestReviewEvent(prReviewCommandRunner events.CommandRunner, logge
 }
 
 func (a AsyncPullRequestReviewEvent) Handle(ctx context.Context, event event.PullRequestReview, req *http.BufferedRequest) error {
-	go func() {
+	go func() { // nolint: gosec
 		// Passing background context to avoid context cancellation since the parent goroutine does not wait for this goroutine to finish execution.
 		ctx = contextInternal.CopyFields(context.Background(), ctx)
 		err := a.handler.Handle(ctx, event, req)

@@ -716,7 +716,7 @@ func (s *ServerCmd) deprecationWarnings(userConfig *server.UserConfig) error {
 	if len(deprecatedFlags) > 0 {
 		warning := "WARNING: "
 		if len(deprecatedFlags) == 1 {
-			warning += fmt.Sprintf("Flag --%s has been deprecated.", deprecatedFlags[0])
+			warning += fmt.Sprintf("Flag --%s has been deprecated.", deprecatedFlags[0]) // nolint: gosec // len checked above
 		} else {
 			warning += fmt.Sprintf("Flags --%s and --%s have been deprecated.", strings.Join(deprecatedFlags[0:len(deprecatedFlags)-1], ", --"), deprecatedFlags[len(deprecatedFlags)-1:][0])
 		}
