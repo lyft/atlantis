@@ -172,7 +172,8 @@ func (w *FileWorkspace) warnDiverged(log logging.Logger, p models.PullRequest, h
 		output, err := cmd.CombinedOutput()
 
 		if err != nil {
-			log.Warn(fmt.Sprintf("getting remote update failed: %s", string(output)), logFields)
+			sanitizedOutput := w.sanitizeGitCredentials(string(output), p.BaseRepo, headRepo)
+			log.Warn(fmt.Sprintf("getting remote update failed: %s", sanitizedOutput), logFields)
 			return false
 		}
 	}
