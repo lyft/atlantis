@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
@@ -20,6 +21,17 @@ import (
 )
 
 const workingDirPrefix = "repos"
+
+// credentialURLPattern matches an embedded git credential in an HTTPS clone
+// URL, e.g. "https://x-access-token:ghs_xxx@github.com/...". Used to redact
+// live GitHub App installation tokens out of anything derived from a
+// process's argv or a models.Repo's CloneURL before it reaches a log line or
+// error message.
+var credentialURLPattern = regexp.MustCompile(`://[^/@\s]+@`)
+
+func redactCredentials(s string) string {
+	return credentialURLPattern.ReplaceAllString(s, "://REDACTED@")
+}
 
 type tokenGetter interface {
 	GetToken() (string, error)
@@ -62,7 +74,7 @@ func (g *RepoFetcher) Fetch(ctx context.Context, repo models.Repo, branch string
 	authURL := fmt.Sprintf("://x-access-token:%s", ghToken)
 	repo.CloneURL = strings.Replace(repo.CloneURL, "://:", authURL, 1)
 	repo.SanitizedCloneURL = strings.Replace(repo.SanitizedCloneURL, "://:", "://x-access-token:", 1)
-	g.Logger.Info(fmt.Sprintf("about to clone inside RepoFetcher Fetch with params: repo: %v. branch: %s, sha: %s", repo, branch, sha))
+	g.Logger.Info(redactCredentials(fmt.Sprintf("about to clone inside RepoFetcher Fetch with params: repo: %v. branch: %s, sha: %s", repo, branch, sha)))
 	path, cleanup, err := g.clone(ctx, repo, branch, sha, options)
 	if err != nil {
 		g.Scope.Counter(metrics.ExecutionErrorMetric).Inc(1)
@@ -93,7 +105,7 @@ func (g *RepoFetcher) clone(ctx context.Context, repo models.Repo, branch string
 	}
 	_, err := g.run(ctx, cloneCmd, destinationPath)
 	if err != nil {
-		debugStr := fmt.Sprintf("destination path is %s, repo is %v, sha is %v", destinationPath, repo, sha)
+		debugStr := redactCredentials(fmt.Sprintf("destination path is %s, repo is %v, sha is %v", destinationPath, repo, sha))
 		return "", nil, errors.Wrap(err, "failed to clone directory, debug info: "+debugStr)
 	}
 
@@ -140,7 +152,7 @@ func (g *RepoFetcher) run(ctx context.Context, args []string, destinationPath st
 	cmd.Stderr = &b
 	err := cmd.RunWithNewProcessGroup(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "running command in separate process group, command is "+cmd.String())
+		return nil, errors.Wrap(err, "running command in separate process group, command is "+redactCredentials(cmd.String()))
 	}
 	return b.Bytes(), nil
 }
