@@ -21,6 +21,7 @@ import (
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/temporal"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	sdktemporal "go.temporal.io/sdk/temporal"
 )
 
 const (
@@ -53,6 +54,21 @@ func wrapTerraformError(err error, message string) TerraformClientError {
 	return TerraformClientError{
 		err: errors.Wrap(err, message),
 	}
+}
+
+// terraformClientErrorType matches the type name Temporal records for
+// TerraformClientError, which callers configure as non-retryable.
+const terraformClientErrorType = "TerraformClientError"
+
+// wrapTerraformFailure wraps a failed Terraform command's error like
+// wrapTerraformError, and attaches what went wrong, parsed from the command's
+// output, as error details so the workflow can show it in the check run.
+func wrapTerraformFailure(err error, message string, output string) error {
+	failure := terraform.NewFailure(output)
+	if failure.IsEmpty() {
+		return wrapTerraformError(err, message)
+	}
+	return sdktemporal.NewNonRetryableApplicationError(errors.Wrap(err, message).Error(), terraformClientErrorType, err, failure)
 }
 
 var DisableInputArg = command.Argument{
@@ -195,7 +211,7 @@ func (t *terraformActivities) TerraformInit(ctx context.Context, request Terrafo
 	out, err := t.runCommandWithOutputStream(ctx, request.JobID, r)
 	if err != nil {
 		activity.GetLogger(ctx).Error(out)
-		return TerraformInitResponse{}, wrapTerraformError(err, "running init command")
+		return TerraformInitResponse{}, wrapTerraformFailure(err, "running init command", out)
 	}
 	return TerraformInitResponse{}, nil
 }
@@ -258,7 +274,7 @@ func (t *terraformActivities) TerraformPlan(ctx context.Context, request Terrafo
 
 	if err != nil {
 		activity.GetLogger(ctx).Error(out)
-		return TerraformPlanResponse{}, wrapTerraformError(err, "running plan command")
+		return TerraformPlanResponse{}, wrapTerraformFailure(err, "running plan command", out)
 	}
 
 	// let's run terraform show right after to get the plan as a structured object
@@ -351,7 +367,7 @@ func (t *terraformActivities) TerraformApply(ctx context.Context, request Terraf
 
 	if err != nil {
 		activity.GetLogger(ctx).Error(out)
-		return TerraformApplyResponse{}, wrapTerraformError(err, "running apply command")
+		return TerraformApplyResponse{}, wrapTerraformFailure(err, "running apply command", out)
 	}
 
 	return TerraformApplyResponse{}, nil
@@ -385,7 +401,7 @@ func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jo
 	var output strings.Builder
 	ch := t.StreamHandler.RegisterJob(jobID)
 	for s.Scan() {
-		_, err := output.WriteString(s.Text())
+		_, err := output.WriteString(s.Text() + "\n")
 		if err != nil {
 			activity.GetLogger(ctx).Warn("unable to write tf output to buffer")
 		}

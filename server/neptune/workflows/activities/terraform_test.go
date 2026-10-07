@@ -2,6 +2,7 @@ package activities
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -12,7 +13,9 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/file"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform/failurehints"
 	"github.com/stretchr/testify/assert"
+	sdktemporal "go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 )
 
@@ -582,6 +585,90 @@ func TestTerraformPlan_ReturnsResponse(t *testing.T) {
 	// wait before we check called value otherwise we might race
 	streamHandler.Wait()
 	assert.True(t, streamHandler.called)
+}
+
+func TestTerraformPlan_FailureDetails(t *testing.T) {
+	defaultArgs := []command.Argument{
+		{
+			Key:   "input",
+			Value: "false",
+		}, {
+			Key:   "refresh",
+			Value: "true",
+		}, {
+			Key:   "out",
+			Value: "some/path/output.tfplan",
+		}}
+	expectedVersion, err := version.NewVersion("1.0.2")
+	assert.NoError(t, err)
+
+	cases := []struct {
+		name            string
+		output          string
+		expectedFailure terraform.Failure
+	}{
+		{
+			name:   "error diagnostic",
+			output: "Refreshing state...\n╷\n│ Error: Module not installed\n╵\n",
+			expectedFailure: terraform.Failure{
+				Errors: []string{"Error: Module not installed"},
+				Hint: &failurehints.Hint{
+					Rule:        "module-not-installed",
+					Explanation: failurehints.DefaultRules()[3].Explanation,
+					Fix:         failurehints.DefaultRules()[3].Fix,
+					Excerpt:     "Error: Module not installed",
+				},
+			},
+		},
+		{
+			name:   "unrecognized output",
+			output: "something went wrong",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ts := testsuite.WorkflowTestSuite{}
+			env := ts.NewTestActivityEnvironment()
+
+			tfClient := &testTfClient{
+				t:     t,
+				jobID: "1234",
+				path:  "some/path",
+				cmd:   command.NewSubCommand(command.TerraformPlan).WithUniqueArgs(defaultArgs...),
+				customEnvVars: map[string]string{
+					"ATLANTIS_TERRAFORM_VERSION": "1.0.2",
+					"DIR":                        "some/path",
+					"TF_IN_AUTOMATION":           "true",
+					"TF_PLUGIN_CACHE_DIR":        "some/dir",
+					"TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE": "true",
+				},
+				version:       expectedVersion,
+				resp:          c.output,
+				expectedError: errors.New("exit status 1"),
+			}
+			streamHandler := &testStreamHandler{t: t, expectedJobID: "1234"}
+
+			tfActivity := NewTerraformActivities(tfClient, expectedVersion, streamHandler, &testCredsRefresher{}, &file.RWLock{}, &mockWriter{}, "some/dir", 0)
+			env.RegisterActivity(tfActivity)
+
+			_, err := env.ExecuteActivity(tfActivity.TerraformPlan, TerraformPlanRequest{JobID: "1234", Path: "some/path"})
+			streamHandler.Wait()
+
+			var appErr *sdktemporal.ApplicationError
+			if !assert.True(t, errors.As(err, &appErr)) {
+				return
+			}
+			assert.Equal(t, "TerraformClientError", appErr.Type())
+			assert.Contains(t, appErr.Error(), "running plan command: exit status 1")
+
+			var failure terraform.Failure
+			if appErr.HasDetails() {
+				assert.NoError(t, appErr.Details(&failure))
+			}
+			assert.Equal(t, c.expectedFailure, failure)
+		})
+	}
 }
 
 func TestTerraformApply_RequestValidation(t *testing.T) {

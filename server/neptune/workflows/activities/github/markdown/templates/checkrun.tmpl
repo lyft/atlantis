@@ -23,6 +23,27 @@
 ## Skipped :dash:
 Deployment has been skipped due to a plan rejection
 {{ end }} 
+{{ define "failure" }}
+{{- if .Hint }}
+**Why it failed:** {{ .Hint.Explanation }}
+
+**How to fix it:** {{ .Hint.Fix }}
+{{ end }}
+{{- range .Errors }}
+<details><summary>Terraform error</summary>
+
+<pre>{{ . }}</pre>
+</details>
+{{ end }}
+{{- end }}
+{{ with .PlanFailure }}
+## Plan Failed :x:
+{{ template "failure" . }}
+{{ end }}
+{{ with .ApplyFailure }}
+## Apply Failed :x:
+{{ template "failure" . }}
+{{ end }}
 {{if .InternalError }}
 ## Deployment Error :boom:
 :point_right: An error has been encountered from either of the following:

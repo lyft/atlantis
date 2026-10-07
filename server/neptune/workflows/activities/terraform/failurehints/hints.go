@@ -119,9 +119,5 @@ func normalizedParagraphs(log string) []string {
 }
 
 func excerpt(paragraph string) string {
-	out := redact.Secrets(paragraph)
-	if r := []rune(out); len(r) > maxExcerptRunes {
-		out = string(r[:maxExcerptRunes]) + "..."
-	}
-	return out
+	return truncate(redact.Secrets(paragraph), maxExcerptRunes)
 }

@@ -52,6 +52,9 @@ type JobOutput struct {
 
 	// populated for validate jobs
 	ValidateSummary conftest.ValidateSummary
+
+	// populated for failed plan and apply jobs
+	Failure terraform.Failure
 }
 
 type JobAction struct {
