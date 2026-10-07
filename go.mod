@@ -27,7 +27,7 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/go-github/v29 v29.0.2 // indirect
 	github.com/google/go-github/v45 v45.2.0
 	github.com/google/go-querystring v1.1.0 // indirect
@@ -86,7 +86,7 @@ require (
 	github.com/urfave/cli v1.22.5
 	github.com/urfave/negroni v0.3.0
 	github.com/xanzy/go-gitlab v0.50.3
-	github.com/zclconf/go-cty v1.10.0 // indirect
+	github.com/zclconf/go-cty v1.14.4 // indirect
 	go.etcd.io/bbolt v1.3.6
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
@@ -133,7 +133,7 @@ require (
 require (
 	cloud.google.com/go/compute v1.10.0 // indirect
 	cloud.google.com/go/iam v0.5.0 // indirect
-	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
+	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.1 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
@@ -154,7 +154,7 @@ require (
 	github.com/gogo/status v1.1.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
-	github.com/hashicorp/terraform-json v0.14.0
+	github.com/hashicorp/terraform-json v0.22.1
 	github.com/onsi/ginkgo v1.14.0 // indirect
 	github.com/palantir/go-githubapp v0.13.1
 	github.com/pborman/uuid v1.2.1 // indirect

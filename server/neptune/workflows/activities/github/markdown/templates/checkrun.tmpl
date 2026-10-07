@@ -38,7 +38,9 @@ If a specific terraform operation has failed, check the logs (linked above) to d
 
 {{if .PlanSummary }}
 ## Plan Summary
-`{{.PlanSummary}}`
+{{ if .PlanDriftNote }}**{{ .PlanDriftNote }}**
+
+{{ end }}`{{.PlanSummary}}`
 
 :warning: **Please carefully review plan logs linked above for details on what resources were added, modified, or deleted (if any).**
 {{end}}

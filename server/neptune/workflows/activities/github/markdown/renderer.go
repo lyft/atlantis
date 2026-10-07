@@ -50,6 +50,7 @@ type checkrunTemplateData struct {
 	ValidationError         bool
 	BypassedError           bool
 	PlanSummary             string
+	PlanDriftNote           string
 	ValidateSummary         string
 	ApprovedBy              string
 }
@@ -82,10 +83,12 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 	}
 
 	var planSummary string
+	var planDriftNote string
 	var validateSummary string
 	if prMode {
 		if workflowState.Plan != nil && workflowState.Plan.IsComplete() && workflowState.Plan.Output != nil {
 			planSummary = workflowState.Plan.Output.PlanSummary.String()
+			planDriftNote = workflowState.Plan.Output.PlanSummary.DriftNote()
 		}
 
 		if workflowState.Validate != nil && workflowState.Validate.IsComplete() && workflowState.Validate.Output != nil {
@@ -97,6 +100,7 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 		PlanStatus:              planStatus,
 		PlanLogURL:              planLogURL,
 		PlanSummary:             planSummary,
+		PlanDriftNote:           planDriftNote,
 		ValidateStatus:          validateStatus,
 		ValidateLogURL:          validateLogURL,
 		ValidateSummary:         validateSummary,
