@@ -155,7 +155,9 @@ func (r *Runner) Plan(ctx workflow.Context, root *terraform.LocalRoot, serverURL
 	response, err = r.JobRunner.Plan(ctx, root, jobID.String(), r.Request.WorkflowMode)
 
 	if err != nil {
-		if e := r.Store.UpdatePlanJobWithStatus(state.FailedJobStatus); e != nil {
+		if e := r.Store.UpdatePlanJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
+			Failure: terraformFailure(err),
+		}); e != nil {
 			// not returning UpdateJobError here since we want to surface the job failure itself
 			workflow.GetLogger(ctx).Error("unable to update job with failed status, job failed with error. ", key.ErrKey, err)
 		}
@@ -266,6 +268,7 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 	if err != nil {
 		if err := r.Store.UpdateApplyJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
 			EndTime: time.Now(),
+			Failure: terraformFailure(err),
 		}); err != nil {
 			// not returning UpdateJobError here since we want to surface the job failure itself
 			workflow.GetLogger(ctx).Error("unable to update job with failed status, job failed with error. ", key.ErrKey, err)
@@ -280,6 +283,18 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 	}
 
 	return nil
+}
+
+// terraformFailure returns the failure details a Terraform activity attached
+// to its error, or an empty Failure if there are none. It reads only the
+// recorded activity result, so it is safe to call from workflow code.
+func terraformFailure(err error) terraform.Failure {
+	var failure terraform.Failure
+	var appErr *temporal.ApplicationError
+	if errors.As(err, &appErr) && appErr.HasDetails() {
+		_ = appErr.Details(&failure)
+	}
+	return failure
 }
 
 func (r *Runner) Run(ctx workflow.Context) (Response, error) {

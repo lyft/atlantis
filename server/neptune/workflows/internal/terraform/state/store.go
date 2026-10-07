@@ -33,6 +33,7 @@ type UpdateOptions struct {
 	PlanSummary     terraform.PlanSummary
 	PlanApproval    terraform.PlanApproval
 	ValidateSummary conftest.ValidateSummary
+	Failure         terraform.Failure
 	StartTime       time.Time
 	EndTime         time.Time
 	ApprovedBy      string
@@ -159,6 +160,7 @@ func (s *WorkflowStore) UpdatePlanJobWithStatus(status JobStatus, options ...Upd
 
 	for _, o := range options {
 		s.state.Plan.Output.PlanSummary = o.PlanSummary
+		s.state.Plan.Output.Failure = o.Failure
 	}
 	return s.notifier(s.state)
 }
@@ -172,6 +174,9 @@ func (s *WorkflowStore) UpdateApplyJobWithStatus(status JobStatus, options ...Up
 
 	case FailedJobStatus, SuccessJobStatus:
 		s.state.Apply.EndTime = getEndTimeFromOpts(options...)
+		for _, o := range options {
+			s.state.Apply.Output.Failure = o.Failure
+		}
 	}
 
 	s.state.Apply.Status = status

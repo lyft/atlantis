@@ -52,6 +52,8 @@ type checkrunTemplateData struct {
 	PlanSummary             string
 	ValidateSummary         string
 	ApprovedBy              string
+	PlanFailure             *terraform.Failure
+	ApplyFailure            *terraform.Failure
 }
 
 func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
@@ -113,7 +115,18 @@ func RenderWorkflowStateTmpl(workflowState *state.Workflow) string {
 		ApplyActionsSummary:     applyActionsSummary,
 		Skipped:                 skipped,
 		ApprovedBy:              approvedBy,
+		PlanFailure:             getJobFailure(workflowState.Plan),
+		ApplyFailure:            getJobFailure(workflowState.Apply),
 	})
+}
+
+// getJobFailure returns why a failed job failed, or nil if the job didn't
+// fail or there are no details to show.
+func getJobFailure(jobState *state.Job) *terraform.Failure {
+	if jobState == nil || jobState.Status != state.FailedJobStatus || jobState.Output == nil || jobState.Output.Failure.IsEmpty() {
+		return nil
+	}
+	return &jobState.Output.Failure
 }
 
 func RenderPlanConfirm(user string, commit github.Commit, deployedBranch string, deployedRevision string, repo github.Repo) string {
