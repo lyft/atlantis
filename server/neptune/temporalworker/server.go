@@ -409,7 +409,18 @@ func (s Server) buildDeployWorker() worker.Worker {
 	deployWorker.RegisterActivity(s.GithubActivities)
 	deployWorker.RegisterActivity(s.AuditActivity)
 	deployWorker.RegisterActivity(s.TerraformActivities)
-	deployWorker.RegisterWorkflowWithOptions(workflows.GetDeployWithPlugins(
+	deployWorker.RegisterWorkflowWithOptions(deployWorkflow(), workflow.RegisterOptions{
+		Name: workflows.Deploy,
+	})
+	deployWorker.RegisterWorkflow(workflows.Terraform)
+	return deployWorker
+}
+
+// deployWorkflow returns the Deploy workflow with the plugins the deploy worker
+// runs it with. Replay tests register the same function so they replay what
+// production executes.
+func deployWorkflow() workflows.DeployFunc {
+	return workflows.GetDeployWithPlugins(
 		func(ctx workflow.Context, dr workflows.DeployRequest) (plugins.Deploy, error) {
 			var a *lyftActivities.Audit
 
@@ -424,11 +435,7 @@ func (s Server) buildDeployWorker() worker.Worker {
 				},
 			}, nil
 		},
-	), workflow.RegisterOptions{
-		Name: workflows.Deploy,
-	})
-	deployWorker.RegisterWorkflow(workflows.Terraform)
-	return deployWorker
+	)
 }
 
 func (s Server) buildTerraformWorker() worker.Worker {
