@@ -118,7 +118,7 @@ require (
 	github.com/twmb/murmur3 v1.1.6 // indirect
 )
 
-require go.temporal.io/sdk v1.15.0
+require go.temporal.io/sdk v1.16.0
 
 require (
 	github.com/graymeta/stow v0.2.7
@@ -150,8 +150,8 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/gogo/status v1.1.0 // indirect
+	github.com/gogo/protobuf v1.3.2
+	github.com/gogo/status v1.1.1 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/hashicorp/terraform-json v0.22.1
@@ -161,6 +161,6 @@ require (
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/slack-go/slack v0.12.2
 	github.com/stretchr/objx v0.5.0 // indirect
-	go.temporal.io/api v1.8.0
+	go.temporal.io/api v1.11.0
 	golang.org/x/sync v0.1.0
 )
