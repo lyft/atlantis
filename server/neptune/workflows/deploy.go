@@ -32,6 +32,10 @@ const MergeTrigger = request.MergeTrigger
 
 const DeployUnlockSignalName = queue.UnlockSignalName
 
+// DeployContinueAsNewSignalName asks a deploy workflow to continue as new at
+// its next idle point, keeping its queue. It takes no input.
+const DeployContinueAsNewSignalName = deploy.ContinueAsNewSignalID
+
 type DeployUnlockSignalRequest = queue.UnlockSignalRequest
 type DeployNewRevisionSignalRequest = revision.NewRevisionRequest
 

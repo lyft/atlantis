@@ -12,6 +12,7 @@ import (
 	revisionNotifier "github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/notifier"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/revision/queue"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/terraform"
+	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/deploy/version"
 	workflowMetrics "github.com/runatlantis/atlantis/server/neptune/workflows/internal/metrics"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/internal/sideeffect"
 	temporalInternal "github.com/runatlantis/atlantis/server/neptune/workflows/internal/temporal"
@@ -29,6 +30,7 @@ const (
 
 	ActiveDeployWorkflowStat  = "active"
 	SuccessDeployWorkflowStat = "success"
+	ContinueAsNewStat         = "continue_as_new"
 )
 
 type workerActivities struct {
@@ -44,6 +46,7 @@ const (
 	OnReceive
 	OnNotify
 	OnUnknown
+	OnContinueAsNewRequest
 )
 
 type container interface {
@@ -102,6 +105,12 @@ type Runner struct {
 	Notifier                 QueueStatusNotifier
 	NotifierPeriod           DurationGenerator
 	NotifierHour             int
+
+	// Continue-as-new. A nil Continuer disables it.
+	Request                    Request
+	Continuer                  Continuer
+	ContinueAsNewSignalChannel workflow.ReceiveChannel
+	HistoryLengthLimit         int
 }
 
 func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, plugins plugins.Deploy) (*Runner, error) {
@@ -121,6 +130,7 @@ func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, p
 	revisionQueue := queue.NewQueue(func(ctx workflow.Context, d *queue.Deploy) {
 		lockStateUpdater.UpdateQueuedRevisions(ctx, d, request.Repo.FullName)
 	}, scope)
+	restoreQueue(request.ContinuedState, revisionQueue, checkRunCache)
 
 	worker, err := queue.NewWorker(
 		ctx,
@@ -133,15 +143,33 @@ func newRunner(ctx workflow.Context, request Request, children ChildWorkflows, p
 		return nil, err
 	}
 
+	// NewWorker rebuilds the lock from the latest deployment, which doesn't
+	// cover an unlock or lock that happened since, so the carried-over lock wins.
+	if request.ContinuedState != nil {
+		revisionQueue.RestoreLock(request.ContinuedState.Lock)
+	}
+
 	revisionReceiver := revision.NewReceiver(ctx, revisionQueue, checkRunCache, sideeffect.GenerateUUID, worker)
+	newRevisionSignalChannel := workflow.GetSignalChannel(ctx, revision.NewRevisionSignalID)
 
 	return &Runner{
+		Request:                  request,
 		Queue:                    revisionQueue,
 		Timeout:                  RevisionReceiveTimeout,
 		QueueWorker:              worker,
 		RevisionReceiver:         revisionReceiver,
-		NewRevisionSignalChannel: workflow.GetSignalChannel(ctx, revision.NewRevisionSignalID),
-		Scope:                    scope,
+		NewRevisionSignalChannel: newRevisionSignalChannel,
+		Continuer: &queueContinuer{
+			queue:                    revisionQueue,
+			worker:                   worker,
+			receiver:                 revisionReceiver,
+			checkRunCache:            checkRunCache,
+			newRevisionSignalChannel: newRevisionSignalChannel,
+			unlockSignalChannel:      workflow.GetSignalChannel(ctx, queue.UnlockSignalName),
+		},
+		ContinueAsNewSignalChannel: workflow.GetSignalChannel(ctx, ContinueAsNewSignalID),
+		HistoryLengthLimit:         HistoryLengthLimit,
+		Scope:                      scope,
 		NotifierPeriod: func(ctx workflow.Context, hour int) time.Duration {
 			return temporalInternal.UntilHour(ctx, hour, temporalInternal.NextBusinessDay)
 		},
@@ -210,6 +238,14 @@ func (r *Runner) Run(ctx workflow.Context) error {
 	notifierPeriod := r.NotifierPeriod(ctx, QueueStatusNotifierHourUTC)
 	s.AddTimeout(ctx, notifierPeriod, notifyTimerFunc)
 
+	var continueAsNewRequested bool
+	if r.Continuer != nil {
+		s.AddReceive(r.ContinueAsNewSignalChannel, func(c workflow.ReceiveChannel, more bool) {
+			c.Receive(ctx, nil)
+			action = OnContinueAsNewRequest
+		})
+	}
+
 	// main loop which handles external signals
 	// and in turn signals the queue worker
 OUT:
@@ -228,6 +264,12 @@ OUT:
 		case OnReceive:
 			cancelTimer()
 			cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, newRevisionTimerFunc)
+		case OnContinueAsNewRequest:
+			workflow.GetLogger(ctx).Info("continue-as-new requested")
+			continueAsNewRequested = true
+			if reason, ok := r.continueAsNewReason(ctx, &s, continueAsNewRequested); ok {
+				return r.continueAsNew(ctx, shutdownWorker, wg, reason)
+			}
 		case OnTimeout:
 			workflow.GetLogger(ctx).Info("revision receiver timeout")
 
@@ -241,6 +283,10 @@ OUT:
 				break OUT
 			}
 
+			if reason, ok := r.continueAsNewReason(ctx, &s, continueAsNewRequested); ok {
+				return r.continueAsNew(ctx, shutdownWorker, wg, reason)
+			}
+
 			// basically keep on adding timeouts until we can either break this loop or get another signal
 			// we need to use the timeoutCtx to ensure that this gets cancelled when the receive is ready
 			cancelTimer, _ = s.AddTimeout(ctx, r.Timeout, newRevisionTimerFunc)
@@ -251,4 +297,49 @@ OUT:
 	wg.Wait(ctx)
 
 	return nil
+}
+
+const (
+	continueAsNewRequestedReason = "requested"
+	continueAsNewHistoryReason   = "history_length"
+)
+
+// continueAsNewReason reports whether the workflow should continue as new now,
+// and why. It only does so at an idle point with no signal waiting, so nothing
+// in flight is lost. A request (signal) is honored at the first idle point.
+// Otherwise the history length decides, behind a version check so histories
+// recorded before this change replay unchanged.
+func (r *Runner) continueAsNewReason(ctx workflow.Context, s *temporalInternal.SelectorWithTimeout, requested bool) (string, bool) {
+	if r.Continuer == nil || s.HasPending() || !r.Continuer.Idle() {
+		return "", false
+	}
+	if requested {
+		return continueAsNewRequestedReason, true
+	}
+	if workflow.GetInfo(ctx).GetCurrentHistoryLength() <= r.HistoryLengthLimit {
+		return "", false
+	}
+	if workflow.GetVersion(ctx, version.ContinueAsNew, workflow.DefaultVersion, 1) == workflow.DefaultVersion {
+		return "", false
+	}
+	return continueAsNewHistoryReason, true
+}
+
+// continueAsNew stops the queue worker, captures what's left in the queue, and
+// returns the error that makes Temporal start a new run with that state.
+func (r *Runner) continueAsNew(ctx workflow.Context, shutdownWorker workflow.CancelFunc, wg workflow.WaitGroup, reason string) error {
+	shutdownWorker()
+	wg.Wait(ctx)
+
+	state := r.Continuer.Snapshot(ctx)
+	next := r.Request
+	next.ContinuedState = &state
+
+	workflow.GetLogger(ctx).Info("continuing as new",
+		"reason", reason,
+		"history_length", workflow.GetInfo(ctx).GetCurrentHistoryLength(),
+		"queue_depth", len(state.Queue))
+	r.Scope.SubScopeWithTags(map[string]string{"reason": reason}).Counter(ContinueAsNewStat).Inc(1)
+
+	return workflow.NewContinueAsNewError(ctx, workflow.GetInfo(ctx).WorkflowType.Name, next)
 }

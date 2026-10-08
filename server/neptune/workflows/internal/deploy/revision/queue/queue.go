@@ -44,6 +44,12 @@ func (q *Deploy) SetLockForMergedItems(ctx workflow.Context, state lock.LockStat
 	q.lockStatusCallback(ctx, q)
 }
 
+// RestoreLock sets the lock state carried over from a previous run of the
+// workflow. Check runs already reflect it, so the lock callback isn't called.
+func (q *Deploy) RestoreLock(state lock.LockState) {
+	q.lock = state
+}
+
 func (q *Deploy) CanPop() bool {
 	return q.queue.HasItemsOfPriority(High) || (q.lock.Status == lock.UnlockedStatus && !q.queue.IsEmpty())
 }

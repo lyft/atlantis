@@ -42,6 +42,23 @@ func NewGithubCheckRunCache(activities checksActivities) *GithubCheckRunCache {
 	}
 }
 
+// Entries returns a copy of the cached check run IDs, keyed like the cache.
+func (c *GithubCheckRunCache) Entries() map[string]int64 {
+	entries := make(map[string]int64, len(c.deploymentCheckRunCache))
+	for k, v := range c.deploymentCheckRunCache {
+		entries[k] = v
+	}
+	return entries
+}
+
+// Restore adds check run IDs from a previous run of the workflow, so updates
+// go to the existing check runs instead of creating new ones.
+func (c *GithubCheckRunCache) Restore(entries map[string]int64) {
+	for k, v := range entries {
+		c.deploymentCheckRunCache[k] = v
+	}
+}
+
 type GithubCheckRunRequest struct {
 	Title   string
 	Sha     string

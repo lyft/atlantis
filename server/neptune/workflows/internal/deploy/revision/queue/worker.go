@@ -9,6 +9,7 @@ import (
 
 	metricNames "github.com/runatlantis/atlantis/server/metrics"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/deployment"
 	tfModel "github.com/runatlantis/atlantis/server/neptune/workflows/activities/terraform"
@@ -308,4 +309,10 @@ func (w *Worker) deploy(ctx workflow.Context, requestedDeployment terraform.Depl
 
 func (w *Worker) GetState() WorkerState {
 	return w.state
+}
+
+// IsDeploying reports whether a deployment is in progress. Unlike GetState, it
+// is false while the worker waits on a locked queue that still has items.
+func (w *Worker) IsDeploying() bool {
+	return w.currentDeployment.Status == InProgressStatus && w.currentDeployment.Deployment.ID != uuid.Nil
 }
