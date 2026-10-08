@@ -38,9 +38,10 @@ const (
 
 	// Metrics are scoped to workflow namespaces anyways so let's
 	// keep these metrics simple.
-	WorkflowSuccess = "success"
-	WorkflowFailure = "failure"
-	WorkflowLatency = "latency"
+	WorkflowSuccess       = "success"
+	WorkflowFailure       = "failure"
+	WorkflowContinueAsNew = "continue_as_new"
+	WorkflowLatency       = "latency"
 
 	ManualOverride          = "manual_override"
 	ManualOverrideReasonTag = "reason"

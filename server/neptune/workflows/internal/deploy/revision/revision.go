@@ -84,7 +84,21 @@ func (n *Receiver) Receive(c workflow.ReceiveChannel, more bool) {
 
 	var request NewRevisionRequest
 	c.Receive(n.ctx, &request)
+	n.handle(request)
+}
 
+// ReceiveAsync handles a pending revision signal without blocking. It reports
+// whether there was one, so callers can drain the channel.
+func (n *Receiver) ReceiveAsync(c workflow.ReceiveChannel) bool {
+	var request NewRevisionRequest
+	if !c.ReceiveAsync(&request) {
+		return false
+	}
+	n.handle(request)
+	return true
+}
+
+func (n *Receiver) handle(request NewRevisionRequest) {
 	workflow.GetMetricsHandler(n.ctx).WithTags(map[string]string{
 		metrics.SignalNameTag: NewRevisionSignalID,
 	}).Counter(metrics.SignalReceive).Inc(1)

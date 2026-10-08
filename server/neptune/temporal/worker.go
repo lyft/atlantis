@@ -109,6 +109,11 @@ func (w *workflowInboundInterceptor) ExecuteWorkflow(ctx workflow.Context, in *i
 	}()
 
 	result, err := w.Next.ExecuteWorkflow(ctx, in)
+	if workflow.IsContinueAsNewError(err) {
+		// the workflow restarted with a fresh history, it didn't fail
+		handler.Counter(metrics.WorkflowContinueAsNew).Inc(1)
+		return result, err
+	}
 	if err != nil {
 		handler.Counter(metrics.WorkflowFailure).Inc(1)
 		return result, err
