@@ -3,8 +3,8 @@ package temporalworker
 import (
 	"bytes"
 	"encoding/json"
+	"io/fs"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -36,7 +36,12 @@ func TestReplayHistories(t *testing.T) {
 		t.Skipf("set %s to a directory of exported workflow history JSON files", replayHistoryDirEnv)
 	}
 
-	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	// Reads go through os.Root, so a history name can't reach outside dir.
+	root, err := os.OpenRoot(dir)
+	require.NoError(t, err)
+	defer root.Close()
+
+	files, err := fs.Glob(root.FS(), "*.json")
 	require.NoError(t, err)
 	require.NotEmpty(t, files, "no *.json histories in %s", dir)
 
@@ -50,10 +55,10 @@ func TestReplayHistories(t *testing.T) {
 	replayer.RegisterWorkflow(workflows.Terraform)
 	replayer.RegisterWorkflow(lyftWorkflows.PRRevision)
 
-	for _, f := range files {
-		f := f
-		t.Run(filepath.Base(f), func(t *testing.T) {
-			history, err := readHistory(f)
+	for _, name := range files {
+		name := name
+		t.Run(name, func(t *testing.T) {
+			history, err := readHistory(root, name)
 			require.NoError(t, err)
 			require.NoError(t, replayer.ReplayWorkflowHistory(nil, history))
 		})
@@ -63,8 +68,8 @@ func TestReplayHistories(t *testing.T) {
 // readHistory parses an exported history. Newer servers send fields this SDK's
 // API version doesn't define; the worker ignores them when it receives history
 // as protobuf, so they're ignored here too.
-func readHistory(path string) (*historypb.History, error) {
-	raw, err := os.ReadFile(path)
+func readHistory(root *os.Root, name string) (*historypb.History, error) {
+	raw, err := root.ReadFile(name)
 	if err != nil {
 		return nil, err
 	}
