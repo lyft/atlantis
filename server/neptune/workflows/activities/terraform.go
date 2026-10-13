@@ -400,9 +400,14 @@ func (t *terraformActivities) runCommandWithOutputStream(ctx context.Context, jo
 }
 
 func (t *terraformActivities) resolveVersion(v string) (*version.Version, error) {
+	return resolveTFVersion(v, t.DefaultTFVersion)
+}
+
+// resolveTFVersion returns the configured version, or the default when none is configured.
+func resolveTFVersion(v string, defaultVersion *version.Version) (*version.Version, error) {
 	// Use default version if configured version is empty
 	if v == "" {
-		return t.DefaultTFVersion, nil
+		return defaultVersion, nil
 	}
 
 	version, err := version.NewVersion(v)
@@ -413,7 +418,7 @@ func (t *terraformActivities) resolveVersion(v string) (*version.Version, error)
 	if version != nil {
 		return version, nil
 	}
-	return t.DefaultTFVersion, nil
+	return defaultVersion, nil
 }
 
 func (t *terraformActivities) addTerraformEnvs(envs map[string]string, path string, tfVersion *version.Version) {

@@ -174,7 +174,7 @@ func NewTerraform(tfConfig config.TerraformConfig, validationConfig config.Valid
 	policies := convertPolicies(validationConfig.Policies.PolicySets)
 
 	return &Terraform{
-		executeCommandActivities: &executeCommandActivities{},
+		executeCommandActivities: &executeCommandActivities{DefaultTFVersion: defaultTfVersion},
 		workerInfoActivity: &workerInfoActivity{
 			ServerURL: serverURL,
 			TaskQueue: taskQueue,

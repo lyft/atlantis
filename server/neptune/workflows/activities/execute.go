@@ -7,11 +7,16 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/neptune/workflows/activities/execute"
 )
 
-type executeCommandActivities struct{}
+type executeCommandActivities struct {
+	// DefaultTFVersion is used for run steps of roots that don't pin a Terraform version,
+	// the same as the terraform activities do.
+	DefaultTFVersion *version.Version
+}
 
 type ExecuteCommandResponse struct {
 	Output string
@@ -21,6 +26,8 @@ type ExecuteCommandRequest struct {
 	Step           execute.Step
 	Path           string
 	DynamicEnvVars []EnvVar
+	// TfVersion is the root's configured Terraform version. Empty means the default version.
+	TfVersion string
 }
 
 func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request ExecuteCommandRequest) (ExecuteCommandResponse, error) {
@@ -28,6 +35,17 @@ func (t *executeCommandActivities) ExecuteCommand(ctx context.Context, request E
 	cmd.Dir = request.Path
 
 	finalEnvVars := os.Environ()
+
+	// Expose the Terraform version this root will run with, as the terraform activities do, so
+	// scripts (e.g. backend.sh) can gate behavior on it. Set before the request's env vars so
+	// an explicit env step still wins.
+	tfVersion, err := resolveTFVersion(request.TfVersion, t.DefaultTFVersion)
+	if err != nil {
+		return ExecuteCommandResponse{}, err
+	}
+	if tfVersion != nil {
+		finalEnvVars = append(finalEnvVars, fmt.Sprintf("%s=%s", AtlantisTerraformVersion, tfVersion.String()))
+	}
 
 	requestEnvVars, err := getEnvs(request.DynamicEnvVars)
 	if err != nil {
