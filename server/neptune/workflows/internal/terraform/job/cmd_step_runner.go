@@ -57,6 +57,7 @@ func (r *CmdStepRunner) Run(executionContext *ExecutionContext, localRoot *terra
 		Step:           step,
 		Path:           executionContext.Path,
 		DynamicEnvVars: toActivityEnvs(envs),
+		TfVersion:      executionContext.TfVersion,
 	}).Get(executionContext, &resp)
 	if err != nil {
 		return "", errors.Wrap(err, "executing activity")

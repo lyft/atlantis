@@ -16,12 +16,14 @@ import (
 )
 
 type testCmdExecuteActivity struct {
-	t           *testing.T
-	expectedReq []activities.EnvVar
+	t                 *testing.T
+	expectedReq       []activities.EnvVar
+	expectedTfVersion string
 }
 
 func (a *testCmdExecuteActivity) ExecuteCommand(ctx context.Context, request activities.ExecuteCommandRequest) (activities.ExecuteCommandResponse, error) {
 	assert.Equal(a.t, a.expectedReq, request.DynamicEnvVars)
+	assert.Equal(a.t, a.expectedTfVersion, request.TfVersion)
 	return activities.ExecuteCommandResponse{}, nil
 }
 
@@ -82,6 +84,44 @@ func TestRunRunner_ShouldSetupEnvVars(t *testing.T) {
 			Root: terraform.Root{
 				Name: ProjectName,
 				Path: "project",
+			},
+			Repo: github.Repo{
+				Name:  RepoName,
+				Owner: RepoOwner,
+			},
+		},
+		Step: execute.Step{},
+	})
+
+	var resp string
+	err := env.GetWorkflowResult(&resp)
+	assert.NoError(t, err)
+}
+
+func TestRunRunner_ShouldPassTerraformVersion(t *testing.T) {
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+
+	testExecuteActivity := &testCmdExecuteActivity{
+		t: t,
+		expectedReq: []activities.EnvVar{
+			{Name: "BASE_REPO_NAME", Value: RepoName},
+			{Name: "BASE_REPO_OWNER", Value: RepoOwner},
+			{Name: "DIR", Value: ProjectPath},
+			{Name: "PROJECT_NAME", Value: ProjectName},
+			{Name: "REPO_REL_DIR", Value: "project"},
+		},
+		expectedTfVersion: "1.10.5",
+	}
+	env.RegisterActivity(testExecuteActivity)
+	env.RegisterWorkflow(testCmdWorkflow)
+
+	env.ExecuteWorkflow(testCmdWorkflow, request{
+		LocalRoot: terraform.LocalRoot{
+			Root: terraform.Root{
+				Name:      ProjectName,
+				Path:      "project",
+				TfVersion: "1.10.5",
 			},
 			Repo: github.Repo{
 				Name:  RepoName,
