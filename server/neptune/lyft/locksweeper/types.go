@@ -29,7 +29,7 @@ var rootPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
 type Config struct {
 	Bucket string
-	// KeyPrefix is the state key prefix, e.g. "lyft/dsterraform".
+	// KeyPrefix is the state key prefix, e.g. "example-org/terraform-roots".
 	KeyPrefix string
 	// Repository is the "owner/repo" whose roots live under KeyPrefix. It scopes the Temporal check.
 	Repository string

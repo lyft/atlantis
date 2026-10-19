@@ -16,18 +16,18 @@ import (
 )
 
 func TestRootFromS3Key(t *testing.T) {
-	const prefix = "lyft/dsterraform/"
+	const prefix = "example-org/terraform-roots/"
 	cases := []struct {
 		key  string
 		root string
 		ok   bool
 	}{
-		{"lyft/dsterraform/dsterraform-spots-production/terraform.tfstate.tflock", "dsterraform-spots-production", true},
-		{"lyft/dsterraform/dsterraform-spots-production/terraform.tfstate", "", false},
-		{"lyft/dsterraform/a/b/terraform.tfstate.tflock", "", false},
-		{"lyft/dsterraform/../terraform.tfstate.tflock", "", false},
+		{"example-org/terraform-roots/example-root-production/terraform.tfstate.tflock", "example-root-production", true},
+		{"example-org/terraform-roots/example-root-production/terraform.tfstate", "", false},
+		{"example-org/terraform-roots/a/b/terraform.tfstate.tflock", "", false},
+		{"example-org/terraform-roots/../terraform.tfstate.tflock", "", false},
 		{"other/prefix/x/terraform.tfstate.tflock", "", false},
-		{"lyft/dsterraform/terraform.tfstate.tflock", "", false},
+		{"example-org/terraform-roots/terraform.tfstate.tflock", "", false},
 	}
 	for _, tc := range cases {
 		root, ok := rootFromS3Key(prefix, tc.key)
@@ -37,15 +37,15 @@ func TestRootFromS3Key(t *testing.T) {
 }
 
 func TestRootFromDynamoLockID(t *testing.T) {
-	const prefix = "bucket/lyft/dsterraform/"
-	root, ok := rootFromDynamoLockID(prefix, "bucket/lyft/dsterraform/dsterraform-spots-production/terraform.tfstate")
+	const prefix = "bucket/example-org/terraform-roots/"
+	root, ok := rootFromDynamoLockID(prefix, "bucket/example-org/terraform-roots/example-root-production/terraform.tfstate")
 	assert.True(t, ok)
-	assert.Equal(t, "dsterraform-spots-production", root)
+	assert.Equal(t, "example-root-production", root)
 
 	// the digest item Terraform keeps next to the lock must never be treated as a lock
-	_, ok = rootFromDynamoLockID(prefix, "bucket/lyft/dsterraform/dsterraform-spots-production/terraform.tfstate-md5")
+	_, ok = rootFromDynamoLockID(prefix, "bucket/example-org/terraform-roots/example-root-production/terraform.tfstate-md5")
 	assert.False(t, ok)
-	_, ok = rootFromDynamoLockID(prefix, "bucket/lyft/dsterraform/x/y/terraform.tfstate")
+	_, ok = rootFromDynamoLockID(prefix, "bucket/example-org/terraform-roots/x/y/terraform.tfstate")
 	assert.False(t, ok)
 }
 
@@ -69,7 +69,7 @@ func (f *fakeS3) DeleteObjectWithContext(_ aws.Context, in *s3.DeleteObjectInput
 }
 
 func TestDeleteS3Lock(t *testing.T) {
-	const key = "lyft/dsterraform/r/terraform.tfstate.tflock"
+	const key = "example-org/terraform-roots/r/terraform.tfstate.tflock"
 	req := DeleteLockRequest{Bucket: "b", Lock: Lock{Store: StoreS3, Key: key, Fingerprint: `"abc"`}}
 
 	t.Run("deletes when the ETag still matches", func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestDeleteS3Lock(t *testing.T) {
 	t.Run("refuses a key that is not a lock object", func(t *testing.T) {
 		f := &fakeS3{etag: `"abc"`}
 		bad := req
-		bad.Lock.Key = "lyft/dsterraform/r/terraform.tfstate"
+		bad.Lock.Key = "example-org/terraform-roots/r/terraform.tfstate"
 		_, err := (&Activities{S3: f}).DeleteLock(context.Background(), bad)
 		require.Error(t, err)
 		assert.Empty(t, f.deleted)
@@ -118,7 +118,7 @@ func (f *fakeDynamo) DeleteItemWithContext(_ aws.Context, in *dynamodb.DeleteIte
 }
 
 func TestDeleteDynamoLock(t *testing.T) {
-	const id = "b/lyft/dsterraform/r/terraform.tfstate"
+	const id = "b/example-org/terraform-roots/r/terraform.tfstate"
 	req := DeleteLockRequest{Table: "t", Lock: Lock{Store: StoreDynamoDB, Key: id, Fingerprint: `{"ID":"1"}`}}
 
 	t.Run("deletes conditionally on the Info attribute", func(t *testing.T) {
@@ -166,26 +166,26 @@ func (f *fakeTemporal) ListWorkflow(_ context.Context, req *workflowservice.List
 func TestRootBusy(t *testing.T) {
 	t.Run("busy when a Terraform workflow is running, scoped by type, repo and root", func(t *testing.T) {
 		f := &fakeTemporal{executions: 1}
-		resp, err := (&Activities{Temporal: f, Namespace: "atlantis"}).RootBusy(context.Background(), RootBusyRequest{Repository: "lyft/dsterraform", Root: "r"})
+		resp, err := (&Activities{Temporal: f, Namespace: "atlantis"}).RootBusy(context.Background(), RootBusyRequest{Repository: "example-org/terraform-roots", Root: "r"})
 		require.NoError(t, err)
 		assert.True(t, resp.Busy)
-		assert.Equal(t, `WorkflowType = "Terraform" AND atlantis_repository = "lyft/dsterraform" AND atlantis_root = "r" AND ExecutionStatus = "Running"`, f.query)
+		assert.Equal(t, `WorkflowType = "Terraform" AND atlantis_repository = "example-org/terraform-roots" AND atlantis_root = "r" AND ExecutionStatus = "Running"`, f.query)
 	})
 
 	t.Run("idle when none are running", func(t *testing.T) {
-		resp, err := (&Activities{Temporal: &fakeTemporal{}}).RootBusy(context.Background(), RootBusyRequest{Repository: "lyft/dsterraform", Root: "r"})
+		resp, err := (&Activities{Temporal: &fakeTemporal{}}).RootBusy(context.Background(), RootBusyRequest{Repository: "example-org/terraform-roots", Root: "r"})
 		require.NoError(t, err)
 		assert.False(t, resp.Busy)
 	})
 
 	t.Run("a Temporal error is returned so the lock is left alone", func(t *testing.T) {
-		_, err := (&Activities{Temporal: &fakeTemporal{err: assert.AnError}}).RootBusy(context.Background(), RootBusyRequest{Repository: "lyft/dsterraform", Root: "r"})
+		_, err := (&Activities{Temporal: &fakeTemporal{err: assert.AnError}}).RootBusy(context.Background(), RootBusyRequest{Repository: "example-org/terraform-roots", Root: "r"})
 		require.Error(t, err)
 	})
 
 	t.Run("refuses a root that could inject into the query", func(t *testing.T) {
 		f := &fakeTemporal{}
-		_, err := (&Activities{Temporal: f}).RootBusy(context.Background(), RootBusyRequest{Repository: "lyft/dsterraform", Root: `x" OR 1=1`})
+		_, err := (&Activities{Temporal: f}).RootBusy(context.Background(), RootBusyRequest{Repository: "example-org/terraform-roots", Root: `x" OR 1=1`})
 		require.Error(t, err)
 		assert.Empty(t, f.query)
 	})

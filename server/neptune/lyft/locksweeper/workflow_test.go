@@ -38,7 +38,7 @@ func run(t *testing.T, now time.Time, cfg locksweeper.Config, locks []locksweepe
 
 func TestWorkflow(t *testing.T) {
 	cfg := locksweeper.Config{
-		Bucket: "b", KeyPrefix: "lyft/dsterraform", Repository: "lyft/dsterraform", Table: "t",
+		Bucket: "b", KeyPrefix: "example-org/terraform-roots", Repository: "example-org/terraform-roots", Table: "t",
 		MinAge: 90 * time.Minute, OwnerPrefix: "atlantis-svc@worker",
 	}
 	now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)

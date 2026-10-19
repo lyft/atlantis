@@ -13,8 +13,8 @@ func enabledSweeper() raw.LockSweeper {
 	return raw.LockSweeper{
 		Enabled:     true,
 		Bucket:      "atlantis-production-states",
-		KeyPrefix:   "lyft/dsterraform",
-		Repository:  "lyft/dsterraform",
+		KeyPrefix:   "example-org/terraform-roots",
+		Repository:  "example-org/terraform-roots",
 		Table:       "atlantis-production-states-locks",
 		OwnerPrefix: "atlantis-svc@worker",
 	}
