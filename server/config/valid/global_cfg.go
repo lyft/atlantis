@@ -64,6 +64,19 @@ type GlobalCfg struct {
 	RevisionSetter       RevisionSetter
 	Admin                Admin
 	AdhocMode            AdhocMode
+	LockSweeper          LockSweeper
+}
+
+// LockSweeper configures the job that clears Terraform state locks orphaned by killed workers.
+type LockSweeper struct {
+	Enabled       bool
+	DryRun        bool
+	Bucket        string
+	KeyPrefix     string
+	Repository    string
+	Table         string
+	OwnerPrefix   string
+	MinAgeMinutes int
 }
 
 type AdhocMode struct {

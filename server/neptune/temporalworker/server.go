@@ -27,6 +27,7 @@ import (
 	neptune_http "github.com/runatlantis/atlantis/server/neptune/http"
 	lyftActivities "github.com/runatlantis/atlantis/server/neptune/lyft/activities"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/executor"
+	"github.com/runatlantis/atlantis/server/neptune/lyft/locksweeper"
 	"github.com/runatlantis/atlantis/server/neptune/lyft/notifier"
 	lyftWorkflows "github.com/runatlantis/atlantis/server/neptune/lyft/workflows"
 	internalSync "github.com/runatlantis/atlantis/server/neptune/sync"
@@ -86,6 +87,8 @@ type Server struct {
 	TerraformTaskQueue         string
 	RevisionSetterConfig       valid.RevisionSetter
 	AdditionalNotifiers        []plugins.TerraformWorkflowNotifier
+	// LockSweeper is nil unless lock_sweeper.enabled is set in the global config.
+	LockSweeper *locksweeper.Activities
 }
 
 func NewServer(config *config.Config) (*Server, error) {
@@ -219,6 +222,11 @@ func NewServer(config *config.Config) (*Server, error) {
 
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
 
+	lockSweeper, err := newLockSweeperActivities(config.LockSweeper, temporalClient.Client, config.TemporalCfg.Namespace)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing lock sweeper")
+	}
+
 	server := Server{
 		Logger:        config.CtxLogger,
 		CronScheduler: cronScheduler,
@@ -246,6 +254,7 @@ func NewServer(config *config.Config) (*Server, error) {
 		RevisionSetterConfig:       config.RevisionSetter,
 		AuditActivity:              auditActivity,
 		PRRevisionGithubActivities: prRevisionGithubActivities,
+		LockSweeper:                lockSweeper,
 	}
 	return &server, nil
 }
@@ -363,6 +372,8 @@ func (s Server) Start() error {
 		s.CronScheduler.Schedule(c)
 	}
 
+	s.startLockSweeper(ctx)
+
 	<-stop
 	wg.Wait()
 
@@ -413,6 +424,10 @@ func (s Server) buildDeployWorker() worker.Worker {
 		Name: workflows.Deploy,
 	})
 	deployWorker.RegisterWorkflow(workflows.Terraform)
+	if s.LockSweeper != nil {
+		deployWorker.RegisterActivity(s.LockSweeper)
+		deployWorker.RegisterWorkflow(locksweeper.Workflow)
+	}
 	return deployWorker
 }
 
