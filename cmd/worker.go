@@ -76,6 +76,7 @@ func (t *TemporalWorker) NewServer(userConfig legacy.UserConfig, config legacy.C
 		Metrics:                  globalCfg.Metrics,
 		LyftAuditJobsSnsTopicArn: userConfig.LyftAuditJobsSnsTopicArn,
 		RevisionSetter:           globalCfg.RevisionSetter,
+		LockSweeper:              globalCfg.LockSweeper,
 	}
 	return temporalworker.NewServer(cfg)
 }

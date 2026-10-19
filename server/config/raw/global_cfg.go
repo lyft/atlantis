@@ -27,6 +27,7 @@ type GlobalCfg struct {
 	RevisionSetter       RevisionSetter       `yaml:"revision_setter" json:"revision_setter"`
 	Admin                Admin                `yaml:"admin" json:"admin"`
 	AdhocMode            AdhocMode            `yaml:"adhoc_mode" json:"adhoc_mode"`
+	LockSweeper          LockSweeper          `yaml:"lock_sweeper" json:"lock_sweeper"`
 }
 
 type AdhocMode struct {
@@ -132,6 +133,7 @@ func (g GlobalCfg) Validate() error {
 		validation.Field(&g.Github),
 		validation.Field(&g.TerraformLogFilters),
 		validation.Field(&g.Persistence),
+		validation.Field(&g.LockSweeper),
 	)
 	if err != nil {
 		return err
@@ -215,6 +217,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		Admin:                g.Admin.ToValid(),
 		RevisionSetter:       g.RevisionSetter.ToValid(),
 		AdhocMode:            g.AdhocMode.ToValid(),
+		LockSweeper:          g.LockSweeper.ToValid(),
 	}
 }
 

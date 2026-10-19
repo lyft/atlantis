@@ -52,6 +52,7 @@ type Config struct {
 	JobConfig        valid.StoreConfig
 	Metrics          valid.Metrics
 	RevisionSetter   valid.RevisionSetter
+	LockSweeper      valid.LockSweeper
 	//TODO: combine this with above
 	StatsNamespace string
 
