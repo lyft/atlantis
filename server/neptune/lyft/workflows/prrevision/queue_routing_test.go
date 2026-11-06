@@ -87,7 +87,18 @@ func runQueueRouting(t *testing.T, prs []github.PullRequest, setup func(env *tes
 
 	assert.True(t, env.IsWorkflowCompleted())
 	assert.NoError(t, env.GetWorkflowError())
-	return result
+
+	// snapshot under the lock, activities of a misbehaving workflow can still be running
+	mu.Lock()
+	defer mu.Unlock()
+	snapshot := queueRoutingResult{queues: map[int]string{}, revisionSet: map[int]bool{}}
+	for k, v := range result.queues {
+		snapshot.queues[k] = v
+	}
+	for k, v := range result.revisionSet {
+		snapshot.revisionSet[k] = v
+	}
+	return snapshot
 }
 
 func daysAgo(days int) time.Time {

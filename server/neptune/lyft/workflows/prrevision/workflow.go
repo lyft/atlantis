@@ -122,21 +122,29 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 	// Handle each PR as soon as its own listing completes. Walking the PRs in list order would make the
 	// revision for a recent PR wait on the listing of every PR ahead of it, including PRs stuck on the
 	// slow queue, which is rate limited far below the default queue.
-	wg := workflow.NewWaitGroup(ctx)
+	//
+	// A single coroutine waits on a selector instead of running one coroutine per PR: the SDK visits every
+	// coroutine on each workflow task, which grows quickly for repos with hundreds of open PRs.
+	selector := workflow.NewSelector(ctx)
 	errs := make([]error, len(prs))
+	pending := len(prs)
 	for i, pr := range prs {
 		i, pr := i, pr
-		wg.Add(1)
-		workflow.Go(ctx, func(gCtx workflow.Context) {
-			defer wg.Done()
-			future := r.setRevisionForPR(gCtx, req, pr, futures[i])
-			if future == nil {
+		selector.AddFuture(futures[i], func(listing workflow.Future) {
+			revision := r.setRevisionForPR(ctx, req, pr, listing)
+			if revision == nil {
+				pending--
 				return
 			}
-			errs[i] = future.Get(gCtx, nil)
+			selector.AddFuture(revision, func(set workflow.Future) {
+				errs[i] = set.Get(ctx, nil)
+				pending--
+			})
 		})
 	}
-	wg.Wait(ctx)
+	for pending > 0 {
+		selector.Select(ctx)
+	}
 
 	for _, err := range errs {
 		if err != nil {
