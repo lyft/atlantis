@@ -25,6 +25,10 @@ const (
 	RetryCount          = 3
 	StartToCloseTimeout = 30 * time.Second
 	NumLookBackWeeks    = 12
+
+	// concurrentPRRevisionChangeID gates routing each PR to its own task queue and setting
+	// revisions as each PR's file listing completes, so in-flight workflows replay as they started
+	concurrentPRRevisionChangeID = "ConcurrentPRRevision"
 )
 
 type Request struct {
@@ -107,7 +111,79 @@ func (r *Runner) listOpenPRs(ctx workflow.Context, repo github.Repo) ([]github.P
 }
 
 func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.PullRequest) error {
-	futuresByPullNum := r.listModifiedFilesAsync(ctx, req, prs)
+	v := workflow.GetVersion(ctx, concurrentPRRevisionChangeID, workflow.DefaultVersion, 1)
+	if v == workflow.DefaultVersion {
+		return r.setRevisionLegacy(ctx, req, prs)
+	}
+
+	// All file listings are scheduled up front, each on the queue that fits its own PR.
+	futures := r.listModifiedFiles(ctx, req, prs)
+
+	// Handle each PR as soon as its own listing completes. Walking the PRs in list order would make the
+	// revision for a recent PR wait on the listing of every PR ahead of it, including PRs stuck on the
+	// slow queue, which is rate limited far below the default queue.
+	//
+	// A single coroutine waits on a selector instead of running one coroutine per PR: the SDK visits every
+	// coroutine on each workflow task, which grows quickly for repos with hundreds of open PRs.
+	selector := workflow.NewSelector(ctx)
+	errs := make([]error, len(prs))
+	pending := len(prs)
+	for i, pr := range prs {
+		i, pr := i, pr
+		selector.AddFuture(futures[i], func(listing workflow.Future) {
+			revision := r.setRevisionForPR(ctx, req, pr, listing)
+			if revision == nil {
+				pending--
+				return
+			}
+			selector.AddFuture(revision, func(set workflow.Future) {
+				errs[i] = set.Get(ctx, nil)
+				pending--
+			})
+		})
+	}
+	for pending > 0 {
+		selector.Select(ctx)
+	}
+
+	for _, err := range errs {
+		if err != nil {
+			return errors.Wrap(err, "error setting pr revision")
+		}
+	}
+	return nil
+}
+
+// listModifiedFiles schedules one GithubListModifiedFiles activity per PR and returns the futures in the same
+// order as prs. Stale PRs and automated PRs go to the slow task queue, every other PR stays on the default one.
+func (r *Runner) listModifiedFiles(ctx workflow.Context, req Request, prs []github.PullRequest) []workflow.Future {
+	futures := make([]workflow.Future, len(prs))
+	oldPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_days", r.SlowProcessingCutOffDays))
+	newPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", r.SlowProcessingCutOffDays))
+	for i, pr := range prs {
+		// derive each PR's options from the shared ctx so one PR's queue never leaks into the next
+		prCtx := ctx
+		if !r.isPrUpdatedWithinDays(ctx, pr, r.SlowProcessingCutOffDays) || pr.IsAutomatedPR {
+			options := workflow.GetActivityOptions(ctx)
+			options.TaskQueue = SlowTaskQueue
+			prCtx = workflow.WithActivityOptions(ctx, options)
+			oldPRCounter.Inc(1)
+		} else {
+			newPRCounter.Inc(1)
+		}
+
+		futures[i] = workflow.ExecuteActivity(prCtx, r.GithubActivities.GithubListModifiedFiles, activities.ListModifiedFilesRequest{
+			Repo:        req.Repo,
+			PullRequest: pr,
+		})
+	}
+	return futures
+}
+
+// setRevisionLegacy is the behavior before concurrentPRRevisionChangeID. It must not change, workflows that
+// started before the change replay through it.
+func (r *Runner) setRevisionLegacy(ctx workflow.Context, req Request, prs []github.PullRequest) error {
+	futuresByPullNum := r.listModifiedFilesAsyncLegacy(ctx, req, prs)
 
 	// sorted by date modified ensures we resolve the futures for activities in the default task queue before resolving activities in the slow task queue
 	setRevisionFutures := []workflow.Future{}
@@ -127,7 +203,9 @@ func (r *Runner) setRevision(ctx workflow.Context, req Request, prs []github.Pul
 	return nil
 }
 
-func (r *Runner) listModifiedFilesAsync(ctx workflow.Context, req Request, prs []github.PullRequest) map[github.PullRequest]workflow.Future {
+// listModifiedFilesAsyncLegacy is the behavior before concurrentPRRevisionChangeID. It reassigns ctx inside the
+// loop, so after the first stale or automated PR every later PR is also scheduled on the slow task queue.
+func (r *Runner) listModifiedFilesAsyncLegacy(ctx workflow.Context, req Request, prs []github.PullRequest) map[github.PullRequest]workflow.Future {
 	futuresByPullNum := map[github.PullRequest]workflow.Future{}
 	oldPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("more_than_%d_days", r.SlowProcessingCutOffDays))
 	newPRCounter := r.Scope.SubScope("open_prs").Counter(fmt.Sprintf("less_than_%d_days", r.SlowProcessingCutOffDays))
