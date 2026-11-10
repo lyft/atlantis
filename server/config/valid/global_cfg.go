@@ -2,6 +2,7 @@ package valid
 
 import (
 	"regexp"
+	"time"
 
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/local"
@@ -62,6 +63,7 @@ type GlobalCfg struct {
 	Temporal             Temporal
 	Github               Github
 	RevisionSetter       RevisionSetter
+	DeploymentSweeper    DeploymentSweeper
 	Admin                Admin
 	AdhocMode            AdhocMode
 }
@@ -166,6 +168,13 @@ type BasicAuth struct {
 
 type TaskQueue struct {
 	ActivitiesPerSecond float64
+}
+
+// DeploymentSweeper configures cleanup of orphaned deployment directories. The zero value means a dry run
+// with the default max age.
+type DeploymentSweeper struct {
+	MaxAge time.Duration
+	Delete bool
 }
 
 type RevisionSetter struct {
