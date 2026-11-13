@@ -9,6 +9,7 @@ import (
 
 type closer interface {
 	CloseJob(ctx context.Context, jobID string) error
+	CopyJob(ctx context.Context, fromJobID string, toJobID string) error
 }
 
 type jobActivities struct {
@@ -25,4 +26,15 @@ func (t *jobActivities) CloseJob(ctx context.Context, request CloseJobRequest) e
 		activity.GetLogger(ctx).Error(errors.Wrapf(err, "closing job").Error())
 	}
 	return err
+}
+
+type CopyJobOutputRequest struct {
+	FromJobID string
+	ToJobID   string
+}
+
+// CopyJobOutput starts ToJobID's log with the output of FromJobID. Callers must not retry it, a second run
+// would write the output twice.
+func (t *jobActivities) CopyJobOutput(ctx context.Context, request CopyJobOutputRequest) error {
+	return errors.Wrapf(t.StreamCloser.CopyJob(ctx, request.FromJobID, request.ToJobID), "copying job output")
 }

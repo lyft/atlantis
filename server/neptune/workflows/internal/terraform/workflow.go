@@ -31,6 +31,7 @@ type githubActivities interface {
 type terraformActivities interface {
 	Cleanup(ctx context.Context, request activities.CleanupRequest) (activities.CleanupResponse, error)
 	GetWorkerInfo(ctx context.Context) (*activities.GetWorkerInfoResponse, error)
+	CopyJobOutput(ctx context.Context, request activities.CopyJobOutputRequest) error
 }
 
 // jobRunner runs a deploy plan/apply job
@@ -262,6 +263,8 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 		return newUpdateJobError(err, "unable to update job with success status")
 	}
 
+	r.copyPlanOutputToApplyJob(ctx, jobID.String())
+
 	err = r.JobRunner.Apply(ctx, root, jobID.String(), planResponse.PlanFile)
 	if err != nil {
 		if err := r.Store.UpdateApplyJobWithStatus(state.FailedJobStatus, state.UpdateOptions{
@@ -280,6 +283,33 @@ func (r *Runner) Apply(ctx workflow.Context, root *terraform.LocalRoot, serverUR
 	}
 
 	return nil
+}
+
+// copyPlanOutputToApplyJob starts the apply job's log with the plan's, so a deploy's apply log shows the
+// plan and the apply together. This is best effort: the apply must not fail or be delayed because the plan
+// output couldn't be copied.
+func (r *Runner) copyPlanOutputToApplyJob(ctx workflow.Context, applyJobID string) {
+	// Only deploy mode gets here: PR and adhoc workflows return before the apply step.
+	planJobID := r.Store.PlanJobID()
+	if planJobID == "" {
+		return
+	}
+
+	// This adds an activity, so workflows that already got past this point before the change was deployed
+	// must not run it when they replay.
+	if workflow.GetVersion(ctx, "CopyPlanOutputToApplyJob", workflow.DefaultVersion, workflow.Version(1)) == workflow.DefaultVersion {
+		return
+	}
+
+	// copying twice would write the plan output twice
+	ctx = workflow.WithRetryPolicy(ctx, temporal.RetryPolicy{MaximumAttempts: 1})
+	err := workflow.ExecuteActivity(ctx, r.TerraformActivities.CopyJobOutput, activities.CopyJobOutputRequest{
+		FromJobID: planJobID,
+		ToJobID:   applyJobID,
+	}).Get(ctx, nil)
+	if err != nil {
+		workflow.GetLogger(ctx).Error("unable to copy plan output to the apply job", key.ErrKey, err)
+	}
 }
 
 func (r *Runner) Run(ctx workflow.Context) (Response, error) {

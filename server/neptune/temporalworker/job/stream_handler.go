@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/runatlantis/atlantis/server/config/valid"
 	"github.com/runatlantis/atlantis/server/legacy/events/terraform/filter"
 	"github.com/runatlantis/atlantis/server/logging"
@@ -76,6 +77,31 @@ func (s *StreamHandler) RegisterJob(id string) chan string {
 func (s *StreamHandler) CloseJob(ctx context.Context, jobID string) error {
 	s.ReceiverRegistry.Close(ctx, jobID)
 	return s.Store.Close(ctx, jobID, Complete)
+}
+
+// CopyJob appends the output recorded for fromJobID to toJobID, ahead of anything toJobID writes afterwards.
+// It is used to start an apply job's log with the plan it applies, so the apply log (which is what gets
+// persisted and picked up downstream) shows plan and apply together.
+//
+// It is not idempotent: calling it again appends the lines again, so callers must not retry it.
+func (s *StreamHandler) CopyJob(ctx context.Context, fromJobID string, toJobID string) error {
+	from, err := s.Store.Get(ctx, fromJobID)
+	if err != nil {
+		return errors.Wrapf(err, "getting job %s", fromJobID)
+	}
+	if from == nil {
+		return nil
+	}
+
+	// copy the slice header's contents up front: the source is complete but may still be shared with the store
+	lines := append([]string(nil), from.Output...)
+	for _, line := range lines {
+		s.ReceiverRegistry.Broadcast(OutputLine{JobID: toJobID, Line: line})
+		if err := s.Store.Write(ctx, toJobID, line); err != nil {
+			return errors.Wrapf(err, "writing to job %s", toJobID)
+		}
+	}
+	return nil
 }
 
 func (s *StreamHandler) CleanUp(ctx context.Context) error {
