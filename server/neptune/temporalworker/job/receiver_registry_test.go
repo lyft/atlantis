@@ -89,7 +89,9 @@ func TestReceiverRegistry(t *testing.T) {
 	t.Run("adds a receiver and broadcast", func(t *testing.T) {
 		recvRegistry := job.NewReceiverRegistry()
 
-		ch := make(chan string)
+		// Broadcast doesn't wait for a receiver (it drops one that isn't ready), so with an unbuffered
+		// channel the test hangs whenever Broadcast runs before the read below.
+		ch := make(chan string, 1)
 		recvRegistry.AddReceiver(jobID, ch)
 
 		go recvRegistry.Broadcast(job.OutputLine{
