@@ -59,4 +59,5 @@ type Config struct {
 	CtxLogger                logging.Logger
 	App                      githubapp.Config
 	LyftAuditJobsSnsTopicArn string
+	DeploymentSweeper        valid.DeploymentSweeper
 }

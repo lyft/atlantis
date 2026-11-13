@@ -64,6 +64,9 @@ const (
 	// 5 minutes to allow cleaning up the job store
 	StreamHandlerTimeout                   = 5 * time.Minute
 	PRRevisionTaskQueueActivitiesPerSecond = 2
+
+	// how often each worker looks for orphaned deployment directories
+	deploymentSweepFrequency = 6 * time.Hour
 )
 
 type Server struct {
@@ -217,6 +220,17 @@ func NewServer(config *config.Config) (*Server, error) {
 		InstallationID: config.GithubCfg.TemporalAppInstallationID,
 	}
 
+	deploymentSweeper, err := crons.NewDeploymentSweeper(
+		config.DataDir,
+		config.DeploymentSweeper.MaxAge,
+		config.DeploymentSweeper.Delete,
+		config.CtxLogger,
+		scope,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing deployment sweeper")
+	}
+
 	cronScheduler := internalSync.NewCronScheduler(config.CtxLogger)
 
 	server := Server{
@@ -230,6 +244,13 @@ func NewServer(config *config.Config) (*Server, error) {
 			{
 				Executor:  crons.NewRateLimitStats(scope, clientCreator, config.GithubCfg.TemporalAppInstallationID).Run,
 				Frequency: 1 * time.Minute,
+			},
+			{
+				// Each worker pod has its own volume, so every pod sweeps its own deployments directory. Runs
+				// every few hours rather than daily because the first run only happens a full interval after
+				// startup, and pods restart on every deploy.
+				Executor:  deploymentSweeper.Run,
+				Frequency: deploymentSweepFrequency,
 			},
 		},
 		HTTPServerProxy:            httpServerProxy,

@@ -25,6 +25,7 @@ type GlobalCfg struct {
 	Github               Github               `yaml:"github" json:"github"`
 	Persistence          Persistence          `yaml:"persistence" json:"persistence"`
 	RevisionSetter       RevisionSetter       `yaml:"revision_setter" json:"revision_setter"`
+	DeploymentSweeper    DeploymentSweeper    `yaml:"deployment_sweeper" json:"deployment_sweeper"`
 	Admin                Admin                `yaml:"admin" json:"admin"`
 	AdhocMode            AdhocMode            `yaml:"adhoc_mode" json:"adhoc_mode"`
 }
@@ -132,6 +133,7 @@ func (g GlobalCfg) Validate() error {
 		validation.Field(&g.Github),
 		validation.Field(&g.TerraformLogFilters),
 		validation.Field(&g.Persistence),
+		validation.Field(&g.DeploymentSweeper),
 	)
 	if err != nil {
 		return err
@@ -214,6 +216,7 @@ func (g GlobalCfg) ToValid(defaultCfg valid.GlobalCfg) valid.GlobalCfg {
 		Github:               g.Github.ToValid(),
 		Admin:                g.Admin.ToValid(),
 		RevisionSetter:       g.RevisionSetter.ToValid(),
+		DeploymentSweeper:    g.DeploymentSweeper.ToValid(),
 		AdhocMode:            g.AdhocMode.ToValid(),
 	}
 }
