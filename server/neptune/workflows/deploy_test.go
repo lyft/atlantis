@@ -232,6 +232,10 @@ func (sc *testStreamCloser) CloseJob(ctx context.Context, jobID string) error {
 	return nil
 }
 
+func (sc *testStreamCloser) CopyJob(ctx context.Context, fromJobID string, toJobID string) error {
+	return nil
+}
+
 var fileContents = ` resource "null_resource" "null" {}
 `
 

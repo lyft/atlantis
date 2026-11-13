@@ -98,6 +98,9 @@ type terraformActivities struct{}
 func (a *terraformActivities) Cleanup(ctx context.Context, request activities.CleanupRequest) (activities.CleanupResponse, error) {
 	return activities.CleanupResponse{}, nil
 }
+func (a *terraformActivities) CopyJobOutput(ctx context.Context, request activities.CopyJobOutputRequest) error {
+	return nil
+}
 func (a *terraformActivities) GetWorkerInfo(ctx context.Context) (*activities.GetWorkerInfoResponse, error) {
 	u, err := url.Parse("www.test.com")
 	return &activities.GetWorkerInfoResponse{
@@ -296,6 +299,11 @@ func TestSuccess_DeployMode(t *testing.T) {
 	env.OnActivity(ta.Cleanup, mock.Anything, activities.CleanupRequest{
 		DeployDirectory: DeployDir,
 	}).Return(activities.CleanupResponse{}, nil)
+
+	// the apply job's log starts with the plan's
+	env.OnActivity(ta.CopyJobOutput, mock.Anything, mock.MatchedBy(func(req activities.CopyJobOutputRequest) bool {
+		return req.FromJobID != "" && req.ToJobID != "" && req.FromJobID != req.ToJobID
+	})).Return(nil).Once()
 
 	// send approval of plan
 	env.RegisterDelayedCallback(func() {
@@ -502,6 +510,9 @@ func TestSuccess_PRMode(t *testing.T) {
 		LocalRoot:       testLocalRoot,
 		DeployDirectory: DeployDir,
 	}, nil)
+	env.OnActivity(ta.CopyJobOutput, mock.Anything, mock.Anything).Return(nil).Run(func(mock.Arguments) {
+		t.Error("PR mode has no apply job, so no plan output should be copied")
+	}).Maybe()
 	env.OnActivity(ta.Cleanup, mock.Anything, activities.CleanupRequest{
 		DeployDirectory: DeployDir,
 	}).Return(activities.CleanupResponse{}, nil)
@@ -1135,4 +1146,33 @@ func TestCleanupErrorReturnsNoError(t *testing.T) {
 	var resp response
 	err := env.GetWorkflowResult(&resp)
 	assert.NoError(t, err)
+}
+
+func TestDeployMode_CopyPlanOutputFailureDoesNotFailApply(t *testing.T) {
+	var suite testsuite.WorkflowTestSuite
+	env := suite.NewTestWorkflowEnvironment()
+	ga := &githubActivities{}
+	ta := &terraformActivities{}
+	env.RegisterActivity(ga)
+	env.RegisterActivity(ta)
+
+	env.OnActivity(ga.GithubFetchRoot, mock.Anything, mock.Anything).Return(activities.FetchRootResponse{
+		LocalRoot:       testLocalRoot,
+		DeployDirectory: DeployDir,
+	}, nil)
+	env.OnActivity(ta.Cleanup, mock.Anything, mock.Anything).Return(activities.CleanupResponse{}, nil)
+	env.OnActivity(ta.CopyJobOutput, mock.Anything, mock.Anything).Return(errors.New("copy failed")).Once()
+
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow("planreview", gate.PlanReviewSignalRequest{
+			Status: gate.Approved,
+		})
+	}, 5*time.Second)
+
+	env.ExecuteWorkflow(testTerraformWorkflow, request{})
+	assert.True(t, env.IsWorkflowCompleted())
+
+	var resp response
+	assert.NoError(t, env.GetWorkflowResult(&resp))
+	env.AssertExpectations(t)
 }

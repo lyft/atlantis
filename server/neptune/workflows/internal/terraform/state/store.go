@@ -61,6 +61,14 @@ func NewWorkflowStore(notifier UpdateNotifier, mode terraform.WorkflowMode, id s
 	return NewWorkflowStoreWithGenerator(notifier, urlGenerator, mode, id)
 }
 
+// PlanJobID returns the id of the plan job, or empty if no plan job was started.
+func (s *WorkflowStore) PlanJobID() string {
+	if s.state.Plan == nil {
+		return ""
+	}
+	return s.state.Plan.ID
+}
+
 func (s *WorkflowStore) InitPlanJob(jobID fmt.Stringer, serverURL fmt.Stringer) error {
 	outputURL, err := s.outputURLGenerator.Generate(jobID, serverURL)
 
