@@ -79,9 +79,12 @@ func (s *StreamHandler) CloseJob(ctx context.Context, jobID string) error {
 	return s.Store.Close(ctx, jobID, Complete)
 }
 
-// CopyJob appends the output recorded for fromJobID to toJobID, ahead of anything toJobID writes afterwards.
-// It is used to start an apply job's log with the plan it applies, so the apply log (which is what gets
-// persisted and picked up downstream) shows plan and apply together.
+// ApplyDivider is written between the copied plan output and the apply's own output.
+const ApplyDivider = "---- terraform apply ----"
+
+// CopyJob appends the output recorded for fromJobID to toJobID, followed by ApplyDivider, ahead of anything
+// toJobID writes afterwards. It is used to start an apply job's log with the plan it applies, so the apply log
+// (which is what gets persisted and picked up downstream) shows plan and apply together.
 //
 // It is not idempotent: calling it again appends the lines again, so callers must not retry it.
 func (s *StreamHandler) CopyJob(ctx context.Context, fromJobID string, toJobID string) error {
@@ -89,12 +92,13 @@ func (s *StreamHandler) CopyJob(ctx context.Context, fromJobID string, toJobID s
 	if err != nil {
 		return errors.Wrapf(err, "getting job %s", fromJobID)
 	}
-	if from == nil {
+	if from == nil || len(from.Output) == 0 {
 		return nil
 	}
 
-	// copy the slice header's contents up front: the source is complete but may still be shared with the store
+	// copy the lines up front: the source is complete but may still be shared with the store
 	lines := append([]string(nil), from.Output...)
+	lines = append(lines, ApplyDivider)
 	for _, line := range lines {
 		s.ReceiverRegistry.Broadcast(OutputLine{JobID: toJobID, Line: line})
 		if err := s.Store.Write(ctx, toJobID, line); err != nil {

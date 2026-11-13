@@ -63,9 +63,13 @@ func TestStreamHandler_CopyJob(t *testing.T) {
 
 		require.NoError(t, newCopyHandler(t, store, registry).CopyJob(context.Background(), "plan", "apply"))
 
-		assert.Equal(t, []string{"plan 1", "plan 2"}, store.writeLog)
-		assert.Equal(t, []string{"apply", "apply"}, store.writeKeys)
-		assert.Equal(t, []job.OutputLine{{JobID: "apply", Line: "plan 1"}, {JobID: "apply", Line: "plan 2"}}, registry.broadcast)
+		assert.Equal(t, []string{"plan 1", "plan 2", job.ApplyDivider}, store.writeLog)
+		assert.Equal(t, []string{"apply", "apply", "apply"}, store.writeKeys)
+		assert.Equal(t, []job.OutputLine{
+			{JobID: "apply", Line: "plan 1"},
+			{JobID: "apply", Line: "plan 2"},
+			{JobID: "apply", Line: job.ApplyDivider},
+		}, registry.broadcast)
 	})
 
 	t.Run("later apply output follows the copied plan", func(t *testing.T) {
@@ -77,7 +81,7 @@ func TestStreamHandler_CopyJob(t *testing.T) {
 		require.NoError(t, handler.CopyJob(context.Background(), "plan", "apply"))
 		require.NoError(t, store.Write(context.Background(), "apply", "apply 1"))
 
-		assert.Equal(t, []string{"plan 1", "apply 1"}, store.writeLog)
+		assert.Equal(t, []string{"plan 1", job.ApplyDivider, "apply 1"}, store.writeLog)
 	})
 
 	t.Run("a missing source copies nothing", func(t *testing.T) {
@@ -88,6 +92,14 @@ func TestStreamHandler_CopyJob(t *testing.T) {
 
 		assert.Empty(t, store.writeLog)
 		assert.Empty(t, registry.broadcast)
+	})
+
+	t.Run("an empty source copies nothing, not even the divider", func(t *testing.T) {
+		store := &copyStore{jobs: map[string]*job.Job{"plan": {Status: job.Complete}}}
+
+		require.NoError(t, newCopyHandler(t, store, &copyRegistry{}).CopyJob(context.Background(), "plan", "apply"))
+
+		assert.Empty(t, store.writeLog)
 	})
 
 	t.Run("fails when the source can't be read", func(t *testing.T) {
